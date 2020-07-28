@@ -1,0 +1,14 @@
+# NPM packages
+node_modules/
+
+# Buidler files
+cache/
+artifacts/*
+!artifacts/mainnet.json
+!artifacts/ropsten.json
+!artifacts/rinkeby.json
+!artifacts/kovan.json
+
+# Solidity coverage files
+coverage/
+coverage.json

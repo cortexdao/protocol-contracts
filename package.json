@@ -1,0 +1,49 @@
+{
+  "name": "apy-core",
+  "version": "1.0.0",
+  "description": "",
+  "keywords": [
+    "ethereum",
+    "solidity",
+    "defi"
+  ],
+  "files": [
+    "contracts",
+    "artifacts",
+    "config"
+  ],
+  "scripts": {
+    "check": "solhint \"contracts/**/*.sol\""
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "solhint -w 0 \"contracts/**/*.sol\""
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/APY-Finance/apy-core.git"
+  },
+  "author": "APY.Finance",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/APY-Finance/apy-core/issues"
+  },
+  "homepage": "https://github.com/APY-Finance/apy-core/README.md",
+  "devDependencies": {
+    "@nomiclabs/buidler": "^1.3.2",
+    "@nomiclabs/buidler-ethers": "^1.3.2",
+    "@nomiclabs/buidler-waffle": "^1.3.2",
+    "chai": "^4.2.0",
+    "dotenv": "^8.2.0",
+    "ethereum-waffle": "^2.5.0",
+    "ethers": "^4.0.47",
+    "husky": "^4.2.5",
+    "solhint": "^3.0.0",
+    "solidity-coverage": "^0.7.5"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^3.0.1",
+    "@uniswap/lib": "^1.1.2"
+  }
+}
