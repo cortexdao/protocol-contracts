@@ -9,7 +9,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import {FixedPoint} from "@uniswap/lib/contracts/libraries/FixedPoint.sol";
-import {Babylonian} from "@uniswap/lib/contracts/libraries/Babylonian.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 
 import {APT} from "./APT.sol";
@@ -34,7 +33,7 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
      * @dev If no APT tokens have been minted yet, fallback to a fixed ratio.
      */
     function mint() external payable nonReentrant {
-        require(msg.value > 0, "DALPManager/insufficient-value");
+        require(msg.value > 0, "Pool/insufficient-value");
 
         uint256 mintAmount = calculateMintAmount(msg.value);
         apt.mint(msg.sender, mintAmount);
@@ -50,7 +49,7 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
         require(amount > 0, "Pool/insufficient-balance");
         require(
             amount <= apt.balanceOf(msg.sender),
-            "DALPManager/insufficient-balance"
+            "Pool/insufficient-balance"
         );
 
         require(amount <= _MAX_UINT112, "Pool/overflow");
@@ -98,10 +97,10 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
      * @return The total ETH value of the APT tokens
      */
     function getAPTValue(uint256 amount) public view returns (uint256) {
-        require(amount > 0, "DALPManager/insufficient-balance");
-        require(amount <= _MAX_UINT112, "DALPManager/overflow");
-        require(apt.totalSupply() > 0, "DALPManager/divide-by-zero");
-        require(apt.totalSupply() <= _MAX_UINT112, "DALPManager/overflow");
+        require(amount > 0, "Pool/insufficient-balance");
+        require(amount <= _MAX_UINT112, "Pool/overflow");
+        require(apt.totalSupply() > 0, "Pool/divide-by-zero");
+        require(apt.totalSupply() <= _MAX_UINT112, "Pool/overflow");
 
         FixedPoint.uq112x112 memory shareOfDALP = FixedPoint.fraction(
             uint112(amount),
@@ -109,7 +108,7 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
         );
 
         uint256 totalValue = address(this).balance;
-        require(totalValue <= _MAX_UINT112, "DALPManager/overflow");
+        require(totalValue <= _MAX_UINT112, "Pool/overflow");
 
         return shareOfDALP.mul(uint112(totalValue)).decode144();
     }
