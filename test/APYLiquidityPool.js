@@ -27,4 +27,8 @@ describe("APYLiquidityPool", () => {
     const balance_2 = await provider.getBalance(apiLiquidityPool.address);
     expect(balance_2).to.be.eq(etherSent);
   });
+
+  it("mint reverts if 0 ETH sent", async () => {
+    await expect(apiLiquidityPool.mint({ value: "0" })).to.be.reverted;
+  });
 });
