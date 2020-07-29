@@ -35,9 +35,9 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
     function mint() external payable nonReentrant {
         require(msg.value > 0, "Pool/insufficient-value");
 
-        // uint256 totalValue = address(this).balance.sub(msg.value);
-        // uint256 mintAmount = _calculateMintAmount(msg.value, totalValue);
-        // apt.mint(msg.sender, mintAmount);
+        uint256 totalValue = address(this).balance.sub(msg.value);
+        uint256 mintAmount = _calculateMintAmount(msg.value, totalValue);
+        // _mint(msg.sender, mintAmount);
 
         // emit MintAPT(msg.sender, mintAmount, msg.value);
     }
