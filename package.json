@@ -13,7 +13,8 @@
     "config"
   ],
   "scripts": {
-    "check": "solhint \"contracts/**/*.sol\""
+    "check": "solhint \"contracts/**/*.sol\"",
+    "test": "npx buidler test"
   },
   "husky": {
     "hooks": {
