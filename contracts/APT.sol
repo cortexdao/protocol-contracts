@@ -21,7 +21,7 @@ contract APT is ERC20("APY Pool Token", "APT"), Ownable {
     }
 
     // admin call on deployment
-    function setManagerContractAddress(address _manager) public onlyOwner {
+    function setManagerAddress(address _manager) public onlyOwner {
         manager = _manager;
     }
 }

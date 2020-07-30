@@ -23,7 +23,11 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
 
     APT public apt; // APT token
 
-    event MintAPT(address sender, uint256 tokenAmount, uint256 ethAmount);
+    event MintAPT(
+        address indexed sender,
+        uint256 tokenAmount,
+        uint256 ethAmount
+    );
 
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
@@ -36,11 +40,10 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
         require(msg.value > 0, "Pool/insufficient-value");
 
         uint256 totalValue = address(this).balance.sub(msg.value);
-        // solhint-disable-next-line no-unused-vars
         uint256 mintAmount = internalCalculateMintAmount(msg.value, totalValue);
-        // _mint(msg.sender, mintAmount);
+        apt.mint(msg.sender, mintAmount);
 
-        // emit MintAPT(msg.sender, mintAmount, msg.value);
+        emit MintAPT(msg.sender, mintAmount, msg.value);
     }
 
     /**
@@ -80,7 +83,7 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
     }
 
     // called by admin on deployment
-    function setTokenContract(address tokenAddress) public onlyOwner {
+    function setTokenAddress(address tokenAddress) public onlyOwner {
         apt = APT(tokenAddress);
     }
 
