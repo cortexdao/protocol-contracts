@@ -1,9 +1,8 @@
 # APY Smart Contracts
 
 TODOs:
-
-- [] Continuous integration
-- [] Links to architectural diagrams / specs
+- [ ] Continuous integration
+- [ ] Links to architectural diagrams / specs
 
 ## Install Dependencies
 
