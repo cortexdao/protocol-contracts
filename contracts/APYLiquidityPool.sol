@@ -36,7 +36,8 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
         require(msg.value > 0, "Pool/insufficient-value");
 
         uint256 totalValue = address(this).balance.sub(msg.value);
-        uint256 mintAmount = _calculateMintAmount(msg.value, totalValue);
+        // solhint-disable-next-line no-unused-vars
+        uint256 mintAmount = internalCalculateMintAmount(msg.value, totalValue);
         // _mint(msg.sender, mintAmount);
 
         // emit MintAPT(msg.sender, mintAmount, msg.value);
@@ -89,7 +90,29 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
         returns (uint256)
     {
         uint256 totalValue = address(this).balance;
-        return _calculateMintAmount(ethValue, totalValue);
+        return internalCalculateMintAmount(ethValue, totalValue);
+    }
+
+    function internalCalculateMintAmount(uint256 ethValue, uint256 totalValue)
+        public
+        view
+        returns (uint256)
+    {
+        uint256 totalSupply = apt.totalSupply();
+
+        if (totalValue == 0 || totalSupply == 0) {
+            return ethValue.mul(_DEFAULT_TOKEN_TO_ETH_FACTOR);
+        }
+
+        require(ethValue <= _MAX_UINT112, "Pool/overflow");
+        require(totalValue <= _MAX_UINT112, "Pool/overflow");
+        require(totalSupply <= _MAX_UINT112, "Pool/overflow");
+
+        return
+            FixedPoint
+                .fraction(uint112(ethValue), uint112(totalValue))
+                .mul(uint112(totalSupply))
+                .decode144();
     }
 
     /**
@@ -128,27 +151,5 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
             uint112(apt.totalSupply())
         );
         return shareOfAPT;
-    }
-
-    function _calculateMintAmount(uint256 ethValue, uint256 totalValue)
-        public
-        view
-        returns (uint256)
-    {
-        uint256 totalSupply = apt.totalSupply();
-
-        if (totalValue == 0 || totalSupply == 0) {
-            return ethValue * _DEFAULT_TOKEN_TO_ETH_FACTOR;
-        }
-
-        require(ethValue <= _MAX_UINT112, "Pool/overflow");
-        require(totalValue <= _MAX_UINT112, "Pool/overflow");
-        require(totalSupply <= _MAX_UINT112, "Pool/overflow");
-
-        return
-            FixedPoint
-                .fraction(uint112(ethValue), uint112(totalValue))
-                .mul(uint112(totalSupply))
-                .decode144();
     }
 }

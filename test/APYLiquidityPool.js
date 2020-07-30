@@ -8,6 +8,7 @@ const {
 const APYLiquidityPool = require("../artifacts/APYLiquidityPool.json");
 const APT = require("../artifacts/APT.json");
 const { deployMockContract } = require("@ethereum-waffle/mock-contract");
+const { BigNumber } = require("ethers/utils");
 
 describe("APYLiquidityPool", () => {
   const provider = waffle.provider;
@@ -15,6 +16,8 @@ describe("APYLiquidityPool", () => {
 
   let apiLiquidityPool;
   let apt;
+
+  const DEFAULT_TOKEN_TO_ETH_FACTOR = new BigNumber("1000");
 
   beforeEach(async () => {
     apiLiquidityPool = await deployContract(wallet, APYLiquidityPool);
@@ -38,14 +41,14 @@ describe("APYLiquidityPool", () => {
   });
 
   it("mint amount to supply equals ETH deposit to total ETH value", async () => {
-    // start with non-zero token supply and non-zero ETH value
+    // mock out token contract and set non-zero total supply
     apt = await deployMockContract(wallet, APT.abi);
     await apiLiquidityPool.setTokenContract(apt.address);
     await apt.mock.totalSupply.returns(utils.parseEther("100"));
 
     const ethValue = utils.parseEther("10");
     const totalValue = utils.parseEther("100");
-    const mintAmount = await apiLiquidityPool._calculateMintAmount(
+    const mintAmount = await apiLiquidityPool.internalCalculateMintAmount(
       ethValue,
       totalValue
     );
@@ -53,10 +56,26 @@ describe("APYLiquidityPool", () => {
   });
 
   it("mint amount is constant multiple of deposit if total ETH value is zero", async () => {
-    // start with zero total ETH value and non-zero total supply
+    // mock out token contract and set non-zero total supply
+    apt = await deployMockContract(wallet, APT.abi);
+    await apiLiquidityPool.setTokenContract(apt.address);
+    await apt.mock.totalSupply.returns(utils.parseEther("100"));
+
+    const ethValue = utils.parseEther("7.3");
+    const mintAmount = await apiLiquidityPool.internalCalculateMintAmount(
+      ethValue,
+      0
+    );
+    expect(mintAmount).to.equal(ethValue.mul(DEFAULT_TOKEN_TO_ETH_FACTOR));
   });
 
   it("mint amount is constant multiple of deposit if total supply is zero ", async () => {
-    // start with non-zero total ETH value and zero total supply
+    const ethValue = utils.parseEther("5");
+    const totalValue = utils.parseEther("100");
+    const mintAmount = await apiLiquidityPool.internalCalculateMintAmount(
+      ethValue,
+      totalValue
+    );
+    expect(mintAmount).to.equal(ethValue.mul(DEFAULT_TOKEN_TO_ETH_FACTOR));
   });
 });
