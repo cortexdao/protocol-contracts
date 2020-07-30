@@ -131,7 +131,7 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
     }
 
     function _calculateMintAmount(uint256 ethValue, uint256 totalValue)
-        private
+        public
         view
         returns (uint256)
     {

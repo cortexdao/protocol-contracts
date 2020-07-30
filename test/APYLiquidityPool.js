@@ -6,16 +6,20 @@ const {
   deployContract,
 } = require("ethereum-waffle");
 const APYLiquidityPool = require("../artifacts/APYLiquidityPool.json");
-const { it } = require("ethers/wordlists");
+const APT = require("../artifacts/APT.json");
+const { deployMockContract } = require("@ethereum-waffle/mock-contract");
 
 describe("APYLiquidityPool", () => {
   const provider = waffle.provider;
   const [wallet] = provider.getWallets();
 
   let apiLiquidityPool;
+  let apt;
 
   beforeEach(async () => {
     apiLiquidityPool = await deployContract(wallet, APYLiquidityPool);
+    apt = await deployContract(wallet, APT);
+    await apiLiquidityPool.setTokenContract(apt.address);
   });
 
   it("mint receives ETH value sent", async () => {
@@ -35,6 +39,17 @@ describe("APYLiquidityPool", () => {
 
   it("mint amount to supply equals ETH deposit to total ETH value", async () => {
     // start with non-zero token supply and non-zero ETH value
+    apt = await deployMockContract(wallet, APT.abi);
+    await apiLiquidityPool.setTokenContract(apt.address);
+    await apt.mock.totalSupply.returns(utils.parseEther("100"));
+
+    const ethValue = utils.parseEther("10");
+    const totalValue = utils.parseEther("100");
+    const mintAmount = await apiLiquidityPool._calculateMintAmount(
+      ethValue,
+      totalValue
+    );
+    expect(mintAmount - ethValue).to.be.lt(1e-18);
   });
 
   it("mint amount is constant multiple of deposit if total ETH value is zero", async () => {
