@@ -36,7 +36,7 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
      * @notice Mint corresponding amount of APT tokens for sent ETH value
      * @dev If no APT tokens have been minted yet, fallback to a fixed ratio.
      */
-    function mint() external payable nonReentrant {
+    function addLiquidity() external payable nonReentrant {
         require(msg.value > 0, "Pool/insufficient-value");
 
         uint256 totalValue = address(this).balance.sub(msg.value);

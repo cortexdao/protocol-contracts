@@ -25,19 +25,19 @@ describe("APYLiquidityPool", () => {
     apt = apt.connect(wallet);
   });
 
-  it("mint receives ETH value sent", async () => {
+  it("addLiquidity receives ETH value sent", async () => {
     const balance_1 = await provider.getBalance(apyLiquidityPool.address);
     expect(balance_1).to.be.eq(0);
 
     const etherSent = parseEther("1");
-    await apyLiquidityPool.mint({ value: etherSent });
+    await apyLiquidityPool.addLiquidity({ value: etherSent });
 
     const balance_2 = await provider.getBalance(apyLiquidityPool.address);
     expect(balance_2).to.be.eq(etherSent);
   });
 
-  it("mint reverts if 0 ETH sent", async () => {
-    await expect(apyLiquidityPool.mint({ value: "0" })).to.be.reverted;
+  it("addLiquidity reverts if 0 ETH sent", async () => {
+    await expect(apyLiquidityPool.addLiquidity({ value: "0" })).to.be.reverted;
   });
 
   it("mint amount to supply equals ETH deposit to total ETH value", async () => {
@@ -91,19 +91,21 @@ describe("APYLiquidityPool", () => {
     expect(mintAmount).to.equal(ethValue.mul(DEFAULT_TOKEN_TO_ETH_FACTOR));
   });
 
-  it("mint will create tokens for sender", async () => {
+  it("addLiquidity will create tokens for sender", async () => {
     let balanceOf = await apt.balanceOf(wallet.address);
     expect(balanceOf).to.equal(0);
 
-    await apyLiquidityPool.mint({ value: parseEther("1") });
+    await apyLiquidityPool.addLiquidity({ value: parseEther("1") });
     balanceOf = await apt.balanceOf(wallet.address);
     expect(balanceOf).to.be.gt(0);
   });
 
-  it("mint creates correctly calculated amount of tokens", async () => {
-    // use another account to call mint and create non-zero
+  it("addLiquidity creates correctly calculated amount of tokens", async () => {
+    // use another account to call addLiquidity and create non-zero
     // token supply and ETH value in contract
-    await apyLiquidityPool.connect(other).mint({ value: parseEther("10") });
+    await apyLiquidityPool
+      .connect(other)
+      .addLiquidity({ value: parseEther("10") });
 
     // now we can check the expected mint amount based on the ETH ratio
     const ethSent = parseEther("2");
@@ -111,7 +113,7 @@ describe("APYLiquidityPool", () => {
       ethSent
     );
 
-    await apyLiquidityPool.mint({ value: ethSent });
+    await apyLiquidityPool.addLiquidity({ value: ethSent });
     const mintAmount = await apt.balanceOf(wallet.address);
     expect(mintAmount).to.equal(expectedMintAmount);
   });
@@ -138,9 +140,9 @@ describe("APYLiquidityPool", () => {
     );
   });
 
-  it("redeem undoes minting", async () => {
+  it("redeem undoes addLiquidity", async () => {
     const ethValue = parseEther("1");
-    await apyLiquidityPool.mint({ value: ethValue });
+    await apyLiquidityPool.addLiquidity({ value: ethValue });
     const mintAmount = await apt.balanceOf(wallet.address);
     await apyLiquidityPool.redeem(mintAmount);
     expect(await apt.balanceOf(wallet.address)).to.equal(0);
