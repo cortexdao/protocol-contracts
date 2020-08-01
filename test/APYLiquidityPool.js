@@ -6,7 +6,7 @@ const APT = require("../artifacts/APT.json");
 
 describe("APYLiquidityPool", () => {
   const provider = waffle.provider;
-  const [wallet] = provider.getWallets();
+  const [wallet, other] = provider.getWallets();
 
   let apyLiquidityPool;
   let apt;
@@ -97,5 +97,21 @@ describe("APYLiquidityPool", () => {
     await apyLiquidityPool.mint({ value: parseEther("1") });
     balanceOf = await apt.balanceOf(wallet.address);
     expect(balanceOf).to.be.gt(0);
+  });
+
+  it("mint creates correctly calculated amount of tokens", async () => {
+    // use another account to call mint and create non-zero
+    // token supply and ETH value in contract
+    await apyLiquidityPool.connect(other).mint({ value: parseEther("10") });
+
+    // now we can check the expected mint amount based on the ETH ratio
+    const ethSent = parseEther("2");
+    const expectedMintAmount = await apyLiquidityPool.calculateMintAmount(
+      ethSent
+    );
+
+    await apyLiquidityPool.mint({ value: ethSent });
+    const mintAmount = await apt.balanceOf(wallet.address);
+    expect(mintAmount).to.equal(expectedMintAmount);
   });
 });
