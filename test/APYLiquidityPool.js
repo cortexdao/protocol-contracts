@@ -114,4 +114,8 @@ describe("APYLiquidityPool", () => {
     const mintAmount = await apt.balanceOf(wallet.address);
     expect(mintAmount).to.equal(expectedMintAmount);
   });
+
+  it("redeem reverts if token amount is zero", async () => {
+    await expect(apyLiquidityPool.redeem(0)).to.be.reverted;
+  });
 });
