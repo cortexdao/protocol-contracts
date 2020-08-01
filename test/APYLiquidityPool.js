@@ -120,6 +120,12 @@ describe("APYLiquidityPool", () => {
     await expect(apyLiquidityPool.redeem(0)).to.be.reverted;
   });
 
+  it("redeem reverts if insufficient balance", async () => {
+    const tokenBalance = new BigNumber("100");
+    await mintTokens(apt, tokenBalance, wallet);
+    await expect(apyLiquidityPool.redeem(tokenBalance.add(1))).to.be.reverted;
+  });
+
   it("redeem burns specified token amount", async () => {
     // start wallet with APT
     const startAmount = parseEther("2");
