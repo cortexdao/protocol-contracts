@@ -44,9 +44,7 @@ describe("APYLiquidityPool", () => {
     const ethValue = parseEther("112");
     const totalValue = parseEther("1000000");
     // mock token and set total supply to total ETH value
-    apt = await deployMockContract(deployer, APT.abi);
-    await apyLiquidityPool.connect(deployer).setTokenAddress(apt.address);
-    await apt.mock.totalSupply.returns(totalValue);
+    await mockTotalSupply(apyLiquidityPool, totalValue);
 
     let mintAmount = await apyLiquidityPool.internalCalculateMintAmount(
       ethValue,
@@ -58,7 +56,7 @@ describe("APYLiquidityPool", () => {
       "mint amount should differ by at most a wei from expected amount"
     );
 
-    await apt.mock.totalSupply.returns(totalValue.div(2));
+    await mockTotalSupply(apyLiquidityPool, totalValue.div(2));
 
     mintAmount = await apyLiquidityPool.internalCalculateMintAmount(
       ethValue,
@@ -73,9 +71,7 @@ describe("APYLiquidityPool", () => {
 
   it("mint amount is constant multiple of deposit if total ETH value is zero", async () => {
     // mock out token contract and set non-zero total supply
-    apt = await deployMockContract(deployer, APT.abi);
-    await apyLiquidityPool.connect(deployer).setTokenAddress(apt.address);
-    await apt.mock.totalSupply.returns(parseEther("100"));
+    await mockTotalSupply(apyLiquidityPool, parseEther("100"));
 
     const ethValue = parseEther("7.3");
     const mintAmount = await apyLiquidityPool.internalCalculateMintAmount(
@@ -135,6 +131,15 @@ describe("APYLiquidityPool", () => {
       startAmount.sub(redeemAmount)
     );
   });
+
+  // test helper to mock the total supply
+  const mockTotalSupply = async (liquidityPoolContract, totalSupply) => {
+    mockApt = await deployMockContract(wallet, APT.abi);
+    await liquidityPoolContract
+      .connect(deployer)
+      .setTokenAddress(mockApt.address);
+    await mockApt.mock.totalSupply.returns(totalSupply);
+  };
 
   // test helper to mint tokens to wallet
   const mintTokens = async (tokenContract, amount, wallet) => {
