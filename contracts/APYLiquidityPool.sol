@@ -51,35 +51,16 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
      * @param amount The amount of APT tokens to redeem
      */
     function redeem(uint256 amount) external nonReentrant {
-        require(amount > 0, "Pool/insufficient-balance");
+        require(amount > 0, "Pool/redeem-positive-amount");
         require(
             amount <= apt.balanceOf(msg.sender),
             "Pool/insufficient-balance"
         );
 
-        require(amount <= _MAX_UINT112, "Pool/overflow");
-        require(apt.totalSupply() > 0, "Pool/divide-by-zero");
-        require(apt.totalSupply() <= _MAX_UINT112, "Pool/overflow");
+        uint256 amountETH = getAPTValue(amount);
 
-        FixedPoint.uq112x112 memory shareOfAPT = _shareOfAPT(amount);
         apt.burn(msg.sender, amount);
-
-        require(address(this).balance <= _MAX_UINT112, "Pool/overflow");
-        uint256 amountETH = shareOfAPT
-            .mul(uint112(address(this).balance))
-            .decode144();
-
         msg.sender.transfer(amountETH);
-    }
-
-    function burn(uint256 tokensToBurn) external nonReentrant {
-        require(tokensToBurn > 0, "Must burn tokens");
-        require(
-            apt.balanceOf(msg.sender) >= tokensToBurn,
-            "Insufficient balance"
-        );
-
-        apt.burn(msg.sender, tokensToBurn);
     }
 
     // called by admin on deployment
@@ -124,24 +105,16 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
      * @return The total ETH value of the APT tokens
      */
     function getAPTValue(uint256 amount) public view returns (uint256) {
-        require(amount > 0, "Pool/insufficient-balance");
-        require(amount <= _MAX_UINT112, "Pool/overflow");
-        require(apt.totalSupply() > 0, "Pool/divide-by-zero");
-        require(apt.totalSupply() <= _MAX_UINT112, "Pool/overflow");
-
-        FixedPoint.uq112x112 memory shareOfDALP = FixedPoint.fraction(
-            uint112(amount),
-            uint112(apt.totalSupply())
-        );
+        FixedPoint.uq112x112 memory shareOfAPT = getShareOfAPT(amount);
 
         uint256 totalValue = address(this).balance;
         require(totalValue <= _MAX_UINT112, "Pool/overflow");
 
-        return shareOfDALP.mul(uint112(totalValue)).decode144();
+        return shareOfAPT.mul(uint112(totalValue)).decode144();
     }
 
-    function _shareOfAPT(uint256 amount)
-        internal
+    function getShareOfAPT(uint256 amount)
+        public
         view
         returns (FixedPoint.uq112x112 memory)
     {
