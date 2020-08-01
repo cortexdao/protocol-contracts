@@ -3,10 +3,11 @@ const { parseEther, BigNumber } = require("ethers/utils");
 const { deployContract, deployMockContract } = require("ethereum-waffle");
 const APYLiquidityPool = require("../artifacts/APYLiquidityPool.json");
 const APT = require("../artifacts/APT.json");
+const { Wallet } = require("ethers");
 
 describe("APYLiquidityPool", () => {
   const provider = waffle.provider;
-  const [wallet, other] = provider.getWallets();
+  const [deployer, wallet, other] = provider.getWallets();
 
   let apyLiquidityPool;
   let apt;
@@ -14,10 +15,14 @@ describe("APYLiquidityPool", () => {
   const DEFAULT_TOKEN_TO_ETH_FACTOR = new BigNumber("1000");
 
   beforeEach(async () => {
-    apyLiquidityPool = await deployContract(wallet, APYLiquidityPool);
-    apt = await deployContract(wallet, APT);
+    apyLiquidityPool = await deployContract(deployer, APYLiquidityPool);
+    apt = await deployContract(deployer, APT);
+
     await apyLiquidityPool.setTokenAddress(apt.address);
     await apt.setManagerAddress(apyLiquidityPool.address);
+
+    apyLiquidityPool = apyLiquidityPool.connect(wallet);
+    apt = apt.connect(wallet);
   });
 
   it("mint receives ETH value sent", async () => {
@@ -39,8 +44,8 @@ describe("APYLiquidityPool", () => {
     const ethValue = parseEther("112");
     const totalValue = parseEther("1000000");
     // mock token and set total supply to total ETH value
-    apt = await deployMockContract(wallet, APT.abi);
-    await apyLiquidityPool.setTokenAddress(apt.address);
+    apt = await deployMockContract(deployer, APT.abi);
+    await apyLiquidityPool.connect(deployer).setTokenAddress(apt.address);
     await apt.mock.totalSupply.returns(totalValue);
 
     let mintAmount = await apyLiquidityPool.internalCalculateMintAmount(
@@ -68,8 +73,8 @@ describe("APYLiquidityPool", () => {
 
   it("mint amount is constant multiple of deposit if total ETH value is zero", async () => {
     // mock out token contract and set non-zero total supply
-    apt = await deployMockContract(wallet, APT.abi);
-    await apyLiquidityPool.setTokenAddress(apt.address);
+    apt = await deployMockContract(deployer, APT.abi);
+    await apyLiquidityPool.connect(deployer).setTokenAddress(apt.address);
     await apt.mock.totalSupply.returns(parseEther("100"));
 
     const ethValue = parseEther("7.3");
@@ -118,4 +123,24 @@ describe("APYLiquidityPool", () => {
   it("redeem reverts if token amount is zero", async () => {
     await expect(apyLiquidityPool.redeem(0)).to.be.reverted;
   });
+
+  it("redeem burns specified token amount", async () => {
+    // start wallet with APT
+    const startAmount = parseEther("2");
+    await mintTokens(apt, startAmount, wallet);
+
+    const redeemAmount = parseEther("1");
+    await apyLiquidityPool.redeem(redeemAmount);
+    expect(await apt.balanceOf(wallet.address)).to.equal(
+      startAmount.sub(redeemAmount)
+    );
+  });
+
+  // test helper to mint tokens to wallet
+  const mintTokens = async (tokenContract, amount, wallet) => {
+    const managerAddress = await tokenContract.manager();
+    await tokenContract.connect(deployer).setManagerAddress(wallet.address);
+    await tokenContract.mint(wallet.address, amount);
+    await tokenContract.connect(deployer).setManagerAddress(managerAddress);
+  };
 });
