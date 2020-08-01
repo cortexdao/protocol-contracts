@@ -132,6 +132,14 @@ describe("APYLiquidityPool", () => {
     );
   });
 
+  it("redeem undoes minting", async () => {
+    const ethValue = parseEther("1");
+    await apyLiquidityPool.mint({ value: ethValue });
+    const mintAmount = await apt.balanceOf(wallet.address);
+    await apyLiquidityPool.redeem(mintAmount);
+    expect(await apt.balanceOf(wallet.address)).to.equal(0);
+  });
+
   // test helper to mock the total supply
   const mockTotalSupply = async (liquidityPoolContract, totalSupply) => {
     mockApt = await deployMockContract(wallet, APT.abi);
