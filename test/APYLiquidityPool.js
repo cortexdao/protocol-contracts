@@ -1,11 +1,8 @@
 const { use, expect } = require("chai");
-const { utils } = require("ethers");
-const { deployContract } = require("ethereum-waffle");
-const { waffleChai } = require("@ethereum-waffle/chai");
+const { parseEther, BigNumber } = require("ethers/utils");
+const { deployContract, deployMockContract } = require("ethereum-waffle");
 const APYLiquidityPool = require("../artifacts/APYLiquidityPool.json");
 const APT = require("../artifacts/APT.json");
-const { deployMockContract } = require("@ethereum-waffle/mock-contract");
-const { BigNumber } = require("ethers/utils");
 
 describe("APYLiquidityPool", () => {
   const provider = waffle.provider;
@@ -27,7 +24,7 @@ describe("APYLiquidityPool", () => {
     const balance_1 = await provider.getBalance(apyLiquidityPool.address);
     expect(balance_1).to.be.eq(0);
 
-    const etherSent = utils.parseEther("1");
+    const etherSent = parseEther("1");
     await apyLiquidityPool.mint({ value: etherSent });
 
     const balance_2 = await provider.getBalance(apyLiquidityPool.address);
@@ -39,8 +36,8 @@ describe("APYLiquidityPool", () => {
   });
 
   it("mint amount to supply equals ETH deposit to total ETH value", async () => {
-    const ethValue = utils.parseEther("112");
-    const totalValue = utils.parseEther("1000000");
+    const ethValue = parseEther("112");
+    const totalValue = parseEther("1000000");
     // mock token and set total supply to total ETH value
     apt = await deployMockContract(wallet, APT.abi);
     await apyLiquidityPool.setTokenAddress(apt.address);
@@ -73,9 +70,9 @@ describe("APYLiquidityPool", () => {
     // mock out token contract and set non-zero total supply
     apt = await deployMockContract(wallet, APT.abi);
     await apyLiquidityPool.setTokenAddress(apt.address);
-    await apt.mock.totalSupply.returns(utils.parseEther("100"));
+    await apt.mock.totalSupply.returns(parseEther("100"));
 
-    const ethValue = utils.parseEther("7.3");
+    const ethValue = parseEther("7.3");
     const mintAmount = await apyLiquidityPool.internalCalculateMintAmount(
       ethValue,
       0
@@ -84,8 +81,8 @@ describe("APYLiquidityPool", () => {
   });
 
   it("mint amount is constant multiple of deposit if total supply is zero ", async () => {
-    const ethValue = utils.parseEther("5");
-    const totalValue = utils.parseEther("100");
+    const ethValue = parseEther("5");
+    const totalValue = parseEther("100");
     const mintAmount = await apyLiquidityPool.internalCalculateMintAmount(
       ethValue,
       totalValue
@@ -97,7 +94,7 @@ describe("APYLiquidityPool", () => {
     let balanceOf = await apt.balanceOf(wallet.address);
     expect(balanceOf).to.equal(0);
 
-    await apyLiquidityPool.mint({ value: utils.parseEther("1") });
+    await apyLiquidityPool.mint({ value: parseEther("1") });
     balanceOf = await apt.balanceOf(wallet.address);
     expect(balanceOf).to.be.gt(0);
   });
