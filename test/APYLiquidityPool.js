@@ -1,9 +1,8 @@
-const { use, expect } = require("chai");
+const { expect } = require("chai");
 const { parseEther, BigNumber } = require("ethers/utils");
 const { deployContract, deployMockContract } = require("ethereum-waffle");
 const APYLiquidityPool = require("../artifacts/APYLiquidityPool.json");
 const APT = require("../artifacts/APT.json");
-const { Wallet } = require("ethers");
 
 describe("APYLiquidityPool", () => {
   const provider = waffle.provider;
