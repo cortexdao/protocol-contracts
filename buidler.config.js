@@ -1,7 +1,8 @@
 require("dotenv").config();
 
 usePlugin("solidity-coverage");
-usePlugin("@nomiclabs/buidler-waffle");
+usePlugin("@nomiclabs/buidler-ethers");
+usePlugin("@nomiclabs/buidler-truffle5");
 
 function getEnv(env) {
   let value = process.env[env];
@@ -26,22 +27,22 @@ module.exports = {
       url: mainnetEndpoint,
       chainId: 1,
       accounts: {
-        mnemonic: mainnetMnemonic
-      }
+        mnemonic: mainnetMnemonic,
+      },
     },
     kovan: {
       url: kovanEndpoint,
       chainId: 42,
       accounts: {
-        mnemonic: kovanMnemonic
-      }
-    }
+        mnemonic: kovanMnemonic,
+      },
+    },
   },
   solc: {
     version: "0.6.6",
     optimizer: {
       enabled: true,
-      runs: 999999
-    }
-  }
+      runs: 999999,
+    },
+  },
 };
