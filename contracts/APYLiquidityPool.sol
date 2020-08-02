@@ -7,10 +7,8 @@ import {
 } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-
-import {FixedPoint} from "@uniswap/lib/contracts/libraries/FixedPoint.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-
+import {FixedPoint} from "@uniswap/lib/contracts/libraries/FixedPoint.sol";
 import {APT} from "./APT.sol";
 
 contract APYLiquidityPool is Ownable, ReentrancyGuard {
@@ -23,10 +21,15 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
 
     APT public apt; // APT token
 
-    event MintAPT(
+    event DepositAPT(
         address indexed sender,
         uint256 tokenAmount,
-        uint256 ethAmount
+        uint256 ethValue
+    );
+    event RedeemAPT(
+        address indexed sender,
+        uint256 tokenAmount,
+        uint256 ethValue
     );
 
     // solhint-disable-next-line no-empty-blocks
@@ -43,24 +46,26 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
         uint256 mintAmount = internalCalculateMintAmount(msg.value, totalValue);
         apt.mint(msg.sender, mintAmount);
 
-        emit MintAPT(msg.sender, mintAmount, msg.value);
+        emit DepositAPT(msg.sender, mintAmount, msg.value);
     }
 
     /**
      * @notice Redeems an amount of APT tokens for its ETH value
-     * @param amount The amount of APT tokens to redeem
+     * @param tokenAmount The amount of APT tokens to redeem
      */
-    function redeem(uint256 amount) external nonReentrant {
-        require(amount > 0, "Pool/redeem-positive-amount");
+    function redeem(uint256 tokenAmount) external nonReentrant {
+        require(tokenAmount > 0, "Pool/redeem-positive-amount");
         require(
-            amount <= apt.balanceOf(msg.sender),
+            tokenAmount <= apt.balanceOf(msg.sender),
             "Pool/insufficient-balance"
         );
 
-        uint256 amountETH = getAPTValue(amount);
+        uint256 ethValue = getEthValue(tokenAmount);
 
-        apt.burn(msg.sender, amount);
-        msg.sender.transfer(amountETH);
+        apt.burn(msg.sender, tokenAmount);
+        msg.sender.transfer(ethValue);
+
+        emit RedeemAPT(msg.sender, tokenAmount, ethValue);
     }
 
     // called by admin on deployment
@@ -77,6 +82,10 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
         return internalCalculateMintAmount(ethValue, totalValue);
     }
 
+    // minted amount should be in the same ratio to total token supply as
+    // ETH sent is to contract's ETH balance, i.e.:
+    //         mint amount / total supply (before deposit)
+    //         = eth value sent / total eth value (before deposit)
     function internalCalculateMintAmount(uint256 ethValue, uint256 totalValue)
         public
         view
@@ -104,7 +113,7 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
      * @param amount The amount of APT tokens
      * @return The total ETH value of the APT tokens
      */
-    function getAPTValue(uint256 amount) public view returns (uint256) {
+    function getEthValue(uint256 amount) public view returns (uint256) {
         FixedPoint.uq112x112 memory shareOfAPT = getShareOfAPT(amount);
 
         uint256 totalValue = address(this).balance;

@@ -147,6 +147,34 @@ describe("APYLiquidityPool", () => {
     expect(await apt.balanceOf(wallet.address)).to.equal(0);
   });
 
+  it("redeem releases ETH to sender", async () => {
+    const mintAmount = await apyLiquidityPool.calculateMintAmount(
+      parseEther("1")
+    );
+    await apyLiquidityPool.addLiquidity({ value: parseEther("1") });
+
+    const startingBalance = await provider.getBalance(wallet.address);
+    await apyLiquidityPool.redeem(mintAmount);
+    expect(await provider.getBalance(wallet.address)).to.be.gt(startingBalance);
+  });
+
+  it("redeem releases ETH value proportional to share of APT.", async () => {
+    // setup: mint some tokens and add some ETH to pool
+    await mintTokens(apt, new BigNumber("1000"), wallet);
+    await wallet.sendTransaction({
+      to: apyLiquidityPool.address,
+      value: parseEther("1.75"),
+    });
+
+    const tokenAmount = new BigNumber("257");
+    const ethValue = await apyLiquidityPool.getEthValue(tokenAmount);
+
+    const startBalance = await provider.getBalance(wallet.address);
+    await apyLiquidityPool.redeem(tokenAmount, { gasPrice: 0 });
+    const endBalance = await provider.getBalance(wallet.address);
+    expect(endBalance.sub(startBalance)).to.equal(ethValue);
+  });
+
   // test helper to mock the total supply
   const mockTotalSupply = async (liquidityPoolContract, totalSupply) => {
     mockApt = await deployMockContract(wallet, APT.abi);
