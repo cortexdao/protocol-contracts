@@ -11,7 +11,7 @@ const {
 const { expect } = require("chai");
 require("chai").should();
 
-const APYLiquidityPool = artifacts.require("APYLiquidityPool");
+const APYLiquidityPool = artifacts.require("APYLiquidityPoolTestProxy");
 const APT = artifacts.require("APT");
 
 contract("APYLiquidityPool", async (accounts) => {
@@ -20,7 +20,7 @@ contract("APYLiquidityPool", async (accounts) => {
   let apyLiquidityPool;
   let apt;
 
-  const DEFAULT_TOKEN_TO_ETH_FACTOR = new BN("1000");
+  let DEFAULT_TOKEN_TO_ETH_FACTOR;
 
   beforeEach(async () => {
     apyLiquidityPool = await APYLiquidityPool.new();
@@ -28,6 +28,8 @@ contract("APYLiquidityPool", async (accounts) => {
 
     await apyLiquidityPool.setTokenAddress(apt.address, { from: deployer });
     await apt.setManagerAddress(apyLiquidityPool.address, { from: deployer });
+
+    DEFAULT_TOKEN_TO_ETH_FACTOR = await apyLiquidityPool.defaultTokenToEthFactor();
   });
 
   it("addLiquidity receives ETH value sent", async () => {
@@ -90,7 +92,7 @@ contract("APYLiquidityPool", async (accounts) => {
   //     0,
   //     { from: wallet }
   //   );
-  //   expect(mintamount).to.equal(ethvalue.mul(default_token_to_eth_factor));
+  //   expect(mintamount).to.equal(ethvalue.mul(DEFAULT_TOKEN_TO_ETH_FACTOR));
   // });
 
   it("mint amount is constant multiple of deposit if total supply is zero ", async () => {

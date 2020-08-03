@@ -16,8 +16,8 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
     using FixedPoint for *;
     using SafeERC20 for IERC20;
 
-    uint256 private constant _DEFAULT_TOKEN_TO_ETH_FACTOR = 1000;
-    uint112 private constant _MAX_UINT112 = uint112(-1);
+    uint256 internal constant _DEFAULT_TOKEN_TO_ETH_FACTOR = 1000;
+    uint112 internal constant _MAX_UINT112 = uint112(-1);
 
     APT public apt; // APT token
 
@@ -43,7 +43,7 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
         require(msg.value > 0, "Pool/insufficient-value");
 
         uint256 totalValue = address(this).balance.sub(msg.value);
-        uint256 mintAmount = internalCalculateMintAmount(msg.value, totalValue);
+        uint256 mintAmount = _calculateMintAmount(msg.value, totalValue);
         apt.mint(msg.sender, mintAmount);
 
         emit DepositAPT(msg.sender, mintAmount, msg.value);
@@ -79,15 +79,29 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
         returns (uint256)
     {
         uint256 totalValue = address(this).balance;
-        return internalCalculateMintAmount(ethValue, totalValue);
+        return _calculateMintAmount(ethValue, totalValue);
+    }
+
+    /**
+     * @notice Get the ETH value of an amount of APT tokens
+     * @param amount The amount of APT tokens
+     * @return The total ETH value of the APT tokens
+     */
+    function getEthValue(uint256 amount) public view returns (uint256) {
+        FixedPoint.uq112x112 memory shareOfAPT = _getShareOfAPT(amount);
+
+        uint256 totalValue = address(this).balance;
+        require(totalValue <= _MAX_UINT112, "Pool/overflow");
+
+        return shareOfAPT.mul(uint112(totalValue)).decode144();
     }
 
     // minted amount should be in the same ratio to total token supply as
     // ETH sent is to contract's ETH balance, i.e.:
     //         mint amount / total supply (before deposit)
     //         = eth value sent / total eth value (before deposit)
-    function internalCalculateMintAmount(uint256 ethValue, uint256 totalValue)
-        public
+    function _calculateMintAmount(uint256 ethValue, uint256 totalValue)
+        internal
         view
         returns (uint256)
     {
@@ -108,22 +122,8 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
                 .decode144();
     }
 
-    /**
-     * @notice Get the ETH value of an amount of APT tokens
-     * @param amount The amount of APT tokens
-     * @return The total ETH value of the APT tokens
-     */
-    function getEthValue(uint256 amount) public view returns (uint256) {
-        FixedPoint.uq112x112 memory shareOfAPT = getShareOfAPT(amount);
-
-        uint256 totalValue = address(this).balance;
-        require(totalValue <= _MAX_UINT112, "Pool/overflow");
-
-        return shareOfAPT.mul(uint112(totalValue)).decode144();
-    }
-
-    function getShareOfAPT(uint256 amount)
-        public
+    function _getShareOfAPT(uint256 amount)
+        internal
         view
         returns (FixedPoint.uq112x112 memory)
     {
@@ -136,5 +136,18 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
             uint112(apt.totalSupply())
         );
         return shareOfAPT;
+    }
+}
+
+contract APYLiquidityPoolTestProxy is APYLiquidityPool {
+    uint256 public defaultTokenToEthFactor = APYLiquidityPool
+        ._DEFAULT_TOKEN_TO_ETH_FACTOR;
+
+    function internalCalculateMintAmount(uint256 ethValue, uint256 totalValue)
+        public
+        view
+        returns (uint256)
+    {
+        return APYLiquidityPool._calculateMintAmount(ethValue, totalValue);
     }
 }
