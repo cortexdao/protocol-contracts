@@ -3,6 +3,7 @@ const {
   BN,
   ether,
   balance,
+  send,
   constants,
   expectEvent, // Assertions for emitted events
   expectRevert, // Assertions for transactions that should fail
@@ -144,60 +145,59 @@ contract("APYLiquidityPool", async (accounts) => {
     );
   });
 
-  // it("redeem reverts if insufficient balance", async () => {
-  //   const tokenBalance = new BigNumber("100");
-  //   await mintTokens(apt, tokenBalance, wallet);
-  //   await expect(apyLiquidityPool.redeem(tokenBalance.add(1), { from: wallet }))
-  //     .to.be.reverted;
-  // });
+  it("redeem reverts if insufficient balance", async () => {
+    const tokenBalance = new BN("100");
+    await mintTokens(apt, tokenBalance, wallet);
 
-  // it("redeem burns specified token amount", async () => {
-  //   // start wallet with APT
-  //   const startAmount = ether("2");
-  //   await mintTokens(apt, startAmount, wallet);
+    await expectRevert(
+      apyLiquidityPool.redeem(tokenBalance.addn(1), { from: wallet }),
+      "Pool/insufficient-balance"
+    );
+  });
 
-  //   const redeemAmount = ether("1");
-  //   await apyLiquidityPool.redeem(redeemAmount);
-  //   expect(await apt.balanceOf(wallet.address)).to.equal(
-  //     startAmount.sub(redeemAmount)
-  //   );
-  // });
+  it("redeem burns specified token amount", async () => {
+    // start wallet with APT
+    const startAmount = ether("2");
+    await mintTokens(apt, startAmount, wallet);
 
-  // it("redeem undoes addLiquidity", async () => {
-  //   const ethValue = ether("1");
-  //   await apyLiquidityPool.addLiquidity({ value: ethValue });
-  //   const mintAmount = await apt.balanceOf(wallet.address);
-  //   await apyLiquidityPool.redeem(mintAmount);
-  //   expect(await apt.balanceOf(wallet.address)).to.equal(0);
-  // });
+    const redeemAmount = ether("1");
+    await apyLiquidityPool.redeem(redeemAmount, { from: wallet });
+    expect(await apt.balanceOf(wallet)).to.bignumber.equal(
+      startAmount.sub(redeemAmount)
+    );
+  });
 
-  // it("redeem releases ETH to sender", async () => {
-  //   const mintAmount = await apyLiquidityPool.calculateMintAmount(
-  //     ether("1")
-  //   );
-  //   await apyLiquidityPool.addLiquidity({ value: ether("1") });
+  it("redeem undoes addLiquidity", async () => {
+    const ethValue = ether("1");
+    await apyLiquidityPool.addLiquidity({ from: wallet, value: ethValue });
+    const mintAmount = await apt.balanceOf(wallet);
+    await apyLiquidityPool.redeem(mintAmount, { from: wallet });
+    expect(await apt.balanceOf(wallet)).to.bignumber.equal("0");
+  });
 
-  //   const startingBalance = await provider.getBalance(wallet.address);
-  //   await apyLiquidityPool.redeem(mintAmount);
-  //   expect(await provider.getBalance(wallet.address)).to.be.gt(startingBalance);
-  // });
+  it("redeem releases ETH to sender", async () => {
+    const ethValue = ether("1");
+    const mintAmount = await apyLiquidityPool.calculateMintAmount(ethValue);
+    await apyLiquidityPool.addLiquidity({ from: wallet, value: ethValue });
 
-  // it("redeem releases ETH value proportional to share of APT.", async () => {
-  //   // setup: mint some tokens and add some ETH to pool
-  //   await mintTokens(apt, new BigNumber("1000"), wallet);
-  //   await wallet.sendTransaction({
-  //     to: apyLiquidityPool.address,
-  //     value: ether("1.75"),
-  //   });
+    const startingBalance = await balance.current(wallet);
+    await apyLiquidityPool.redeem(mintAmount, { from: wallet });
+    expect(await balance.current(wallet)).to.bignumber.gt(startingBalance);
+  });
 
-  //   const tokenAmount = new BigNumber("257");
-  //   const ethValue = await apyLiquidityPool.getEthValue(tokenAmount);
+  it("redeem releases ETH value proportional to share of APT.", async () => {
+    // setup: mint some tokens and add some ETH to pool
+    await mintTokens(apt, new BN("1000"), wallet);
+    await send.ether(wallet, apyLiquidityPool.address, ether("1.75"));
 
-  //   const startBalance = await provider.getBalance(wallet.address);
-  //   await apyLiquidityPool.redeem(tokenAmount, { gasPrice: 0 });
-  //   const endBalance = await provider.getBalance(wallet.address);
-  //   expect(endBalance.sub(startBalance)).to.equal(ethValue);
-  // });
+    const tokenAmount = new BN("257");
+    const ethValue = await apyLiquidityPool.getEthValue(tokenAmount);
+
+    const startBalance = await balance.current(wallet);
+    await apyLiquidityPool.redeem(tokenAmount, { from: wallet, gasPrice: 0 });
+    const endBalance = await balance.current(wallet);
+    expect(endBalance.sub(startBalance)).to.bignumber.equal(ethValue);
+  });
 
   // test helper to mock the total supply
   const mockTotalSupply = async (liquidityPoolContract, totalSupply) => {
@@ -211,8 +211,8 @@ contract("APYLiquidityPool", async (accounts) => {
   // test helper to mint tokens to wallet
   const mintTokens = async (tokenContract, amount, wallet) => {
     const managerAddress = await tokenContract.manager();
-    await tokenContract.connect(deployer).setManagerAddress(wallet.address);
-    await tokenContract.mint(wallet.address, amount);
-    await tokenContract.connect(deployer).setManagerAddress(managerAddress);
+    await tokenContract.setManagerAddress(wallet, { from: deployer });
+    await tokenContract.mint(wallet, amount, { from: wallet });
+    await tokenContract.setManagerAddress(managerAddress, { from: deployer });
   };
 });
