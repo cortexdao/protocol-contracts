@@ -13,6 +13,7 @@ require("chai").should();
 
 const APYLiquidityPool = artifacts.require("APYLiquidityPoolTestProxy");
 const APT = artifacts.require("APT");
+const MockContract = artifacts.require("MockContract");
 
 contract("APYLiquidityPool", async (accounts) => {
   const [deployer, wallet, other] = accounts;
@@ -51,49 +52,51 @@ contract("APYLiquidityPool", async (accounts) => {
     );
   });
 
-  // it("mint amount to supply equals ETH deposit to total ETH value", async () => {
-  //   const ethValue = ether("112");
-  //   const totalValue = ether("1000000");
-  //   // mock token and set total supply to total ETH value
-  //   await mockTotalSupply(apyLiquidityPool, totalValue);
+  it("mint amount to supply equals ETH deposit to total ETH value", async () => {
+    const ethValue = ether("112");
+    const totalValue = ether("1000000");
+    // mock token and set total supply to total ETH value
+    await mockTotalSupply(apyLiquidityPool, totalValue);
 
-  //   let mintAmount = await apyLiquidityPool.internalCalculateMintAmount(
-  //     ethValue,
-  //     totalValue,
-  //     { from: wallet }
-  //   );
-  //   let expectedAmount = ethValue;
-  //   expect(Math.abs(mintAmount.sub(expectedAmount))).to.be.lte(
-  //     1,
-  //     "mint amount should differ by at most a wei from expected amount"
-  //   );
+    let mintAmount = await apyLiquidityPool.internalCalculateMintAmount(
+      ethValue,
+      totalValue,
+      { from: wallet }
+    );
+    let expectedAmount = ethValue;
+    expect(mintAmount.sub(expectedAmount).abs()).to.bignumber.lte(
+      "1",
+      "mint amount should differ by at most a wei from expected amount"
+    );
 
-  //   await mockTotalSupply(apyLiquidityPool, totalValue.div(2));
+    await mockTotalSupply(apyLiquidityPool, totalValue.divn(2));
 
-  //   mintAmount = await apyLiquidityPool.internalCalculateMintAmount(
-  //     ethValue,
-  //     totalValue,
-  //     { from: wallet }
-  //   );
-  //   expectedAmount = ethValue.div(2);
-  //   expect(Math.abs(mintAmount.sub(expectedAmount))).to.be.lte(
-  //     1,
-  //     "mint amount should differ by at most a wei from expected amount"
-  //   );
-  // });
+    mintAmount = await apyLiquidityPool.internalCalculateMintAmount(
+      ethValue,
+      totalValue,
+      { from: wallet }
+    );
+    expectedAmount = ethValue.divn(2);
+    expect(mintAmount.sub(expectedAmount).abs()).to.bignumber.lte(
+      "1",
+      "mint amount should differ by at most a wei from expected amount"
+    );
+  });
 
-  // it("mint amount is constant multiple of deposit if total eth value is zero", async () => {
-  //   // mock out token contract and set non-zero total supply
-  //   await mocktotalsupply(apyliquiditypool, ether("100"));
+  it("mint amount is constant multiple of deposit if total eth value is zero", async () => {
+    // mock out token contract and set non-zero total supply
+    await mockTotalSupply(apyLiquidityPool, ether("100"));
 
-  //   const ethvalue = ether("7.3");
-  //   const mintamount = await apyliquiditypool.internalcalculatemintamount(
-  //     ethvalue,
-  //     0,
-  //     { from: wallet }
-  //   );
-  //   expect(mintamount).to.equal(ethvalue.mul(DEFAULT_TOKEN_TO_ETH_FACTOR));
-  // });
+    const ethValue = ether("7.3");
+    const mintAmount = await apyLiquidityPool.internalCalculateMintAmount(
+      ethValue,
+      0,
+      { from: wallet }
+    );
+    expect(mintAmount).to.bignumber.equal(
+      ethValue.mul(DEFAULT_TOKEN_TO_ETH_FACTOR)
+    );
+  });
 
   it("mint amount is constant multiple of deposit if total supply is zero ", async () => {
     const ethValue = ether("5");
@@ -203,11 +206,13 @@ contract("APYLiquidityPool", async (accounts) => {
 
   // test helper to mock the total supply
   const mockTotalSupply = async (liquidityPoolContract, totalSupply) => {
-    mockApt = await deployMockContract(wallet, APT.abi);
-    await liquidityPoolContract
-      .connect(deployer)
-      .setTokenAddress(mockApt.address);
-    await mockApt.mock.totalSupply.returns(totalSupply);
+    // Instantiate mock and make it return true for any invocation
+    const mock = await MockContract.new();
+    await liquidityPoolContract.setTokenAddress(mock.address, {
+      from: deployer,
+    });
+    const totalSupplyAbi = apt.contract.methods.totalSupply().encodeABI();
+    await mock.givenMethodReturnUint(totalSupplyAbi, totalSupply);
   };
 
   // test helper to mint tokens to wallet
