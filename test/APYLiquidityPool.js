@@ -9,7 +9,6 @@ const {
   expectRevert, // Assertions for transactions that should fail
 } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
-require("chai").should();
 
 const APYLiquidityPool = artifacts.require("APYLiquidityPoolTestProxy");
 const APT = artifacts.require("APT");
@@ -41,7 +40,6 @@ contract("APYLiquidityPool", async (accounts) => {
     await apyLiquidityPool.addLiquidity({ from: wallet, value: ethSent });
 
     const balance_2 = await balance.current(apyLiquidityPool.address);
-    balance_2.should.bignumber.equal(ethSent);
     expect(balance_2).to.bignumber.equal(ethSent);
   });
 
