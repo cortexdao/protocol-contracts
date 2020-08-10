@@ -28,14 +28,14 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
         IERC20 fromToken,
         IERC20 destToken,
         uint256 amount,
-        uint256 slippage
+        uint16 slippage
     ) internal returns (uint256) {
         uint256 parts;
         uint256 flags;
         (uint256 returnAmount, uint256[] memory distribution) = _oneInch
             .getExpectedReturn(fromToken, destToken, amount, parts, flags);
 
-        uint256 minReturn = returnAmount.mul(1 - slippage);
+        uint256 minReturn = returnAmount.mul(10000 - slippage).div(100);
 
         uint256 receivedAmount = _oneInch.swap(
             fromToken,
@@ -55,7 +55,7 @@ contract APYManagerTestProxy is APYManager {
         IERC20 fromToken,
         IERC20 destToken,
         uint256 amount,
-        uint256 slippage
+        uint16 slippage
     ) public returns (uint256) {
         return _swap(fromToken, destToken, amount, slippage);
     }
