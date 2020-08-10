@@ -24,7 +24,7 @@ contract("APT", async (accounts) => {
   it("mint reverts if not called by manager", async () => {
     await expectRevert(
       apt.mint(other, 1, { from: wallet }),
-      "Only Manager contract can call"
+      "Only manager can call"
     );
   });
 
@@ -39,7 +39,7 @@ contract("APT", async (accounts) => {
   it("burn reverts if not called by manager", async () => {
     await expectRevert(
       apt.burn(other, 1, { from: wallet }),
-      "Only Manager contract can call"
+      "Only manager can call"
     );
   });
 
