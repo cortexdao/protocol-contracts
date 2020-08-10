@@ -1,4 +1,10 @@
-// https://github.com/CryptoManiacsZone/1inchProtocol/blob/master/contracts/IOneSplit.sol
+/*
+SPDX-License-Identifier: UNLICENSED
+
+ https://github.com/CryptoManiacsZone/1inchProtocol/blob/master/contracts/IOneSplit.sol
+ Commit hash:
+ 62653759798a0a744223408479c4819e23fa3652#diff-b7bc1ace8a4805e39ab69c86f90848d1
+*/
 pragma solidity ^0.6.6;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
