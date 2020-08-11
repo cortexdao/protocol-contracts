@@ -12,3 +12,6 @@ artifacts/*
 # Solidity coverage files
 coverage/
 coverage.json
+
+# Ganache
+.ganache
