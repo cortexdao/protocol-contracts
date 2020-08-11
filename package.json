@@ -13,17 +13,20 @@
     "config"
   ],
   "scripts": {
-    "check": "solhint \"contracts/**/*.sol\"",
+    "check": "npm run lint",
     "test": "npx buidler test",
-    "lint": "npx solhint \"contracts/**/*.sol\"",
+    "lint": "npx solhint contracts/**/*.sol",
     "ganache": "./ganache/ganache_start.sh",
     "integration": "npx buidler --network ganache test ./integration/*.js"
   },
   "husky": {
     "hooks": {
-      "pre-commit": "solhint -w 0 \"contracts/**/*.sol\"",
+      "pre-commit": "lint-staged",
       "commit-msg": "./git_hooks/commit-msg"
     }
+  },
+  "lint-staged": {
+      "contracts/**/*.sol": "solhint -w 0"
   },
   "repository": {
     "type": "git",
@@ -45,6 +48,7 @@
     "dotenv": "^8.2.0",
     "ganache-cli": "^6.10.1",
     "husky": "^4.2.5",
+    "lint-staged": "^10.2.11",
     "solhint": "^3.0.0",
     "solidity-coverage": "^0.7.5"
   },
