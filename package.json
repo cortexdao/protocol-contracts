@@ -21,7 +21,8 @@
   },
   "husky": {
     "hooks": {
-      "pre-commit": "solhint -w 0 \"contracts/**/*.sol\""
+      "pre-commit": "solhint -w 0 \"contracts/**/*.sol\"",
+      "commit-msg": "./git_hooks/commit-msg"
     }
   },
   "repository": {
