@@ -19,16 +19,42 @@ contract("APYManager", async (accounts) => {
 
   let apyManager;
   let oneInch;
-  let mock;
 
   beforeEach(async () => {
-    mock = await MockContract.new();
-    oneInch = await IOneSplit.at(mock.address);
+    oneInch = await getOneInchMock();
     apyManager = await APYManager.new();
     await apyManager.setOneInchAddress(oneInch.address, { from: deployer });
   });
 
   it("1inch swap", async () => {
+    const expectedReturnAmount = new BN("1");
+    await mockAPYManagerSwap(oneInch, expectedReturnAmount);
+
+    const fromToken = constants.ZERO_ADDRESS;
+    const destToken = constants.ZERO_ADDRESS;
+    const amount = new BN("134");
+    const slippage = 200;
+    const returnedAmount = await apyManager.swap.call(
+      fromToken,
+      destToken,
+      amount,
+      slippage,
+      {
+        from: wallet,
+      }
+    );
+    expect(returnedAmount).to.bignumber.equal(expectedReturnAmount);
+  });
+
+  const getOneInchMock = async () => {
+    const mock = await MockContract.new();
+    oneInch = await IOneSplit.at(mock.address);
+    oneInch._mock = mock;
+    return oneInch;
+  };
+
+  const mockAPYManagerSwap = async (oneInchMock, returnAmount) => {
+    const mock = oneInchMock._mock;
     const swapAbi = oneInch.contract.methods
       .swap(constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, 0, 0, [0, 0], 0)
       .encodeABI();
@@ -44,43 +70,9 @@ contract("APYManager", async (accounts) => {
 
     const encodedReturn = web3.eth.abi.encodeParameters(
       ["uint256", "uint256[]"],
-      [
-        "20548",
-        [
-          "0",
-          "0",
-          "0",
-          "0",
-          "0",
-          "0",
-          "0",
-          "0",
-          "0",
-          "0",
-          "0",
-          "0",
-          "0",
-          "10",
-          "0",
-          "0",
-          "0",
-          "0",
-          "0",
-          "0",
-          "0",
-          "0",
-        ],
-      ]
+      ["0", ["0", "0"]]
     );
     await mock.givenMethodReturn(getExpectedReturnAbi, encodedReturn);
-    await mock.givenMethodReturnUint(swapAbi, new BN("1"));
-
-    const fromToken = constants.ZERO_ADDRESS;
-    const destToken = constants.ZERO_ADDRESS;
-    const amount = new BN("134");
-    const slippage = 200;
-    await apyManager.swap(fromToken, destToken, amount, slippage, {
-      from: wallet,
-    });
-  });
+    await mock.givenMethodReturnUint(swapAbi, returnAmount);
+  };
 });

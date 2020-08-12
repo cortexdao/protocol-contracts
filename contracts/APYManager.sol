@@ -35,7 +35,7 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
         (uint256 returnAmount, uint256[] memory distribution) = _oneInch
             .getExpectedReturn(fromToken, destToken, amount, parts, flags);
 
-        uint256 minReturn = returnAmount.mul(10000 - slippage).div(100);
+        uint256 minReturn = _amountWithSlippage(returnAmount, slippage);
 
         uint256 receivedAmount = _oneInch.swap(
             fromToken,
@@ -47,6 +47,17 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
         );
 
         return receivedAmount;
+    }
+
+    function _amountWithSlippage(uint256 amount, uint16 slippage)
+        internal
+        pure
+        returns (uint256)
+    {
+        // FIXME: placeholder for now; need to figure out a
+        // better calculation, and determine what data type
+        // to use for slippage
+        return amount.mul(10000 - slippage).div(100);
     }
 }
 
