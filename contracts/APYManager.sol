@@ -23,6 +23,17 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
     uint256 private _oneInchParts = 10;
     uint256 private _oneInchFlags = 0;
 
+    event OneInchError(string reason);
+    event OneInchFailure(bytes data);
+    event OneInchSwapParams(
+        address fromToken,
+        address destToken,
+        uint256 amount,
+        uint256 minReturn,
+        uint256[] distribution,
+        uint256 flags
+    );
+
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
@@ -51,7 +62,11 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
 
         uint256 minReturn = _amountWithSlippage(returnAmount, slippage);
 
-        uint256 receivedAmount = _oneInch.swap(
+        uint256 ethAmount = 0;
+        if (address(fromToken) == address(0)) {
+            ethAmount = amount;
+        }
+        uint256 receivedAmount = _oneInch.swap{value: ethAmount}(
             fromToken,
             destToken,
             amount,
@@ -59,7 +74,6 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
             distribution,
             flags
         );
-
         return receivedAmount;
     }
 
