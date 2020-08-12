@@ -23,17 +23,6 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
     uint256 private _oneInchParts = 10;
     uint256 private _oneInchFlags = 0;
 
-    event OneInchError(string reason);
-    event OneInchFailure(bytes data);
-    event OneInchSwapParams(
-        address fromToken,
-        address destToken,
-        uint256 amount,
-        uint256 minReturn,
-        uint256[] distribution,
-        uint256 flags
-    );
-
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
@@ -55,8 +44,11 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
         uint256 amount,
         uint16 slippage
     ) internal returns (uint256) {
+        require(0 < slippage, "Slippage must be positive.");
+
         uint256 parts = _oneInchParts;
         uint256 flags = _oneInchFlags;
+
         (uint256 returnAmount, uint256[] memory distribution) = _oneInch
             .getExpectedReturn(fromToken, destToken, amount, parts, flags);
 
@@ -66,6 +58,7 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
         if (address(fromToken) == address(0)) {
             ethAmount = amount;
         }
+
         uint256 receivedAmount = _oneInch.swap{value: ethAmount}(
             fromToken,
             destToken,
@@ -82,10 +75,19 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
         pure
         returns (uint256)
     {
-        // FIXME: placeholder for now; need to figure out a
-        // better calculation, and determine what data type
-        // to use for slippage
-        return amount.mul(10000 - slippage).div(100);
+        FixedPoint.uq112x112 memory slippagePercentage = FixedPoint.fraction(
+            uint112(slippage),
+            uint112(10000)
+        );
+        uint256 slippageLoss = slippagePercentage
+            .mul(uint112(amount))
+            .decode144();
+
+        uint256 reducedAmount = amount - slippageLoss;
+        assert(reducedAmount > 0);
+        assert(reducedAmount < amount);
+
+        return reducedAmount;
     }
 }
 
