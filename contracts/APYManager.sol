@@ -20,11 +20,22 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
 
     IOneSplit private _oneInch;
 
+    uint256 private _oneInchParts = 10;
+    uint256 private _oneInchFlags = 0;
+
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
     function setOneInchAddress(address oneInch) public onlyOwner {
         _oneInch = IOneSplit(oneInch);
+    }
+
+    function setOneInchParts(uint256 oneInchParts) public onlyOwner {
+        _oneInchParts = oneInchParts;
+    }
+
+    function setOneInchFlags(uint256 oneInchFlags) public onlyOwner {
+        _oneInchFlags = oneInchFlags;
     }
 
     function _swap(
@@ -33,8 +44,8 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
         uint256 amount,
         uint16 slippage
     ) internal returns (uint256) {
-        uint256 parts;
-        uint256 flags;
+        uint256 parts = _oneInchParts;
+        uint256 flags = _oneInchFlags;
         (uint256 returnAmount, uint256[] memory distribution) = _oneInch
             .getExpectedReturn(fromToken, destToken, amount, parts, flags);
 
