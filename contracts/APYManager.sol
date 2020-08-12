@@ -20,6 +20,9 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
 
     IOneSplit private _oneInch;
 
+    // solhint-disable-next-line no-empty-blocks
+    receive() external payable {}
+
     function setOneInchAddress(address oneInch) public onlyOwner {
         _oneInch = IOneSplit(oneInch);
     }
