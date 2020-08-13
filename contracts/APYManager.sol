@@ -23,19 +23,30 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
     uint256 private _oneInchParts = 10;
     uint256 private _oneInchFlags = 0;
 
+    event OneInchConfigChanged(string name, address changer, uint256 param);
+    event AssetsSwapped(
+        address fromAsset,
+        address toAsset,
+        uint256 fromAmount,
+        uint256 toAmount
+    );
+
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
     function setOneInchAddress(address oneInch) public onlyOwner {
         _oneInch = IOneSplit(oneInch);
+        emit OneInchConfigChanged("address", msg.sender, uint256(oneInch));
     }
 
     function setOneInchParts(uint256 oneInchParts) public onlyOwner {
         _oneInchParts = oneInchParts;
+        emit OneInchConfigChanged("parts", msg.sender, oneInchParts);
     }
 
     function setOneInchFlags(uint256 oneInchFlags) public onlyOwner {
         _oneInchFlags = oneInchFlags;
+        emit OneInchConfigChanged("flags", msg.sender, oneInchFlags);
     }
 
     function _swap(
@@ -44,8 +55,6 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
         uint256 amount,
         uint16 slippage
     ) internal returns (uint256) {
-        require(0 < slippage, "Slippage must be positive.");
-
         (uint256 returnAmount, uint256[] memory distribution) = _oneInch
             .getExpectedReturn(
             fromToken,
@@ -70,6 +79,14 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
             distribution,
             _oneInchFlags
         );
+
+        emit AssetsSwapped(
+            address(fromToken),
+            address(destToken),
+            amount,
+            receivedAmount
+        );
+
         return receivedAmount;
     }
 
@@ -78,6 +95,9 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
         pure
         returns (uint256)
     {
+        require(0 < slippage, "Manager/slippage-bounds");
+        require(slippage < 10000, "Manager/slippage-bounds");
+
         FixedPoint.uq112x112 memory slippagePercentage = FixedPoint.fraction(
             uint112(slippage),
             uint112(10000)
@@ -102,5 +122,13 @@ contract APYManagerTestProxy is APYManager {
         uint16 slippage
     ) public returns (uint256) {
         return _swap(fromToken, destToken, amount, slippage);
+    }
+
+    function amountWithSlippage(uint256 amount, uint16 slippage)
+        public
+        pure
+        returns (uint256)
+    {
+        return _amountWithSlippage(amount, slippage);
     }
 }
