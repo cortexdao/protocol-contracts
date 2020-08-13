@@ -15,3 +15,6 @@ coverage.json
 
 # Ganache
 .ganache
+
+# env files
+.env
