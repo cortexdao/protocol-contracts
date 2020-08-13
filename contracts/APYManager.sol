@@ -46,11 +46,14 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
     ) internal returns (uint256) {
         require(0 < slippage, "Slippage must be positive.");
 
-        uint256 parts = _oneInchParts;
-        uint256 flags = _oneInchFlags;
-
         (uint256 returnAmount, uint256[] memory distribution) = _oneInch
-            .getExpectedReturn(fromToken, destToken, amount, parts, flags);
+            .getExpectedReturn(
+            fromToken,
+            destToken,
+            amount,
+            _oneInchParts,
+            _oneInchFlags
+        );
 
         uint256 minReturn = _amountWithSlippage(returnAmount, slippage);
 
@@ -65,7 +68,7 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
             amount,
             minReturn,
             distribution,
-            flags
+            _oneInchFlags
         );
         return receivedAmount;
     }
@@ -83,7 +86,7 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
             .mul(uint112(amount))
             .decode144();
 
-        uint256 reducedAmount = amount - slippageLoss;
+        uint256 reducedAmount = amount.sub(slippageLoss);
         assert(reducedAmount > 0);
         assert(reducedAmount < amount);
 
