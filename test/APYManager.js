@@ -27,14 +27,21 @@ contract("APYManager", async (accounts) => {
   });
 
   it("1inch swap", async () => {
-    const expectedReturnAmount = new BN("1");
-    await mockAPYManagerSwap(oneInch, expectedReturnAmount);
+    const returnAmount = new BN("100000");
+    const slippage = new BN("200");
+    await mockAPYManagerSwap(
+      oneInch,
+      returnAmount, // received amount 1inch anticipates
+      apyManager.amountWithSlippage, // slippage calc
+      slippage
+    );
 
     const fromToken = constants.ZERO_ADDRESS;
     const destToken = constants.ZERO_ADDRESS;
     const amount = new BN("134");
-    const slippage = 200;
-    const returnedAmount = await apyManager.swap.call(
+
+    send.ether(wallet, apyManager.address, ether("1"));
+    const receivedAmount = await apyManager.swap.call(
       fromToken,
       destToken,
       amount,
@@ -43,7 +50,8 @@ contract("APYManager", async (accounts) => {
         from: wallet,
       }
     );
-    expect(returnedAmount).to.bignumber.equal(expectedReturnAmount);
+    expect(receivedAmount).to.bignumber.gt("0");
+    expect(receivedAmount).to.bignumber.lt(returnAmount);
   });
 
   const getOneInchMock = async () => {
@@ -53,8 +61,14 @@ contract("APYManager", async (accounts) => {
     return oneInch;
   };
 
-  const mockAPYManagerSwap = async (oneInchMock, returnAmount) => {
+  const mockAPYManagerSwap = async (
+    oneInchMock,
+    returnAmount,
+    slippageCalculation,
+    slippage
+  ) => {
     const mock = oneInchMock._mock;
+
     const swapAbi = oneInch.contract.methods
       .swap(constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, 0, 0, [0, 0], 0)
       .encodeABI();
@@ -70,9 +84,11 @@ contract("APYManager", async (accounts) => {
 
     const encodedReturn = web3.eth.abi.encodeParameters(
       ["uint256", "uint256[]"],
-      ["0", ["0", "0"]]
+      [returnAmount, ["0", "0"]]
     );
     await mock.givenMethodReturn(getExpectedReturnAbi, encodedReturn);
-    await mock.givenMethodReturnUint(swapAbi, returnAmount);
+
+    const receivedAmount = await slippageCalculation(returnAmount, slippage);
+    await mock.givenMethodReturnUint(swapAbi, receivedAmount);
   };
 });
