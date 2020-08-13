@@ -22,12 +22,12 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
 
     APT public apt; // APT token
 
-    event DepositAPT(
+    event DepositedAPT(
         address indexed sender,
         uint256 tokenAmount,
         uint256 ethValue
     );
-    event RedeemAPT(
+    event RedeemedAPT(
         address indexed sender,
         uint256 tokenAmount,
         uint256 ethValue
@@ -47,7 +47,7 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
         uint256 mintAmount = _calculateMintAmount(msg.value, totalValue);
         apt.mint(msg.sender, mintAmount);
 
-        emit DepositAPT(msg.sender, mintAmount, msg.value);
+        emit DepositedAPT(msg.sender, mintAmount, msg.value);
     }
 
     /**
@@ -66,7 +66,7 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
         apt.burn(msg.sender, tokenAmount);
         msg.sender.transfer(ethValue);
 
-        emit RedeemAPT(msg.sender, tokenAmount, ethValue);
+        emit RedeemedAPT(msg.sender, tokenAmount, ethValue);
     }
 
     // called by admin on deployment
