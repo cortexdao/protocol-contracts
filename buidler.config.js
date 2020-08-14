@@ -4,7 +4,6 @@ usePlugin("solidity-coverage");
 usePlugin("@nomiclabs/buidler-ethers");
 usePlugin("@nomiclabs/buidler-truffle5");
 
-
 function getEnv(env) {
   let value = process.env[env];
 
@@ -40,6 +39,7 @@ module.exports = {
     },
     ganache: {
       url: "http://127.0.0.1:8545",
+      timeout: 0,
     },
   },
   solc: {
