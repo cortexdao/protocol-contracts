@@ -68,7 +68,11 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
 
         uint256 ethAmount = 0;
         if (address(fromToken) == address(0)) {
+            // to swap from ETH, send amount as value
             ethAmount = amount;
+        } else {
+            // to swap from ERC20, must approve first
+            IERC20(fromToken).approve(address(_oneInch), amount);
         }
 
         uint256 receivedAmount = _oneInch.swap{value: ethAmount}(
