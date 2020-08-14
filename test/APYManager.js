@@ -40,6 +40,9 @@ contract("APYManager", async (accounts) => {
     const destToken = constants.ZERO_ADDRESS;
     const amount = new BN("134");
 
+    // Need to send ether before calling swap, since
+    // "fromToken" is the zero address and so swap function
+    // will expect to swap ETH.
     send.ether(wallet, apyManager.address, ether("1"));
     const receivedAmount = await apyManager.swap.call(
       fromToken,
