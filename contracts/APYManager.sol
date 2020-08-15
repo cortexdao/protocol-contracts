@@ -52,8 +52,7 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
     function _swap(
         IERC20 fromToken,
         IERC20 destToken,
-        uint256 amount,
-        uint16 slippage
+        uint256 amount
     ) internal returns (uint256) {
         (uint256 returnAmount, uint256[] memory distribution) = _oneInch
             .getExpectedReturn(
@@ -63,8 +62,6 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
             _oneInchParts,
             _oneInchFlags
         );
-
-        uint256 minReturn = _amountWithSlippage(returnAmount, slippage);
 
         uint256 ethAmount = 0;
         if (address(fromToken) == address(0)) {
@@ -79,7 +76,7 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
             fromToken,
             destToken,
             amount,
-            minReturn,
+            returnAmount,
             distribution,
             _oneInchFlags
         );
@@ -93,46 +90,14 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
 
         return receivedAmount;
     }
-
-    function _amountWithSlippage(uint256 amount, uint16 slippage)
-        internal
-        pure
-        returns (uint256)
-    {
-        require(0 < slippage, "Manager/slippage-bounds");
-        require(slippage < 10000, "Manager/slippage-bounds");
-
-        FixedPoint.uq112x112 memory slippagePercentage = FixedPoint.fraction(
-            uint112(slippage),
-            uint112(10000)
-        );
-        uint256 slippageLoss = slippagePercentage
-            .mul(uint112(amount))
-            .decode144();
-
-        uint256 reducedAmount = amount.sub(slippageLoss);
-        assert(reducedAmount > 0);
-        assert(reducedAmount < amount);
-
-        return reducedAmount;
-    }
 }
 
 contract APYManagerTestProxy is APYManager {
     function swap(
         IERC20 fromToken,
         IERC20 destToken,
-        uint256 amount,
-        uint16 slippage
+        uint256 amount
     ) public returns (uint256) {
-        return _swap(fromToken, destToken, amount, slippage);
-    }
-
-    function amountWithSlippage(uint256 amount, uint16 slippage)
-        public
-        pure
-        returns (uint256)
-    {
-        return _amountWithSlippage(amount, slippage);
+        return _swap(fromToken, destToken, amount);
     }
 }

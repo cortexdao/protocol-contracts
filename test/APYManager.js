@@ -29,12 +29,7 @@ contract("APYManager", async (accounts) => {
   it("1inch swap", async () => {
     const returnAmount = new BN("100000");
     const slippage = new BN("200");
-    await mockAPYManagerSwap(
-      oneInch,
-      returnAmount, // received amount 1inch anticipates
-      apyManager.amountWithSlippage, // slippage calc
-      slippage
-    );
+    await mockAPYManagerSwap(oneInch, returnAmount);
 
     const fromToken = constants.ZERO_ADDRESS;
     const destToken = constants.ZERO_ADDRESS;
@@ -48,13 +43,11 @@ contract("APYManager", async (accounts) => {
       fromToken,
       destToken,
       amount,
-      slippage,
       {
         from: wallet,
       }
     );
-    expect(receivedAmount).to.bignumber.gt("0");
-    expect(receivedAmount).to.bignumber.lt(returnAmount);
+    expect(receivedAmount).to.bignumber.equal(returnAmount);
   });
 
   const getOneInchMock = async () => {
@@ -64,12 +57,7 @@ contract("APYManager", async (accounts) => {
     return oneInch;
   };
 
-  const mockAPYManagerSwap = async (
-    oneInchMock,
-    returnAmount,
-    slippageCalculation,
-    slippage
-  ) => {
+  const mockAPYManagerSwap = async (oneInchMock, returnAmount) => {
     const mock = oneInchMock._mock;
 
     const swapAbi = oneInch.contract.methods
@@ -87,11 +75,10 @@ contract("APYManager", async (accounts) => {
 
     const encodedReturn = web3.eth.abi.encodeParameters(
       ["uint256", "uint256[]"],
-      [returnAmount, ["0", "0"]]
+      [0, ["0", "0"]]
     );
     await mock.givenMethodReturn(getExpectedReturnAbi, encodedReturn);
 
-    const receivedAmount = await slippageCalculation(returnAmount, slippage);
-    await mock.givenMethodReturnUint(swapAbi, receivedAmount);
+    await mock.givenMethodReturnUint(swapAbi, returnAmount);
   };
 });

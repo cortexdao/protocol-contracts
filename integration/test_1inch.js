@@ -48,7 +48,7 @@ const BALANCER_ONLY = DISABLE_ALL.add(BALANCER_ALL);
 const MOONISWAP_ONLY = DISABLE_ALL.add(MOONISWAP_ALL);
 const CURVE_ONLY = DISABLE_ALL.add(CURVE_ALL);
 
-const timeout = 25000; // in millis
+const timeout = 35000; // in millis
 
 contract("1inch", async (accounts) => {
   const [deployer, wallet, other] = accounts;
@@ -83,20 +83,15 @@ contract("1inch", async (accounts) => {
       "       --->  returnAmount:",
       res.returnAmount.toString() / 1e18 + " DAI"
     );
-    // console.log(
-    //   "distribution:",
-    //   res.distribution.map((a) => a.toString())
-    // );
     const returnAmount = res.returnAmount;
     const distribution = res.distribution;
-    const minAmount = returnAmount.sub(dai("50"));
 
     try {
       const receivedAmount = await oneInch.swap.call(
         fromToken,
         destToken,
         amount,
-        minAmount,
+        returnAmount,
         distribution,
         flags,
         { from: wallet, value: amount }
@@ -134,13 +129,8 @@ contract("1inch", async (accounts) => {
       "       --->  returnAmount:",
       res.returnAmount.toString() / 1e6 + " USDC"
     );
-    // console.log(
-    //   "distribution:",
-    //   res.distribution.map((a) => a.toString())
-    // );
     const returnAmount = res.returnAmount;
     const distribution = res.distribution;
-    const minAmount = returnAmount.sub(erc20("20", "6"));
 
     await mintERC20Tokens(fromToken, wallet, DAI_MINTER_ADDRESS, amount);
     const fromBalance = await getERC20Balance(fromToken, wallet);
@@ -154,7 +144,7 @@ contract("1inch", async (accounts) => {
         fromToken,
         destToken,
         amount,
-        minAmount,
+        returnAmount,
         distribution,
         flags,
         { from: wallet }
@@ -186,22 +176,11 @@ contract("APYManager", async (accounts) => {
     const fromToken = constants.ZERO_ADDRESS; // ETH
     const destToken = "0x6B175474E89094C44Da98b954EedeAC495271d0F"; // DAI
     const amount = ether("1");
-    const slippage = new BN("150"); // in basis points
 
-    await apyManager.setOneInchParts(10, { from: deployer });
     await apyManager.setOneInchFlags(UNISWAP_V1_ONLY, { from: deployer });
-    // await apyManager.setOneInchFlags(BALANCER_ONLY, { from: deployer });
-    // await apyManager.setOneInchFlags(MOONISWAP_ONLY, { from: deployer });
 
     try {
-      await apyManager.swap(fromToken, destToken, amount, slippage);
-      //   const receivedAmount = await apyManager.swap.call(
-      //     fromToken,
-      //     destToken,
-      //     amount,
-      //     slippage
-      //   );
-      //   console.log("       --->  swap result:", receivedAmount / 1e18 + " DAI");
+      await apyManager.swap(fromToken, destToken, amount);
     } catch {
       assert.fail("Calling swap on APYManager failed.");
     }
@@ -214,7 +193,6 @@ contract("APYManager", async (accounts) => {
     const destToken = USDC_ADDRESS;
     // const destToken = BAL_ADDRESS;
     const amount = erc20("100");
-    const slippage = new BN("5000"); // in basis points
 
     await mintERC20Tokens(
       fromToken,
@@ -225,21 +203,10 @@ contract("APYManager", async (accounts) => {
     await getERC20Balance(fromToken, apyManager.address);
     await getERC20Balance(destToken, apyManager.address);
 
-    await apyManager.setOneInchParts(10, { from: deployer });
-    // await apyManager.setOneInchFlags(UNISWAP_V1_ONLY, { from: deployer });
-    await apyManager.setOneInchFlags(BALANCER_ONLY, { from: deployer });
-    // await apyManager.setOneInchFlags(MOONISWAP_ONLY, { from: deployer });
-    // await apyManager.setOneInchFlags(CURVE_ONLY, { from: deployer });
+    await apyManager.setOneInchFlags(UNISWAP_V1_ONLY, { from: deployer });
 
     try {
-      await apyManager.swap(fromToken, destToken, amount, slippage);
-      //   const receivedAmount = await apyManager.swap.call(
-      //     fromToken,
-      //     destToken,
-      //     amount,
-      //     slippage
-      //   );
-      //   console.log("       --->  swap result:", receivedAmount / 1e6 + " USDC");
+      await apyManager.swap(fromToken, destToken, amount);
     } catch (error) {
       console.log(error);
       assert.fail("Calling swap on APYManager failed.");
