@@ -13,6 +13,9 @@ const { expect } = require("chai");
 const APYManager = artifacts.require("APYManagerTestProxy");
 const IOneSplit = artifacts.require("IOneSplit");
 const MockContract = artifacts.require("MockContract");
+const APYStrategy = artifacts.require("TestStrategy");
+const APYLiquidityPool = artifacts.require("APYLiquidityPool");
+const APT = artifacts.require("APT");
 
 ZERO_ADDRESS = constants.ZERO_ADDRESS;
 DUMMY_ADDRESS = "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE";
@@ -70,6 +73,66 @@ contract("APYManager", async (accounts) => {
     );
     expect(receivedAmount).to.bignumber.equal(returnAmount);
   });
+
+  it("can rebalance using unused ETH", async () => {
+    // mock out manager's _swap function
+    const returnAmount = ether("100");
+    await mockAPYManagerSwap(oneInch, returnAmount);
+
+    // setup strategy and pool
+    const inputAddresses = [DUMMY_ADDRESS, DUMMY_ADDRESS, DUMMY_ADDRESS];
+    const proportions = ["1", "2", "97"];
+    const ethAmount = ether("100");
+    const expectedFromAmounts = proportions.map((p) => ether(p));
+    const strategy = await APYStrategy.new(inputAddresses, proportions);
+    await apyManager.setStrategy(strategy.address, { from: deployer });
+    const pool = await deployPoolWithEther(apyManager, ethAmount);
+    await apyManager.setPool(pool.address, { from: deployer });
+
+    // Check what we can without using events or peering
+    // into the innards of the rebalance function.
+    const receivedAmounts = await apyManager.rebalance.call();
+    expect(receivedAmounts.length).to.equal(inputAddresses.length);
+
+    // Send actual rebalance transaction and emit swap events.
+    // Each swap event should reflect appropriate proportion of ETH value.
+    const receipt = await apyManager.rebalance();
+    expect(await balance.current(apyManager.address)).to.bignumber.equal(
+      "0",
+      "All ETH should be used up by rebalance function."
+    );
+    const swapEvents = getEvent(receipt, "AssetsSwapped");
+    expect(swapEvents.length).to.equal(
+      expectedFromAmounts.length,
+      "Incorrect number of swap events found."
+    );
+    const tolerance = "5";
+    for (i = 0; i < swapEvents.length; i++) {
+      const event = swapEvents[i];
+      const expectedFromAmount = expectedFromAmounts[i];
+      const resultFromAmount = event.args["fromAmount"];
+      expect(
+        resultFromAmount.sub(expectedFromAmount).abs()
+      ).to.be.bignumber.lte(tolerance);
+    }
+  });
+
+  const getEvent = (receipt, eventName) => {
+    const events = receipt.logs.filter((e) => e.event === eventName);
+    return events;
+  };
+
+  const deployPoolWithEther = async (apyManager, ethAmount) => {
+    const pool = await APYLiquidityPool.new();
+    const apt = await APT.new();
+    await pool.setTokenAddress(apt.address, { from: deployer });
+    await apt.setPoolAddress(pool.address, { from: deployer });
+    await pool.setManagerAddress(apyManager.address, { from: deployer });
+
+    await send.ether(other, pool.address, ethAmount);
+
+    return pool;
+  };
 
   const getERC20Mock = async () => {
     const mockERC20 = await MockContract.new();
