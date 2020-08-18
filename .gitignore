@@ -18,3 +18,9 @@ coverage.json
 
 # env files
 .env
+
+# npm
+.npmrc
+
+# vim
+*.swp
