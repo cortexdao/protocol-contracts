@@ -26,14 +26,14 @@
     }
   },
   "lint-staged": {
-      "contracts/**/*.sol": "solhint -w 0"
+    "contracts/**/*.sol": "solhint -w 0"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/apy-finance/apy-core.git"
   },
   "publishConfig": {
-    "registry":"https://npm.pkg.github.com/"
+    "registry": "https://npm.pkg.github.com/"
   },
   "author": "APY.Finance",
   "license": "ISC",
@@ -57,6 +57,6 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^3.0.1",
-    "@uniswap/lib": "^1.1.2"
+    "solidity-fixedpoint": "^1.0.1"
   }
 }

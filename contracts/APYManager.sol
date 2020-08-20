@@ -10,7 +10,7 @@ import {
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {FixedPoint} from "@uniswap/lib/contracts/libraries/FixedPoint.sol";
+import {FixedPoint} from "solidity-fixedpoint/contracts/FixedPoint.sol";
 import {IOneSplit} from "./IOneSplit.sol";
 
 contract APYManager is Ownable, ReentrancyGuard, Pausable {

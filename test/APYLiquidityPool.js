@@ -55,6 +55,8 @@ contract("APYLiquidityPool", async (accounts) => {
     const totalValue = ether("1000000");
     // mock token and set total supply to total ETH value
     await mockTotalSupply(apyLiquidityPool, totalValue);
+    // set tolerance to compensate for fixed-point arithmetic
+    const tolerance = new BN("50000");
 
     let mintAmount = await apyLiquidityPool.internalCalculateMintAmount(
       ethValue,
@@ -63,8 +65,8 @@ contract("APYLiquidityPool", async (accounts) => {
     );
     let expectedAmount = ethValue;
     expect(mintAmount.sub(expectedAmount).abs()).to.bignumber.lte(
-      "1",
-      "mint amount should differ by at most a wei from expected amount"
+      tolerance,
+      "mint amount should differ from expected amount by at most tolerance"
     );
 
     await mockTotalSupply(apyLiquidityPool, totalValue.divn(2));
@@ -76,8 +78,8 @@ contract("APYLiquidityPool", async (accounts) => {
     );
     expectedAmount = ethValue.divn(2);
     expect(mintAmount.sub(expectedAmount).abs()).to.bignumber.lte(
-      "1",
-      "mint amount should differ by at most a wei from expected amount"
+      tolerance,
+      "mint amount should differ from expected amount by at most tolerance"
     );
   });
 

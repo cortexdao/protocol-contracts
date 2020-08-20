@@ -9,7 +9,7 @@ import {
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {FixedPoint} from "@uniswap/lib/contracts/libraries/FixedPoint.sol";
+import {FixedPoint} from "solidity-fixedpoint/contracts/FixedPoint.sol";
 import {APT} from "./APT.sol";
 
 contract APYLiquidityPool is Ownable, ReentrancyGuard {
@@ -18,7 +18,7 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     uint256 internal constant _DEFAULT_TOKEN_TO_ETH_FACTOR = 1000;
-    uint112 internal constant _MAX_UINT112 = uint112(-1);
+    uint192 internal constant _MAX_UINT192 = uint192(-1);
 
     APT public apt; // APT token
 
@@ -89,12 +89,12 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
      * @return The total ETH value of the APT tokens
      */
     function getEthValue(uint256 amount) public view returns (uint256) {
-        FixedPoint.uq112x112 memory shareOfAPT = _getShareOfAPT(amount);
+        FixedPoint.uq192x64 memory shareOfAPT = _getShareOfAPT(amount);
 
         uint256 totalValue = address(this).balance;
-        require(totalValue <= _MAX_UINT112, "Pool/overflow");
+        require(totalValue <= _MAX_UINT192, "Pool/overflow");
 
-        return shareOfAPT.mul(uint112(totalValue)).decode144();
+        return shareOfAPT.mul(uint192(totalValue)).decode();
     }
 
     // minted amount should be in the same ratio to total token supply as
@@ -112,29 +112,29 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
             return ethValue.mul(_DEFAULT_TOKEN_TO_ETH_FACTOR);
         }
 
-        require(ethValue <= _MAX_UINT112, "Pool/overflow");
-        require(totalValue <= _MAX_UINT112, "Pool/overflow");
-        require(totalSupply <= _MAX_UINT112, "Pool/overflow");
+        require(ethValue <= _MAX_UINT192, "Pool/overflow");
+        require(totalValue <= _MAX_UINT192, "Pool/overflow");
+        require(totalSupply <= _MAX_UINT192, "Pool/overflow");
 
         return
             FixedPoint
-                .fraction(uint112(ethValue), uint112(totalValue))
-                .mul(uint112(totalSupply))
-                .decode144();
+                .fraction(uint192(ethValue), uint192(totalValue))
+                .mul(uint192(totalSupply))
+                .decode();
     }
 
     function _getShareOfAPT(uint256 amount)
         internal
         view
-        returns (FixedPoint.uq112x112 memory)
+        returns (FixedPoint.uq192x64 memory)
     {
-        require(amount <= _MAX_UINT112, "Pool/overflow");
+        require(amount <= _MAX_UINT192, "Pool/overflow");
         require(apt.totalSupply() > 0, "Pool/divide-by-zero");
-        require(apt.totalSupply() <= _MAX_UINT112, "Pool/overflow");
+        require(apt.totalSupply() <= _MAX_UINT192, "Pool/overflow");
 
-        FixedPoint.uq112x112 memory shareOfAPT = FixedPoint.fraction(
-            uint112(amount),
-            uint112(apt.totalSupply())
+        FixedPoint.uq192x64 memory shareOfAPT = FixedPoint.fraction(
+            uint192(amount),
+            uint192(apt.totalSupply())
         );
         return shareOfAPT;
     }
