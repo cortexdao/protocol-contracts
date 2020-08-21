@@ -5,23 +5,23 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract APT is ERC20("APY Pool Token", "APT"), Ownable {
-    address public manager;
+    address public pool;
 
-    function mint(address investor, uint256 mintAmount) external onlyManager {
+    function mint(address investor, uint256 mintAmount) external onlyPool {
         _mint(investor, mintAmount);
     }
 
-    function burn(address investor, uint256 tokensToBurn) external onlyManager {
+    function burn(address investor, uint256 tokensToBurn) external onlyPool {
         _burn(investor, tokensToBurn);
     }
 
-    modifier onlyManager {
-        require(msg.sender == manager, "Only manager can call");
+    modifier onlyPool {
+        require(msg.sender == pool, "Only pool can call");
         _;
     }
 
-    // admin call on deployment
-    function setManagerAddress(address _manager) public onlyOwner {
-        manager = _manager;
+    /// @dev called by admin during deployment
+    function setPoolAddress(address _pool) public onlyOwner {
+        pool = _pool;
     }
 }

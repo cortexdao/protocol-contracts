@@ -27,7 +27,7 @@ contract("APYLiquidityPool", async (accounts) => {
     apt = await APT.new();
 
     await apyLiquidityPool.setTokenAddress(apt.address, { from: deployer });
-    await apt.setManagerAddress(apyLiquidityPool.address, { from: deployer });
+    await apt.setPoolAddress(apyLiquidityPool.address, { from: deployer });
 
     DEFAULT_TOKEN_TO_ETH_FACTOR = await apyLiquidityPool.defaultTokenToEthFactor();
   });
@@ -217,9 +217,9 @@ contract("APYLiquidityPool", async (accounts) => {
 
   // test helper to mint tokens to wallet
   const mintTokens = async (tokenContract, amount, wallet) => {
-    const managerAddress = await tokenContract.manager();
-    await tokenContract.setManagerAddress(wallet, { from: deployer });
+    const poolAddress = await tokenContract.pool();
+    await tokenContract.setPoolAddress(wallet, { from: deployer });
     await tokenContract.mint(wallet, amount, { from: wallet });
-    await tokenContract.setManagerAddress(managerAddress, { from: deployer });
+    await tokenContract.setPoolAddress(poolAddress, { from: deployer });
   };
 });

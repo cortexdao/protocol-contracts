@@ -13,54 +13,54 @@ const { expect } = require("chai");
 const APT = artifacts.require("APT");
 
 contract("APT", async (accounts) => {
-  const [deployer, manager, wallet, other] = accounts;
+  const [deployer, pool, wallet, other] = accounts;
   let apt;
 
   beforeEach(async () => {
     apt = await APT.new();
-    await apt.setManagerAddress(manager, { from: deployer });
+    await apt.setPoolAddress(pool, { from: deployer });
   });
 
-  it("mint reverts if not called by manager", async () => {
+  it("mint reverts if not called by pool", async () => {
     await expectRevert(
       apt.mint(other, 1, { from: wallet }),
-      "Only manager can call"
+      "Only pool can call"
     );
   });
 
-  it("manager can call mint", async () => {
+  it("pool can call mint", async () => {
     try {
-      await apt.mint(other, 1, { from: manager });
+      await apt.mint(other, 1, { from: pool });
     } catch {
-      assert.fail("Manager could not call mint.");
+      assert.fail("Pool could not call mint.");
     }
   });
 
-  it("burn reverts if not called by manager", async () => {
+  it("burn reverts if not called by Pool", async () => {
     await expectRevert(
       apt.burn(other, 1, { from: wallet }),
-      "Only manager can call"
+      "Only pool can call"
     );
   });
 
-  it("manager can call burn", async () => {
+  it("Pool can call burn", async () => {
     try {
-      await apt.burn(other, 0, { from: manager });
+      await apt.burn(other, 0, { from: pool });
     } catch {
-      assert.fail("Manager could not call burn.");
+      assert.fail("Pool could not call burn.");
     }
   });
 
   it("setting manaager reverts if not called by owner", async () => {
     await expectRevert(
-      apt.setManagerAddress(other, { from: wallet }),
+      apt.setPoolAddress(other, { from: wallet }),
       "Ownable: caller is not the owner"
     );
   });
 
-  it("owner can set manager", async () => {
-    await apt.setManagerAddress(other, { from: deployer });
-    expect(await apt.manager()).to.equal(other);
+  it("owner can set pool", async () => {
+    await apt.setPoolAddress(other, { from: deployer });
+    expect(await apt.pool()).to.equal(other);
   });
 
   it("mint adds specified amount to account", async () => {
@@ -70,7 +70,7 @@ contract("APT", async (accounts) => {
     expect(await apt.balanceOf(other)).to.bignumber.equal("0");
 
     const amount = "1";
-    await apt.mint(other, amount, { from: manager });
+    await apt.mint(other, amount, { from: pool });
 
     expect(await apt.balanceOf(other)).to.bignumber.equal(amount);
   });
@@ -80,8 +80,8 @@ contract("APT", async (accounts) => {
     // then assert it is called with the right args; this
     // will let us avoid having to mint some tokens first.
     const amount = "1";
-    await apt.mint(other, amount, { from: manager });
-    await apt.burn(other, amount, { from: manager });
+    await apt.mint(other, amount, { from: pool });
+    await apt.burn(other, amount, { from: pool });
 
     expect(await apt.balanceOf(other)).to.bignumber.equal("0");
   });
