@@ -13,12 +13,24 @@ const {
 } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
 const APYStrategyExecutor = artifacts.require("APYStrategyExecutor");
-const APYContractA = artifacts.require("APYContractA");
-const APYContractB = artifacts.require("APYContractB");
-const AInterface = new ethers.utils.Interface(APYContractA.abi)
-const BInterface = new ethers.utils.Interface(APYContractB.abi)
-const encodeA = AInterface.encodeFunctionData('executeA', [100])
-const encodeB = BInterface.encodeFunctionData('executeB', [1000])
+const OneInch = artifacts.require("OneSplitAudit");
+const cDAI = artifacts.require("cDAI");
+const COMP = artifacts.require("COMP");
+const Comptroller = artifacts.require("Comptroller");
+const OneInchInterface = new ethers.utils.Interface(OneInch.abi)
+const cDAIInterface = new ethers.utils.Interface(cDAI.abi)
+const COMPInterface = new ethers.utils.Interface(COMP.abi)
+const ComptrollerInterface = new ethers.utils.Interface(Comptroller.abi)
+const getExpectedReturn = AInterface.encodeFunctionData(
+  'getExpectedReturn',
+  [
+    '0x0000000000000000000000000000000000000000', //ETH
+    '0x6b175474e89094c44da98b954eedeac495271d0f', //DAI
+    ether("0.05"),
+    10,
+    0
+  ]
+)
 
 console.log(encodeA)
 console.log(encodeB)
@@ -34,6 +46,7 @@ contract("APYStrategyExecution", async (accounts) => {
       const exec = await APYStrategyExecutor.new()
       const trx = await exec.execute(
         [
+          ['', getExpectedReturn],
           [contractA.address, encodeA],
           [contractB.address, encodeB]
         ]
