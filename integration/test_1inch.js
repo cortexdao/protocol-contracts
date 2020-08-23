@@ -21,10 +21,15 @@ const APYManager = artifacts.require("APYManagerTestProxy");
 const IOneSplit = artifacts.require("IOneSplit");
 const IMintableERC20 = artifacts.require("IMintableERC20");
 
-// latest version: https://etherscan.io/address/1split.eth
-// const ONE_INCH_ADDRESS = "0xC586BeF4a0992C495Cf22e1aeEE4E446CECDee0E";
-//beta version: https://etherscan.io/address/1proto.eth
-const ONE_INCH_ADDRESS = "0x6cb2291A3c3794fcA0F5b6E34a8E6eA7933CA667";
+/* 
+These contracts move around with some frequency.  If you run into a
+"no code at <address>" error, you should double-check these etherscan
+urls for the versions of OneSplitAudit:
+
+latest version: https://etherscan.io/address/1split.eth
+beta version: https://etherscan.io/address/1proto.eth
+*/
+const ONE_INCH_ADDRESS = "0x50FDA034C0Ce7a8f7EFDAebDA7Aa7cA21CC1267e"; // 1proto.eth
 
 // https://changelog.makerdao.com/releases/mainnet/latest/contracts.json
 const DAI_ADDRESS = "0x6B175474E89094C44Da98b954EedeAC495271d0F"; // MCD_DAI
