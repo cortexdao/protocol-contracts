@@ -7,6 +7,7 @@ contract APYStrategyExecutor is Ownable {
     struct Data {
         address target;
         bytes data;
+        // mapping prev -> next
     }
 
     mapping(address => mapping(bytes10 => bool))
@@ -25,6 +26,7 @@ contract APYStrategyExecutor is Ownable {
     function execute(Data[] calldata executionData) external payable {
         for (uint256 i = 0; i < executionData.length; i++) {
             _delegate(executionData[i].target, executionData[i].data);
+            // abi.encodePacked(param1, param2, param3, executionData.data, data);
         }
     }
 
