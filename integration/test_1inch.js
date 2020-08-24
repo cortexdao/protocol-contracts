@@ -227,5 +227,5 @@ contract("APYManager", async (accounts) => {
       tolerance,
       "sent and received amounts differ by more than tolerance."
     );
-  }).timeout(timeout);
+  }).timeout(60000);
 });

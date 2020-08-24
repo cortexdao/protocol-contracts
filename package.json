@@ -57,6 +57,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^3.0.1",
-    "solidity-fixedpoint": "^1.0.1"
+    "solidity-fixedpoint": "^1.0.1",
+    "abdk-libraries-solidity": "^2.3.0"
   }
 }
