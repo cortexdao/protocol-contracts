@@ -16,6 +16,23 @@ contract APYStrategyExecutor is Ownable {
     //TODO: events for adding
     //TODO: events for removing
 
+    function parseArray(bytes memory data) internal returns(bytes32[] memory) {
+        uint256 length;
+        assembly {
+            length := mload(add(data, 32))
+        }
+
+        bytes32[] memory parsedArray = new bytes32[](length);
+
+        for (uint256 i = 32; i <= 32 * length; i += 32) {
+            assembly {
+                mstore(add(parsedArray, i), mload(add(data, i)))
+            }
+        }
+
+        return parsedArray;
+    }
+
     function registerContractExecution(
         address contractAddress,
         bytes10 functionSelector
