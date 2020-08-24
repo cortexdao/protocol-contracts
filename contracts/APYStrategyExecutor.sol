@@ -6,59 +6,59 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 contract APYStrategyExecutor is Ownable {
     struct Data {
         address target;
-        bytes4 functionSelector;
+        bytes4 selector;
         bool[] returnTypesisArray; //true if an array
         bytes32[] params; // 10, 0, 20
         uint256[] returnParam;
         //position is the position of the return data, value at position is the position in the params
     }
 
-    mapping(address => mapping(bytes10 => bool))
-        public allowedContractExecution;
+    // mapping(address => mapping(bytes10 => bool))
+    //     public allowedContractExecution;
 
     //TODO: events for adding
     //TODO: events for removing
 
-    function registerContractExecution(
-        address contractAddress,
-        bytes10 functionSelector
-    ) external onlyOwner {
-        allowedContractExecution[contractAddress][functionSelector] = true;
-    }
+    // function registerContractExecution(
+    //     address contractAddress,
+    //     bytes10 selector
+    // ) external onlyOwner {
+    //     allowedContractExecution[contractAddress][selector] = true;
+    // }
 
-    function execute(Data[] calldata executionData) external payable {
+    function execute(Data[] calldata executionSteps) external payable {
         bytes memory returnData;
 
-        for (uint256 i = 0; i < executionData.length; i++) {
+        for (uint256 i = 0; i < executionSteps.length; i++) {
             // initial running
             if (returnData.length == 0) {
                 // construct params
                 bytes memory functionCallData = abi.encodeWithSelector(
-                    executionData[i].functionSelector,
-                    executionData[i].params
+                    executionSteps[i].selector,
+                    executionSteps[i].params
                 );
                 // execute
                 returnData = _delegate(
-                    executionData[i].target,
+                    executionSteps[i].target,
                     functionCallData
                 );
             } else {
-                bytes32[] memory params = executionData[i].params;
+                bytes32[] memory params = executionSteps[i].params;
                 // extract prior values
                 for (
                     uint256 pos = 0;
-                    pos < executionData[i].returnTypesisArray.length;
+                    pos < executionSteps[i].returnTypesisArray.length;
                     pos++
                 ) {
                     // not an array
-                    if (executionData[i].returnTypesisArray[pos] == false) {
+                    if (executionSteps[i].returnTypesisArray[pos] == false) {
                         // if the type is not an array then parse it out
                         bytes32 parsedReturnData = _parseReturnData(
                             returnData,
                             pos
                         );
                         // map the pos to the new pos
-                        uint256 newPos = executionData[i].returnParam[pos];
+                        uint256 newPos = executionSteps[i].returnParam[pos];
                         params[newPos] = parsedReturnData;
                     } else {
                         returnData = "";
@@ -68,13 +68,13 @@ contract APYStrategyExecutor is Ownable {
 
                 // construct the params
                 bytes memory functionCallData = abi.encodeWithSelector(
-                    executionData[i].functionSelector,
+                    executionSteps[i].selector,
                     params
                 );
 
                 //execute
                 returnData = _delegate(
-                    executionData[i].target,
+                    executionSteps[i].target,
                     functionCallData
                 );
             }
