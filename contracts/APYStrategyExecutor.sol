@@ -13,6 +13,9 @@ contract APYStrategyExecutor is Ownable {
         //position is the position of the return data, value at position is the position in the params
     }
 
+    event InitialCall(bytes32 a);
+    event SecondCall(uint256 b);
+
     // mapping(address => mapping(bytes10 => bool))
     //     public allowedContractExecution;
 
@@ -33,15 +36,20 @@ contract APYStrategyExecutor is Ownable {
             // initial running
             if (returnData.length == 0) {
                 // construct params
-                bytes memory functionCallData = abi.encodeWithSelector(
-                    executionSteps[i].selector,
-                    executionSteps[i].params
-                );
+                // bytes memory functionCallData = abi.encodeWithSelector(
+                //     executionSteps[i].selector,
+                //     executionSteps[i].params[0]
+                // );
+
+                // uint256 val = 1;
+                // emit InitialCall(bytes32(val));
+                emit InitialCall(executionSteps[i].params[0]);
+
                 // execute
-                returnData = _delegate(
-                    executionSteps[i].target,
-                    functionCallData
-                );
+                // returnData = _delegate(
+                //     executionSteps[i].target,
+                //     functionCallData
+                // );
             } else {
                 bytes32[] memory params = executionSteps[i].params;
                 // extract prior values
