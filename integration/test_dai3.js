@@ -80,18 +80,51 @@ contract("DAI3 Strategy", async (accounts) => {
   it("should releverage DAI", async () => {
     const amount = dai("100");
     console.log("       --->  DAI supply:", amount.toString() / 1e18);
-    // const borrowData =
-    await dai3Strategy.borrowDai(amount, 1, {
+    const numBorrows = 15;
+    console.log("       --->  times borrowed:", numBorrows.toString());
+    const receipt = await dai3Strategy.borrowDai(amount, numBorrows, {
       from: wallet,
       gas: 8000000,
     });
-    // console.log(borrowData);
+
+    const borrowEvents = getEvent(receipt, "BorrowedDai");
+    expect(borrowEvents.length).to.equal(
+      numBorrows,
+      "Incorrect number of borrow events found."
+    );
+    for (i = 0; i < borrowEvents.length; i++) {
+      const eventArgs = borrowEvents[i].args;
+      console.log("       --->  Borrow event:");
+      console.log(
+        "       --->    borrowFactor:",
+        eventArgs.borrowFactor.toString() / 2 ** 64
+      );
+      console.log(
+        "       --->    liquidity:",
+        eventArgs.liquidity.toString() / 1e18
+      );
+      console.log(
+        "       --->    shortfall:",
+        eventArgs.shortfall.toString() / 1e18
+      );
+      console.log(
+        "       --->    borrowAmount:",
+        eventArgs.borrowAmount.toString() / 1e18
+      );
+      console.log("");
+    }
     const borrowBalance = await cDaiToken.borrowBalanceCurrent.call(
       dai3Strategy.address
     );
     console.log(
-      "       --->  DAI borrow balance:",
+      "       --->  borrow balance:",
       borrowBalance.toString() / 1e18
     );
+    console.log("");
   }).timeout(timeout);
+
+  const getEvent = (receipt, eventName) => {
+    const events = receipt.logs.filter((e) => e.event === eventName);
+    return events;
+  };
 });

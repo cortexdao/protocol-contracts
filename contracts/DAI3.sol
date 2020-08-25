@@ -109,22 +109,17 @@ contract DAI3Strategy {
         return borrows;
     }
 
-    struct BorrowData {
-        int128 borrowFactor;
-        uint256 liquidity;
-        uint256 shortfall;
-        uint256 borrowAmount;
-    }
+    event BorrowedDai(
+        int128 borrowFactor,
+        uint256 liquidity,
+        uint256 shortfall,
+        uint256 borrowAmount
+    );
 
-    function borrowDai(uint256 amount, uint256 numLeverage)
-        external
-        payable
-        returns (BorrowData[] memory)
-    {
+    function borrowDai(uint256 amount, uint256 numBorrows) external payable {
         int128 borrowFactor = _calculateBorrowFactor();
 
-        BorrowData[] memory borrows = new BorrowData[](numLeverage);
-        for (uint256 i = 0; i < numLeverage; i++) {
+        for (uint256 i = 0; i < numBorrows; i++) {
             dai.approve(cDaiAddress, 0);
             dai.approve(cDaiAddress, amount);
 
@@ -137,20 +132,16 @@ contract DAI3Strategy {
             require(shortfall == 0, "account underwater");
             require(liquidity > 0, "account has excess collateral");
 
-            uint256 borrowAmount = borrowFactor.mulu(liquidity);
+            // uint256 borrowAmount = borrowFactor.mulu(liquidity);
+            uint256 borrowAmount = borrowFactor.mulu(amount);
 
             uint256 error3 = cDai.borrow(borrowAmount);
             require(error3 == 0, "could not borrow");
-            borrows[i] = BorrowData({
-                borrowFactor: borrowFactor,
-                liquidity: liquidity,
-                shortfall: shortfall,
-                borrowAmount: borrowAmount
-            });
+
+            emit BorrowedDai(borrowFactor, liquidity, shortfall, borrowAmount);
 
             amount = borrowAmount;
         }
-        return borrows;
     }
 
     function _calculateBorrowFactor() internal returns (int128) {
