@@ -111,6 +111,7 @@ contract DAI3Strategy {
         uint256 borrowAmount
     );
 
+    /// @dev must first send DAI to contract before using this
     function borrowDai(uint256 amount, uint256 numBorrows) external payable {
         int128 borrowFactor = _calculateBorrowFactor();
 
@@ -146,14 +147,10 @@ contract DAI3Strategy {
         (, uint256 collateralFactorMantissa) = _comptroller.markets(
             _cDaiAddress
         );
-        int128 collateralFactor = collateralFactorMantissa.fromUInt().div(
-            _ETH_MANTISSA.fromUInt()
-        );
+        int128 collateralFactor = collateralFactorMantissa.divu(_ETH_MANTISSA);
 
         uint256 borrowRateMantissa = _cDai.borrowRatePerBlock();
-        int128 borrowRate = borrowRateMantissa.fromUInt().div(
-            _ETH_MANTISSA.fromUInt()
-        );
+        int128 borrowRate = borrowRateMantissa.divu(_ETH_MANTISSA);
 
         int128 interestFactorPerDay = borrowRate
             .mul(_BLOCKS_PER_DAY.fromUInt())
