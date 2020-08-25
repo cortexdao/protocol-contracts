@@ -71,7 +71,7 @@ contract("APYStrategyExecution", async (accounts) => {
 
       // expectEvent.inTransaction(trx.tx, exec, 'InitialCall', { a: '0x0000000000000000000000000000000000000000000000000000000000000001' })
       expectEvent.inTransaction(trx.tx, contractA, 'ExecuteAUint256', { a: '1' })
-      // expectEvent.inTransaction(trx.tx, contractA, 'MultiParam', { a: '1', b: '100', c: '1' })
+      expectEvent.inTransaction(trx.tx, contractA, 'MultiParam', { a: '1', b: '100', c: '1' })
     })
   })
 })
