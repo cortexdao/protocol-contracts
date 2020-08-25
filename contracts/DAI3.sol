@@ -1,7 +1,9 @@
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.6.6;
 pragma experimental ABIEncoderV2;
 
 // https://github.com/compound-developers/compound-borrow-examples
+// https://gist.github.com/gwmccubbin/e497900261c0a626951061b035f5994d
 
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
@@ -22,16 +24,6 @@ interface CErc20 {
     function repayBorrow(uint256) external returns (uint256);
 
     function borrowRatePerBlock() external view returns (uint256);
-}
-
-interface CEth {
-    function mint() external payable;
-
-    function borrow(uint256) external returns (uint256);
-
-    function repayBorrow() external payable;
-
-    function borrowBalanceCurrent(address) external returns (uint256);
 }
 
 interface Comptroller {

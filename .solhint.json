@@ -6,7 +6,7 @@
     "func-param-name-mixedcase": "warn",
     "modifier-name-mixedcase": "warn",
     "private-vars-leading-underscore": "warn",
-    "func-order": "warn",
+    "ordering": "warn",
     "compiler-version": ["error", "^0.6.6"],
     "mark-callable-contracts": "off"
   }
