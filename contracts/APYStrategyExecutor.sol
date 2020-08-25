@@ -36,20 +36,18 @@ contract APYStrategyExecutor is Ownable {
             // initial running
             if (returnData.length == 0) {
                 // construct params
-                // bytes memory functionCallData = abi.encodeWithSelector(
-                //     executionSteps[i].selector,
-                //     executionSteps[i].params[0]
-                // );
+                bytes memory functionCallData = abi.encodeWithSelector(
+                    executionSteps[i].selector,
+                    executionSteps[i].params[0]
+                );
 
-                // uint256 val = 1;
-                // emit InitialCall(bytes32(val));
-                emit InitialCall(executionSteps[i].params[0]);
+                // emit InitialCall(executionSteps[i].params[0]);
 
                 // execute
-                // returnData = _delegate(
-                //     executionSteps[i].target,
-                //     functionCallData
-                // );
+                returnData = _delegate(
+                    executionSteps[i].target,
+                    functionCallData
+                );
             } else {
                 bytes32[] memory params = executionSteps[i].params;
                 // extract prior values

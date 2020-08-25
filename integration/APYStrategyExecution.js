@@ -41,13 +41,11 @@ console.log(executeAMultiParamSelector)
 //   10,
 //   0
 // ]
-const bytes32String = ethers.utils.formatBytes32String('1')
-const hexValue = ethers.utils.hexValue(1)
-const encoded = abiCoder.encode(['uint256'], [1])
+const e_0 = abiCoder.encode(['uint256'], [0])
+const e_1 = abiCoder.encode(['uint256'], [1])
 
-console.log(bytes32String)
-console.log(hexValue)
-console.log(encoded)
+console.log(e_0)
+console.log(e_1)
 
 
 contract("APYStrategyExecution", async (accounts) => {
@@ -55,6 +53,7 @@ contract("APYStrategyExecution", async (accounts) => {
     it('Basic Calls', async () => {
 
       const contractA = await APYContractA.new()
+
       const tx = await contractA.executeA(1)
       // expectEvent.inTransaction(tx, contractA, 'ExecuteA', { a: 1 })
       expectEvent(tx, 'ExecuteAUint256', { a: '1' })
@@ -65,13 +64,13 @@ contract("APYStrategyExecution", async (accounts) => {
       const exec = await APYStrategyExecutor.new()
       const trx = await exec.execute(
         [
-          [contractA.address, executeASelector, [], [encoded], []],
-          // [contractA.address, executeAMultiParamSelector, [0], [hex1, hex1, hex1], [1]] // -> [1, 100, 1]
+          [contractA.address, executeASelector, [], [e_1], []],
+          // [contractA.address, executeAMultiParamSelector, [e_0], [e_1, e_1, e_1], [e_1]] // -> [1, 100, 1]
         ]
       )
 
-      expectEvent.inTransaction(trx.tx, exec, 'InitialCall', { a: '0x0000000000000000000000000000000000000000000000000000000000000001' })
-      // expectEvent.inTransaction(trx.tx, contractA, 'ExecuteA', { input: 100 })
+      // expectEvent.inTransaction(trx.tx, exec, 'InitialCall', { a: '0x0000000000000000000000000000000000000000000000000000000000000001' })
+      expectEvent.inTransaction(trx.tx, contractA, 'ExecuteAUint256', { a: '1' })
       // expectEvent.inTransaction(trx.tx, contractA, 'MultiParam', { a: '1', b: '100', c: '1' })
     })
   })
