@@ -1,4 +1,5 @@
 pragma solidity ^0.6.6;
+pragma experimental ABIEncoderV2;
 
 // https://github.com/compound-developers/compound-borrow-examples
 
@@ -79,87 +80,98 @@ contract DAI3Strategy {
     // https://etherscan.io/token/0xc00e94cb662c3520282e6f5717214004a7f26888
     Erc20 compToken = Erc20(0xc00e94Cb662C3520282E6f5717214004A7f26888);
 
-    // receive() external payable {
-    //     revert("Should not be receiving ETH.");
-    // }
+    uint256 constant DAYS_IN_PERIOD = 7;
+    uint256 constant ETH_MANTISSA = 10**18;
+    uint256 constant BLOCKS_PER_DAY = 4 * 60 * 24;
+
+    receive() external payable {
+        revert("Should not be receiving ETH.");
+    }
+
+    constructor() public {
+        address[] memory cTokens = new address[](1);
+        cTokens[0] = cDaiAddress;
+        uint256[] memory errors = comptroller.enterMarkets(cTokens);
+        require(errors[0] == 0, "Comptroller.enterMarkets failed.");
+    }
 
     /// @dev must first send DAI to contract before using this
     function depositAndBorrow(uint256 depositAmount, uint256 borrowAmount)
         external
         returns (uint256)
     {
+        dai.approve(cDaiAddress, 0);
         dai.approve(cDaiAddress, depositAmount);
         cDai.mint(depositAmount);
-
-        address[] memory cTokens = new address[](1);
-        cTokens[0] = cDaiAddress;
-        uint256[] memory errors = comptroller.enterMarkets(cTokens);
-        require(errors[0] == 0, "Comptroller.enterMarkets failed.");
 
         cDai.borrow(borrowAmount);
         uint256 borrows = cDai.borrowBalanceCurrent(address(this));
         return borrows;
     }
 
-    function borrowDai(uint256 amount) external payable returns (uint256) {
+    struct BorrowData {
+        int128 borrowFactor;
+        uint256 liquidity;
+        uint256 shortfall;
+        uint256 borrowAmount;
+    }
+
+    function borrowDai(uint256 amount, uint256 numLeverage)
+        external
+        payable
+        returns (BorrowData[] memory)
+    {
         int128 borrowFactor = _calculateBorrowFactor();
-        uint256 numLeverage = 1;
 
-        address[] memory cTokens = new address[](1);
-        cTokens[0] = cDaiAddress;
-        uint256[] memory errors = comptroller.enterMarkets(cTokens);
-        require(errors[0] == 0, "Comptroller.enterMarkets failed.");
-
+        BorrowData[] memory borrows = new BorrowData[](numLeverage);
         for (uint256 i = 0; i < numLeverage; i++) {
+            dai.approve(cDaiAddress, 0);
             dai.approve(cDaiAddress, amount);
 
             uint256 error = cDai.mint(amount);
             require(error == 0, "CErc20.mint Error");
 
-            (, uint256 liquidity, uint256 shortfall) = comptroller
+            (uint256 error2, uint256 liquidity, uint256 shortfall) = comptroller
                 .getAccountLiquidity(address(this));
+            require(error2 == 0, "could not get account liquidity");
             require(shortfall == 0, "account underwater");
             require(liquidity > 0, "account has excess collateral");
 
-            uint256 borrowAmount = liquidity
-                .fromUInt()
-                .mul(borrowFactor)
-                .toUInt();
+            uint256 borrowAmount = borrowFactor.mulu(liquidity);
 
-            cDai.borrow(borrowAmount);
+            uint256 error3 = cDai.borrow(borrowAmount);
+            require(error3 == 0, "could not borrow");
+            borrows[i] = BorrowData({
+                borrowFactor: borrowFactor,
+                liquidity: liquidity,
+                shortfall: shortfall,
+                borrowAmount: borrowAmount
+            });
+
+            amount = borrowAmount;
         }
-        uint256 borrows = cDai.borrowBalanceCurrent(address(this));
-
         return borrows;
     }
 
     function _calculateBorrowFactor() internal returns (int128) {
-        // Get the collateral factor for our collateral
         (, uint256 collateralFactorMantissa) = comptroller.markets(cDaiAddress);
-
-        // Get the amount of DAI added to your borrow each block
-        uint256 borrowRateMantissa = cDai.borrowRatePerBlock();
-
-        // calculate how much interest accumulates over a week
-        // 74.25% if interest is 1% per week
-        uint256 ethMantissa = 10**18;
-        uint256 blocksPerDay = 4 * 60 * 24;
-        uint256 daysInPeriod = 7;
-
-        int128 borrowRate = borrowRateMantissa.fromUInt().div(
-            ethMantissa.fromUInt()
+        int128 collateralFactor = collateralFactorMantissa.fromUInt().div(
+            ETH_MANTISSA.fromUInt()
         );
+
+        uint256 borrowRateMantissa = cDai.borrowRatePerBlock();
+        int128 borrowRate = borrowRateMantissa.fromUInt().div(
+            ETH_MANTISSA.fromUInt()
+        );
+
         int128 interestFactorPerDay = borrowRate
-            .mul(blocksPerDay.fromUInt())
+            .mul(BLOCKS_PER_DAY.fromUInt())
             .add(1.fromUInt());
         int128 interestFactorPerPeriod = interestFactorPerDay
-            .pow(daysInPeriod)
+            .pow(DAYS_IN_PERIOD)
             .sub(1.fromUInt());
-        int128 collateralFactor = collateralFactorMantissa.fromUInt().div(
-            ethMantissa.fromUInt()
-        );
-        int128 borrowFactor = collateralFactor.sub(interestFactorPerPeriod);
 
+        int128 borrowFactor = collateralFactor.sub(interestFactorPerPeriod);
         return borrowFactor;
     }
 

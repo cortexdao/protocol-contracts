@@ -38,7 +38,7 @@ const CDAI_ADDRESS = "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643";
 const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 const BAL_ADDRESS = "0xba100000625a3754423978a60c9317c58a424e3D";
 
-const timeout = 20000; // in millis
+const timeout = 120000; // in millis
 
 contract("DAI3 Strategy", async (accounts) => {
   const [deployer, wallet, other] = accounts;
@@ -62,20 +62,36 @@ contract("DAI3 Strategy", async (accounts) => {
       DAI_MINTER_ADDRESS,
       dai("10000")
     );
-  });
 
-  it("should borrow DAI", async () => {
     const daiBalance = await daiToken.balanceOf(dai3Strategy.address);
     console.log("       --->  DAI balance:", daiBalance.toString() / 1e18);
+  });
 
+  it("should mint cDAI and borrow DAI", async () => {
     const amount = dai("1000");
-    console.log("       --->  DAI deposit:", daiBalance.toString() / 1e18);
+    console.log("       --->  DAI deposit:", amount.toString() / 1e18);
     const borrows = await dai3Strategy.depositAndBorrow.call(
       amount,
       amount.divn(2)
     );
     console.log("       --->  DAI borrow:", borrows.toString() / 1e18);
+  });
 
-    await dai3Strategy.borrowDai(dai("10"), { from: wallet, gasPrice: 0 });
+  it("should releverage DAI", async () => {
+    const amount = dai("100");
+    console.log("       --->  DAI supply:", amount.toString() / 1e18);
+    // const borrowData =
+    await dai3Strategy.borrowDai(amount, 1, {
+      from: wallet,
+      gas: 8000000,
+    });
+    // console.log(borrowData);
+    const borrowBalance = await cDaiToken.borrowBalanceCurrent.call(
+      dai3Strategy.address
+    );
+    console.log(
+      "       --->  DAI borrow balance:",
+      borrowBalance.toString() / 1e18
+    );
   }).timeout(timeout);
 });
