@@ -65,14 +65,15 @@ contract("APYStrategyExecution", async (accounts) => {
       const trx = await exec.execute(
         [
           [contractA.address, executeASelector, [], [e_1], []],
-          // [contractA.address, executeAMultiParamSelector, [e_0], [e_1, e_1, e_1], [e_1]] // -> [1, 100, 1]
+          [contractA.address, executeAMultiParamSelector, [0], [e_1, e_1, e_1], [1]] // -> [1, 100, 1]
         ]
       )
 
       // expectEvent.inTransaction(trx.tx, exec, 'InitialCall', { a: '0x0000000000000000000000000000000000000000000000000000000000000001' })
       expectEvent.inTransaction(trx.tx, contractA, 'ExecuteAUint256', { a: '1' })
       expectEvent.inTransaction(trx.tx, contractA, 'ExecuteABytes32', { a: '0x0000000000000000000000000000000000000000000000000000000000000001' })
-      // expectEvent.inTransaction(trx.tx, contractA, 'MultiParam', { a: '1', b: '100', c: '1' })
+      // expectEvent.inTransaction(trx.tx, exec, 'Params', { a: '1' })
+      expectEvent.inTransaction(trx.tx, contractA, 'MultiParam', { a: '1', b: '100', c: '1' })
     })
   })
 })

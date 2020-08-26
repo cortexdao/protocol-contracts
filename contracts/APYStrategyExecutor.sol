@@ -15,6 +15,7 @@ contract APYStrategyExecutor is Ownable {
 
     event InitialCall(bytes32 a);
     event SecondCall(uint256 b);
+    event Params(bytes32[] a);
 
     // mapping(address => mapping(bytes10 => bool))
     //     public allowedContractExecution;
@@ -38,7 +39,7 @@ contract APYStrategyExecutor is Ownable {
                 // construct params
                 bytes memory functionCallData = abi.encodeWithSelector(
                     executionSteps[i].selector,
-                    executionSteps[i].params[0]
+                    executionSteps[i].params[0] //TODO: this needs to be generic
                 );
 
                 // emit InitialCall(executionSteps[i].params[0]);
@@ -56,6 +57,7 @@ contract APYStrategyExecutor is Ownable {
                     pos < executionSteps[i].returnTypesisArray.length;
                     pos++
                 ) {
+                    // emit BoolCall(executionSteps[i].returnTypesisArray[pos]);
                     // not an array
                     if (executionSteps[i].returnTypesisArray[pos] == false) {
                         // if the type is not an array then parse it out
@@ -63,6 +65,7 @@ contract APYStrategyExecutor is Ownable {
                             returnData,
                             pos
                         );
+
                         // map the pos to the new pos
                         uint256 newPos = executionSteps[i].returnParam[pos];
                         params[newPos] = parsedReturnData;
@@ -71,6 +74,8 @@ contract APYStrategyExecutor is Ownable {
                         //TODO:  if the type is an array do something special
                     }
                 }
+
+                //TODO: CHECKPOINT
 
                 // construct the params
                 bytes memory functionCallData = abi.encodeWithSelector(
@@ -122,8 +127,9 @@ contract APYStrategyExecutor is Ownable {
         bytes32 parsed;
         //solhint-disable-next-line no-inline-assembly
         assembly {
-            //add 0 bytes to the pointer that points toward the memory address of our data variable
-            parsed := mload(add(returnData, mul(position, 32)))
+            // add 0 bytes to the pointer that points toward the memory address of our data variable
+            // add(position,1) to grab item at proper offset
+            parsed := mload(add(returnData, mul(add(position, 1), 32)))
         }
         return parsed;
     }
