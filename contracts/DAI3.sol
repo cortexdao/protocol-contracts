@@ -7,6 +7,7 @@ pragma experimental ABIEncoderV2;
 
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
+import {APYStrategy} from "./APYStrategy.sol";
 
 interface Erc20 {
     function approve(address, uint256) external returns (bool);
@@ -45,11 +46,7 @@ interface Comptroller {
         );
 }
 
-interface PriceOracle {
-    function getUnderlyingPrice(address) external view returns (uint256);
-}
-
-contract DAI3Strategy {
+contract DAI3Strategy is APYStrategy("DAI3") {
     using SafeMath for uint256;
     using ABDKMath64x64 for *;
 
@@ -79,15 +76,17 @@ contract DAI3Strategy {
     uint256 private constant _ETH_MANTISSA = 10**18;
     uint256 private constant _BLOCKS_PER_DAY = 4 * 60 * 24;
 
-    receive() external payable {
-        revert("Should not be receiving ETH.");
+    constructor() public {
+        address[] memory tokens = new address[](1);
+        tokens[0] = _daiAddress;
+        uint256[] memory proportions = new uint256[](1);
+        proportions[0] = 100;
+        _setInputAssets(tokens, proportions);
+        _enterMarkets();
     }
 
-    constructor() public {
-        address[] memory cTokens = new address[](1);
-        cTokens[0] = _cDaiAddress;
-        uint256[] memory errors = _comptroller.enterMarkets(cTokens);
-        require(errors[0] == 0, "Comptroller.enterMarkets failed.");
+    receive() external payable {
+        revert("Should not be receiving ETH.");
     }
 
     /// @dev must first send DAI to contract before using this
@@ -95,7 +94,6 @@ contract DAI3Strategy {
         external
         returns (uint256)
     {
-        _dai.approve(_cDaiAddress, 0);
         _dai.approve(_cDaiAddress, depositAmount);
         _cDai.mint(depositAmount);
 
@@ -116,7 +114,6 @@ contract DAI3Strategy {
         int128 borrowFactor = _calculateBorrowFactor();
 
         for (uint256 i = 0; i < numBorrows; i++) {
-            _dai.approve(_cDaiAddress, 0);
             _dai.approve(_cDaiAddress, amount);
 
             uint256 error = _cDai.mint(amount);
@@ -131,7 +128,6 @@ contract DAI3Strategy {
             require(shortfall == 0, "account underwater");
             require(liquidity > 0, "account has excess collateral");
 
-            // uint256 borrowAmount = borrowFactor.mulu(liquidity);
             uint256 borrowAmount = borrowFactor.mulu(amount);
 
             uint256 error3 = _cDai.borrow(borrowAmount);
@@ -141,6 +137,21 @@ contract DAI3Strategy {
 
             amount = borrowAmount;
         }
+    }
+
+    function repayBorrow(uint256 amount) public returns (bool) {
+        _dai.approve(_cDaiAddress, amount);
+        uint256 error = _cDai.repayBorrow(amount);
+
+        require(error == 0, "CErc20.repayBorrow Error");
+        return true;
+    }
+
+    function _enterMarkets() internal {
+        address[] memory cTokens = new address[](1);
+        cTokens[0] = _cDaiAddress;
+        uint256[] memory errors = _comptroller.enterMarkets(cTokens);
+        require(errors[0] == 0, "Comptroller.enterMarkets failed.");
     }
 
     function _calculateBorrowFactor() internal returns (int128) {
@@ -161,13 +172,5 @@ contract DAI3Strategy {
 
         int128 borrowFactor = collateralFactor.sub(interestFactorPerPeriod);
         return borrowFactor;
-    }
-
-    function repayBorrow(uint256 amount) public returns (bool) {
-        _dai.approve(_cDaiAddress, amount);
-        uint256 error = _cDai.repayBorrow(amount);
-
-        require(error == 0, "CErc20.repayBorrow Error");
-        return true;
     }
 }
