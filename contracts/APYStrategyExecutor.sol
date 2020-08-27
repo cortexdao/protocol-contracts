@@ -15,7 +15,8 @@ contract APYStrategyExecutor is Ownable {
 
     event InitialCall(bytes32 a);
     event SecondCall(uint256 b);
-    event Params(bytes32[] a);
+    event EncodeCallData(bytes length);
+    event Params(bytes32[] params);
 
     // mapping(address => mapping(bytes10 => bool))
     //     public allowedContractExecution;
@@ -67,6 +68,7 @@ contract APYStrategyExecutor is Ownable {
                         );
 
                         // map the pos to the new pos
+
                         uint256 newPos = executionSteps[i].returnParam[pos];
                         params[newPos] = parsedReturnData;
                     } else {
@@ -78,7 +80,7 @@ contract APYStrategyExecutor is Ownable {
                 //TODO: CHECKPOINT
 
                 // construct the params
-                bytes memory functionCallData = abi.encodeWithSelector(
+                bytes memory functionCallData = _encodeCallData(
                     executionSteps[i].selector,
                     params
                 );
@@ -132,6 +134,29 @@ contract APYStrategyExecutor is Ownable {
             parsed := mload(add(returnData, mul(add(position, 1), 32)))
         }
         return parsed;
+    }
+
+    function _encodeCallData(
+        bytes4 functionSelector,
+        bytes32[] memory params
+    ) internal returns (bytes memory) {
+        // 4 bytes for function selector
+        bytes memory result = new bytes(4 + (params.length * 32));
+
+        // Skip the first 32 bytes for the length
+        assembly {
+            mstore(add(result, 32), functionSelector)
+        }
+
+        for (uint256 i = 0; i < params.length; i++) {
+            bytes32 param = params[i];
+            // Skip the first 36 bytes for length + function selector
+            assembly {
+                mstore(add(result, add(36, mul(i, 32))), param)
+            }
+        }
+
+        return result;
     }
 
     function _delegate(address target, bytes memory data)

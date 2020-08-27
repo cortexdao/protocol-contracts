@@ -14,10 +14,10 @@ const {
 } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
 const APYStrategyExecutor = artifacts.require("APYStrategyExecutor");
-const OneInch = artifacts.require("OneSplitAudit");
-const cDAI = artifacts.require("cDAI");
-const COMP = artifacts.require("COMP");
-const Comptroller = artifacts.require("Comptroller");
+//const OneInch = artifacts.require("OneSplitAudit");
+//const cDAI = artifacts.require("cDAI");
+//const COMP = artifacts.require("COMP");
+//const Comptroller = artifacts.require("Comptroller");
 const APYContractA = artifacts.require("APYContractA");
 
 const AInterface = new ethers.utils.Interface(APYContractA.abi)
@@ -70,10 +70,11 @@ contract("APYStrategyExecution", async (accounts) => {
       )
 
       // expectEvent.inTransaction(trx.tx, exec, 'InitialCall', { a: '0x0000000000000000000000000000000000000000000000000000000000000001' })
-      expectEvent.inTransaction(trx.tx, contractA, 'ExecuteAUint256', { a: '1' })
-      expectEvent.inTransaction(trx.tx, contractA, 'ExecuteABytes32', { a: '0x0000000000000000000000000000000000000000000000000000000000000001' })
-      // expectEvent.inTransaction(trx.tx, exec, 'Params', { a: '1' })
+      //expectEvent.inTransaction(trx.tx, contractA, 'ExecuteAUint256', { a: '1' })
+      //expectEvent.inTransaction(trx.tx, contractA, 'ExecuteABytes32', { a: '0x0000000000000000000000000000000000000000000000000000000000000001' })
       expectEvent.inTransaction(trx.tx, contractA, 'MultiParam', { a: '1', b: '100', c: '1' })
+      //expectEvent.inTransaction(trx.tx, exec, 'Params', { params: '3' })
+      //expectEvent.inTransaction(trx.tx, exec, 'EncodeCallData', { length: '3' })
     })
   })
 })
