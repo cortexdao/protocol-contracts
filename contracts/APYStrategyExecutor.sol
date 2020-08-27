@@ -9,9 +9,9 @@ contract APYStrategyExecutor is Ownable {
     struct Data {
         address target;
         bytes4 selector;
-        bool[] returnTypesisArray; //true if an array
-        bytes32[] params; // 10, 0, 20
-        uint256[] returnParam;
+        bool[] prevReturnArrayFlag; //true if an array
+        bytes32[] functionParams; // 10, 0, 20
+        uint256[] prevReturnParamMap;
         //position is the position of the return data, value at position is the position in the params
     }
 
@@ -42,10 +42,10 @@ contract APYStrategyExecutor is Ownable {
                 // construct params
                 bytes memory functionCallData = abi.encodeWithSelector(
                     executionSteps[i].selector,
-                    executionSteps[i].params[0] //TODO: this needs to be generic
+                    executionSteps[i].functionParams[0] //TODO: this needs to be generic
                 );
 
-                // emit InitialCall(executionSteps[i].params[0]);
+                // emit InitialCall(executionSteps[i].functionParams[0]);
 
                 // execute
                 returnData = _delegate(
@@ -53,20 +53,20 @@ contract APYStrategyExecutor is Ownable {
                     functionCallData
                 );
             } else {
-                bytes32[] memory params = executionSteps[i].params;
+                bytes32[] memory functionParams = executionSteps[i].functionParams;
                 // extract prior values
                 for (
                     uint256 pos = 0;
-                    pos < executionSteps[i].returnTypesisArray.length;
+                    pos < executionSteps[i].prevReturnArrayFlag.length;
                     pos++
                 ) {
-                    if (executionSteps[i].returnParam[pos] == _SKIP_RETURN_DATA) {
+                    if (executionSteps[i].prevReturnParamMap[pos] == _SKIP_RETURN_DATA) {
                         continue;
                     }
 
-                    // emit BoolCall(executionSteps[i].returnTypesisArray[pos]);
+                    // emit BoolCall(executionSteps[i].prevReturnArrayFlag[pos]);
                     // not an array
-                    if (executionSteps[i].returnTypesisArray[pos] == false) {
+                    if (executionSteps[i].prevReturnArrayFlag[pos] == false) {
                         // if the type is not an array then parse it out
                         bytes32 parsedReturnData = _parseReturnData(
                             returnData,
@@ -75,8 +75,8 @@ contract APYStrategyExecutor is Ownable {
 
                         // map the pos to the new pos
 
-                        uint256 newPos = executionSteps[i].returnParam[pos];
-                        params[newPos] = parsedReturnData;
+                        uint256 newPos = executionSteps[i].prevReturnParamMap[pos];
+                        functionParams[newPos] = parsedReturnData;
                     } else {
                         returnData = "";
                         //TODO:  if the type is an array do something special
@@ -88,7 +88,7 @@ contract APYStrategyExecutor is Ownable {
                 // construct the params
                 bytes memory functionCallData = _encodeCallData(
                     executionSteps[i].selector,
-                    params
+                    functionParams
                 );
 
                 //execute
