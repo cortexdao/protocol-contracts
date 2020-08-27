@@ -51,8 +51,7 @@ console.log(e_1)
 contract("APYStrategyExecution", async (accounts) => {
   describe('Example Execution', async () => {
     it('Basic Calls', async () => {
-
-      const contractA = await APYContractA.new()
+const contractA = await APYContractA.new()
 
       const tx = await contractA.executeA(1)
       // expectEvent.inTransaction(tx, contractA, 'ExecuteA', { a: 1 })
@@ -65,7 +64,8 @@ contract("APYStrategyExecution", async (accounts) => {
       const trx = await exec.execute(
         [
           [contractA.address, executeASelector, [], [e_1], []],
-          [contractA.address, executeAMultiParamSelector, [0], [e_1, e_1, e_1], [1]] // -> [1, 100, 1]
+          [contractA.address, executeAMultiParamSelector, [0], [e_1, e_1, e_1], [1]], // -> [1, 100, 1]
+          [contractA.address, executeAMultiParamSelector, [0, 0, 0], [e_1, e_1, e_1], [0, 0, 1]] // -> [1, 100, 100]
         ]
       )
 
@@ -73,6 +73,7 @@ contract("APYStrategyExecution", async (accounts) => {
       //expectEvent.inTransaction(trx.tx, contractA, 'ExecuteAUint256', { a: '1' })
       //expectEvent.inTransaction(trx.tx, contractA, 'ExecuteABytes32', { a: '0x0000000000000000000000000000000000000000000000000000000000000001' })
       expectEvent.inTransaction(trx.tx, contractA, 'MultiParam', { a: '1', b: '100', c: '1' })
+      expectEvent.inTransaction(trx.tx, contractA, 'MultiParam', { a: '100', b: '1', c: '1' })
       //expectEvent.inTransaction(trx.tx, exec, 'Params', { params: '3' })
       //expectEvent.inTransaction(trx.tx, exec, 'EncodeCallData', { length: '3' })
     })

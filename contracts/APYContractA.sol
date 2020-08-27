@@ -18,7 +18,8 @@ contract APYContractA is Ownable {
         uint256 a,
         uint256 b,
         uint256 c
-    ) public {
+    ) public returns (uint256, uint256, uint256) {
         emit MultiParam(a, b, c);
+        return (a, b, c);
     }
 }
