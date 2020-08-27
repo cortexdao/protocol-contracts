@@ -4,6 +4,8 @@ pragma experimental ABIEncoderV2;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract APYStrategyExecutor is Ownable {
+    uint256 constant private _SKIP_RETURN_DATA = uint256(-1);
+
     struct Data {
         address target;
         bytes4 selector;
@@ -58,6 +60,10 @@ contract APYStrategyExecutor is Ownable {
                     pos < executionSteps[i].returnTypesisArray.length;
                     pos++
                 ) {
+                    if (executionSteps[i].returnParam[pos] == _SKIP_RETURN_DATA) {
+                        continue;
+                    }
+
                     // emit BoolCall(executionSteps[i].returnTypesisArray[pos]);
                     // not an array
                     if (executionSteps[i].returnTypesisArray[pos] == false) {
