@@ -3,37 +3,11 @@ pragma experimental ABIEncoderV2;
 
 // https://gist.github.com/gwmccubbin/e497900261c0a626951061b035f5994d
 
-interface Erc20 {
-    function balanceOf(address account) external view returns (uint256);
-
-    function approve(address, uint256) external returns (bool);
-
-    function transfer(address, uint256) external returns (bool);
-}
-
-interface CErc20 {
-    function balanceOf(address owner) external view returns (uint256);
-
-    function mint(uint256) external returns (uint256);
-
-    function redeem(uint256) external returns (uint256);
-
-    function redeemUnderlying(uint256) external returns (uint256);
-
-    function borrowBalanceCurrent(address account) external returns (uint256);
-
-    function borrow(uint256 borrowAmount) external returns (uint256);
-
-    function repayBorrow(uint256 repayAmount) external returns (uint256);
-}
-
-interface Comptroller {
-    function enterMarkets(address[] calldata)
-        external
-        returns (uint256[] memory);
-
-    function claimComp(address holder) external;
-}
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import {CErc20} from "./CErc20.sol";
+import {Comptroller} from "./Comptroller.sol";
 
 interface Structs {
     struct Val {
@@ -97,16 +71,6 @@ abstract contract DyDxPool is Structs {
         virtual
         view
         returns (Wei memory);
-}
-
-/**
- * @dev Interface of the ERC20 standard as defined in the EIP. Does not include
- * the optional functions; to access them see `ERC20Detailed`.
- */
-interface IERC20 {
-    function balanceOf(address account) external view returns (uint256);
-
-    function approve(address spender, uint256 amount) external returns (bool);
 }
 
 contract DyDxFlashLoan is Structs {
@@ -197,7 +161,7 @@ contract LeveragedYieldFarm is DyDxFlashLoan {
     // Mainnet Dai
     // https://etherscan.io/address/0x6b175474e89094c44da98b954eedeac495271d0f#readContract
     address daiAddress = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    Erc20 dai = Erc20(daiAddress);
+    IERC20 dai = IERC20(daiAddress);
 
     // Mainnet cDai
     // https://etherscan.io/address/0x5d3a536e4d6dbd6114cc1ead35777bab948e3643#readProxyContract
@@ -211,7 +175,7 @@ contract LeveragedYieldFarm is DyDxFlashLoan {
 
     // COMP ERC-20 token
     // https://etherscan.io/token/0xc00e94cb662c3520282e6f5717214004a7f26888
-    Erc20 compToken = Erc20(0xc00e94Cb662C3520282E6f5717214004A7f26888);
+    IERC20 compToken = IERC20(0xc00e94Cb662C3520282E6f5717214004A7f26888);
 
     // Deposit/Withdraw values
     bytes32 DEPOSIT = keccak256("DEPOSIT");
@@ -357,7 +321,7 @@ contract LeveragedYieldFarm is DyDxFlashLoan {
 
     // Fallback in case any other tokens are sent to this contract
     function withdrawToken(address _tokenAddress) public onlyOwner {
-        uint256 balance = Erc20(_tokenAddress).balanceOf(address(this));
-        Erc20(_tokenAddress).transfer(owner, balance);
+        uint256 balance = IERC20(_tokenAddress).balanceOf(address(this));
+        IERC20(_tokenAddress).transfer(owner, balance);
     }
 }

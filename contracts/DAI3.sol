@@ -5,55 +5,23 @@ pragma experimental ABIEncoderV2;
 // https://github.com/compound-developers/compound-borrow-examples
 // https://gist.github.com/gwmccubbin/e497900261c0a626951061b035f5994d
 
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {APYStrategy} from "./APYStrategy.sol";
-
-interface Erc20 {
-    function approve(address, uint256) external returns (bool);
-
-    function transfer(address, uint256) external returns (bool);
-}
-
-interface CErc20 {
-    function mint(uint256) external returns (uint256);
-
-    function borrow(uint256) external returns (uint256);
-
-    function borrowBalanceCurrent(address) external returns (uint256);
-
-    function repayBorrow(uint256) external returns (uint256);
-
-    function borrowRatePerBlock() external view returns (uint256);
-}
-
-interface Comptroller {
-    function markets(address) external returns (bool, uint256);
-
-    function enterMarkets(address[] calldata)
-        external
-        returns (uint256[] memory);
-
-    function claimComp(address holder) external;
-
-    function getAccountLiquidity(address)
-        external
-        view
-        returns (
-            uint256,
-            uint256,
-            uint256
-        );
-}
+import {CErc20} from "./CErc20.sol";
+import {Comptroller} from "./Comptroller.sol";
 
 contract DAI3Strategy is APYStrategy("DAI3") {
     using SafeMath for uint256;
+    using SafeERC20 for IERC20;
     using ABDKMath64x64 for *;
 
     // Mainnet Dai
     // https://etherscan.io/address/0x6b175474e89094c44da98b954eedeac495271d0f#readContract
     address private _daiAddress = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    Erc20 private _dai = Erc20(_daiAddress);
+    IERC20 private _dai = IERC20(_daiAddress);
 
     // Mainnet cDai
     // https://etherscan.io/address/0x5d3a536e4d6dbd6114cc1ead35777bab948e3643#readProxyContract
@@ -68,7 +36,7 @@ contract DAI3Strategy is APYStrategy("DAI3") {
 
     // COMP ERC-20 token
     // https://etherscan.io/token/0xc00e94cb662c3520282e6f5717214004a7f26888
-    Erc20 private _compToken = Erc20(
+    IERC20 private _compToken = IERC20(
         0xc00e94Cb662C3520282E6f5717214004A7f26888
     );
 

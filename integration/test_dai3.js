@@ -19,7 +19,7 @@ const {
 
 const IOneSplit = artifacts.require("IOneSplit");
 const Comptroller = artifacts.require("Comptroller");
-const cDAI = artifacts.require("cDAI");
+const CErc20 = artifacts.require("CErc20");
 const IMintableERC20 = artifacts.require("IMintableERC20");
 const DAI3Strategy = artifacts.require("DAI3Strategy");
 
@@ -52,7 +52,7 @@ contract("DAI3 Strategy", async (accounts) => {
   beforeEach(async () => {
     oneInch = await IOneSplit.at(ONE_INCH_ADDRESS);
     comptroller = await Comptroller.at(COMPTROLLER_ADDRESS);
-    cDaiToken = await cDAI.at(CDAI_ADDRESS);
+    cDaiToken = await CErc20.at(CDAI_ADDRESS);
     daiToken = await IMintableERC20.at(DAI_ADDRESS);
     dai3Strategy = await DAI3Strategy.new();
 
