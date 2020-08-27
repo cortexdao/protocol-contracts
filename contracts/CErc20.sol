@@ -16,5 +16,7 @@ interface CErc20 {
 
     function repayBorrow(uint256 repayAmount) external returns (uint256);
 
+    function exchangeRateCurrent() external returns (uint256);
+
     function balanceOf(address owner) external view returns (uint256);
 }

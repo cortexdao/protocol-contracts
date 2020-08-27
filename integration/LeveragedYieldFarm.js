@@ -59,12 +59,40 @@ contract("LeveragedYieldFarm", async (accounts) => {
       from: deployer,
       gas: 1000000,
     });
-    console.log(receipt.logs);
 
     const borrowBalance = await cDaiToken.borrowBalanceCurrent.call(
       farm.address
     );
     console.log("       --->  DAI borrowed:", borrowBalance.toString() / 1e18);
     console.log("");
+
+    const cDaiBalance = await cDaiToken.balanceOf(farm.address);
+    const exchangeRate = await cDaiToken.exchangeRateCurrent.call();
+    console.log("       --->  cDAI/DAI rate:", exchangeRate.toString() / 1e28);
+    console.log("       --->  cDAI balance:", cDaiBalance.toString() / 1e8);
+    console.log(
+      "       --->  total DAI locked:",
+      cDaiBalance.mul(exchangeRate).toString() / 1e36
+    );
   }).timeout(timeout);
+
+  advanceBlock = () => {
+    return new Promise((resolve, reject) => {
+      web3.currentProvider.sendAsync(
+        {
+          jsonrpc: "2.0",
+          method: "evm_mine",
+          id: new Date().getTime(),
+        },
+        (err, result) => {
+          if (err) {
+            return reject(err);
+          }
+          const newBlockHash = web3.eth.getBlock("latest").hash;
+
+          return resolve(newBlockHash);
+        }
+      );
+    });
+  };
 });

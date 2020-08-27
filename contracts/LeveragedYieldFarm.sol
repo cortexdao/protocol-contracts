@@ -1,11 +1,18 @@
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.6.6;
 pragma experimental ABIEncoderV2;
 
+// https://github.com/compound-developers/compound-borrow-examples
 // https://gist.github.com/gwmccubbin/e497900261c0a626951061b035f5994d
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {
+    ReentrancyGuard
+} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {CErc20} from "./CErc20.sol";
 import {Comptroller} from "./Comptroller.sol";
 
@@ -73,7 +80,9 @@ abstract contract DyDxPool is Structs {
         returns (Wei memory);
 }
 
-contract DyDxFlashLoan is Structs {
+abstract contract DyDxFlashLoan is Structs {
+    // Mainnet DyDx SoloMargin
+    // https://etherscan.io/address/0x1e0447b19bb6ecfdae1e4ae1694b0c3659614e4e
     DyDxPool pool = DyDxPool(0x1E0447b19BB6EcFdAe1e4AE1694b0C3659614e4e);
 
     address public WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -89,12 +98,13 @@ contract DyDxFlashLoan is Structs {
         currencies[DAI] = 4;
     }
 
-    modifier onlyPool() {
-        require(
-            msg.sender == address(pool),
-            "FlashLoan: could be called by DyDx pool only"
-        );
-        _;
+    function callFunction(
+        address sender,
+        Info calldata accountInfo,
+        bytes calldata data
+    ) external {
+        require(msg.sender == address(pool), "FlashLoan/only-DyDx-pool");
+        _callFunction(sender, accountInfo, data);
     }
 
     function tokenToMarketId(address token) public view returns (uint256) {
@@ -103,7 +113,8 @@ contract DyDxFlashLoan is Structs {
         return marketId - 1;
     }
 
-    // the DyDx will call `callFunction(address sender, Info memory accountInfo, bytes memory data) public` after during `operate` call
+    // the DyDx will call `callFunction(address sender, Info memory accountInfo, bytes memory data) public`
+    // after during `operate` call
     function flashloan(
         address token,
         uint256 amount,
@@ -155,59 +166,56 @@ contract DyDxFlashLoan is Structs {
 
         pool.operate(infos, args);
     }
+
+    function _callFunction(
+        address sender,
+        Info memory accountInfo,
+        bytes memory data
+    ) internal virtual;
 }
 
-contract LeveragedYieldFarm is DyDxFlashLoan {
+contract LeveragedYieldFarm is DyDxFlashLoan, Ownable {
+    using SafeMath for uint256;
+    using ABDKMath64x64 for *;
+
     // Mainnet Dai
     // https://etherscan.io/address/0x6b175474e89094c44da98b954eedeac495271d0f#readContract
-    address daiAddress = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    IERC20 dai = IERC20(daiAddress);
+    address private _daiAddress = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    IERC20 private _dai = IERC20(_daiAddress);
 
     // Mainnet cDai
     // https://etherscan.io/address/0x5d3a536e4d6dbd6114cc1ead35777bab948e3643#readProxyContract
-    address cDaiAddress = 0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643;
-    CErc20 cDai = CErc20(cDaiAddress);
+    address private _cDaiAddress = 0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643;
+    CErc20 private _cDai = CErc20(_cDaiAddress);
 
     // Mainnet Comptroller
     // https://etherscan.io/address/0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b#readProxyContract
-    address comptrollerAddress = 0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B;
-    Comptroller comptroller = Comptroller(comptrollerAddress);
+    address
+        private _comptrollerAddress = 0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B;
+    Comptroller private _comptroller = Comptroller(_comptrollerAddress);
 
     // COMP ERC-20 token
     // https://etherscan.io/token/0xc00e94cb662c3520282e6f5717214004a7f26888
-    IERC20 compToken = IERC20(0xc00e94Cb662C3520282E6f5717214004A7f26888);
+    IERC20 private _compToken = IERC20(
+        0xc00e94Cb662C3520282E6f5717214004A7f26888
+    );
 
     // Deposit/Withdraw values
-    bytes32 DEPOSIT = keccak256("DEPOSIT");
-    bytes32 WITHDRAW = keccak256("WITHDRAW");
+    bytes32 private constant _DEPOSIT = keccak256("DEPOSIT");
+    bytes32 private constant _WITHDRAW = keccak256("WITHDRAW");
 
-    // Contract owner
-    address payable owner;
+    uint256 private constant _DAYS_IN_PERIOD = 7;
+    uint256 private constant _ETH_MANTISSA = 10**18;
+    uint256 private constant _BLOCKS_PER_DAY = 4 * 60 * 24;
 
     event FlashLoan(address indexed _from, bytes32 indexed _id, uint256 _value);
 
-    // Modifiers
-    modifier onlyOwner() {
-        require(msg.sender == owner, "caller is not the owner!");
-        _;
-    }
-
-    // Don't allow contract to receive Ether by mistake
-    receive() external payable {
-        revert();
-    }
-
     constructor() public {
-        // Track the contract owner
-        owner = msg.sender;
+        _enterMarkets();
+    }
 
-        // Enter the cDai market so you can borrow another type of asset
-        address[] memory cTokens = new address[](1);
-        cTokens[0] = cDaiAddress;
-        uint256[] memory errors = comptroller.enterMarkets(cTokens);
-        if (errors[0] != 0) {
-            revert("Comptroller.enterMarkets failed.");
-        }
+    receive() external payable {
+        revert("Contract can't receive ether.");
     }
 
     // Do not deposit all your DAI because you must pay flash loan fees
@@ -217,111 +225,127 @@ contract LeveragedYieldFarm is DyDxFlashLoan {
         onlyOwner
         returns (bool)
     {
-        // Total deposit: 30% initial amount, 70% flash loan
-        uint256 totalAmount = (initialAmount * 10) / 3;
+        (uint256 totalAmount, uint256 loanAmount) = _calculateFlashLoanAmounts(
+            initialAmount
+        );
 
-        // loan is 70% of total deposit
-        uint256 flashLoanAmount = totalAmount - initialAmount;
-
-        // Get DAI Flash Loan for "DEPOSIT"
-        bytes memory data = abi.encode(totalAmount, flashLoanAmount, DEPOSIT);
-        flashloan(daiAddress, flashLoanAmount, data); // execution goes to `callFunction`
-
-        // Handle remaining execution inside handleDeposit() function
+        bytes memory data = abi.encode(totalAmount, loanAmount, _DEPOSIT);
+        flashloan(_daiAddress, loanAmount, data);
 
         return true;
     }
 
-    // You must have some Dai in your contract still to pay flash loan fee!
-    // Always keep at least 1 DAI in the contract
     function withdrawDai(uint256 initialAmount)
         external
         onlyOwner
         returns (bool)
     {
-        // Total deposit: 30% initial amount, 70% flash loan
-        uint256 totalAmount = (initialAmount * 10) / 3;
+        (uint256 totalAmount, uint256 loanAmount) = _calculateFlashLoanAmounts(
+            initialAmount
+        );
 
-        // loan is 70% of total deposit
-        uint256 flashLoanAmount = totalAmount - initialAmount;
+        bytes memory data = abi.encode(totalAmount, loanAmount, _WITHDRAW);
+        flashloan(_daiAddress, loanAmount, data);
 
-        // Use flash loan to payback borrowed amount
-        bytes memory data = abi.encode(totalAmount, flashLoanAmount, WITHDRAW);
-        flashloan(daiAddress, flashLoanAmount, data); // execution goes to `callFunction`
+        _comptroller.claimComp(address(this));
 
-        // Handle repayment inside handleWithdraw() function
+        _compToken.transfer(owner(), _compToken.balanceOf(address(this)));
 
-        // Claim COMP tokens
-        comptroller.claimComp(address(this));
-
-        // Withdraw COMP tokens
-        compToken.transfer(owner, compToken.balanceOf(address(this)));
-
-        // Withdraw Dai to the wallet
-        dai.transfer(owner, dai.balanceOf(address(this)));
+        _dai.transfer(owner(), _dai.balanceOf(address(this)));
 
         return true;
     }
 
-    function callFunction(
-        address, /* sender */
-        Info calldata, /* accountInfo */
-        bytes calldata data
-    ) external onlyPool {
+    function _callFunction(
+        address,
+        Info memory,
+        bytes memory data
+    ) internal override {
         (uint256 totalAmount, uint256 flashLoanAmount, bytes32 operation) = abi
             .decode(data, (uint256, uint256, bytes32));
 
-        if (operation == DEPOSIT) {
-            handleDeposit(totalAmount, flashLoanAmount);
+        if (operation == _DEPOSIT) {
+            _handleDeposit(totalAmount, flashLoanAmount);
         }
 
-        if (operation == WITHDRAW) {
-            handleWithdraw();
+        if (operation == _WITHDRAW) {
+            _handleWithdraw();
         }
     }
 
-    // You must first send DAI to this contract before you can call this function
-    function handleDeposit(uint256 totalAmount, uint256 flashLoanAmount)
+    function _handleDeposit(uint256 totalAmount, uint256 flashLoanAmount)
         internal
         returns (bool)
     {
-        // Approve Dai tokens as collateral
-        dai.approve(cDaiAddress, totalAmount);
+        _dai.approve(_cDaiAddress, totalAmount);
 
-        // Provide collateral by minting cDai tokens
-        cDai.mint(totalAmount);
+        _cDai.mint(totalAmount);
 
-        // Borrow Dai
-        cDai.borrow(flashLoanAmount);
+        _cDai.borrow(flashLoanAmount);
 
-        // Start earning COMP tokens, yay!
         return true;
     }
 
-    function handleWithdraw() internal returns (bool) {
+    function _handleWithdraw() internal returns (bool) {
         uint256 balance;
 
-        // Get curent borrow Balance
-        balance = cDai.borrowBalanceCurrent(address(this));
+        balance = _cDai.borrowBalanceCurrent(address(this));
 
-        // Approve tokens for repayment
-        dai.approve(address(cDai), balance);
+        _dai.approve(address(_cDai), balance);
 
-        // Repay tokens
-        cDai.repayBorrow(balance);
+        _cDai.repayBorrow(balance);
 
-        // Get cDai balance
-        balance = cDai.balanceOf(address(this));
+        balance = _cDai.balanceOf(address(this));
 
-        // Redeem cDai
-        cDai.redeem(balance);
+        _cDai.redeem(balance);
 
         return true;
     }
 
-    // Fallback in case any other tokens are sent to this contract
     function withdrawToken(address _tokenAddress) public onlyOwner {
         uint256 balance = IERC20(_tokenAddress).balanceOf(address(this));
-        IERC20(_tokenAddress).transfer(owner, balance);
+        IERC20(_tokenAddress).transfer(owner(), balance);
+    }
+
+    function _enterMarkets() internal {
+        address[] memory cTokens = new address[](1);
+        cTokens[0] = _cDaiAddress;
+        uint256[] memory errors = _comptroller.enterMarkets(cTokens);
+        if (errors[0] != 0) {
+            revert("Comptroller.enterMarkets failed.");
+        }
+    }
+
+    function _calculateBorrowFactor() internal returns (int128) {
+        (, uint256 collateralFactorMantissa) = _comptroller.markets(
+            _cDaiAddress
+        );
+        int128 collateralFactor = collateralFactorMantissa.divu(_ETH_MANTISSA);
+
+        uint256 borrowRateMantissa = _cDai.borrowRatePerBlock();
+        int128 borrowRate = borrowRateMantissa.divu(_ETH_MANTISSA);
+
+        int128 interestFactorPerDay = borrowRate
+            .mul(_BLOCKS_PER_DAY.fromUInt())
+            .add(1.fromUInt());
+        int128 interestFactorPerPeriod = interestFactorPerDay
+            .pow(_DAYS_IN_PERIOD)
+            .sub(1.fromUInt());
+
+        int128 borrowFactor = collateralFactor.sub(interestFactorPerPeriod);
+        return borrowFactor;
+    }
+
+    function _calculateFlashLoanAmounts(uint256 initialAmount)
+        internal
+        returns (uint256, uint256)
+    {
+        int128 borrowFactor = _calculateBorrowFactor();
+        uint256 totalAmount = 1.fromUInt().sub(borrowFactor).inv().mulu(
+            initialAmount
+        );
+        uint256 loanAmount = totalAmount - initialAmount;
+
+        return (totalAmount, loanAmount);
     }
 }
