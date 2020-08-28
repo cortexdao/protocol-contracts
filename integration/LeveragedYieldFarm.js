@@ -30,68 +30,81 @@ const DAI_MINTER_ADDRESS = "0x9759A6Ac90977b93B58547b4A71c78317f391A28"; // MCD_
 const CDAI_ADDRESS = "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643";
 const COMP_ADDRESS = "0xc00e94Cb662C3520282E6f5717214004A7f26888";
 
-const timeout = 120000; // in millis
+const timeout = 960000; // in millis
+const debug = true;
+
+console.debug = (...args) => {
+  if (debug) {
+    console.log.apply(this, args);
+  }
+};
 
 contract("LeveragedYieldFarm", async (accounts) => {
   const [deployer, wallet, other] = accounts;
 
-  let farm;
   let daiToken;
   let cDaiToken;
   let compToken;
+  let farm;
 
   beforeEach(async () => {
     daiToken = await IMintableERC20.at(DAI_ADDRESS);
-    farm = await LeveragedYieldFarm.new();
     cDaiToken = await CErc20.at(CDAI_ADDRESS);
     compToken = await IERC20.at(COMP_ADDRESS);
+    farm = await LeveragedYieldFarm.new();
+  });
 
+  it("farm COMP with DAI flash loan", async () => {
+    const amount = dai("10000");
     await mintERC20Tokens(
       DAI_ADDRESS,
       farm.address,
       DAI_MINTER_ADDRESS,
-      dai("10000")
+      amount.addn(2) // need a bit extra for the flash loan "fee"
     );
 
-    const daiBalance = await daiToken.balanceOf(farm.address);
-    console.log("       --->  DAI balance:", daiBalance.toString() / 1e18);
-  });
-
-  it("farm COMP with DAI flash loan", async () => {
-    const amount = dai("100");
-    console.log("       --->  DAI deposited:", amount.toString() / 1e18);
-
-    const receipt = await farm.depositDai(amount, {
+    const receipt = await farm.initiatePosition(amount, {
       from: deployer,
       gas: 1000000,
     });
+    console.debug("       --->  DAI deposited:", amount.toString() / 1e18);
 
     const borrowBalance = await cDaiToken.borrowBalanceCurrent.call(
       farm.address
     );
-    console.log("       --->  DAI borrowed:", borrowBalance.toString() / 1e18);
-    console.log("");
+    console.debug(
+      "       --->  DAI borrowed:",
+      borrowBalance.toString() / 1e18
+    );
+    console.debug("");
 
     const cDaiBalance = await cDaiToken.balanceOf(farm.address);
     const exchangeRate = await cDaiToken.exchangeRateCurrent.call();
-    console.log("       --->  cDAI/DAI rate:", exchangeRate.toString() / 1e28);
-    console.log("       --->  cDAI balance:", cDaiBalance.toString() / 1e8);
-    console.log(
+    console.debug(
+      "       --->  cDAI/DAI rate:",
+      exchangeRate.toString() / 1e28
+    );
+    console.debug("       --->  cDAI balance:", cDaiBalance.toString() / 1e8);
+    console.debug(
       "       --->  total DAI locked:",
       cDaiBalance.mul(exchangeRate).toString() / 1e36
     );
-    console.log("");
+    console.debug("");
 
     blocksPerDay = 4 * 60 * 24;
-    blocksPerWeek = 7 * blocksPerDay;
-    for (i = 0; i < blocksPerDay; i++) {
-      await time.advanceBlock();
+    for (i = 0; i < 7; i++) {
+      const futureBlockHeight = (await time.latestBlock()).addn(blocksPerDay);
+      await time.advanceBlockTo(futureBlockHeight);
+      console.debug(`       ... day ${i} passed.`);
     }
-    console.log("       --->  Number of blocks waited:", blocksPerDay);
 
-    await farm.withdrawDai(amount, { from: deployer, gas: 2000000 });
+    await farm.rebalance({ from: deployer, gas: 5000000 });
+    await farm.closePosition({ from: deployer, gas: 2000000 });
 
     const compBalance = await compToken.balanceOf(deployer);
-    console.log("       --->  COMP balance:", compBalance.toString() / 1e18);
+    console.debug("       --->  COMP balance:", compBalance.toString() / 1e18);
+
+    const daiBalance = await daiToken.balanceOf(deployer);
+    console.debug("       --->  DAI balance:", daiBalance.toString() / 1e18);
   }).timeout(timeout);
 });

@@ -15,6 +15,7 @@ import {
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {CErc20} from "./CErc20.sol";
 import {Comptroller} from "./Comptroller.sol";
+import {IOneSplit} from "./IOneSplit.sol";
 
 interface Structs {
     struct Val {
@@ -83,12 +84,14 @@ abstract contract DyDxPool is Structs {
 abstract contract DyDxFlashLoan is Structs {
     // Mainnet DyDx SoloMargin
     // https://etherscan.io/address/0x1e0447b19bb6ecfdae1e4ae1694b0c3659614e4e
-    DyDxPool pool = DyDxPool(0x1E0447b19BB6EcFdAe1e4AE1694b0C3659614e4e);
+    DyDxPool internal _pool = DyDxPool(
+        0x1E0447b19BB6EcFdAe1e4AE1694b0C3659614e4e
+    );
 
-    address public WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    address public SAI = 0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359;
-    address public USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    address public DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address public constant SAI = 0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359;
+    address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     mapping(address => uint256) public currencies;
 
     constructor() public {
@@ -103,7 +106,7 @@ abstract contract DyDxFlashLoan is Structs {
         Info calldata accountInfo,
         bytes calldata data
     ) external {
-        require(msg.sender == address(pool), "FlashLoan/only-DyDx-pool");
+        require(msg.sender == address(_pool), "FlashLoan/only-DyDx-pool");
         _callFunction(sender, accountInfo, data);
     }
 
@@ -115,12 +118,12 @@ abstract contract DyDxFlashLoan is Structs {
 
     // the DyDx will call `callFunction(address sender, Info memory accountInfo, bytes memory data) public`
     // after during `operate` call
-    function flashloan(
+    function _flashloan(
         address token,
         uint256 amount,
         bytes memory data
     ) internal {
-        IERC20(token).approve(address(pool), amount + 1);
+        IERC20(token).approve(address(_pool), amount + 1);
         Info[] memory infos = new Info[](1);
         ActionArgs[] memory args = new ActionArgs[](3);
 
@@ -164,7 +167,7 @@ abstract contract DyDxFlashLoan is Structs {
 
         args[2] = deposit;
 
-        pool.operate(infos, args);
+        _pool.operate(infos, args);
     }
 
     function _callFunction(
@@ -177,16 +180,17 @@ abstract contract DyDxFlashLoan is Structs {
 contract LeveragedYieldFarm is DyDxFlashLoan, Ownable {
     using SafeMath for uint256;
     using ABDKMath64x64 for *;
+    using SafeERC20 for IERC20;
 
     // Mainnet Dai
     // https://etherscan.io/address/0x6b175474e89094c44da98b954eedeac495271d0f#readContract
     address private _daiAddress = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    IERC20 private _dai = IERC20(_daiAddress);
+    IERC20 private _daiToken = IERC20(_daiAddress);
 
     // Mainnet cDai
     // https://etherscan.io/address/0x5d3a536e4d6dbd6114cc1ead35777bab948e3643#readProxyContract
     address private _cDaiAddress = 0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643;
-    CErc20 private _cDai = CErc20(_cDaiAddress);
+    CErc20 private _cDaiToken = CErc20(_cDaiAddress);
 
     // Mainnet Comptroller
     // https://etherscan.io/address/0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b#readProxyContract
@@ -200,9 +204,14 @@ contract LeveragedYieldFarm is DyDxFlashLoan, Ownable {
         0xc00e94Cb662C3520282E6f5717214004A7f26888
     );
 
+    // 1proto.eth
+    // https://etherscan.io/address/1proto.eth
+    IOneSplit private _oneInch = IOneSplit(0x50FDA034C0Ce7a8f7EFDAebDA7Aa7cA21CC1267e); 
+
     // Deposit/Withdraw values
-    bytes32 private constant _DEPOSIT = keccak256("DEPOSIT");
-    bytes32 private constant _WITHDRAW = keccak256("WITHDRAW");
+    bytes32 private constant _INITIATE = keccak256("INITIATE");
+    bytes32 private constant _REBALANCE = keccak256("REBALANCE");
+    bytes32 private constant _CLOSE = keccak256("CLOSE");
 
     uint256 private constant _DAYS_IN_PERIOD = 7;
     uint256 private constant _ETH_MANTISSA = 10**18;
@@ -210,18 +219,20 @@ contract LeveragedYieldFarm is DyDxFlashLoan, Ownable {
 
     event FlashLoan(address indexed _from, bytes32 indexed _id, uint256 _value);
 
+    uint256 private _positionAmount = 0;
+
     constructor() public {
         _enterMarkets();
     }
 
-    receive() external payable {
-        revert("Contract can't receive ether.");
-    }
+    // receive() external payable {
+    //     revert("Contract can't receive ether.");
+    // }
 
     // Do not deposit all your DAI because you must pay flash loan fees
     // Always keep at least 1 DAI in the contract
-    function depositDai(uint256 initialAmount)
-        external
+    function initiatePosition(uint256 initialAmount)
+        public
         onlyOwner
         returns (bool)
     {
@@ -229,29 +240,42 @@ contract LeveragedYieldFarm is DyDxFlashLoan, Ownable {
             initialAmount
         );
 
-        bytes memory data = abi.encode(totalAmount, loanAmount, _DEPOSIT);
-        flashloan(_daiAddress, loanAmount, data);
+        bytes memory data = abi.encode(totalAmount, loanAmount, _INITIATE);
+        _flashloan(_daiAddress, loanAmount, data);
+
+        _positionAmount = _positionAmount.add(initialAmount);
 
         return true;
     }
 
-    function withdrawDai(uint256 initialAmount)
-        external
-        onlyOwner
-        returns (bool)
-    {
+    function rebalance() external payable onlyOwner returns (bool) {
+        _comptroller.claimComp(address(this));
+        uint256 compAmount = _compToken.balanceOf(address(this));
+
+        if (compAmount == 0)
+            return true;
+
+        // now swap COMP for DAI using 1inch
+        // and initiate position using new DAI
+        uint256 additionalAmount = _swap(_compToken, _daiToken, compAmount);
+        initiatePosition(additionalAmount);
+
+        return true;
+    }
+
+    function closePosition() external onlyOwner returns (bool) {
         (uint256 totalAmount, uint256 loanAmount) = _calculateFlashLoanAmounts(
-            initialAmount
+            _positionAmount
         );
 
-        bytes memory data = abi.encode(totalAmount, loanAmount, _WITHDRAW);
-        flashloan(_daiAddress, loanAmount, data);
+        bytes memory data = abi.encode(totalAmount, loanAmount, _CLOSE);
+        _flashloan(_daiAddress, loanAmount, data);
 
         _comptroller.claimComp(address(this));
 
         _compToken.transfer(owner(), _compToken.balanceOf(address(this)));
 
-        _dai.transfer(owner(), _dai.balanceOf(address(this)));
+        _daiToken.transfer(owner(), _daiToken.balanceOf(address(this)));
 
         return true;
     }
@@ -264,40 +288,40 @@ contract LeveragedYieldFarm is DyDxFlashLoan, Ownable {
         (uint256 totalAmount, uint256 flashLoanAmount, bytes32 operation) = abi
             .decode(data, (uint256, uint256, bytes32));
 
-        if (operation == _DEPOSIT) {
-            _handleDeposit(totalAmount, flashLoanAmount);
-        }
-
-        if (operation == _WITHDRAW) {
-            _handleWithdraw();
+        if (operation == _INITIATE) {
+            _handleInitiate(totalAmount, flashLoanAmount);
+        } else if (operation == _CLOSE) {
+            _handleClose();
+        } else {
+            revert("Farm/unrecognized-operation");
         }
     }
 
-    function _handleDeposit(uint256 totalAmount, uint256 flashLoanAmount)
+    function _handleInitiate(uint256 totalAmount, uint256 flashLoanAmount)
         internal
         returns (bool)
     {
-        _dai.approve(_cDaiAddress, totalAmount);
+        _daiToken.approve(_cDaiAddress, totalAmount);
 
-        _cDai.mint(totalAmount);
+        _cDaiToken.mint(totalAmount);
 
-        _cDai.borrow(flashLoanAmount);
+        _cDaiToken.borrow(flashLoanAmount);
 
         return true;
     }
 
-    function _handleWithdraw() internal returns (bool) {
+    function _handleClose() internal returns (bool) {
         uint256 balance;
 
-        balance = _cDai.borrowBalanceCurrent(address(this));
+        balance = _cDaiToken.borrowBalanceCurrent(address(this));
 
-        _dai.approve(address(_cDai), balance);
+        _daiToken.approve(address(_cDaiToken), balance);
 
-        _cDai.repayBorrow(balance);
+        _cDaiToken.repayBorrow(balance);
 
-        balance = _cDai.balanceOf(address(this));
+        balance = _cDaiToken.balanceOf(address(this));
 
-        _cDai.redeem(balance);
+        _cDaiToken.redeem(balance);
 
         return true;
     }
@@ -322,7 +346,7 @@ contract LeveragedYieldFarm is DyDxFlashLoan, Ownable {
         );
         int128 collateralFactor = collateralFactorMantissa.divu(_ETH_MANTISSA);
 
-        uint256 borrowRateMantissa = _cDai.borrowRatePerBlock();
+        uint256 borrowRateMantissa = _cDaiToken.borrowRatePerBlock();
         int128 borrowRate = borrowRateMantissa.divu(_ETH_MANTISSA);
 
         int128 interestFactorPerDay = borrowRate
@@ -347,5 +371,39 @@ contract LeveragedYieldFarm is DyDxFlashLoan, Ownable {
         uint256 loanAmount = totalAmount - initialAmount;
 
         return (totalAmount, loanAmount);
+    }
+
+    function _swap(
+        IERC20 fromToken,
+        IERC20 destToken,
+        uint256 amount
+    ) internal returns (uint256) {
+        // uint256 flags = 0;
+        uint256 flagDisableAllSplitSources = 0x20000000;
+        uint256 flagDisableAllWrapSources = 0x40000000;
+        uint256 flagDisableMooniswapAll = 0x8000000000000000;
+        // enable only Mooniswap
+        uint256 flags = flagDisableAllSplitSources + flagDisableAllWrapSources + flagDisableMooniswapAll;
+
+        (uint256 returnAmount, uint256[] memory distribution) = _oneInch
+            .getExpectedReturn(fromToken, destToken, amount, 10, flags);
+
+        uint256 ethAmount = 0;
+        if (address(fromToken) == address(0)) {
+            ethAmount = amount;
+        } else {
+            IERC20(fromToken).approve(address(_oneInch), amount);
+        }
+
+        uint256 receivedAmount = _oneInch.swap{value: ethAmount}(
+            fromToken,
+            destToken,
+            amount,
+            returnAmount,
+            distribution,
+            flags
+        );
+
+        return receivedAmount;
     }
 }
