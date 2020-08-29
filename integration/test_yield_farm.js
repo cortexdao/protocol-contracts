@@ -96,9 +96,9 @@ contract("LeveragedYieldFarm", async (accounts) => {
       const futureBlockHeight = (await time.latestBlock()).addn(blocksPerDay);
       await time.advanceBlockTo(futureBlockHeight);
       console.debug(`       ... day ${i} passed.`);
+      await farm.rebalance({ from: deployer, gas: 5000000 });
     }
 
-    await farm.rebalance({ from: deployer, gas: 5000000 });
     await farm.closePosition({ from: deployer, gas: 2000000 });
 
     const compBalance = await compToken.balanceOf(deployer);

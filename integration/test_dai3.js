@@ -40,6 +40,14 @@ const BAL_ADDRESS = "0xba100000625a3754423978a60c9317c58a424e3D";
 
 const timeout = 120000; // in millis
 
+const debug = false;
+
+console.debug = (...args) => {
+  if (debug) {
+    console.log.apply(this, args);
+  }
+};
+
 contract("DAI3 Strategy", async (accounts) => {
   const [deployer, wallet, other] = accounts;
 
@@ -64,24 +72,24 @@ contract("DAI3 Strategy", async (accounts) => {
     );
 
     const daiBalance = await daiToken.balanceOf(dai3Strategy.address);
-    console.log("       --->  DAI balance:", daiBalance.toString() / 1e18);
+    console.debug("       --->  DAI balance:", daiBalance.toString() / 1e18);
   });
 
   it("should mint cDAI and borrow DAI", async () => {
     const amount = dai("1000");
-    console.log("       --->  DAI deposit:", amount.toString() / 1e18);
+    console.debug("       --->  DAI deposit:", amount.toString() / 1e18);
     const borrows = await dai3Strategy.depositAndBorrow.call(
       amount,
       amount.divn(2)
     );
-    console.log("       --->  DAI borrow:", borrows.toString() / 1e18);
+    console.debug("       --->  DAI borrow:", borrows.toString() / 1e18);
   });
 
   it("should releverage DAI", async () => {
     const amount = dai("100");
-    console.log("       --->  DAI supply:", amount.toString() / 1e18);
+    console.debug("       --->  DAI supply:", amount.toString() / 1e18);
     const numBorrows = 15;
-    console.log("       --->  times borrowed:", numBorrows.toString());
+    console.debug("       --->  times borrowed:", numBorrows.toString());
     const receipt = await dai3Strategy.borrowDai(amount, numBorrows, {
       from: wallet,
       gas: 8000000,
@@ -94,33 +102,33 @@ contract("DAI3 Strategy", async (accounts) => {
     );
     for (i = 0; i < borrowEvents.length; i++) {
       const eventArgs = borrowEvents[i].args;
-      console.log("       --->  Borrow event:");
-      console.log(
+      console.debug("       --->  Borrow event:");
+      console.debug(
         "       --->    borrowFactor:",
         eventArgs.borrowFactor.toString() / 2 ** 64
       );
-      console.log(
+      console.debug(
         "       --->    liquidity:",
         eventArgs.liquidity.toString() / 1e18
       );
-      console.log(
+      console.debug(
         "       --->    shortfall:",
         eventArgs.shortfall.toString() / 1e18
       );
-      console.log(
+      console.debug(
         "       --->    borrowAmount:",
         eventArgs.borrowAmount.toString() / 1e18
       );
-      console.log("");
+      console.debug("");
     }
     const borrowBalance = await cDaiToken.borrowBalanceCurrent.call(
       dai3Strategy.address
     );
-    console.log(
+    console.debug(
       "       --->  borrow balance:",
       borrowBalance.toString() / 1e18
     );
-    console.log("");
+    console.debug("");
   }).timeout(timeout);
 
   const getEvent = (receipt, eventName) => {
