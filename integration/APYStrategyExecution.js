@@ -23,6 +23,7 @@ const AInterface = new ethers.utils.Interface(APYContractA.abi)
 const executeASelector = AInterface.getSighash("executeA")
 const executeAMultiParamSelector = AInterface.getSighash("executeAMultiParam")
 const executeAReturnArraySelector = AInterface.getSighash("executeAReturnArray")
+const executeAArrayParam = AInterface.getSighash("executeAArrayParam")
 
 console.log(executeASelector)
 console.log(executeAMultiParamSelector)
@@ -66,6 +67,7 @@ contract("APYStrategyExecution", async (accounts) => {
           [contractA.address, executeAMultiParamSelector, [0], [e_1, e_1, e_1], [1]],
           [contractA.address, executeAMultiParamSelector, [0, 0, 0], [e_1, e_1, e_1], [constants.MAX_UINT256, 2, constants.MAX_UINT256]],
           [contractA.address, executeAReturnArraySelector, [0, 0, 0], [e_1], [constants.MAX_UINT256, constants.MAX_UINT256, 0]]
+          [contractA.address, executeAArrayParam, [0, 0, 0], [e_1], [constants.MAX_UINT256, constants.MAX_UINT256, 0]]
           // NOTE: 0 is cheaper in gas
         ]
       )
@@ -76,6 +78,7 @@ contract("APYStrategyExecution", async (accounts) => {
       expectEvent.inTransaction(trx.tx, contractA, 'MultiParam', { a: '1', b: '100', c: '1' })
       expectEvent.inTransaction(trx.tx, contractA, 'MultiParam', { a: '1', b: '1', c: '100' })
       expectEvent.inTransaction(trx.tx, contractA, 'ExecuteAReturnArray', { a: ['1000', '500'] })
+      expectEvent.inTransaction(trx.tx, contractA, 'ExecuteAArrayParam', { a: '1000' })
       //expectEvent.inTransaction(trx.tx, exec, 'Params', { params: '3' })
       //expectEvent.inTransaction(trx.tx, exec, 'EncodeCallData', { length: '3' })
     })

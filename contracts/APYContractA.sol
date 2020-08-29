@@ -8,6 +8,7 @@ contract APYContractA is Ownable {
     // event ExecuteABytes32(bytes32 a);
     event MultiParam(uint256 a, uint256 b, uint256 c);
     event ExecuteAReturnArray(uint256[] a);
+    event ExecuteAArrayParam(uint256 a);
 
     function executeA(uint256 input) external returns (uint256) {
         emit ExecuteAUint256(input);
@@ -40,5 +41,10 @@ contract APYContractA is Ownable {
         returnArray[1] = a * 5;
         emit ExecuteAReturnArray(returnArray);
         return returnArray;
+    }
+
+    function executeAArrayParam(uint256 a) external returns (uint256) {
+        emit ExecuteAArrayParam(a);
+        return a;
     }
 }
