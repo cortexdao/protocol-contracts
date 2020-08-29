@@ -4,8 +4,6 @@ pragma experimental ABIEncoderV2;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract APYStrategyExecutor is Ownable {
-    uint256 constant private _SKIP_RETURN_DATA = uint256(-1);
-
     struct Data {
         address target;
         bytes4 selector;
@@ -15,10 +13,7 @@ contract APYStrategyExecutor is Ownable {
         //position is the position of the return data, value at position is the position in the params
     }
 
-    event InitialCall(bytes32 a);
-    event SecondCall(uint256 b);
-    event EncodeCallData(bytes length);
-    event Params(bytes32[] params);
+    uint256 private constant _SKIP_RETURN_DATA = uint256(-1);
 
     // mapping(address => mapping(bytes10 => bool))
     //     public allowedContractExecution;
@@ -45,26 +40,27 @@ contract APYStrategyExecutor is Ownable {
                     executionSteps[i].functionParams[0] //TODO: this needs to be generic
                 );
 
-                // emit InitialCall(executionSteps[i].functionParams[0]);
-
                 // execute
                 returnData = _delegate(
                     executionSteps[i].target,
                     functionCallData
                 );
             } else {
-                bytes32[] memory functionParams = executionSteps[i].functionParams;
+                bytes32[] memory functionParams = executionSteps[i]
+                    .functionParams;
                 // extract prior values
                 for (
                     uint256 pos = 0;
                     pos < executionSteps[i].prevReturnArrayFlag.length;
                     pos++
                 ) {
-                    if (executionSteps[i].prevReturnParamMap[pos] == _SKIP_RETURN_DATA) {
+                    if (
+                        executionSteps[i].prevReturnParamMap[pos] ==
+                        _SKIP_RETURN_DATA
+                    ) {
                         continue;
                     }
 
-                    // emit BoolCall(executionSteps[i].prevReturnArrayFlag[pos]);
                     // not an array
                     if (executionSteps[i].prevReturnArrayFlag[pos] == false) {
                         // if the type is not an array then parse it out
@@ -75,15 +71,14 @@ contract APYStrategyExecutor is Ownable {
 
                         // map the pos to the new pos
 
-                        uint256 newPos = executionSteps[i].prevReturnParamMap[pos];
+                        uint256 newPos = executionSteps[i]
+                            .prevReturnParamMap[pos];
                         functionParams[newPos] = parsedReturnData;
                     } else {
                         returnData = "";
                         //TODO:  if the type is an array do something special
                     }
                 }
-
-                //TODO: CHECKPOINT
 
                 // construct the params
                 bytes memory functionCallData = _encodeCallData(
@@ -142,14 +137,15 @@ contract APYStrategyExecutor is Ownable {
         return parsed;
     }
 
-    function _encodeCallData(
-        bytes4 functionSelector,
-        bytes32[] memory params
-    ) internal returns (bytes memory) {
+    function _encodeCallData(bytes4 functionSelector, bytes32[] memory params)
+        internal
+        returns (bytes memory)
+    {
         // 4 bytes for function selector
         bytes memory result = new bytes(4 + (params.length * 32));
 
         // Skip the first 32 bytes for the length
+        //solhint-disable-next-line no-inline-assembly
         assembly {
             mstore(add(result, 32), functionSelector)
         }
@@ -157,6 +153,7 @@ contract APYStrategyExecutor is Ownable {
         for (uint256 i = 0; i < params.length; i++) {
             bytes32 param = params[i];
             // Skip the first 36 bytes for length + function selector
+            //solhint-disable-next-line no-inline-assembly
             assembly {
                 mstore(add(result, add(36, mul(i, 32))), param)
             }
