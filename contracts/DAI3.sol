@@ -61,6 +61,15 @@ contract DAI3Strategy is APYStrategy("DAI3"), OneInchSwap {
         proportions[0] = 100;
         _setInputAssets(tokens, proportions);
         _enterMarkets();
+
+        uint256 flagDisableAllSplitSources = 0x20000000;
+        uint256 flagDisableAllWrapSources = 0x40000000;
+        uint256 flagDisableMooniswapAll = 0x8000000000000000;
+        // enable only Mooniswap
+        uint256 flags = flagDisableAllSplitSources +
+            flagDisableAllWrapSources +
+            flagDisableMooniswapAll;
+        setOneInchFlags(flags);
     }
 
     function setNumberOfBorrows(uint256 numBorrows) public onlyOwner {
