@@ -91,13 +91,13 @@ contract("LeveragedYieldFarm", async (accounts) => {
     );
     console.debug("");
 
-    blocksPerDay = 4 * 60 * 24;
-    for (i = 0; i < 7; i++) {
-      const futureBlockHeight = (await time.latestBlock()).addn(blocksPerDay);
-      await time.advanceBlockTo(futureBlockHeight);
-      console.debug(`       ... day ${i} passed.`);
-      await farm.rebalance({ from: deployer, gas: 5000000 });
-    }
+    numBlocksInPeriod = 4 * 60; // hour
+    const futureBlockHeight = (await time.latestBlock()).addn(
+      numBlocksInPeriod
+    );
+    await time.advanceBlockTo(futureBlockHeight);
+    console.debug(`       ... ${numBlocksInPeriod} blocks mined.`);
+    await farm.rebalance({ from: deployer, gas: 5000000 });
 
     await farm.closePosition({ from: deployer, gas: 2000000 });
 
