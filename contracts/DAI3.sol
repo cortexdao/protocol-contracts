@@ -9,13 +9,12 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
-import {APYStrategy} from "./APYStrategy.sol";
 import {CErc20} from "./CErc20.sol";
 import {Comptroller} from "./Comptroller.sol";
 import {OneInchSwap} from "./OneInchSwap.sol";
 
 
-contract DAI3Strategy is APYStrategy("DAI3"), OneInchSwap {
+contract DAI3Strategy is OneInchSwap {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using ABDKMath64x64 for *;
@@ -55,11 +54,6 @@ contract DAI3Strategy is APYStrategy("DAI3"), OneInchSwap {
     );
 
     constructor() public {
-        address[] memory tokens = new address[](1);
-        tokens[0] = _daiAddress;
-        uint256[] memory proportions = new uint256[](1);
-        proportions[0] = 100;
-        _setInputAssets(tokens, proportions);
         _enterMarkets();
 
         uint256 flagDisableAllSplitSources = 0x20000000;

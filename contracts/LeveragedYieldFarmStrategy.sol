@@ -18,7 +18,7 @@ import {OneInchSwap} from "./OneInchSwap.sol";
 import {DyDxFlashLoan} from "./DyDxFlashLoan.sol";
 
 
-contract LeveragedYieldFarm is IStrategy, OneInchSwap, DyDxFlashLoan, Ownable {
+contract LeveragedYieldFarm is Ownable, IStrategy, DyDxFlashLoan, OneInchSwap {
     using SafeMath for uint256;
     using ABDKMath64x64 for *;
     using SafeERC20 for IERC20;
@@ -58,12 +58,11 @@ contract LeveragedYieldFarm is IStrategy, OneInchSwap, DyDxFlashLoan, Ownable {
     uint256 private _positionAmount = 0;
 
     constructor() public {
-        _name = "LeveragedYieldFarm";
         _enterMarkets();
     }
 
     // solhint-disable-next-line no-empty-blocks
-    receive() external override payable {}
+    receive() external override(IStrategy, OneInchSwap) payable {}
 
     // Do not deposit all your DAI because you must pay flash loan fees
     // Always keep at least 1 DAI in the contract

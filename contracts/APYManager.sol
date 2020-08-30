@@ -29,7 +29,7 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
     ILiquidityPool private _pool;
     IStrategy private _strategy;
 
-    event StrategyChanged(address changer, string name, address strategy);
+    event StrategyChanged(address changer, address strategy);
     event PoolChanged(address changer, address pool);
 
     // solhint-disable-next-line no-empty-blocks
@@ -50,7 +50,7 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
 
     function setStrategy(address payable strategy) public onlyOwner {
         _strategy = IStrategy(strategy);
-        emit StrategyChanged(msg.sender, _strategy.name(), strategy);
+        emit StrategyChanged(msg.sender, strategy);
     }
 
     function setPool(address payable pool) public onlyOwner {

@@ -3,24 +3,8 @@ pragma solidity ^0.6.6;
 pragma experimental ABIEncoderV2;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
-import {
-    ReentrancyGuard
-} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {FixedPoint} from "solidity-fixedpoint/contracts/FixedPoint.sol";
 import {IOneSplit} from "./IOneSplit.sol";
-import {IStrategy, Asset} from "./APYStrategy.sol";
-import {ILiquidityPool} from "./APYLiquidityPool.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
-import {APYStrategy} from "./APYStrategy.sol";
-import {CErc20} from "./CErc20.sol";
-import {Comptroller} from "./Comptroller.sol";
 
 
 /**
@@ -28,10 +12,6 @@ import {Comptroller} from "./Comptroller.sol";
  *         that inherits this base contract.
  */
 contract OneInchSwap is Ownable {
-    using SafeMath for uint256;
-    using SafeERC20 for IERC20;
-    using ABDKMath64x64 for *;
-
     IOneSplit private _oneInch;
 
     uint256 private _oneInchParts = 10;
@@ -47,7 +27,7 @@ contract OneInchSwap is Ownable {
 
     /// @dev contract must be able to receive ETH
     // solhint-disable-next-line no-empty-blocks
-    receive() external payable {}
+    receive() external payable virtual {}
 
     function setOneInchAddress(address oneInch) public onlyOwner {
         _oneInch = IOneSplit(oneInch);
