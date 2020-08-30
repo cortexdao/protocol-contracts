@@ -87,3 +87,10 @@ contract OneInchSwap is Ownable {
         return receivedAmount;
     }
 }
+
+
+contract OneInchSwapTestProxy is OneInchSwap {
+    function swap(IERC20 fromToken, IERC20 destToken, uint256 amount) external returns (uint256) {
+        return _swap(fromToken, destToken, amount);
+    }
+}

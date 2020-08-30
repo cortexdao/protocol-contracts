@@ -17,7 +17,7 @@ const {
   undoErc20,
 } = require("./utils");
 
-const APYManager = artifacts.require("APYManagerTestProxy");
+const OneInchSwap = artifacts.require("OneInchSwapTestProxy");
 const IOneSplit = artifacts.require("IOneSplit");
 const IMintableERC20 = artifacts.require("IMintableERC20");
 
@@ -55,7 +55,7 @@ const CURVE_ONLY = DISABLE_ALL.add(CURVE_ALL);
 
 const timeout = 35000; // in millis
 
-contract("1inch", async (accounts) => {
+contract("OneSplit", async (accounts) => {
   const [deployer, wallet, other] = accounts;
 
   let oneInch;
@@ -164,32 +164,32 @@ contract("1inch", async (accounts) => {
   }).timeout(timeout);
 });
 
-contract("APYManager", async (accounts) => {
+contract("OneInchSwap", async (accounts) => {
   const [deployer, wallet, other] = accounts;
 
-  let apyManager;
+  let oneInchSwap;
 
   beforeEach(async () => {
-    apyManager = await APYManager.new();
-    await apyManager.setOneInchAddress(ONE_INCH_ADDRESS, { from: deployer });
+    oneInchSwap = await OneInchSwap.new();
+    await oneInchSwap.setOneInchAddress(ONE_INCH_ADDRESS, { from: deployer });
   });
 
   it("can swap ETH for ERC20", async () => {
     // manager needs ether since we swap ETH for DAI
-    send.ether(wallet, apyManager.address, ether("1"));
+    send.ether(wallet, oneInchSwap.address, ether("1"));
 
     const fromToken = constants.ZERO_ADDRESS; // ETH
     const destToken = "0x6B175474E89094C44Da98b954EedeAC495271d0F"; // DAI
     const amount = ether("1");
 
-    await apyManager.setOneInchFlags(UNISWAP_V1_ONLY, { from: deployer });
+    await oneInchSwap.setOneInchFlags(UNISWAP_V1_ONLY, { from: deployer });
 
     try {
-      await apyManager.swap(fromToken, destToken, amount);
+      await oneInchSwap.swap(fromToken, destToken, amount);
     } catch {
       assert.fail("Calling swap on APYManager failed.");
     }
-    const toBalance = await getERC20Balance(destToken, apyManager.address);
+    const toBalance = await getERC20Balance(destToken, oneInchSwap.address);
     expect(toBalance).to.bignumber.gt("0", "Did not receive any DAI");
   }).timeout(timeout);
 
@@ -201,23 +201,23 @@ contract("APYManager", async (accounts) => {
 
     await mintERC20Tokens(
       fromToken,
-      apyManager.address,
+      oneInchSwap.address,
       DAI_MINTER_ADDRESS,
       amount
     );
-    await getERC20Balance(fromToken, apyManager.address);
-    await getERC20Balance(destToken, apyManager.address);
+    await getERC20Balance(fromToken, oneInchSwap.address);
+    await getERC20Balance(destToken, oneInchSwap.address);
 
-    await apyManager.setOneInchFlags(UNISWAP_V1_ONLY, { from: deployer });
+    await oneInchSwap.setOneInchFlags(UNISWAP_V1_ONLY, { from: deployer });
 
     try {
-      await apyManager.swap(fromToken, destToken, amount);
+      await oneInchSwap.swap(fromToken, destToken, amount);
     } catch (error) {
       console.log(error);
       assert.fail("Calling swap on APYManager failed.");
     }
-    await getERC20Balance(fromToken, apyManager.address);
-    const toBalance = await getERC20Balance(destToken, apyManager.address);
+    await getERC20Balance(fromToken, oneInchSwap.address);
+    const toBalance = await getERC20Balance(destToken, oneInchSwap.address);
     expect(toBalance).to.bignumber.gt("0", "Did not receive any USDC");
     // converting from DAI to USDC shouldn't change amount much
     const tolerance = "10";
