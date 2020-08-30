@@ -15,8 +15,8 @@ const { expect } = require("chai");
 const APYStrategyExecutor = artifacts.require("APYStrategyExecutor");
 const OneInch = artifacts.require("IOneSplit");
 const DAI = artifacts.require("IERC20");
-const cDAI = artifacts.require("cDAI");
-const COMP = artifacts.require("COMP");
+const cDAI = artifacts.require("CErc20");
+const COMP = artifacts.require("IERC20");
 const Comptroller = artifacts.require("Comptroller");
 // Interfaces
 const IOneInch = new ethers.utils.Interface(OneInch.abi);

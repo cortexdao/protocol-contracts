@@ -29,4 +29,5 @@ mkdir -p .ganache/logs
 ganache-cli --networkId=10312008 \
     --deterministic --fork="${NODE_URL}" \
     --unlock "${unlocked_arg}" \
+    --gasLimit 8000000 \
     2>&1 | tee .ganache/logs/$(date +%Y-%m-%d-%H:%M:%S).log

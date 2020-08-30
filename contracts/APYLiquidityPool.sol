@@ -11,8 +11,9 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {FixedPoint} from "solidity-fixedpoint/contracts/FixedPoint.sol";
 import {APT} from "./APT.sol";
+import {ILiquidityPool} from "./ILiquidityPool.sol";
 
-contract APYLiquidityPool is Ownable, ReentrancyGuard {
+contract APYLiquidityPool is ILiquidityPool, Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using FixedPoint for *;
     using SafeERC20 for IERC20;
@@ -21,6 +22,7 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
     uint192 internal constant _MAX_UINT192 = uint192(-1);
 
     APT public apt; // APT token
+    address public manager;
 
     event DepositedAPT(
         address indexed sender,
@@ -32,15 +34,16 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
         uint256 tokenAmount,
         uint256 ethValue
     );
+    event PoolDrained(address sender, uint256 amount);
 
     // solhint-disable-next-line no-empty-blocks
-    receive() external payable {}
+    receive() external override payable {}
 
     /**
      * @notice Mint corresponding amount of APT tokens for sent ETH value
      * @dev If no APT tokens have been minted yet, fallback to a fixed ratio.
      */
-    function addLiquidity() external payable nonReentrant {
+    function addLiquidity() external override payable nonReentrant {
         require(msg.value > 0, "Pool/insufficient-value");
 
         uint256 totalValue = address(this).balance.sub(msg.value);
@@ -54,7 +57,7 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
      * @notice Redeems an amount of APT tokens for its ETH value
      * @param tokenAmount The amount of APT tokens to redeem
      */
-    function redeem(uint256 tokenAmount) external nonReentrant {
+    function redeem(uint256 tokenAmount) external override nonReentrant {
         require(tokenAmount > 0, "Pool/redeem-positive-amount");
         require(
             tokenAmount <= apt.balanceOf(msg.sender),
@@ -69,9 +72,25 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
         emit RedeemedAPT(msg.sender, tokenAmount, ethValue);
     }
 
-    // called by admin on deployment
+    /**
+     * @notice Sends all ETH in the pool to the transaction sender.
+     *         Should only be callable by the manager.
+     */
+    function drain() external override onlyManager returns (uint256) {
+        uint256 unusedAmount = unused();
+        msg.sender.transfer(unusedAmount);
+        emit PoolDrained(msg.sender, unusedAmount);
+        return unusedAmount;
+    }
+
+    /// @dev called by admin during deployment
     function setTokenAddress(address tokenAddress) public onlyOwner {
         apt = APT(tokenAddress);
+    }
+
+    /// @dev called by admin during deployment
+    function setManagerAddress(address _manager) public onlyOwner {
+        manager = _manager;
     }
 
     function calculateMintAmount(uint256 ethValue)
@@ -86,7 +105,7 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
     /**
      * @notice Get the ETH value of an amount of APT tokens
      * @param amount The amount of APT tokens
-     * @return The total ETH value of the APT tokens
+     * @return uint256 The total ETH value of the APT tokens
      */
     function getEthValue(uint256 amount) public view returns (uint256) {
         FixedPoint.uq192x64 memory shareOfAPT = _getShareOfAPT(amount);
@@ -97,10 +116,21 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
         return shareOfAPT.mul(uint192(totalValue)).decode();
     }
 
-    // minted amount should be in the same ratio to total token supply as
-    // ETH sent is to contract's ETH balance, i.e.:
-    //         mint amount / total supply (before deposit)
-    //         = eth value sent / total eth value (before deposit)
+    /**
+     * @notice Returns the deposited capital not yet deployed to a strategy.
+     * @return uint256 The ETH balance of the pool.
+     */
+    function unused() public override view returns (uint256) {
+        return address(this).balance;
+    }
+
+    /**
+     *  @notice minted amount should be in the same ratio to total token
+     *          supply as ETH sent is to contract's ETH balance, i.e.:
+     *
+     *          mint amount / total supply (before deposit)
+     *          = eth value sent / total eth value (before deposit)
+     */
     function _calculateMintAmount(uint256 ethValue, uint256 totalValue)
         internal
         view
@@ -138,8 +168,17 @@ contract APYLiquidityPool is Ownable, ReentrancyGuard {
         );
         return shareOfAPT;
     }
+
+    modifier onlyManager {
+        require(msg.sender == manager, "Only manager can call");
+        _;
+    }
 }
 
+/**
+ * @dev Proxy contract to test internal variables and functions
+ *      Should not be used other than in test files!
+ */
 contract APYLiquidityPoolTestProxy is APYLiquidityPool {
     uint256 public defaultTokenToEthFactor = APYLiquidityPool
         ._DEFAULT_TOKEN_TO_ETH_FACTOR;

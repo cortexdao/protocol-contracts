@@ -821,6 +821,11 @@ abbrev@1.0.x:
   resolved "https://registry.yarnpkg.com/abbrev/-/abbrev-1.0.9.tgz#91b4792588a7738c25f35dd6f63752a2f8776135"
   integrity sha1-kbR5JYinc4wl813W9jdSovh3YTU=
 
+abdk-libraries-solidity@^2.3.0:
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/abdk-libraries-solidity/-/abdk-libraries-solidity-2.3.0.tgz#67720075ee63824089760952b5c810e677bf35a2"
+  integrity sha512-mSxoRD1S22cj6vpYOCWcaf0MMEG2ZqphQeRy2PEzemmUr0Om2sVBYbpQOHl0diA+4AUGERAGcjS3Z6MvcjRIow==
+
 abort-controller@^3.0.0:
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/abort-controller/-/abort-controller-3.0.0.tgz#eaf54d53b62bae4138e809ca225c8439a6efb392"
@@ -3157,10 +3162,10 @@ ganache-cli@6.9.0:
     source-map-support "0.5.12"
     yargs "13.2.4"
 
-ganache-cli@^6.10.1:
-  version "6.10.1"
-  resolved "https://registry.yarnpkg.com/ganache-cli/-/ganache-cli-6.10.1.tgz#6e083a92dba204d649c43d8823152bb9e2219807"
-  integrity sha512-3lpBxILtJBxkNVo+U8ad2qbkzB6nZ53gXhXH6NiS0Pauqur86rGbhXz6fNASjBosZm9iJ8Nr71fJd331QODFkQ==
+ganache-cli@v6.10.1-beta.2:
+  version "6.10.1-beta.2"
+  resolved "https://registry.yarnpkg.com/ganache-cli/-/ganache-cli-6.10.1-beta.2.tgz#72f104c484694adb3f15ef7a726824f13c0035b1"
+  integrity sha512-uekHgHTXNYUpmoScrGX3HP5gQ9vI9072RBEzEjnW4xAmHgtIdBkUOstmIr3b+qV4Fw5WMWwXk4J/D/PfgWHK3g==
   dependencies:
     ethereumjs-util "6.1.0"
     source-map-support "0.5.12"

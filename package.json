@@ -51,7 +51,7 @@
     "@nomiclabs/buidler-web3": "^1.3.4",
     "@openzeppelin/test-helpers": "^0.5.6",
     "dotenv": "^8.2.0",
-    "ganache-cli": "^6.10.1",
+    "ganache-cli": "v6.10.1-beta.2",
     "husky": "^4.2.5",
     "lint-staged": "^10.2.11",
     "solhint": "^3.2.0",
@@ -59,6 +59,8 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^3.0.1",
+    "abdk-libraries-solidity": "^2.3.0",
+    "solidity-fixedpoint": "^1.0.1",
     "solidity-fixedpoint": "^1.0.1",
     "ethers": "^5.0.3"
   }
