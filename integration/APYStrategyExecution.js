@@ -11,7 +11,7 @@ const {
   expectRevert,
 } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
-// Contracts
+// Imports
 const APYStrategyExecutor = artifacts.require("APYStrategyExecutor");
 const OneInch = artifacts.require("IOneSplit");
 const DAI = artifacts.require("IERC20");
@@ -29,7 +29,7 @@ const getExpectedReturn = IOneInch.getSighash("getExpectedReturn");
 const swap = IOneInch.getSighash("swap");
 const dai_approve = IDAI.getSighash("approve");
 const mint = IcDAI.getSighash("mint");
-const redeem = IDAI.getSighash("redeem");
+const redeem = IcDAI.getSighash("redeem");
 const borrowBalanceCurrent = IcDAI.getSighash("borrowBalanceCurrent");
 const borrowRatePerBlock = IcDAI.getSighash("borrowRatePerBlock");
 const borrow = IcDAI.getSighash("borrow");
@@ -39,7 +39,6 @@ const comp_approve = ICOMP.getSighash("approve")
 const enterMarkets = IComptroller.getSighash("enterMarkets");
 const getAccountLiquidity = IComptroller.getSighash("getAccountLiquidity");
 const claimComp = IComptroller.getSighash("claimComp");
-// Function Encodings
 
 // const executeB = AInterface.encodeFunctionData('executeB', [100])
 // const executeMultiParam = AInterface.encodeFunctionData('executeMultiParam', [1, 1, 1])
@@ -50,11 +49,29 @@ const claimComp = IComptroller.getSighash("claimComp");
 //   10,
 //   0
 // ]
-const e_cDAI_address = abiCoder.encode(['address'], cDAI.address);
-const amount = abiCoder.encode(['uint256'], [1000]);
-const borrowAmount = abiCoder.encode(['uint256'], [1]);
+
+let dai_contract
+let cDAI_contract
+let comp_contract
+let comptroller_contract
+let e_cDAI_address
+let amount
+let borrowAmount
 
 contract("APYStrategyExecution", async (accounts) => {
+  before("Setup", async () => {
+    // Contracts
+    dai_contract = await DAI.at('0x6b175474e89094c44da98b954eedeac495271d0f')
+    cDAI_contract = await cDAI.at('0x5d3a536e4d6dbd6114cc1ead35777bab948e3643')
+    comp_contract = await COMP.at('0xc00e94cb662c3520282e6f5717214004a7f26888')
+    comptroller_contract = await Comptroller.at('0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b')
+
+    // Function Encodings
+    e_cDAI_address = abiCoder.encode(['address'], [cDAI_contract.address]);
+    amount = abiCoder.encode(['uint256'], [1000]);
+    borrowAmount = abiCoder.encode(['uint256'], [1]);
+  })
+
   describe('Example Execution', async () => {
     it('Execute Steps', async () => {
 
@@ -62,9 +79,9 @@ contract("APYStrategyExecution", async (accounts) => {
       const exec = await APYStrategyExecutor.new()
       const trx = await exec.execute(
         [
-          [DAI.address, dai_approve, [], [e_cDAI_address, amount], []],
-          [cDAI.address, mint, [], [amount], []],
-          [cDAI.address, borrow, [], [borrowAmount], []],
+          [dai_contract.address, dai_approve, [], [e_cDAI_address, amount], []]
+          [cDAI_contract.address, mint, [], [amount], []],
+          [cDAI_contract.address, borrow, [], [borrowAmount], []],
         ]
       )
 
