@@ -20,6 +20,7 @@ const {
 const IOneSplit = artifacts.require("IOneSplit");
 const Comptroller = artifacts.require("Comptroller");
 const CErc20 = artifacts.require("CErc20");
+const IERC20 = artifacts.require("IERC20");
 const IMintableERC20 = artifacts.require("IMintableERC20");
 const DAI3Strategy = artifacts.require("DAI3Strategy");
 
@@ -34,6 +35,7 @@ const DAI_MINTER_ADDRESS = "0x9759A6Ac90977b93B58547b4A71c78317f391A28"; // MCD_
 
 const COMPTROLLER_ADDRESS = "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b";
 const CDAI_ADDRESS = "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643";
+const COMP_ADDRESS = "0xc00e94Cb662C3520282E6f5717214004A7f26888";
 
 const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 const BAL_ADDRESS = "0xba100000625a3754423978a60c9317c58a424e3D";
@@ -51,18 +53,19 @@ console.debug = (...args) => {
 contract("DAI3 Strategy", async (accounts) => {
   const [deployer, wallet, other] = accounts;
 
-  let oneInch;
   let comptroller;
   let cDaiToken;
   let dai3Strategy;
   let daiToken;
 
   beforeEach(async () => {
-    oneInch = await IOneSplit.at(ONE_INCH_ADDRESS);
     comptroller = await Comptroller.at(COMPTROLLER_ADDRESS);
     cDaiToken = await CErc20.at(CDAI_ADDRESS);
     daiToken = await IMintableERC20.at(DAI_ADDRESS);
+    compToken = await IERC20.at(COMP_ADDRESS);
+
     dai3Strategy = await DAI3Strategy.new();
+    await dai3Strategy.setOneInchAddress(ONE_INCH_ADDRESS);
 
     await mintERC20Tokens(
       DAI_ADDRESS,
@@ -70,9 +73,6 @@ contract("DAI3 Strategy", async (accounts) => {
       DAI_MINTER_ADDRESS,
       dai("10000")
     );
-
-    const daiBalance = await daiToken.balanceOf(dai3Strategy.address);
-    console.debug("       --->  DAI balance:", daiBalance.toString() / 1e18);
   });
 
   it("should mint cDAI and borrow DAI", async () => {
@@ -89,8 +89,9 @@ contract("DAI3 Strategy", async (accounts) => {
     const amount = dai("100");
     console.debug("       --->  DAI supply:", amount.toString() / 1e18);
     const numBorrows = 15;
+    await dai3Strategy.setNumberOfBorrows(numBorrows);
     console.debug("       --->  times borrowed:", numBorrows.toString());
-    const receipt = await dai3Strategy.borrowDai(amount, numBorrows, {
+    const receipt = await dai3Strategy.borrowDai(amount, {
       from: wallet,
       gas: 8000000,
     });
@@ -121,14 +122,34 @@ contract("DAI3 Strategy", async (accounts) => {
       );
       console.debug("");
     }
-    const borrowBalance = await cDaiToken.borrowBalanceCurrent.call(
+    const borrows = await cDaiToken.borrowBalanceCurrent.call(
       dai3Strategy.address
     );
-    console.debug(
-      "       --->  borrow balance:",
-      borrowBalance.toString() / 1e18
-    );
+    console.debug("       --->  borrow balance:", borrows.toString() / 1e18);
     console.debug("");
+
+    await dai3Strategy.rebalance({
+      from: wallet,
+      gas: 12000000,
+    });
+    const borrowsAfterRebalance = await cDaiToken.borrowBalanceCurrent.call(
+      dai3Strategy.address
+    );
+    // FIXME: this will be true always because "borrows" will gain interest
+    // after ganache mines one block for the rebalance.
+    expect(borrowsAfterRebalance).to.be.bignumber.gt(borrows);
+
+    await dai3Strategy.repayBorrow();
+    daiBalance = await daiToken.balanceOf(dai3Strategy.address);
+    expect(await cDaiToken.balanceOf(dai3Strategy.address)).to.bignumber.equal(
+      "0"
+    );
+    expect(await daiToken.balanceOf(dai3Strategy.address)).to.bignumber.equal(
+      "0"
+    );
+    expect(await compToken.balanceOf(dai3Strategy.address)).to.bignumber.equal(
+      "0"
+    );
   }).timeout(timeout);
 
   const getEvent = (receipt, eventName) => {
