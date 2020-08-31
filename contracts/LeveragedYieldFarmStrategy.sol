@@ -18,7 +18,12 @@ import {OneInchSwap} from "./OneInchSwap.sol";
 import {DyDxFlashLoan} from "./DyDxFlashLoan.sol";
 
 
-contract LeveragedYieldFarm is Ownable, IStrategy, DyDxFlashLoan, OneInchSwap {
+contract LeveragedYieldFarmStrategy is
+    Ownable,
+    IStrategy,
+    DyDxFlashLoan,
+    OneInchSwap
+{
     using SafeMath for uint256;
     using ABDKMath64x64 for *;
     using SafeERC20 for IERC20;
