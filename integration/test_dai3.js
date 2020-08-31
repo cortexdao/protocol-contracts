@@ -7,6 +7,7 @@ const {
   constants,
   expectEvent,
   expectRevert,
+  time,
 } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
 const {
@@ -127,6 +128,13 @@ contract("DAI3 Strategy", async (accounts) => {
     );
     console.debug("       --->  borrow balance:", borrows.toString() / 1e18);
     console.debug("");
+
+    numBlocksInPeriod = 4 * 60; // hour
+    const futureBlockHeight = (await time.latestBlock()).addn(
+      numBlocksInPeriod
+    );
+    await time.advanceBlockTo(futureBlockHeight);
+    console.debug(`       ... ${numBlocksInPeriod} blocks mined.`);
 
     await dai3Strategy.rebalance({
       from: wallet,
