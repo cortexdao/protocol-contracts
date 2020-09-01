@@ -19,7 +19,7 @@
     "test": "npx buidler test",
     "lint": "npx solhint contracts/**/*.sol",
     "ganache": "ganache-cli",
-    "fork:mainnet": "./ganache/ganache_start.sh",
+    "fork:mainnet": "ganache-cli -u \"$(node get_unlocked_addresses.js)\" -f $(node get_infura.js) -m \"$(node get_mnemonic.js)\" ",
     "integration": "npx buidler --network ganache test ./integration/*.js"
   },
   "husky": {
