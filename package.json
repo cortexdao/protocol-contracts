@@ -13,14 +13,14 @@
     "config"
   ],
   "scripts": {
-    "check": "npm run lint",
+    "check": "yarn lint",
     "clean": "buidler clean",
     "compile": "buidler compile",
-    "test": "npx buidler test",
-    "lint": "npx solhint contracts/**/*.sol",
+    "test": "buidler test",
+    "lint": "solhint contracts/**/*.sol",
     "ganache": "ganache-cli",
     "fork:mainnet": "ganache-cli -u \"$(node scripts/unlocked_addresses.js)\" -f $(node scripts/infura.js) -m \"$(node scripts/mnemonic.js)\" ",
-    "integration": "npx buidler --network ganache test ./integration/*.js"
+    "integration": "buidler --network ganache test ./integration/*.js"
   },
   "husky": {
     "hooks": {
