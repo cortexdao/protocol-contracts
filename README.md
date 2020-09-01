@@ -6,27 +6,28 @@ TODOs:
 
 ## Install Dependencies
 
-`npm install`
+`yarn install`
 
 ## Compile Contracts
 
-`npx buidler compile`
+`yarn compile`
 
 ## Run Tests
 
 ### Unit tests
-`npx buidler test` or `npm test`
+`yarn test`
 
 ### Integration tests
 In one console:
 
-`npm run ganache`
+`yarn fork:mainnet`
 
 and in another console:
 
-`npm run integration`
+`yarn integration`
 
 Comments:
-- ganache script runs a forked mainnet using `ganache-cli`.
+- Forked mainnet uses `ganache-cli` with variables read from `.env` file.
+  Get the `.env` values from a teammate.
 - the timeout for tests may need to be adjusted; the `timeout`
-  variable is near the top of `integration/test_1inch.js`
+  variable is near the top of the `integration/*.js` files.
