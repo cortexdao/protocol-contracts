@@ -74,10 +74,18 @@ contract("APYStrategyExecution", async (accounts) => {
     // Function Encodings
     e_cDAI_address = abiCoder.encode(['address'], [cDAI_contract.address]);
     e_amount = abiCoder.encode(['uint256'], [amount]);
+    e_owner = abiCoder.encode(['address'], [owner]);
     borrowAmount = abiCoder.encode(['uint256'], [1]);
 
     // mint ourselves DAI
     await mintERC20Tokens(dai_contract.address, owner, DAI_MINTER, amount);
+
+    let dai_val = await dai_contract.balanceOf.call(owner)
+    console.log(dai_val.toNumber());
+
+    let cdai_val = await cDAI_contract.balanceOf.call(owner)
+    console.log(cdai_val.toNumber());
+
   })
 
   describe('Example Execution', async () => {
@@ -88,7 +96,9 @@ contract("APYStrategyExecution", async (accounts) => {
       const trx = await exec.execute(
         [
           [dai_contract.address, dai_approve, [], [e_cDAI_address, e_amount], []],
-          [cDAI_contract.address, mint, [], [e_amount], []]
+          [dai_contract.address, balanceOf, [], [e_owner], []]
+          [cDAI_contract.address, balanceOf, [], [e_owner], []]
+          // [cDAI_contract.address, mint, [], [e_amount], []]
           // [cDAI_contract.address, borrow, [], [borrowAmount], []],
         ],
         { from: owner }
