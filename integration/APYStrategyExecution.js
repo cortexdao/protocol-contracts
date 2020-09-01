@@ -1,6 +1,7 @@
 const { ethers, web3, artifacts, contract } = require("@nomiclabs/buidler");
 const { defaultAbiCoder: abiCoder } = ethers.utils
 const BigNumber = ethers.BigNumber
+const { mintERC20Tokens } = require("./utils.js")
 const {
   BN,
   ether,
@@ -53,12 +54,14 @@ const claimComp = IComptroller.getSighash("claimComp");
 
 contract("APYStrategyExecution", async (accounts) => {
   const [owner] = accounts
+  const DAI_MINTER = '0x9759A6Ac90977b93B58547b4A71c78317f391A28'
+  const amount = 1000
   let dai_contract
   let cDAI_contract
   let comp_contract
   let comptroller_contract
   let e_cDAI_address
-  let amount
+  let e_amount
   let borrowAmount
 
   before("Setup", async () => {
@@ -70,8 +73,11 @@ contract("APYStrategyExecution", async (accounts) => {
 
     // Function Encodings
     e_cDAI_address = abiCoder.encode(['address'], [cDAI_contract.address]);
-    amount = abiCoder.encode(['uint256'], [1000]);
+    e_amount = abiCoder.encode(['uint256'], [amount]);
     borrowAmount = abiCoder.encode(['uint256'], [1]);
+
+    // mint ourselves DAI
+    await mintERC20Tokens(dai_contract.address, owner, DAI_MINTER, amount);
   })
 
   describe('Example Execution', async () => {
@@ -81,8 +87,8 @@ contract("APYStrategyExecution", async (accounts) => {
       const exec = await APYStrategyExecutor.new()
       const trx = await exec.execute(
         [
-          [dai_contract.address, dai_approve, [], [e_cDAI_address, amount], []],
-          [cDAI_contract.address, mint, [], [amount], []]
+          [dai_contract.address, dai_approve, [], [e_cDAI_address, e_amount], []],
+          [cDAI_contract.address, mint, [], [e_amount], []]
           // [cDAI_contract.address, borrow, [], [borrowAmount], []],
         ],
         { from: owner }
