@@ -13,14 +13,16 @@ artifacts/*
 coverage/
 coverage.json
 
-# Ganache
-.ganache
-
 # env files
 .env
 
 # npm
 .npmrc
+
+# yarn
+.yarnrc
+yarn-debug.log*
+yarn-error.log*
 
 # vim
 *.swp
