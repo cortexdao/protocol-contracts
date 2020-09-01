@@ -50,15 +50,17 @@ const claimComp = IComptroller.getSighash("claimComp");
 //   0
 // ]
 
-let dai_contract
-let cDAI_contract
-let comp_contract
-let comptroller_contract
-let e_cDAI_address
-let amount
-let borrowAmount
 
 contract("APYStrategyExecution", async (accounts) => {
+  const [owner] = accounts
+  let dai_contract
+  let cDAI_contract
+  let comp_contract
+  let comptroller_contract
+  let e_cDAI_address
+  let amount
+  let borrowAmount
+
   before("Setup", async () => {
     // Contracts
     dai_contract = await DAI.at('0x6b175474e89094c44da98b954eedeac495271d0f')
@@ -79,10 +81,11 @@ contract("APYStrategyExecution", async (accounts) => {
       const exec = await APYStrategyExecutor.new()
       const trx = await exec.execute(
         [
-          [dai_contract.address, dai_approve, [], [e_cDAI_address, amount], []]
-          // [cDAI_contract.address, mint, [], [amount], []],
+          [dai_contract.address, dai_approve, [], [e_cDAI_address, amount], []],
+          [cDAI_contract.address, mint, [], [amount], []]
           // [cDAI_contract.address, borrow, [], [borrowAmount], []],
-        ]
+        ],
+        { from: owner }
       )
 
       // expectEvent.inTransaction(trx.tx, exec, 'InitialCall', { a: '0x0000000000000000000000000000000000000000000000000000000000000001' })
