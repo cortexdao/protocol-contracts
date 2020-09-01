@@ -7,24 +7,16 @@ import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {
     ReentrancyGuard
 } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {FixedPoint} from "solidity-fixedpoint/contracts/FixedPoint.sol";
-import {IOneSplit} from "./IOneSplit.sol";
 import {IStrategy} from "./IStrategy.sol";
 import {ILiquidityPool} from "./APYLiquidityPool.sol";
 
 /**
  * @notice APY Manager executes the current strategy.  It must
  *         keep track of the strategy, transfer assets from the
- *         liquidity pool, and swap assets through DEXes whenever
- *         rebalancing is required.
+ *         liquidity pool to the strategy contract, and choose
+ *         strategy execution path.
  */
 contract APYManager is Ownable, ReentrancyGuard, Pausable {
-    using SafeMath for uint256;
-    using FixedPoint for *;
-    using SafeERC20 for IERC20;
 
     ILiquidityPool private _pool;
     IStrategy private _strategy;
@@ -32,28 +24,36 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
     event StrategyChanged(address changer, address strategy);
     event PoolChanged(address changer, address pool);
 
+    event StrategyEntered(address changer, uint256 amount);
+    event StrategyReinvested(address changer, uint256 amount);
+    event StrategyExited(address changer);
+
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
-    function enterStrategy() external {
-        //
+    function enterStrategy() external onlyOwner {
+        uint256 amount = _pool.drain();
+        _strategy.enter{value:amount}();
+        emit StrategyEntered(msg.sender, amount);
     }
 
-    function exitStrategy() external {
-        //
+    function exitStrategy() external onlyOwner {
+        _strategy.exit();
+        emit StrategyExited(msg.sender);
     }
 
-    function rebalance() external returns (uint256[] memory) {
+    function reinvestStrategy() external nonReentrant whenNotPaused {
         uint256 unusedAmount = _pool.drain();
-        _strategy.rebalance{value:unusedAmount}();
+        _strategy.reinvest{value:unusedAmount}();
+        emit StrategyReinvested(msg.sender, unusedAmount);
     }
 
-    function setStrategy(address payable strategy) public onlyOwner {
+    function setStrategyAddress(address payable strategy) public onlyOwner {
         _strategy = IStrategy(strategy);
         emit StrategyChanged(msg.sender, strategy);
     }
 
-    function setPool(address payable pool) public onlyOwner {
+    function setPoolAddress(address payable pool) public onlyOwner {
         _pool = ILiquidityPool(pool);
         emit PoolChanged(msg.sender, pool);
     }

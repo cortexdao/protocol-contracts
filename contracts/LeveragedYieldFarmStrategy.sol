@@ -28,6 +28,18 @@ contract LeveragedYieldFarmStrategy is
     using ABDKMath64x64 for *;
     using SafeERC20 for IERC20;
 
+    address public manager;
+
+    uint256 private _positionAmount = 0;
+
+    bytes32 private constant _INITIATE = keccak256("INITIATE");
+    bytes32 private constant _REBALANCE = keccak256("REBALANCE");
+    bytes32 private constant _CLOSE = keccak256("CLOSE");
+
+    uint256 private constant _DAYS_IN_PERIOD = 7;
+    uint256 private constant _ETH_MANTISSA = 10**18;
+    uint256 private constant _BLOCKS_PER_DAY = 4 * 60 * 24;
+
     // Mainnet Dai
     // https://etherscan.io/address/0x6b175474e89094c44da98b954eedeac495271d0f#readContract
     address private _daiAddress = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -49,18 +61,7 @@ contract LeveragedYieldFarmStrategy is
         0xc00e94Cb662C3520282E6f5717214004A7f26888
     );
 
-    // Deposit/Withdraw values
-    bytes32 private constant _INITIATE = keccak256("INITIATE");
-    bytes32 private constant _REBALANCE = keccak256("REBALANCE");
-    bytes32 private constant _CLOSE = keccak256("CLOSE");
-
-    uint256 private constant _DAYS_IN_PERIOD = 7;
-    uint256 private constant _ETH_MANTISSA = 10**18;
-    uint256 private constant _BLOCKS_PER_DAY = 4 * 60 * 24;
-
     event FlashLoan(address indexed _from, bytes32 indexed _id, uint256 _value);
-
-    uint256 private _positionAmount = 0;
 
     constructor() public {
         _enterMarkets();
@@ -69,20 +70,23 @@ contract LeveragedYieldFarmStrategy is
     // solhint-disable-next-line no-empty-blocks
     receive() external override(IStrategy, OneInchSwap) payable {}
 
-    // Do not deposit all your DAI because you must pay flash loan fees
-    // Always keep at least 1 DAI in the contract
-    function initiatePosition(uint256 initialAmount) public override onlyOwner {
+    function enter() external override payable onlyManager {
+        uint256 amount = _swap(IERC20(address(0)), _daiToken, msg.value);
+        _addToDaiPosition(amount);
+    }
+
+    function _addToDaiPosition(uint256 amount) internal {
         (uint256 totalAmount, uint256 loanAmount) = _calculateFlashLoanAmounts(
-            initialAmount
+            amount
         );
 
         bytes memory data = abi.encode(totalAmount, loanAmount, _INITIATE);
         _flashloan(_daiAddress, loanAmount, data);
 
-        _positionAmount = _positionAmount.add(initialAmount);
+        _positionAmount = _positionAmount.add(amount);
     }
 
-    function rebalance() external override payable onlyOwner {
+    function reinvest() external override payable onlyManager {
         _comptroller.claimComp(address(this));
         uint256 compAmount = _compToken.balanceOf(address(this));
 
@@ -92,11 +96,13 @@ contract LeveragedYieldFarmStrategy is
         // and initiate position using new DAI
         uint256 additionalAmount = _swap(_compToken, _daiToken, compAmount);
 
-        additionalAmount = additionalAmount.add(address(this).balance);
-        initiatePosition(additionalAmount);
+        additionalAmount = additionalAmount.add(
+            _swap(IERC20(address(0)), _daiToken, address(this).balance)
+        );
+        _addToDaiPosition(additionalAmount);
     }
 
-    function closePosition() external override onlyOwner {
+    function exit() external override onlyManager {
         (uint256 totalAmount, uint256 loanAmount) = _calculateFlashLoanAmounts(
             _positionAmount
         );
@@ -107,6 +113,11 @@ contract LeveragedYieldFarmStrategy is
         _comptroller.claimComp(address(this));
         _compToken.transfer(owner(), _compToken.balanceOf(address(this)));
         _daiToken.transfer(owner(), _daiToken.balanceOf(address(this)));
+    }
+
+    /// @dev called by admin during deployment
+    function setManagerAddress(address _manager) public onlyOwner {
+        manager = _manager;
     }
 
     function _callFunction(
@@ -155,11 +166,6 @@ contract LeveragedYieldFarmStrategy is
         return true;
     }
 
-    function withdrawToken(address _tokenAddress) public onlyOwner {
-        uint256 balance = IERC20(_tokenAddress).balanceOf(address(this));
-        IERC20(_tokenAddress).transfer(owner(), balance);
-    }
-
     function _enterMarkets() internal {
         address[] memory cTokens = new address[](1);
         cTokens[0] = _cDaiAddress;
@@ -200,5 +206,10 @@ contract LeveragedYieldFarmStrategy is
         uint256 loanAmount = totalAmount - initialAmount;
 
         return (totalAmount, loanAmount);
+    }
+
+    modifier onlyManager {
+        require(msg.sender == manager, "Only manager can call");
+        _;
     }
 }

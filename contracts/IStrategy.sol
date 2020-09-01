@@ -6,11 +6,11 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
 interface IStrategy {
-    function initiatePosition(uint256 amount) external;
+    function enter() external payable;
 
-    function rebalance() external payable;
+    function reinvest() external payable;
 
-    function closePosition() external;
+    function exit() external;
 
     receive() external payable;
 }

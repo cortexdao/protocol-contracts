@@ -204,6 +204,10 @@ contract("APYLiquidityPool", async (accounts) => {
     expect(endBalance.sub(startBalance)).to.bignumber.equal(ethValue);
   });
 
+  it("drain sends ETH if called by manager", async () => {});
+
+  it("drain reverts if called by non-manager", async () => {});
+
   // test helper to mock the total supply
   const mockTotalSupply = async (liquidityPoolContract, totalSupply) => {
     // Instantiate mock and make it return true for any invocation
