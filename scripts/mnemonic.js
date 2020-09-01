@@ -1,2 +1,3 @@
 require('dotenv').config()
-console.log(process.env.MNEMONIC)
+const mnemonic = process.env.MNEMONIC || ''
+process.stdout.write(mnemonic)

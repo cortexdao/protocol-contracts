@@ -19,7 +19,7 @@
     "test": "buidler test",
     "lint": "solhint contracts/**/*.sol",
     "ganache": "ganache-cli",
-    "fork:mainnet": "ganache-cli -u \"$(node scripts/unlocked_addresses.js)\" -f $(node scripts/infura.js) -m \"$(node scripts/mnemonic.js)\" ",
+    "fork:mainnet": "./scripts/fork_mainnet.sh",
     "integration": "buidler --network ganache test ./integration/*.js"
   },
   "husky": {

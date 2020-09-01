@@ -1,2 +1,4 @@
 require('dotenv').config()
-console.log(process.env.DAI_MINTER)
+// comma-separated list of unlock addresses
+const unlockAddresses = process.env.DAI_MINTER || ''
+process.stdout.write(unlockAddresses)

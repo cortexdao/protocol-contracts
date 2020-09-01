@@ -1,2 +1,5 @@
 require('dotenv').config()
-console.log('https://mainnet.infura.io/v3/' + process.env.INFURA_API_KEY)
+const apiKey = process.env.INFURA_API_KEY || ''
+if (apiKey) {
+    process.stdout.write('https://mainnet.infura.io/v3/' + apiKey)
+}
