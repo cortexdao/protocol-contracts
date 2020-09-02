@@ -23,6 +23,7 @@ const {
   CDAI_ADDRESS,
   COMP_ADDRESS,
   ONE_SPLIT_ADDRESS,
+  COMPTROLLER_ADDRESS,
 } = require("./constants");
 
 const APYManager = artifacts.require("APYManager");
@@ -63,7 +64,12 @@ contract("LeveragedYieldFarmStrategy", async (accounts) => {
 
     apt = await APT.new();
     pool = await APYLiquidityPool.new();
-    strategy = await LeveragedYieldFarmStrategy.new();
+    strategy = await LeveragedYieldFarmStrategy.new(
+      DAI_ADDRESS,
+      CDAI_ADDRESS,
+      COMP_ADDRESS,
+      COMPTROLLER_ADDRESS
+    );
     manager = await APYManager.new();
 
     await pool.setTokenAddress(apt.address);

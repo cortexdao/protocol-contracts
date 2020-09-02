@@ -32,38 +32,30 @@ contract LeveragedYieldFarmStrategy is
 
     uint256 private _positionAmount = 0;
 
-    bytes32 private constant _INITIATE = keccak256("INITIATE");
-    bytes32 private constant _REBALANCE = keccak256("REBALANCE");
-    bytes32 private constant _CLOSE = keccak256("CLOSE");
+    bytes32 private constant _ENTER = keccak256("ENTER");
+    bytes32 private constant _EXIT = keccak256("EXIT");
 
     uint256 private constant _DAYS_IN_PERIOD = 7;
     uint256 private constant _ETH_MANTISSA = 10**18;
     uint256 private constant _BLOCKS_PER_DAY = 4 * 60 * 24;
 
-    // Mainnet Dai
-    // https://etherscan.io/address/0x6b175474e89094c44da98b954eedeac495271d0f#readContract
-    address private _daiAddress = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    IERC20 private _daiToken = IERC20(_daiAddress);
-
-    // Mainnet cDai
-    // https://etherscan.io/address/0x5d3a536e4d6dbd6114cc1ead35777bab948e3643#readProxyContract
-    address private _cDaiAddress = 0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643;
-    CErc20 private _cDaiToken = CErc20(_cDaiAddress);
-
-    // Mainnet Comptroller
-    // https://etherscan.io/address/0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b#readProxyContract
-    address private _comptrollerAddress = 0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B;
-    Comptroller private _comptroller = Comptroller(_comptrollerAddress);
-
-    // COMP ERC-20 token
-    // https://etherscan.io/token/0xc00e94cb662c3520282e6f5717214004a7f26888
-    IERC20 private _compToken = IERC20(
-        0xc00e94Cb662C3520282E6f5717214004A7f26888
-    );
+    IERC20 private _daiToken;
+    IERC20 private _compToken;
+    CErc20 private _cDaiToken;
+    Comptroller private _comptroller;
 
     event FlashLoan(address indexed _from, bytes32 indexed _id, uint256 _value);
 
-    constructor() public {
+    constructor(
+        address daiAddress,
+        address cDaiAddress,
+        address compAddress,
+        address comptrollerAddress
+    ) public {
+        _daiToken = IERC20(daiAddress);
+        _cDaiToken = CErc20(cDaiAddress);
+        _compToken = IERC20(compAddress);
+        _comptroller = Comptroller(comptrollerAddress);
         _enterMarkets();
     }
 
@@ -80,8 +72,8 @@ contract LeveragedYieldFarmStrategy is
             amount
         );
 
-        bytes memory data = abi.encode(totalAmount, loanAmount, _INITIATE);
-        _flashloan(_daiAddress, loanAmount, data);
+        bytes memory data = abi.encode(totalAmount, loanAmount, _ENTER);
+        _flashloan(_daiToken, loanAmount, data);
 
         _positionAmount = _positionAmount.add(amount);
     }
@@ -107,8 +99,8 @@ contract LeveragedYieldFarmStrategy is
             _positionAmount
         );
 
-        bytes memory data = abi.encode(totalAmount, loanAmount, _CLOSE);
-        _flashloan(_daiAddress, loanAmount, data);
+        bytes memory data = abi.encode(totalAmount, loanAmount, _EXIT);
+        _flashloan(_daiToken, loanAmount, data);
 
         _comptroller.claimComp(address(this));
         _compToken.transfer(owner(), _compToken.balanceOf(address(this)));
@@ -128,20 +120,20 @@ contract LeveragedYieldFarmStrategy is
         (uint256 totalAmount, uint256 flashLoanAmount, bytes32 operation) = abi
             .decode(data, (uint256, uint256, bytes32));
 
-        if (operation == _INITIATE) {
-            _handleInitiate(totalAmount, flashLoanAmount);
-        } else if (operation == _CLOSE) {
-            _handleClose();
+        if (operation == _ENTER) {
+            _handleEnter(totalAmount, flashLoanAmount);
+        } else if (operation == _EXIT) {
+            _handleExit();
         } else {
             revert("Farm/unrecognized-operation");
         }
     }
 
-    function _handleInitiate(uint256 totalAmount, uint256 flashLoanAmount)
+    function _handleEnter(uint256 totalAmount, uint256 flashLoanAmount)
         internal
         returns (bool)
     {
-        _daiToken.approve(_cDaiAddress, totalAmount);
+        _daiToken.approve(address(_cDaiToken), totalAmount);
 
         _cDaiToken.mint(totalAmount);
 
@@ -150,7 +142,7 @@ contract LeveragedYieldFarmStrategy is
         return true;
     }
 
-    function _handleClose() internal returns (bool) {
+    function _handleExit() internal returns (bool) {
         uint256 balance;
 
         balance = _cDaiToken.borrowBalanceCurrent(address(this));
@@ -168,7 +160,7 @@ contract LeveragedYieldFarmStrategy is
 
     function _enterMarkets() internal {
         address[] memory cTokens = new address[](1);
-        cTokens[0] = _cDaiAddress;
+        cTokens[0] = address(_cDaiToken);
         uint256[] memory errors = _comptroller.enterMarkets(cTokens);
         if (errors[0] != 0) {
             revert("Comptroller.enterMarkets failed.");
@@ -177,7 +169,7 @@ contract LeveragedYieldFarmStrategy is
 
     function _calculateBorrowFactor() internal returns (int128) {
         (, uint256 collateralFactorMantissa) = _comptroller.markets(
-            _cDaiAddress
+            address(_cDaiToken)
         );
         int128 collateralFactor = collateralFactorMantissa.divu(_ETH_MANTISSA);
 
@@ -203,7 +195,7 @@ contract LeveragedYieldFarmStrategy is
         uint256 totalAmount = 1.fromUInt().sub(borrowFactor).inv().mulu(
             initialAmount
         );
-        uint256 loanAmount = totalAmount - initialAmount;
+        uint256 loanAmount = totalAmount.sub(initialAmount);
 
         return (totalAmount, loanAmount);
     }

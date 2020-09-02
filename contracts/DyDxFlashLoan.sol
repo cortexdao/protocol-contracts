@@ -109,11 +109,11 @@ abstract contract DyDxFlashLoan is Structs {
     // the DyDx will call `callFunction(address sender, Info memory accountInfo, bytes memory data) public`
     // after during `operate` call
     function _flashloan(
-        address token,
+        IERC20 token,
         uint256 amount,
         bytes memory data
     ) internal {
-        IERC20(token).approve(address(_pool), amount + 1);
+        token.approve(address(_pool), amount + 1);
         Info[] memory infos = new Info[](1);
         ActionArgs[] memory args = new ActionArgs[](3);
 
@@ -129,7 +129,7 @@ abstract contract DyDxFlashLoan is Structs {
         withdraw.actionType = ActionType.Withdraw;
         withdraw.accountId = 0;
         withdraw.amount = wamt;
-        withdraw.primaryMarketId = tokenToMarketId(token);
+        withdraw.primaryMarketId = tokenToMarketId(address(token));
         withdraw.otherAddress = address(this);
 
         args[0] = withdraw;
@@ -152,7 +152,7 @@ abstract contract DyDxFlashLoan is Structs {
         deposit.actionType = ActionType.Deposit;
         deposit.accountId = 0;
         deposit.amount = damt;
-        deposit.primaryMarketId = tokenToMarketId(token);
+        deposit.primaryMarketId = tokenToMarketId(address(token));
         deposit.otherAddress = address(this);
 
         args[2] = deposit;
