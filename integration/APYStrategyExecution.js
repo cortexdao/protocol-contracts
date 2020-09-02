@@ -96,10 +96,9 @@ contract("APYStrategyExecution", async (accounts) => {
       const trx = await exec.execute(
         [
           [dai_contract.address, dai_approve, [], [e_cDAI_address, e_amount], []],
-          [dai_contract.address, balanceOf, [], [e_owner], []]
-          [cDAI_contract.address, balanceOf, [], [e_owner], []]
-          // [cDAI_contract.address, mint, [], [e_amount], []]
-          // [cDAI_contract.address, borrow, [], [borrowAmount], []],
+          [cDAI_contract.address, balanceOf, [], [e_owner], []],
+          [cDAI_contract.address, mint, [], [e_amount], []],
+          [cDAI_contract.address, borrow, [], [borrowAmount], []]
         ],
         { from: owner }
       )
