@@ -41,10 +41,7 @@ contract APYStrategyExecutor is Ownable {
                 );
 
                 // execute
-                returnData = _delegate(
-                    executionSteps[i].target,
-                    functionCallData
-                );
+                returnData = _call(executionSteps[i].target, functionCallData);
             } else {
                 bytes32[] memory functionParams = executionSteps[i]
                     .functionParams;
@@ -87,10 +84,7 @@ contract APYStrategyExecutor is Ownable {
                 );
 
                 //execute
-                returnData = _delegate(
-                    executionSteps[i].target,
-                    functionCallData
-                );
+                returnData = _call(executionSteps[i].target, functionCallData);
             }
         }
     }
@@ -182,6 +176,30 @@ contract APYStrategyExecutor is Ownable {
                 }
             } else {
                 revert("DELEGATECALL_FAILED");
+            }
+        }
+    }
+
+    function _call(address target, bytes memory data)
+        private
+        returns (bytes memory)
+    {
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, bytes memory returndata) = target.call(data);
+        if (success) {
+            return returndata;
+        } else {
+            // Look for revert reason and bubble it up if present
+            if (returndata.length > 0) {
+                // The easiest way to bubble the revert reason is using memory via assembly
+
+                // solhint-disable-next-line no-inline-assembly
+                assembly {
+                    let returndata_size := mload(returndata)
+                    revert(add(32, returndata), returndata_size)
+                }
+            } else {
+                revert("CALL_FAILED");
             }
         }
     }
