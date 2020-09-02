@@ -204,9 +204,37 @@ contract("APYLiquidityPool", async (accounts) => {
     expect(endBalance.sub(startBalance)).to.bignumber.equal(ethValue);
   });
 
-  it("drain sends ETH if called by manager", async () => {});
+  it("drain sends ETH if called by manager", async () => {
+    // setup pool with ETH
+    await send.ether(wallet, apyLiquidityPool.address, ether("1.75"));
+    const poolBalance = await balance.current(apyLiquidityPool.address);
 
-  it("drain reverts if called by non-manager", async () => {});
+    // setup wallet as manager and track its balance
+    const tracker = await balance.tracker(wallet);
+    await apyLiquidityPool.setManagerAddress(wallet);
+
+    try {
+      await apyLiquidityPool.drain({ from: wallet, gasPrice: 0 });
+    } catch {
+      assert.fail("Manager should be able to call drain function.");
+    }
+    expect(await balance.current(apyLiquidityPool.address)).to.bignumber.equal(
+      "0",
+      "Pool should have no ETH."
+    );
+    expect(await (await tracker).delta()).to.bignumber.equal(
+      poolBalance,
+      "Wallet balance should increase by pool balance."
+    );
+  });
+
+  it("drain reverts if called by non-manager", async () => {
+    await apyLiquidityPool.setManagerAddress(wallet);
+    await expectRevert(
+      apyLiquidityPool.drain({ from: other }),
+      "Only manager can call"
+    );
+  });
 
   // test helper to mock the total supply
   const mockTotalSupply = async (liquidityPoolContract, totalSupply) => {
