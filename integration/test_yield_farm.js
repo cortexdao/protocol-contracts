@@ -24,11 +24,12 @@ const IMintableERC20 = artifacts.require("IMintableERC20");
 const IERC20 = artifacts.require("IERC20");
 const CErc20 = artifacts.require("CErc20");
 
-// https://changelog.makerdao.com/releases/mainnet/latest/contracts.json
-const DAI_ADDRESS = "0x6B175474E89094C44Da98b954EedeAC495271d0F"; // MCD_DAI
-const DAI_MINTER_ADDRESS = "0x9759A6Ac90977b93B58547b4A71c78317f391A28"; // MCD_JOIN_DAI
-const CDAI_ADDRESS = "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643";
-const COMP_ADDRESS = "0xc00e94Cb662C3520282E6f5717214004A7f26888";
+const {
+  DAI_ADDRESS,
+  DAI_MINTER_ADDRESS,
+  CDAI_ADDRESS,
+  COMP_ADDRESS,
+} = require("./constants");
 
 const timeout = 960000; // in millis
 const debug = true;

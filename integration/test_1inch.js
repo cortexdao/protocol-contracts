@@ -21,22 +21,12 @@ const OneInchSwap = artifacts.require("OneInchSwapTestProxy");
 const IOneSplit = artifacts.require("IOneSplit");
 const IMintableERC20 = artifacts.require("IMintableERC20");
 
-/* 
-These contracts move around with some frequency.  If you run into a
-"no code at <address>" error, you should double-check these etherscan
-urls for the versions of OneSplitAudit:
-
-latest version: https://etherscan.io/address/1split.eth
-beta version: https://etherscan.io/address/1proto.eth
-*/
-const ONE_INCH_ADDRESS = "0x50FDA034C0Ce7a8f7EFDAebDA7Aa7cA21CC1267e"; // 1proto.eth
-
-// https://changelog.makerdao.com/releases/mainnet/latest/contracts.json
-const DAI_ADDRESS = "0x6B175474E89094C44Da98b954EedeAC495271d0F"; // MCD_DAI
-const DAI_MINTER_ADDRESS = "0x9759A6Ac90977b93B58547b4A71c78317f391A28"; // MCD_JOIN_DAI
-
-const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-const BAL_ADDRESS = "0xba100000625a3754423978a60c9317c58a424e3D";
+const {
+  ONE_SPLIT_ADDRESS,
+  DAI_ADDRESS,
+  DAI_MINTER_ADDRESS,
+  USDC_ADDRESS,
+} = require("./constants");
 
 // DISABLE flags
 const DISABLE_ALL = new BN("20000000", 16).add(new BN("40000000", 16));
@@ -61,7 +51,7 @@ contract("OneSplit", async (accounts) => {
   let oneInch;
 
   beforeEach(async () => {
-    oneInch = await IOneSplit.at(ONE_INCH_ADDRESS);
+    oneInch = await IOneSplit.at(ONE_SPLIT_ADDRESS);
   });
 
   it("can swap ETH for ERC20", async () => {
@@ -171,7 +161,7 @@ contract("OneInchSwap", async (accounts) => {
 
   beforeEach(async () => {
     oneInchSwap = await OneInchSwap.new();
-    await oneInchSwap.setOneInchAddress(ONE_INCH_ADDRESS, { from: deployer });
+    await oneInchSwap.setOneInchAddress(ONE_SPLIT_ADDRESS, { from: deployer });
   });
 
   it("can swap ETH for ERC20", async () => {
