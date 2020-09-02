@@ -222,7 +222,7 @@ contract("APYLiquidityPool", async (accounts) => {
       "0",
       "Pool should have no ETH."
     );
-    expect(await (await tracker).delta()).to.bignumber.equal(
+    expect(await tracker.delta()).to.bignumber.equal(
       poolBalance,
       "Wallet balance should increase by pool balance."
     );

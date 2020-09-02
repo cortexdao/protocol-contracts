@@ -103,8 +103,8 @@ contract LeveragedYieldFarmStrategy is
         _flashloan(_daiToken, loanAmount, data);
 
         _comptroller.claimComp(address(this));
-        _compToken.transfer(owner(), _compToken.balanceOf(address(this)));
-        _daiToken.transfer(owner(), _daiToken.balanceOf(address(this)));
+        _compToken.transfer(manager, _compToken.balanceOf(address(this)));
+        _daiToken.transfer(manager, _daiToken.balanceOf(address(this)));
     }
 
     /// @dev called by admin during deployment
