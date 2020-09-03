@@ -11,18 +11,24 @@ const {
   expectEvent,
   expectRevert,
 } = require("@openzeppelin/test-helpers");
+
+const CompoundConstants = require('@compound-finance/compound-js/dist/nodejs/src/constants.js')
+const Compound = require('@compound-finance/compound-js');
+
 const { expect } = require("chai");
 // Imports
 const APYStrategyExecutor = artifacts.require("APYStrategyExecutor");
 const OneInch = artifacts.require("IOneSplit");
 const DAI = artifacts.require("IERC20");
-const cDAI = artifacts.require("CErc20");
+console.log(DAI)
+process.exit(0)
+const cDAI = artifacts.require(CompoundConstants.cDAI_contract);
 const COMP = artifacts.require("IERC20");
 const Comptroller = artifacts.require("Comptroller");
 // Interfaces
 const IOneInch = new ethers.utils.Interface(OneInch.abi);
 const IDAI = new ethers.utils.Interface(DAI.abi);
-const IcDAI = new ethers.utils.Interface(cDAI.abi);
+const IcDAI = new ethers.utils.Interface(CompoundConstants.abi.cErc20);
 const ICOMP = new ethers.utils.Interface(COMP.abi);
 const IComptroller = new ethers.utils.Interface(Comptroller.abi);
 // Selectors
@@ -107,6 +113,8 @@ contract("APYStrategyExecution", async (accounts) => {
         ],
         { from: owner }
       );
+
+      await expectEvent.inTransaction(trx.tx, cDAI_contract, 'Mint', { minter: '0', mintAmount: '0', mintTokens: '0' })
 
       // await expectEvent.inTransaction(trx.tx, exec, 'InitialCall', { a: '0x0000000000000000000000000000000000000000000000000000000000000001' })
       // await expectEvent.inTransaction(trx.tx, contractA, 'ExecuteAUint256', { a: '1' })
