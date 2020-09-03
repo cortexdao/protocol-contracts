@@ -56,6 +56,9 @@ contract("APYManager", async (accounts) => {
   });
 
   it("can exit strategy", async () => {
+    // TODO: assert appropriate end state for funds,
+    // e.g., does manager keep all ETH?  Should strategy keep
+    // leftover tokens?
     await manager.exitStrategy();
 
     expect(await getInvocationCount(strategy, "exit")).to.bignumber.equal(
@@ -115,11 +118,6 @@ contract("APYManager", async (accounts) => {
 
   const deployPoolWithEther = async (apyManager, ethAmount) => {
     const pool = await APYLiquidityPool.new();
-    const apt = await APT.new();
-
-    await pool.setTokenAddress(apt.address, { from: deployer });
-    await apt.setPoolAddress(pool.address, { from: deployer });
-
     await pool.setManagerAddress(apyManager.address, { from: deployer });
     await manager.setPoolAddress(pool.address, { from: deployer });
 

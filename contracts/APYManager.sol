@@ -33,7 +33,7 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
 
     function enterStrategy() external onlyOwner {
         uint256 amount = _pool.drain();
-        _strategy.enter{value:amount}();
+        _strategy.enter{value: amount}();
         emit StrategyEntered(msg.sender, amount);
     }
 
@@ -44,7 +44,7 @@ contract APYManager is Ownable, ReentrancyGuard, Pausable {
 
     function reinvestStrategy() external nonReentrant whenNotPaused {
         uint256 unusedAmount = _pool.drain();
-        _strategy.reinvest{value:unusedAmount}();
+        _strategy.reinvest{value: unusedAmount}();
         emit StrategyReinvested(msg.sender, unusedAmount);
     }
 

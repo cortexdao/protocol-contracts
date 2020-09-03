@@ -169,7 +169,7 @@ contract("OneInchSwap", async (accounts) => {
     send.ether(wallet, oneInchSwap.address, ether("1"));
 
     const fromToken = constants.ZERO_ADDRESS; // ETH
-    const destToken = "0x6B175474E89094C44Da98b954EedeAC495271d0F"; // DAI
+    const destToken = DAI_ADDRESS;
     const amount = ether("1");
 
     await oneInchSwap.setOneInchFlags(UNISWAP_V1_ONLY, { from: deployer });
@@ -177,7 +177,7 @@ contract("OneInchSwap", async (accounts) => {
     try {
       await oneInchSwap.swap(fromToken, destToken, amount);
     } catch {
-      assert.fail("Calling swap on APYManager failed.");
+      assert.fail("Calling swap on OneInchSwap failed.");
     }
     const toBalance = await getERC20Balance(destToken, oneInchSwap.address);
     expect(toBalance).to.bignumber.gt("0", "Did not receive any DAI");
@@ -204,7 +204,7 @@ contract("OneInchSwap", async (accounts) => {
       await oneInchSwap.swap(fromToken, destToken, amount);
     } catch (error) {
       console.log(error);
-      assert.fail("Calling swap on APYManager failed.");
+      assert.fail("Calling swap on OneInchSwap failed.");
     }
     await getERC20Balance(fromToken, oneInchSwap.address);
     const toBalance = await getERC20Balance(destToken, oneInchSwap.address);
