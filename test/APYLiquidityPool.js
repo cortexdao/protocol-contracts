@@ -9,6 +9,8 @@ const {
   expectRevert, // Assertions for transactions that should fail
 } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
+const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
+const dai = ether;
 
 const APYLiquidityPool = artifacts.require("APYLiquidityPoolTestProxy");
 const APT = artifacts.require("APT");
@@ -17,238 +19,193 @@ const MockContract = artifacts.require("MockContract");
 contract("APYLiquidityPool", async (accounts) => {
   const [deployer, wallet, other] = accounts;
 
-  let apyLiquidityPool;
+  let pool;
   let apt;
+  let mockDai;
 
   let DEFAULT_TOKEN_TO_ETH_FACTOR;
 
   beforeEach(async () => {
-    apyLiquidityPool = await APYLiquidityPool.new();
+    pool = await APYLiquidityPool.new();
     apt = await APT.new();
+    // mockDai = await MockContract.new();
 
-    await apyLiquidityPool.setTokenAddress(apt.address, { from: deployer });
-    await apt.setPoolAddress(apyLiquidityPool.address, { from: deployer });
+    await pool.setAptAddress(apt.address, { from: deployer });
+    // await pool.setUnderlyerAddress(mockDai.address, { from: deployer });
+    await apt.setPoolAddress(pool.address, { from: deployer });
 
-    DEFAULT_TOKEN_TO_ETH_FACTOR = await apyLiquidityPool.defaultTokenToEthFactor();
+    DEFAULT_TOKEN_TO_ETH_FACTOR = await pool.defaultTokenToEthFactor();
   });
 
-  it("addLiquidity receives ETH value sent", async () => {
-    const balance_1 = await balance.current(apyLiquidityPool.address);
-    expect(balance_1).to.bignumber.equal("0");
-
-    const ethSent = ether("1");
-    await apyLiquidityPool.addLiquidity({ from: wallet, value: ethSent });
-
-    const balance_2 = await balance.current(apyLiquidityPool.address);
-    expect(balance_2).to.bignumber.equal(ethSent);
-  });
-
-  it("addLiquidity reverts if 0 ETH sent", async () => {
+  it("addLiquidity reverts if 0 DAI sent", async () => {
     await expectRevert(
-      apyLiquidityPool.addLiquidity({ from: wallet, value: "0" }),
+      pool.addLiquidity(0, { from: wallet, value: "0" }),
       "Pool/insufficient-value"
     );
   });
 
-  it("mint amount to supply equals ETH deposit to total ETH value", async () => {
-    const ethValue = ether("112");
-    const totalValue = ether("1000000");
-    // mock token and set total supply to total ETH value
-    await mockTotalSupply(apyLiquidityPool, totalValue);
+  it("mint amount to supply equals DAI deposit to total DAI balance", async () => {
+    const daiDeposit = dai("112");
+    const totalBalance = dai("1000000");
+    // mock token and set total supply to total Dai balance
+    await mockAptTotalSupply(pool, totalBalance);
     // set tolerance to compensate for fixed-point arithmetic
     const tolerance = new BN("50000");
 
-    let mintAmount = await apyLiquidityPool.internalCalculateMintAmount(
-      ethValue,
-      totalValue,
+    let mintAmount = await pool.internalCalculateMintAmount(
+      daiDeposit,
+      totalBalance,
       { from: wallet }
     );
-    let expectedAmount = ethValue;
+    let expectedAmount = daiDeposit;
     expect(mintAmount.sub(expectedAmount).abs()).to.bignumber.lte(
       tolerance,
       "mint amount should differ from expected amount by at most tolerance"
     );
 
-    await mockTotalSupply(apyLiquidityPool, totalValue.divn(2));
+    await mockAptTotalSupply(pool, totalBalance.divn(2));
 
-    mintAmount = await apyLiquidityPool.internalCalculateMintAmount(
-      ethValue,
-      totalValue,
+    mintAmount = await pool.internalCalculateMintAmount(
+      daiDeposit,
+      totalBalance,
       { from: wallet }
     );
-    expectedAmount = ethValue.divn(2);
+    expectedAmount = daiDeposit.divn(2);
     expect(mintAmount.sub(expectedAmount).abs()).to.bignumber.lte(
       tolerance,
       "mint amount should differ from expected amount by at most tolerance"
     );
   });
 
-  it("mint amount is constant multiple of deposit if total eth value is zero", async () => {
+  it("mint amount is constant multiple of deposit if total Dai balance is zero", async () => {
     // mock out token contract and set non-zero total supply
-    await mockTotalSupply(apyLiquidityPool, ether("100"));
+    await mockAptTotalSupply(pool, dai("100"));
 
-    const ethValue = ether("7.3");
-    const mintAmount = await apyLiquidityPool.internalCalculateMintAmount(
-      ethValue,
-      0,
-      { from: wallet }
-    );
+    const daiDeposit = dai("7.3");
+    const mintAmount = await pool.internalCalculateMintAmount(daiDeposit, 0, {
+      from: wallet,
+    });
     expect(mintAmount).to.bignumber.equal(
-      ethValue.mul(DEFAULT_TOKEN_TO_ETH_FACTOR)
+      daiDeposit.mul(DEFAULT_TOKEN_TO_ETH_FACTOR)
     );
   });
 
   it("mint amount is constant multiple of deposit if total supply is zero ", async () => {
-    const ethValue = ether("5");
-    const totalValue = ether("100");
-    const mintAmount = await apyLiquidityPool.internalCalculateMintAmount(
-      ethValue,
-      totalValue,
+    const daiDeposit = dai("5");
+    const totalBalance = dai("100");
+    const mintAmount = await pool.internalCalculateMintAmount(
+      daiDeposit,
+      totalBalance,
       { from: wallet }
     );
     expect(mintAmount).to.bignumber.equal(
-      ethValue.mul(DEFAULT_TOKEN_TO_ETH_FACTOR)
+      daiDeposit.mul(DEFAULT_TOKEN_TO_ETH_FACTOR)
     );
   });
 
-  it("addLiquidity will create tokens for sender", async () => {
+  it("addLiquidity will create APT for sender", async () => {
     let balanceOf = await apt.balanceOf(wallet);
     expect(balanceOf).to.bignumber.equal("0");
 
-    await apyLiquidityPool.addLiquidity({
+    const daiDeposit = dai("1");
+    await mockDaiTransfer(pool, daiDeposit);
+
+    await pool.addLiquidity(daiDeposit, {
       from: wallet,
-      value: ether("1"),
     });
     balanceOf = await apt.balanceOf(wallet);
     expect(balanceOf).to.bignumber.gt("0");
   });
 
-  it("addLiquidity creates correctly calculated amount of tokens", async () => {
+  it("addLiquidity creates correctly calculated amount of APT", async () => {
+    await mockDaiTransfer(pool, dai("10"));
     // use another account to call addLiquidity and create non-zero
     // token supply and ETH value in contract
-    await apyLiquidityPool.addLiquidity({
+    await pool.addLiquidity(dai("10"), {
       from: other,
-      value: ether("10"),
     });
 
     // now we can check the expected mint amount based on the ETH ratio
-    const ethSent = ether("2");
-    const expectedMintAmount = await apyLiquidityPool.calculateMintAmount(
-      ethSent,
-      { from: wallet }
-    );
+    const daiDeposit = ether("2");
+    const expectedMintAmount = await pool.calculateMintAmount(daiDeposit, {
+      from: wallet,
+    });
 
-    await apyLiquidityPool.addLiquidity({ from: wallet, value: ethSent });
+    await pool.addLiquidity(daiDeposit, { from: wallet });
     const mintAmount = await apt.balanceOf(wallet);
     expect(mintAmount).to.bignumber.equal(expectedMintAmount);
   });
 
-  it("redeem reverts if token amount is zero", async () => {
-    await expectRevert(
-      apyLiquidityPool.redeem(0),
-      "Pool/redeem-positive-amount"
-    );
+  it("redeem reverts if amount is zero", async () => {
+    await expectRevert(pool.redeem(0), "Pool/redeem-positive-amount");
   });
 
   it("redeem reverts if insufficient balance", async () => {
     const tokenBalance = new BN("100");
-    await mintTokens(apt, tokenBalance, wallet);
+    await mintAPT(apt, tokenBalance, wallet);
 
     await expectRevert(
-      apyLiquidityPool.redeem(tokenBalance.addn(1), { from: wallet }),
+      pool.redeem(tokenBalance.addn(1), { from: wallet }),
       "Pool/insufficient-balance"
     );
   });
 
   it("redeem burns specified token amount", async () => {
     // start wallet with APT
-    const startAmount = ether("2");
-    await mintTokens(apt, startAmount, wallet);
+    const startAmount = dai("2");
+    await mintAPT(apt, startAmount, wallet);
 
-    const redeemAmount = ether("1");
-    await apyLiquidityPool.redeem(redeemAmount, { from: wallet });
+    const redeemAmount = dai("1");
+    await mockDaiTransfer(pool, redeemAmount);
+
+    await pool.redeem(redeemAmount, { from: wallet });
     expect(await apt.balanceOf(wallet)).to.bignumber.equal(
       startAmount.sub(redeemAmount)
     );
   });
 
   it("redeem undoes addLiquidity", async () => {
-    const ethValue = ether("1");
-    await apyLiquidityPool.addLiquidity({ from: wallet, value: ethValue });
+    const daiDeposit = ether("1");
+    await mockDaiTransfer(pool, daiDeposit);
+    await pool.addLiquidity(daiDeposit, { from: wallet });
+
     const mintAmount = await apt.balanceOf(wallet);
-    await apyLiquidityPool.redeem(mintAmount, { from: wallet });
+    await pool.redeem(mintAmount, { from: wallet });
     expect(await apt.balanceOf(wallet)).to.bignumber.equal("0");
   });
 
-  it("redeem releases ETH to sender", async () => {
-    const ethValue = ether("1");
-    const mintAmount = await apyLiquidityPool.calculateMintAmount(ethValue);
-    await apyLiquidityPool.addLiquidity({ from: wallet, value: ethValue });
-
-    const startingBalance = await balance.current(wallet);
-    await apyLiquidityPool.redeem(mintAmount, { from: wallet });
-    expect(await balance.current(wallet)).to.bignumber.gt(startingBalance);
-  });
-
-  it("redeem releases ETH value proportional to share of APT.", async () => {
-    // setup: mint some tokens and add some ETH to pool
-    await mintTokens(apt, new BN("1000"), wallet);
-    await send.ether(wallet, apyLiquidityPool.address, ether("1.75"));
-
-    const tokenAmount = new BN("257");
-    const ethValue = await apyLiquidityPool.getEthValue(tokenAmount);
-
-    const startBalance = await balance.current(wallet);
-    await apyLiquidityPool.redeem(tokenAmount, { from: wallet, gasPrice: 0 });
-    const endBalance = await balance.current(wallet);
-    expect(endBalance.sub(startBalance)).to.bignumber.equal(ethValue);
-  });
-
-  it("drain sends ETH if called by manager", async () => {
-    // setup pool with ETH
-    await send.ether(wallet, apyLiquidityPool.address, ether("1.75"));
-    const poolBalance = await balance.current(apyLiquidityPool.address);
-
-    // setup wallet as manager and track its balance
-    const tracker = await balance.tracker(wallet);
-    await apyLiquidityPool.setManagerAddress(wallet);
-
-    try {
-      await apyLiquidityPool.drain({ from: wallet, gasPrice: 0 });
-    } catch {
-      assert.fail("Manager should be able to call drain function.");
-    }
-    expect(await balance.current(apyLiquidityPool.address)).to.bignumber.equal(
-      "0",
-      "Pool should have no ETH."
-    );
-    expect(await tracker.delta()).to.bignumber.equal(
-      poolBalance,
-      "Wallet balance should increase by pool balance."
-    );
-  });
-
-  it("drain reverts if called by non-manager", async () => {
-    await apyLiquidityPool.setManagerAddress(wallet);
-    await expectRevert(
-      apyLiquidityPool.drain({ from: other }),
-      "Only manager can call"
-    );
-  });
-
   // test helper to mock the total supply
-  const mockTotalSupply = async (liquidityPoolContract, totalSupply) => {
-    // Instantiate mock and make it return true for any invocation
+  const mockAptTotalSupply = async (liquidityPoolContract, totalSupply) => {
     const mock = await MockContract.new();
-    await liquidityPoolContract.setTokenAddress(mock.address, {
+    await liquidityPoolContract.setAptAddress(mock.address, {
       from: deployer,
     });
     const totalSupplyAbi = apt.contract.methods.totalSupply().encodeABI();
     await mock.givenMethodReturnUint(totalSupplyAbi, totalSupply);
   };
 
+  // test helper to mock ERC20 functions on underlyer token
+  const mockDaiTransfer = async (liquidityPoolContract, amount) => {
+    const mock = await MockContract.new();
+    await liquidityPoolContract.setUnderlyerAddress(mock.address, {
+      from: deployer,
+    });
+    const allowanceAbi = apt.contract.methods
+      .allowance(ZERO_ADDRESS, ZERO_ADDRESS)
+      .encodeABI();
+    const transferFromAbi = apt.contract.methods
+      .transferFrom(ZERO_ADDRESS, ZERO_ADDRESS, 0)
+      .encodeABI();
+    const transferAbi = apt.contract.methods
+      .transfer(ZERO_ADDRESS, 0)
+      .encodeABI();
+    await mock.givenMethodReturnUint(allowanceAbi, amount);
+    await mock.givenMethodReturnBool(transferAbi, true);
+    await mock.givenMethodReturnBool(transferFromAbi, true);
+  };
+
   // test helper to mint tokens to wallet
-  const mintTokens = async (tokenContract, amount, wallet) => {
+  const mintAPT = async (tokenContract, amount, wallet) => {
     const poolAddress = await tokenContract.pool();
     await tokenContract.setPoolAddress(wallet, { from: deployer });
     await tokenContract.mint(wallet, amount, { from: wallet });

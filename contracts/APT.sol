@@ -4,6 +4,7 @@ pragma solidity ^0.6.6;
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
+
 contract APT is ERC20("APY Pool Token", "APT"), Ownable {
     address public pool;
 
@@ -16,7 +17,7 @@ contract APT is ERC20("APY Pool Token", "APT"), Ownable {
     }
 
     modifier onlyPool {
-        require(msg.sender == pool, "Only pool can call");
+        require(msg.sender == pool, "Pool/access-not-allowed");
         _;
     }
 
