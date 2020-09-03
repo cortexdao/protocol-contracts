@@ -28,7 +28,7 @@ const Comptroller = artifacts.require("Comptroller");
 // Interfaces
 const IOneInch = new ethers.utils.Interface(OneInch.abi);
 const IDAI = new ethers.utils.Interface(DAI.abi);
-const IcDAI = new ethers.utils.Interface(CompoundConstants.abi.cErc20);
+const IcDAI = { address: "", interface: new ethers.utils.Interface(CompoundConstants.abi.cErc20) }
 const ICOMP = new ethers.utils.Interface(COMP.abi);
 const IComptroller = new ethers.utils.Interface(Comptroller.abi);
 // Selectors
