@@ -15,37 +15,38 @@ const {
 const CompoundConstants = require('@compound-finance/compound-js/dist/nodejs/src/constants.js')
 const Compound = require('@compound-finance/compound-js');
 
+
 const { expect } = require("chai");
 // Imports
 const APYStrategyExecutor = artifacts.require("APYStrategyExecutor");
 const OneInch = artifacts.require("IOneSplit");
 const DAI = artifacts.require("IERC20");
-console.log(DAI)
-process.exit(0)
-const cDAI = artifacts.require(CompoundConstants.cDAI_contract);
+// const cDAI = artifacts.require(CompoundConstants.cDAI_contract);
 const COMP = artifacts.require("IERC20");
 const Comptroller = artifacts.require("Comptroller");
 // Interfaces
 const IOneInch = new ethers.utils.Interface(OneInch.abi);
 const IDAI = new ethers.utils.Interface(DAI.abi);
-const IcDAI = { address: "", interface: new ethers.utils.Interface(CompoundConstants.abi.cErc20) }
+const cDAI = { address: "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643", interface: new ethers.utils.Interface(CompoundConstants.abi.cErc20) }
 const ICOMP = new ethers.utils.Interface(COMP.abi);
 const IComptroller = new ethers.utils.Interface(Comptroller.abi);
 // Selectors
-const getExpectedReturn = IOneInch.getSighash("getExpectedReturn");
-const swap = IOneInch.getSighash("swap");
-const dai_approve = IDAI.getSighash("approve");
-const mint = IcDAI.getSighash("mint");
-const redeem = IcDAI.getSighash("redeem");
-const borrowBalanceCurrent = IcDAI.getSighash("borrowBalanceCurrent");
-const borrowRatePerBlock = IcDAI.getSighash("borrowRatePerBlock");
-const borrow = IcDAI.getSighash("borrow");
-const repayBorrow = IcDAI.getSighash("repayBorrow");
-const balanceOf = IcDAI.getSighash("balanceOf");
-const comp_approve = ICOMP.getSighash("approve");
-const enterMarkets = IComptroller.getSighash("enterMarkets");
-const getAccountLiquidity = IComptroller.getSighash("getAccountLiquidity");
-const claimComp = IComptroller.getSighash("claimComp");
+const balanceOf = cDAI.interface.getSighash("balanceOf")
+const mint = cDAI.interface.getSighash("mint")
+// const getExpectedReturn = IOneInch.getSighash("getExpectedReturn");
+// const swap = IOneInch.getSighash("swap");
+// const dai_approve = IDAI.getSighash("approve");
+// const mint = IcDAI.getSighash("mint");
+// const redeem = IcDAI.getSighash("redeem");
+// const borrowBalanceCurrent = IcDAI.getSighash("borrowBalanceCurrent");
+// const borrowRatePerBlock = IcDAI.getSighash("borrowRatePerBlock");
+// const borrow = IcDAI.getSighash("borrow");
+// const repayBorrow = IcDAI.getSighash("repayBorrow");
+// const balanceOf = IcDAI.getSighash("balanceOf");
+// const comp_approve = ICOMP.getSighash("approve");
+// const enterMarkets = IComptroller.getSighash("enterMarkets");
+// const getAccountLiquidity = IComptroller.getSighash("getAccountLiquidity");
+// const claimComp = IComptroller.getSighash("claimComp");
 
 // const executeB = AInterface.encodeFunctionData('executeB', [100])
 // const executeMultiParam = AInterface.encodeFunctionData('executeMultiParam', [1, 1, 1])
@@ -62,7 +63,7 @@ contract("APYStrategyExecution", async (accounts) => {
   const DAI_MINTER = "0x9759A6Ac90977b93B58547b4A71c78317f391A28";
   const amount = new BN("1000");
   let dai_contract;
-  let cDAI_contract;
+  // let cDAI_contract;
   let comp_contract;
   let comptroller_contract;
   let e_cDAI_address;
@@ -72,14 +73,14 @@ contract("APYStrategyExecution", async (accounts) => {
   before("Setup", async () => {
     // Contracts
     dai_contract = await DAI.at("0x6b175474e89094c44da98b954eedeac495271d0f");
-    cDAI_contract = await cDAI.at("0x5d3a536e4d6dbd6114cc1ead35777bab948e3643");
+    // cDAI_contract = await cDAI.at("0x5d3a536e4d6dbd6114cc1ead35777bab948e3643");
     comp_contract = await COMP.at("0xc00e94cb662c3520282e6f5717214004a7f26888");
     comptroller_contract = await Comptroller.at(
       "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b"
     );
 
     // Function Encodings
-    e_cDAI_address = abiCoder.encode(["address"], [cDAI_contract.address]);
+    e_cDAI_address = abiCoder.encode(["address"], [cDAI.address]);
     e_amount = abiCoder.encode(["uint256"], [amount]);
     e_owner = abiCoder.encode(["address"], [owner]);
     borrowAmount = abiCoder.encode(["uint256"], [1]);
@@ -87,11 +88,11 @@ contract("APYStrategyExecution", async (accounts) => {
     // mint ourselves DAI
     await mintERC20Tokens(dai_contract.address, owner, DAI_MINTER, amount);
 
-    let dai_val = await dai_contract.balanceOf.call(owner);
-    console.log(dai_val.toString());
+    // let dai_val = await dai_contract.balanceOf.call(owner);
+    // console.log(dai_val.toString());
 
-    let cdai_val = await cDAI_contract.balanceOf.call(owner);
-    console.log(cdai_val.toString());
+    // let cdai_val = await cDAI_contract.balanceOf.call(owner);
+    // console.log(cdai_val.toString());
   });
 
   describe("Example Execution", async () => {
@@ -100,21 +101,21 @@ contract("APYStrategyExecution", async (accounts) => {
       const exec = await APYStrategyExecutor.new();
       const trx = await exec.execute(
         [
-          [
-            dai_contract.address,
-            dai_approve,
-            [],
-            [e_cDAI_address, e_amount],
-            [],
-          ],
-          [cDAI_contract.address, balanceOf, [], [e_owner], []],
-          [cDAI_contract.address, mint, [], [e_amount], []],
-          [cDAI_contract.address, borrow, [], [borrowAmount], []],
+          // [
+          //   dai_contract.address,
+          //   dai_approve,
+          //   [],
+          //   [e_cDAI_address, e_amount],
+          //   [],
+          // ],
+          [cDAI.address, balanceOf, [], [e_owner], []],
+          [cDAI.address, mint, [], [e_amount], []],
+          // [cDAI.address, borrow, [], [borrowAmount], []],
         ],
         { from: owner }
       );
 
-      await expectEvent.inTransaction(trx.tx, cDAI_contract, 'Mint', { minter: '0', mintAmount: '0', mintTokens: '0' })
+      await expectEvent.inTransaction(trx.tx, { abi: CompoundConstants.abi.cErc20 }, 'Mint')
 
       // await expectEvent.inTransaction(trx.tx, exec, 'InitialCall', { a: '0x0000000000000000000000000000000000000000000000000000000000000001' })
       // await expectEvent.inTransaction(trx.tx, contractA, 'ExecuteAUint256', { a: '1' })
