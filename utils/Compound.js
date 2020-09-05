@@ -7,6 +7,27 @@ const cDAI = {
   abi: Constants.abi.cErc20
 }
 
+const DAI = {
+  address: Compound.util.getAddress(Compound.DAI),
+  interface: new ethers.utils.Interface(Constants.abi.Erc20),
+  abi: Constants.abi.Erc20
+}
+
+const COMP = {
+  address: Compound.util.getAddress(Compound.COMP),
+  interface: new ethers.utils.Interface(Constants.abi.Erc20),
+  abi: Constants.abi.Erc20
+}
+
+const COMPTROLLER = {
+  address: Compound.util.getAddress(Compound.COMPTROLLER),
+  interface: new ethers.utils.Interface(Constants.abi.Comptroller),
+  abi: Constants.abi.Comptroller
+}
+
 module.exports = {
-  cDAI
+  cDAI,
+  DAI,
+  COMP,
+  COMPTROLLER
 }
