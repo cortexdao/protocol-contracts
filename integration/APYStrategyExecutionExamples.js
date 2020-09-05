@@ -13,8 +13,6 @@ const {
 const { expect } = require("chai");
 const APYStrategyExecutor = artifacts.require("APYStrategyExecutor");
 const APYContractA = artifacts.require("APYContractA");
-console.log(APYContractA.abi)
-process.exit(0);
 const AInterface = new ethers.utils.Interface(APYContractA.abi);
 const executeASelector = AInterface.getSighash("executeA");
 const executeAMultiParamSelector = AInterface.getSighash("executeAMultiParam");

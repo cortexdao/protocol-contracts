@@ -35,7 +35,7 @@ contract APYStrategyExecutor is Ownable {
             // initial running
             if (returnData.length == 0) {
                 // construct params
-                bytes memory functionCallData = abi.encodeWithSelector(
+                bytes memory functionCallData = _encodeCallData(
                     executionSteps[i].selector,
                     executionSteps[i].functionParams //selects all params
                 );
