@@ -19,13 +19,7 @@ const { cDAI, DAI, COMP, COMPTROLLER } = require('../utils/Compound');
 const APYStrategyExecutor = artifacts.require("APYStrategyExecutor");
 const OneInch = artifacts.require("IOneSplit");
 const IOneInch = new ethers.utils.Interface(OneInch.abi);
-// const DAI = artifacts.require("IERC20");
-// const COMP = artifacts.require("IERC20");
-// const Comptroller = artifacts.require("Comptroller");
-// Interfaces
-// const IDAI = new ethers.utils.Interface(DAI.abi);
-// const ICOMP = new ethers.utils.Interface(COMP.abi);
-// const IComptroller = new ethers.utils.Interface(Comptroller.abi);
+
 // Selectors
 // const getExpectedReturn = IOneInch.getSighash("getExpectedReturn");
 // const swap = IOneInch.getSighash("swap");
@@ -60,27 +54,19 @@ contract("APYStrategyExecution", async (accounts) => {
   // let cDAI_contract;
   let comp_contract;
   let comptroller_contract;
-  let e_cDAI_address;
-  let e_amount;
-  let borrowAmount;
+  let eCDAIAddress;
+  let eAmount
+  let eBorrowAmount;
 
   before("Setup", async () => {
-    // Contracts
-    // dai_contract = await DAI.at("0x6b175474e89094c44da98b954eedeac495271d0f");
-    // cDAI_contract = await cDAI.at("0x5d3a536e4d6dbd6114cc1ead35777bab948e3643");
-    // comp_contract = await COMP.at("0xc00e94cb662c3520282e6f5717214004a7f26888");
-    // comptroller_contract = await Comptroller.at(
-    //   "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b"
-    // );
-
     // Function Encodings
-    e_cDAI_address = abiCoder.encode(["address"], [cDAI.address]);
-    e_amount = abiCoder.encode(["uint256"], [amount]);
-    e_owner = abiCoder.encode(["address"], [owner]);
-    borrowAmount = abiCoder.encode(["uint256"], [1]);
+    eOwner = abiCoder.encode(["address"], [owner]);
+    eCDAIAddress = abiCoder.encode(["address"], [cDAI.address]);
+    eAmount = abiCoder.encode(["uint256"], [1000]);
+    eBorrowAmount = abiCoder.encode(["uint256"], [1]);
 
     // mint ourselves DAI
-    // await mintERC20Tokens(dai_contract.address, owner, DAI_MINTER, amount);
+    await mintERC20Tokens(DAI.address, owner, DAI_MINTER, amount);
 
     // let dai_val = await dai_contract.balanceOf.call(owner);
     // console.log(dai_val.toString());
@@ -95,21 +81,16 @@ contract("APYStrategyExecution", async (accounts) => {
       const exec = await APYStrategyExecutor.new();
       const trx = await exec.execute(
         [
-          // [
-          //   dai_contract.address,
-          //   dai_approve,
-          //   [],
-          //   [e_cDAI_address, e_amount],
-          //   [],
-          // ],
-          [cDAI.address, cDAI.interface.getSighash("balanceOf"), [], [e_owner], []],
-          [cDAI.address, cDAI.interface.getSighash("mint"), [], [e_amount], []]
-          // [cDAI.address, borrow, [], [borrowAmount], []],
+          [DAI.address, DAI.interface.getSighash("approve"), [], [eCDAIAddress, eAmount], []]
+          // [cDAI.address, cDAI.interface.getSighash("balanceOf"), [], [eOwner], []],
+          // [cDAI.address, cDAI.interface.getSighash("mint"), [], [eAmount], []]
+          // [cDAI.address, borrow, [], [eBorrowAmount], []],
         ],
         { from: owner }
       );
 
-      await expectEvent.inTransaction(trx.tx, cDAI, 'Mint')
+      await expectEvent.inTransaction(trx.tx, DAI, 'Approval', { _owner: exec.address, _spender: cDAI.address, _value: '1000' })
+      // await expectEvent.inTransaction(trx.tx, cDAI, 'Mint')
 
       // await expectEvent.inTransaction(trx.tx, exec, 'InitialCall', { a: '0x0000000000000000000000000000000000000000000000000000000000000001' })
       // await expectEvent.inTransaction(trx.tx, contractA, 'ExecuteAUint256', { a: '1' })
