@@ -9,12 +9,34 @@ import {
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import {
+    TransparentUpgradeableProxy
+} from "@openzeppelin/contracts/proxy/TransparentUpgradeableProxy.sol";
 import {FixedPoint} from "solidity-fixedpoint/contracts/FixedPoint.sol";
 import {APT} from "./APT.sol";
 import {ILiquidityPool} from "./ILiquidityPool.sol";
 
 
-contract APYLiquidityPool is ILiquidityPool, Ownable, ReentrancyGuard {
+contract APYLiquidityPoolProxy is TransparentUpgradeableProxy {
+    address private _owner;
+    APT public apt;
+    IERC20 internal _underlyer;
+
+    constructor(
+        address _logic,
+        address _admin,
+        bytes memory _data
+    ) public TransparentUpgradeableProxy(_logic, _admin, _data) {
+        _owner = msg.sender;
+    }
+}
+
+
+contract APYLiquidityPoolImplementation is
+    ILiquidityPool,
+    Ownable,
+    ReentrancyGuard
+{
     using SafeMath for uint256;
     using FixedPoint for *;
     using SafeERC20 for IERC20;
@@ -167,8 +189,8 @@ contract APYLiquidityPool is ILiquidityPool, Ownable, ReentrancyGuard {
  * @dev Proxy contract to test internal variables and functions
  *      Should not be used other than in test files!
  */
-contract APYLiquidityPoolTestProxy is APYLiquidityPool {
-    uint256 public defaultTokenToEthFactor = APYLiquidityPool
+contract APYLiquidityPoolImplTestProxy is APYLiquidityPoolImplementation {
+    uint256 public defaultTokenToEthFactor = APYLiquidityPoolImplementation
         ._DEFAULT_TOKEN_TO_ETH_FACTOR;
 
     function internalCalculateMintAmount(uint256 ethValue, uint256 totalValue)
@@ -176,6 +198,10 @@ contract APYLiquidityPoolTestProxy is APYLiquidityPool {
         view
         returns (uint256)
     {
-        return APYLiquidityPool._calculateMintAmount(ethValue, totalValue);
+        return
+            APYLiquidityPoolImplementation._calculateMintAmount(
+                ethValue,
+                totalValue
+            );
     }
 }

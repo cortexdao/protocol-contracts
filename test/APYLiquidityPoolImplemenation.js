@@ -12,11 +12,13 @@ const { expect } = require("chai");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const dai = ether;
 
-const APYLiquidityPool = artifacts.require("APYLiquidityPoolTestProxy");
+const APYLiquidityPoolImplementation = artifacts.require(
+  "APYLiquidityPoolImplTestProxy"
+);
 const APT = artifacts.require("APT");
 const MockContract = artifacts.require("MockContract");
 
-contract("APYLiquidityPool", async (accounts) => {
+contract("APYLiquidityPoolImplementation", async (accounts) => {
   const [deployer, wallet, other] = accounts;
 
   let pool;
@@ -26,7 +28,7 @@ contract("APYLiquidityPool", async (accounts) => {
   let DEFAULT_TOKEN_TO_ETH_FACTOR;
 
   beforeEach(async () => {
-    pool = await APYLiquidityPool.new();
+    pool = await APYLiquidityPoolImplementation.new();
     apt = await APT.new();
     // mockDai = await MockContract.new();
 
