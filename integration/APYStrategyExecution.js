@@ -12,8 +12,9 @@ const {
   expectRevert,
 } = require("@openzeppelin/test-helpers");
 
-const CompoundConstants = require('@compound-finance/compound-js/dist/nodejs/src/constants.js')
-const Compound = require('@compound-finance/compound-js');
+// const CompoundConstants = require('@compound-finance/compound-js/dist/nodejs/src/constants.js')
+// const Compound = require('@compound-finance/compound-js');
+const { cDAI } = require('../utils/Compound');
 
 
 const { expect } = require("chai");
@@ -21,13 +22,11 @@ const { expect } = require("chai");
 const APYStrategyExecutor = artifacts.require("APYStrategyExecutor");
 const OneInch = artifacts.require("IOneSplit");
 const DAI = artifacts.require("IERC20");
-// const cDAI = artifacts.require(CompoundConstants.cDAI_contract);
 const COMP = artifacts.require("IERC20");
 const Comptroller = artifacts.require("Comptroller");
 // Interfaces
 const IOneInch = new ethers.utils.Interface(OneInch.abi);
 const IDAI = new ethers.utils.Interface(DAI.abi);
-const cDAI = { address: "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643", interface: new ethers.utils.Interface(CompoundConstants.abi.cErc20) }
 const ICOMP = new ethers.utils.Interface(COMP.abi);
 const IComptroller = new ethers.utils.Interface(Comptroller.abi);
 // Selectors
@@ -115,7 +114,7 @@ contract("APYStrategyExecution", async (accounts) => {
         { from: owner }
       );
 
-      await expectEvent.inTransaction(trx.tx, { abi: CompoundConstants.abi.cErc20 }, 'Mint')
+      await expectEvent.inTransaction(trx.tx, { abi: cDAI.abi }, 'Mint')
 
       // await expectEvent.inTransaction(trx.tx, exec, 'InitialCall', { a: '0x0000000000000000000000000000000000000000000000000000000000000001' })
       // await expectEvent.inTransaction(trx.tx, contractA, 'ExecuteAUint256', { a: '1' })
