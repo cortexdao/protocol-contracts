@@ -15,7 +15,8 @@ const { cDAI, DAI, COMP, COMPTROLLER } = require('../utils/Compound');
 
 // Imports
 const APYStrategyGeneralExecutor = artifacts.require("APYStrategyGeneralExecutor");
-const ERC20 = artifacts.require("ERC20");
+const ERC20 = artifacts.require("IERC20");
+const cERC20 = artifacts.require("CErc20");
 const OneInch = artifacts.require("IOneSplit");
 const IOneInch = new ethers.utils.Interface(OneInch.abi);
 
@@ -23,29 +24,36 @@ contract("APYStrategyExecution", async (accounts) => {
   const [owner] = accounts;
   const DAI_MINTER = "0x9759A6Ac90977b93B58547b4A71c78317f391A28";
   const amount = new BN("1000");
-  let dai_contract;
-  // let cDAI_contract;
-  let comp_contract;
-  let comptroller_contract;
-  let eCDAIAddress;
-  let eAmount
-  let eBorrowAmount;
+  let DAIInstance
+  let daiBalance
+  let cDAIInstance
+  let errCode
+  let exec
 
   before("Setup", async () => {
-    // mint ourselves DAI
+    exec = await APYStrategyGeneralExecutor.new();
+    DAIInstance = await ERC20.at(DAI.address)
+    cDAIInstance = await cERC20.at(cDAI.address)
+
+    // mint to user
     await mintERC20Tokens(DAI.address, owner, DAI_MINTER, amount);
-    const DAIInstance = await ERC20.at(DAI.address)
-    const daiBalance = await DAIInstance.balanceOf(owner)
+    daiBalance = await DAIInstance.balanceOf(owner)
     console.log(`Starting DAI Balance: ${daiBalance.toNumber()}`)
+    await DAIInstance.approve(cDAI.address, daiBalance)
+    errCode = await cDAIInstance.mint.call(daiBalance)
+    console.log(`Mint Error Code: ${errCode.toNumber()}`)
+
+    // mint to exec
+    await mintERC20Tokens(DAI.address, exec.address, DAI_MINTER, amount);
+    daiBalance = await DAIInstance.balanceOf(exec.address)
+    console.log(`exec Starting DAI Balance: ${daiBalance.toNumber()}`)
   });
 
   describe("Example Execution", async () => {
     it("Execute Steps", async () => {
       // execute steps
-      const exec = await APYStrategyGeneralExecutor.new();
       const trx = await exec.execute(
         [
-          // [AContract.address, AInterface.encodeFunctionData('executeA', [100])]
           [DAI.address, DAI.interface.encodeFunctionData('approve', [cDAI.address, 1000])],
           [cDAI.address, cDAI.interface.encodeFunctionData("mint", [1000])]
         ],

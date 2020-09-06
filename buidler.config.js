@@ -37,9 +37,9 @@ module.exports = {
         mnemonic: kovanMnemonic,
       },
     },
-    ganache: {
-      url: "http://127.0.0.1:8545",
-      timeout: 0,
+    localhost: {
+      url: 'http://127.0.0.1:8545',
+      timeout: 1000000,
     },
   },
   solc: {
@@ -48,5 +48,8 @@ module.exports = {
       enabled: true,
       runs: 999999,
     },
+  },
+  mocha: {
+    timeout: 1000000,
   },
 };
