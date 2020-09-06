@@ -15,7 +15,7 @@ jobs:
   test:
     strategy:
       matrix:
-        node-version: [10.x, 12.x]
+        node-version: [12.x]
         os: [ubuntu-latest]
         
     # The type of runner that the job will run on
@@ -29,12 +29,22 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
-        
-    - run: |
-        yarn install
-        yarn lint
-        yarn test
-        yarn fork:mainnet 2>&1 >/dev/null &
-        sleep 5
-        yarn integration
-
+    - name: Cache packages
+      uses: actions/cache@v2
+      with:
+        path: ./node_modules
+        key: ${{ runner.os }}-node-${{ hashFiles('yarn.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+    - name: Install packages 
+      run: yarn install
+    - name: Lint smart contracts
+      run: yarn lint
+    - name: Unit tests
+      run: yarn test
+    - name: Integration tests 
+      run: |
+        yarn fork:mainnet > /dev/null &
+        while netstat -lnt | awk '$4 ~ /:8545$/ {exit 1}'; do sleep 5; done
+    - run: yarn integration
+    - run: kill $(lsof -t -i:8545)
