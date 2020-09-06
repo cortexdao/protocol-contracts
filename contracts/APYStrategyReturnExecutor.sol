@@ -3,7 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-contract APYStrategyExecutor is Ownable {
+contract APYStrategyReturnExecutor is Ownable {
     struct Data {
         address target;
         bytes4 selector;

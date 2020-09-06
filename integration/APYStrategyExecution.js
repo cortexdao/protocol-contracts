@@ -100,7 +100,7 @@ contract("APYStrategyExecution", async (accounts) => {
       // await expectEvent.inTransaction(trx.tx, cDAI, 'Mint')
 
       // await expectEvent.inTransaction(trx.tx, exec, 'InitialCall', { a: '0x0000000000000000000000000000000000000000000000000000000000000001' })
-      await expectEvent.inTransaction(trx.tx, contractA, 'ExecuteAUint256', { a: '1' })
+      await expectEvent.inTransaction(trx.tx, AContract, 'ExecuteAUint256', { a: '100' })
       // await expectEvent.inTransaction(trx.tx, contractA, 'ExecuteABytes32', { a: '0x0000000000000000000000000000000000000000000000000000000000000001' })
       // await expectEvent.inTransaction(trx.tx, contractA, 'MultiParam', { a: '1', b: '100', c: '1' })
       // await expectEvent.inTransaction(trx.tx, contractA, 'MultiParam', { a: '1', b: '1', c: '100' })
