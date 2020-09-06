@@ -1,9 +1,9 @@
-![CI](https://github.com/apy-finance/apy-core/workflows/CI/badge.svg?branch=master)
+![CI](https://github.com/apy-finance/apy-core/workflows/CI/badge.svg?branch=develop)
 
 # APY Smart Contracts
 
 TODOs:
-- [ ] Continuous integration
+- [ ] Continuous deployment
 - [ ] Links to architectural diagrams / specs
 
 ## Install Dependencies
