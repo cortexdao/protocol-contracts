@@ -13,9 +13,7 @@ args=( )
 if [ -n "${fork}" ]; then
   args+=( --fork "${fork}" );
 else
-  # echo "Must have fork url in .env file.";
-  # args+=( --fork "https://cloudflare-eth.com" );
-  args+=( --fork "https://eth-mainnet.alchemyapi.io/v2/rSbDwo9oh9U98NMABjOjC-fyYMm4Z90x" );
+  echo "Must have fork url in .env file.";
 fi
 if [ -n "${mnemonic}" ]; then
   args+=( --mnemonic "${mnemonic}" );
