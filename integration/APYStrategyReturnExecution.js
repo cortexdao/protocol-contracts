@@ -16,7 +16,7 @@ const { cDAI, DAI, COMP, COMPTROLLER } = require('../utils/Compound');
 
 
 // Imports
-const APYStrategyExecutor = artifacts.require("APYStrategyExecutor");
+const APYStrategyReturnExecutor = artifacts.require("APYStrategyReturnExecutor");
 const OneInch = artifacts.require("IOneSplit");
 const IOneInch = new ethers.utils.Interface(OneInch.abi);
 
@@ -79,7 +79,7 @@ contract("APYStrategyExecution", async (accounts) => {
   describe("Example Execution", async () => {
     it("Execute Steps", async () => {
       // execute steps
-      const exec = await APYStrategyExecutor.new();
+      const exec = await APYStrategyReturnExecutor.new();
       const trx = await exec.execute(
         [
           [DAI.address, DAI.interface.getSighash("approve"), [], [eCDAIAddress, eAmount], []],
