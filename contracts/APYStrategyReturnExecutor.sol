@@ -15,8 +15,6 @@ contract APYStrategyReturnExecutor is Ownable {
 
     uint256 private constant _SKIP_RETURN_DATA = uint256(-1);
 
-    event Yell(bytes data);
-
     // mapping(address => mapping(bytes10 => bool))
     //     public allowedContractExecution;
 
@@ -188,8 +186,6 @@ contract APYStrategyReturnExecutor is Ownable {
     {
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory returndata) = target.call(data);
-
-        emit Yell(returndata);
 
         if (success) {
             return returndata;

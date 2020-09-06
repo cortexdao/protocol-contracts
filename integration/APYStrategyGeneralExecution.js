@@ -56,7 +56,7 @@ contract("APYStrategyExecution", async (accounts) => {
       );
 
       await expectEvent.inTransaction(trx.tx, DAI, 'Approval', { _owner: exec.address, _spender: cDAI.address, _value: '1000' })
-      await expectEvent.inTransaction(trx.tx, cDAI, 'Mint')
+      // await expectEvent.inTransaction(trx.tx, cDAI, 'Mint')
 
       // await expectEvent.inTransaction(trx.tx, exec, 'InitialCall', { a: '0x0000000000000000000000000000000000000000000000000000000000000001' })
       // await expectEvent.inTransaction(trx.tx, contractA, 'ExecuteABytes32', { a: '0x0000000000000000000000000000000000000000000000000000000000000001' })
