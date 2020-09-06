@@ -16,7 +16,7 @@ const {
   mintERC20Tokens,
   getERC20Balance,
   undoErc20,
-} = require("./utils");
+} = require("../utils/helpers");
 const { advanceBlock } = require("@openzeppelin/test-helpers/src/time");
 const {
   DAI_ADDRESS,
@@ -24,7 +24,7 @@ const {
   COMP_ADDRESS,
   ONE_SPLIT_ADDRESS,
   COMPTROLLER_ADDRESS,
-} = require("./constants");
+} = require("../utils/constants");
 
 const APYManager = artifacts.require("APYManager");
 const LeveragedYieldFarmStrategy = artifacts.require(

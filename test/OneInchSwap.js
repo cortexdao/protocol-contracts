@@ -13,11 +13,9 @@ const { expect } = require("chai");
 const OneInchSwap = artifacts.require("OneInchSwapTestProxy");
 const IOneSplit = artifacts.require("IOneSplit");
 const MockContract = artifacts.require("MockContract");
-const APYLiquidityPool = artifacts.require("APYLiquidityPool");
-const APT = artifacts.require("APT");
 
-ZERO_ADDRESS = constants.ZERO_ADDRESS;
-DUMMY_ADDRESS = "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE";
+const ZERO_ADDRESS = constants.ZERO_ADDRESS;
+const { DUMMY_ADDRESS } = require("../utils/constants");
 
 contract("OneInchSwap", async (accounts) => {
   const [deployer, wallet, other] = accounts;

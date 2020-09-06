@@ -9,12 +9,12 @@ const {
   expectRevert, // Assertions for transactions that should fail
 } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
-const { mintERC20Tokens, dai } = require("./utils");
+const { mintERC20Tokens, dai } = require("../utils/helpers");
 const {
   DAI_ADDRESS,
   DAI_MINTER_ADDRESS,
   DUMMY_ADDRESS,
-} = require("./constants");
+} = require("../utils/constants");
 const timeMachine = require("ganache-time-traveler");
 
 const APYLiquidityPoolProxy = artifacts.require("APYLiquidityPoolProxy");

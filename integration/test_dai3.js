@@ -16,7 +16,7 @@ const {
   mintERC20Tokens,
   getERC20Balance,
   undoErc20,
-} = require("./utils");
+} = require("../utils/helpers");
 
 const IOneSplit = artifacts.require("IOneSplit");
 const Comptroller = artifacts.require("Comptroller");
@@ -32,7 +32,7 @@ const {
   COMPTROLLER_ADDRESS,
   CDAI_ADDRESS,
   COMP_ADDRESS,
-} = require("./constants");
+} = require("../utils/constants");
 
 const timeout = 120000; // in millis
 

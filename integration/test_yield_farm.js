@@ -16,7 +16,7 @@ const {
   mintERC20Tokens,
   getERC20Balance,
   undoErc20,
-} = require("./utils");
+} = require("../utils/helpers");
 const { advanceBlock } = require("@openzeppelin/test-helpers/src/time");
 
 const LeveragedYieldFarm = artifacts.require("LeveragedYieldFarm");
@@ -29,7 +29,7 @@ const {
   DAI_MINTER_ADDRESS,
   CDAI_ADDRESS,
   COMP_ADDRESS,
-} = require("./constants");
+} = require("../utils/constants");
 
 const timeout = 960000; // in millis
 const debug = true;

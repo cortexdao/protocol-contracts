@@ -15,7 +15,7 @@ const {
   mintERC20Tokens,
   getERC20Balance,
   undoErc20,
-} = require("./utils");
+} = require("../utils/helpers");
 
 const OneInchSwap = artifacts.require("OneInchSwapTestProxy");
 const IOneSplit = artifacts.require("IOneSplit");
@@ -26,7 +26,7 @@ const {
   DAI_ADDRESS,
   DAI_MINTER_ADDRESS,
   USDC_ADDRESS,
-} = require("./constants");
+} = require("../utils/constants");
 
 // DISABLE flags
 const DISABLE_ALL = new BN("20000000", 16).add(new BN("40000000", 16));

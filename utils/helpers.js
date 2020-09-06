@@ -20,14 +20,6 @@ const erc20 = (amount, decimals) => {
   wholePart = new BN(wholePart || "0");
 
   const base = new BN("10").pow(new BN(decimals));
-  //   console.debug(
-  //     "whole:",
-  //     wholePart.toString(),
-  //     "base:",
-  //     base.toString(),
-  //     "frac:",
-  //     fracPart.toString()
-  //   );
   const amountBits = wholePart.mul(base).add(fracPart);
   return amountBits;
 };
