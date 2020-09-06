@@ -1,3 +1,5 @@
+![CI](https://github.com/apy-finance/apy-core/workflows/CI/badge.svg?branch=master)
+
 # APY Smart Contracts
 
 TODOs:
