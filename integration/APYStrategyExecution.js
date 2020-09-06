@@ -63,6 +63,7 @@ contract("APYStrategyExecution", async (accounts) => {
     eOwner = abiCoder.encode(["address"], [owner]);
     eCDAIAddress = abiCoder.encode(["address"], [cDAI.address]);
     eAmount = abiCoder.encode(["uint256"], [1000]);
+    eAmountMinus10 = abiCoder.encode(["uint256"], [990]);
     eBorrowAmount = abiCoder.encode(["uint256"], [1]);
 
     // mint ourselves DAI
@@ -77,20 +78,20 @@ contract("APYStrategyExecution", async (accounts) => {
 
   describe("Example Execution", async () => {
     it("Execute Steps", async () => {
-
       // execute steps
       const exec = await APYStrategyExecutor.new();
       const trx = await exec.execute(
         [
           [DAI.address, DAI.interface.getSighash("approve"), [], [eCDAIAddress, eAmount], []],
-          [cDAI.address, cDAI.interface.getSighash("balanceOf"), [], [eOwner], []],
-          [cDAI.address, cDAI.interface.getSighash("mint"), [], [eAmount], []]
+          // [cDAI.address, cDAI.interface.getSighash("balanceOf"), [], [eOwner], []],
+          [cDAI.address, cDAI.interface.getSighash("mint"), [], [eAmountMinus10], []]
           // [cDAI.address, borrow, [], [eBorrowAmount], []],
         ],
         { from: owner }
       );
 
       await expectEvent.inTransaction(trx.tx, DAI, 'Approval', { _owner: exec.address, _spender: cDAI.address, _value: '1000' })
+      // await expectEvent.inTransaction(trx.tx, exec, 'Yell', { data: '' })
       await expectEvent.inTransaction(trx.tx, cDAI, 'Mint')
 
       // await expectEvent.inTransaction(trx.tx, exec, 'InitialCall', { a: '0x0000000000000000000000000000000000000000000000000000000000000001' })
