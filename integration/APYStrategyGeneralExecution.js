@@ -72,7 +72,6 @@ contract("APYStrategyExecution", async (accounts) => {
         ],
         { from: owner }
       );
-
       await expectEvent.inTransaction(trx.tx, cDAI, 'Redeem')
     });
   });
