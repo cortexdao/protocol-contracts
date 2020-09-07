@@ -23,6 +23,13 @@
     chalk "^2.0.0"
     js-tokens "^4.0.0"
 
+"@compound-finance/compound-js@^0.1.0":
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/@compound-finance/compound-js/-/compound-js-0.1.0.tgz#32cc2b147aae1a51554f6fa7c218c642a75e1a60"
+  integrity sha512-1k2CeNSm9pbjy+lreaFLCEPqhjU2IOooz69wgpP6VUlA+MP0EYInMPBTiJUu6WTbDIk2tbM3daX+4DjSYTsNMw==
+  dependencies:
+    ethers "^5.0.7"
+
 "@ethersproject/abi@5.0.0-beta.153":
   version "5.0.0-beta.153"
   resolved "https://registry.yarnpkg.com/@ethersproject/abi/-/abi-5.0.0-beta.153.tgz#43a37172b33794e4562999f6e2d555b7599a8eee"
@@ -2624,7 +2631,7 @@ ethers@^4.0.0-beta.1, ethers@^4.0.32:
     uuid "2.0.1"
     xmlhttprequest "1.8.0"
 
-ethers@^5.0.3:
+ethers@^5.0.3, ethers@^5.0.7:
   version "5.0.9"
   resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.0.9.tgz#ce77cc0fc5b83c57c607e4fd79edcd9bc46dc511"
   integrity sha512-jv2ULxAKRlJv0zrhpUvYcwwITFghoJOEhOqSJhLBT3TnZyF/lmAS3tC8nejIlwxzOJw7LCyde8U+BwTzZdFDrQ==

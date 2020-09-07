@@ -16,11 +16,11 @@
     "check": "yarn lint",
     "clean": "buidler clean",
     "compile": "buidler compile",
-    "test": "buidler test",
+    "test:unit": "buidler test test/*",
+    "test:integration": "buidler test integration/*",
     "lint": "solhint contracts/**/*.sol",
     "ganache": "ganache-cli",
-    "fork:mainnet": "./scripts/fork_mainnet.sh",
-    "integration": "buidler --network ganache test ./integration/*.js"
+    "fork:mainnet": "./scripts/fork_mainnet.sh"
   },
   "husky": {
     "hooks": {
@@ -60,6 +60,7 @@
     "solidity-coverage": "^0.7.10"
   },
   "dependencies": {
+    "@compound-finance/compound-js": "^0.1.0",
     "@openzeppelin/contracts": "3.2.0-rc.0",
     "abdk-libraries-solidity": "^2.3.0",
     "ganache-time-traveler": "^1.0.14",
