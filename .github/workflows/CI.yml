@@ -44,9 +44,9 @@ jobs:
       run: yarn lint
     - name: Unit tests
       run: yarn test:unit
-    # - name: Integration tests 
-    #   run: |
-    #     yarn fork:mainnet > /dev/null &
-    #     while netstat -lnt | awk '$4 ~ /:8545$/ {exit 1}'; do sleep 5; done
-    #     yarn test:integration --network localhost
-    #     kill $(lsof -t -i:8545)
+    - name: Integration tests 
+      run: |
+        yarn fork:mainnet > /dev/null &
+        while netstat -lnt | awk '$4 ~ /:8545$/ {exit 1}'; do sleep 5; done
+        yarn test:integration --network localhost
+        kill $(lsof -t -i:8545)
