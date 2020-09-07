@@ -1,7 +1,7 @@
 const { ethers, web3, artifacts, contract } = require("@nomiclabs/buidler");
 const { defaultAbiCoder: abiCoder } = ethers.utils;
 const BigNumber = ethers.BigNumber;
-const { mintERC20Tokens } = require("./utils.js");
+const { mintERC20Tokens } = require("../utils/helpers");
 const {
   BN,
   ether,
@@ -76,7 +76,7 @@ contract("APYStrategyExecution", async (accounts) => {
     // console.log(cdai_val.toString());
   });
 
-  describe("Example Execution", async () => {
+  describe.skip("Example Execution", async () => {
     it("Execute Steps", async () => {
       // execute steps
       const exec = await APYStrategyReturnExecutor.new();

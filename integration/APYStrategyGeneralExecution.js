@@ -1,7 +1,7 @@
 const { ethers, web3, artifacts, contract } = require("@nomiclabs/buidler");
 const { defaultAbiCoder: abiCoder } = ethers.utils;
 const BigNumber = ethers.BigNumber;
-const { mintERC20Tokens } = require("./utils.js");
+const { mintERC20Tokens } = require("../utils/helpers");
 const {
   BN,
   ether,
@@ -49,7 +49,7 @@ contract("APYStrategyExecution", async (accounts) => {
     console.log(`exec Starting DAI Balance: ${daiBalance.toNumber()}`)
   });
 
-  describe("Example Execution", async () => {
+  describe.skip("Example Execution", async () => {
     it("Execute mint", async () => {
       // execute steps
       const trx = await exec.execute(
