@@ -59,10 +59,18 @@ const getERC20Balance = async (contractAddress, accountAddress) => {
   return balance;
 };
 
+console.debug = function() {
+  if (!console.debugging) return;
+  console.log.apply(this, arguments);
+};
+
+console.debugging = false;
+
 module.exports = {
   dai,
   erc20,
   mintERC20Tokens,
   getERC20Balance,
   undoErc20,
+  console,
 };
