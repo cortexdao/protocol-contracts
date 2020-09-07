@@ -53,6 +53,9 @@ contract("APYStrategyExecution", async (accounts) => {
     it("Execute mint", async () => {
       // execute steps
       const trx = await exec.execute(
+        DAI.address,
+        1000,
+        true,
         [
           [DAI.address, DAI.interface.encodeFunctionData('approve', [cDAI.address, 1000])],
           [cDAI.address, cDAI.interface.encodeFunctionData("mint", [1000])]
