@@ -144,6 +144,9 @@ contract("APYStrategyExecution", async (accounts) => {
         ],
         { from: owner }
       )
+
+      const approvalCount = await mockERC20.invocationCountForMethod.call(approve)
+      assert.equal(1, approvalCount.toNumber())
     })
   })
 });
