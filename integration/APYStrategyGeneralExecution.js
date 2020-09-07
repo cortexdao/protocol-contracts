@@ -50,7 +50,7 @@ contract("APYStrategyExecution", async (accounts) => {
   });
 
   describe("Example Execution", async () => {
-    it("Execute Steps", async () => {
+    it("Execute mint", async () => {
       // execute steps
       const trx = await exec.execute(
         [
@@ -62,6 +62,18 @@ contract("APYStrategyExecution", async (accounts) => {
 
       await expectEvent.inTransaction(trx.tx, DAI, 'Approval', { _owner: exec.address, _spender: cDAI.address, _value: '1000' })
       await expectEvent.inTransaction(trx.tx, cDAI, 'Mint')
+    });
+
+    it("Execute redeem", async () => {
+      // execute steps
+      const trx = await exec.execute(
+        [
+          [cDAI.address, cDAI.interface.encodeFunctionData("redeem", [1000])]
+        ],
+        { from: owner }
+      );
+
+      await expectEvent.inTransaction(trx.tx, cDAI, 'Redeem')
     });
   });
 });
