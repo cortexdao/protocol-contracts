@@ -38,15 +38,15 @@ contract("APYStrategyExecution", async (accounts) => {
     // mint to user
     await mintERC20Tokens(DAI.address, owner, DAI_MINTER, amount);
     daiBalance = await DAIInstance.balanceOf(owner)
-    console.log(`Starting DAI Balance: ${daiBalance.toNumber()}`)
+    console.log(`Starting DAI Balance: ${daiBalance.toString()}`)
     await DAIInstance.approve(cDAI.address, daiBalance)
     errCode = await cDAIInstance.mint.call(daiBalance)
-    console.log(`Mint Error Code: ${errCode.toNumber()}`)
+    console.log(`Mint Error Code: ${errCode.toString()}`)
 
     // mint to exec
     await mintERC20Tokens(DAI.address, exec.address, DAI_MINTER, amount);
     daiBalance = await DAIInstance.balanceOf(exec.address)
-    console.log(`exec Starting DAI Balance: ${daiBalance.toNumber()}`)
+    console.log(`exec Starting DAI Balance: ${daiBalance.toString()}`)
   });
 
   describe.skip("Example Execution", async () => {
