@@ -16,8 +16,8 @@
     "check": "yarn lint",
     "clean": "buidler clean",
     "compile": "buidler compile",
-    "test:unit": "buidler test test/*",
-    "test:integration": "buidler test integration/*",
+    "test:unit": "buidler test test-unit/*",
+    "test:integration": "buidler test test-integration/*",
     "lint": "solhint contracts/**/*.sol",
     "ganache": "ganache-cli",
     "fork:mainnet": "./scripts/fork_mainnet.sh"
