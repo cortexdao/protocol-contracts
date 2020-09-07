@@ -133,20 +133,20 @@ contract("APYStrategyExecution", async (accounts) => {
     it("Test Execute outbound fail", async () => {
 
       const approve = ERC20Interface.encodeFunctionData('approve', [constants.ZERO_ADDRESS, 0])
-      await mockERC20.givenMethodReturnBool(approve, false)
+      await mockERC20.givenMethodRevertWithMessage(approve, "EXPECT_FAIL")
 
-      await exec.execute(
-        mockERC20.address,
-        0,
-        false,
-        [
-          [mockERC20.address, approve]
-        ],
-        { from: owner }
+      await expectRevert(
+        exec.execute(
+          mockERC20.address,
+          0,
+          false,
+          [
+            [mockERC20.address, approve]
+          ],
+          { from: owner }
+        ),
+        "EXPECT_FAIL"
       )
-
-      const approvalCount = await mockERC20.invocationCountForMethod.call(approve)
-      assert.equal(1, approvalCount.toNumber())
     })
   })
 });
