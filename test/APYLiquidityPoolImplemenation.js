@@ -26,7 +26,7 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
   let apt;
   let mockDai;
 
-  let DEFAULT_TOKEN_TO_ETH_FACTOR;
+  let DEFAULT_APT_TO_UNDERLYER_FACTOR;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -43,7 +43,7 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
     // await pool.setUnderlyerAddress(mockDai.address, { from: deployer });
     await apt.setPoolAddress(pool.address, { from: deployer });
 
-    DEFAULT_TOKEN_TO_ETH_FACTOR = await pool.defaultTokenToEthFactor();
+    DEFAULT_APT_TO_UNDERLYER_FACTOR = await pool.DEFAULT_APT_TO_UNDERLYER_FACTOR();
   });
 
   afterEach(async () => {
@@ -98,7 +98,7 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
       from: wallet,
     });
     expect(mintAmount).to.bignumber.equal(
-      daiDeposit.mul(DEFAULT_TOKEN_TO_ETH_FACTOR)
+      daiDeposit.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR)
     );
   });
 
@@ -111,7 +111,7 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
       { from: wallet }
     );
     expect(mintAmount).to.bignumber.equal(
-      daiDeposit.mul(DEFAULT_TOKEN_TO_ETH_FACTOR)
+      daiDeposit.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR)
     );
   });
 
