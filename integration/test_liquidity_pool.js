@@ -9,12 +9,12 @@ const {
   expectRevert, // Assertions for transactions that should fail
 } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
-const { mintERC20Tokens, dai } = require("./utils");
+const { mintERC20Tokens, dai } = require("../utils/helpers");
 const {
   DAI_ADDRESS,
   DAI_MINTER_ADDRESS,
   DUMMY_ADDRESS,
-} = require("./constants");
+} = require("../utils/constants");
 const timeMachine = require("ganache-time-traveler");
 
 const APYLiquidityPoolProxy = artifacts.require("APYLiquidityPoolProxy");
@@ -35,7 +35,17 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
 
   let daiToken;
 
-  let DEFAULT_TOKEN_TO_ETH_FACTOR;
+  // use EVM snapshots for test isolation
+  let snapshotId;
+
+  beforeEach(async () => {
+    let snapshot = await timeMachine.takeSnapshot();
+    snapshotId = snapshot["result"];
+  });
+
+  afterEach(async () => {
+    await timeMachine.revertToSnapshot(snapshotId);
+  });
 
   // deploy pool and APT contracts before each test
   beforeEach(async () => {
@@ -89,20 +99,6 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
   });
 
   describe("proxy has admin functionality", async () => {
-    // we need to be careful to use EVM snapshots,
-    // as we are messing with the proxy and so our
-    // test failures can impact other test suites
-    let snapshotId;
-
-    beforeEach(async () => {
-      let snapshot = await timeMachine.takeSnapshot();
-      snapshotId = snapshot["result"];
-    });
-
-    afterEach(async () => {
-      await timeMachine.revertToSnapshot(snapshotId);
-    });
-
     it("admin can call admin functions (non-upgrade)", async () => {
       expect(await poolProxy.admin.call({ from: admin })).to.equal(admin);
       expect(await poolProxy.implementation.call({ from: admin })).to.equal(
@@ -238,17 +234,6 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
       expect(endBalance.sub(startBalance)).to.bignumber.equal(daiAmount);
     });
   });
-
-  // test helper to mock the total supply
-  const mockTotalSupply = async (liquidityPoolContract, totalSupply) => {
-    // Instantiate mock and make it return true for any invocation
-    const mock = await MockContract.new();
-    await liquidityPoolContract.setTokenAddress(mock.address, {
-      from: deployer,
-    });
-    const totalSupplyAbi = apt.contract.methods.totalSupply().encodeABI();
-    await mock.givenMethodReturnUint(totalSupplyAbi, totalSupply);
-  };
 
   // test helper to mint tokens to wallet
   const mintTokens = async (tokenContract, amount, wallet) => {

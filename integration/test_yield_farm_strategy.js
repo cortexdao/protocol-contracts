@@ -10,13 +10,14 @@ const {
   time,
 } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
+const timeMachine = require("ganache-time-traveler");
 const {
   erc20,
   dai,
   mintERC20Tokens,
   getERC20Balance,
   undoErc20,
-} = require("./utils");
+} = require("../utils/helpers");
 const { advanceBlock } = require("@openzeppelin/test-helpers/src/time");
 const {
   DAI_ADDRESS,
@@ -24,7 +25,7 @@ const {
   COMP_ADDRESS,
   ONE_SPLIT_ADDRESS,
   COMPTROLLER_ADDRESS,
-} = require("./constants");
+} = require("../utils/constants");
 
 const APYManager = artifacts.require("APYManager");
 const LeveragedYieldFarmStrategy = artifacts.require(
@@ -57,7 +58,13 @@ contract("LeveragedYieldFarmStrategy", async (accounts) => {
   let strategy;
   let manager;
 
+  // use EVM snapshots for test isolation
+  let snapshotId;
+
   beforeEach(async () => {
+    let snapshot = await timeMachine.takeSnapshot();
+    snapshotId = snapshot["result"];
+
     daiToken = await IMintableERC20.at(DAI_ADDRESS);
     cDaiToken = await CErc20.at(CDAI_ADDRESS);
     compToken = await IERC20.at(COMP_ADDRESS);
@@ -82,6 +89,11 @@ contract("LeveragedYieldFarmStrategy", async (accounts) => {
     await strategy.setManagerAddress(manager.address);
 
     await strategy.setOneInchAddress(ONE_SPLIT_ADDRESS);
+  });
+
+  afterEach(async () => {
+    // FIXME: for some reason, this makes the test fail
+    //await timeMachine.revertToSnapshot(snapshotId);
   });
 
   it("farm COMP with DAI flash loan", async () => {

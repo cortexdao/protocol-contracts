@@ -9,13 +9,14 @@ const {
   expectRevert,
 } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
+const timeMachine = require("ganache-time-traveler");
 const {
   erc20,
   dai,
   mintERC20Tokens,
   getERC20Balance,
   undoErc20,
-} = require("./utils");
+} = require("../utils/helpers");
 
 const OneInchSwap = artifacts.require("OneInchSwapTestProxy");
 const IOneSplit = artifacts.require("IOneSplit");
@@ -26,7 +27,7 @@ const {
   DAI_ADDRESS,
   DAI_MINTER_ADDRESS,
   USDC_ADDRESS,
-} = require("./constants");
+} = require("../utils/constants");
 
 // DISABLE flags
 const DISABLE_ALL = new BN("20000000", 16).add(new BN("40000000", 16));
@@ -49,9 +50,18 @@ contract("OneSplit", async (accounts) => {
   const [deployer, wallet, other] = accounts;
 
   let oneInch;
+  // use EVM snapshots for test isolation
+  let snapshotId;
 
   beforeEach(async () => {
+    let snapshot = await timeMachine.takeSnapshot();
+    snapshotId = snapshot["result"];
+
     oneInch = await IOneSplit.at(ONE_SPLIT_ADDRESS);
+  });
+
+  afterEach(async () => {
+    await timeMachine.revertToSnapshot(snapshotId);
   });
 
   it("can swap ETH for ERC20", async () => {

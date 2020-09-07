@@ -9,6 +9,7 @@ const {
   expectRevert,
 } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
+const timeMachine = require("ganache-time-traveler");
 
 const APYManager = artifacts.require("APYManager");
 const MockContract = artifacts.require("MockContract");
@@ -29,12 +30,22 @@ contract("APYManager", async (accounts) => {
 
   const poolBalance = ether("1.75");
 
+  // use EVM snapshots for test isolation
+  let snapshotId;
+
   beforeEach(async () => {
+    let snapshot = await timeMachine.takeSnapshot();
+    snapshotId = snapshot["result"];
+
     manager = await APYManager.new();
     strategy = await getStrategyMock();
     await manager.setStrategyAddress(strategy.address);
 
     pool = await deployPoolWithEther(manager, poolBalance);
+  });
+
+  afterEach(async () => {
+    await timeMachine.revertToSnapshot(snapshotId);
   });
 
   it("can enter strategy", async () => {

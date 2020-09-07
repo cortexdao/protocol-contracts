@@ -41,7 +41,7 @@ contract APYLiquidityPoolImplementation is
     using FixedPoint for *;
     using SafeERC20 for IERC20;
 
-    uint256 internal constant _DEFAULT_TOKEN_TO_ETH_FACTOR = 1000;
+    uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
     uint192 internal constant _MAX_UINT192 = uint192(-1);
 
     APT public apt;
@@ -153,7 +153,7 @@ contract APYLiquidityPoolImplementation is
         uint256 totalSupply = apt.totalSupply();
 
         if (totalAmount == 0 || totalSupply == 0) {
-            return amount.mul(_DEFAULT_TOKEN_TO_ETH_FACTOR);
+            return amount.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR);
         }
 
         require(amount <= _MAX_UINT192, "Pool/overflow");
@@ -190,9 +190,6 @@ contract APYLiquidityPoolImplementation is
  *      Should not be used other than in test files!
  */
 contract APYLiquidityPoolImplTestProxy is APYLiquidityPoolImplementation {
-    uint256 public defaultTokenToEthFactor = APYLiquidityPoolImplementation
-        ._DEFAULT_TOKEN_TO_ETH_FACTOR;
-
     function internalCalculateMintAmount(uint256 ethValue, uint256 totalValue)
         public
         view

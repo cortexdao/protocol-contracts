@@ -10,13 +10,14 @@ const {
   time,
 } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
+const timeMachine = require("ganache-time-traveler");
 const {
   erc20,
   dai,
   mintERC20Tokens,
   getERC20Balance,
   undoErc20,
-} = require("./utils");
+} = require("../utils/helpers");
 
 const IOneSplit = artifacts.require("IOneSplit");
 const Comptroller = artifacts.require("Comptroller");
@@ -32,7 +33,7 @@ const {
   COMPTROLLER_ADDRESS,
   CDAI_ADDRESS,
   COMP_ADDRESS,
-} = require("./constants");
+} = require("../utils/constants");
 
 const timeout = 120000; // in millis
 
@@ -52,7 +53,13 @@ contract("DAI3 Strategy", async (accounts) => {
   let dai3Strategy;
   let daiToken;
 
+  // use EVM snapshots for test isolation
+  let snapshotId;
+
   beforeEach(async () => {
+    let snapshot = await timeMachine.takeSnapshot();
+    snapshotId = snapshot["result"];
+
     comptroller = await Comptroller.at(COMPTROLLER_ADDRESS);
     cDaiToken = await CErc20.at(CDAI_ADDRESS);
     daiToken = await IMintableERC20.at(DAI_ADDRESS);
@@ -67,6 +74,11 @@ contract("DAI3 Strategy", async (accounts) => {
       DAI_MINTER_ADDRESS,
       dai("10000")
     );
+  });
+
+  afterEach(async () => {
+    // FIXME: for some reason, this makes the test fail
+    // await timeMachine.revertToSnapshot(snapshotId);
   });
 
   it("should mint cDAI and borrow DAI", async () => {

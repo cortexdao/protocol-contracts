@@ -9,6 +9,7 @@ const {
   expectRevert, // Assertions for transactions that should fail
 } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
+const timeMachine = require("ganache-time-traveler");
 
 const APYLiquidityPool = artifacts.require("APYLiquidityPoolTestProxy");
 const APT = artifacts.require("APT");
@@ -22,7 +23,12 @@ contract("APYLiquidityPool", async (accounts) => {
 
   let DEFAULT_TOKEN_TO_ETH_FACTOR;
 
+  // use EVM snapshots for test isolation
+  let snapshotId;
+
   beforeEach(async () => {
+    let snapshot = await timeMachine.takeSnapshot();
+    snapshotId = snapshot["result"];
     apyLiquidityPool = await APYLiquidityPool.new();
     apt = await APT.new();
 
@@ -30,6 +36,10 @@ contract("APYLiquidityPool", async (accounts) => {
     await apt.setPoolAddress(apyLiquidityPool.address, { from: deployer });
 
     DEFAULT_TOKEN_TO_ETH_FACTOR = await apyLiquidityPool.defaultTokenToEthFactor();
+  });
+
+  afterEach(async () => {
+    await timeMachine.revertToSnapshot(snapshotId);
   });
 
   it("addLiquidity receives ETH value sent", async () => {

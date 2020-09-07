@@ -20,14 +20,6 @@ const erc20 = (amount, decimals) => {
   wholePart = new BN(wholePart || "0");
 
   const base = new BN("10").pow(new BN(decimals));
-  //   console.debug(
-  //     "whole:",
-  //     wholePart.toString(),
-  //     "base:",
-  //     base.toString(),
-  //     "frac:",
-  //     fracPart.toString()
-  //   );
   const amountBits = wholePart.mul(base).add(fracPart);
   return amountBits;
 };
@@ -67,10 +59,18 @@ const getERC20Balance = async (contractAddress, accountAddress) => {
   return balance;
 };
 
+console.debug = function() {
+  if (!console.debugging) return;
+  console.log.apply(this, arguments);
+};
+
+console.debugging = false;
+
 module.exports = {
   dai,
   erc20,
   mintERC20Tokens,
   getERC20Balance,
   undoErc20,
+  console,
 };
