@@ -235,17 +235,6 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
     });
   });
 
-  // test helper to mock the total supply
-  const mockTotalSupply = async (liquidityPoolContract, totalSupply) => {
-    // Instantiate mock and make it return true for any invocation
-    const mock = await MockContract.new();
-    await liquidityPoolContract.setTokenAddress(mock.address, {
-      from: deployer,
-    });
-    const totalSupplyAbi = apt.contract.methods.totalSupply().encodeABI();
-    await mock.givenMethodReturnUint(totalSupplyAbi, totalSupply);
-  };
-
   // test helper to mint tokens to wallet
   const mintTokens = async (tokenContract, amount, wallet) => {
     const poolAddress = await tokenContract.pool();

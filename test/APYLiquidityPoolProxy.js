@@ -16,6 +16,9 @@ const APYLiquidityPoolProxy = artifacts.require("APYLiquidityPoolProxy");
 const APYLiquidityPoolImplementation = artifacts.require(
   "APYLiquidityPoolImplementation"
 );
+const APYLiquidityPoolImplTestProxy = artifacts.require(
+  "APYLiquidityPoolImplTestProxy"
+);
 const APT = artifacts.require("APT");
 const MockContract = artifacts.require("MockContract");
 const dai = ether;
@@ -48,47 +51,6 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
 
   afterEach(async () => {
     await timeMachine.revertToSnapshot(snapshotId);
-  });
-
-  describe("user gets right amount of APT from DAI deposit", async () => {
-    beforeEach(async () => {
-      apt = await APT.new({ from: deployer });
-      pool.setAptAddress(apt.address, { from: deployer });
-      apt.setPoolAddress(pool.address, { from: deployer });
-    });
-
-    it("addLiquidity creates APT for user", async () => {
-      let balanceOf = await apt.balanceOf(wallet);
-      expect(balanceOf).to.bignumber.equal("0");
-
-      const daiDeposit = dai("1");
-      await mockDaiTransfer(pool, daiDeposit);
-
-      await pool.addLiquidity(daiDeposit, {
-        from: wallet,
-      });
-      balanceOf = await apt.balanceOf(wallet);
-      expect(balanceOf).to.bignumber.gt("0");
-    });
-
-    it("addLiquidity creates correctly calculated amount of APT", async () => {
-      await mockDaiTransfer(pool, dai("10"));
-      // use another account to call addLiquidity and create non-zero
-      // token and DAI supplies in contract
-      await pool.addLiquidity(dai("10"), {
-        from: other,
-      });
-
-      // now we can check the expected mint amount based on the DAI ratio
-      const daiDeposit = ether("2");
-      const expectedMintAmount = await pool.calculateMintAmount(daiDeposit, {
-        from: wallet,
-      });
-
-      await pool.addLiquidity(daiDeposit, { from: wallet });
-      const mintAmount = await apt.balanceOf(wallet);
-      expect(mintAmount).to.bignumber.equal(expectedMintAmount);
-    });
   });
 
   describe("proxy delegates to implementation", async () => {
@@ -176,8 +138,75 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
     });
   });
 
+  /*
+   * These tests are very similar to the one in `integration/test_liquidity_pool`
+   * but mock out any interaction with the DAI token.  The idea is to test
+   * only the APT interaction here.
+   */
+  describe("user gets right amount of APT from DAI deposit", async () => {
+    beforeEach(async () => {
+      apt = await APT.new({ from: deployer });
+      pool.setAptAddress(apt.address, { from: deployer });
+      apt.setPoolAddress(pool.address, { from: deployer });
+    });
+
+    it("addLiquidity creates APT for user", async () => {
+      let balanceOf = await apt.balanceOf(wallet);
+      expect(balanceOf).to.bignumber.equal("0");
+
+      const daiDeposit = dai("1");
+      await mockDaiTransfer(pool, daiDeposit);
+
+      await pool.addLiquidity(daiDeposit, {
+        from: wallet,
+      });
+      balanceOf = await apt.balanceOf(wallet);
+      expect(balanceOf).to.bignumber.gt("0");
+    });
+
+    it("addLiquidity creates correctly calculated amount of APT", async () => {
+      // mock out DAI token in pool with high allowance
+      await mockDaiTransfer(pool, dai("1000000000"));
+
+      // use another account to call addLiquidity and create non-zero
+      // token and DAI supplies in contract
+      const initialDaiDeposit = dai("8.26");
+      await pool.addLiquidity(initialDaiDeposit, {
+        from: other,
+      });
+
+      // check seed deposit created the right amount of APT
+      const initialMintAmount = await apt.balanceOf(other);
+      const DEFAULT_APT_TO_UNDERLYER_FACTOR = await pool.DEFAULT_APT_TO_UNDERLYER_FACTOR();
+      expect(initialMintAmount).to.bignumber.equal(
+        initialDaiDeposit.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR)
+      );
+
+      // now we can check the expected mint amount based on the DAI ratio
+      let daiDeposit = dai("210.6");
+      let expectedMintAmount = await pool.calculateMintAmount(daiDeposit, {
+        from: wallet,
+      });
+
+      await pool.addLiquidity(daiDeposit, { from: wallet });
+      const initialAptBalance = await apt.balanceOf(wallet);
+      expect(initialAptBalance).to.bignumber.equal(expectedMintAmount);
+
+      daiDeposit = dai("3.899");
+      expectedMintAmount = await pool.calculateMintAmount(daiDeposit, {
+        from: wallet,
+      });
+
+      await pool.addLiquidity(daiDeposit, { from: wallet });
+      const aptBalance = await apt.balanceOf(wallet);
+      expect(aptBalance.sub(initialAptBalance)).to.bignumber.equal(
+        expectedMintAmount
+      );
+    });
+  });
+
   // test helper to mock ERC20 functions on underlyer token
-  const mockDaiTransfer = async (liquidityPoolContract, amount) => {
+  const mockDaiTransfer = async (liquidityPoolContract, allowance) => {
     const mock = await MockContract.new();
     await liquidityPoolContract.setUnderlyerAddress(mock.address, {
       from: deployer,
@@ -191,7 +220,7 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
     const transferAbi = apt.contract.methods
       .transfer(ZERO_ADDRESS, 0)
       .encodeABI();
-    await mock.givenMethodReturnUint(allowanceAbi, amount);
+    await mock.givenMethodReturnUint(allowanceAbi, allowance);
     await mock.givenMethodReturnBool(transferAbi, true);
     await mock.givenMethodReturnBool(transferFromAbi, true);
   };
