@@ -9,6 +9,7 @@ const {
   expectRevert, // Assertions for transactions that should fail
 } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
+const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const dai = ether;
 
@@ -27,7 +28,13 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
 
   let DEFAULT_TOKEN_TO_ETH_FACTOR;
 
+  // use EVM snapshots for test isolation
+  let snapshotId;
+
   beforeEach(async () => {
+    let snapshot = await timeMachine.takeSnapshot();
+    snapshotId = snapshot["result"];
+
     pool = await APYLiquidityPoolImplementation.new();
     apt = await APT.new();
     // mockDai = await MockContract.new();
@@ -39,6 +46,9 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
     DEFAULT_TOKEN_TO_ETH_FACTOR = await pool.defaultTokenToEthFactor();
   });
 
+  afterEach(async () => {
+    await timeMachine.revertToSnapshot(snapshotId);
+  });
   it("addLiquidity reverts if 0 DAI sent", async () => {
     await expectRevert(
       pool.addLiquidity(0, { from: wallet, value: "0" }),

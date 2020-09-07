@@ -9,6 +9,7 @@ const {
   expectRevert,
 } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
+const timeMachine = require("ganache-time-traveler");
 
 const OneInchSwap = artifacts.require("OneInchSwapTestProxy");
 const IOneSplit = artifacts.require("IOneSplit");
@@ -23,10 +24,20 @@ contract("OneInchSwap", async (accounts) => {
   let oneInchSwap;
   let oneSplit;
 
+  // use EVM snapshots for test isolation
+  let snapshotId;
+
   beforeEach(async () => {
+    let snapshot = await timeMachine.takeSnapshot();
+    snapshotId = snapshot["result"];
+
     oneSplit = await getOneSplitMock();
     oneInchSwap = await OneInchSwap.new();
     await oneInchSwap.setOneInchAddress(oneSplit.address, { from: deployer });
+  });
+
+  afterEach(async () => {
+    await timeMachine.revertToSnapshot(snapshotId);
   });
 
   it("can swap ETH for ERC20", async () => {

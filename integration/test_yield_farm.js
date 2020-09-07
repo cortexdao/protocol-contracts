@@ -10,6 +10,7 @@ const {
   time,
 } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
+const timeMachine = require("ganache-time-traveler");
 const {
   erc20,
   dai,
@@ -48,11 +49,22 @@ contract("LeveragedYieldFarm", async (accounts) => {
   let compToken;
   let farm;
 
+  // use EVM snapshots for test isolation
+  let snapshotId;
+
   beforeEach(async () => {
+    let snapshot = await timeMachine.takeSnapshot();
+    snapshotId = snapshot["result"];
+
     daiToken = await IMintableERC20.at(DAI_ADDRESS);
     cDaiToken = await CErc20.at(CDAI_ADDRESS);
     compToken = await IERC20.at(COMP_ADDRESS);
     farm = await LeveragedYieldFarm.new();
+  });
+
+  afterEach(async () => {
+    // FIXME: for some reason, this makes the test fail
+    // await timeMachine.revertToSnapshot(snapshotId);
   });
 
   it("farm COMP with DAI flash loan", async () => {

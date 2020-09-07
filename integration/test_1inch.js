@@ -9,6 +9,7 @@ const {
   expectRevert,
 } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
+const timeMachine = require("ganache-time-traveler");
 const {
   erc20,
   dai,
@@ -49,9 +50,18 @@ contract("OneSplit", async (accounts) => {
   const [deployer, wallet, other] = accounts;
 
   let oneInch;
+  // use EVM snapshots for test isolation
+  let snapshotId;
 
   beforeEach(async () => {
+    let snapshot = await timeMachine.takeSnapshot();
+    snapshotId = snapshot["result"];
+
     oneInch = await IOneSplit.at(ONE_SPLIT_ADDRESS);
+  });
+
+  afterEach(async () => {
+    await timeMachine.revertToSnapshot(snapshotId);
   });
 
   it("can swap ETH for ERC20", async () => {

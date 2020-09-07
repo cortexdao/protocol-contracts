@@ -28,9 +28,7 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
   let poolImpl;
   let poolProxy;
 
-  // we need to be careful to use EVM snapshots,
-  // as we are messing with the proxy and so our
-  // test failures can impact other test suites
+  // use EVM snapshots for test isolation
   let snapshotId;
 
   // deploy pool contracts before each test

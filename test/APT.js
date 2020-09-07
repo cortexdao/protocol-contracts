@@ -9,6 +9,7 @@ const {
   expectRevert, // Assertions for transactions that should fail
 } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
+const timeMachine = require("ganache-time-traveler");
 
 const APT = artifacts.require("APT");
 
@@ -16,9 +17,19 @@ contract("APT", async (accounts) => {
   const [deployer, pool, wallet, other] = accounts;
   let apt;
 
+  // use EVM snapshots for test isolation
+  let snapshotId;
+
   beforeEach(async () => {
+    let snapshot = await timeMachine.takeSnapshot();
+    snapshotId = snapshot["result"];
+
     apt = await APT.new();
     await apt.setPoolAddress(pool, { from: deployer });
+  });
+
+  afterEach(async () => {
+    await timeMachine.revertToSnapshot(snapshotId);
   });
 
   it("mint reverts if not called by pool", async () => {
