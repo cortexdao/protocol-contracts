@@ -39,6 +39,8 @@ contract("APYStrategyExecution", async (accounts) => {
     await mintERC20Tokens(DAI.address, owner, DAI_MINTER, amount);
     daiBalance = await DAIInstance.balanceOf(owner)
     console.log(`Starting DAI Balance: ${daiBalance.toNumber()}`)
+    await DAIInstance.approve(exec.address, daiBalance)
+
     await DAIInstance.approve(cDAI.address, daiBalance)
     errCode = await cDAIInstance.mint.call(daiBalance)
     console.log(`Mint Error Code: ${errCode.toNumber()}`)
@@ -49,7 +51,7 @@ contract("APYStrategyExecution", async (accounts) => {
     console.log(`exec Starting DAI Balance: ${daiBalance.toNumber()}`)
   });
 
-  describe("Example Execution", async () => {
+  describe.skip("Example Execution", async () => {
     it("Execute mint", async () => {
       // execute steps
       const trx = await exec.execute(
@@ -71,6 +73,9 @@ contract("APYStrategyExecution", async (accounts) => {
       // execute steps
       const trx = await exec.execute(
         [
+          DAI.address,
+          amount,
+          true,
           [cDAI.address, cDAI.interface.encodeFunctionData("redeem", [1000])]
         ],
         { from: owner }
