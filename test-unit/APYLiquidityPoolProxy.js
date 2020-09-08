@@ -84,11 +84,11 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
     });
 
     // Reentrancy tests
-    it("cannot reenter deposit", async () => {
+    it.skip("cannot reenter deposit", async () => {
       //
     });
 
-    it("cannot reenter redeem", async () => {
+    it.skip("cannot reenter redeem", async () => {
       //
     });
   });
