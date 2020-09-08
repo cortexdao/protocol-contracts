@@ -22,7 +22,6 @@ const APYLiquidityPoolImplementation = artifacts.require(
   "APYLiquidityPoolImplementation"
 );
 const IERC20 = artifacts.require("IERC20");
-const MockContract = artifacts.require("MockContract");
 
 contract("APYLiquidityPoolProxy", async (accounts) => {
   const [deployer, admin, wallet, other] = accounts;
@@ -50,7 +49,7 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
     daiToken = await IERC20.at(DAI_ADDRESS);
 
     poolImpl = await APYLiquidityPoolImplementation.new({ from: deployer });
-    poolProxy = await APYLiquidityPoolProxy.new(poolImpl.address, admin, [], {
+    poolProxy = await APYLiquidityPoolProxy.new(poolImpl.address, admin, {
       from: deployer,
     });
 
