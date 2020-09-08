@@ -2,14 +2,23 @@
 pragma solidity ^0.6.6;
 pragma experimental ABIEncoderV2;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {
-    ReentrancyGuard
-} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+    OwnableUpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
+import {
+    ReentrancyGuardUpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
+import {
+    Initializable
+} from "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import {
+    ERC20UpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
+import {
+    SafeMath
+} from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import {
     TransparentUpgradeableProxy
 } from "@openzeppelin/contracts/proxy/TransparentUpgradeableProxy.sol";
@@ -19,25 +28,24 @@ import {ILiquidityPool} from "./ILiquidityPool.sol";
 
 
 contract APYLiquidityPoolProxy is TransparentUpgradeableProxy {
-    address private _owner;
-    APT public apt;
-    IERC20 internal _underlyer;
+    constructor(address _logic, address _admin)
+        public
+        TransparentUpgradeableProxy(_logic, _admin, getInitializerCallData())
+    {} // solhint-disable no-empty-blocks
 
-    constructor(
-        address _logic,
-        address _admin,
-        bytes memory _data
-    ) public TransparentUpgradeableProxy(_logic, _admin, _data) {
-        _owner = msg.sender;
+    function getInitializerCallData() public pure returns (bytes memory) {
+        bytes memory _data = abi.encodeWithSignature("initialize()");
+        return _data;
     }
 }
 
 
 contract APYLiquidityPoolImplementation is
     ILiquidityPool,
-    Ownable,
-    ReentrancyGuard,
-    ERC20("APY Pool Token", "APT")
+    Initializable,
+    OwnableUpgradeSafe,
+    ReentrancyGuardUpgradeSafe,
+    ERC20UpgradeSafe
 {
     using SafeMath for uint256;
     using FixedPoint for *;
@@ -58,6 +66,13 @@ contract APYLiquidityPoolImplementation is
         uint256 aptAmount,
         uint256 underlyerAmount
     );
+
+    function initialize() public initializer {
+        __Context_init_unchained();
+        __Ownable_init_unchained();
+        __ReentrancyGuard_init_unchained();
+        __ERC20_init_unchained("APY Pool Token", "APT");
+    }
 
     receive() external payable {
         revert("Pool/cannot-accept-eth");

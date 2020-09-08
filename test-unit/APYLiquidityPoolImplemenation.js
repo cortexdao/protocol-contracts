@@ -33,6 +33,7 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
     snapshotId = snapshot["result"];
 
     pool = await APYLiquidityPoolImplementation.new();
+    await pool.initialize();
 
     DEFAULT_APT_TO_UNDERLYER_FACTOR = await pool.DEFAULT_APT_TO_UNDERLYER_FACTOR();
   });

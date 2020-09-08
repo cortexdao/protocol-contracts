@@ -38,7 +38,7 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
     snapshotId = snapshot["result"];
 
     poolImpl = await APYLiquidityPoolImplementation.new({ from: deployer });
-    poolProxy = await APYLiquidityPoolProxy.new(poolImpl.address, admin, [], {
+    poolProxy = await APYLiquidityPoolProxy.new(poolImpl.address, admin, {
       from: deployer,
     });
 
@@ -69,6 +69,27 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
         pool.setUnderlyerAddress(DUMMY_ADDRESS, { from: other }),
         "Ownable: caller is not the owner"
       );
+    });
+
+    it("can get ERC20 name", async () => {
+      expect(await pool.name()).to.bignumber.equal("APY Pool Token");
+    });
+
+    it("can get ERC20 symbol", async () => {
+      expect(await pool.symbol()).to.bignumber.equal("APT");
+    });
+
+    it("can get ERC20 decimals", async () => {
+      expect(await pool.decimals()).to.bignumber.equal("18");
+    });
+
+    // Reentrancy tests
+    it("cannot reenter deposit", async () => {
+      //
+    });
+
+    it("cannot reenter redeem", async () => {
+      //
     });
   });
 
