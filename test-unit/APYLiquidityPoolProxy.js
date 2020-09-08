@@ -19,14 +19,12 @@ const APYLiquidityPoolImplementation = artifacts.require(
 const APYLiquidityPoolImplTestProxy = artifacts.require(
   "APYLiquidityPoolImplTestProxy"
 );
-const APT = artifacts.require("APT");
 const MockContract = artifacts.require("MockContract");
 const dai = ether;
 
 contract("APYLiquidityPoolProxy", async (accounts) => {
   const [deployer, admin, wallet, other] = accounts;
 
-  let apt;
   let pool;
   let poolImpl;
   let poolProxy;
@@ -56,21 +54,6 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
   describe("proxy delegates to implementation", async () => {
     it("owner is deployer", async () => {
       expect(await pool.owner()).to.equal(deployer);
-    });
-
-    it("owner can set APT address", async () => {
-      try {
-        await pool.setAptAddress(DUMMY_ADDRESS, { from: deployer });
-      } catch {
-        assert.fail("Cannot set APT address.");
-      }
-    });
-
-    it("reverts if non-owner tries setting APT address", async () => {
-      await expectRevert(
-        pool.setAptAddress(DUMMY_ADDRESS, { from: other }),
-        "Ownable: caller is not the owner"
-      );
     });
 
     it("owner can set underlyer address", async () => {
@@ -144,14 +127,8 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
    * only the APT interaction here.
    */
   describe("user gets right amount of APT from DAI deposit", async () => {
-    beforeEach(async () => {
-      apt = await APT.new({ from: deployer });
-      pool.setAptAddress(apt.address, { from: deployer });
-      apt.setPoolAddress(pool.address, { from: deployer });
-    });
-
     it("addLiquidity creates APT for user", async () => {
-      let balanceOf = await apt.balanceOf(wallet);
+      let balanceOf = await pool.balanceOf(wallet);
       expect(balanceOf).to.bignumber.equal("0");
 
       const daiDeposit = dai("1");
@@ -160,7 +137,7 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
       await pool.addLiquidity(daiDeposit, {
         from: wallet,
       });
-      balanceOf = await apt.balanceOf(wallet);
+      balanceOf = await pool.balanceOf(wallet);
       expect(balanceOf).to.bignumber.gt("0");
     });
 
@@ -176,7 +153,7 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
       });
 
       // check seed deposit created the right amount of APT
-      const initialMintAmount = await apt.balanceOf(other);
+      const initialMintAmount = await pool.balanceOf(other);
       const DEFAULT_APT_TO_UNDERLYER_FACTOR = await pool.DEFAULT_APT_TO_UNDERLYER_FACTOR();
       expect(initialMintAmount).to.bignumber.equal(
         initialDaiDeposit.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR)
@@ -189,7 +166,7 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
       });
 
       await pool.addLiquidity(daiDeposit, { from: wallet });
-      const initialAptBalance = await apt.balanceOf(wallet);
+      const initialAptBalance = await pool.balanceOf(wallet);
       expect(initialAptBalance).to.bignumber.equal(expectedMintAmount);
 
       daiDeposit = dai("3.899");
@@ -198,7 +175,7 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
       });
 
       await pool.addLiquidity(daiDeposit, { from: wallet });
-      const aptBalance = await apt.balanceOf(wallet);
+      const aptBalance = await pool.balanceOf(wallet);
       expect(aptBalance.sub(initialAptBalance)).to.bignumber.equal(
         expectedMintAmount
       );
@@ -211,13 +188,13 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
     await liquidityPoolContract.setUnderlyerAddress(mock.address, {
       from: deployer,
     });
-    const allowanceAbi = apt.contract.methods
+    const allowanceAbi = pool.contract.methods
       .allowance(ZERO_ADDRESS, ZERO_ADDRESS)
       .encodeABI();
-    const transferFromAbi = apt.contract.methods
+    const transferFromAbi = pool.contract.methods
       .transferFrom(ZERO_ADDRESS, ZERO_ADDRESS, 0)
       .encodeABI();
-    const transferAbi = apt.contract.methods
+    const transferAbi = pool.contract.methods
       .transfer(ZERO_ADDRESS, 0)
       .encodeABI();
     await mock.givenMethodReturnUint(allowanceAbi, allowance);

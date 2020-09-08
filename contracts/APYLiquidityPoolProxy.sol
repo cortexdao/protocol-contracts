@@ -8,6 +8,7 @@ import {
 } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {
     TransparentUpgradeableProxy
@@ -35,7 +36,8 @@ contract APYLiquidityPoolProxy is TransparentUpgradeableProxy {
 contract APYLiquidityPoolImplementation is
     ILiquidityPool,
     Ownable,
-    ReentrancyGuard
+    ReentrancyGuard,
+    ERC20("APY Pool Token", "APT")
 {
     using SafeMath for uint256;
     using FixedPoint for *;
@@ -43,8 +45,6 @@ contract APYLiquidityPoolImplementation is
 
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
     uint192 internal constant _MAX_UINT192 = uint192(-1);
-
-    APT public apt;
 
     IERC20 internal _underlyer;
 
@@ -76,7 +76,7 @@ contract APYLiquidityPoolImplementation is
         uint256 totalAmount = _underlyer.balanceOf(address(this));
         uint256 mintAmount = _calculateMintAmount(amount, totalAmount);
 
-        apt.mint(msg.sender, mintAmount);
+        _mint(msg.sender, mintAmount);
         _underlyer.transferFrom(msg.sender, address(this), amount);
 
         emit DepositedAPT(msg.sender, mintAmount, amount);
@@ -89,21 +89,16 @@ contract APYLiquidityPoolImplementation is
     function redeem(uint256 aptAmount) external override nonReentrant {
         require(aptAmount > 0, "Pool/redeem-positive-amount");
         require(
-            aptAmount <= apt.balanceOf(msg.sender),
+            aptAmount <= balanceOf(msg.sender),
             "Pool/insufficient-balance"
         );
 
         uint256 underlyerAmount = getUnderlyerAmount(aptAmount);
 
-        apt.burn(msg.sender, aptAmount);
+        _burn(msg.sender, aptAmount);
         _underlyer.transfer(msg.sender, underlyerAmount);
 
         emit RedeemedAPT(msg.sender, aptAmount, underlyerAmount);
-    }
-
-    /// @dev called by admin during deployment
-    function setAptAddress(address aptAddress) public onlyOwner {
-        apt = APT(aptAddress);
     }
 
     /// @dev called by admin during deployment
@@ -150,7 +145,7 @@ contract APYLiquidityPoolImplementation is
         view
         returns (uint256)
     {
-        uint256 totalSupply = apt.totalSupply();
+        uint256 totalSupply = totalSupply();
 
         if (totalAmount == 0 || totalSupply == 0) {
             return amount.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR);
@@ -173,12 +168,12 @@ contract APYLiquidityPoolImplementation is
         returns (FixedPoint.uq192x64 memory)
     {
         require(amount <= _MAX_UINT192, "Pool/overflow");
-        require(apt.totalSupply() > 0, "Pool/divide-by-zero");
-        require(apt.totalSupply() <= _MAX_UINT192, "Pool/overflow");
+        require(totalSupply() > 0, "Pool/divide-by-zero");
+        require(totalSupply() <= _MAX_UINT192, "Pool/overflow");
 
         FixedPoint.uq192x64 memory shareOfAPT = FixedPoint.fraction(
             uint192(amount),
-            uint192(apt.totalSupply())
+            uint192(totalSupply())
         );
         return shareOfAPT;
     }
@@ -190,6 +185,14 @@ contract APYLiquidityPoolImplementation is
  *      Should not be used other than in test files!
  */
 contract APYLiquidityPoolImplTestProxy is APYLiquidityPoolImplementation {
+    function internalMint(address account, uint256 amount) public {
+        _mint(account, amount);
+    }
+
+    function internalBurn(address account, uint256 amount) public {
+        _burn(account, amount);
+    }
+
     function internalCalculateMintAmount(uint256 ethValue, uint256 totalValue)
         public
         view

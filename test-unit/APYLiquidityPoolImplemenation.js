@@ -16,15 +16,12 @@ const dai = ether;
 const APYLiquidityPoolImplementation = artifacts.require(
   "APYLiquidityPoolImplTestProxy"
 );
-const APT = artifacts.require("APT");
 const MockContract = artifacts.require("MockContract");
 
 contract("APYLiquidityPoolImplementation", async (accounts) => {
   const [deployer, wallet, other] = accounts;
 
   let pool;
-  let apt;
-  let mockDai;
 
   let DEFAULT_APT_TO_UNDERLYER_FACTOR;
 
@@ -36,12 +33,6 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
     snapshotId = snapshot["result"];
 
     pool = await APYLiquidityPoolImplementation.new();
-    apt = await APT.new();
-    // mockDai = await MockContract.new();
-
-    await pool.setAptAddress(apt.address, { from: deployer });
-    // await pool.setUnderlyerAddress(mockDai.address, { from: deployer });
-    await apt.setPoolAddress(pool.address, { from: deployer });
 
     DEFAULT_APT_TO_UNDERLYER_FACTOR = await pool.DEFAULT_APT_TO_UNDERLYER_FACTOR();
   });
@@ -49,6 +40,7 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
   afterEach(async () => {
     await timeMachine.revertToSnapshot(snapshotId);
   });
+
   it("addLiquidity reverts if 0 DAI sent", async () => {
     await expectRevert(
       pool.addLiquidity(0, { from: wallet, value: "0" }),
@@ -59,8 +51,8 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
   it("mint amount to supply equals DAI deposit to total DAI balance", async () => {
     const daiDeposit = dai("112");
     const totalBalance = dai("1000000");
-    // mock token and set total supply to total Dai balance
-    await mockAptTotalSupply(pool, totalBalance);
+    // set total supply to total Dai balance
+    await pool.internalMint(pool.address, totalBalance);
     // set tolerance to compensate for fixed-point arithmetic
     const tolerance = new BN("50000");
 
@@ -75,7 +67,7 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
       "mint amount should differ from expected amount by at most tolerance"
     );
 
-    await mockAptTotalSupply(pool, totalBalance.divn(2));
+    await pool.internalBurn(pool.address, totalBalance.divn(2));
 
     mintAmount = await pool.internalCalculateMintAmount(
       daiDeposit,
@@ -90,8 +82,8 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
   });
 
   it("mint amount is constant multiple of deposit if total Dai balance is zero", async () => {
-    // mock out token contract and set non-zero total supply
-    await mockAptTotalSupply(pool, dai("100"));
+    // set non-zero total supply
+    await pool.internalMint(pool.address, dai("100"));
 
     const daiDeposit = dai("7.3");
     const mintAmount = await pool.internalCalculateMintAmount(daiDeposit, 0, {
@@ -116,7 +108,7 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
   });
 
   it("addLiquidity will create APT for sender", async () => {
-    let balanceOf = await apt.balanceOf(wallet);
+    let balanceOf = await pool.balanceOf(wallet);
     expect(balanceOf).to.bignumber.equal("0");
 
     const daiDeposit = dai("1");
@@ -125,7 +117,7 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
     await pool.addLiquidity(daiDeposit, {
       from: wallet,
     });
-    balanceOf = await apt.balanceOf(wallet);
+    balanceOf = await pool.balanceOf(wallet);
     expect(balanceOf).to.bignumber.gt("0");
   });
 
@@ -144,7 +136,7 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
     });
 
     await pool.addLiquidity(daiDeposit, { from: wallet });
-    const mintAmount = await apt.balanceOf(wallet);
+    const mintAmount = await pool.balanceOf(wallet);
     expect(mintAmount).to.bignumber.equal(expectedMintAmount);
   });
 
@@ -154,7 +146,7 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
 
   it("redeem reverts if insufficient balance", async () => {
     const tokenBalance = new BN("100");
-    await mintAPT(apt, tokenBalance, wallet);
+    await pool.internalMint(wallet, tokenBalance);
 
     await expectRevert(
       pool.redeem(tokenBalance.addn(1), { from: wallet }),
@@ -165,13 +157,13 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
   it("redeem burns specified token amount", async () => {
     // start wallet with APT
     const startAmount = dai("2");
-    await mintAPT(apt, startAmount, wallet);
+    await pool.internalMint(wallet, startAmount);
 
     const redeemAmount = dai("1");
     await mockDaiTransfer(pool, redeemAmount);
 
     await pool.redeem(redeemAmount, { from: wallet });
-    expect(await apt.balanceOf(wallet)).to.bignumber.equal(
+    expect(await pool.balanceOf(wallet)).to.bignumber.equal(
       startAmount.sub(redeemAmount)
     );
   });
@@ -181,20 +173,10 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
     await mockDaiTransfer(pool, daiDeposit);
     await pool.addLiquidity(daiDeposit, { from: wallet });
 
-    const mintAmount = await apt.balanceOf(wallet);
+    const mintAmount = await pool.balanceOf(wallet);
     await pool.redeem(mintAmount, { from: wallet });
-    expect(await apt.balanceOf(wallet)).to.bignumber.equal("0");
+    expect(await pool.balanceOf(wallet)).to.bignumber.equal("0");
   });
-
-  // test helper to mock the total supply
-  const mockAptTotalSupply = async (liquidityPoolContract, totalSupply) => {
-    const mock = await MockContract.new();
-    await liquidityPoolContract.setAptAddress(mock.address, {
-      from: deployer,
-    });
-    const totalSupplyAbi = apt.contract.methods.totalSupply().encodeABI();
-    await mock.givenMethodReturnUint(totalSupplyAbi, totalSupply);
-  };
 
   // test helper to mock ERC20 functions on underlyer token
   const mockDaiTransfer = async (liquidityPoolContract, amount) => {
@@ -202,25 +184,17 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
     await liquidityPoolContract.setUnderlyerAddress(mock.address, {
       from: deployer,
     });
-    const allowanceAbi = apt.contract.methods
+    const allowanceAbi = pool.contract.methods
       .allowance(ZERO_ADDRESS, ZERO_ADDRESS)
       .encodeABI();
-    const transferFromAbi = apt.contract.methods
+    const transferFromAbi = pool.contract.methods
       .transferFrom(ZERO_ADDRESS, ZERO_ADDRESS, 0)
       .encodeABI();
-    const transferAbi = apt.contract.methods
+    const transferAbi = pool.contract.methods
       .transfer(ZERO_ADDRESS, 0)
       .encodeABI();
     await mock.givenMethodReturnUint(allowanceAbi, amount);
     await mock.givenMethodReturnBool(transferAbi, true);
     await mock.givenMethodReturnBool(transferFromAbi, true);
-  };
-
-  // test helper to mint tokens to wallet
-  const mintAPT = async (tokenContract, amount, wallet) => {
-    const poolAddress = await tokenContract.pool();
-    await tokenContract.setPoolAddress(wallet, { from: deployer });
-    await tokenContract.mint(wallet, amount, { from: wallet });
-    await tokenContract.setPoolAddress(poolAddress, { from: deployer });
   };
 });
