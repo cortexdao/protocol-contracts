@@ -41,13 +41,22 @@ contract APYLiquidityPoolProxy is TransparentUpgradeableProxy {
         _upgradeTo(newImplementation);
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = newImplementation.delegatecall(
-            getInitializerCallData()
+            getUpgradeInitializerCallData()
         );
         require(success, "PoolProxy/init-failed");
     }
 
     function getInitializerCallData() public pure returns (bytes memory) {
         bytes memory _data = abi.encodeWithSignature("initialize()");
+        return _data;
+    }
+
+    function getUpgradeInitializerCallData()
+        public
+        pure
+        returns (bytes memory)
+    {
+        bytes memory _data = abi.encodeWithSignature("initializeUpgrade()");
         return _data;
     }
 }
@@ -67,6 +76,7 @@ contract APYLiquidityPoolImplementation is
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
     uint192 internal constant _MAX_UINT192 = uint192(-1);
 
+    address internal _admin;
     IERC20 internal _underlyer;
 
     event DepositedAPT(
@@ -85,6 +95,17 @@ contract APYLiquidityPoolImplementation is
         __Ownable_init_unchained();
         __ReentrancyGuard_init_unchained();
         __ERC20_init_unchained("APY Pool Token", "APT");
+    }
+
+    function initializeUpgrade() public virtual onlyAdmin {}
+
+    modifier onlyAdmin {
+        require(msg.sender == _admin, "Pool/access-error");
+        _;
+    }
+
+    function setAdminAddress(address adminAddress) public onlyOwner {
+        _admin = adminAddress;
     }
 
     receive() external payable {
@@ -129,7 +150,7 @@ contract APYLiquidityPoolImplementation is
         emit RedeemedAPT(msg.sender, aptAmount, underlyerAmount);
     }
 
-    /// @dev called by admin during deployment
+    /// @dev called during deployment
     function setUnderlyerAddress(address underlyerAddress) public onlyOwner {
         _underlyer = IERC20(underlyerAddress);
     }

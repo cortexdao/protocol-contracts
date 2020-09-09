@@ -79,7 +79,7 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
     });
   });
 
-  describe("proxy has admin functionality", async () => {
+  describe.only("proxy has admin functionality", async () => {
     it("admin can call admin functions (non-upgrade)", async () => {
       expect(await poolProxy.admin.call({ from: admin })).to.equal(admin);
       expect(await poolProxy.implementation.call({ from: admin })).to.equal(
@@ -111,7 +111,29 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
         newPoolImpl.address
       );
 
-      await poolProxy.upgradeTo(poolImpl.address, { from: admin });
+      await poolProxy.upgradeTo(poolImpl.address, {
+        from: admin,
+      });
+      expect(await poolProxy.implementation.call({ from: admin })).to.equal(
+        poolImpl.address
+      );
+
+      // TODO: test `upgradeToAndCall`
+      // This is a little tricky, due to the way Initializable works,
+      // there is only one private var used to check the `initializer`
+      // modifier.
+      //
+      // This means you can't call the same initialize in the next version
+      // of the implementation!
+      // Not only that, if you create a new initialize function for
+      // v2, you can't use the `initializer` modifier anymore.
+      //
+      // See this issue that's been open since Feb 2019:
+      // https://github.com/OpenZeppelin/openzeppelin-sdk/issues/637
+      await pool.setAdminAddress(admin, { from: deployer });
+      await poolProxy.upgradeWithInitialize(poolImpl.address, {
+        from: admin,
+      });
       expect(await poolProxy.implementation.call({ from: admin })).to.equal(
         poolImpl.address
       );
@@ -124,6 +146,10 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
 
       await expectRevert.unspecified(
         poolProxy.upgradeTo(newPoolImpl.address, { from: other })
+      );
+
+      await expectRevert.unspecified(
+        poolProxy.upgradeToAndCall(newPoolImpl.address, [], { from: other })
       );
     });
   });

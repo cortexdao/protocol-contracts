@@ -32,8 +32,8 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
     let snapshot = await timeMachine.takeSnapshot();
     snapshotId = snapshot["result"];
 
-    pool = await APYLiquidityPoolImplementation.new();
-    await pool.initialize();
+    pool = await APYLiquidityPoolImplementation.new({ from: deployer });
+    await pool.initialize({ from: deployer });
 
     DEFAULT_APT_TO_UNDERLYER_FACTOR = await pool.DEFAULT_APT_TO_UNDERLYER_FACTOR();
   });
