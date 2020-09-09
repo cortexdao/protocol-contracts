@@ -2,30 +2,19 @@
 pragma solidity ^0.6.6;
 pragma experimental ABIEncoderV2;
 
-import {
-    OwnableUpgradeSafe
-} from "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
-import {
-    ReentrancyGuardUpgradeSafe
-} from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
-import {
-    Initializable
-} from "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import {
-    ERC20UpgradeSafe
-} from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
-import {
-    SafeMath
-} from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import {
     TransparentUpgradeableProxy
 } from "@openzeppelin/contracts/proxy/TransparentUpgradeableProxy.sol";
-import {FixedPoint} from "solidity-fixedpoint/contracts/FixedPoint.sol";
-import {APT} from "./APT.sol";
-import {ILiquidityPool} from "./ILiquidityPool.sol";
-
+import "solidity-fixedpoint/contracts/FixedPoint.sol";
+import "./APT.sol";
+import "./ILiquidityPool.sol";
 
 contract APYLiquidityPoolProxy is TransparentUpgradeableProxy {
     constructor(address _logic, address _admin)
@@ -60,7 +49,6 @@ contract APYLiquidityPoolProxy is TransparentUpgradeableProxy {
         return _data;
     }
 }
-
 
 contract APYLiquidityPoolImplementation is
     ILiquidityPool,
@@ -227,7 +215,6 @@ contract APYLiquidityPoolImplementation is
         return shareOfAPT;
     }
 }
-
 
 /**
  * @dev Proxy contract to test internal variables and functions
