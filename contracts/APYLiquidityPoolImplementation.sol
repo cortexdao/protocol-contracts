@@ -33,17 +33,6 @@ contract APYLiquidityPoolImplementation is
     address internal _admin;
     IERC20 internal _underlyer;
 
-    event DepositedAPT(
-        address indexed sender,
-        uint256 aptAmount,
-        uint256 underlyerAmount
-    );
-    event RedeemedAPT(
-        address indexed sender,
-        uint256 aptAmount,
-        uint256 underlyerAmount
-    );
-
     function initialize() public initializer {
         __Context_init_unchained();
         __Ownable_init_unchained();
