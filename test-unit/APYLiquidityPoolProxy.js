@@ -32,11 +32,16 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
   // use EVM snapshots for test isolation
   let snapshotId;
 
-  // deploy pool contracts before each test
   beforeEach(async () => {
     let snapshot = await timeMachine.takeSnapshot();
     snapshotId = snapshot["result"];
+  });
 
+  afterEach(async () => {
+    await timeMachine.revertToSnapshot(snapshotId);
+  });
+
+  before(async () => {
     poolImpl = await APYLiquidityPoolImplementation.new({ from: deployer });
     poolProxy = await APYLiquidityPoolProxy.new(poolImpl.address, admin, {
       from: deployer,
@@ -45,10 +50,6 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
     // trick Truffle into believing impl is at proxy address,
     // otherwise Truffle will give "no function" error
     pool = await APYLiquidityPoolImplementation.at(poolProxy.address);
-  });
-
-  afterEach(async () => {
-    await timeMachine.revertToSnapshot(snapshotId);
   });
 
   describe("proxy delegates to implementation", async () => {

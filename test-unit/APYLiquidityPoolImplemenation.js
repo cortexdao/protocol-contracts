@@ -31,15 +31,17 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
   beforeEach(async () => {
     let snapshot = await timeMachine.takeSnapshot();
     snapshotId = snapshot["result"];
-
-    pool = await APYLiquidityPoolImplementation.new({ from: deployer });
-    await pool.initialize({ from: deployer });
-
-    DEFAULT_APT_TO_UNDERLYER_FACTOR = await pool.DEFAULT_APT_TO_UNDERLYER_FACTOR();
   });
 
   afterEach(async () => {
     await timeMachine.revertToSnapshot(snapshotId);
+  });
+
+  before(async () => {
+    pool = await APYLiquidityPoolImplementation.new({ from: deployer });
+    await pool.initialize({ from: deployer });
+
+    DEFAULT_APT_TO_UNDERLYER_FACTOR = await pool.DEFAULT_APT_TO_UNDERLYER_FACTOR();
   });
 
   it("addLiquidity reverts if 0 DAI sent", async () => {
