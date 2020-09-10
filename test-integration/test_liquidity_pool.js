@@ -44,8 +44,9 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
     await timeMachine.revertToSnapshot(snapshotId);
   });
 
-  // deploy pool and APT contracts before each test
-  beforeEach(async () => {
+  // deploy pool and APT contracts only once for speed,
+  // since we revert to snapshot after each test
+  before(async () => {
     daiToken = await IERC20.at(DAI_ADDRESS);
 
     poolImpl = await APYLiquidityPoolImplementation.new({ from: deployer });
