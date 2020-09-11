@@ -11,6 +11,7 @@ const {
 const { expect } = require("chai");
 const { DUMMY_ADDRESS } = require("../utils/constants");
 const timeMachine = require("ganache-time-traveler");
+const dai = ether;
 
 const APYLiquidityPoolProxy = artifacts.require("APYLiquidityPoolProxy");
 const APYLiquidityPoolImplementation = artifacts.require(
@@ -20,14 +21,13 @@ const APYLiquidityPoolImplTestProxy = artifacts.require(
   "APYLiquidityPoolImplTestProxy"
 );
 const MockContract = artifacts.require("MockContract");
-const dai = ether;
 
 contract("APYLiquidityPoolProxy", async (accounts) => {
   const [deployer, admin, wallet, other] = accounts;
 
-  let pool;
   let poolImpl;
   let poolProxy;
+  let pool;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -35,10 +35,6 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
   beforeEach(async () => {
     let snapshot = await timeMachine.takeSnapshot();
     snapshotId = snapshot["result"];
-  });
-
-  afterEach(async () => {
-    await timeMachine.revertToSnapshot(snapshotId);
   });
 
   before(async () => {
@@ -52,103 +48,45 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
     pool = await APYLiquidityPoolImplementation.at(poolProxy.address);
   });
 
-  describe("proxy delegates to implementation", async () => {
-    it("owner is deployer", async () => {
-      expect(await pool.owner()).to.equal(deployer);
-    });
-
-    it("owner can set underlyer address", async () => {
-      try {
-        await pool.setUnderlyerAddress(DUMMY_ADDRESS, { from: deployer });
-      } catch {
-        assert.fail("Cannot set underlyer address.");
-      }
-    });
-
-    it("reverts if non-owner tries setting underlyer address", async () => {
-      await expectRevert(
-        pool.setUnderlyerAddress(DUMMY_ADDRESS, { from: other }),
-        "Ownable: caller is not the owner"
-      );
-    });
-
-    it("can get ERC20 name", async () => {
-      expect(await pool.name()).to.bignumber.equal("APY Pool Token");
-    });
-
-    it("can get ERC20 symbol", async () => {
-      expect(await pool.symbol()).to.bignumber.equal("APT");
-    });
-
-    it("can get ERC20 decimals", async () => {
-      expect(await pool.decimals()).to.bignumber.equal("18");
-    });
-
-    // Reentrancy tests
-    it.skip("cannot reenter deposit", async () => {
-      //
-    });
-
-    it.skip("cannot reenter redeem", async () => {
-      //
-    });
+  afterEach(async () => {
+    await timeMachine.revertToSnapshot(snapshotId);
   });
 
-  describe("proxy has admin functionality", async () => {
-    it("admin can call admin functions (non-upgrade)", async () => {
-      expect(await poolProxy.admin.call({ from: admin })).to.equal(admin);
-      expect(await poolProxy.implementation.call({ from: admin })).to.equal(
-        poolImpl.address
-      );
-      expectEvent(
-        await poolProxy.changeAdmin(DUMMY_ADDRESS, {
-          from: admin,
-        }),
-        "AdminChanged"
-      );
-    });
+  // FIXME: returns the following error:
+  // "Error: Returned values aren't valid, did it run Out of Gas?"
+  it.skip("proxy delegates to implementation", async () => {
+    const poolImplMock = await MockContract.new({ from: deployer });
+    const encodedUint = web3.eth.abi.encodeParameter("uint", "42");
+    await poolImplMock.givenAnyReturnUint(encodedUint);
 
-    it("revert if non-admin calls admin functions (non-upgrade)", async () => {
-      await expectRevert.unspecified(poolProxy.admin({ from: other }));
-      await expectRevert.unspecified(poolProxy.implementation({ from: other }));
-      await expectRevert.unspecified(
-        poolProxy.changeAdmin(DUMMY_ADDRESS, { from: other })
-      );
-    });
-
-    it("admin can upgrade pool impl", async () => {
-      const newPoolImpl = await APYLiquidityPoolImplementation.new({
+    const poolProxy = await APYLiquidityPoolProxy.new(
+      poolImplMock.address,
+      admin,
+      {
         from: deployer,
-      });
+      }
+    );
 
-      await poolProxy.upgradeTo(newPoolImpl.address, { from: admin });
-      expect(await poolProxy.implementation.call({ from: admin })).to.equal(
-        newPoolImpl.address
-      );
-
-      await poolProxy.upgradeTo(poolImpl.address, { from: admin });
-      expect(await poolProxy.implementation.call({ from: admin })).to.equal(
-        poolImpl.address
-      );
-    });
-
-    it("revert if non-admin upgrades pool impl", async () => {
-      const newPoolImpl = await APYLiquidityPoolImplementation.new({
-        from: deployer,
-      });
-
-      await expectRevert.unspecified(
-        poolProxy.upgradeTo(newPoolImpl.address, { from: other })
-      );
-    });
+    // trick Truffle into believing impl is at proxy address,
+    // otherwise Truffle will give "no function" error
+    const pool = await APYLiquidityPoolImplementation.at(poolProxy.address);
+    await pool.balanceOf(ZERO_ADDRESS);
+    expect(await pool.balanceOf(ZERO_ADDRESS)).to.equal("42");
   });
 
   /*
-   * These tests are very similar to the one in `integration/test_liquidity_pool`
-   * but mock out any interaction with the DAI token.  The idea is to test
-   * only the APT interaction here.
+   * These tests mock out any interaction with the DAI token.
+   * The idea is to test only the APT logic here and make
+   * sure the pool proxy and impl are working together.
+   *
+   * There are tests in test-integration/test_liquidity_pool.js
+   * that fully test this with DAI.
+   *
+   * NOTE:
+   * These tests don't seem to work running on ganache
+   * due to some weird bug with ganache + buidler + gnosis mock.
    */
-  describe("user gets right amount of APT from DAI deposit", async () => {
+  describe("pool can handle APT", async () => {
     it("addLiquidity creates APT for user", async () => {
       let balanceOf = await pool.balanceOf(wallet);
       expect(balanceOf).to.bignumber.equal("0");
@@ -205,22 +143,23 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
   });
 
   // test helper to mock ERC20 functions on underlyer token
-  const mockDaiTransfer = async (liquidityPoolContract, allowance) => {
-    const mock = await MockContract.new();
-    await liquidityPoolContract.setUnderlyerAddress(mock.address, {
+  const mockDaiTransfer = async (liquidityPool, allowance) => {
+    const daiMock = await MockContract.new();
+    const erc20 = liquidityPool;
+    await liquidityPool.setUnderlyerAddress(daiMock.address, {
       from: deployer,
     });
-    const allowanceAbi = pool.contract.methods
+    const allowanceAbi = erc20.contract.methods
       .allowance(ZERO_ADDRESS, ZERO_ADDRESS)
       .encodeABI();
-    const transferFromAbi = pool.contract.methods
+    const transferFromAbi = erc20.contract.methods
       .transferFrom(ZERO_ADDRESS, ZERO_ADDRESS, 0)
       .encodeABI();
-    const transferAbi = pool.contract.methods
+    const transferAbi = erc20.contract.methods
       .transfer(ZERO_ADDRESS, 0)
       .encodeABI();
-    await mock.givenMethodReturnUint(allowanceAbi, allowance);
-    await mock.givenMethodReturnBool(transferAbi, true);
-    await mock.givenMethodReturnBool(transferFromAbi, true);
+    await daiMock.givenMethodReturnUint(allowanceAbi, allowance);
+    await daiMock.givenMethodReturnBool(transferAbi, true);
+    await daiMock.givenMethodReturnBool(transferFromAbi, true);
   };
 });

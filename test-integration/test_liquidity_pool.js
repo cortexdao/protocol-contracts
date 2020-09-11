@@ -15,6 +15,7 @@ const {
   DAI_MINTER_ADDRESS,
   DUMMY_ADDRESS,
 } = require("../utils/constants");
+const ZERO_ADDRESS = constants.ZERO_ADDRESS;
 const timeMachine = require("ganache-time-traveler");
 
 const APYLiquidityPoolProxy = artifacts.require("APYLiquidityPoolProxy");
@@ -66,7 +67,7 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
 
     it("owner can set underlyer address", async () => {
       try {
-        await pool.setUnderlyerAddress(daiToken.address, { from: deployer });
+        await pool.setUnderlyerAddress(DUMMY_ADDRESS, { from: deployer });
       } catch {
         assert.fail("Cannot set underlyer address.");
       }
@@ -74,9 +75,30 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
 
     it("reverts if non-owner tries setting underlyer address", async () => {
       await expectRevert(
-        pool.setUnderlyerAddress(daiToken.address, { from: other }),
+        pool.setUnderlyerAddress(DUMMY_ADDRESS, { from: other }),
         "Ownable: caller is not the owner"
       );
+    });
+
+    it("can get ERC20 name", async () => {
+      expect(await pool.name()).to.bignumber.equal("APY Pool Token");
+    });
+
+    it("can get ERC20 symbol", async () => {
+      expect(await pool.symbol()).to.bignumber.equal("APT");
+    });
+
+    it("can get ERC20 decimals", async () => {
+      expect(await pool.decimals()).to.bignumber.equal("18");
+    });
+
+    // Reentrancy tests
+    it.skip("cannot reenter deposit", async () => {
+      //
+    });
+
+    it.skip("cannot reenter redeem", async () => {
+      //
     });
   });
 
@@ -152,6 +174,10 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
     });
   });
 
+  /*
+   * These tests interact with the DAI contract, while also
+   * testing the APT token logic.
+   */
   describe("pool can handle DAI", async () => {
     beforeEach(async () => {
       await pool.setUnderlyerAddress(daiToken.address, { from: deployer });
