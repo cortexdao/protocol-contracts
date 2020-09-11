@@ -15,20 +15,18 @@ const {
   DAI_MINTER_ADDRESS,
   DUMMY_ADDRESS,
 } = require("../utils/constants");
+const ZERO_ADDRESS = constants.ZERO_ADDRESS;
 const timeMachine = require("ganache-time-traveler");
 
 const APYLiquidityPoolProxy = artifacts.require("APYLiquidityPoolProxy");
 const APYLiquidityPoolImplementation = artifacts.require(
   "APYLiquidityPoolImplementation"
 );
-const APT = artifacts.require("APT");
 const IERC20 = artifacts.require("IERC20");
-const MockContract = artifacts.require("MockContract");
 
 contract("APYLiquidityPoolProxy", async (accounts) => {
   const [deployer, admin, wallet, other] = accounts;
 
-  let apt;
   let pool;
   let poolImpl;
   let poolProxy;
@@ -47,13 +45,13 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
     await timeMachine.revertToSnapshot(snapshotId);
   });
 
-  // deploy pool and APT contracts before each test
-  beforeEach(async () => {
-    apt = await APT.new({ from: deployer });
+  // deploy pool and APT contracts only once for speed,
+  // since we revert to snapshot after each test
+  before(async () => {
     daiToken = await IERC20.at(DAI_ADDRESS);
 
     poolImpl = await APYLiquidityPoolImplementation.new({ from: deployer });
-    poolProxy = await APYLiquidityPoolProxy.new(poolImpl.address, admin, [], {
+    poolProxy = await APYLiquidityPoolProxy.new(poolImpl.address, admin, {
       from: deployer,
     });
 
@@ -67,24 +65,9 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
       expect(await pool.owner()).to.equal(deployer);
     });
 
-    it("owner can set APT address", async () => {
-      try {
-        await pool.setAptAddress(apt.address, { from: deployer });
-      } catch {
-        assert.fail("Cannot set APT address.");
-      }
-    });
-
-    it("reverts if non-owner tries setting APT address", async () => {
-      await expectRevert(
-        pool.setAptAddress(apt.address, { from: other }),
-        "Ownable: caller is not the owner"
-      );
-    });
-
     it("owner can set underlyer address", async () => {
       try {
-        await pool.setUnderlyerAddress(daiToken.address, { from: deployer });
+        await pool.setUnderlyerAddress(DUMMY_ADDRESS, { from: deployer });
       } catch {
         assert.fail("Cannot set underlyer address.");
       }
@@ -92,9 +75,30 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
 
     it("reverts if non-owner tries setting underlyer address", async () => {
       await expectRevert(
-        pool.setUnderlyerAddress(daiToken.address, { from: other }),
+        pool.setUnderlyerAddress(DUMMY_ADDRESS, { from: other }),
         "Ownable: caller is not the owner"
       );
+    });
+
+    it("can get ERC20 name", async () => {
+      expect(await pool.name()).to.bignumber.equal("APY Pool Token");
+    });
+
+    it("can get ERC20 symbol", async () => {
+      expect(await pool.symbol()).to.bignumber.equal("APT");
+    });
+
+    it("can get ERC20 decimals", async () => {
+      expect(await pool.decimals()).to.bignumber.equal("18");
+    });
+
+    // Reentrancy tests
+    it.skip("cannot reenter deposit", async () => {
+      //
+    });
+
+    it.skip("cannot reenter redeem", async () => {
+      //
     });
   });
 
@@ -130,10 +134,29 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
         newPoolImpl.address
       );
 
-      await poolProxy.upgradeTo(poolImpl.address, { from: admin });
+      // let's admin call initializeUpgrade on pool
+      await pool.setAdminAddress(admin, { from: deployer });
+      await poolProxy.upgradeWithInitialize(poolImpl.address, {
+        from: admin,
+      });
       expect(await poolProxy.implementation.call({ from: admin })).to.equal(
         poolImpl.address
       );
+
+      await poolProxy.upgradeWithInitialize(newPoolImpl.address, {
+        from: admin,
+      });
+      expect(await poolProxy.implementation.call({ from: admin })).to.equal(
+        newPoolImpl.address
+      );
+
+      // TODO: add calldata
+      // await poolProxy.upgradeToAndCall(poolImpl.address, [], {
+      //   from: admin,
+      // });
+      // expect(await poolProxy.implementation.call({ from: admin })).to.equal(
+      //   poolImpl.address
+      // );
     });
 
     it("revert if non-admin upgrades pool impl", async () => {
@@ -144,13 +167,19 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
       await expectRevert.unspecified(
         poolProxy.upgradeTo(newPoolImpl.address, { from: other })
       );
+
+      await expectRevert.unspecified(
+        poolProxy.upgradeToAndCall(newPoolImpl.address, [], { from: other })
+      );
     });
   });
 
+  /*
+   * These tests interact with the DAI contract, while also
+   * testing the APT token logic.
+   */
   describe("pool can handle DAI", async () => {
     beforeEach(async () => {
-      await apt.setPoolAddress(pool.address, { from: deployer });
-      await pool.setAptAddress(apt.address, { from: deployer });
       await pool.setUnderlyerAddress(daiToken.address, { from: deployer });
 
       // prepare wallets with 1000 DAI and allow pool to move them
@@ -160,7 +189,7 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
       await daiToken.approve(pool.address, amount, { from: wallet });
       await daiToken.approve(pool.address, amount, { from: other });
 
-      DEFAULT_TOKEN_TO_ETH_FACTOR = await pool.DEFAULT_TOKEN_TO_ETH_FACTOR;
+      DEFAULT_APT_TO_UNDERLYER_FACTOR = await pool.DEFAULT_APT_TO_UNDERLYER_FACTOR();
     });
 
     it("addLiquidity receives DAI sent", async () => {
@@ -175,11 +204,11 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
     });
 
     it("addLiquidity will create tokens for sender", async () => {
-      let balanceOf = await apt.balanceOf(wallet);
+      let balanceOf = await pool.balanceOf(wallet);
       expect(balanceOf).to.bignumber.equal("0");
 
       await pool.addLiquidity(dai("10"), { from: wallet });
-      balanceOf = await apt.balanceOf(wallet);
+      balanceOf = await pool.balanceOf(wallet);
       expect(balanceOf).to.bignumber.gt("0");
     });
 
@@ -191,6 +220,9 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
         from: other,
       });
 
+      // mimic pool gaining returns
+      await daiToken.transfer(pool.address, dai("1.75"), { from: other });
+
       // now we can check the expected mint amount based on the DAI ratio
       const daiSent = dai("2");
       const expectedMintAmount = await pool.calculateMintAmount(daiSent, {
@@ -198,16 +230,16 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
       });
 
       await pool.addLiquidity(daiSent, { from: wallet });
-      const mintAmount = await apt.balanceOf(wallet);
+      const mintAmount = await pool.balanceOf(wallet);
       expect(mintAmount).to.bignumber.equal(expectedMintAmount);
     });
 
     it("redeem undoes addLiquidity", async () => {
       const daiAmount = dai("1");
       await pool.addLiquidity(daiAmount, { from: wallet });
-      const mintAmount = await apt.balanceOf(wallet);
+      const mintAmount = await pool.balanceOf(wallet);
       await pool.redeem(mintAmount, { from: wallet });
-      expect(await apt.balanceOf(wallet)).to.bignumber.equal("0");
+      expect(await pool.balanceOf(wallet)).to.bignumber.equal("0");
     });
 
     it("redeem releases DAI to sender", async () => {
@@ -221,9 +253,10 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
     });
 
     it("redeem releases DAI proportional to share of APT.", async () => {
-      // setup: mint some tokens and add some ETH to pool
-      await mintTokens(apt, new BN("1000"), wallet);
-      await daiToken.transfer(pool.address, dai("1.75"), { from: wallet });
+      // setup: mint some tokens and add some DAI to pool
+      await pool.addLiquidity(dai("100"), { from: wallet });
+      // mimic pool gaining returns
+      await daiToken.transfer(pool.address, dai("1.75"), { from: other });
 
       const tokenAmount = new BN("257");
       const daiAmount = await pool.getUnderlyerAmount(tokenAmount);
@@ -234,12 +267,4 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
       expect(endBalance.sub(startBalance)).to.bignumber.equal(daiAmount);
     });
   });
-
-  // test helper to mint tokens to wallet
-  const mintTokens = async (tokenContract, amount, wallet) => {
-    const poolAddress = await tokenContract.pool();
-    await tokenContract.setPoolAddress(wallet, { from: deployer });
-    await tokenContract.mint(wallet, amount, { from: wallet });
-    await tokenContract.setPoolAddress(poolAddress, { from: deployer });
-  };
 });

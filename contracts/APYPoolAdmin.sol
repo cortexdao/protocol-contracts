@@ -2,11 +2,8 @@
 pragma solidity ^0.6.6;
 pragma experimental ABIEncoderV2;
 
-import {ProxyAdmin} from "@openzeppelin/contracts/proxy/ProxyAdmin.sol";
-import {
-    TransparentUpgradeableProxy
-} from "@openzeppelin/contracts/proxy/TransparentUpgradeableProxy.sol";
-
+import "@openzeppelin/contracts/proxy/ProxyAdmin.sol";
+import "@openzeppelin/contracts/proxy/TransparentUpgradeableProxy.sol";
 
 contract APYPoolAdmin is ProxyAdmin {
     TransparentUpgradeableProxy private _poolProxy;

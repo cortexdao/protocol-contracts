@@ -62,6 +62,7 @@
   "dependencies": {
     "@compound-finance/compound-js": "^0.1.0",
     "@openzeppelin/contracts": "3.2.0-rc.0",
+    "@openzeppelin/contracts-ethereum-package": "^3.0.0",
     "abdk-libraries-solidity": "^2.3.0",
     "ganache-time-traveler": "^1.0.14",
     "solidity-fixedpoint": "^1.0.1"
