@@ -181,6 +181,18 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
     expect(await pool.balanceOf(wallet)).to.bignumber.equal("0");
   });
 
+  it("getUnderlyerAmount returns 0 for 0 APT amount", async () => {
+    // When APT supply is 0, share of APT will be undefined,
+    // but we still want underlyer amount to be 0.
+    expect(await pool.totalSupply()).to.be.bignumber.equal("0");
+    expect(await pool.getUnderlyerAmount(0)).to.be.bignumber.equal("0");
+
+    // sanity check: when APT supply is non-zero, we still want
+    // underlyer amount to be 0!
+    await pool.internalMint(pool.address, new BN("1000000"));
+    expect(await pool.getUnderlyerAmount(0)).to.be.bignumber.equal("0");
+  });
+
   // test helper to mock ERC20 functions on underlyer token
   const mockDaiTransfer = async (liquidityPoolContract, amount) => {
     const mock = await MockContract.new();

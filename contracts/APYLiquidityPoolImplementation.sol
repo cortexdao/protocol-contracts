@@ -117,6 +117,8 @@ contract APYLiquidityPoolImplementation is
         view
         returns (uint256)
     {
+        if (aptAmount == 0) return 0;
+
         FixedPoint.uq192x64 memory shareOfAPT = _getShareOfAPT(aptAmount);
 
         uint256 underlyerTotal = _underlyer.balanceOf(address(this));
