@@ -134,6 +134,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       await instance.mint(randomUser, 100)
       await instance.setUnderlyerAddress(mockToken.address, { from: owner })
       const trx = await instance.redeem(50, { from: randomUser })
+      await expectEvent(trx, "Transfer")
       await expectEvent(trx, "RedeemedAPT")
     })
 
@@ -355,23 +356,4 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
   //     expect(await pool.balanceOf(wallet)).to.bignumber.equal("0");
   //   });
 
-  //   // test helper to mock ERC20 functions on underlyer token
-  //   const mockDaiTransfer = async (liquidityPoolContract, amount) => {
-  //     const mock = await MockContract.new();
-  //     await liquidityPoolContract.setUnderlyerAddress(mock.address, {
-  //       from: deployer,
-  //     });
-  //     const allowanceAbi = pool.contract.methods
-  //       .allowance(ZERO_ADDRESS, ZERO_ADDRESS)
-  //       .encodeABI();
-  //     const transferFromAbi = pool.contract.methods
-  //       .transferFrom(ZERO_ADDRESS, ZERO_ADDRESS, 0)
-  //       .encodeABI();
-  //     const transferAbi = pool.contract.methods
-  //       .transfer(ZERO_ADDRESS, 0)
-  //       .encodeABI();
-  //     await mock.givenMethodReturnUint(allowanceAbi, amount);
-  //     await mock.givenMethodReturnBool(transferAbi, true);
-  //     await mock.givenMethodReturnBool(transferFromAbi, true);
-  //   };
 });
