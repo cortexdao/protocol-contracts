@@ -239,38 +239,4 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       assert.equal(underlyerAmount.toNumber(), 1)
     })
   })
-
-  // it("mint amount to supply equals DAI deposit to total DAI balance", async () => {
-  //   const daiDeposit = dai("112");
-  //   const totalBalance = dai("1000000");
-  //   // set total supply to total Dai balance
-  //   await pool.internalMint(pool.address, totalBalance);
-  //   // set tolerance to compensate for fixed-point arithmetic
-  //   const tolerance = new BN("50000");
-
-  //   let mintAmount = await pool.internalCalculateMintAmount(
-  //     daiDeposit,
-  //     totalBalance,
-  //     { from: wallet }
-  //   );
-  //   let expectedAmount = daiDeposit;
-  //   expect(mintAmount.sub(expectedAmount).abs()).to.bignumber.lte(
-  //     tolerance,
-  //     "mint amount should differ from expected amount by at most tolerance"
-  //   );
-
-  //   await pool.internalBurn(pool.address, totalBalance.divn(2));
-
-  //   mintAmount = await pool.internalCalculateMintAmount(
-  //     daiDeposit,
-  //     totalBalance,
-  //     { from: wallet }
-  //   );
-  //   expectedAmount = daiDeposit.divn(2);
-  //   expect(mintAmount.sub(expectedAmount).abs()).to.bignumber.lte(
-  //     tolerance,
-  //     "mint amount should differ from expected amount by at most tolerance"
-  //   );
-  // });
-
 });
