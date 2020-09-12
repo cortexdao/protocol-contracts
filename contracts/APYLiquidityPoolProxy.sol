@@ -5,9 +5,13 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/proxy/TransparentUpgradeableProxy.sol";
 
 contract APYLiquidityPoolProxy is TransparentUpgradeableProxy {
-    constructor(address _logic, address _admin)
+    constructor(address _logic, address _proxyAdmin)
         public
-        TransparentUpgradeableProxy(_logic, _admin, getInitializerCallData())
+        TransparentUpgradeableProxy(
+            _logic,
+            _proxyAdmin,
+            abi.encodeWithSignature("initialize()")
+        )
     {} // solhint-disable no-empty-blocks
 
     function upgradeWithInitialize(address newImplementation)
@@ -18,22 +22,8 @@ contract APYLiquidityPoolProxy is TransparentUpgradeableProxy {
         _upgradeTo(newImplementation);
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = newImplementation.delegatecall(
-            getUpgradeInitializerCallData()
+            abi.encodeWithSignature("initializeUpgrade()")
         );
         require(success, "PoolProxy/init-failed");
-    }
-
-    function getInitializerCallData() public pure returns (bytes memory) {
-        bytes memory _data = abi.encodeWithSignature("initialize()");
-        return _data;
-    }
-
-    function getUpgradeInitializerCallData()
-        public
-        pure
-        returns (bytes memory)
-    {
-        bytes memory _data = abi.encodeWithSignature("initializeUpgrade()");
-        return _data;
     }
 }

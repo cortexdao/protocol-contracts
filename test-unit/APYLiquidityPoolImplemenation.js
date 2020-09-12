@@ -12,18 +12,22 @@ const { expect } = require("chai");
 const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const dai = ether;
-
-const APYLiquidityPoolImplementation = artifacts.require(
-  "APYLiquidityPoolImplTestProxy"
-);
 const MockContract = artifacts.require("MockContract");
+const ProxyAdmin = artifacts.require("ProxyAdmin");
+const APYLiquidityPoolProxy = artifacts.require("APYLiquidityPoolProxy");
+const APYLiquidityPoolImplementation = artifacts.require(
+  "APYLiquidityPoolImplementationTEST"
+);
+const { DAI } = require('../utils/Compound');
 
-contract("APYLiquidityPoolImplementation", async (accounts) => {
-  const [deployer, wallet, other] = accounts;
+contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
+  const [owner, instanceAdmin, randomUser] = accounts;
 
-  let pool;
-
-  let DEFAULT_APT_TO_UNDERLYER_FACTOR;
+  let proxyAdmin
+  let logic
+  let proxy
+  let instance
+  let mockToken
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -38,286 +42,284 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
   });
 
   before(async () => {
-    pool = await APYLiquidityPoolImplementation.new({ from: deployer });
-    await pool.initialize({ from: deployer });
-
-    DEFAULT_APT_TO_UNDERLYER_FACTOR = await pool.DEFAULT_APT_TO_UNDERLYER_FACTOR();
+    proxyAdmin = await ProxyAdmin.new({ from: owner })
+    logic = await APYLiquidityPoolImplementation.new({ from: owner });
+    proxy = await APYLiquidityPoolProxy.new(logic.address, proxyAdmin.address, { from: owner });
+    instance = await APYLiquidityPoolImplementation.at(proxy.address);
+    mockToken = await MockContract.new()
   });
 
-  it("addLiquidity reverts if 0 DAI sent", async () => {
-    await expectRevert(
-      pool.addLiquidity(0, { from: wallet, value: "0" }),
-      "Pool/insufficient-value"
-    );
-  });
+  describe("Test Defaults", async () => {
+    it("Test Owner", async () => {
+      assert.equal(await instance.owner.call(), owner)
+    })
 
-  it("mint amount to supply equals DAI deposit to total DAI balance", async () => {
-    const daiDeposit = dai("112");
-    const totalBalance = dai("1000000");
-    // set total supply to total Dai balance
-    await pool.internalMint(pool.address, totalBalance);
-    // set tolerance to compensate for fixed-point arithmetic
-    const tolerance = new BN("50000");
+    it("Test DEFAULT_APT_TO_UNDERLYER_FACTOR", async () => {
+      assert.equal(await instance.DEFAULT_APT_TO_UNDERLYER_FACTOR.call(), 1000)
+    })
 
-    let mintAmount = await pool.internalCalculateMintAmount(
-      daiDeposit,
-      totalBalance,
-      { from: wallet }
-    );
-    let expectedAmount = daiDeposit;
-    expect(mintAmount.sub(expectedAmount).abs()).to.bignumber.lte(
-      tolerance,
-      "mint amount should differ from expected amount by at most tolerance"
-    );
+    it("Test Pool Token Name", async () => {
+      assert.equal(await instance.name.call(), "APY Pool Token")
+    })
 
-    await pool.internalBurn(pool.address, totalBalance.divn(2));
+    it("Test Pool Symbol", async () => {
+      assert.equal(await instance.symbol.call(), "APT")
+    })
 
-    mintAmount = await pool.internalCalculateMintAmount(
-      daiDeposit,
-      totalBalance,
-      { from: wallet }
-    );
-    expectedAmount = daiDeposit.divn(2);
-    expect(mintAmount.sub(expectedAmount).abs()).to.bignumber.lte(
-      tolerance,
-      "mint amount should differ from expected amount by at most tolerance"
-    );
-  });
+    it("Test Pool Decimals", async () => {
+      assert.equal(await instance.decimals.call(), 18)
+    })
 
-  it("mint amount is constant multiple of deposit if total Dai balance is zero", async () => {
-    // set non-zero total supply
-    await pool.internalMint(pool.address, dai("100"));
+    it("Test sending Ether", async () => {
+      await expectRevert(instance.send(10), "DONT_SEND_ETHER")
+    })
+  })
 
-    const daiDeposit = dai("7.3");
-    const mintAmount = await pool.internalCalculateMintAmount(daiDeposit, 0, {
-      from: wallet,
-    });
-    expect(mintAmount).to.bignumber.equal(
-      daiDeposit.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR)
-    );
-  });
+  describe("Test setAdminAdddress", async () => {
+    it("Test setAdminAddress pass", async () => {
+      await instance.setAdminAddress(instanceAdmin, { from: owner })
+      assert.equal(await instance.admin.call(), instanceAdmin)
+    })
 
-  it("mint amount is constant multiple of deposit if total supply is zero ", async () => {
-    const daiDeposit = dai("5");
-    const totalBalance = dai("100");
-    const mintAmount = await pool.internalCalculateMintAmount(
-      daiDeposit,
-      totalBalance,
-      { from: wallet }
-    );
-    expect(mintAmount).to.bignumber.equal(
-      daiDeposit.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR)
-    );
-  });
+    it("Test setAdminAddress fail", async () => {
+      await expectRevert.unspecified(
+        instance.setAdminAddress(instanceAdmin, { from: randomUser })
+      )
+    })
+  })
 
-  it("addLiquidity will create APT for sender", async () => {
-    let balanceOf = await pool.balanceOf(wallet);
-    expect(balanceOf).to.bignumber.equal("0");
+  describe("Test setUnderlyerAddress", async () => {
+    it("Test setUnderlyerAddress pass", async () => {
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+    })
 
-    const daiDeposit = dai("1");
-    await mockDaiTransfer(pool, daiDeposit);
+    it("Test setUnderlyerAddress fail", async () => {
+      await expectRevert.unspecified(
+        instance.setUnderlyerAddress(mockToken.address, { from: randomUser })
+      )
+    })
+  })
 
-    await pool.addLiquidity(daiDeposit, {
-      from: wallet,
-    });
-    balanceOf = await pool.balanceOf(wallet);
-    expect(balanceOf).to.bignumber.gt("0");
-  });
+  describe("Test addLiquidity", async () => {
+    it("Test addLiquidity insufficient amount", async () => {
+      await expectRevert(instance.addLiquidity(0), "AMOUNT_INSUFFICIENT")
+    })
 
-  it("addLiquidity creates correctly calculated amount of APT", async () => {
-    await mockDaiTransfer(pool, dai("10"));
-    // use another account to call addLiquidity and create non-zero
-    // token supply and ETH value in contract
-    await pool.addLiquidity(dai("10"), {
-      from: other,
-    });
+    it("Test addLiquidity insufficient allowance", async () => {
+      const allowance = DAI.interface.encodeFunctionData('allowance', [owner, instance.address])
+      await mockToken.givenMethodReturnUint(allowance, 0)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      await expectRevert(instance.addLiquidity(1), "ALLOWANCE_INSUFFICIENT")
+    })
 
-    // now we can check the expected mint amount based on the ETH ratio
-    const daiDeposit = ether("2");
-    const expectedMintAmount = await pool.calculateMintAmount(daiDeposit, {
-      from: wallet,
-    });
+    it("Test addLiquidity pass", async () => {
+      const allowance = DAI.interface.encodeFunctionData('allowance', [randomUser, instance.address])
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      const transferFrom = DAI.interface.encodeFunctionData('transferFrom', [randomUser, instance.address, 1])
+      await mockToken.givenMethodReturnUint(allowance, 1)
+      await mockToken.givenMethodReturnUint(balanceOf, 1)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      const trx = await instance.addLiquidity(1, { from: randomUser })
 
-    await pool.addLiquidity(daiDeposit, { from: wallet });
-    const mintAmount = await pool.balanceOf(wallet);
-    expect(mintAmount).to.bignumber.equal(expectedMintAmount);
-  });
+      const balance = await instance.balanceOf(randomUser)
+      assert.equal(balance.toNumber(), 1000)
+      await expectEvent(trx, "Transfer")
+      await expectEvent(trx, "DepositedAPT")
+      const count = await mockToken.invocationCountForMethod.call(transferFrom)
+      assert.equal(count, 1)
+    })
 
-  it("redeem reverts if amount is zero", async () => {
-    await expectRevert(pool.redeem(0), "Pool/redeem-positive-amount");
-  });
+    it("Test locking/unlocking addLiquidity by owner", async () => {
+      const allowance = DAI.interface.encodeFunctionData('allowance', [randomUser, instance.address])
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      const transferFrom = DAI.interface.encodeFunctionData('transferFrom', [randomUser, instance.address, 1])
+      await mockToken.givenMethodReturnUint(allowance, 1)
+      await mockToken.givenMethodReturnUint(balanceOf, 1)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
 
-  it("redeem reverts if insufficient balance", async () => {
-    const tokenBalance = new BN("100");
-    await pool.internalMint(wallet, tokenBalance);
+      let trx = await instance.lockAddLiquidity({ from: owner })
+      await expectEvent(trx, "AddLiquidityLocked")
 
-    await expectRevert(
-      pool.redeem(tokenBalance.addn(1), { from: wallet }),
-      "Pool/insufficient-balance"
-    );
-  });
+      await expectRevert(instance.addLiquidity(1, { from: randomUser }), "LOCKED")
 
-  it("redeem burns specified token amount", async () => {
-    // start wallet with APT
-    const startAmount = dai("2");
-    await pool.internalMint(wallet, startAmount);
+      trx = await instance.unlockAddLiquidity({ from: owner })
+      await expectEvent(trx, "AddLiquidityUnlocked")
 
-    const redeemAmount = dai("1");
-    await mockDaiTransfer(pool, redeemAmount);
+      await instance.addLiquidity(1, { from: randomUser })
+    })
 
-    await pool.redeem(redeemAmount, { from: wallet });
-    expect(await pool.balanceOf(wallet)).to.bignumber.equal(
-      startAmount.sub(redeemAmount)
-    );
-  });
+    it("Test locking/unlocking addLiquidity by not owner", async () => {
+      await expectRevert(instance.lockAddLiquidity({ from: randomUser }), "Ownable: caller is not the owner")
+      await expectRevert(instance.unlockAddLiquidity({ from: randomUser }), "Ownable: caller is not the owner")
+    })
 
-  it("redeem undoes addLiquidity", async () => {
-    const daiDeposit = ether("1");
-    await mockDaiTransfer(pool, daiDeposit);
-    await pool.addLiquidity(daiDeposit, { from: wallet });
+    it("Test locking/unlocking contract", async () => {
+      const allowance = DAI.interface.encodeFunctionData('allowance', [randomUser, instance.address])
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      const transferFrom = DAI.interface.encodeFunctionData('transferFrom', [randomUser, instance.address, 1])
+      await mockToken.givenMethodReturnUint(allowance, 1)
+      await mockToken.givenMethodReturnUint(balanceOf, 1)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
 
-    const mintAmount = await pool.balanceOf(wallet);
-    await pool.redeem(mintAmount, { from: wallet });
-    expect(await pool.balanceOf(wallet)).to.bignumber.equal("0");
-  });
+      let trx = await instance.lock({ from: owner })
+      await expectEvent(trx, "Paused")
 
-  it("getUnderlyerAmount returns 0 for 0 APT amount", async () => {
-    // When APT supply is 0, share of APT will be undefined,
-    // but we still want underlyer amount to be 0.
-    expect(await pool.totalSupply()).to.be.bignumber.equal("0");
-    expect(await pool.getUnderlyerAmount(0)).to.be.bignumber.equal("0");
+      await expectRevert(instance.addLiquidity(1, { from: randomUser }), "Pausable: paused")
 
-    // sanity check: when APT supply is non-zero, we still want
-    // underlyer amount to be 0!
-    await pool.internalMint(pool.address, new BN("1000000"));
-    expect(await pool.getUnderlyerAmount(0)).to.be.bignumber.equal("0");
-  });
+      trx = await instance.unlock({ from: owner })
+      await expectEvent(trx, "Unpaused")
 
-  describe("contract and function-level locks", async () => {
-    it("addLiquidity reverts when contract is locked", async () => {
-      const daiDeposit = dai("1");
-      await mockDaiTransfer(pool, daiDeposit);
+      await instance.addLiquidity(1, { from: randomUser })
+    })
+  })
 
-      await pool.lock({ from: deployer });
-      await expectRevert(
-        pool.addLiquidity(daiDeposit, { from: wallet }),
-        "Pausable: paused"
-      );
+  describe("Test redeem", async () => {
+    it("Test redeem insufficient amount", async () => {
+      await expectRevert(instance.redeem(0), "AMOUNT_INSUFFICIENT")
+    })
 
-      await pool.unlock({ from: deployer });
-      try {
-        await pool.addLiquidity(daiDeposit, { from: wallet });
-      } catch {
-        assert.fail("Could not unlock the pool.");
-      }
-    });
+    it("Test redeem insufficient balance", async () => {
+      await instance.mint(randomUser, 1)
+      await expectRevert(instance.redeem(2, { from: randomUser }), "BALANCE_INSUFFICIENT")
+    })
 
-    it("redeem reverts when contract is locked", async () => {
-      await pool.lock({ from: deployer });
-      await expectRevert(pool.redeem(0, { from: wallet }), "Pausable: paused");
+    it("Test redeem pass", async () => {
+      await instance.mint(randomUser, 100)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      const trx = await instance.redeem(50, { from: randomUser })
 
-      // some setup needed for checking everything
-      // works after unlocking
-      const aptAmount = new BN("1");
-      await mockDaiTransfer(pool, dai("10000"));
-      await pool.internalMint(wallet, aptAmount);
+      const balance = await instance.balanceOf(randomUser)
+      assert.equal(balance.toNumber(), 50)
+      await expectEvent(trx, "Transfer")
+      await expectEvent(trx, "RedeemedAPT")
+    })
 
-      await pool.unlock({ from: deployer });
-      try {
-        await pool.redeem(aptAmount, { from: wallet });
-      } catch {
-        assert.fail("Could not unlock the pool.");
-      }
-    });
+    it("Test locking/unlocking redeem by owner", async () => {
+      await instance.mint(randomUser, 100)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
 
-    it("revert if non-owner tries to (un)lock the pool", async () => {
-      await expectRevert(
-        pool.lock({ from: other }),
-        "Ownable: caller is not the owner"
-      );
-      await expectRevert(
-        pool.unlock({ from: other }),
-        "Ownable: caller is not the owner"
-      );
-    });
+      let trx = await instance.lockRedeem({ from: owner })
+      expectEvent(trx, "RedeemLocked")
 
-    it("revert when addLiquidity is locked", async () => {
-      await pool.lockAddLiquidity({ from: deployer });
-      await expectRevert(
-        pool.addLiquidity(0, { from: other }),
-        "Pool/access-lock"
-      );
+      await expectRevert(instance.redeem(50, { from: randomUser }), "LOCKED")
+      trx = await instance.lockRedeem({ from: owner })
 
-      await pool.unlockAddLiquidity({ from: deployer });
+      trx = await instance.unlockRedeem({ from: owner })
+      expectEvent(trx, "RedeemUnlocked")
+    })
 
-      const daiDeposit = dai("1");
-      await mockDaiTransfer(pool, daiDeposit);
+    it("Test locking/unlocking contract", async () => {
+      await instance.mint(randomUser, 100)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
 
-      try {
-        await pool.addLiquidity(daiDeposit, { from: wallet });
-      } catch {
-        assert.fail("Could not unlock addLiquidity.");
-      }
-    });
+      let trx = await instance.lock({ from: owner })
+      expectEvent(trx, "Paused")
 
-    it("revert if non-owner (un)locks addLiquidity", async () => {
-      await expectRevert(
-        pool.lockAddLiquidity({ from: other }),
-        "Ownable: caller is not the owner"
-      );
-      await expectRevert(
-        pool.unlockAddLiquidity({ from: other }),
-        "Ownable: caller is not the owner"
-      );
-    });
+      await expectRevert(instance.redeem(50, { from: randomUser }), "Pausable: paused")
 
-    it("revert when redeem is locked", async () => {
-      await pool.lockRedeem({ from: deployer });
-      await expectRevert(pool.redeem(0, { from: other }), "Pool/access-lock");
+      trx = await instance.unlock({ from: owner })
+      expectEvent(trx, "Unpaused")
+    })
 
-      // some setup needed for checking everything
-      // works after unlocking
-      const aptAmount = new BN("1");
-      await mockDaiTransfer(pool, dai("10000"));
-      await pool.internalMint(wallet, aptAmount);
 
-      await pool.unlockRedeem({ from: deployer });
-      try {
-        await pool.redeem(aptAmount, { from: wallet });
-      } catch {
-        assert.fail("Could not unlock redeem.");
-      }
-    });
+    it("Test locking/unlocking redeem by not owner", async () => {
+      await expectRevert(instance.lockRedeem({ from: randomUser }), "Ownable: caller is not the owner")
+      await expectRevert(instance.unlockRedeem({ from: randomUser }), "Ownable: caller is not the owner")
+    })
+  })
 
-    it("revert if non-owner (un)locks redeem", async () => {
-      await expectRevert(
-        pool.lockRedeem({ from: other }),
-        "Ownable: caller is not the owner"
-      );
-      await expectRevert(
-        pool.unlockRedeem({ from: other }),
-        "Ownable: caller is not the owner"
-      );
-    });
-  });
+  describe("Test calculateMintAmount", async () => {
+    it("Test calculateMintAmount when balanceOf is 0", async () => {
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      await mockToken.givenMethodReturnUint(balanceOf, 0)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      const mintAmount = await instance.calculateMintAmount(1000)
+      assert.equal(mintAmount.toNumber(), 1000000)
+    })
 
-  // test helper to mock ERC20 functions on underlyer token
-  const mockDaiTransfer = async (liquidityPoolContract, amount) => {
-    const mock = await MockContract.new();
-    await liquidityPoolContract.setUnderlyerAddress(mock.address, {
-      from: deployer,
-    });
-    const allowanceAbi = pool.contract.methods
-      .allowance(ZERO_ADDRESS, ZERO_ADDRESS)
-      .encodeABI();
-    const transferFromAbi = pool.contract.methods
-      .transferFrom(ZERO_ADDRESS, ZERO_ADDRESS, 0)
-      .encodeABI();
-    const transferAbi = pool.contract.methods
-      .transfer(ZERO_ADDRESS, 0)
-      .encodeABI();
-    await mock.givenMethodReturnUint(allowanceAbi, amount);
-    await mock.givenMethodReturnBool(transferAbi, true);
-    await mock.givenMethodReturnBool(transferFromAbi, true);
-  };
+    it("Test calculateMintAmount when balanceOf > 0", async () => {
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      await mockToken.givenMethodReturnUint(balanceOf, 9999)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      const mintAmount = await instance.calculateMintAmount(1000)
+      assert.equal(mintAmount.toNumber(), 1000000)
+    })
+
+    it("Test calculateMintAmount when amount overflows", async () => {
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      await mockToken.givenMethodReturnUint(balanceOf, 1)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      await instance.mint(randomUser, 1)
+      await expectRevert(instance.calculateMintAmount(constants.MAX_UINT256, { from: randomUser }), "AMOUNT_OVERFLOW")
+    })
+
+    it("Test calculateMintAmount when totalAmount overflows", async () => {
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      await mockToken.givenMethodReturnUint(balanceOf, constants.MAX_UINT256)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      await instance.mint(randomUser, 1)
+      await expectRevert(instance.calculateMintAmount(1, { from: randomUser }), "TOTAL_AMOUNT_OVERFLOW")
+    })
+
+    it("Test calculateMintAmount when totalSupply overflows", async () => {
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      await mockToken.givenMethodReturnUint(balanceOf, 1)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      await instance.mint(randomUser, constants.MAX_UINT256)
+      await expectRevert(instance.calculateMintAmount(1, { from: randomUser }), "TOTAL_SUPPLY_OVERFLOW")
+    })
+
+    it("Test calculateMintAmount returns expeted amount when total supply > 0", async () => {
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      await mockToken.givenMethodReturnUint(balanceOf, 9999)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      await instance.mint(randomUser, 900)
+      // (1000/9999) * 900 = 90.0090009001 ~= 90
+      const mintAmount = await instance.calculateMintAmount(1000, { from: randomUser })
+      assert.equal(mintAmount.toNumber(), 90)
+    })
+
+    it("Test calculateMintAmount returns expeted amount when total supply is 0", async () => {
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      await mockToken.givenMethodReturnUint(balanceOf, 9999)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      // 90 * 1000 = 90000
+      const mintAmount = await instance.calculateMintAmount(90, { from: randomUser })
+      assert.equal(mintAmount.toNumber(), 90000)
+    })
+  })
+
+  describe("Test getUnderlyerAmount", async () => {
+    it("Test getUnderlyerAmount when amount overflows", async () => {
+      await expectRevert(instance.getUnderlyerAmount.call(constants.MAX_UINT256), "AMOUNT_OVERFLOW")
+    })
+
+    it("Test getUnderlyerAmount when divide by zero", async () => {
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      await expectRevert(instance.getUnderlyerAmount.call(100), "INSUFFICIENT_TOTAL_SUPPLY")
+    })
+
+    it("Test getUnderlyerAmount when total supply overflows", async () => {
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      await instance.mint(randomUser, constants.MAX_UINT256)
+      await expectRevert(instance.getUnderlyerAmount.call(100), "TOTAL_SUPPLY_OVERFLOW")
+    })
+
+    it("Test getUnderlyerAmount when underyler total overflows", async () => {
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      await mockToken.givenMethodReturnUint(balanceOf, constants.MAX_UINT256)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      await instance.mint(randomUser, 1)
+      await expectRevert(instance.getUnderlyerAmount.call(1), "UNDERLYER_TOTAL_OVERFLOW")
+    })
+
+    it("Test getUnderlyerAmount", async () => {
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      await mockToken.givenMethodReturnUint(balanceOf, 1)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      await instance.mint(randomUser, 1)
+      const underlyerAmount = await instance.getUnderlyerAmount.call(1)
+      assert.equal(underlyerAmount.toNumber(), 1)
+    })
+  })
 });

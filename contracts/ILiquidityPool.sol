@@ -12,6 +12,10 @@ interface ILiquidityPool {
         uint256 aptAmount,
         uint256 underlyerAmount
     );
+    event AddLiquidityLocked();
+    event AddLiquidityUnlocked();
+    event RedeemLocked();
+    event RedeemUnlocked();
 
     function addLiquidity(uint256 amount) external;
 

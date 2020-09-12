@@ -29,28 +29,17 @@ contract APYLiquidityPoolImplementation is
     using SafeERC20 for IERC20;
 
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
-    uint192 internal constant _MAX_UINT192 = uint192(-1);
+    uint192 public constant MAX_UINT192 = uint192(-1);
 
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
-    address internal _admin;
-    bool internal _addLiquidityLocked;
-    bool internal _redeemLocked;
-    IERC20 internal _underlyer;
+    address public admin;
+    bool public addLiquidityLock;
+    bool public redeemLock;
+    IERC20 public underlyer;
+
     /* ------------------------------- */
-
-    /** @dev Emitted when pool is (un)locked by `owner` */
-    event PoolLocked(address owner);
-    event PoolUnlocked(address owner);
-
-    /** @dev Emitted when `addLiquidity` is (un)locked by `owner` */
-    event AddLiquidityLocked(address owner);
-    event AddLiquidityUnlocked(address owner);
-
-    /** @dev Emitted when `redeem` is (un)locked by `owner` */
-    event RedeemLocked(address owner);
-    event RedeemUnlocked(address owner);
 
     function initialize() public initializer {
         // initialize ancestor storage
@@ -61,35 +50,28 @@ contract APYLiquidityPoolImplementation is
         __ERC20_init_unchained("APY Pool Token", "APT");
 
         // initialize impl-specific storage
-        _addLiquidityLocked = false;
-        _redeemLocked = false;
-        // _admin and _underlyer will get set by deployer
+        addLiquidityLock = false;
+        redeemLock = false;
+        // admin and underlyer will get set by deployer
     }
 
     // solhint-disable-next-line no-empty-blocks
-    function initializeUpgrade() public virtual onlyAdmin {}
-
-    modifier onlyAdmin {
-        require(msg.sender == _admin, "Pool/access-error");
-        _;
-    }
+    function initializeUpgrade() public virtual onlyOwner {}
 
     function setAdminAddress(address adminAddress) public onlyOwner {
-        _admin = adminAddress;
+        admin = adminAddress;
     }
 
     function lock() external onlyOwner {
         _pause();
-        emit PoolLocked(msg.sender);
     }
 
     function unlock() external onlyOwner {
         _unpause();
-        emit PoolUnlocked(msg.sender);
     }
 
     receive() external payable {
-        revert("Pool/cannot-accept-eth");
+        revert("DONT_SEND_ETHER");
     }
 
     /**
@@ -102,29 +84,29 @@ contract APYLiquidityPoolImplementation is
         nonReentrant
         whenNotPaused
     {
-        require(!_addLiquidityLocked, "Pool/access-lock");
-        require(amount > 0, "Pool/insufficient-value");
+        require(!addLiquidityLock, "LOCKED");
+        require(amount > 0, "AMOUNT_INSUFFICIENT");
         require(
-            _underlyer.allowance(msg.sender, address(this)) >= amount,
-            "Pool/need-allowance"
+            underlyer.allowance(msg.sender, address(this)) >= amount,
+            "ALLOWANCE_INSUFFICIENT"
         );
-        uint256 totalAmount = _underlyer.balanceOf(address(this));
+        uint256 totalAmount = underlyer.balanceOf(address(this));
         uint256 mintAmount = _calculateMintAmount(amount, totalAmount);
 
         _mint(msg.sender, mintAmount);
-        _underlyer.transferFrom(msg.sender, address(this), amount);
+        underlyer.transferFrom(msg.sender, address(this), amount);
 
         emit DepositedAPT(msg.sender, mintAmount, amount);
     }
 
     function lockAddLiquidity() external onlyOwner {
-        _addLiquidityLocked = true;
-        emit AddLiquidityLocked(msg.sender);
+        addLiquidityLock = true;
+        emit AddLiquidityLocked();
     }
 
     function unlockAddLiquidity() external onlyOwner {
-        _addLiquidityLocked = false;
-        emit AddLiquidityUnlocked(msg.sender);
+        addLiquidityLock = false;
+        emit AddLiquidityUnlocked();
     }
 
     /**
@@ -137,34 +119,31 @@ contract APYLiquidityPoolImplementation is
         nonReentrant
         whenNotPaused
     {
-        require(!_redeemLocked, "Pool/access-lock");
-        require(aptAmount > 0, "Pool/redeem-positive-amount");
-        require(
-            aptAmount <= balanceOf(msg.sender),
-            "Pool/insufficient-balance"
-        );
+        require(!redeemLock, "LOCKED");
+        require(aptAmount > 0, "AMOUNT_INSUFFICIENT");
+        require(aptAmount <= balanceOf(msg.sender), "BALANCE_INSUFFICIENT");
 
         uint256 underlyerAmount = getUnderlyerAmount(aptAmount);
 
         _burn(msg.sender, aptAmount);
-        _underlyer.transfer(msg.sender, underlyerAmount);
+        underlyer.transfer(msg.sender, underlyerAmount);
 
         emit RedeemedAPT(msg.sender, aptAmount, underlyerAmount);
     }
 
     function lockRedeem() external onlyOwner {
-        _redeemLocked = true;
-        emit RedeemLocked(msg.sender);
+        redeemLock = true;
+        emit RedeemLocked();
     }
 
     function unlockRedeem() external onlyOwner {
-        _redeemLocked = false;
-        emit RedeemUnlocked(msg.sender);
+        redeemLock = false;
+        emit RedeemUnlocked();
     }
 
     /// @dev called during deployment
     function setUnderlyerAddress(address underlyerAddress) public onlyOwner {
-        _underlyer = IERC20(underlyerAddress);
+        underlyer = IERC20(underlyerAddress);
     }
 
     function calculateMintAmount(uint256 underlyerAmount)
@@ -172,28 +151,8 @@ contract APYLiquidityPoolImplementation is
         view
         returns (uint256)
     {
-        uint256 underlyerTotal = _underlyer.balanceOf(address(this));
+        uint256 underlyerTotal = underlyer.balanceOf(address(this));
         return _calculateMintAmount(underlyerAmount, underlyerTotal);
-    }
-
-    /**
-     * @notice Get the underlying amount represented by APT amount.
-     * @param aptAmount The amount of APT tokens
-     * @return uint256 The underlying value of the APT tokens
-     */
-    function getUnderlyerAmount(uint256 aptAmount)
-        public
-        view
-        returns (uint256)
-    {
-        if (aptAmount == 0) return 0;
-
-        FixedPoint.uq192x64 memory shareOfAPT = _getShareOfAPT(aptAmount);
-
-        uint256 underlyerTotal = _underlyer.balanceOf(address(this));
-        require(underlyerTotal <= _MAX_UINT192, "Pool/overflow");
-
-        return shareOfAPT.mul(uint192(underlyerTotal)).decode();
     }
 
     /**
@@ -214,9 +173,9 @@ contract APYLiquidityPoolImplementation is
             return amount.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR);
         }
 
-        require(amount <= _MAX_UINT192, "Pool/overflow");
-        require(totalAmount <= _MAX_UINT192, "Pool/overflow");
-        require(totalSupply <= _MAX_UINT192, "Pool/overflow");
+        require(amount <= MAX_UINT192, "AMOUNT_OVERFLOW");
+        require(totalAmount <= MAX_UINT192, "TOTAL_AMOUNT_OVERFLOW");
+        require(totalSupply <= MAX_UINT192, "TOTAL_SUPPLY_OVERFLOW");
 
         return
             FixedPoint
@@ -225,14 +184,32 @@ contract APYLiquidityPoolImplementation is
                 .decode();
     }
 
+    /**
+     * @notice Get the underlying amount represented by APT amount.
+     * @param aptAmount The amount of APT tokens
+     * @return uint256 The underlying value of the APT tokens
+     */
+    function getUnderlyerAmount(uint256 aptAmount)
+        public
+        view
+        returns (uint256)
+    {
+        FixedPoint.uq192x64 memory shareOfAPT = _getShareOfAPT(aptAmount);
+
+        uint256 underlyerTotal = underlyer.balanceOf(address(this));
+        require(underlyerTotal <= MAX_UINT192, "UNDERLYER_TOTAL_OVERFLOW");
+
+        return shareOfAPT.mul(uint192(underlyerTotal)).decode();
+    }
+
     function _getShareOfAPT(uint256 amount)
         internal
         view
         returns (FixedPoint.uq192x64 memory)
     {
-        require(amount <= _MAX_UINT192, "Pool/overflow");
-        require(totalSupply() > 0, "Pool/divide-by-zero");
-        require(totalSupply() <= _MAX_UINT192, "Pool/overflow");
+        require(amount <= MAX_UINT192, "AMOUNT_OVERFLOW");
+        require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
+        require(totalSupply() <= MAX_UINT192, "TOTAL_SUPPLY_OVERFLOW");
 
         FixedPoint.uq192x64 memory shareOfAPT = FixedPoint.fraction(
             uint192(amount),
@@ -246,24 +223,12 @@ contract APYLiquidityPoolImplementation is
  * @dev Proxy contract to test internal variables and functions
  *      Should not be used other than in test files!
  */
-contract APYLiquidityPoolImplTestProxy is APYLiquidityPoolImplementation {
-    function internalMint(address account, uint256 amount) public {
+contract APYLiquidityPoolImplementationTEST is APYLiquidityPoolImplementation {
+    function mint(address account, uint256 amount) public {
         _mint(account, amount);
     }
 
-    function internalBurn(address account, uint256 amount) public {
+    function burn(address account, uint256 amount) public {
         _burn(account, amount);
-    }
-
-    function internalCalculateMintAmount(uint256 ethValue, uint256 totalValue)
-        public
-        view
-        returns (uint256)
-    {
-        return
-            APYLiquidityPoolImplementation._calculateMintAmount(
-                ethValue,
-                totalValue
-            );
     }
 }
