@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
@@ -13,7 +14,6 @@ import {
     TransparentUpgradeableProxy
 } from "@openzeppelin/contracts/proxy/TransparentUpgradeableProxy.sol";
 import "solidity-fixedpoint/contracts/FixedPoint.sol";
-import "./APT.sol";
 import "./ILiquidityPool.sol";
 
 contract APYLiquidityPoolImplementation is
@@ -21,6 +21,7 @@ contract APYLiquidityPoolImplementation is
     Initializable,
     OwnableUpgradeSafe,
     ReentrancyGuardUpgradeSafe,
+    PausableUpgradeSafe,
     ERC20UpgradeSafe
 {
     using SafeMath for uint256;
@@ -28,16 +29,41 @@ contract APYLiquidityPoolImplementation is
     using SafeERC20 for IERC20;
 
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
-    uint192 internal constant _MAX_UINT192 = uint192(-1);
+    uint192 public constant MAX_UINT192 = uint192(-1);
 
+    /* ------------------------------- */
+    /* impl-specific storage variables */
+    /* ------------------------------- */
     address public admin;
+    bool public addLiquidityLock;
+    bool public redeemLock;
     IERC20 public underlyer;
+    /* ------------------------------- */
+
+    /** @dev Emitted when pool is (un)locked by `owner` */
+    event PoolLocked(address owner);
+    event PoolUnlocked(address owner);
+
+    /** @dev Emitted when `addLiquidity` is (un)locked by `owner` */
+    event AddLiquidityLocked(address owner);
+    event AddLiquidityUnlocked(address owner);
+
+    /** @dev Emitted when `redeem` is (un)locked by `owner` */
+    event RedeemLocked(address owner);
+    event RedeemUnlocked(address owner);
 
     function initialize() public initializer {
+        // initialize ancestor storage
         __Context_init_unchained();
         __Ownable_init_unchained();
         __ReentrancyGuard_init_unchained();
+        __Pausable_init_unchained();
         __ERC20_init_unchained("APY Pool Token", "APT");
+
+        // initialize impl-specific storage
+        addLiquidityLock = false;
+        redeemLock = false;
+        // admin and underlyer will get set by deployer
     }
 
     // solhint-disable-next-line no-empty-blocks
@@ -52,6 +78,16 @@ contract APYLiquidityPoolImplementation is
         admin = adminAddress;
     }
 
+    function lock() external onlyOwner {
+        _pause();
+        emit PoolLocked(msg.sender);
+    }
+
+    function unlock() external onlyOwner {
+        _unpause();
+        emit PoolUnlocked(msg.sender);
+    }
+
     receive() external payable {
         revert("Pool/cannot-accept-eth");
     }
@@ -60,7 +96,13 @@ contract APYLiquidityPoolImplementation is
      * @notice Mint corresponding amount of APT tokens for sent token amount.
      * @dev If no APT tokens have been minted yet, fallback to a fixed ratio.
      */
-    function addLiquidity(uint256 amount) external override nonReentrant {
+    function addLiquidity(uint256 amount)
+        external
+        override
+        nonReentrant
+        whenNotPaused
+    {
+        require(!addLiquidityLock, "Pool/access-lock");
         require(amount > 0, "AMOUNT_INSUFFICIENT");
         require(
             underlyer.allowance(msg.sender, address(this)) >= amount,
@@ -75,11 +117,27 @@ contract APYLiquidityPoolImplementation is
         emit DepositedAPT(msg.sender, mintAmount, amount);
     }
 
+    function lockAddLiquidity() external onlyOwner {
+        addLiquidityLock = true;
+        emit AddLiquidityLocked(msg.sender);
+    }
+
+    function unlockAddLiquidity() external onlyOwner {
+        addLiquidityLock = false;
+        emit AddLiquidityUnlocked(msg.sender);
+    }
+
     /**
      * @notice Redeems APT amount for its underlying token amount.
      * @param aptAmount The amount of APT tokens to redeem
      */
-    function redeem(uint256 aptAmount) external override nonReentrant {
+    function redeem(uint256 aptAmount)
+        external
+        override
+        nonReentrant
+        whenNotPaused
+    {
+        require(!redeemLock, "Pool/access-lock");
         require(aptAmount > 0, "AMOUNT_INSUFFICIENT");
         require(aptAmount <= balanceOf(msg.sender), "BALANCE_INSUFFICIENT");
 
@@ -89,6 +147,16 @@ contract APYLiquidityPoolImplementation is
         underlyer.transfer(msg.sender, underlyerAmount);
 
         emit RedeemedAPT(msg.sender, aptAmount, underlyerAmount);
+    }
+
+    function lockRedeem() external onlyOwner {
+        redeemLock = true;
+        emit RedeemLocked(msg.sender);
+    }
+
+    function unlockRedeem() external onlyOwner {
+        redeemLock = false;
+        emit RedeemUnlocked(msg.sender);
     }
 
     /// @dev called during deployment
@@ -123,9 +191,9 @@ contract APYLiquidityPoolImplementation is
             return amount.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR);
         }
 
-        require(amount <= _MAX_UINT192, "AMOUNT_OVERFLOW");
-        require(totalAmount <= _MAX_UINT192, "TOTAL_AMOUNT_OVERFLOW");
-        require(totalSupply <= _MAX_UINT192, "TOTAL_SUPPLY_OVERFLOW");
+        require(amount <= MAX_UINT192, "AMOUNT_OVERFLOW");
+        require(totalAmount <= MAX_UINT192, "TOTAL_AMOUNT_OVERFLOW");
+        require(totalSupply <= MAX_UINT192, "TOTAL_SUPPLY_OVERFLOW");
 
         return
             FixedPoint
@@ -147,7 +215,7 @@ contract APYLiquidityPoolImplementation is
         FixedPoint.uq192x64 memory shareOfAPT = _getShareOfAPT(aptAmount);
 
         uint256 underlyerTotal = underlyer.balanceOf(address(this));
-        require(underlyerTotal <= _MAX_UINT192, "UNDERLYER_TOTAL_OVERFLOW");
+        require(underlyerTotal <= MAX_UINT192, "UNDERLYER_TOTAL_OVERFLOW");
 
         return shareOfAPT.mul(uint192(underlyerTotal)).decode();
     }
@@ -157,9 +225,9 @@ contract APYLiquidityPoolImplementation is
         view
         returns (FixedPoint.uq192x64 memory)
     {
-        require(amount <= _MAX_UINT192, "AMOUNT_OVERFLOW");
+        require(amount <= MAX_UINT192, "AMOUNT_OVERFLOW");
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        require(totalSupply() <= _MAX_UINT192, "TOTAL_SUPPLY_OVERFLOW");
+        require(totalSupply() <= MAX_UINT192, "TOTAL_SUPPLY_OVERFLOW");
 
         FixedPoint.uq192x64 memory shareOfAPT = FixedPoint.fraction(
             uint192(amount),
