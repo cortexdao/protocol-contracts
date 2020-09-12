@@ -193,55 +193,112 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
     expect(await pool.getUnderlyerAmount(0)).to.be.bignumber.equal("0");
   });
 
-  it("addLiquidity reverts when contract is locked", async () => {
-    const daiDeposit = dai("1");
-    await mockDaiTransfer(pool, daiDeposit);
+  describe("contract and function-level locks", async () => {
+    it("addLiquidity reverts when contract is locked", async () => {
+      const daiDeposit = dai("1");
+      await mockDaiTransfer(pool, daiDeposit);
 
-    await pool.lock({ from: deployer });
-    await expectRevert(
-      pool.addLiquidity(daiDeposit, { from: wallet }),
-      "Pausable: paused"
-    );
+      await pool.lock({ from: deployer });
+      await expectRevert(
+        pool.addLiquidity(daiDeposit, { from: wallet }),
+        "Pausable: paused"
+      );
 
-    await pool.unlock({ from: deployer });
-    try {
-      await pool.addLiquidity(daiDeposit, { from: wallet });
-    } catch {
-      assert.fail("Could not unlock the pool.");
-    }
-  });
+      await pool.unlock({ from: deployer });
+      try {
+        await pool.addLiquidity(daiDeposit, { from: wallet });
+      } catch {
+        assert.fail("Could not unlock the pool.");
+      }
+    });
 
-  it("redeem reverts when contract is locked", async () => {
-    // some setup needed for checking everything
-    // works after unlocking
-    const daiDeposit = dai("10000");
-    const aptAmount = new BN("1");
-    await mockDaiTransfer(pool, daiDeposit);
-    await pool.internalMint(wallet, aptAmount);
+    it("redeem reverts when contract is locked", async () => {
+      await pool.lock({ from: deployer });
+      await expectRevert(pool.redeem(0, { from: wallet }), "Pausable: paused");
 
-    await pool.lock({ from: deployer });
-    await expectRevert(
-      pool.redeem(new BN("100"), { from: wallet }),
-      "Pausable: paused"
-    );
+      // some setup needed for checking everything
+      // works after unlocking
+      const aptAmount = new BN("1");
+      await mockDaiTransfer(pool, dai("10000"));
+      await pool.internalMint(wallet, aptAmount);
 
-    await pool.unlock({ from: deployer });
-    try {
-      await pool.redeem(aptAmount, { from: wallet });
-    } catch {
-      assert.fail("Could not unlock the pool.");
-    }
-  });
+      await pool.unlock({ from: deployer });
+      try {
+        await pool.redeem(aptAmount, { from: wallet });
+      } catch {
+        assert.fail("Could not unlock the pool.");
+      }
+    });
 
-  it("revert if non-owner tries to lock or unlock the pool", async () => {
-    await expectRevert(
-      pool.lock({ from: other }),
-      "Ownable: caller is not the owner"
-    );
-    await expectRevert(
-      pool.unlock({ from: other }),
-      "Ownable: caller is not the owner"
-    );
+    it("revert if non-owner tries to (un)lock the pool", async () => {
+      await expectRevert(
+        pool.lock({ from: other }),
+        "Ownable: caller is not the owner"
+      );
+      await expectRevert(
+        pool.unlock({ from: other }),
+        "Ownable: caller is not the owner"
+      );
+    });
+
+    it("revert when addLiquidity is locked", async () => {
+      await pool.lockAddLiquidity({ from: deployer });
+      await expectRevert(
+        pool.addLiquidity(0, { from: other }),
+        "Pool/access-lock"
+      );
+
+      await pool.unlockAddLiquidity({ from: deployer });
+
+      const daiDeposit = dai("1");
+      await mockDaiTransfer(pool, daiDeposit);
+
+      try {
+        await pool.addLiquidity(daiDeposit, { from: wallet });
+      } catch {
+        assert.fail("Could not unlock addLiquidity.");
+      }
+    });
+
+    it("revert if non-owner (un)locks addLiquidity", async () => {
+      await expectRevert(
+        pool.lockAddLiquidity({ from: other }),
+        "Ownable: caller is not the owner"
+      );
+      await expectRevert(
+        pool.unlockAddLiquidity({ from: other }),
+        "Ownable: caller is not the owner"
+      );
+    });
+
+    it("revert when redeem is locked", async () => {
+      await pool.lockRedeem({ from: deployer });
+      await expectRevert(pool.redeem(0, { from: other }), "Pool/access-lock");
+
+      // some setup needed for checking everything
+      // works after unlocking
+      const aptAmount = new BN("1");
+      await mockDaiTransfer(pool, dai("10000"));
+      await pool.internalMint(wallet, aptAmount);
+
+      await pool.unlockRedeem({ from: deployer });
+      try {
+        await pool.redeem(aptAmount, { from: wallet });
+      } catch {
+        assert.fail("Could not unlock redeem.");
+      }
+    });
+
+    it("revert if non-owner (un)locks redeem", async () => {
+      await expectRevert(
+        pool.lockRedeem({ from: other }),
+        "Ownable: caller is not the owner"
+      );
+      await expectRevert(
+        pool.unlockRedeem({ from: other }),
+        "Ownable: caller is not the owner"
+      );
+    });
   });
 
   // test helper to mock ERC20 functions on underlyer token

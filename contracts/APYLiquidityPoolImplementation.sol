@@ -117,6 +117,16 @@ contract APYLiquidityPoolImplementation is
         emit DepositedAPT(msg.sender, mintAmount, amount);
     }
 
+    function lockAddLiquidity() external onlyOwner {
+        _addLiquidityLocked = true;
+        emit AddLiquidityLocked(msg.sender);
+    }
+
+    function unlockAddLiquidity() external onlyOwner {
+        _addLiquidityLocked = false;
+        emit AddLiquidityUnlocked(msg.sender);
+    }
+
     /**
      * @notice Redeems APT amount for its underlying token amount.
      * @param aptAmount The amount of APT tokens to redeem
@@ -140,6 +150,16 @@ contract APYLiquidityPoolImplementation is
         _underlyer.transfer(msg.sender, underlyerAmount);
 
         emit RedeemedAPT(msg.sender, aptAmount, underlyerAmount);
+    }
+
+    function lockRedeem() external onlyOwner {
+        _redeemLocked = true;
+        emit RedeemLocked(msg.sender);
+    }
+
+    function unlockRedeem() external onlyOwner {
+        _redeemLocked = false;
+        emit RedeemUnlocked(msg.sender);
     }
 
     /// @dev called during deployment
