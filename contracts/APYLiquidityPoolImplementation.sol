@@ -109,24 +109,6 @@ contract APYLiquidityPoolImplementation is
     }
 
     /**
-     * @notice Get the underlying amount represented by APT amount.
-     * @param aptAmount The amount of APT tokens
-     * @return uint256 The underlying value of the APT tokens
-     */
-    function getUnderlyerAmount(uint256 aptAmount)
-        public
-        view
-        returns (uint256)
-    {
-        FixedPoint.uq192x64 memory shareOfAPT = _getShareOfAPT(aptAmount);
-
-        uint256 underlyerTotal = underlyer.balanceOf(address(this));
-        require(underlyerTotal <= _MAX_UINT192, "Pool/overflow");
-
-        return shareOfAPT.mul(uint192(underlyerTotal)).decode();
-    }
-
-    /**
      *  @notice amount of APT minted should be in same ratio to APT supply
      *          as token amount sent is to contract's token balance, i.e.:
      *
@@ -153,6 +135,24 @@ contract APYLiquidityPoolImplementation is
                 .fraction(uint192(amount), uint192(totalAmount))
                 .mul(uint192(totalSupply))
                 .decode();
+    }
+
+    /**
+     * @notice Get the underlying amount represented by APT amount.
+     * @param aptAmount The amount of APT tokens
+     * @return uint256 The underlying value of the APT tokens
+     */
+    function getUnderlyerAmount(uint256 aptAmount)
+        public
+        view
+        returns (uint256)
+    {
+        FixedPoint.uq192x64 memory shareOfAPT = _getShareOfAPT(aptAmount);
+
+        uint256 underlyerTotal = underlyer.balanceOf(address(this));
+        require(underlyerTotal <= _MAX_UINT192, "Pool/overflow");
+
+        return shareOfAPT.mul(uint192(underlyerTotal)).decode();
     }
 
     function _getShareOfAPT(uint256 amount)
