@@ -67,7 +67,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     })
   })
 
-  describe("Test Setters", async () => {
+  describe("Test setAdminAdddress", async () => {
     it("Test setAdminAddress pass", async () => {
       await instance.setAdminAddress(instanceAdmin, { from: owner })
       assert.equal(await instance.admin.call(), instanceAdmin)
@@ -78,12 +78,14 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
         instance.setAdminAddress(instanceAdmin, { from: randomUser })
       )
     })
+  })
 
-    it("Test setUnderlyingAddress pass", async () => {
+  describe("Test setUnderlyerAddress", async () => {
+    it("Test setUnderlyerAddress pass", async () => {
       await instance.setUnderlyerAddress(mockToken.address, { from: owner })
     })
 
-    it("Test setUnderlyingAddress fail", async () => {
+    it("Test setUnderlyerAddress fail", async () => {
       await expectRevert.unspecified(
         instance.setUnderlyerAddress(mockToken.address, { from: randomUser })
       )
@@ -222,13 +224,6 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       assert.equal(underlyerAmount.toNumber(), 1)
     })
   })
-
-  // it("addLiquidity reverts if 0 DAI sent", async () => {
-  //   await expectRevert(
-  //     instance.addLiquidity(0, { from: wallet, value: "0" }),
-  //     "Pool/insufficient-value"
-  //   );
-  // });
 
   //   it("mint amount to supply equals DAI deposit to total DAI balance", async () => {
   //     const daiDeposit = dai("112");
