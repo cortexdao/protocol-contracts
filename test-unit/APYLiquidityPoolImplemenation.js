@@ -65,6 +65,10 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     it("Test Pool Symbol", async () => {
       assert.equal(await instance.symbol.call(), "APT")
     })
+
+    it("Test Pool Decimals", async () => {
+      assert.equal(await instance.decimals.call(), 18)
+    })
   })
 
   describe("Test setAdminAdddress", async () => {
