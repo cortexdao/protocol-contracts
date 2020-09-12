@@ -90,6 +90,34 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     })
   })
 
+  describe("Test addLiquidity", async () => {
+    it("Test addLiquidity insufficient amount", async () => {
+      await expectRevert(instance.addLiquidity(0), "AMOUNT_INSUFFICIENT")
+    })
+
+    it("Test addLiquidity insufficient allowance", async () => {
+      const allowance = DAI.interface.encodeFunctionData('allowance', [owner, instance.address])
+      await mockToken.givenMethodReturnUint(allowance, 0)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      await expectRevert(instance.addLiquidity(1), "ALLOWANCE_INSUFFICIENT")
+    })
+
+    it("Test addLiquidity pass", async () => {
+      const allowance = DAI.interface.encodeFunctionData('allowance', [owner, instance.address])
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      const transferFrom = DAI.interface.encodeFunctionData('transferFrom', [owner, instance.address, 1])
+      await mockToken.givenMethodReturnUint(allowance, 1)
+      await mockToken.givenMethodReturnUint(balanceOf, 1)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      const trx = await instance.addLiquidity(1)
+
+      await expectEvent(trx, "Transfer")
+      await expectEvent(trx, "DepositedAPT")
+      const count = await mockToken.invocationCountForMethod.call(transferFrom)
+      assert.equal(count, 1)
+    })
+  })
+
   describe("Test calculateMintAmount", async () => {
     it("Test calculateMintAmount when balanceOf is 0", async () => {
       const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])

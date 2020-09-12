@@ -61,10 +61,10 @@ contract APYLiquidityPoolImplementation is
      * @dev If no APT tokens have been minted yet, fallback to a fixed ratio.
      */
     function addLiquidity(uint256 amount) external override nonReentrant {
-        require(amount > 0, "Pool/insufficient-value");
+        require(amount > 0, "AMOUNT_INSUFFICIENT");
         require(
             underlyer.allowance(msg.sender, address(this)) >= amount,
-            "Pool/need-allowance"
+            "ALLOWANCE_INSUFFICIENT"
         );
         uint256 totalAmount = underlyer.balanceOf(address(this));
         uint256 mintAmount = _calculateMintAmount(amount, totalAmount);
@@ -184,16 +184,4 @@ contract APYLiquidityPoolImplementationTEST is APYLiquidityPoolImplementation {
     function burn(address account, uint256 amount) public {
         _burn(account, amount);
     }
-
-    // function internalCalculateMintAmount(uint256 ethValue, uint256 totalValue)
-    //     public
-    //     view
-    //     returns (uint256)
-    // {
-    //     return
-    //         APYLiquidityPoolImplementation._calculateMintAmount(
-    //             ethValue,
-    //             totalValue
-    //         );
-    // }
 }
