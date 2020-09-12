@@ -62,6 +62,14 @@ contract APYLiquidityPoolImplementation is
         admin = adminAddress;
     }
 
+    function lock() external onlyOwner {
+        _pause();
+    }
+
+    function unlock() external onlyOwner {
+        _unpause();
+    }
+
     receive() external payable {
         revert("DONT_SEND_ETHER");
     }

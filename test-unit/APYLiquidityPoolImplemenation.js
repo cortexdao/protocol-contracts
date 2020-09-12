@@ -152,6 +152,25 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       await expectRevert(instance.lockAddLiquidity({ from: randomUser }), "Ownable: caller is not the owner")
       await expectRevert(instance.unlockAddLiquidity({ from: randomUser }), "Ownable: caller is not the owner")
     })
+
+    it("Test locking/unlocking contract", async () => {
+      const allowance = DAI.interface.encodeFunctionData('allowance', [randomUser, instance.address])
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      const transferFrom = DAI.interface.encodeFunctionData('transferFrom', [randomUser, instance.address, 1])
+      await mockToken.givenMethodReturnUint(allowance, 1)
+      await mockToken.givenMethodReturnUint(balanceOf, 1)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+
+      let trx = await instance.lock({ from: owner })
+      await expectEvent(trx, "Paused")
+
+      await expectRevert(instance.addLiquidity(1, { from: randomUser }), "Pausable: paused")
+
+      trx = await instance.unlock({ from: owner })
+      await expectEvent(trx, "Unpaused")
+
+      await instance.addLiquidity(1, { from: randomUser })
+    })
   })
 
   describe("Test redeem", async () => {
@@ -187,8 +206,21 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
 
       trx = await instance.unlockRedeem({ from: owner })
       expectEvent(trx, "RedeemUnlocked")
-
     })
+
+    it("Test locking/unlocking contract", async () => {
+      await instance.mint(randomUser, 100)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+
+      let trx = await instance.lock({ from: owner })
+      expectEvent(trx, "Paused")
+
+      await expectRevert(instance.redeem(50, { from: randomUser }), "Pausable: paused")
+
+      trx = await instance.unlock({ from: owner })
+      expectEvent(trx, "Unpaused")
+    })
+
 
     it("Test locking/unlocking redeem by not owner", async () => {
       await expectRevert(instance.lockRedeem({ from: randomUser }), "Ownable: caller is not the owner")
