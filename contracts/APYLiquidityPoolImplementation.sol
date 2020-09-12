@@ -126,7 +126,7 @@ contract APYLiquidityPoolImplementation is
             return amount.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR);
         }
 
-        require(amount <= _MAX_UINT192, "Pool/overflow");
+        require(amount <= _MAX_UINT192, "AMOUNT_OVERFLOW");
         require(totalAmount <= _MAX_UINT192, "Pool/overflow");
         require(totalSupply <= _MAX_UINT192, "Pool/overflow");
 
@@ -176,24 +176,24 @@ contract APYLiquidityPoolImplementation is
  * @dev Proxy contract to test internal variables and functions
  *      Should not be used other than in test files!
  */
-contract APYLiquidityPoolImplTestProxy is APYLiquidityPoolImplementation {
-    function internalMint(address account, uint256 amount) public {
+contract APYLiquidityPoolImplementationTEST is APYLiquidityPoolImplementation {
+    function mint(address account, uint256 amount) public {
         _mint(account, amount);
     }
 
-    function internalBurn(address account, uint256 amount) public {
+    function burn(address account, uint256 amount) public {
         _burn(account, amount);
     }
 
-    function internalCalculateMintAmount(uint256 ethValue, uint256 totalValue)
-        public
-        view
-        returns (uint256)
-    {
-        return
-            APYLiquidityPoolImplementation._calculateMintAmount(
-                ethValue,
-                totalValue
-            );
-    }
+    // function internalCalculateMintAmount(uint256 ethValue, uint256 totalValue)
+    //     public
+    //     view
+    //     returns (uint256)
+    // {
+    //     return
+    //         APYLiquidityPoolImplementation._calculateMintAmount(
+    //             ethValue,
+    //             totalValue
+    //         );
+    // }
 }

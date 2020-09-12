@@ -16,7 +16,7 @@ const MockContract = artifacts.require("MockContract");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYLiquidityPoolProxy = artifacts.require("APYLiquidityPoolProxy");
 const APYLiquidityPoolImplementation = artifacts.require(
-  "APYLiquidityPoolImplTestProxy"
+  "APYLiquidityPoolImplementationTEST"
 );
 const { DAI } = require('../utils/Compound');
 
@@ -108,8 +108,11 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     })
 
     it("Test calculateMintAmount when amount overflows", async () => {
-      // TODO
-      // await expectRevert()
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      await mockToken.givenMethodReturnUint(balanceOf, 1)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      await instance.mint(randomUser, 1)
+      await expectRevert(instance.calculateMintAmount(constants.MAX_UINT256, { from: randomUser }), "AMOUNT_OVERFLOW")
     })
 
     it("Test calculateMintAmount when totalAmount overflows", async () => {
@@ -120,6 +123,16 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     it("Test calculateMintAmount when totalSupply overflows", async () => {
       // TODO
       // await expectRevert()
+    })
+
+    it("Test calculateMintAmount returns expeted amount", async () => {
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      await mockToken.givenMethodReturnUint(balanceOf, 9999)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      await instance.mint(randomUser, 900)
+      // (1000/9999) * 900 = 90.0090009001 ~= 90
+      const mintAmount = await instance.calculateMintAmount(1000, { from: randomUser })
+      assert.equal(mintAmount.toNumber(), 90)
     })
   })
 
