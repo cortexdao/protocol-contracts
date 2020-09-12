@@ -49,7 +49,6 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     mockToken = await MockContract.new()
   });
 
-<<<<<<< HEAD
   describe("Test Defaults", async () => {
     it("Test Owner", async () => {
       assert.equal(await instance.owner.call(), owner)
@@ -69,6 +68,10 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
 
     it("Test Pool Decimals", async () => {
       assert.equal(await instance.decimals.call(), 18)
+    })
+
+    it("Test sending Ether", async () => {
+      await expectRevert(instance.send(10), "DONT_SEND_ETHER")
     })
   })
 
@@ -125,6 +128,30 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       const count = await mockToken.invocationCountForMethod.call(transferFrom)
       assert.equal(count, 1)
     })
+
+    it("Test locking/unlocking addLiquidity by owner", async () => {
+      const allowance = DAI.interface.encodeFunctionData('allowance', [randomUser, instance.address])
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      const transferFrom = DAI.interface.encodeFunctionData('transferFrom', [randomUser, instance.address, 1])
+      await mockToken.givenMethodReturnUint(allowance, 1)
+      await mockToken.givenMethodReturnUint(balanceOf, 1)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+
+      let trx = await instance.lockAddLiquidity({ from: owner })
+      await expectEvent(trx, "AddLiquidityLocked")
+
+      await expectRevert(instance.addLiquidity(1, { from: randomUser }), "LOCKED")
+
+      trx = await instance.unlockAddLiquidity({ from: owner })
+      await expectEvent(trx, "AddLiquidityUnlocked")
+
+      await instance.addLiquidity(1, { from: randomUser })
+    })
+
+    it("Test locking/unlocking addLiquidity by not owner", async () => {
+      await expectRevert(instance.lockAddLiquidity({ from: randomUser }), "Ownable: caller is not the owner")
+      await expectRevert(instance.unlockAddLiquidity({ from: randomUser }), "Ownable: caller is not the owner")
+    })
   })
 
   describe("Test redeem", async () => {
@@ -148,6 +175,25 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       await expectEvent(trx, "RedeemedAPT")
     })
 
+    it("Test locking/unlocking redeem by owner", async () => {
+      await instance.mint(randomUser, 100)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+
+      let trx = await instance.lockRedeem({ from: owner })
+      expectEvent(trx, "RedeemLocked")
+
+      await expectRevert(instance.redeem(50, { from: randomUser }), "LOCKED")
+      trx = await instance.lockRedeem({ from: owner })
+
+      trx = await instance.unlockRedeem({ from: owner })
+      expectEvent(trx, "RedeemUnlocked")
+
+    })
+
+    it("Test locking/unlocking redeem by not owner", async () => {
+      await expectRevert(instance.lockRedeem({ from: randomUser }), "Ownable: caller is not the owner")
+      await expectRevert(instance.unlockRedeem({ from: randomUser }), "Ownable: caller is not the owner")
+    })
   })
 
   describe("Test calculateMintAmount", async () => {
@@ -244,145 +290,4 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       assert.equal(underlyerAmount.toNumber(), 1)
     })
   })
-=======
-  it("getUnderlyerAmount returns 0 for 0 APT amount", async () => {
-    // When APT supply is 0, share of APT will be undefined,
-    // but we still want underlyer amount to be 0.
-    expect(await pool.totalSupply()).to.be.bignumber.equal("0");
-    expect(await pool.getUnderlyerAmount(0)).to.be.bignumber.equal("0");
-
-    // sanity check: when APT supply is non-zero, we still want
-    // underlyer amount to be 0!
-    await pool.internalMint(pool.address, new BN("1000000"));
-    expect(await pool.getUnderlyerAmount(0)).to.be.bignumber.equal("0");
-  });
-
-  describe("contract and function-level locks", async () => {
-    it("addLiquidity reverts when contract is locked", async () => {
-      const daiDeposit = dai("1");
-      await mockDaiTransfer(pool, daiDeposit);
-
-      await pool.lock({ from: deployer });
-      await expectRevert(
-        pool.addLiquidity(daiDeposit, { from: wallet }),
-        "Pausable: paused"
-      );
-
-      await pool.unlock({ from: deployer });
-      try {
-        await pool.addLiquidity(daiDeposit, { from: wallet });
-      } catch {
-        assert.fail("Could not unlock the pool.");
-      }
-    });
-
-    it("redeem reverts when contract is locked", async () => {
-      await pool.lock({ from: deployer });
-      await expectRevert(pool.redeem(0, { from: wallet }), "Pausable: paused");
-
-      // some setup needed for checking everything
-      // works after unlocking
-      const aptAmount = new BN("1");
-      await mockDaiTransfer(pool, dai("10000"));
-      await pool.internalMint(wallet, aptAmount);
-
-      await pool.unlock({ from: deployer });
-      try {
-        await pool.redeem(aptAmount, { from: wallet });
-      } catch {
-        assert.fail("Could not unlock the pool.");
-      }
-    });
-
-    it("revert if non-owner tries to (un)lock the pool", async () => {
-      await expectRevert(
-        pool.lock({ from: other }),
-        "Ownable: caller is not the owner"
-      );
-      await expectRevert(
-        pool.unlock({ from: other }),
-        "Ownable: caller is not the owner"
-      );
-    });
-
-    it("revert when addLiquidity is locked", async () => {
-      await pool.lockAddLiquidity({ from: deployer });
-      await expectRevert(
-        pool.addLiquidity(0, { from: other }),
-        "Pool/access-lock"
-      );
-
-      await pool.unlockAddLiquidity({ from: deployer });
-
-      const daiDeposit = dai("1");
-      await mockDaiTransfer(pool, daiDeposit);
-
-      try {
-        await pool.addLiquidity(daiDeposit, { from: wallet });
-      } catch {
-        assert.fail("Could not unlock addLiquidity.");
-      }
-    });
-
-    it("revert if non-owner (un)locks addLiquidity", async () => {
-      await expectRevert(
-        pool.lockAddLiquidity({ from: other }),
-        "Ownable: caller is not the owner"
-      );
-      await expectRevert(
-        pool.unlockAddLiquidity({ from: other }),
-        "Ownable: caller is not the owner"
-      );
-    });
-
-    it("revert when redeem is locked", async () => {
-      await pool.lockRedeem({ from: deployer });
-      await expectRevert(pool.redeem(0, { from: other }), "Pool/access-lock");
-
-      // some setup needed for checking everything
-      // works after unlocking
-      const aptAmount = new BN("1");
-      await mockDaiTransfer(pool, dai("10000"));
-      await pool.internalMint(wallet, aptAmount);
-
-      await pool.unlockRedeem({ from: deployer });
-      try {
-        await pool.redeem(aptAmount, { from: wallet });
-      } catch {
-        assert.fail("Could not unlock redeem.");
-      }
-    });
-
-    it("revert if non-owner (un)locks redeem", async () => {
-      await expectRevert(
-        pool.lockRedeem({ from: other }),
-        "Ownable: caller is not the owner"
-      );
-      await expectRevert(
-        pool.unlockRedeem({ from: other }),
-        "Ownable: caller is not the owner"
-      );
-    });
-  });
-
-  // test helper to mock ERC20 functions on underlyer token
-  const mockDaiTransfer = async (liquidityPoolContract, amount) => {
-    const mock = await MockContract.new();
-    await liquidityPoolContract.setUnderlyerAddress(mock.address, {
-      from: deployer,
-    });
-    const allowanceAbi = pool.contract.methods
-      .allowance(ZERO_ADDRESS, ZERO_ADDRESS)
-      .encodeABI();
-    const transferFromAbi = pool.contract.methods
-      .transferFrom(ZERO_ADDRESS, ZERO_ADDRESS, 0)
-      .encodeABI();
-    const transferAbi = pool.contract.methods
-      .transfer(ZERO_ADDRESS, 0)
-      .encodeABI();
-    await mock.givenMethodReturnUint(allowanceAbi, amount);
-    await mock.givenMethodReturnBool(transferAbi, true);
-    await mock.givenMethodReturnBool(transferFromAbi, true);
-  };
->>>>>>> develop
 });

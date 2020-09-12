@@ -38,19 +38,8 @@ contract APYLiquidityPoolImplementation is
     bool public addLiquidityLock;
     bool public redeemLock;
     IERC20 public underlyer;
+
     /* ------------------------------- */
-
-    /** @dev Emitted when pool is (un)locked by `owner` */
-    event PoolLocked(address owner);
-    event PoolUnlocked(address owner);
-
-    /** @dev Emitted when `addLiquidity` is (un)locked by `owner` */
-    event AddLiquidityLocked(address owner);
-    event AddLiquidityUnlocked(address owner);
-
-    /** @dev Emitted when `redeem` is (un)locked by `owner` */
-    event RedeemLocked(address owner);
-    event RedeemUnlocked(address owner);
 
     function initialize() public initializer {
         // initialize ancestor storage
@@ -67,29 +56,14 @@ contract APYLiquidityPoolImplementation is
     }
 
     // solhint-disable-next-line no-empty-blocks
-    function initializeUpgrade() public virtual onlyAdmin {}
-
-    modifier onlyAdmin {
-        require(msg.sender == admin, "Pool/access-error");
-        _;
-    }
+    function initializeUpgrade() public virtual onlyOwner {}
 
     function setAdminAddress(address adminAddress) public onlyOwner {
         admin = adminAddress;
     }
 
-    function lock() external onlyOwner {
-        _pause();
-        emit PoolLocked(msg.sender);
-    }
-
-    function unlock() external onlyOwner {
-        _unpause();
-        emit PoolUnlocked(msg.sender);
-    }
-
     receive() external payable {
-        revert("Pool/cannot-accept-eth");
+        revert("DONT_SEND_ETHER");
     }
 
     /**
@@ -102,7 +76,7 @@ contract APYLiquidityPoolImplementation is
         nonReentrant
         whenNotPaused
     {
-        require(!addLiquidityLock, "Pool/access-lock");
+        require(!addLiquidityLock, "LOCKED");
         require(amount > 0, "AMOUNT_INSUFFICIENT");
         require(
             underlyer.allowance(msg.sender, address(this)) >= amount,
@@ -119,12 +93,12 @@ contract APYLiquidityPoolImplementation is
 
     function lockAddLiquidity() external onlyOwner {
         addLiquidityLock = true;
-        emit AddLiquidityLocked(msg.sender);
+        emit AddLiquidityLocked();
     }
 
     function unlockAddLiquidity() external onlyOwner {
         addLiquidityLock = false;
-        emit AddLiquidityUnlocked(msg.sender);
+        emit AddLiquidityUnlocked();
     }
 
     /**
@@ -137,7 +111,7 @@ contract APYLiquidityPoolImplementation is
         nonReentrant
         whenNotPaused
     {
-        require(!redeemLock, "Pool/access-lock");
+        require(!redeemLock, "LOCKED");
         require(aptAmount > 0, "AMOUNT_INSUFFICIENT");
         require(aptAmount <= balanceOf(msg.sender), "BALANCE_INSUFFICIENT");
 
@@ -151,12 +125,12 @@ contract APYLiquidityPoolImplementation is
 
     function lockRedeem() external onlyOwner {
         redeemLock = true;
-        emit RedeemLocked(msg.sender);
+        emit RedeemLocked();
     }
 
     function unlockRedeem() external onlyOwner {
         redeemLock = false;
-        emit RedeemUnlocked(msg.sender);
+        emit RedeemUnlocked();
     }
 
     /// @dev called during deployment
