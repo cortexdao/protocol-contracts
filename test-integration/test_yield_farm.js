@@ -67,7 +67,7 @@ contract("LeveragedYieldFarm", async (accounts) => {
     // await timeMachine.revertToSnapshot(snapshotId);
   });
 
-  it("farm COMP with DAI flash loan", async () => {
+  it.skip("farm COMP with DAI flash loan", async () => {
     const amount = dai("10000");
     await mintERC20Tokens(
       DAI_ADDRESS,
