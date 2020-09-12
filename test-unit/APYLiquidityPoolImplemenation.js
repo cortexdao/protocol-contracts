@@ -134,6 +134,9 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       await instance.mint(randomUser, 100)
       await instance.setUnderlyerAddress(mockToken.address, { from: owner })
       const trx = await instance.redeem(50, { from: randomUser })
+
+      const balance = await instance.balanceOf(randomUser)
+      assert.equal(balance.toNumber(), 50)
       await expectEvent(trx, "Transfer")
       await expectEvent(trx, "RedeemedAPT")
     })
