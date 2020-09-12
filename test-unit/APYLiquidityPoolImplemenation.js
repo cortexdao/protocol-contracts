@@ -186,7 +186,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       await expectRevert(instance.calculateMintAmount(1, { from: randomUser }), "TOTAL_SUPPLY_OVERFLOW")
     })
 
-    it("Test calculateMintAmount returns expeted amount", async () => {
+    it("Test calculateMintAmount returns expeted amount when total supply > 0", async () => {
       const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
       await mockToken.givenMethodReturnUint(balanceOf, 9999)
       await instance.setUnderlyerAddress(mockToken.address, { from: owner })
@@ -194,6 +194,15 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       // (1000/9999) * 900 = 90.0090009001 ~= 90
       const mintAmount = await instance.calculateMintAmount(1000, { from: randomUser })
       assert.equal(mintAmount.toNumber(), 90)
+    })
+
+    it("Test calculateMintAmount returns expeted amount when total supply is 0", async () => {
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      await mockToken.givenMethodReturnUint(balanceOf, 9999)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      // 90 * 1000 = 90000
+      const mintAmount = await instance.calculateMintAmount(90, { from: randomUser })
+      assert.equal(mintAmount.toNumber(), 90000)
     })
   })
 
@@ -231,95 +240,37 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     })
   })
 
-  //   it("mint amount to supply equals DAI deposit to total DAI balance", async () => {
-  //     const daiDeposit = dai("112");
-  //     const totalBalance = dai("1000000");
-  //     // set total supply to total Dai balance
-  //     await pool.internalMint(pool.address, totalBalance);
-  //     // set tolerance to compensate for fixed-point arithmetic
-  //     const tolerance = new BN("50000");
+  // it("mint amount to supply equals DAI deposit to total DAI balance", async () => {
+  //   const daiDeposit = dai("112");
+  //   const totalBalance = dai("1000000");
+  //   // set total supply to total Dai balance
+  //   await pool.internalMint(pool.address, totalBalance);
+  //   // set tolerance to compensate for fixed-point arithmetic
+  //   const tolerance = new BN("50000");
 
-  //     let mintAmount = await pool.internalCalculateMintAmount(
-  //       daiDeposit,
-  //       totalBalance,
-  //       { from: wallet }
-  //     );
-  //     let expectedAmount = daiDeposit;
-  //     expect(mintAmount.sub(expectedAmount).abs()).to.bignumber.lte(
-  //       tolerance,
-  //       "mint amount should differ from expected amount by at most tolerance"
-  //     );
+  //   let mintAmount = await pool.internalCalculateMintAmount(
+  //     daiDeposit,
+  //     totalBalance,
+  //     { from: wallet }
+  //   );
+  //   let expectedAmount = daiDeposit;
+  //   expect(mintAmount.sub(expectedAmount).abs()).to.bignumber.lte(
+  //     tolerance,
+  //     "mint amount should differ from expected amount by at most tolerance"
+  //   );
 
-  //     await pool.internalBurn(pool.address, totalBalance.divn(2));
+  //   await pool.internalBurn(pool.address, totalBalance.divn(2));
 
-  //     mintAmount = await pool.internalCalculateMintAmount(
-  //       daiDeposit,
-  //       totalBalance,
-  //       { from: wallet }
-  //     );
-  //     expectedAmount = daiDeposit.divn(2);
-  //     expect(mintAmount.sub(expectedAmount).abs()).to.bignumber.lte(
-  //       tolerance,
-  //       "mint amount should differ from expected amount by at most tolerance"
-  //     );
-  //   });
+  //   mintAmount = await pool.internalCalculateMintAmount(
+  //     daiDeposit,
+  //     totalBalance,
+  //     { from: wallet }
+  //   );
+  //   expectedAmount = daiDeposit.divn(2);
+  //   expect(mintAmount.sub(expectedAmount).abs()).to.bignumber.lte(
+  //     tolerance,
+  //     "mint amount should differ from expected amount by at most tolerance"
+  //   );
+  // });
 
-  //   it("mint amount is constant multiple of deposit if total Dai balance is zero", async () => {
-  //     // set non-zero total supply
-  //     await pool.internalMint(pool.address, dai("100"));
-
-  //     const daiDeposit = dai("7.3");
-  //     const mintAmount = await pool.internalCalculateMintAmount(daiDeposit, 0, {
-  //       from: wallet,
-  //     });
-  //     expect(mintAmount).to.bignumber.equal(
-  //       daiDeposit.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR)
-  //     );
-  //   });
-
-  //   it("mint amount is constant multiple of deposit if total supply is zero ", async () => {
-  //     const daiDeposit = dai("5");
-  //     const totalBalance = dai("100");
-  //     const mintAmount = await pool.internalCalculateMintAmount(
-  //       daiDeposit,
-  //       totalBalance,
-  //       { from: wallet }
-  //     );
-  //     expect(mintAmount).to.bignumber.equal(
-  //       daiDeposit.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR)
-  //     );
-  //   });
-
-  //   it("addLiquidity will create APT for sender", async () => {
-  //     let balanceOf = await pool.balanceOf(wallet);
-  //     expect(balanceOf).to.bignumber.equal("0");
-
-  //     const daiDeposit = dai("1");
-  //     await mockDaiTransfer(pool, daiDeposit);
-
-  //     await pool.addLiquidity(daiDeposit, {
-  //       from: wallet,
-  //     });
-  //     balanceOf = await pool.balanceOf(wallet);
-  //     expect(balanceOf).to.bignumber.gt("0");
-  //   });
-
-  //   it("addLiquidity creates correctly calculated amount of APT", async () => {
-  //     await mockDaiTransfer(pool, dai("10"));
-  //     // use another account to call addLiquidity and create non-zero
-  //     // token supply and ETH value in contract
-  //     await pool.addLiquidity(dai("10"), {
-  //       from: other,
-  //     });
-
-  //     // now we can check the expected mint amount based on the ETH ratio
-  //     const daiDeposit = ether("2");
-  //     const expectedMintAmount = await pool.calculateMintAmount(daiDeposit, {
-  //       from: wallet,
-  //     });
-
-  //     await pool.addLiquidity(daiDeposit, { from: wallet });
-  //     const mintAmount = await pool.balanceOf(wallet);
-  //     expect(mintAmount).to.bignumber.equal(expectedMintAmount);
-  //   });
 });
