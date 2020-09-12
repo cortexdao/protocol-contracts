@@ -80,11 +80,8 @@ contract APYLiquidityPoolImplementation is
      * @param aptAmount The amount of APT tokens to redeem
      */
     function redeem(uint256 aptAmount) external override nonReentrant {
-        require(aptAmount > 0, "Pool/redeem-positive-amount");
-        require(
-            aptAmount <= balanceOf(msg.sender),
-            "Pool/insufficient-balance"
-        );
+        require(aptAmount > 0, "AMOUNT_INSUFFICIENT");
+        require(aptAmount <= balanceOf(msg.sender), "BALANCE_INSUFFICIENT");
 
         uint256 underlyerAmount = getUnderlyerAmount(aptAmount);
 

@@ -118,6 +118,25 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     })
   })
 
+  describe("Test redeem", async () => {
+    it("Test redeem insufficient amount", async () => {
+      await expectRevert(instance.redeem(0), "AMOUNT_INSUFFICIENT")
+    })
+
+    it("Test redeem insufficient balance", async () => {
+      await instance.mint(randomUser, 1)
+      await expectRevert(instance.redeem(2, { from: randomUser }), "BALANCE_INSUFFICIENT")
+    })
+
+    it("Test redeem pass", async () => {
+      await instance.mint(randomUser, 100)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      const trx = await instance.redeem(50, { from: randomUser })
+      await expectEvent(trx, "RedeemedAPT")
+    })
+
+  })
+
   describe("Test calculateMintAmount", async () => {
     it("Test calculateMintAmount when balanceOf is 0", async () => {
       const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
