@@ -127,8 +127,8 @@ contract APYLiquidityPoolImplementation is
         }
 
         require(amount <= _MAX_UINT192, "AMOUNT_OVERFLOW");
-        require(totalAmount <= _MAX_UINT192, "Pool/overflow");
-        require(totalSupply <= _MAX_UINT192, "Pool/overflow");
+        require(totalAmount <= _MAX_UINT192, "TOTAL_AMOUNT_OVERFLOW");
+        require(totalSupply <= _MAX_UINT192, "TOTAL_SUPPLY_OVERFLOW");
 
         return
             FixedPoint

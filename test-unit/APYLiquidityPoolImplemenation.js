@@ -116,13 +116,19 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     })
 
     it("Test calculateMintAmount when totalAmount overflows", async () => {
-      // TODO
-      // await expectRevert()
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      await mockToken.givenMethodReturnUint(balanceOf, constants.MAX_UINT256)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      await instance.mint(randomUser, 1)
+      await expectRevert(instance.calculateMintAmount(1, { from: randomUser }), "TOTAL_AMOUNT_OVERFLOW")
     })
 
     it("Test calculateMintAmount when totalSupply overflows", async () => {
-      // TODO
-      // await expectRevert()
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      await mockToken.givenMethodReturnUint(balanceOf, 1)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      await instance.mint(randomUser, constants.MAX_UINT256)
+      await expectRevert(instance.calculateMintAmount(1, { from: randomUser }), "TOTAL_SUPPLY_OVERFLOW")
     })
 
     it("Test calculateMintAmount returns expeted amount", async () => {
