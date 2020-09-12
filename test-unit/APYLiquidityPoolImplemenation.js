@@ -105,14 +105,16 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     })
 
     it("Test addLiquidity pass", async () => {
-      const allowance = DAI.interface.encodeFunctionData('allowance', [owner, instance.address])
+      const allowance = DAI.interface.encodeFunctionData('allowance', [randomUser, instance.address])
       const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
-      const transferFrom = DAI.interface.encodeFunctionData('transferFrom', [owner, instance.address, 1])
+      const transferFrom = DAI.interface.encodeFunctionData('transferFrom', [randomUser, instance.address, 1])
       await mockToken.givenMethodReturnUint(allowance, 1)
       await mockToken.givenMethodReturnUint(balanceOf, 1)
       await instance.setUnderlyerAddress(mockToken.address, { from: owner })
-      const trx = await instance.addLiquidity(1)
+      const trx = await instance.addLiquidity(1, { from: randomUser })
 
+      const balance = await instance.balanceOf(randomUser)
+      assert.equal(balance.toNumber(), 1000)
       await expectEvent(trx, "Transfer")
       await expectEvent(trx, "DepositedAPT")
       const count = await mockToken.invocationCountForMethod.call(transferFrom)
@@ -320,43 +322,4 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
   //     const mintAmount = await pool.balanceOf(wallet);
   //     expect(mintAmount).to.bignumber.equal(expectedMintAmount);
   //   });
-
-  //   it("redeem reverts if amount is zero", async () => {
-  //     await expectRevert(pool.redeem(0), "Pool/redeem-positive-amount");
-  //   });
-
-  //   it("redeem reverts if insufficient balance", async () => {
-  //     const tokenBalance = new BN("100");
-  //     await pool.internalMint(wallet, tokenBalance);
-
-  //     await expectRevert(
-  //       pool.redeem(tokenBalance.addn(1), { from: wallet }),
-  //       "Pool/insufficient-balance"
-  //     );
-  //   });
-
-  //   it("redeem burns specified token amount", async () => {
-  //     // start wallet with APT
-  //     const startAmount = dai("2");
-  //     await pool.internalMint(wallet, startAmount);
-
-  //     const redeemAmount = dai("1");
-  //     await mockDaiTransfer(pool, redeemAmount);
-
-  //     await pool.redeem(redeemAmount, { from: wallet });
-  //     expect(await pool.balanceOf(wallet)).to.bignumber.equal(
-  //       startAmount.sub(redeemAmount)
-  //     );
-  //   });
-
-  //   it("redeem undoes addLiquidity", async () => {
-  //     const daiDeposit = ether("1");
-  //     await mockDaiTransfer(pool, daiDeposit);
-  //     await pool.addLiquidity(daiDeposit, { from: wallet });
-
-  //     const mintAmount = await pool.balanceOf(wallet);
-  //     await pool.redeem(mintAmount, { from: wallet });
-  //     expect(await pool.balanceOf(wallet)).to.bignumber.equal("0");
-  //   });
-
 });
