@@ -150,7 +150,7 @@ contract APYLiquidityPoolImplementation is
         FixedPoint.uq192x64 memory shareOfAPT = _getShareOfAPT(aptAmount);
 
         uint256 underlyerTotal = underlyer.balanceOf(address(this));
-        require(underlyerTotal <= _MAX_UINT192, "Pool/overflow");
+        require(underlyerTotal <= _MAX_UINT192, "UNDERLYER_TOTAL_OVERFLOW");
 
         return shareOfAPT.mul(uint192(underlyerTotal)).decode();
     }
@@ -160,9 +160,9 @@ contract APYLiquidityPoolImplementation is
         view
         returns (FixedPoint.uq192x64 memory)
     {
-        require(amount <= _MAX_UINT192, "Pool/overflow");
-        require(totalSupply() > 0, "Pool/divide-by-zero");
-        require(totalSupply() <= _MAX_UINT192, "Pool/overflow");
+        require(amount <= _MAX_UINT192, "AMOUNT_OVERFLOW");
+        require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
+        require(totalSupply() <= _MAX_UINT192, "TOTAL_SUPPLY_OVERFLOW");
 
         FixedPoint.uq192x64 memory shareOfAPT = FixedPoint.fraction(
             uint192(amount),

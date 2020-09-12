@@ -142,37 +142,37 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     })
   })
 
-  describe("Test getUnderlyingAmount", async () => {
-    it("Test getUnderlyingAmount when amount overflows", async () => {
-      // TODO
-      // await expectRevert()
+  describe("Test getUnderlyerAmount", async () => {
+    it("Test getUnderlyerAmount when amount overflows", async () => {
+      await expectRevert(instance.getUnderlyerAmount.call(constants.MAX_UINT256), "AMOUNT_OVERFLOW")
     })
 
-    it("Test getUnderlyingAmount when divide by zero", async () => {
-      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
-      await mockToken.givenMethodReturnUint(balanceOf, 10000)
+    it("Test getUnderlyerAmount when divide by zero", async () => {
       await instance.setUnderlyerAddress(mockToken.address, { from: owner })
-      await expectRevert(instance.getUnderlyerAmount.call(100), "Pool/divide-by-zero")
+      await expectRevert(instance.getUnderlyerAmount.call(100), "INSUFFICIENT_TOTAL_SUPPLY")
     })
 
-    it("Test getUnderlyingAmount when total supply overflows", async () => {
-      // TODO
-      // await expectRevert()
-    })
-
-    it("Test getUnderlyingAmount when total supply overflows", async () => {
-      // TODO
-      // await expectRevert()
-    })
-
-    it("Test getUnderlyingAmount", async () => {
-      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
-      await mockToken.givenMethodReturnUint(balanceOf, 10000)
+    it("Test getUnderlyerAmount when total supply overflows", async () => {
       await instance.setUnderlyerAddress(mockToken.address, { from: owner })
-      const val = await instance.getUnderlyerAmount.call(100)
-      console.log(val)
-      // TODO
-      // await expectRevert()
+      await instance.mint(randomUser, constants.MAX_UINT256)
+      await expectRevert(instance.getUnderlyerAmount.call(100), "TOTAL_SUPPLY_OVERFLOW")
+    })
+
+    it("Test getUnderlyerAmount when underyler total overflows", async () => {
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      await mockToken.givenMethodReturnUint(balanceOf, constants.MAX_UINT256)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      await instance.mint(randomUser, 1)
+      await expectRevert(instance.getUnderlyerAmount.call(1), "UNDERLYER_TOTAL_OVERFLOW")
+    })
+
+    it("Test getUnderlyerAmount", async () => {
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      await mockToken.givenMethodReturnUint(balanceOf, 1)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      await instance.mint(randomUser, 1)
+      const underlyerAmount = await instance.getUnderlyerAmount.call(1)
+      assert.equal(underlyerAmount.toNumber(), 1)
     })
   })
 
