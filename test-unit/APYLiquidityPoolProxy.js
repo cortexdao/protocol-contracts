@@ -6,9 +6,12 @@ const APYLiquidityPoolProxy = artifacts.require("APYLiquidityPoolProxy");
 const APYLiquidityPoolImplementation = artifacts.require(
   "APYLiquidityPoolImplementation"
 );
+const {
+  expectRevert, // Assertions for transactions that should fail
+} = require("@openzeppelin/test-helpers");
 
 contract("APYLiquidityPoolProxy Unit Test", async (accounts) => {
-  const [owner] = accounts;
+  const [owner, randomUser] = accounts;
 
   let proxyAdmin
   let logic
@@ -57,6 +60,14 @@ contract("APYLiquidityPoolProxy Unit Test", async (accounts) => {
       )
     })
 
+    it("Test Proxy Upgrade Implementation fails", async () => {
+      const newLogic = await MockContract.new({ from: owner })
+      await expectRevert(
+        proxyAdmin.upgrade(proxy.address, newLogic.address, { from: randomUser }),
+        "Ownable: caller is not the owner"
+      )
+    })
+
     it("Test Proxy Upgrade Implementation and Initialize", async () => {
       const newLogic = await MockContract.new({ from: owner })
       const iProxy = new ethers.utils.Interface(APYLiquidityPoolProxy.abi);
@@ -66,6 +77,16 @@ contract("APYLiquidityPoolProxy Unit Test", async (accounts) => {
       assert.equal(
         await proxyAdmin.getProxyImplementation.call(proxy.address, { from: owner }),
         newLogic.address
+      )
+    })
+
+    it("Test Proxy Upgrade Implementation and Initialize fails", async () => {
+      const newLogic = await MockContract.new({ from: owner })
+      const iProxy = new ethers.utils.Interface(APYLiquidityPoolProxy.abi);
+      const initData = iProxy.encodeFunctionData("upgradeWithInitialize", [newLogic.address])
+      await expectRevert(
+        proxyAdmin.upgradeAndCall(proxy.address, newLogic.address, initData, { from: randomUser }),
+        "Ownable: caller is not the owner"
       )
     })
   })

@@ -21,7 +21,7 @@ const APYLiquidityPoolImplementation = artifacts.require(
 const { DAI } = require('../utils/Compound');
 
 contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
-  const [owner, wallet, instanceAdmin, randomUser] = accounts;
+  const [owner, instanceAdmin, randomUser] = accounts;
 
   let proxyAdmin
   let logic
