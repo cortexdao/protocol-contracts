@@ -234,7 +234,14 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
   });
 
   it("revert if non-owner tries to lock or unlock the pool", async () => {
-    //
+    await expectRevert(
+      pool.lock({ from: other }),
+      "Ownable: caller is not the owner"
+    );
+    await expectRevert(
+      pool.unlock({ from: other }),
+      "Ownable: caller is not the owner"
+    );
   });
 
   // test helper to mock ERC20 functions on underlyer token
