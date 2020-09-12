@@ -193,6 +193,50 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
     expect(await pool.getUnderlyerAmount(0)).to.be.bignumber.equal("0");
   });
 
+  it("addLiquidity reverts when contract is locked", async () => {
+    const daiDeposit = dai("1");
+    await mockDaiTransfer(pool, daiDeposit);
+
+    await pool.lock({ from: deployer });
+    await expectRevert(
+      pool.addLiquidity(daiDeposit, { from: wallet }),
+      "Pausable: paused"
+    );
+
+    await pool.unlock({ from: deployer });
+    try {
+      await pool.addLiquidity(daiDeposit, { from: wallet });
+    } catch {
+      assert.fail("Could not unlock the pool.");
+    }
+  });
+
+  it("redeem reverts when contract is locked", async () => {
+    // some setup needed for checking everything
+    // works after unlocking
+    const daiDeposit = dai("10000");
+    const aptAmount = new BN("1");
+    await mockDaiTransfer(pool, daiDeposit);
+    await pool.internalMint(wallet, aptAmount);
+
+    await pool.lock({ from: deployer });
+    await expectRevert(
+      pool.redeem(new BN("100"), { from: wallet }),
+      "Pausable: paused"
+    );
+
+    await pool.unlock({ from: deployer });
+    try {
+      await pool.redeem(aptAmount, { from: wallet });
+    } catch {
+      assert.fail("Could not unlock the pool.");
+    }
+  });
+
+  it("revert if non-owner tries to lock or unlock the pool", async () => {
+    //
+  });
+
   // test helper to mock ERC20 functions on underlyer token
   const mockDaiTransfer = async (liquidityPoolContract, amount) => {
     const mock = await MockContract.new();

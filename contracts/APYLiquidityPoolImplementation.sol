@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
@@ -20,6 +21,7 @@ contract APYLiquidityPoolImplementation is
     Initializable,
     OwnableUpgradeSafe,
     ReentrancyGuardUpgradeSafe,
+    PausableUpgradeSafe,
     ERC20UpgradeSafe
 {
     using SafeMath for uint256;
@@ -29,14 +31,39 @@ contract APYLiquidityPoolImplementation is
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
     uint192 internal constant _MAX_UINT192 = uint192(-1);
 
+    /* ------------------------------- */
+    /* impl-specific storage variables */
+    /* ------------------------------- */
     address internal _admin;
+    bool internal _addLiquidityLocked;
+    bool internal _redeemLocked;
     IERC20 internal _underlyer;
+    /* ------------------------------- */
+
+    /** @dev Emitted when pool is (un)locked by `owner` */
+    event PoolLocked(address owner);
+    event PoolUnlocked(address owner);
+
+    /** @dev Emitted when `addLiquidity` is (un)locked by `owner` */
+    event AddLiquidityLocked(address owner);
+    event AddLiquidityUnlocked(address owner);
+
+    /** @dev Emitted when `redeem` is (un)locked by `owner` */
+    event RedeemLocked(address owner);
+    event RedeemUnlocked(address owner);
 
     function initialize() public initializer {
+        // initialize ancestor storage
         __Context_init_unchained();
         __Ownable_init_unchained();
         __ReentrancyGuard_init_unchained();
+        __Pausable_init_unchained();
         __ERC20_init_unchained("APY Pool Token", "APT");
+
+        // initialize impl-specific storage
+        _addLiquidityLocked = false;
+        _redeemLocked = false;
+        // _admin and _underlyer will get set by deployer
     }
 
     // solhint-disable-next-line no-empty-blocks
@@ -51,6 +78,16 @@ contract APYLiquidityPoolImplementation is
         _admin = adminAddress;
     }
 
+    function lock() external onlyOwner {
+        _pause();
+        emit PoolLocked(msg.sender);
+    }
+
+    function unlock() external onlyOwner {
+        _unpause();
+        emit PoolUnlocked(msg.sender);
+    }
+
     receive() external payable {
         revert("Pool/cannot-accept-eth");
     }
@@ -59,7 +96,13 @@ contract APYLiquidityPoolImplementation is
      * @notice Mint corresponding amount of APT tokens for sent token amount.
      * @dev If no APT tokens have been minted yet, fallback to a fixed ratio.
      */
-    function addLiquidity(uint256 amount) external override nonReentrant {
+    function addLiquidity(uint256 amount)
+        external
+        override
+        nonReentrant
+        whenNotPaused
+    {
+        require(!_addLiquidityLocked, "Pool/access-lock");
         require(amount > 0, "Pool/insufficient-value");
         require(
             _underlyer.allowance(msg.sender, address(this)) >= amount,
@@ -78,7 +121,13 @@ contract APYLiquidityPoolImplementation is
      * @notice Redeems APT amount for its underlying token amount.
      * @param aptAmount The amount of APT tokens to redeem
      */
-    function redeem(uint256 aptAmount) external override nonReentrant {
+    function redeem(uint256 aptAmount)
+        external
+        override
+        nonReentrant
+        whenNotPaused
+    {
+        require(!_redeemLocked, "Pool/access-lock");
         require(aptAmount > 0, "Pool/redeem-positive-amount");
         require(
             aptAmount <= balanceOf(msg.sender),
