@@ -12,18 +12,22 @@ const { expect } = require("chai");
 const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const dai = ether;
-
+const MockContract = artifacts.require("MockContract");
+const ProxyAdmin = artifacts.require("ProxyAdmin");
+const APYLiquidityPoolProxy = artifacts.require("APYLiquidityPoolProxy");
 const APYLiquidityPoolImplementation = artifacts.require(
   "APYLiquidityPoolImplTestProxy"
 );
-const MockContract = artifacts.require("MockContract");
+const { DAI } = require('../utils/Compound');
 
-contract("APYLiquidityPoolImplementation", async (accounts) => {
-  const [deployer, wallet, other] = accounts;
+contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
+  const [owner, wallet, instanceAdmin, randomUser] = accounts;
 
-  let pool;
-
-  let DEFAULT_APT_TO_UNDERLYER_FACTOR;
+  let proxyAdmin
+  let logic
+  let proxy
+  let instance
+  let mockToken
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -38,166 +42,275 @@ contract("APYLiquidityPoolImplementation", async (accounts) => {
   });
 
   before(async () => {
-    pool = await APYLiquidityPoolImplementation.new({ from: deployer });
-    await pool.initialize({ from: deployer });
-
-    DEFAULT_APT_TO_UNDERLYER_FACTOR = await pool.DEFAULT_APT_TO_UNDERLYER_FACTOR();
+    proxyAdmin = await ProxyAdmin.new({ from: owner })
+    logic = await APYLiquidityPoolImplementation.new({ from: owner });
+    proxy = await APYLiquidityPoolProxy.new(logic.address, proxyAdmin.address, { from: owner });
+    instance = await APYLiquidityPoolImplementation.at(proxy.address);
+    mockToken = await MockContract.new()
   });
 
-  it("addLiquidity reverts if 0 DAI sent", async () => {
-    await expectRevert(
-      pool.addLiquidity(0, { from: wallet, value: "0" }),
-      "Pool/insufficient-value"
-    );
-  });
+  describe("Test Defaults", async () => {
+    it("Test Owner", async () => {
+      assert.equal(await instance.owner.call(), owner)
+    })
 
-  it("mint amount to supply equals DAI deposit to total DAI balance", async () => {
-    const daiDeposit = dai("112");
-    const totalBalance = dai("1000000");
-    // set total supply to total Dai balance
-    await pool.internalMint(pool.address, totalBalance);
-    // set tolerance to compensate for fixed-point arithmetic
-    const tolerance = new BN("50000");
+    it("Test DEFAULT_APT_TO_UNDERLYER_FACTOR", async () => {
+      assert.equal(await instance.DEFAULT_APT_TO_UNDERLYER_FACTOR.call(), 1000)
+    })
 
-    let mintAmount = await pool.internalCalculateMintAmount(
-      daiDeposit,
-      totalBalance,
-      { from: wallet }
-    );
-    let expectedAmount = daiDeposit;
-    expect(mintAmount.sub(expectedAmount).abs()).to.bignumber.lte(
-      tolerance,
-      "mint amount should differ from expected amount by at most tolerance"
-    );
+    it("Test Pool Token Name", async () => {
+      assert.equal(await instance.name.call(), "APY Pool Token")
+    })
 
-    await pool.internalBurn(pool.address, totalBalance.divn(2));
+    it("Test Pool Symbol", async () => {
+      assert.equal(await instance.symbol.call(), "APT")
+    })
+  })
 
-    mintAmount = await pool.internalCalculateMintAmount(
-      daiDeposit,
-      totalBalance,
-      { from: wallet }
-    );
-    expectedAmount = daiDeposit.divn(2);
-    expect(mintAmount.sub(expectedAmount).abs()).to.bignumber.lte(
-      tolerance,
-      "mint amount should differ from expected amount by at most tolerance"
-    );
-  });
+  describe("Test Setters", async () => {
+    it("Test setAdminAddress pass", async () => {
+      await instance.setAdminAddress(instanceAdmin, { from: owner })
+      assert.equal(await instance.admin.call(), instanceAdmin)
+    })
 
-  it("mint amount is constant multiple of deposit if total Dai balance is zero", async () => {
-    // set non-zero total supply
-    await pool.internalMint(pool.address, dai("100"));
+    it("Test setAdminAddress fail", async () => {
+      await expectRevert.unspecified(
+        instance.setAdminAddress(instanceAdmin, { from: randomUser })
+      )
+    })
 
-    const daiDeposit = dai("7.3");
-    const mintAmount = await pool.internalCalculateMintAmount(daiDeposit, 0, {
-      from: wallet,
-    });
-    expect(mintAmount).to.bignumber.equal(
-      daiDeposit.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR)
-    );
-  });
+    it("Test setUnderlyingAddress pass", async () => {
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+    })
 
-  it("mint amount is constant multiple of deposit if total supply is zero ", async () => {
-    const daiDeposit = dai("5");
-    const totalBalance = dai("100");
-    const mintAmount = await pool.internalCalculateMintAmount(
-      daiDeposit,
-      totalBalance,
-      { from: wallet }
-    );
-    expect(mintAmount).to.bignumber.equal(
-      daiDeposit.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR)
-    );
-  });
+    it("Test setUnderlyingAddress fail", async () => {
+      await expectRevert.unspecified(
+        instance.setUnderlyerAddress(mockToken.address, { from: randomUser })
+      )
+    })
+  })
 
-  it("addLiquidity will create APT for sender", async () => {
-    let balanceOf = await pool.balanceOf(wallet);
-    expect(balanceOf).to.bignumber.equal("0");
+  describe("Test calculateMintAmount", async () => {
+    it("Test calculateMintAmount when balanceOf is 0", async () => {
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      await mockToken.givenMethodReturnUint(balanceOf, 0)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      const mintAmount = await instance.calculateMintAmount(1000)
+      assert.equal(mintAmount.toNumber(), 1000000)
+    })
 
-    const daiDeposit = dai("1");
-    await mockDaiTransfer(pool, daiDeposit);
+    it("Test calculateMintAmount when balanceOf > 0", async () => {
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      await mockToken.givenMethodReturnUint(balanceOf, 9999)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      const mintAmount = await instance.calculateMintAmount(1000)
+      assert.equal(mintAmount.toNumber(), 1000000)
+    })
 
-    await pool.addLiquidity(daiDeposit, {
-      from: wallet,
-    });
-    balanceOf = await pool.balanceOf(wallet);
-    expect(balanceOf).to.bignumber.gt("0");
-  });
+    it("Test calculateMintAmount when amount overflows", async () => {
+      // TODO
+      // await expectRevert()
+    })
 
-  it("addLiquidity creates correctly calculated amount of APT", async () => {
-    await mockDaiTransfer(pool, dai("10"));
-    // use another account to call addLiquidity and create non-zero
-    // token supply and ETH value in contract
-    await pool.addLiquidity(dai("10"), {
-      from: other,
-    });
+    it("Test calculateMintAmount when totalAmount overflows", async () => {
+      // TODO
+      // await expectRevert()
+    })
 
-    // now we can check the expected mint amount based on the ETH ratio
-    const daiDeposit = ether("2");
-    const expectedMintAmount = await pool.calculateMintAmount(daiDeposit, {
-      from: wallet,
-    });
+    it("Test calculateMintAmount when totalSupply overflows", async () => {
+      // TODO
+      // await expectRevert()
+    })
+  })
 
-    await pool.addLiquidity(daiDeposit, { from: wallet });
-    const mintAmount = await pool.balanceOf(wallet);
-    expect(mintAmount).to.bignumber.equal(expectedMintAmount);
-  });
+  describe("Test getUnderlyingAmount", async () => {
+    it("Test getUnderlyingAmount when amount overflows", async () => {
+      // TODO
+      // await expectRevert()
+    })
 
-  it("redeem reverts if amount is zero", async () => {
-    await expectRevert(pool.redeem(0), "Pool/redeem-positive-amount");
-  });
+    it("Test getUnderlyingAmount when divide by zero", async () => {
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      await mockToken.givenMethodReturnUint(balanceOf, 10000)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      await expectRevert(instance.getUnderlyerAmount.call(100), "Pool/divide-by-zero")
+    })
 
-  it("redeem reverts if insufficient balance", async () => {
-    const tokenBalance = new BN("100");
-    await pool.internalMint(wallet, tokenBalance);
+    it("Test getUnderlyingAmount when total supply overflows", async () => {
+      // TODO
+      // await expectRevert()
+    })
 
-    await expectRevert(
-      pool.redeem(tokenBalance.addn(1), { from: wallet }),
-      "Pool/insufficient-balance"
-    );
-  });
+    it("Test getUnderlyingAmount when total supply overflows", async () => {
+      // TODO
+      // await expectRevert()
+    })
 
-  it("redeem burns specified token amount", async () => {
-    // start wallet with APT
-    const startAmount = dai("2");
-    await pool.internalMint(wallet, startAmount);
+    it("Test getUnderlyingAmount", async () => {
+      const balanceOf = DAI.interface.encodeFunctionData('balanceOf', [instance.address])
+      await mockToken.givenMethodReturnUint(balanceOf, 10000)
+      await instance.setUnderlyerAddress(mockToken.address, { from: owner })
+      const val = await instance.getUnderlyerAmount.call(100)
+      console.log(val)
+      // TODO
+      // await expectRevert()
+    })
+  })
 
-    const redeemAmount = dai("1");
-    await mockDaiTransfer(pool, redeemAmount);
+  // it("addLiquidity reverts if 0 DAI sent", async () => {
+  //   await expectRevert(
+  //     instance.addLiquidity(0, { from: wallet, value: "0" }),
+  //     "Pool/insufficient-value"
+  //   );
+  // });
 
-    await pool.redeem(redeemAmount, { from: wallet });
-    expect(await pool.balanceOf(wallet)).to.bignumber.equal(
-      startAmount.sub(redeemAmount)
-    );
-  });
+  //   it("mint amount to supply equals DAI deposit to total DAI balance", async () => {
+  //     const daiDeposit = dai("112");
+  //     const totalBalance = dai("1000000");
+  //     // set total supply to total Dai balance
+  //     await pool.internalMint(pool.address, totalBalance);
+  //     // set tolerance to compensate for fixed-point arithmetic
+  //     const tolerance = new BN("50000");
 
-  it("redeem undoes addLiquidity", async () => {
-    const daiDeposit = ether("1");
-    await mockDaiTransfer(pool, daiDeposit);
-    await pool.addLiquidity(daiDeposit, { from: wallet });
+  //     let mintAmount = await pool.internalCalculateMintAmount(
+  //       daiDeposit,
+  //       totalBalance,
+  //       { from: wallet }
+  //     );
+  //     let expectedAmount = daiDeposit;
+  //     expect(mintAmount.sub(expectedAmount).abs()).to.bignumber.lte(
+  //       tolerance,
+  //       "mint amount should differ from expected amount by at most tolerance"
+  //     );
 
-    const mintAmount = await pool.balanceOf(wallet);
-    await pool.redeem(mintAmount, { from: wallet });
-    expect(await pool.balanceOf(wallet)).to.bignumber.equal("0");
-  });
+  //     await pool.internalBurn(pool.address, totalBalance.divn(2));
 
-  // test helper to mock ERC20 functions on underlyer token
-  const mockDaiTransfer = async (liquidityPoolContract, amount) => {
-    const mock = await MockContract.new();
-    await liquidityPoolContract.setUnderlyerAddress(mock.address, {
-      from: deployer,
-    });
-    const allowanceAbi = pool.contract.methods
-      .allowance(ZERO_ADDRESS, ZERO_ADDRESS)
-      .encodeABI();
-    const transferFromAbi = pool.contract.methods
-      .transferFrom(ZERO_ADDRESS, ZERO_ADDRESS, 0)
-      .encodeABI();
-    const transferAbi = pool.contract.methods
-      .transfer(ZERO_ADDRESS, 0)
-      .encodeABI();
-    await mock.givenMethodReturnUint(allowanceAbi, amount);
-    await mock.givenMethodReturnBool(transferAbi, true);
-    await mock.givenMethodReturnBool(transferFromAbi, true);
-  };
+  //     mintAmount = await pool.internalCalculateMintAmount(
+  //       daiDeposit,
+  //       totalBalance,
+  //       { from: wallet }
+  //     );
+  //     expectedAmount = daiDeposit.divn(2);
+  //     expect(mintAmount.sub(expectedAmount).abs()).to.bignumber.lte(
+  //       tolerance,
+  //       "mint amount should differ from expected amount by at most tolerance"
+  //     );
+  //   });
+
+  //   it("mint amount is constant multiple of deposit if total Dai balance is zero", async () => {
+  //     // set non-zero total supply
+  //     await pool.internalMint(pool.address, dai("100"));
+
+  //     const daiDeposit = dai("7.3");
+  //     const mintAmount = await pool.internalCalculateMintAmount(daiDeposit, 0, {
+  //       from: wallet,
+  //     });
+  //     expect(mintAmount).to.bignumber.equal(
+  //       daiDeposit.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR)
+  //     );
+  //   });
+
+  //   it("mint amount is constant multiple of deposit if total supply is zero ", async () => {
+  //     const daiDeposit = dai("5");
+  //     const totalBalance = dai("100");
+  //     const mintAmount = await pool.internalCalculateMintAmount(
+  //       daiDeposit,
+  //       totalBalance,
+  //       { from: wallet }
+  //     );
+  //     expect(mintAmount).to.bignumber.equal(
+  //       daiDeposit.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR)
+  //     );
+  //   });
+
+  //   it("addLiquidity will create APT for sender", async () => {
+  //     let balanceOf = await pool.balanceOf(wallet);
+  //     expect(balanceOf).to.bignumber.equal("0");
+
+  //     const daiDeposit = dai("1");
+  //     await mockDaiTransfer(pool, daiDeposit);
+
+  //     await pool.addLiquidity(daiDeposit, {
+  //       from: wallet,
+  //     });
+  //     balanceOf = await pool.balanceOf(wallet);
+  //     expect(balanceOf).to.bignumber.gt("0");
+  //   });
+
+  //   it("addLiquidity creates correctly calculated amount of APT", async () => {
+  //     await mockDaiTransfer(pool, dai("10"));
+  //     // use another account to call addLiquidity and create non-zero
+  //     // token supply and ETH value in contract
+  //     await pool.addLiquidity(dai("10"), {
+  //       from: other,
+  //     });
+
+  //     // now we can check the expected mint amount based on the ETH ratio
+  //     const daiDeposit = ether("2");
+  //     const expectedMintAmount = await pool.calculateMintAmount(daiDeposit, {
+  //       from: wallet,
+  //     });
+
+  //     await pool.addLiquidity(daiDeposit, { from: wallet });
+  //     const mintAmount = await pool.balanceOf(wallet);
+  //     expect(mintAmount).to.bignumber.equal(expectedMintAmount);
+  //   });
+
+  //   it("redeem reverts if amount is zero", async () => {
+  //     await expectRevert(pool.redeem(0), "Pool/redeem-positive-amount");
+  //   });
+
+  //   it("redeem reverts if insufficient balance", async () => {
+  //     const tokenBalance = new BN("100");
+  //     await pool.internalMint(wallet, tokenBalance);
+
+  //     await expectRevert(
+  //       pool.redeem(tokenBalance.addn(1), { from: wallet }),
+  //       "Pool/insufficient-balance"
+  //     );
+  //   });
+
+  //   it("redeem burns specified token amount", async () => {
+  //     // start wallet with APT
+  //     const startAmount = dai("2");
+  //     await pool.internalMint(wallet, startAmount);
+
+  //     const redeemAmount = dai("1");
+  //     await mockDaiTransfer(pool, redeemAmount);
+
+  //     await pool.redeem(redeemAmount, { from: wallet });
+  //     expect(await pool.balanceOf(wallet)).to.bignumber.equal(
+  //       startAmount.sub(redeemAmount)
+  //     );
+  //   });
+
+  //   it("redeem undoes addLiquidity", async () => {
+  //     const daiDeposit = ether("1");
+  //     await mockDaiTransfer(pool, daiDeposit);
+  //     await pool.addLiquidity(daiDeposit, { from: wallet });
+
+  //     const mintAmount = await pool.balanceOf(wallet);
+  //     await pool.redeem(mintAmount, { from: wallet });
+  //     expect(await pool.balanceOf(wallet)).to.bignumber.equal("0");
+  //   });
+
+  //   // test helper to mock ERC20 functions on underlyer token
+  //   const mockDaiTransfer = async (liquidityPoolContract, amount) => {
+  //     const mock = await MockContract.new();
+  //     await liquidityPoolContract.setUnderlyerAddress(mock.address, {
+  //       from: deployer,
+  //     });
+  //     const allowanceAbi = pool.contract.methods
+  //       .allowance(ZERO_ADDRESS, ZERO_ADDRESS)
+  //       .encodeABI();
+  //     const transferFromAbi = pool.contract.methods
+  //       .transferFrom(ZERO_ADDRESS, ZERO_ADDRESS, 0)
+  //       .encodeABI();
+  //     const transferAbi = pool.contract.methods
+  //       .transfer(ZERO_ADDRESS, 0)
+  //       .encodeABI();
+  //     await mock.givenMethodReturnUint(allowanceAbi, amount);
+  //     await mock.givenMethodReturnBool(transferAbi, true);
+  //     await mock.givenMethodReturnBool(transferFromAbi, true);
+  //   };
 });

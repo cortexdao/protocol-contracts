@@ -30,8 +30,8 @@ contract APYLiquidityPoolImplementation is
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
     uint192 internal constant _MAX_UINT192 = uint192(-1);
 
-    address internal _admin;
-    IERC20 internal _underlyer;
+    address public admin;
+    IERC20 public underlyer;
 
     function initialize() public initializer {
         __Context_init_unchained();
@@ -44,12 +44,12 @@ contract APYLiquidityPoolImplementation is
     function initializeUpgrade() public virtual onlyAdmin {}
 
     modifier onlyAdmin {
-        require(msg.sender == _admin, "Pool/access-error");
+        require(msg.sender == admin, "Pool/access-error");
         _;
     }
 
     function setAdminAddress(address adminAddress) public onlyOwner {
-        _admin = adminAddress;
+        admin = adminAddress;
     }
 
     receive() external payable {
@@ -63,14 +63,14 @@ contract APYLiquidityPoolImplementation is
     function addLiquidity(uint256 amount) external override nonReentrant {
         require(amount > 0, "Pool/insufficient-value");
         require(
-            _underlyer.allowance(msg.sender, address(this)) >= amount,
+            underlyer.allowance(msg.sender, address(this)) >= amount,
             "Pool/need-allowance"
         );
-        uint256 totalAmount = _underlyer.balanceOf(address(this));
+        uint256 totalAmount = underlyer.balanceOf(address(this));
         uint256 mintAmount = _calculateMintAmount(amount, totalAmount);
 
         _mint(msg.sender, mintAmount);
-        _underlyer.transferFrom(msg.sender, address(this), amount);
+        underlyer.transferFrom(msg.sender, address(this), amount);
 
         emit DepositedAPT(msg.sender, mintAmount, amount);
     }
@@ -89,14 +89,14 @@ contract APYLiquidityPoolImplementation is
         uint256 underlyerAmount = getUnderlyerAmount(aptAmount);
 
         _burn(msg.sender, aptAmount);
-        _underlyer.transfer(msg.sender, underlyerAmount);
+        underlyer.transfer(msg.sender, underlyerAmount);
 
         emit RedeemedAPT(msg.sender, aptAmount, underlyerAmount);
     }
 
     /// @dev called during deployment
     function setUnderlyerAddress(address underlyerAddress) public onlyOwner {
-        _underlyer = IERC20(underlyerAddress);
+        underlyer = IERC20(underlyerAddress);
     }
 
     function calculateMintAmount(uint256 underlyerAmount)
@@ -104,7 +104,7 @@ contract APYLiquidityPoolImplementation is
         view
         returns (uint256)
     {
-        uint256 underlyerTotal = _underlyer.balanceOf(address(this));
+        uint256 underlyerTotal = underlyer.balanceOf(address(this));
         return _calculateMintAmount(underlyerAmount, underlyerTotal);
     }
 
@@ -120,7 +120,7 @@ contract APYLiquidityPoolImplementation is
     {
         FixedPoint.uq192x64 memory shareOfAPT = _getShareOfAPT(aptAmount);
 
-        uint256 underlyerTotal = _underlyer.balanceOf(address(this));
+        uint256 underlyerTotal = underlyer.balanceOf(address(this));
         require(underlyerTotal <= _MAX_UINT192, "Pool/overflow");
 
         return shareOfAPT.mul(uint192(underlyerTotal)).decode();
