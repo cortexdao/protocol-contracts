@@ -39,8 +39,8 @@ contract APYLiquidityPoolImplementation is
     bool public addLiquidityLock;
     bool public redeemLock;
     IERC20 public underlyer;
-    mapping(IERC20 => AggregatorV3Interface) aggregators;
-    IERC20[] tokens;
+    mapping(IERC20 => AggregatorV3Interface) public aggregators;
+    IERC20[] public tokens;
 
     /* ------------------------------- */
 
@@ -117,10 +117,7 @@ contract APYLiquidityPoolImplementation is
             "ALLOWANCE_INSUFFICIENT"
         );
 
-        (int256 tokenEthPrice, ) = getTokenEthPrice(token);
-        uint256 depositEthValue = token.balanceOf(msg.sender).mul(
-            uint256(tokenEthPrice)
-        );
+        uint256 depositEthValue = getTokenEthValue(msg.sender, token);
         uint256 totalEthValue = getTotalEthValue();
 
         uint256 mintAmount = _calculateMintAmount(
@@ -138,14 +135,20 @@ contract APYLiquidityPoolImplementation is
         uint256 totalEthValue;
         for (uint256 i = 0; i < tokens.length; i++) {
             IERC20 token = tokens[i];
-            (int256 price, ) = getTokenEthPrice(token);
-
-            uint256 ethValue = token.balanceOf(address(this)).mul(
-                uint256(price)
-            );
+            uint256 ethValue = getTokenEthValue(address(this), token);
             totalEthValue = totalEthValue.add(ethValue);
         }
         return totalEthValue;
+    }
+
+    function getTokenEthValue(address account, IERC20 token)
+        public
+        view
+        returns (uint256)
+    {
+        (int256 price, ) = getTokenEthPrice(token);
+        uint256 ethValue = token.balanceOf(account).mul(uint256(price));
+        return ethValue;
     }
 
     function getTokenEthPrice(IERC20 token)
