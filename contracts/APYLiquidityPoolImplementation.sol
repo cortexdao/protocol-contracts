@@ -88,10 +88,9 @@ contract APYLiquidityPoolImplementation is
         emit TokenSupported(address(token), address(priceAgg));
     }
 
-    function removeTokenSupport(IERC20 token, AggregatorV3Interface priceAgg)
-        external
-        onlyOwner
-    {
+    function removeTokenSupport(IERC20 token) external onlyOwner {
+        require(address(token) != address(0), "INVALID_TOKEN");
+        emit TokenUnsupported(address(token), address(priceAggs[token]));
         delete priceAggs[token];
         // zero out the supportedToken in the list
         for (uint256 i = 0; i < _supportedTokens.length; i++) {
@@ -100,7 +99,6 @@ contract APYLiquidityPoolImplementation is
                 return;
             }
         }
-        emit TokenUnsupported(address(token), address(priceAgg));
     }
 
     function getSupportedTokens() external view returns (IERC20[] memory) {

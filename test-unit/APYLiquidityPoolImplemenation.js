@@ -97,6 +97,13 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       await expectRevert(instance.addTokenSupport(randomAddress, constants.ZERO_ADDRESS), "INVALID_AGG")
     })
 
+    it("Test addTokenSupport when not owner", async () => {
+      await expectRevert(
+        instance.addTokenSupport(randomAddress, randomAddress, { from: randomAddress }),
+        "Ownable: caller is not the owner"
+      )
+    })
+
     it("Test addTokenSupport pass", async () => {
       const newToken = await MockContract.new()
       const newPriceAgg = await MockContract.new()
@@ -115,7 +122,30 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     })
   })
 
-  describe("Test removeTokenSupport", async () => { })
+  describe("Test removeTokenSupport", async () => {
+    it("Test addSupportedTokens with invalid token", async () => {
+      await expectRevert(instance.removeTokenSupport(constants.ZERO_ADDRESS), "INVALID_TOKEN")
+    })
+
+    it("Test addSupportedTokens when not owner", async () => {
+      await expectRevert(
+        instance.removeTokenSupport(randomAddress, { from: randomAddress }),
+        "Ownable: caller is not the owner"
+      )
+    })
+
+    it("Test addTokenSupport pass", async () => {
+      const newToken = await MockContract.new()
+      const newPriceAgg = await MockContract.new()
+      await instance.addTokenSupport(newToken.address, newPriceAgg.address)
+      const trx = await instance.removeTokenSupport(newToken.address)
+      await expectEvent(
+        trx,
+        "TokenUnsupported",
+        { token: newToken.address, agg: newPriceAgg.address }
+      )
+    })
+  })
 
   describe.skip("Test addLiquidityV2", async () => { })
 
