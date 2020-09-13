@@ -14,7 +14,7 @@ import {
     TransparentUpgradeableProxy
 } from "@openzeppelin/contracts/proxy/TransparentUpgradeableProxy.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
-import "solidity-fixedpoint/contracts/FixedPoint.sol";
+import "abdk-libraries-solidity/ABDKMath64x64.sol";
 import "./ILiquidityPool.sol";
 
 contract APYLiquidityPoolImplementation is
@@ -26,11 +26,12 @@ contract APYLiquidityPoolImplementation is
     ERC20UpgradeSafe
 {
     using SafeMath for uint256;
-    using FixedPoint for *;
     using SafeERC20 for IERC20;
+    using SafeERC20 for ERC20UpgradeSafe;
+    using ABDKMath64x64 for *;
 
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
-    uint192 public constant MAX_UINT192 = uint192(-1);
+    uint192 public constant MAX_UINT128 = uint128(-1);
 
     /* ------------------------------- */
     /* impl-specific storage variables */
@@ -39,8 +40,8 @@ contract APYLiquidityPoolImplementation is
     bool public addLiquidityLock;
     bool public redeemLock;
     IERC20 public underlyer;
-    mapping(IERC20 => AggregatorV3Interface) public aggregators;
-    IERC20[] public tokens;
+    mapping(ERC20UpgradeSafe => AggregatorV3Interface) public aggregators;
+    ERC20UpgradeSafe[] public tokens;
 
     /* ------------------------------- */
 
@@ -58,17 +59,23 @@ contract APYLiquidityPoolImplementation is
         // admin and underlyer will get set by deployer
 
         // USDT
-        IERC20 tether = IERC20(0xdAC17F958D2ee523a2206206994597C13D831ec7);
+        ERC20UpgradeSafe tether = ERC20UpgradeSafe(
+            0xdAC17F958D2ee523a2206206994597C13D831ec7
+        );
         aggregators[tether] = AggregatorV3Interface(
             0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46
         );
         // USDC
-        IERC20 usdc = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+        ERC20UpgradeSafe usdc = ERC20UpgradeSafe(
+            0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+        );
         aggregators[usdc] = AggregatorV3Interface(
             0x986b5E1e1755e3C2440e960477f25201B0a8bbD4
         );
         // DAI
-        IERC20 dai = IERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
+        ERC20UpgradeSafe dai = ERC20UpgradeSafe(
+            0x6B175474E89094C44Da98b954EedeAC495271d0F
+        );
         aggregators[dai] = AggregatorV3Interface(
             0x773616E4d11A78F511299002da57A0a94577F1f4
         );
@@ -125,7 +132,7 @@ contract APYLiquidityPoolImplementation is
      * @notice Mint corresponding amount of APT tokens for sent token amount.
      * @dev If no APT tokens have been minted yet, fallback to a fixed ratio.
      */
-    function addLiquidityV2(uint256 amount, IERC20 token)
+    function addLiquidityV2(uint256 amount, ERC20UpgradeSafe token)
         external
         nonReentrant
         whenNotPaused
@@ -158,24 +165,26 @@ contract APYLiquidityPoolImplementation is
     function getTotalEthValue() public view returns (uint256) {
         uint256 totalEthValue;
         for (uint256 i = 0; i < tokens.length; i++) {
-            IERC20 token = tokens[i];
+            ERC20UpgradeSafe token = tokens[i];
             uint256 ethValue = getTokenEthValue(address(this), token);
             totalEthValue = totalEthValue.add(ethValue);
         }
         return totalEthValue;
     }
 
-    function getTokenEthValue(address account, IERC20 token)
+    function getTokenEthValue(address account, ERC20UpgradeSafe token)
         public
         view
         returns (uint256)
     {
         (int256 price, ) = getTokenEthPrice(token);
-        uint256 ethValue = token.balanceOf(account).mul(uint256(price));
+        uint256 ethValue = uint256(price).divu(token.decimals()).mulu(
+            token.balanceOf(account)
+        );
         return ethValue;
     }
 
-    function getTokenEthPrice(IERC20 token)
+    function getTokenEthPrice(ERC20UpgradeSafe token)
         public
         view
         returns (int256, uint8)
@@ -262,15 +271,11 @@ contract APYLiquidityPoolImplementation is
             return amount.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR);
         }
 
-        require(amount <= MAX_UINT192, "AMOUNT_OVERFLOW");
-        require(totalAmount <= MAX_UINT192, "TOTAL_AMOUNT_OVERFLOW");
-        require(totalSupply <= MAX_UINT192, "TOTAL_SUPPLY_OVERFLOW");
+        require(amount <= MAX_UINT128, "AMOUNT_OVERFLOW");
+        require(totalAmount <= MAX_UINT128, "TOTAL_AMOUNT_OVERFLOW");
+        require(totalSupply <= MAX_UINT128, "TOTAL_SUPPLY_OVERFLOW");
 
-        return
-            FixedPoint
-                .fraction(uint192(amount), uint192(totalAmount))
-                .mul(uint192(totalSupply))
-                .decode();
+        return amount.divu(totalAmount).mulu(totalSupply);
     }
 
     /**
@@ -283,28 +288,21 @@ contract APYLiquidityPoolImplementation is
         view
         returns (uint256)
     {
-        FixedPoint.uq192x64 memory shareOfAPT = _getShareOfAPT(aptAmount);
+        int128 shareOfAPT = _getShareOfAPT(aptAmount);
 
         uint256 underlyerTotal = underlyer.balanceOf(address(this));
-        require(underlyerTotal <= MAX_UINT192, "UNDERLYER_TOTAL_OVERFLOW");
+        require(underlyerTotal <= MAX_UINT128, "UNDERLYER_TOTAL_OVERFLOW");
 
-        return shareOfAPT.mul(uint192(underlyerTotal)).decode();
+        return shareOfAPT.mulu(underlyerTotal);
     }
 
-    function _getShareOfAPT(uint256 amount)
-        internal
-        view
-        returns (FixedPoint.uq192x64 memory)
-    {
-        require(amount <= MAX_UINT192, "AMOUNT_OVERFLOW");
+    function _getShareOfAPT(uint256 amount) internal view returns (int128) {
+        require(amount <= MAX_UINT128, "AMOUNT_OVERFLOW");
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        require(totalSupply() <= MAX_UINT192, "TOTAL_SUPPLY_OVERFLOW");
+        require(totalSupply() <= MAX_UINT128, "TOTAL_SUPPLY_OVERFLOW");
 
-        FixedPoint.uq192x64 memory shareOfAPT = FixedPoint.fraction(
-            uint192(amount),
-            uint192(totalSupply())
-        );
-        return shareOfAPT;
+        int128 shareOfApt = amount.divu(totalSupply());
+        return shareOfApt;
     }
 }
 
