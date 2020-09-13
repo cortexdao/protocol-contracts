@@ -147,13 +147,21 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     })
   })
 
-  describe.skip("Test addLiquidityV2", async () => { })
+  describe.skip("Test addLiquidityV2", async () => {
+    it("Test ...", async () => { })
+  })
 
-  describe("Test getPoolTotalEthValue", async () => { })
+  describe.skip("Test getPoolTotalEthValue", async () => {
+    it("Test ...", async () => { })
+  })
 
-  describe("Test getTokenAmountEthValue", async () => { })
+  describe.skip("Test getTokenAmountEthValue", async () => {
+    it("Test ...", async () => { })
+  })
 
-  describe("Test getTokenEthPrice", async () => { })
+  describe.skip("Test getTokenEthPrice", async () => {
+    it("Test ...", async () => { })
+  })
 
   describe("Test setUnderlyerAddress", async () => {
     it("Test setUnderlyerAddress pass", async () => {
