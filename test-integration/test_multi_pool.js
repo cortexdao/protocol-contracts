@@ -23,6 +23,7 @@ const {
   DAI_MINTER_ADDRESS,
   USDT_ADDRESS,
   USDC_ADDRESS,
+  USDC_WHALE_ADDRESS,
 } = require("../utils/constants");
 const {
   erc20,
@@ -36,6 +37,10 @@ const tether = (amount) => {
   return erc20(amount, "6");
 };
 
+const usdc = (amount) => {
+  return erc20(amount, "6");
+};
+
 contract("APYLiquidityPool", async (accounts) => {
   const [owner, admin, wallet, other] = accounts;
 
@@ -46,6 +51,7 @@ contract("APYLiquidityPool", async (accounts) => {
 
   let daiToken;
   let tetherToken;
+  let usdcToken;
   let apt;
 
   // use EVM snapshots for test isolation
@@ -64,6 +70,8 @@ contract("APYLiquidityPool", async (accounts) => {
     pool = await APYLiquidityPoolImplementation.at(proxy.address);
 
     daiToken = await IMintableERC20.at(DAI_ADDRESS);
+    tetherToken = await ERC20.at(USDT_ADDRESS);
+    usdcToken = await ERC20.at(USDC_ADDRESS);
 
     apt = pool;
   });
@@ -81,46 +89,32 @@ contract("APYLiquidityPool", async (accounts) => {
 
     const TETHER_TREASURY_ADDRESS =
       "0xC6CDE7C39eB2f0F0095F41570af89eFC2C1Ea828";
-    tetherToken = await ERC20.at(USDT_ADDRESS);
     await tetherToken.transfer(wallet, tether("10000"), {
       from: TETHER_TREASURY_ADDRESS,
+      gasPrice: 0,
     });
-    await tetherToken.transfer(wallet, tether("10000"), {
-      from: TETHER_TREASURY_ADDRESS,
+
+    console.log(
+      "USDC Whale balance:",
+      (await usdcToken.balanceOf(USDC_WHALE_ADDRESS)).toString() / 1e6
+    );
+    await usdcToken.transfer(wallet, usdc("10000"), {
+      from: USDC_WHALE_ADDRESS,
+      gasPrice: 0,
     });
 
     await tetherToken.approve(pool.address, tether("10000"), { from: wallet });
     await daiToken.approve(pool.address, dai("10000"), { from: wallet });
+    await usdcToken.approve(pool.address, usdc("10000"), { from: wallet });
 
-    // // USDT
-    // ERC20UpgradeSafe tether = ERC20UpgradeSafe(
-    //   0xdAC17F958D2ee523a2206206994597C13D831ec7
-    // );
-    // aggregators[tether] = AggregatorV3Interface(
-    //   0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46
-    // );
     await pool.addTokenSupport(
       USDT_ADDRESS,
       "0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46"
     );
-    // // USDC
-    // ERC20UpgradeSafe usdc = ERC20UpgradeSafe(
-    //   0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
-    // );
-    // aggregators[usdc] = AggregatorV3Interface(
-    //   0x986b5E1e1755e3C2440e960477f25201B0a8bbD4
-    // );
     await pool.addTokenSupport(
       USDC_ADDRESS,
       "0x986b5E1e1755e3C2440e960477f25201B0a8bbD4"
     );
-    // // DAI
-    // ERC20UpgradeSafe dai = ERC20UpgradeSafe(
-    //   0x6B175474E89094C44Da98b954EedeAC495271d0F
-    // );
-    // aggregators[dai] = AggregatorV3Interface(
-    //   0x773616E4d11A78F511299002da57A0a94577F1f4
-    // );
     await pool.addTokenSupport(
       DAI_ADDRESS,
       "0x773616E4d11A78F511299002da57A0a94577F1f4"
@@ -151,6 +145,10 @@ contract("APYLiquidityPool", async (accounts) => {
       "DAI balance:",
       (await daiToken.balanceOf(wallet)).toString() / 1e18
     );
+    console.log(
+      "USDC balance:",
+      (await usdcToken.balanceOf(wallet)).toString() / 1e6
+    );
 
     const tetherAmount = tether("10");
     await pool.addLiquidityV2(tetherAmount, tetherToken.address, {
@@ -163,6 +161,7 @@ contract("APYLiquidityPool", async (accounts) => {
     console.log("Pool token balances:");
     await getERC20Balance(daiToken.address, pool.address);
     await getERC20Balance(tetherToken.address, pool.address);
+    await getERC20Balance(usdcToken.address, pool.address);
 
     console.log("");
     console.log("APT supply:", (await apt.totalSupply()).toString() / 1e18);
@@ -183,6 +182,28 @@ contract("APYLiquidityPool", async (accounts) => {
     console.log("Pool token balances:");
     await getERC20Balance(daiToken.address, pool.address);
     await getERC20Balance(tetherToken.address, pool.address);
+    await getERC20Balance(usdcToken.address, pool.address);
+
+    console.log("");
+    console.log("APT supply:", (await apt.totalSupply()).toString() / 1e18);
+    console.log(
+      "Total ETH value:",
+      (await pool.getPoolTotalEthValue()).toString() / 1e18
+    );
+
+    console.log("");
+    const usdcAmount = usdc("10");
+    await pool.addLiquidityV2(usdcAmount, usdcToken.address, {
+      from: wallet,
+    });
+
+    console.log("Wallet:");
+    await getERC20Balance(apt.address, wallet);
+
+    console.log("Pool token balances:");
+    await getERC20Balance(daiToken.address, pool.address);
+    await getERC20Balance(tetherToken.address, pool.address);
+    await getERC20Balance(usdcToken.address, pool.address);
 
     console.log("");
     console.log("APT supply:", (await apt.totalSupply()).toString() / 1e18);
@@ -200,9 +221,14 @@ contract("APYLiquidityPool", async (accounts) => {
       pool.address,
       tetherToken.address
     );
+    const usdcEthValue = await pool.getTokenBalanceEthValue(
+      pool.address,
+      usdcToken.address
+    );
     console.log("Pool ether value breakdown:");
     console.log("DAI", daiEthValue.toString() / 1e18);
     console.log("Tether", tetherEthValue.toString() / 1e18);
+    console.log("USDC", usdcEthValue.toString() / 1e18);
 
     // console.log("DAI decimals:", (await daiToken.decimals()).toString());
     // console.log("Tether decimals:", (await tetherToken.decimals()).toString());
