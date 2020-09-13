@@ -143,13 +143,11 @@ contract APYLiquidityPoolImplementation is
             "ALLOWANCE_INSUFFICIENT"
         );
 
-        uint256 tokenEthPrice = uint256(getTokenEthPrice(token));
-        uint256 tokenEthValue = uint256(tokenEthPrice)
-            .divu(ERC20UpgradeSafe(address(token)).decimals())
-            .mulu(amount);
+        uint256 depositEthValue = getTokenAmountEthValue(amount, token);
         uint256 poolTotalEthValue = getPoolTotalEthValue();
+
         uint256 mintAmount = _calculateMintAmount(
-            tokenEthValue,
+            depositEthValue,
             poolTotalEthValue
         );
 
@@ -157,13 +155,6 @@ contract APYLiquidityPoolImplementation is
         token.safeTransferFrom(msg.sender, address(this), amount);
 
         emit DepositedAPT(msg.sender, mintAmount, amount);
-    }
-
-    function getTokenEthPrice(IERC20 token) public view returns (int256) {
-        AggregatorV3Interface agg = priceAggs[token];
-        (, int256 price, , , ) = agg.latestRoundData();
-        require(price > 0, "UNABLE_TO_RETRIEVE_ETH_PRICE");
-        return price;
     }
 
     function getPoolTotalEthValue() public view returns (uint256) {
@@ -175,13 +166,41 @@ contract APYLiquidityPoolImplementation is
             }
 
             IERC20 token = supportedTokens[i];
-            uint256 tokenEthPrice = uint256(getTokenEthPrice(token));
-            uint256 tokenEthValue = uint256(tokenEthPrice)
-                .divu(ERC20UpgradeSafe(address(token)).decimals())
-                .mulu(token.balanceOf(address(this)));
+            uint256 tokenEthValue = getTokenBalanceEthValue(
+                address(this),
+                token
+            );
             poolTotalEthValue = poolTotalEthValue.add(tokenEthValue);
         }
         return poolTotalEthValue;
+    }
+
+    function getTokenBalanceEthValue(address account, IERC20 token)
+        public
+        view
+        returns (uint256)
+    {
+        return getTokenAmountEthValue(token.balanceOf(account), token);
+    }
+
+    function getTokenAmountEthValue(uint256 amount, IERC20 token)
+        public
+        view
+        returns (uint256)
+    {
+        uint256 tokenEthPrice = uint256(getTokenEthPrice(token));
+        uint256 decimals = ERC20UpgradeSafe(address(token)).decimals();
+        uint256 ethValue = tokenEthPrice.divu(uint256(10)**decimals).mulu(
+            amount
+        );
+        return ethValue;
+    }
+
+    function getTokenEthPrice(IERC20 token) public view returns (int256) {
+        AggregatorV3Interface agg = priceAggs[token];
+        (, int256 price, , , ) = agg.latestRoundData();
+        require(price > 0, "UNABLE_TO_RETRIEVE_ETH_PRICE");
+        return price;
     }
 
     function lockAddLiquidity() external onlyOwner {

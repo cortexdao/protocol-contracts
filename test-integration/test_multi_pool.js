@@ -93,11 +93,11 @@ contract("APYLiquidityPool", async (accounts) => {
     await daiToken.approve(pool.address, dai("10000"), { from: wallet });
   });
 
-  it.only("getTotalEthValue", async () => {
-    // expect(await pool.getTotalEthValue()).to.be.bignumber.gt("0");
+  it.only("getPoolTotalEthValue", async () => {
+    // expect(await pool.getPoolTotalEthValue()).to.be.bignumber.gt("0");
     console.log(
       "total ETH value:",
-      (await pool.getTotalEthValue()).toString() / 1e18
+      (await pool.getPoolTotalEthValue()).toString() / 1e18
     );
 
     let result = await pool.getTokenEthPrice(daiToken.address);
@@ -146,7 +146,7 @@ contract("APYLiquidityPool", async (accounts) => {
     console.log("APT supply:", (await apt.totalSupply()).toString() / 1e18);
     console.log(
       "Total ETH value:",
-      (await pool.getTotalEthValue()).toString() / 1e18
+      (await pool.getPoolTotalEthValue()).toString() / 1e18
     );
     console.log("");
 
@@ -166,15 +166,15 @@ contract("APYLiquidityPool", async (accounts) => {
     console.log("APT supply:", (await apt.totalSupply()).toString() / 1e18);
     console.log(
       "Total ETH value:",
-      (await pool.getTotalEthValue()).toString() / 1e18
+      (await pool.getPoolTotalEthValue()).toString() / 1e18
     );
     console.log("");
 
-    const daiEthValue = await pool.getTokenEthValue(
+    const daiEthValue = await pool.getTokenBalanceEthValue(
       pool.address,
       daiToken.address
     );
-    const tetherEthValue = await pool.getTokenEthValue(
+    const tetherEthValue = await pool.getTokenBalanceEthValue(
       pool.address,
       tetherToken.address
     );
