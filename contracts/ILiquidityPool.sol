@@ -14,6 +14,8 @@ interface ILiquidityPool {
         uint256 aptAmount,
         uint256 underlyerAmount
     );
+    event TokenSupported(address token, address agg);
+    event TokenUnsupported(address token, address agg);
     event AddLiquidityLocked();
     event AddLiquidityUnlocked();
     event RedeemLocked();

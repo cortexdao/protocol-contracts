@@ -27,7 +27,6 @@ contract APYLiquidityPoolImplementation is
 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
-    using SafeERC20 for ERC20UpgradeSafe;
     using ABDKMath64x64 for *;
 
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
@@ -40,8 +39,8 @@ contract APYLiquidityPoolImplementation is
     bool public addLiquidityLock;
     bool public redeemLock;
     IERC20 public underlyer;
-    mapping(ERC20UpgradeSafe => AggregatorV3Interface) public aggregators;
-    ERC20UpgradeSafe[] public tokens;
+    mapping(IERC20 => AggregatorV3Interface) public priceAggs;
+    IERC20[] public supportedTokens;
 
     /* ------------------------------- */
 
@@ -57,31 +56,6 @@ contract APYLiquidityPoolImplementation is
         addLiquidityLock = false;
         redeemLock = false;
         // admin and underlyer will get set by deployer
-
-        // USDT
-        ERC20UpgradeSafe tether = ERC20UpgradeSafe(
-            0xdAC17F958D2ee523a2206206994597C13D831ec7
-        );
-        aggregators[tether] = AggregatorV3Interface(
-            0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46
-        );
-        // USDC
-        ERC20UpgradeSafe usdc = ERC20UpgradeSafe(
-            0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
-        );
-        aggregators[usdc] = AggregatorV3Interface(
-            0x986b5E1e1755e3C2440e960477f25201B0a8bbD4
-        );
-        // DAI
-        ERC20UpgradeSafe dai = ERC20UpgradeSafe(
-            0x6B175474E89094C44Da98b954EedeAC495271d0F
-        );
-        aggregators[dai] = AggregatorV3Interface(
-            0x773616E4d11A78F511299002da57A0a94577F1f4
-        );
-        tokens.push(tether);
-        tokens.push(usdc);
-        tokens.push(dai);
     }
 
     // solhint-disable-next-line no-empty-blocks
@@ -103,8 +77,32 @@ contract APYLiquidityPoolImplementation is
         revert("DONT_SEND_ETHER");
     }
 
+    function addTokenSupport(IERC20 token, AggregatorV3Interface priceAgg)
+        external
+        onlyOwner
+    {
+        priceAgg[token] = priceAgg;
+        supportedTokens.push(token);
+        emit TokenSupported(address(token), address(priceAgg));
+    }
+
+    function removeTokenSupport(IERC20 token, AggregatorV3Interface priceAgg)
+        external
+        onlyOwner
+    {
+        delete priceAgg[token];
+        // zero out the supportedToken in the list
+        for (uint256 i = 0; i < supportedTokens.length; i++) {
+            if (supportedTokens[i] == token) {
+                supportedTokens[i] = address(0);
+                return;
+            }
+        }
+        emit TokenUnsupported(address(token), address(priceAgg));
+    }
+
     /**
-     * @notice Mint corresponding amount of APT tokens for sent token amount.
+     * @notice Mint corresponding amount of APT supported for sent token amount.
      * @dev If no APT tokens have been minted yet, fallback to a fixed ratio.
      */
     function addLiquidity(uint256 amount)
@@ -132,28 +130,27 @@ contract APYLiquidityPoolImplementation is
      * @notice Mint corresponding amount of APT tokens for sent token amount.
      * @dev If no APT tokens have been minted yet, fallback to a fixed ratio.
      */
-    function addLiquidityV2(uint256 amount, ERC20UpgradeSafe token)
+    function addLiquidityV2(uint256 amount, IERC20 token)
         external
         nonReentrant
         whenNotPaused
     {
         require(!addLiquidityLock, "LOCKED");
         require(amount > 0, "AMOUNT_INSUFFICIENT");
-        require(
-            address(aggregators[token]) != address(0),
-            "UNRECOGNIZED_TOKEN"
-        );
+        require(address(priceAggs[token]) != address(0), "UNSUPPORTED_TOKEN");
         require(
             token.allowance(msg.sender, address(this)) >= amount,
             "ALLOWANCE_INSUFFICIENT"
         );
 
-        uint256 depositEthValue = getTokenEthValue(msg.sender, token);
-        uint256 totalEthValue = getTotalEthValue();
-
+        uint256 tokenEthPrice = getTokenEthPrice(token);
+        uint256 tokenEthValue = uint256(tokenEthPrice)
+            .divu(token.decimals())
+            .mulu(amount);
+        uint256 poolTotalEthValue = getPoolTotalEthValue();
         uint256 mintAmount = _calculateMintAmount(
-            depositEthValue,
-            totalEthValue
+            tokenEthValue,
+            poolTotalEthValue
         );
 
         _mint(msg.sender, mintAmount);
@@ -162,39 +159,29 @@ contract APYLiquidityPoolImplementation is
         emit DepositedAPT(msg.sender, mintAmount, amount);
     }
 
-    function getTotalEthValue() public view returns (uint256) {
-        uint256 totalEthValue;
+    function getTokenEthPrice(IERC20 token) public view returns (int256) {
+        AggregatorV3Interface agg = priceAgg[token];
+        (, int256 price, , , ) = agg.latestRoundData();
+        require(price > 0, "UNABLE_TO_RETRIEVE_ETH_PRICE");
+        return price;
+    }
+
+    function getPoolTotalEthValue() public view returns (uint256) {
+        uint256 poolTotalEthValue;
         for (uint256 i = 0; i < tokens.length; i++) {
-            ERC20UpgradeSafe token = tokens[i];
-            uint256 ethValue = getTokenEthValue(address(this), token);
-            totalEthValue = totalEthValue.add(ethValue);
+            // skip over removed tokens
+            if (tokens[i] == address(0)) {
+                continue;
+            }
+
+            IERC20 token = tokens[i];
+            uint256 tokenEthPrice = getTokenEthPrice(token);
+            uint256 tokenEthValue = uint256(tokenEthPrice)
+                .divu(token.decimals())
+                .mulu(amount);
+            poolTotalEthValue = poolTotalEthValue.add(tokenEthValue);
         }
-        return totalEthValue;
-    }
-
-    function getTokenEthValue(address account, ERC20UpgradeSafe token)
-        public
-        view
-        returns (uint256)
-    {
-        (int256 price, ) = getTokenEthPrice(token);
-        uint256 ethValue = uint256(price)
-            .divu(uint256(10)**uint256(token.decimals()))
-            .mulu(token.balanceOf(account));
-        return ethValue;
-    }
-
-    function getTokenEthPrice(ERC20UpgradeSafe token)
-        public
-        view
-        returns (int256, uint8)
-    {
-        AggregatorV3Interface aggregator = aggregators[token];
-        (, int256 price, , , ) = aggregator.latestRoundData();
-        require(price > 0, "CHAINLINK_FAILURE");
-
-        uint8 decimals = aggregator.decimals();
-        return (price, decimals);
+        return poolTotalEthValue;
     }
 
     function lockAddLiquidity() external onlyOwner {
