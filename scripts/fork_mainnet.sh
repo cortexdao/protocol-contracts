@@ -22,6 +22,7 @@ else
 fi
 if [ -n "${unlocked_addresses}" ]; then
   args+=( --unlock "${unlocked_addresses}" );
+  args+=( --unlock "0xC6CDE7C39eB2f0F0095F41570af89eFC2C1Ea828" );
 fi
 if [ -n "${gas_limit}" ]; then
   args+=( --gasLimit "${gas_limit}" );

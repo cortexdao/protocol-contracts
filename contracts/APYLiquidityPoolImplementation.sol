@@ -13,6 +13,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import {
     TransparentUpgradeableProxy
 } from "@openzeppelin/contracts/proxy/TransparentUpgradeableProxy.sol";
+import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "solidity-fixedpoint/contracts/FixedPoint.sol";
 import "./ILiquidityPool.sol";
 
@@ -38,6 +39,8 @@ contract APYLiquidityPoolImplementation is
     bool public addLiquidityLock;
     bool public redeemLock;
     IERC20 public underlyer;
+    mapping(IERC20 => AggregatorV3Interface) aggregators;
+    IERC20[] tokens;
 
     /* ------------------------------- */
 
@@ -53,6 +56,25 @@ contract APYLiquidityPoolImplementation is
         addLiquidityLock = false;
         redeemLock = false;
         // admin and underlyer will get set by deployer
+
+        // USDT
+        IERC20 tether = IERC20(0xdAC17F958D2ee523a2206206994597C13D831ec7);
+        aggregators[tether] = AggregatorV3Interface(
+            0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46
+        );
+        // USDC
+        IERC20 usdc = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+        aggregators[usdc] = AggregatorV3Interface(
+            0x986b5E1e1755e3C2440e960477f25201B0a8bbD4
+        );
+        // DAI
+        IERC20 dai = IERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
+        aggregators[dai] = AggregatorV3Interface(
+            0x773616E4d11A78F511299002da57A0a94577F1f4
+        );
+        tokens.push(tether);
+        tokens.push(usdc);
+        tokens.push(dai);
     }
 
     // solhint-disable-next-line no-empty-blocks
@@ -78,7 +100,7 @@ contract APYLiquidityPoolImplementation is
      * @notice Mint corresponding amount of APT tokens for sent token amount.
      * @dev If no APT tokens have been minted yet, fallback to a fixed ratio.
      */
-    function addLiquidity(uint256 amount)
+    function addLiquidity(uint256 amount, IERC20 token)
         external
         override
         nonReentrant
@@ -87,16 +109,56 @@ contract APYLiquidityPoolImplementation is
         require(!addLiquidityLock, "LOCKED");
         require(amount > 0, "AMOUNT_INSUFFICIENT");
         require(
-            underlyer.allowance(msg.sender, address(this)) >= amount,
+            address(aggregators[token]) != address(0),
+            "UNRECOGNIZED_TOKEN"
+        );
+        require(
+            token.allowance(msg.sender, address(this)) >= amount,
             "ALLOWANCE_INSUFFICIENT"
         );
-        uint256 totalAmount = underlyer.balanceOf(address(this));
-        uint256 mintAmount = _calculateMintAmount(amount, totalAmount);
+
+        (int256 tokenEthPrice, ) = getTokenEthPrice(token);
+        uint256 depositEthValue = token.balanceOf(msg.sender).mul(
+            uint256(tokenEthPrice)
+        );
+        uint256 totalEthValue = getTotalEthValue();
+
+        uint256 mintAmount = _calculateMintAmount(
+            depositEthValue,
+            totalEthValue
+        );
 
         _mint(msg.sender, mintAmount);
-        underlyer.transferFrom(msg.sender, address(this), amount);
+        token.safeTransferFrom(msg.sender, address(this), amount);
 
         emit DepositedAPT(msg.sender, mintAmount, amount);
+    }
+
+    function getTotalEthValue() public view returns (uint256) {
+        uint256 totalEthValue;
+        for (uint256 i = 0; i < tokens.length; i++) {
+            IERC20 token = tokens[i];
+            (int256 price, ) = getTokenEthPrice(token);
+
+            uint256 ethValue = token.balanceOf(address(this)).mul(
+                uint256(price)
+            );
+            totalEthValue = totalEthValue.add(ethValue);
+        }
+        return totalEthValue;
+    }
+
+    function getTokenEthPrice(IERC20 token)
+        public
+        view
+        returns (int256, uint8)
+    {
+        AggregatorV3Interface aggregator = aggregators[token];
+        (, int256 price, , , ) = aggregator.latestRoundData();
+        require(price > 0, "CHAINLINK_FAILURE");
+
+        uint8 decimals = aggregator.decimals();
+        return (price, decimals);
     }
 
     function lockAddLiquidity() external onlyOwner {
@@ -113,7 +175,7 @@ contract APYLiquidityPoolImplementation is
      * @notice Redeems APT amount for its underlying token amount.
      * @param aptAmount The amount of APT tokens to redeem
      */
-    function redeem(uint256 aptAmount)
+    function redeem(uint256 aptAmount, IERC20 token)
         external
         override
         nonReentrant
@@ -223,12 +285,12 @@ contract APYLiquidityPoolImplementation is
  * @dev Proxy contract to test internal variables and functions
  *      Should not be used other than in test files!
  */
-contract APYLiquidityPoolImplementationTEST is APYLiquidityPoolImplementation {
-    function mint(address account, uint256 amount) public {
-        _mint(account, amount);
-    }
+// contract APYLiquidityPoolImplementationTEST is APYLiquidityPoolImplementation {
+//     function mint(address account, uint256 amount) public {
+//         _mint(account, amount);
+//     }
 
-    function burn(address account, uint256 amount) public {
-        _burn(account, amount);
-    }
-}
+//     function burn(address account, uint256 amount) public {
+//         _burn(account, amount);
+//     }
+// }
