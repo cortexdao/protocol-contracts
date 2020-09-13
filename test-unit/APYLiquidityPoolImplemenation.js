@@ -21,7 +21,7 @@ const APYLiquidityPoolImplementation = artifacts.require(
 const { DAI } = require('../utils/Compound');
 
 contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
-  const [owner, instanceAdmin, randomUser] = accounts;
+  const [owner, instanceAdmin, randomUser, randomAddress] = accounts;
 
   let proxyAdmin
   let logic
@@ -88,7 +88,32 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     })
   })
 
-  describe("Test addTokenSupport", async () => { })
+  describe("Test addTokenSupport", async () => {
+    it("Test addSupportedTokens with invalid token", async () => {
+      await expectRevert(instance.addTokenSupport(constants.ZERO_ADDRESS, randomAddress), "INVALID_TOKEN")
+    })
+
+    it("Test addSupportedTokens with invalid agg", async () => {
+      await expectRevert(instance.addTokenSupport(randomAddress, constants.ZERO_ADDRESS), "INVALID_AGG")
+    })
+
+    it("Test addTokenSupport pass", async () => {
+      const newToken = await MockContract.new()
+      const newPriceAgg = await MockContract.new()
+      const trx = await instance.addTokenSupport(newToken.address, newPriceAgg.address)
+
+      const priceAgg = await instance.priceAggs.call(newToken.address)
+      const supportedTokens = await instance.getSupportedTokens.call()
+
+      assert.equal(priceAgg, newPriceAgg.address)
+      assert.equal(supportedTokens[0], newToken.address)
+      await expectEvent(
+        trx,
+        "TokenSupported",
+        { token: newToken.address, agg: newPriceAgg.address }
+      )
+    })
+  })
 
   describe("Test removeTokenSupport", async () => { })
 

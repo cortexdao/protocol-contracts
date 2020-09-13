@@ -40,7 +40,7 @@ contract APYLiquidityPoolImplementation is
     bool public redeemLock;
     IERC20 public underlyer;
     mapping(IERC20 => AggregatorV3Interface) public priceAggs;
-    IERC20[] public supportedTokens;
+    IERC20[] internal _supportedTokens;
 
     /* ------------------------------- */
 
@@ -81,8 +81,10 @@ contract APYLiquidityPoolImplementation is
         external
         onlyOwner
     {
+        require(address(token) != address(0), "INVALID_TOKEN");
+        require(address(priceAgg) != address(0), "INVALID_AGG");
         priceAggs[token] = priceAgg;
-        supportedTokens.push(token);
+        _supportedTokens.push(token);
         emit TokenSupported(address(token), address(priceAgg));
     }
 
@@ -92,13 +94,21 @@ contract APYLiquidityPoolImplementation is
     {
         delete priceAggs[token];
         // zero out the supportedToken in the list
-        for (uint256 i = 0; i < supportedTokens.length; i++) {
-            if (supportedTokens[i] == token) {
-                supportedTokens[i] = IERC20(address(0));
+        for (uint256 i = 0; i < _supportedTokens.length; i++) {
+            if (_supportedTokens[i] == token) {
+                _supportedTokens[i] = IERC20(address(0));
                 return;
             }
         }
         emit TokenUnsupported(address(token), address(priceAgg));
+    }
+
+    function getSupportedTokens() external view returns (IERC20[] memory) {
+        IERC20[] memory returnList = new IERC20[](_supportedTokens.length);
+        for (uint256 i = 0; i < _supportedTokens.length; i++) {
+            returnList[i] = _supportedTokens[i];
+        }
+        return returnList;
     }
 
     /**
@@ -159,13 +169,13 @@ contract APYLiquidityPoolImplementation is
 
     function getPoolTotalEthValue() public view returns (uint256) {
         uint256 poolTotalEthValue;
-        for (uint256 i = 0; i < supportedTokens.length; i++) {
+        for (uint256 i = 0; i < _supportedTokens.length; i++) {
             // skip over removed tokens
-            if (address(supportedTokens[i]) == address(0)) {
+            if (address(_supportedTokens[i]) == address(0)) {
                 continue;
             }
 
-            IERC20 token = supportedTokens[i];
+            IERC20 token = _supportedTokens[i];
             uint256 tokenEthValue = getTokenAmountEthValue(
                 token.balanceOf(address(this)),
                 token
@@ -308,12 +318,12 @@ contract APYLiquidityPoolImplementation is
  * @dev Proxy contract to test internal variables and functions
  *      Should not be used other than in test files!
  */
-// contract APYLiquidityPoolImplementationTEST is APYLiquidityPoolImplementation {
-//     function mint(address account, uint256 amount) public {
-//         _mint(account, amount);
-//     }
+contract APYLiquidityPoolImplementationTEST is APYLiquidityPoolImplementation {
+    function mint(address account, uint256 amount) public {
+        _mint(account, amount);
+    }
 
-//     function burn(address account, uint256 amount) public {
-//         _burn(account, amount);
-//     }
-// }
+    function burn(address account, uint256 amount) public {
+        _burn(account, amount);
+    }
+}
