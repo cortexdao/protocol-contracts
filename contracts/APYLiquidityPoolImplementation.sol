@@ -196,6 +196,19 @@ contract APYLiquidityPoolImplementation is
         return ethValue;
     }
 
+    function getTokenAmountFromEthValue(uint256 ethValue, IERC20 token)
+        public
+        view
+        returns (uint256)
+    {
+        uint256 tokenEthPrice = uint256(getTokenEthPrice(token));
+        uint256 decimals = ERC20UpgradeSafe(address(token)).decimals();
+        uint256 tokenAmount = ethValue.divu(tokenEthPrice).mulu(
+            uint256(10)**decimals
+        );
+        return tokenAmount;
+    }
+
     function getTokenEthPrice(IERC20 token) public view returns (int256) {
         AggregatorV3Interface agg = priceAggs[token];
         (, int256 price, , , ) = agg.latestRoundData();
@@ -231,6 +244,27 @@ contract APYLiquidityPoolImplementation is
 
         _burn(msg.sender, aptAmount);
         underlyer.transfer(msg.sender, underlyerAmount);
+
+        emit RedeemedAPT(msg.sender, aptAmount, underlyerAmount);
+    }
+
+    /**
+     * @notice Redeems APT amount for its underlying token amount.
+     * @param aptAmount The amount of APT tokens to redeem
+     */
+    function redeemV2(uint256 aptAmount, IERC20 token)
+        external
+        nonReentrant
+        whenNotPaused
+    {
+        require(!redeemLock, "LOCKED");
+        require(aptAmount > 0, "AMOUNT_INSUFFICIENT");
+        require(aptAmount <= balanceOf(msg.sender), "BALANCE_INSUFFICIENT");
+
+        uint256 underlyerAmount = getUnderlyerAmountV2(aptAmount, token);
+
+        _burn(msg.sender, aptAmount);
+        token.safeTransfer(msg.sender, underlyerAmount);
 
         emit RedeemedAPT(msg.sender, aptAmount, underlyerAmount);
     }
@@ -300,6 +334,26 @@ contract APYLiquidityPoolImplementation is
         require(underlyerTotal <= MAX_UINT128, "UNDERLYER_TOTAL_OVERFLOW");
 
         return shareOfAPT.mulu(underlyerTotal);
+    }
+
+    /**
+     * @notice Get the underlying amount represented by APT amount.
+     * @param aptAmount The amount of APT tokens
+     * @return uint256 The underlying value of the APT tokens
+     */
+    function getUnderlyerAmountV2(uint256 aptAmount, IERC20 token)
+        public
+        view
+        returns (uint256)
+    {
+        int128 shareOfAPT = _getShareOfAPT(aptAmount);
+
+        uint256 poolTotalEthValue = getPoolTotalEthValue();
+        require(poolTotalEthValue <= MAX_UINT128, "UNDERLYER_TOTAL_OVERFLOW");
+
+        uint256 tokenEthValue = shareOfAPT.mulu(poolTotalEthValue);
+        uint256 tokenAmount = getTokenAmountFromEthValue(tokenEthValue, token);
+        return tokenAmount;
     }
 
     function _getShareOfAPT(uint256 amount) internal view returns (int128) {

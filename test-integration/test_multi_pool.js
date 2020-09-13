@@ -233,4 +233,69 @@ contract("APYLiquidityPool", async (accounts) => {
     // console.log("DAI decimals:", (await daiToken.decimals()).toString());
     // console.log("Tether decimals:", (await tetherToken.decimals()).toString());
   });
+
+  it.only("redeem for multiple tokens", async () => {
+    console.log(
+      "Tether balance:",
+      (await tetherToken.balanceOf(wallet)).toString() / 1e6
+    );
+    console.log(
+      "DAI balance:",
+      (await daiToken.balanceOf(wallet)).toString() / 1e18
+    );
+    console.log(
+      "USDC balance:",
+      (await usdcToken.balanceOf(wallet)).toString() / 1e6
+    );
+
+    const tetherAmount = tether("10");
+    await pool.addLiquidityV2(tetherAmount, tetherToken.address, {
+      from: wallet,
+    });
+
+    const daiAmount = dai("10");
+    await pool.addLiquidityV2(daiAmount, daiToken.address, {
+      from: wallet,
+    });
+
+    const usdcAmount = usdc("10");
+    await pool.addLiquidityV2(usdcAmount, usdcToken.address, {
+      from: wallet,
+    });
+
+    await pool.redeemV2(erc20("22", "18"), usdcToken.address, { from: wallet });
+
+    console.log("Wallet:");
+    await getERC20Balance(apt.address, wallet);
+
+    console.log("Pool token balances:");
+    await getERC20Balance(daiToken.address, pool.address);
+    await getERC20Balance(tetherToken.address, pool.address);
+    await getERC20Balance(usdcToken.address, pool.address);
+
+    console.log("");
+    console.log("APT supply:", (await apt.totalSupply()).toString() / 1e18);
+    console.log(
+      "Total ETH value:",
+      (await pool.getPoolTotalEthValue()).toString() / 1e18
+    );
+    console.log("");
+
+    const daiEthValue = await pool.getTokenBalanceEthValue(
+      pool.address,
+      daiToken.address
+    );
+    const tetherEthValue = await pool.getTokenBalanceEthValue(
+      pool.address,
+      tetherToken.address
+    );
+    const usdcEthValue = await pool.getTokenBalanceEthValue(
+      pool.address,
+      usdcToken.address
+    );
+    console.log("Pool ether value breakdown:");
+    console.log("DAI", daiEthValue.toString() / 1e18);
+    console.log("Tether", tetherEthValue.toString() / 1e18);
+    console.log("USDC", usdcEthValue.toString() / 1e18);
+  });
 });
