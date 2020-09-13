@@ -14,7 +14,7 @@ import {
     TransparentUpgradeableProxy
 } from "@openzeppelin/contracts/proxy/TransparentUpgradeableProxy.sol";
 import "solidity-fixedpoint/contracts/FixedPoint.sol";
-import "./ILiquidityPool.sol";
+import "./interfaces/ILiquidityPool.sol";
 
 contract APYLiquidityPoolImplementation is
     ILiquidityPool,

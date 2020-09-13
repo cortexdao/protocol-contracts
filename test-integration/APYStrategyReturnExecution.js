@@ -1,7 +1,6 @@
 const { ethers, web3, artifacts, contract } = require("@nomiclabs/buidler");
 const { defaultAbiCoder: abiCoder } = ethers.utils;
 const BigNumber = ethers.BigNumber;
-const { mintERC20Tokens } = require("../utils/helpers");
 const {
   BN,
   ether,
@@ -16,6 +15,7 @@ const { cDAI, DAI, COMP, COMPTROLLER } = require('../utils/Compound');
 
 
 // Imports
+const IMintableERC20 = artifacts.require("IMintableERC20");
 const APYStrategyReturnExecutor = artifacts.require("APYStrategyReturnExecutor");
 const OneInch = artifacts.require("IOneSplit");
 const IOneInch = new ethers.utils.Interface(OneInch.abi);
@@ -45,6 +45,19 @@ const IOneInch = new ethers.utils.Interface(OneInch.abi);
 //   10,
 //   0
 // ]
+
+async function mintERC20Tokens(
+  tokenAddress,
+  receiverAddress,
+  ownerAddress,
+  amount
+) {
+  const token = await IMintableERC20.at(tokenAddress);
+  await token.mint(receiverAddress, amount, {
+    from: ownerAddress,
+    gasPrice: 0,
+  });
+};
 
 contract("APYStrategyExecution", async (accounts) => {
   const [owner] = accounts;
