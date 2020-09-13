@@ -16,7 +16,7 @@ const APYLiquidityPoolProxy = artifacts.require("APYLiquidityPoolProxy");
 const APYLiquidityPoolImplementation = artifacts.require(
   "APYLiquidityPoolImplementation"
 );
-const IERC20 = artifacts.require("IERC20");
+const ERC20 = artifacts.require("ERC20UpgradeSafe");
 const IMintableERC20 = artifacts.require("IMintableERC20");
 const {
   DAI_ADDRESS,
@@ -81,7 +81,7 @@ contract("APYLiquidityPool", async (accounts) => {
 
     const TETHER_TREASURY_ADDRESS =
       "0xC6CDE7C39eB2f0F0095F41570af89eFC2C1Ea828";
-    tetherToken = await IERC20.at(USDT_ADDRESS);
+    tetherToken = await ERC20.at(USDT_ADDRESS);
     await tetherToken.transfer(wallet, tether("10000"), {
       from: TETHER_TREASURY_ADDRESS,
     });
@@ -136,16 +136,18 @@ contract("APYLiquidityPool", async (accounts) => {
     });
 
     console.log("Wallet:");
-    await getERC20Balance(daiToken.address, wallet);
-    await getERC20Balance(tetherToken.address, wallet);
     await getERC20Balance(apt.address, wallet);
 
-    console.log("Pool:");
+    console.log("Pool token balances:");
     await getERC20Balance(daiToken.address, pool.address);
     await getERC20Balance(tetherToken.address, pool.address);
 
     console.log("");
     console.log("APT supply:", (await apt.totalSupply()).toString() / 1e18);
+    console.log(
+      "Total ETH value:",
+      (await pool.getTotalEthValue()).toString() / 1e18
+    );
     console.log("");
 
     const daiAmount = dai("10");
@@ -154,16 +156,33 @@ contract("APYLiquidityPool", async (accounts) => {
     });
 
     console.log("Wallet:");
-    await getERC20Balance(daiToken.address, wallet);
-    await getERC20Balance(tetherToken.address, wallet);
     await getERC20Balance(apt.address, wallet);
 
-    console.log("Pool:");
+    console.log("Pool token balances:");
     await getERC20Balance(daiToken.address, pool.address);
     await getERC20Balance(tetherToken.address, pool.address);
 
     console.log("");
     console.log("APT supply:", (await apt.totalSupply()).toString() / 1e18);
+    console.log(
+      "Total ETH value:",
+      (await pool.getTotalEthValue()).toString() / 1e18
+    );
     console.log("");
+
+    const daiEthValue = await pool.getTokenEthValue(
+      pool.address,
+      daiToken.address
+    );
+    const tetherEthValue = await pool.getTokenEthValue(
+      pool.address,
+      tetherToken.address
+    );
+    console.log("Pool ether value breakdown:");
+    console.log("DAI", daiEthValue.toString() / 1e18);
+    console.log("Tether", tetherEthValue.toString() / 1e18);
+
+    // console.log("DAI decimals:", (await daiToken.decimals()).toString());
+    // console.log("Tether decimals:", (await tetherToken.decimals()).toString());
   });
 });

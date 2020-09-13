@@ -178,9 +178,9 @@ contract APYLiquidityPoolImplementation is
         returns (uint256)
     {
         (int256 price, ) = getTokenEthPrice(token);
-        uint256 ethValue = uint256(price).divu(token.decimals()).mulu(
-            token.balanceOf(account)
-        );
+        uint256 ethValue = uint256(price)
+            .divu(uint256(10)**uint256(token.decimals()))
+            .mulu(token.balanceOf(account));
         return ethValue;
     }
 
