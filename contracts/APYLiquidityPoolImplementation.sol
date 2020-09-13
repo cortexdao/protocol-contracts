@@ -166,21 +166,13 @@ contract APYLiquidityPoolImplementation is
             }
 
             IERC20 token = supportedTokens[i];
-            uint256 tokenEthValue = getTokenBalanceEthValue(
-                address(this),
+            uint256 tokenEthValue = getTokenAmountEthValue(
+                token.balanceOf(address(this)),
                 token
             );
             poolTotalEthValue = poolTotalEthValue.add(tokenEthValue);
         }
         return poolTotalEthValue;
-    }
-
-    function getTokenBalanceEthValue(address account, IERC20 token)
-        public
-        view
-        returns (uint256)
-    {
-        return getTokenAmountEthValue(token.balanceOf(account), token);
     }
 
     function getTokenAmountEthValue(uint256 amount, IERC20 token)

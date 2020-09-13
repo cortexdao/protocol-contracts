@@ -88,6 +88,18 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     })
   })
 
+  describe("Test addTokenSupport", async () => { })
+
+  describe("Test removeTokenSupport", async () => { })
+
+  describe.skip("Test addLiquidityV2", async () => { })
+
+  describe("Test getPoolTotalEthValue", async () => { })
+
+  describe("Test getTokenAmountEthValue", async () => { })
+
+  describe("Test getTokenEthPrice", async () => { })
+
   describe("Test setUnderlyerAddress", async () => {
     it("Test setUnderlyerAddress pass", async () => {
       await instance.setUnderlyerAddress(mockToken.address, { from: owner })
