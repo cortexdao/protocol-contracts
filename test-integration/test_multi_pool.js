@@ -91,6 +91,40 @@ contract("APYLiquidityPool", async (accounts) => {
 
     await tetherToken.approve(pool.address, tether("10000"), { from: wallet });
     await daiToken.approve(pool.address, dai("10000"), { from: wallet });
+
+    // // USDT
+    // ERC20UpgradeSafe tether = ERC20UpgradeSafe(
+    //   0xdAC17F958D2ee523a2206206994597C13D831ec7
+    // );
+    // aggregators[tether] = AggregatorV3Interface(
+    //   0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46
+    // );
+    await pool.addTokenSupport(
+      USDT_ADDRESS,
+      "0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46"
+    );
+    // // USDC
+    // ERC20UpgradeSafe usdc = ERC20UpgradeSafe(
+    //   0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+    // );
+    // aggregators[usdc] = AggregatorV3Interface(
+    //   0x986b5E1e1755e3C2440e960477f25201B0a8bbD4
+    // );
+    await pool.addTokenSupport(
+      USDC_ADDRESS,
+      "0x986b5E1e1755e3C2440e960477f25201B0a8bbD4"
+    );
+    // // DAI
+    // ERC20UpgradeSafe dai = ERC20UpgradeSafe(
+    //   0x6B175474E89094C44Da98b954EedeAC495271d0F
+    // );
+    // aggregators[dai] = AggregatorV3Interface(
+    //   0x773616E4d11A78F511299002da57A0a94577F1f4
+    // );
+    await pool.addTokenSupport(
+      DAI_ADDRESS,
+      "0x773616E4d11A78F511299002da57A0a94577F1f4"
+    );
   });
 
   it.only("getPoolTotalEthValue", async () => {
@@ -101,23 +135,11 @@ contract("APYLiquidityPool", async (accounts) => {
     );
 
     let result = await pool.getTokenEthPrice(daiToken.address);
-    console.log(
-      "DAI/ETH price, decimals",
-      result[0].toString(),
-      result[1].toString()
-    );
+    console.log("DAI/ETH price", result.toString());
     result = await pool.getTokenEthPrice(USDT_ADDRESS);
-    console.log(
-      "USDT/ETH price, decimals",
-      result[0].toString(),
-      result[1].toString()
-    );
+    console.log("USDT/ETH price", result.toString());
     result = await pool.getTokenEthPrice(USDC_ADDRESS);
-    console.log(
-      "USDC/ETH price, decimals",
-      result[0].toString(),
-      result[1].toString()
-    );
+    console.log("USDC/ETH price", result.toString());
   });
 
   it.only("addLiquidity for multiple tokens", async () => {
