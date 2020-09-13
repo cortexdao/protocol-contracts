@@ -100,9 +100,33 @@ contract APYLiquidityPoolImplementation is
      * @notice Mint corresponding amount of APT tokens for sent token amount.
      * @dev If no APT tokens have been minted yet, fallback to a fixed ratio.
      */
-    function addLiquidity(uint256 amount, IERC20 token)
+    function addLiquidity(uint256 amount)
         external
         override
+        nonReentrant
+        whenNotPaused
+    {
+        require(!addLiquidityLock, "LOCKED");
+        require(amount > 0, "AMOUNT_INSUFFICIENT");
+        require(
+            underlyer.allowance(msg.sender, address(this)) >= amount,
+            "ALLOWANCE_INSUFFICIENT"
+        );
+        uint256 totalAmount = underlyer.balanceOf(address(this));
+        uint256 mintAmount = _calculateMintAmount(amount, totalAmount);
+
+        _mint(msg.sender, mintAmount);
+        underlyer.transferFrom(msg.sender, address(this), amount);
+
+        emit DepositedAPT(msg.sender, mintAmount, amount);
+    }
+
+    /**
+     * @notice Mint corresponding amount of APT tokens for sent token amount.
+     * @dev If no APT tokens have been minted yet, fallback to a fixed ratio.
+     */
+    function addLiquidityV2(uint256 amount, IERC20 token)
+        external
         nonReentrant
         whenNotPaused
     {
@@ -178,7 +202,7 @@ contract APYLiquidityPoolImplementation is
      * @notice Redeems APT amount for its underlying token amount.
      * @param aptAmount The amount of APT tokens to redeem
      */
-    function redeem(uint256 aptAmount, IERC20 token)
+    function redeem(uint256 aptAmount)
         external
         override
         nonReentrant

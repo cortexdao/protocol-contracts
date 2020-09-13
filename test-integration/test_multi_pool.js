@@ -120,7 +120,7 @@ contract("APYLiquidityPool", async (accounts) => {
     );
 
     await tetherToken.approve(pool.address, erc20("10", "6"), { from: wallet });
-    await pool.addLiquidity(erc20("10", "6"), tetherToken.address, {
+    await pool.addLiquidityV2(erc20("10", "6"), tetherToken.address, {
       from: wallet,
     });
 
