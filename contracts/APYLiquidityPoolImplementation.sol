@@ -7,8 +7,8 @@ import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import {
     TransparentUpgradeableProxy
@@ -81,7 +81,7 @@ contract APYLiquidityPoolImplementation is
         external
         onlyOwner
     {
-        priceAgg[token] = priceAgg;
+        priceAggs[token] = priceAgg;
         supportedTokens.push(token);
         emit TokenSupported(address(token), address(priceAgg));
     }
@@ -90,11 +90,11 @@ contract APYLiquidityPoolImplementation is
         external
         onlyOwner
     {
-        delete priceAgg[token];
+        delete priceAggs[token];
         // zero out the supportedToken in the list
         for (uint256 i = 0; i < supportedTokens.length; i++) {
             if (supportedTokens[i] == token) {
-                supportedTokens[i] = address(0);
+                supportedTokens[i] = IERC20(address(0));
                 return;
             }
         }
@@ -143,9 +143,9 @@ contract APYLiquidityPoolImplementation is
             "ALLOWANCE_INSUFFICIENT"
         );
 
-        uint256 tokenEthPrice = getTokenEthPrice(token);
+        uint256 tokenEthPrice = uint256(getTokenEthPrice(token));
         uint256 tokenEthValue = uint256(tokenEthPrice)
-            .divu(token.decimals())
+            .divu(ERC20UpgradeSafe(address(token)).decimals())
             .mulu(amount);
         uint256 poolTotalEthValue = getPoolTotalEthValue();
         uint256 mintAmount = _calculateMintAmount(
@@ -160,7 +160,7 @@ contract APYLiquidityPoolImplementation is
     }
 
     function getTokenEthPrice(IERC20 token) public view returns (int256) {
-        AggregatorV3Interface agg = priceAgg[token];
+        AggregatorV3Interface agg = priceAggs[token];
         (, int256 price, , , ) = agg.latestRoundData();
         require(price > 0, "UNABLE_TO_RETRIEVE_ETH_PRICE");
         return price;
@@ -168,17 +168,17 @@ contract APYLiquidityPoolImplementation is
 
     function getPoolTotalEthValue() public view returns (uint256) {
         uint256 poolTotalEthValue;
-        for (uint256 i = 0; i < tokens.length; i++) {
+        for (uint256 i = 0; i < supportedTokens.length; i++) {
             // skip over removed tokens
-            if (tokens[i] == address(0)) {
+            if (address(supportedTokens[i]) == address(0)) {
                 continue;
             }
 
-            IERC20 token = tokens[i];
-            uint256 tokenEthPrice = getTokenEthPrice(token);
+            IERC20 token = supportedTokens[i];
+            uint256 tokenEthPrice = uint256(getTokenEthPrice(token));
             uint256 tokenEthValue = uint256(tokenEthPrice)
-                .divu(token.decimals())
-                .mulu(amount);
+                .divu(ERC20UpgradeSafe(address(token)).decimals())
+                .mulu(token.balanceOf(address(this)));
             poolTotalEthValue = poolTotalEthValue.add(tokenEthValue);
         }
         return poolTotalEthValue;
