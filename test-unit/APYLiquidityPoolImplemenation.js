@@ -1,4 +1,5 @@
 const { ethers, web3, artifacts, contract } = require("@nomiclabs/buidler");
+const { defaultAbiCoder: abiCoder } = ethers.utils
 const {
   BN,
   ether,
@@ -159,8 +160,27 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     it("Test ...", async () => { })
   })
 
-  describe.skip("Test getTokenEthPrice", async () => {
-    it("Test ...", async () => { })
+  describe("Test getTokenEthPrice", async () => {
+    it("Test getTokenEthPrice returns unexpected", async () => {
+      const returnData = abiCoder.encode(['uint80', 'int256', 'uint256', 'uint256', 'uint80'], [0, 0, 0, 0, 0])
+      const mockAgg = await MockContract.new()
+      await mockAgg.givenAnyReturn(returnData)
+
+      const newToken = await MockContract.new()
+      await instance.addTokenSupport(newToken.address, mockAgg.address)
+      await expectRevert(instance.getTokenEthPrice.call(newToken.address), "UNABLE_TO_RETRIEVE_ETH_PRICE")
+    })
+
+    it("Test getTokenEthPrice returns expected", async () => {
+      const returnData = abiCoder.encode(['uint80', 'int256', 'uint256', 'uint256', 'uint80'], [0, 100, 0, 0, 0])
+      const mockAgg = await MockContract.new()
+      await mockAgg.givenAnyReturn(returnData)
+
+      const newToken = await MockContract.new()
+      await instance.addTokenSupport(newToken.address, mockAgg.address)
+      const price = await instance.getTokenEthPrice.call(newToken.address)
+      assert.equal(price, 100)
+    })
   })
 
   describe("Test setUnderlyerAddress", async () => {
