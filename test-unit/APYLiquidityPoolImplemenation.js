@@ -163,8 +163,9 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
   });
 
-  describe("Test addLiquidityV2", async () => {
+  describe.only("Test addLiquidityV2", async () => {
     it("Test addLiquidityV2 gives APT", async () => {
+      // mock chainlink aggregator
       const returnData = abiCoder.encode(
         ["uint80", "int256", "uint256", "uint256", "uint80"],
         [0, 100, 0, 0, 0]
@@ -172,6 +173,8 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
 
+      // mock erc20 token:
+      // - allowance
       const newToken = await MockContract.new();
       const allowance = DAI.interface.encodeFunctionData("allowance", [
         owner,
@@ -179,6 +182,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       ]);
       await newToken.givenMethodReturnUint(allowance, constants.MAX_UINT256);
 
+      // - transferFrom
       const transferFrom = DAI.interface.encodeFunctionData("transferFrom", [
         ZERO_ADDRESS,
         ZERO_ADDRESS,
@@ -186,6 +190,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       ]);
       await newToken.givenMethodReturnBool(transferFrom, true);
 
+      // setup pool to use mocks
       await instance.addTokenSupport(newToken.address, mockAgg.address);
 
       const tokenAmount = erc20("100", "6");
@@ -194,6 +199,65 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       });
       const aptBalance = await instance.balanceOf(randomUser);
       expect(aptBalance).to.be.bignumber.gt("0");
+    });
+
+    it("Test addLiquidityV2 ...", async () => {
+      //
+    });
+
+    it("Test locking/unlocking addLiquidityV2 by owner", async () => {
+      // mock chainlink aggregator
+      const returnData = abiCoder.encode(
+        ["uint80", "int256", "uint256", "uint256", "uint80"],
+        [0, 100, 0, 0, 0]
+      );
+      const mockAgg = await MockContract.new();
+      await mockAgg.givenAnyReturn(returnData);
+
+      // mock erc20 token:
+      const mockToken = await MockContract.new();
+      const transferFrom = DAI.interface.encodeFunctionData("transferFrom", [
+        ZERO_ADDRESS,
+        ZERO_ADDRESS,
+        0,
+      ]);
+      await mockToken.givenMethodReturnBool(transferFrom, true);
+      const allowance = DAI.interface.encodeFunctionData("allowance", [
+        ZERO_ADDRESS,
+        ZERO_ADDRESS,
+      ]);
+      await mockToken.givenMethodReturnUint(allowance, constants.MAX_UINT256);
+      const balanceOf = DAI.interface.encodeFunctionData("balanceOf", [
+        ZERO_ADDRESS,
+      ]);
+      await mockToken.givenMethodReturnUint(balanceOf, 1);
+
+      // setup pool to use mocks
+      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+
+      let trx = await instance.lockAddLiquidity({ from: owner });
+      expectEvent(trx, "AddLiquidityLocked");
+
+      await expectRevert(
+        instance.addLiquidityV2(1, mockToken.address, { from: randomUser }),
+        "LOCKED"
+      );
+
+      trx = await instance.unlockAddLiquidity({ from: owner });
+      expectEvent(trx, "AddLiquidityUnlocked");
+
+      await instance.addLiquidityV2(1, mockToken.address, { from: randomUser });
+    });
+
+    it("Test locking/unlocking addLiquidity by not owner", async () => {
+      await expectRevert(
+        instance.lockAddLiquidity({ from: randomUser }),
+        "Ownable: caller is not the owner"
+      );
+      await expectRevert(
+        instance.unlockAddLiquidity({ from: randomUser }),
+        "Ownable: caller is not the owner"
+      );
     });
   });
 
