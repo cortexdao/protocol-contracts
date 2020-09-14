@@ -20,6 +20,7 @@ const APYLiquidityPoolImplementation = artifacts.require(
   "APYLiquidityPoolImplementationTEST"
 );
 const { DAI } = require("../utils/Compound");
+const { erc20 } = require("../utils/helpers");
 
 contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
   const [owner, instanceAdmin, randomUser, randomAddress] = accounts;
@@ -162,8 +163,38 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
   });
 
-  describe.skip("Test addLiquidityV2", async () => {
-    it("Test ...", async () => {});
+  describe("Test addLiquidityV2", async () => {
+    it("Test addLiquidityV2 gives APT", async () => {
+      const returnData = abiCoder.encode(
+        ["uint80", "int256", "uint256", "uint256", "uint80"],
+        [0, 100, 0, 0, 0]
+      );
+      const mockAgg = await MockContract.new();
+      await mockAgg.givenAnyReturn(returnData);
+
+      const newToken = await MockContract.new();
+      const allowance = DAI.interface.encodeFunctionData("allowance", [
+        owner,
+        instance.address,
+      ]);
+      await newToken.givenMethodReturnUint(allowance, constants.MAX_UINT256);
+
+      const transferFrom = DAI.interface.encodeFunctionData("transferFrom", [
+        ZERO_ADDRESS,
+        ZERO_ADDRESS,
+        0,
+      ]);
+      await newToken.givenMethodReturnBool(transferFrom, true);
+
+      await instance.addTokenSupport(newToken.address, mockAgg.address);
+
+      const tokenAmount = erc20("100", "6");
+      await instance.addLiquidityV2(tokenAmount, newToken.address, {
+        from: randomUser,
+      });
+      const aptBalance = await instance.balanceOf(randomUser);
+      expect(aptBalance).to.be.bignumber.gt("0");
+    });
   });
 
   describe.skip("Test getPoolTotalEthValue", async () => {
