@@ -99,7 +99,7 @@ contract APYLiquidityPoolImplementation is
         uint256 mintAmount = _calculateMintAmount(amount, totalAmount);
 
         _mint(msg.sender, mintAmount);
-        underlyer.transferFrom(msg.sender, address(this), amount);
+        underlyer.safeTransferFrom(msg.sender, address(this), amount);
 
         emit DepositedAPT(msg.sender, mintAmount, amount);
     }
