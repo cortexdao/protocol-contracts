@@ -34,7 +34,7 @@ contract APYLiquidityPoolImplementation is
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
-    address public admin;
+    address internal _admin;
     bool public addLiquidityLock;
     bool public redeemLock;
     IERC20 public underlyer;
@@ -56,10 +56,15 @@ contract APYLiquidityPoolImplementation is
     }
 
     // solhint-disable-next-line no-empty-blocks
-    function initializeUpgrade() public virtual onlyOwner {}
+    function initializeUpgrade() public virtual onlyAdmin {}
 
     function setAdminAddress(address adminAddress) public onlyOwner {
-        admin = adminAddress;
+        _admin = adminAddress;
+    }
+
+    modifier onlyAdmin() {
+        require(msg.sender == _admin, "ADMIN_ONLY");
+        _;
     }
 
     function lock() external onlyOwner {
