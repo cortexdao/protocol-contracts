@@ -249,7 +249,11 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       await instance.addLiquidityV2(1, mockToken.address, { from: randomUser });
     });
 
-    it("Test locking/unlocking addLiquidity by not owner", async () => {
+    // These are duplicates of tests below, but we put them here
+    // so we don't accidentally lose them later somehow.
+    // Skip for now.
+    it.skip("Test locking/unlocking addLiquidityV2 by not owner", async () => {
+      const mockToken = await MockContract.new();
       await expectRevert(
         instance.lockAddLiquidity({ from: randomUser }),
         "Ownable: caller is not the owner"
