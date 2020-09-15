@@ -3410,10 +3410,10 @@ ganache-cli@v6.10.1-beta.2:
   optionalDependencies:
     scrypt "6.0.3"
 
-ganache-time-traveler@^1.0.14:
-  version "1.0.14"
-  resolved "https://registry.yarnpkg.com/ganache-time-traveler/-/ganache-time-traveler-1.0.14.tgz#930716b86ca6306fc62b0b6a9de59f479d9aaed7"
-  integrity sha512-HjoasTIgjgjWRyKfw7AlmJuVZX/SZNR3KEqIKcGuX4jgGb7ofyjcD2RnnGb1LQcVrCi95s4Pe7019ZPt+SQEJA==
+ganache-time-traveler@^1.0.15:
+  version "1.0.15"
+  resolved "https://registry.yarnpkg.com/ganache-time-traveler/-/ganache-time-traveler-1.0.15.tgz#07c575abeb1e110903b76a2181e18598066617e9"
+  integrity sha512-3yoSbvvqSRA13w/SrNGy5tniwdwuRSAMrltGaOZAoqjnhpWkbVlGOVkdiEA/69dN4ZTArwJr1lWpiPzwqTWNCA==
 
 get-caller-file@^2.0.1:
   version "2.0.5"
@@ -6194,11 +6194,6 @@ solidity-coverage@^0.7.10:
     sc-istanbul "^0.4.5"
     shelljs "^0.8.3"
     web3 "1.2.6"
-
-solidity-fixedpoint@^1.0.1:
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/solidity-fixedpoint/-/solidity-fixedpoint-1.0.1.tgz#1fc926c2f473f0f0d18662fc706e8571e954d092"
-  integrity sha512-xq2HPiXXvm4nz2zTIZREMufYZtE+lTH2inJ/WIjP5vcthUs0YVogblpJ9NIKR2N3EWS9R2l3gzcoh6JrKH74FA==
 
 sort-keys-length@^1.0.0:
   version "1.0.1"
