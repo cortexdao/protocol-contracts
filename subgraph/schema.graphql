@@ -1,0 +1,4 @@
+type TotalValueLocked @entity {
+  id: ID!
+  totalValueLocked: BigInt!
+}

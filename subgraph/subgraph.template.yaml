@@ -1,0 +1,28 @@
+specVersion: 0.0.2
+description: APY Liquidity Pool
+repository: https://github.com/apy-finance/example-subgraph
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum/contract
+    name: APYLiquidityPoolImplementation
+    network: '{{network}}'
+    source:
+      address: '{{pool_address}}'
+      abi: APYLiquidityPoolImplementation
+      startBlock: '{{startBlock}}'
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.4
+      language: wasm/assemblyscript
+      entities:
+        - TotalValueLocked
+      abis:
+        - name: APYLiquidityPoolImplementation
+          file: ../artifacts/APYLiquidityPoolImplementation.json
+      eventHandlers:
+        - event: DespositAPT(address,uint256,uint256,uint256)
+          handler: handleDepositAPT
+        - event: RedeemedAPT(address,uint256,uint256,uint256)
+          handler: handleRedeemedAPT
+      file: ./src/mapping.ts
