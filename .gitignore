@@ -10,8 +10,11 @@ artifacts/*
 !artifacts/kovan.json
 
 # Solidity coverage files
-coverage/
 coverage.json
+coverage/
+.coverage_artifacts/
+.coverage_cache/
+.coverage_contracts/
 
 # env files
 .env

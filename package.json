@@ -19,6 +19,7 @@
     "test:unit": "buidler test test-unit/*",
     "test:integration": "buidler test test-integration/*",
     "lint": "solhint contracts/**/*.sol",
+    "coverage": "buidler coverage --network coverage --testfiles \"test-unit/*.js\"",
     "ganache": "ganache-cli",
     "fork:mainnet": "./scripts/fork_mainnet.sh"
   },
