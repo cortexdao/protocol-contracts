@@ -21,7 +21,9 @@ else
   args+=( --deterministic );
 fi
 if [ -n "${unlocked_addresses}" ]; then
-  args+=( --unlock "${unlocked_addresses}" );
+  for address in $(echo $unlocked_addresses | sed "s/,/ /g"); do
+    args+=( --unlock "${address}" );
+  done
 fi
 if [ -n "${gas_limit}" ]; then
   args+=( --gasLimit "${gas_limit}" );
@@ -33,6 +35,5 @@ if [ -n "${default_balance_ether}" ]; then
   args+=( --defaultBalanceEther "${default_balance_ether}" );
 fi
 
-# echo "args: ${args[@]}"
-
+echo "args: ${args[@]}"
 ganache-cli "${args[@]}"

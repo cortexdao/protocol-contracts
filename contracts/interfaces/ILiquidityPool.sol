@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.6.6;
 
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
+
 interface ILiquidityPool {
     event DepositedAPT(
         address indexed sender,
@@ -12,6 +14,8 @@ interface ILiquidityPool {
         uint256 aptAmount,
         uint256 underlyerAmount
     );
+    event TokenSupported(address token, address agg);
+    event TokenUnsupported(address token, address agg);
     event AddLiquidityLocked();
     event AddLiquidityUnlocked();
     event RedeemLocked();
