@@ -10,7 +10,7 @@ dataSources:
     source:
       address: '{{pool_address}}'
       abi: APYLiquidityPoolImplementation
-      startBlock: '{{startBlock}}'
+      startBlock: {{startBlock}}
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.4
