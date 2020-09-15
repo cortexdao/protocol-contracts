@@ -3,6 +3,8 @@ require("dotenv").config();
 usePlugin("solidity-coverage");
 usePlugin("@nomiclabs/buidler-ethers");
 usePlugin("@nomiclabs/buidler-truffle5");
+usePlugin("buidler-deploy");
+
 
 function getEnv(env) {
   let value = process.env[env];
