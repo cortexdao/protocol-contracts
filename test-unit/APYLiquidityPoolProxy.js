@@ -37,7 +37,7 @@ contract("APYLiquidityPoolProxy Unit Test", async (accounts) => {
     logic = await APYLiquidityPoolImplementation.new({ from: owner });
     proxy = await APYLiquidityPoolProxy.new(logic.address, proxyAdmin.address, { from: owner });
 
-    // instance = await APYLiquidityPoolImplementation.at(proxy.address);
+    instance = await APYLiquidityPoolImplementation.at(proxy.address);
   });
 
   describe("Test Defaults", async () => {
@@ -71,11 +71,16 @@ contract("APYLiquidityPoolProxy Unit Test", async (accounts) => {
       )
     })
 
-    it("Test Proxy Upgrade Implementation and Initialize", async () => {
+    it.only("Test Proxy Upgrade Implementation and Initialize", async () => {
       const newLogic = await APYLiquidityPoolImplementation.new({ from: owner });
       const iImplementation = new ethers.utils.Interface(APYLiquidityPoolImplementationUpgraded.abi);
       const initData = iImplementation.encodeFunctionData("initializeUpgrade", [])
+      await instance.setAdminAddress(proxyAdmin.address)
       await proxyAdmin.upgradeAndCall(proxy.address, newLogic.address, initData)
+
+      instance = await APYLiquidityPoolImplementationUpgraded.at(proxy.address);
+      const newVal = await instance.newlyAddedVariable()
+      // assert.equal(newVal, true)
 
       assert.equal(
         await proxyAdmin.getProxyImplementation.call(proxy.address, { from: owner }),
@@ -84,9 +89,20 @@ contract("APYLiquidityPoolProxy Unit Test", async (accounts) => {
     })
 
     it("Test Proxy Upgrade Implementation and Initialize fails", async () => {
-      const newLogic = await MockContract.new({ from: owner })
-      const iProxy = new ethers.utils.Interface(APYLiquidityPoolProxy.abi);
-      const initData = iProxy.encodeFunctionData("upgradeWithInitialize", [newLogic.address])
+      const newLogic = await APYLiquidityPoolImplementation.new({ from: owner });
+      const iImplementation = new ethers.utils.Interface(APYLiquidityPoolImplementationUpgraded.abi);
+      const initData = iImplementation.encodeFunctionData("initializeUpgrade", [])
+      // await instance.setAdminAddress(proxyAdmin.address)
+      await expectRevert(
+        proxyAdmin.upgradeAndCall(proxy.address, newLogic.address, initData, { from: owner }),
+        "ADMIN_ONLY"
+      )
+    })
+
+    it("Test Proxy Upgrade Implementation and Initialize fails when not owner", async () => {
+      const newLogic = await APYLiquidityPoolImplementation.new({ from: owner });
+      const iImplementation = new ethers.utils.Interface(APYLiquidityPoolImplementationUpgraded.abi);
+      const initData = iImplementation.encodeFunctionData("initializeUpgrade", [])
       await expectRevert(
         proxyAdmin.upgradeAndCall(proxy.address, newLogic.address, initData, { from: randomUser }),
         "Ownable: caller is not the owner"
