@@ -6,6 +6,9 @@ const APYLiquidityPoolProxy = artifacts.require("APYLiquidityPoolProxy");
 const APYLiquidityPoolImplementation = artifacts.require(
   "APYLiquidityPoolImplementation"
 );
+const APYLiquidityPoolImplementationUpgraded = artifacts.require(
+  "APYLiquidityPoolImplementationUpgraded"
+);
 const {
   expectRevert, // Assertions for transactions that should fail
 } = require("@openzeppelin/test-helpers");
@@ -69,9 +72,9 @@ contract("APYLiquidityPoolProxy Unit Test", async (accounts) => {
     })
 
     it("Test Proxy Upgrade Implementation and Initialize", async () => {
-      const newLogic = await MockContract.new({ from: owner })
-      const iProxy = new ethers.utils.Interface(APYLiquidityPoolProxy.abi);
-      const initData = iProxy.encodeFunctionData("upgradeWithInitialize", [newLogic.address])
+      const newLogic = await APYLiquidityPoolImplementation.new({ from: owner });
+      const iImplementation = new ethers.utils.Interface(APYLiquidityPoolImplementationUpgraded.abi);
+      const initData = iImplementation.encodeFunctionData("initializeUpgrade", [])
       await proxyAdmin.upgradeAndCall(proxy.address, newLogic.address, initData)
 
       assert.equal(
