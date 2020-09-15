@@ -71,32 +71,41 @@ contract("APYLiquidityPoolProxy Unit Test", async (accounts) => {
       )
     })
 
-    it.only("Test Proxy Upgrade Implementation and Initialize", async () => {
-      const newLogic = await APYLiquidityPoolImplementation.new({ from: owner });
+    it("Test Proxy Upgrade Implementation and Initialize", async () => {
+
+      // confirm that newlyAddedVariable is not availble within the instance yet
+      assert.equal(typeof instance.newlyAddedVariable, 'undefined')
+
+      //prematurely point instance to upgraded implementation
+      instance = await APYLiquidityPoolImplementationUpgraded.at(proxy.address);
+      assert.equal(typeof instance.newlyAddedVariable, 'function')
+
+      //function should fail due to the proxy not pointing to the correct implementation
+      await expectRevert.unspecified(instance.newlyAddedVariable.call())
+
+      // create the new implementation and point the proxy to it
+      const newLogic = await APYLiquidityPoolImplementationUpgraded.new({ from: owner });
       const iImplementation = new ethers.utils.Interface(APYLiquidityPoolImplementationUpgraded.abi);
       const initData = iImplementation.encodeFunctionData("initializeUpgrade", [])
+
+      // set admin since only proxy admin can call 'initializeUpgrade'
       await instance.setAdminAddress(proxyAdmin.address)
       await proxyAdmin.upgradeAndCall(proxy.address, newLogic.address, initData)
 
-      instance = await APYLiquidityPoolImplementationUpgraded.at(proxy.address);
-      const newVal = await instance.newlyAddedVariable()
-      // assert.equal(newVal, true)
-
+      const newVal = await instance.newlyAddedVariable.call()
+      assert.equal(newVal, true)
       assert.equal(
         await proxyAdmin.getProxyImplementation.call(proxy.address, { from: owner }),
         newLogic.address
       )
     })
 
-    it("Test Proxy Upgrade Implementation and Initialize fails", async () => {
+    it("Test Proxy Upgrade Implementation and Initialize when not called by admin", async () => {
       const newLogic = await APYLiquidityPoolImplementation.new({ from: owner });
       const iImplementation = new ethers.utils.Interface(APYLiquidityPoolImplementationUpgraded.abi);
       const initData = iImplementation.encodeFunctionData("initializeUpgrade", [])
-      // await instance.setAdminAddress(proxyAdmin.address)
-      await expectRevert(
-        proxyAdmin.upgradeAndCall(proxy.address, newLogic.address, initData, { from: owner }),
-        "ADMIN_ONLY"
-      )
+      //admin is not set
+      await expectRevert(instance.initializeUpgrade({ from: owner }), "ADMIN_ONLY")
     })
 
     it("Test Proxy Upgrade Implementation and Initialize fails when not owner", async () => {
