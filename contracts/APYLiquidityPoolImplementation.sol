@@ -7,15 +7,15 @@ import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import {
     TransparentUpgradeableProxy
 } from "@openzeppelin/contracts/proxy/TransparentUpgradeableProxy.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "abdk-libraries-solidity/ABDKMath64x64.sol";
-import "./ILiquidityPool.sol";
+import "./interfaces/ILiquidityPool.sol";
 
 contract APYLiquidityPoolImplementation is
     ILiquidityPool,
@@ -35,7 +35,7 @@ contract APYLiquidityPoolImplementation is
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
-    address public admin;
+    address internal _admin;
     bool public addLiquidityLock;
     bool public redeemLock;
     IERC20 public underlyer;
@@ -59,10 +59,15 @@ contract APYLiquidityPoolImplementation is
     }
 
     // solhint-disable-next-line no-empty-blocks
-    function initializeUpgrade() public virtual onlyOwner {}
+    function initializeUpgrade() public virtual onlyAdmin {}
 
     function setAdminAddress(address adminAddress) public onlyOwner {
-        admin = adminAddress;
+        _admin = adminAddress;
+    }
+
+    modifier onlyAdmin() {
+        require(msg.sender == _admin, "ADMIN_ONLY");
+        _;
     }
 
     function lock() external onlyOwner {
@@ -129,7 +134,7 @@ contract APYLiquidityPoolImplementation is
         uint256 mintAmount = _calculateMintAmount(amount, totalAmount);
 
         _mint(msg.sender, mintAmount);
-        underlyer.transferFrom(msg.sender, address(this), amount);
+        underlyer.safeTransferFrom(msg.sender, address(this), amount);
 
         emit DepositedAPT(msg.sender, mintAmount, amount);
     }
