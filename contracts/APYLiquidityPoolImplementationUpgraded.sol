@@ -41,7 +41,7 @@ contract APYLiquidityPoolImplementationUpgraded is
     IERC20 public underlyer;
     mapping(IERC20 => AggregatorV3Interface) public priceAggs;
     IERC20[] internal _supportedTokens;
-    bool public newlyAddedVariable;
+    bool public newlyAddedVariable; // <------------------- NEW
 
     /* ------------------------------- */
 

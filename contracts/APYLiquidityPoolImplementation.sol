@@ -58,9 +58,6 @@ contract APYLiquidityPoolImplementation is
         // admin and underlyer will get set by deployer
     }
 
-    // solhint-disable-next-line no-empty-blocks
-    function initializeUpgrade() public virtual onlyAdmin {}
-
     function setAdminAddress(address adminAddress) public onlyOwner {
         proxyAdmin = adminAddress;
     }
