@@ -12,14 +12,14 @@ const {
 const { expect } = require("chai");
 const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
-const dai = ether;
 const MockContract = artifacts.require("MockContract");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYLiquidityPoolProxy = artifacts.require("APYLiquidityPoolProxy");
 const APYLiquidityPoolImplementation = artifacts.require(
   "APYLiquidityPoolImplementationTEST"
 );
-const { DAI } = require("../utils/Compound");
+const IERC20 = new ethers.utils.Interface(artifacts.require("IERC20").abi)
+
 const { erc20 } = require("../utils/helpers");
 
 contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
@@ -82,7 +82,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
   describe("Test setAdminAdddress", async () => {
     it("Test setAdminAddress pass", async () => {
       await instance.setAdminAddress(instanceAdmin, { from: owner });
-      assert.equal(await instance.admin.call(), instanceAdmin);
+      assert.equal(await instance.proxyAdmin.call(), instanceAdmin);
     });
 
     it("Test setAdminAddress fail", async () => {
@@ -163,7 +163,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
   });
 
-  describe.only("Test addLiquidityV2", async () => {
+  describe("Test addLiquidityV2", async () => {
     it("Test addLiquidityV2 gives APT", async () => {
       // mock chainlink aggregator
       const returnData = abiCoder.encode(
@@ -176,14 +176,14 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       // mock erc20 token:
       // - allowance
       const newToken = await MockContract.new();
-      const allowance = DAI.interface.encodeFunctionData("allowance", [
+      const allowance = IERC20.encodeFunctionData("allowance", [
         owner,
         instance.address,
       ]);
       await newToken.givenMethodReturnUint(allowance, constants.MAX_UINT256);
 
       // - transferFrom
-      const transferFrom = DAI.interface.encodeFunctionData("transferFrom", [
+      const transferFrom = IERC20.encodeFunctionData("transferFrom", [
         ZERO_ADDRESS,
         ZERO_ADDRESS,
         0,
@@ -216,18 +216,18 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
 
       // mock erc20 token:
       const mockToken = await MockContract.new();
-      const transferFrom = DAI.interface.encodeFunctionData("transferFrom", [
+      const transferFrom = IERC20.encodeFunctionData("transferFrom", [
         ZERO_ADDRESS,
         ZERO_ADDRESS,
         0,
       ]);
       await mockToken.givenMethodReturnBool(transferFrom, true);
-      const allowance = DAI.interface.encodeFunctionData("allowance", [
+      const allowance = IERC20.encodeFunctionData("allowance", [
         ZERO_ADDRESS,
         ZERO_ADDRESS,
       ]);
       await mockToken.givenMethodReturnUint(allowance, constants.MAX_UINT256);
-      const balanceOf = DAI.interface.encodeFunctionData("balanceOf", [
+      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
         ZERO_ADDRESS,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, 1);
@@ -266,11 +266,11 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
   });
 
   describe.skip("Test getPoolTotalEthValue", async () => {
-    it("Test ...", async () => {});
+    it("Test ...", async () => { });
   });
 
   describe.skip("Test getTokenAmountEthValue", async () => {
-    it("Test ...", async () => {});
+    it("Test ...", async () => { });
   });
 
   describe("Test getTokenEthPrice", async () => {
@@ -323,7 +323,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
 
     it("Test addLiquidity insufficient allowance", async () => {
-      const allowance = DAI.interface.encodeFunctionData("allowance", [
+      const allowance = IERC20.encodeFunctionData("allowance", [
         owner,
         instance.address,
       ]);
@@ -333,20 +333,22 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
 
     it("Test addLiquidity pass", async () => {
-      const allowance = DAI.interface.encodeFunctionData("allowance", [
+
+      const allowance = IERC20.encodeFunctionData("allowance", [
         randomUser,
         instance.address,
       ]);
-      const balanceOf = DAI.interface.encodeFunctionData("balanceOf", [
+      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
         instance.address,
       ]);
-      const transferFrom = DAI.interface.encodeFunctionData("transferFrom", [
+      const transferFrom = IERC20.encodeFunctionData("transferFrom", [
         randomUser,
         instance.address,
         1,
       ]);
       await mockToken.givenMethodReturnUint(allowance, 1);
       await mockToken.givenMethodReturnUint(balanceOf, 1);
+      await mockToken.givenMethodReturnBool(transferFrom, true);
       await instance.setUnderlyerAddress(mockToken.address, { from: owner });
       const trx = await instance.addLiquidity(1, { from: randomUser });
 
@@ -359,20 +361,21 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
 
     it("Test locking/unlocking addLiquidity by owner", async () => {
-      const allowance = DAI.interface.encodeFunctionData("allowance", [
+      const allowance = IERC20.encodeFunctionData("allowance", [
         randomUser,
         instance.address,
       ]);
-      const balanceOf = DAI.interface.encodeFunctionData("balanceOf", [
+      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
         instance.address,
       ]);
-      const transferFrom = DAI.interface.encodeFunctionData("transferFrom", [
+      const transferFrom = IERC20.encodeFunctionData("transferFrom", [
         randomUser,
         instance.address,
         1,
       ]);
       await mockToken.givenMethodReturnUint(allowance, 1);
       await mockToken.givenMethodReturnUint(balanceOf, 1);
+      await mockToken.givenMethodReturnBool(transferFrom, true);
       await instance.setUnderlyerAddress(mockToken.address, { from: owner });
 
       let trx = await instance.lockAddLiquidity({ from: owner });
@@ -401,20 +404,21 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
 
     it("Test locking/unlocking contract", async () => {
-      const allowance = DAI.interface.encodeFunctionData("allowance", [
+      const allowance = IERC20.encodeFunctionData("allowance", [
         randomUser,
         instance.address,
       ]);
-      const balanceOf = DAI.interface.encodeFunctionData("balanceOf", [
+      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
         instance.address,
       ]);
-      const transferFrom = DAI.interface.encodeFunctionData("transferFrom", [
+      const transferFrom = IERC20.encodeFunctionData("transferFrom", [
         randomUser,
         instance.address,
         1,
       ]);
       await mockToken.givenMethodReturnUint(allowance, 1);
       await mockToken.givenMethodReturnUint(balanceOf, 1);
+      await mockToken.givenMethodReturnBool(transferFrom, true);
       await instance.setUnderlyerAddress(mockToken.address, { from: owner });
 
       let trx = await instance.lock({ from: owner });
@@ -500,7 +504,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
 
   describe("Test calculateMintAmount", async () => {
     it("Test calculateMintAmount when balanceOf is 0", async () => {
-      const balanceOf = DAI.interface.encodeFunctionData("balanceOf", [
+      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
         instance.address,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, 0);
@@ -510,7 +514,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
 
     it("Test calculateMintAmount when balanceOf > 0", async () => {
-      const balanceOf = DAI.interface.encodeFunctionData("balanceOf", [
+      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
         instance.address,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, 9999);
@@ -520,7 +524,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
 
     it("Test calculateMintAmount when amount overflows", async () => {
-      const balanceOf = DAI.interface.encodeFunctionData("balanceOf", [
+      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
         instance.address,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, 1);
@@ -535,7 +539,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
 
     it("Test calculateMintAmount when totalAmount overflows", async () => {
-      const balanceOf = DAI.interface.encodeFunctionData("balanceOf", [
+      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
         instance.address,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, constants.MAX_UINT256);
@@ -548,7 +552,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
 
     it("Test calculateMintAmount when totalSupply overflows", async () => {
-      const balanceOf = DAI.interface.encodeFunctionData("balanceOf", [
+      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
         instance.address,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, 1);
@@ -561,7 +565,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
 
     it("Test calculateMintAmount returns expeted amount when total supply > 0", async () => {
-      const balanceOf = DAI.interface.encodeFunctionData("balanceOf", [
+      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
         instance.address,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, 9999);
@@ -575,7 +579,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
 
     it("Test calculateMintAmount returns expeted amount when total supply is 0", async () => {
-      const balanceOf = DAI.interface.encodeFunctionData("balanceOf", [
+      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
         instance.address,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, 9999);
@@ -614,7 +618,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
 
     it("Test getUnderlyerAmount when underyler total overflows", async () => {
-      const balanceOf = DAI.interface.encodeFunctionData("balanceOf", [
+      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
         instance.address,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, constants.MAX_UINT256);
@@ -627,7 +631,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
 
     it("Test getUnderlyerAmount", async () => {
-      const balanceOf = DAI.interface.encodeFunctionData("balanceOf", [
+      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
         instance.address,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, 1);

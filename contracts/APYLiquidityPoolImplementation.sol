@@ -35,7 +35,7 @@ contract APYLiquidityPoolImplementation is
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
-    address internal _admin;
+    address public proxyAdmin;
     bool public addLiquidityLock;
     bool public redeemLock;
     IERC20 public underlyer;
@@ -62,11 +62,11 @@ contract APYLiquidityPoolImplementation is
     function initializeUpgrade() public virtual onlyAdmin {}
 
     function setAdminAddress(address adminAddress) public onlyOwner {
-        _admin = adminAddress;
+        proxyAdmin = adminAddress;
     }
 
     modifier onlyAdmin() {
-        require(msg.sender == _admin, "ADMIN_ONLY");
+        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
         _;
     }
 
