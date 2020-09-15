@@ -72,7 +72,6 @@ contract("APYLiquidityPoolProxy Unit Test", async (accounts) => {
     })
 
     it("Test Proxy Upgrade Implementation and Initialize", async () => {
-
       // confirm that newlyAddedVariable is not availble within the instance yet
       assert.equal(typeof instance.newlyAddedVariable, 'undefined')
 
