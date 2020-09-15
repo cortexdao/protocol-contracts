@@ -13,4 +13,17 @@ contract APYLiquidityPoolProxy is TransparentUpgradeableProxy {
             abi.encodeWithSignature("initialize()")
         )
     {} // solhint-disable no-empty-blocks
+
+    function upgradeWithInitialize(address newImplementation)
+        external
+        payable
+        ifAdmin
+    {
+        _upgradeTo(newImplementation);
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, ) = newImplementation.delegatecall(
+            abi.encodeWithSignature("initializeUpgrade()")
+        );
+        require(success, "PoolProxy/init-failed");
+    }
 }
