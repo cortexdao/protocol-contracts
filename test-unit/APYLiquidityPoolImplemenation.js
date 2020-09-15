@@ -156,6 +156,10 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       const newPriceAgg = await MockContract.new();
       await instance.addTokenSupport(newToken.address, newPriceAgg.address);
       const trx = await instance.removeTokenSupport(newToken.address);
+
+      const supportedTokens = await instance.getSupportedTokens.call();
+      assert.equal(supportedTokens[0], constants.ZERO_ADDRESS)
+
       await expectEvent(trx, "TokenUnsupported", {
         token: newToken.address,
         agg: newPriceAgg.address,
@@ -247,7 +251,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
   });
 
   describe("Test getPoolTotalEthValue", async () => {
-    it("Test ...", async () => {
+    it("Test getPoolTotalEthValue returns expected", async () => {
       const balanceOf = IERC20.encodeFunctionData("balanceOf", [instance.address])
 
       const tokenA = await MockContract.new();
