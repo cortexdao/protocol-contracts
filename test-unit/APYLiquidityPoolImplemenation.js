@@ -201,10 +201,6 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       expect(aptBalance).to.be.bignumber.gt("0");
     });
 
-    it("Test addLiquidityV2 ...", async () => {
-      //
-    });
-
     it("Test locking/unlocking addLiquidityV2 by owner", async () => {
       // mock chainlink aggregator
       const returnData = abiCoder.encode(
@@ -216,12 +212,6 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
 
       // mock erc20 token:
       const mockToken = await MockContract.new();
-      const transferFrom = IERC20.encodeFunctionData("transferFrom", [
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
-        0,
-      ]);
-      await mockToken.givenMethodReturnBool(transferFrom, true);
       const allowance = IERC20.encodeFunctionData("allowance", [
         ZERO_ADDRESS,
         ZERO_ADDRESS,
@@ -231,6 +221,12 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
         ZERO_ADDRESS,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, 1);
+      const transferFrom = IERC20.encodeFunctionData("transferFrom", [
+        ZERO_ADDRESS,
+        ZERO_ADDRESS,
+        0,
+      ]);
+      await mockToken.givenMethodReturnBool(transferFrom, true);
 
       // setup pool to use mocks
       await instance.addTokenSupport(mockToken.address, mockAgg.address);
@@ -248,25 +244,35 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
 
       await instance.addLiquidityV2(1, mockToken.address, { from: randomUser });
     });
-
-    // These are duplicates of tests below, but we put them here
-    // so we don't accidentally lose them later somehow.
-    // Skip for now.
-    it.skip("Test locking/unlocking addLiquidityV2 by not owner", async () => {
-      const mockToken = await MockContract.new();
-      await expectRevert(
-        instance.lockAddLiquidity({ from: randomUser }),
-        "Ownable: caller is not the owner"
-      );
-      await expectRevert(
-        instance.unlockAddLiquidity({ from: randomUser }),
-        "Ownable: caller is not the owner"
-      );
-    });
   });
 
-  describe.skip("Test getPoolTotalEthValue", async () => {
-    it("Test ...", async () => { });
+  describe("Test getPoolTotalEthValue", async () => {
+    it("Test ...", async () => {
+      const balanceOf = IERC20.encodeFunctionData("balanceOf", [instance.address])
+
+      const tokenA = await MockContract.new();
+      tokenA.givenMethodReturnUint(balanceOf, 1)
+
+      const tokenB = await MockContract.new();
+      tokenB.givenMethodReturnUint(balanceOf, 1)
+
+      const tokenC = await MockContract.new();
+      tokenC.givenMethodReturnUint(balanceOf, 1)
+
+      const returnData = abiCoder.encode(
+        ["uint80", "int256", "uint256", "uint256", "uint80"],
+        [0, 100, 0, 0, 0]
+      );
+      const mockAgg = await MockContract.new();
+      await mockAgg.givenAnyReturn(returnData);
+
+      await instance.addTokenSupport(tokenA.address, mockAgg.address);
+      await instance.addTokenSupport(tokenB.address, mockAgg.address);
+      await instance.addTokenSupport(tokenC.address, mockAgg.address);
+
+      const val = await instance.getPoolTotalEthValue.call()
+      assert.equal(val.toNumber(), 300)
+    });
   });
 
   describe.skip("Test getTokenAmountEthValue", async () => {
