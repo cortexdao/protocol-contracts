@@ -11,7 +11,10 @@ const {
 } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
 const timeMachine = require("ganache-time-traveler");
-const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
+const {
+  ZERO_ADDRESS,
+  MAX_UINT256,
+} = require("@openzeppelin/test-helpers/src/constants");
 const MockContract = artifacts.require("MockContract");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYLiquidityPoolProxy = artifacts.require("APYLiquidityPoolProxy");
@@ -319,7 +322,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
   });
 
   describe.skip("Test getTokenAmountEthValue", async () => {
-    it("Test ...", async () => { });
+    it("Test ...", async () => {});
   });
 
   describe("Test getTokenEthPrice", async () => {
@@ -457,7 +460,10 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       await mockAgg.givenAnyReturn(returnData);
       await instance.addTokenSupport(mockToken.address, mockAgg.address);
 
-      const mintAmount = await instance.calculateMintAmount(1000, mockToken.address);
+      const mintAmount = await instance.calculateMintAmount(
+        1000,
+        mockToken.address
+      );
       assert.equal(mintAmount.toNumber(), 1000000);
     });
 
@@ -474,7 +480,10 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       await mockAgg.givenAnyReturn(returnData);
       await instance.addTokenSupport(mockToken.address, mockAgg.address);
 
-      const mintAmount = await instance.calculateMintAmount(1000, mockToken.address);
+      const mintAmount = await instance.calculateMintAmount(
+        1000,
+        mockToken.address
+      );
       assert.equal(mintAmount.toNumber(), 1000000);
     });
 
@@ -515,7 +524,9 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       await instance.mint(randomUser, 1);
 
       await expectRevert(
-        instance.calculateMintAmount(1, mockToken.address, { from: randomUser }),
+        instance.calculateMintAmount(1, mockToken.address, {
+          from: randomUser,
+        }),
         "TOTAL_AMOUNT_OVERFLOW"
       );
     });
@@ -535,7 +546,9 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
 
       await instance.mint(randomUser, constants.MAX_UINT256);
       await expectRevert(
-        instance.calculateMintAmount(1, mockToken.address, { from: randomUser }),
+        instance.calculateMintAmount(1, mockToken.address, {
+          from: randomUser,
+        }),
         "TOTAL_SUPPLY_OVERFLOW"
       );
     });
@@ -555,9 +568,13 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
 
       await instance.mint(randomUser, 900);
       // (1000/9999) * 900 = 90.0090009001 ~= 90
-      const mintAmount = await instance.calculateMintAmount(1000, mockToken.address, {
-        from: randomUser,
-      });
+      const mintAmount = await instance.calculateMintAmount(
+        1000,
+        mockToken.address,
+        {
+          from: randomUser,
+        }
+      );
       assert.equal(mintAmount.toNumber(), 90);
     });
 
@@ -575,9 +592,13 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       await instance.addTokenSupport(mockToken.address, mockAgg.address);
 
       // 90 * 1000 = 90000
-      const mintAmount = await instance.calculateMintAmount(90, mockToken.address, {
-        from: randomUser,
-      });
+      const mintAmount = await instance.calculateMintAmount(
+        90,
+        mockToken.address,
+        {
+          from: randomUser,
+        }
+      );
       assert.equal(mintAmount.toNumber(), 90000);
     });
   });
@@ -648,6 +669,139 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
         mockToken.address
       );
       expect(underlyerAmount).to.bignumber.equal("1");
+    });
+  });
+
+  describe("Test _calculateMintAmount", async () => {
+    before(async () => {
+      instance._calculateMintAmount = instance.internalCalculateMintAmount;
+    });
+
+    it("Test _calculateMintAmount reverts on amount overflow", async () => {
+      await expectRevert(
+        instance._calculateMintAmount(MAX_UINT256, 1),
+        "AMOUNT_OVERFLOW"
+      );
+    });
+
+    it("Test _calculateMintAmount reverts on total amount overflow", async () => {
+      await expectRevert(
+        instance._calculateMintAmount(1, MAX_UINT256),
+        "TOTAL_AMOUNT_OVERFLOW"
+      );
+    });
+
+    it("Test _calculateMintAmount reverts on supply overflow", async () => {
+      await instance.mint(randomUser, constants.MAX_UINT256);
+      await expectRevert(
+        instance._calculateMintAmount(1, 1),
+        "TOTAL_SUPPLY_OVERFLOW"
+      );
+    });
+
+    it("Test _calculateMintAmount results", async () => {
+      const tolerance = new BN("100");
+      const totalSupply = erc20("1000", "18");
+      await instance.mint(instance.address, totalSupply);
+
+      let amount = erc20("100", "18");
+      let totalAmount = totalSupply;
+      let mintAmount = await instance._calculateMintAmount(amount, totalAmount);
+      expect(mintAmount.sub(amount)).to.be.bignumber.lt(tolerance);
+
+      amount = erc20("100", "18");
+      totalAmount = totalSupply.muln(2);
+      mintAmount = await instance._calculateMintAmount(amount, totalAmount);
+      expect(mintAmount.sub(amount.divn(2))).to.be.bignumber.lt(tolerance);
+
+      amount = erc20("100", "18");
+      totalAmount = totalSupply.divn(15);
+      mintAmount = await instance._calculateMintAmount(amount, totalAmount);
+      expect(mintAmount.sub(amount.muln(15))).to.be.bignumber.lt(tolerance);
+
+      amount = erc20("123", "18");
+      totalAmount = totalSupply.divn(3);
+      mintAmount = await instance._calculateMintAmount(amount, totalAmount);
+      expect(mintAmount.sub(amount.muln(3))).to.be.bignumber.lt(tolerance);
+    });
+
+    it("Test _calculateMintAmount exact results", async () => {
+      const totalSupply = new BN("1024");
+      await instance.mint(instance.address, totalSupply);
+
+      let amount = new BN("5");
+      let totalAmount = new BN("256");
+      let mintAmount = await instance._calculateMintAmount(amount, totalAmount);
+      expect(mintAmount).to.be.bignumber.equal("20");
+
+      amount = new BN("13");
+      totalAmount = new BN("64");
+      mintAmount = await instance._calculateMintAmount(amount, totalAmount);
+      expect(mintAmount).to.be.bignumber.equal("208");
+    });
+  });
+
+  describe("Test _getShareOfAPT", async () => {
+    before(async () => {
+      instance._getShareOfAPT = instance.internalGetShareOfAPT;
+    });
+
+    it("Test _getShareOfAPT reverts on zero supply", async () => {
+      const amount = erc20("100", "18");
+      await expectRevert(
+        instance._getShareOfAPT(amount),
+        "INSUFFICIENT_TOTAL_SUPPLY"
+      );
+    });
+
+    it("Test _getShareOfAPT reverts on supply overflow", async () => {
+      await instance.mint(randomUser, constants.MAX_UINT256);
+      await expectRevert(instance._getShareOfAPT(1), "TOTAL_SUPPLY_OVERFLOW");
+    });
+
+    it("Test _getShareOfAPT reverts on amount overflow", async () => {
+      await expectRevert(
+        instance._getShareOfAPT(MAX_UINT256),
+        "AMOUNT_OVERFLOW"
+      );
+    });
+
+    it("Test _getShareOfAPT results", async () => {
+      await instance.mint(randomUser, erc20("1000", "18"));
+
+      let amount = erc20("100", "18");
+      let share = await instance._getShareOfAPT(amount);
+      expect(share.toString() / 2 ** 64).to.be.equal(0.1);
+
+      amount = erc20("25", "18");
+      share = await instance._getShareOfAPT(amount);
+      expect(share.toString() / 2 ** 64).to.be.equal(0.025);
+
+      amount = erc20("80", "18");
+      share = await instance._getShareOfAPT(amount);
+      expect(share.toString() / 2 ** 64).to.be.equal(0.08);
+
+      await instance.mint(randomUser, erc20("780", "18"));
+
+      amount = erc20("93", "18");
+      share = await instance._getShareOfAPT(amount);
+      expect(share.toString() / 2 ** 64).to.be.equal(0.052247191011235955);
+
+      amount = erc20("178", "18");
+      share = await instance._getShareOfAPT(amount);
+      expect(share.toString() / 2 ** 64).to.be.equal(0.1);
+
+      amount = erc20("272", "18");
+      share = await instance._getShareOfAPT(amount);
+      expect(share.toString() / 2 ** 64).to.be.equal(0.15280898876404495);
+
+      amount = erc20("1572", "18");
+      share = await instance._getShareOfAPT(amount);
+      expect(share.toString() / 2 ** 64).to.be.equal(0.8831460674157303);
+
+      amount = erc20("2311", "18");
+      share = await instance._getShareOfAPT(amount);
+      expect(share.toString() / 2 ** 64).to.be.equal(1.298314606741573);
     });
   });
 });

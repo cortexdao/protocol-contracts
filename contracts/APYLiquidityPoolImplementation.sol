@@ -276,15 +276,15 @@ contract APYLiquidityPoolImplementation is
         uint256 depositEthAmount,
         uint256 totalEthAmount
     ) internal view returns (uint256) {
+        require(depositEthAmount <= MAX_UINT128, "AMOUNT_OVERFLOW");
+        require(totalEthAmount <= MAX_UINT128, "TOTAL_AMOUNT_OVERFLOW");
+
         uint256 totalSupply = totalSupply();
+        require(totalSupply <= MAX_UINT128, "TOTAL_SUPPLY_OVERFLOW");
 
         if (totalEthAmount == 0 || totalSupply == 0) {
             return depositEthAmount.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR);
         }
-
-        require(depositEthAmount <= MAX_UINT128, "AMOUNT_OVERFLOW");
-        require(totalEthAmount <= MAX_UINT128, "TOTAL_AMOUNT_OVERFLOW");
-        require(totalSupply <= MAX_UINT128, "TOTAL_SUPPLY_OVERFLOW");
 
         return depositEthAmount.divu(totalEthAmount).mulu(totalSupply);
     }
@@ -330,5 +330,20 @@ contract APYLiquidityPoolImplementationTEST is APYLiquidityPoolImplementation {
 
     function burn(address account, uint256 amount) public {
         _burn(account, amount);
+    }
+
+    function internalCalculateMintAmount(
+        uint256 depositEthAmount,
+        uint256 totalEthAmount
+    ) public view returns (uint256) {
+        return _calculateMintAmount(depositEthAmount, totalEthAmount);
+    }
+
+    function internalGetShareOfAPT(uint256 amount)
+        public
+        view
+        returns (int128)
+    {
+        return _getShareOfAPT(amount);
     }
 }
