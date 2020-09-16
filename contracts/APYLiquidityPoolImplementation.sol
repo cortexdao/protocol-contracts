@@ -331,4 +331,19 @@ contract APYLiquidityPoolImplementationTEST is APYLiquidityPoolImplementation {
     function burn(address account, uint256 amount) public {
         _burn(account, amount);
     }
+
+    function internalCalculateMintAmount(
+        uint256 depositEthAmount,
+        uint256 totalEthAmount
+    ) public view returns (uint256) {
+        return _calculateMintAmount(depositEthAmount, totalEthAmount);
+    }
+
+    function internalGetShareOfAPT(uint256 amount)
+        public
+        view
+        returns (int128)
+    {
+        return _getShareOfAPT(amount);
+    }
 }
