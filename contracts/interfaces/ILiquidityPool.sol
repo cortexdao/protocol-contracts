@@ -5,12 +5,14 @@ interface ILiquidityPool {
     event DepositedAPT(
         address indexed sender,
         uint256 aptAmount,
-        uint256 underlyerAmount
+        uint256 underlyerAmount,
+        uint256 totalValueLocked
     );
     event RedeemedAPT(
         address indexed sender,
         uint256 aptAmount,
-        uint256 underlyerAmount
+        uint256 underlyerAmount,
+        uint256 totalValueLocked
     );
     event TokenSupported(address token, address agg);
     event TokenUnsupported(address token, address agg);

@@ -136,7 +136,7 @@ contract APYLiquidityPoolImplementation is
         _mint(msg.sender, mintAmount);
         underlyer.safeTransferFrom(msg.sender, address(this), amount);
 
-        emit DepositedAPT(msg.sender, mintAmount, amount);
+        emit DepositedAPT(msg.sender, mintAmount, amount, totalAmount);
     }
 
     /**
@@ -167,7 +167,7 @@ contract APYLiquidityPoolImplementation is
         _mint(msg.sender, mintAmount);
         token.safeTransferFrom(msg.sender, address(this), amount);
 
-        emit DepositedAPT(msg.sender, mintAmount, amount);
+        emit DepositedAPT(msg.sender, mintAmount, amount, poolTotalEthValue);
     }
 
     function getPoolTotalEthValue() public view returns (uint256) {
@@ -250,7 +250,7 @@ contract APYLiquidityPoolImplementation is
         _burn(msg.sender, aptAmount);
         underlyer.transfer(msg.sender, underlyerAmount);
 
-        emit RedeemedAPT(msg.sender, aptAmount, underlyerAmount);
+        emit RedeemedAPT(msg.sender, aptAmount, underlyerAmount, underlyer.balanceOf(address(this)));
     }
 
     /**
@@ -271,7 +271,7 @@ contract APYLiquidityPoolImplementation is
         _burn(msg.sender, aptAmount);
         token.safeTransfer(msg.sender, underlyerAmount);
 
-        emit RedeemedAPT(msg.sender, aptAmount, underlyerAmount);
+        emit RedeemedAPT(msg.sender, aptAmount, underlyerAmount, getPoolTotalEthValue());
     }
 
     function lockRedeem() external onlyOwner {
