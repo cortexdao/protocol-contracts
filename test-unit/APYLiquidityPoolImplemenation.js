@@ -545,10 +545,17 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
         instance.address,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, 9999);
-      await instance.setUnderlyerAddress(mockToken.address, { from: owner });
+      const returnData = abiCoder.encode(
+        ["uint80", "int256", "uint256", "uint256", "uint80"],
+        [0, 1, 0, 0, 0]
+      );
+      const mockAgg = await MockContract.new();
+      await mockAgg.givenAnyReturn(returnData);
+      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+
       await instance.mint(randomUser, 900);
       // (1000/9999) * 900 = 90.0090009001 ~= 90
-      const mintAmount = await instance.calculateMintAmount(1000, {
+      const mintAmount = await instance.calculateMintAmount(1000, mockToken.address, {
         from: randomUser,
       });
       assert.equal(mintAmount.toNumber(), 90);
@@ -559,9 +566,16 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
         instance.address,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, 9999);
-      await instance.setUnderlyerAddress(mockToken.address, { from: owner });
+      const returnData = abiCoder.encode(
+        ["uint80", "int256", "uint256", "uint256", "uint80"],
+        [0, 1, 0, 0, 0]
+      );
+      const mockAgg = await MockContract.new();
+      await mockAgg.givenAnyReturn(returnData);
+      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+
       // 90 * 1000 = 90000
-      const mintAmount = await instance.calculateMintAmount(90, {
+      const mintAmount = await instance.calculateMintAmount(90, mockToken.address, {
         from: randomUser,
       });
       assert.equal(mintAmount.toNumber(), 90000);
