@@ -449,7 +449,15 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
         instance.address,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, 0);
-      const mintAmount = await instance.calculateMintAmount(1000);
+      const returnData = abiCoder.encode(
+        ["uint80", "int256", "uint256", "uint256", "uint80"],
+        [0, 1, 0, 0, 0]
+      );
+      const mockAgg = await MockContract.new();
+      await mockAgg.givenAnyReturn(returnData);
+      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+
+      const mintAmount = await instance.calculateMintAmount(1000, mockToken.address);
       assert.equal(mintAmount.toNumber(), 1000000);
     });
 
@@ -457,9 +465,16 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       const balanceOf = IERC20.encodeFunctionData("balanceOf", [
         instance.address,
       ]);
+      const returnData = abiCoder.encode(
+        ["uint80", "int256", "uint256", "uint256", "uint80"],
+        [0, 1, 0, 0, 0]
+      );
+      const mockAgg = await MockContract.new();
+      await mockAgg.givenAnyReturn(returnData);
+      await instance.addTokenSupport(mockToken.address, mockAgg.address);
       await mockToken.givenMethodReturnUint(balanceOf, 9999);
-      await instance.setUnderlyerAddress(mockToken.address, { from: owner });
-      const mintAmount = await instance.calculateMintAmount(1000);
+
+      const mintAmount = await instance.calculateMintAmount(1000, mockToken.address);
       assert.equal(mintAmount.toNumber(), 1000000);
     });
 
@@ -597,7 +612,6 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
         "1",
         mockToken.address
       );
-      console.log(underlyerAmount.toString());
       expect(underlyerAmount).to.bignumber.equal("1");
     });
   });
