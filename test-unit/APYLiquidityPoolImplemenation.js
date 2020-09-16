@@ -12,13 +12,15 @@ const {
 const { expect } = require("chai");
 const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
+const MAX_UINT128 = new BN("2").pow(new BN("128")).sub(new BN("1"));
 const MockContract = artifacts.require("MockContract");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYLiquidityPoolProxy = artifacts.require("APYLiquidityPoolProxy");
 const APYLiquidityPoolImplementation = artifacts.require(
   "APYLiquidityPoolImplementationTEST"
 );
-const IERC20 = new ethers.utils.Interface(artifacts.require("IERC20").abi)
+const IERC20 = new ethers.utils.Interface(artifacts.require("IERC20").abi);
+const ERC20 = new ethers.utils.Interface(artifacts.require("ERC20").abi);
 
 const { erc20 } = require("../utils/helpers");
 
@@ -158,7 +160,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       const trx = await instance.removeTokenSupport(newToken.address);
 
       const supportedTokens = await instance.getSupportedTokens.call();
-      assert.equal(supportedTokens[0], constants.ZERO_ADDRESS)
+      assert.equal(supportedTokens[0], constants.ZERO_ADDRESS);
 
       await expectEvent(trx, "TokenUnsupported", {
         token: newToken.address,
@@ -169,7 +171,10 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
 
   describe("Test addLiquidity", async () => {
     it("Test addLiquidity insufficient amount", async () => {
-      await expectRevert(instance.addLiquidity(0, constants.ZERO_ADDRESS), "AMOUNT_INSUFFICIENT");
+      await expectRevert(
+        instance.addLiquidity(0, constants.ZERO_ADDRESS),
+        "AMOUNT_INSUFFICIENT"
+      );
     });
 
     it("Test addLiquidity insufficient allowance", async () => {
@@ -180,11 +185,17 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       const mockAgg = await MockContract.new();
       await instance.addTokenSupport(mockToken.address, mockAgg.address);
       await mockToken.givenMethodReturnUint(allowance, 0);
-      await expectRevert(instance.addLiquidity(1, mockToken.address), "ALLOWANCE_INSUFFICIENT");
+      await expectRevert(
+        instance.addLiquidity(1, mockToken.address),
+        "ALLOWANCE_INSUFFICIENT"
+      );
     });
 
     it("Test addLiquidity unsupported token", async () => {
-      await expectRevert(instance.addLiquidity(1, constants.ZERO_ADDRESS), "UNSUPPORTED_TOKEN");
+      await expectRevert(
+        instance.addLiquidity(1, constants.ZERO_ADDRESS),
+        "UNSUPPORTED_TOKEN"
+      );
     });
 
     it("Test addLiquidity pass", async () => {
@@ -213,7 +224,9 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
 
       await instance.addTokenSupport(mockToken.address, mockAgg.address);
 
-      const trx = await instance.addLiquidity(1, mockToken.address, { from: randomUser });
+      const trx = await instance.addLiquidity(1, mockToken.address, {
+        from: randomUser,
+      });
 
       const balance = await instance.balanceOf(randomUser);
       assert.equal(balance.toNumber(), 1000);
@@ -277,16 +290,18 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
 
   describe("Test getPoolTotalEthValue", async () => {
     it("Test getPoolTotalEthValue returns expected", async () => {
-      const balanceOf = IERC20.encodeFunctionData("balanceOf", [instance.address])
+      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
+        instance.address,
+      ]);
 
       const tokenA = await MockContract.new();
-      tokenA.givenMethodReturnUint(balanceOf, 1)
+      tokenA.givenMethodReturnUint(balanceOf, 1);
 
       const tokenB = await MockContract.new();
-      tokenB.givenMethodReturnUint(balanceOf, 1)
+      tokenB.givenMethodReturnUint(balanceOf, 1);
 
       const tokenC = await MockContract.new();
-      tokenC.givenMethodReturnUint(balanceOf, 1)
+      tokenC.givenMethodReturnUint(balanceOf, 1);
 
       const returnData = abiCoder.encode(
         ["uint80", "int256", "uint256", "uint256", "uint80"],
@@ -299,13 +314,13 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       await instance.addTokenSupport(tokenB.address, mockAgg.address);
       await instance.addTokenSupport(tokenC.address, mockAgg.address);
 
-      const val = await instance.getPoolTotalEthValue.call()
-      assert.equal(val.toNumber(), 300)
+      const val = await instance.getPoolTotalEthValue.call();
+      assert.equal(val.toNumber(), 300);
     });
   });
 
   describe.skip("Test getTokenAmountEthValue", async () => {
-    it("Test ...", async () => { });
+    it("Test ...", async () => {});
   });
 
   describe("Test getTokenEthPrice", async () => {
@@ -342,7 +357,10 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
 
   describe("Test redeem", async () => {
     it("Test redeem insufficient amount", async () => {
-      await expectRevert(instance.redeem(0, constants.ZERO_ADDRESS), "AMOUNT_INSUFFICIENT");
+      await expectRevert(
+        instance.redeem(0, constants.ZERO_ADDRESS),
+        "AMOUNT_INSUFFICIENT"
+      );
     });
 
     it("Test redeem insufficient balance", async () => {
@@ -369,7 +387,9 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
 
       await instance.addTokenSupport(mockToken.address, mockAgg.address);
 
-      const trx = await instance.redeem(50, mockToken.address, { from: randomUser });
+      const trx = await instance.redeem(50, mockToken.address, {
+        from: randomUser,
+      });
 
       const balance = await instance.balanceOf(randomUser);
       assert.equal(balance.toNumber(), 50);
@@ -385,7 +405,10 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       let trx = await instance.lockRedeem({ from: owner });
       expectEvent(trx, "RedeemLocked");
 
-      await expectRevert(instance.redeem(50, mockToken.address, { from: randomUser }), "LOCKED");
+      await expectRevert(
+        instance.redeem(50, mockToken.address, { from: randomUser }),
+        "LOCKED"
+      );
       trx = await instance.lockRedeem({ from: owner });
 
       trx = await instance.unlockRedeem({ from: owner });
@@ -513,24 +536,25 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
   describe("Test getUnderlyerAmount", async () => {
     it("Test getUnderlyerAmount when amount overflows", async () => {
       await expectRevert(
-        instance.getUnderlyerAmount.call(constants.MAX_UINT256),
+        instance.getUnderlyerAmount.call(
+          MAX_UINT128.addn(1),
+          mockToken.address
+        ),
         "AMOUNT_OVERFLOW"
       );
     });
 
     it("Test getUnderlyerAmount when divide by zero", async () => {
-      await instance.setUnderlyerAddress(mockToken.address, { from: owner });
       await expectRevert(
-        instance.getUnderlyerAmount.call(100),
+        instance.getUnderlyerAmount.call(100, mockToken.address),
         "INSUFFICIENT_TOTAL_SUPPLY"
       );
     });
 
     it("Test getUnderlyerAmount when total supply overflows", async () => {
-      await instance.setUnderlyerAddress(mockToken.address, { from: owner });
-      await instance.mint(randomUser, constants.MAX_UINT256);
+      await instance.mint(randomUser, MAX_UINT128.addn(1));
       await expectRevert(
-        instance.getUnderlyerAmount.call(100),
+        instance.getUnderlyerAmount.call(100, mockToken.address),
         "TOTAL_SUPPLY_OVERFLOW"
       );
     });
@@ -539,24 +563,43 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       const balanceOf = IERC20.encodeFunctionData("balanceOf", [
         instance.address,
       ]);
-      await mockToken.givenMethodReturnUint(balanceOf, constants.MAX_UINT256);
-      await instance.setUnderlyerAddress(mockToken.address, { from: owner });
+      await mockToken.givenMethodReturnUint(balanceOf, MAX_UINT128.addn(1));
+      const mockAgg = await getMockAggregatorWithPrice("10");
+      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+
       await instance.mint(randomUser, 1);
       await expectRevert(
-        instance.getUnderlyerAmount.call(1),
+        instance.getUnderlyerAmount.call(1, mockToken.address),
         "UNDERLYER_TOTAL_OVERFLOW"
       );
     });
 
     it("Test getUnderlyerAmount", async () => {
-      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
-        instance.address,
-      ]);
-      await mockToken.givenMethodReturnUint(balanceOf, 1);
-      await instance.setUnderlyerAddress(mockToken.address, { from: owner });
+      const balanceOf = IERC20.encodeFunctionData("balanceOf", [ZERO_ADDRESS]);
+      await mockToken.givenMethodReturnUint(balanceOf, "1");
+      const decimals = ERC20.encodeFunctionData("decimals");
+      await mockToken.givenMethodReturnUint(decimals, "1");
+      const mockAgg = await getMockAggregatorWithPrice("10");
+
+      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+
       await instance.mint(randomUser, 1);
-      const underlyerAmount = await instance.getUnderlyerAmount.call(1);
-      assert.equal(underlyerAmount.toNumber(), 1);
+      const underlyerAmount = await instance.getUnderlyerAmount.call(
+        "1",
+        mockToken.address
+      );
+      console.log(underlyerAmount.toString());
+      expect(underlyerAmount).to.bignumber.equal("1");
     });
   });
+
+  const getMockAggregatorWithPrice = async (price) => {
+    const returnData = abiCoder.encode(
+      ["uint80", "int256", "uint256", "uint256", "uint80"],
+      [0, price, 0, 0, 0]
+    );
+    const mockAgg = await MockContract.new();
+    await mockAgg.givenAnyReturn(returnData);
+    return mockAgg;
+  };
 });
