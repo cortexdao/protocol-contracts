@@ -574,20 +574,22 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       );
     });
 
-    it.only("Test getUnderlyerAmount", async () => {
+    it("Test getUnderlyerAmount", async () => {
+      const balanceOf = IERC20.encodeFunctionData("balanceOf", [ZERO_ADDRESS]);
+      await mockToken.givenMethodReturnUint(balanceOf, "1");
       const decimals = ERC20.encodeFunctionData("decimals");
       await mockToken.givenMethodReturnUint(decimals, "1");
+      const mockAgg = await getMockAggregatorWithPrice("10");
 
-      const mockAgg = getMockAggregatorWithPrice("10");
       await instance.addTokenSupport(mockToken.address, mockAgg.address);
 
       await instance.mint(randomUser, 1);
       const underlyerAmount = await instance.getUnderlyerAmount.call(
-        1,
+        "1",
         mockToken.address
       );
       console.log(underlyerAmount.toString());
-      expect(underlyerAmount).to.bignumber.equal("100");
+      expect(underlyerAmount).to.bignumber.equal("1");
     });
   });
 
