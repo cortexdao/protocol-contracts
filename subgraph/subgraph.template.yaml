@@ -21,8 +21,8 @@ dataSources:
         - name: APYLiquidityPoolImplementation
           file: ../artifacts/APYLiquidityPoolImplementation.json
       eventHandlers:
-        - event: DespositAPT(address,uint256,uint256,uint256)
+        - event: DepositedAPT(indexed address,uint256,uint256,uint256)
           handler: handleDepositAPT
-        - event: RedeemedAPT(address,uint256,uint256,uint256)
+        - event: RedeemedAPT(indexed address,uint256,uint256,uint256)
           handler: handleRedeemedAPT
       file: ./src/mapping.ts

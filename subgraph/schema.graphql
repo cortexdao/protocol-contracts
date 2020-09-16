@@ -1,4 +1,5 @@
 type TotalValueLocked @entity {
   id: ID!
+  timestamp: BigInt!
   totalValueLocked: BigInt!
 }
