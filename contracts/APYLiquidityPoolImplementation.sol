@@ -170,6 +170,10 @@ contract APYLiquidityPoolImplementation is
         return poolTotalEthValue;
     }
 
+    function getAPTEthValue(uint256 amount) public view returns (uint256) {
+        return _getShareOfAPT(amount).mulu(getPoolTotalEthValue());
+    }
+
     function getTokenAmountEthValue(uint256 amount, IERC20 token)
         public
         view

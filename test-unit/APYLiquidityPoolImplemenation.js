@@ -318,6 +318,39 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
   });
 
+  describe("Test getAPTEthValue", async () => {
+    it("Test getAPTEthValue returns expected", async () => {
+      await instance.mint(randomUser, 100);
+
+      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
+        instance.address,
+      ]);
+
+      const tokenA = await MockContract.new();
+      tokenA.givenMethodReturnUint(balanceOf, 1);
+
+      const tokenB = await MockContract.new();
+      tokenB.givenMethodReturnUint(balanceOf, 1);
+
+      const tokenC = await MockContract.new();
+      tokenC.givenMethodReturnUint(balanceOf, 1);
+
+      const returnData = abiCoder.encode(
+        ["uint80", "int256", "uint256", "uint256", "uint80"],
+        [0, 100, 0, 0, 0]
+      );
+      const mockAgg = await MockContract.new();
+      await mockAgg.givenAnyReturn(returnData);
+
+      await instance.addTokenSupport(tokenA.address, mockAgg.address);
+      await instance.addTokenSupport(tokenB.address, mockAgg.address);
+      await instance.addTokenSupport(tokenC.address, mockAgg.address);
+
+      const val = await instance.getAPTEthValue(10);
+      assert.equal(val.toNumber(), 30);
+    });
+  });
+
   describe.skip("Test getTokenAmountEthValue", async () => {
     it("Test ...", async () => { });
   });
