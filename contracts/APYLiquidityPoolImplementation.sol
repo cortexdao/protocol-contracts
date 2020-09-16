@@ -190,8 +190,8 @@ contract APYLiquidityPoolImplementation is
     {
         uint256 tokenEthPrice = uint256(getTokenEthPrice(token));
         uint256 decimals = ERC20UpgradeSafe(address(token)).decimals();
-        uint256 tokenAmount = ethValue.divu(tokenEthPrice).mulu(
-            uint256(10)**decimals
+        uint256 tokenAmount = (uint256(10)**decimals).divu(tokenEthPrice).mulu(
+            ethValue
         );
         return tokenAmount;
     }
