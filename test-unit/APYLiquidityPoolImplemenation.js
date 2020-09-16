@@ -167,86 +167,111 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
   });
 
-  describe("Test addLiquidityV2", async () => {
-    it("Test addLiquidityV2 gives APT", async () => {
-      // mock chainlink aggregator
-      const returnData = abiCoder.encode(
-        ["uint80", "int256", "uint256", "uint256", "uint80"],
-        [0, 100, 0, 0, 0]
-      );
-      const mockAgg = await MockContract.new();
-      await mockAgg.givenAnyReturn(returnData);
+  describe("Test addLiquidity", async () => {
+    it("Test addLiquidity insufficient amount", async () => {
+      await expectRevert(instance.addLiquidity(0, constants.ZERO_ADDRESS), "AMOUNT_INSUFFICIENT");
+    });
 
-      // mock erc20 token:
-      // - allowance
-      const newToken = await MockContract.new();
+    it("Test addLiquidity insufficient allowance", async () => {
       const allowance = IERC20.encodeFunctionData("allowance", [
         owner,
         instance.address,
       ]);
-      await newToken.givenMethodReturnUint(allowance, constants.MAX_UINT256);
-
-      // - transferFrom
-      const transferFrom = IERC20.encodeFunctionData("transferFrom", [
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
-        0,
-      ]);
-      await newToken.givenMethodReturnBool(transferFrom, true);
-
-      // setup pool to use mocks
-      await instance.addTokenSupport(newToken.address, mockAgg.address);
-
-      const tokenAmount = erc20("100", "6");
-      await instance.addLiquidityV2(tokenAmount, newToken.address, {
-        from: randomUser,
-      });
-      const aptBalance = await instance.balanceOf(randomUser);
-      expect(aptBalance).to.be.bignumber.gt("0");
+      const mockAgg = await MockContract.new();
+      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+      await mockToken.givenMethodReturnUint(allowance, 0);
+      await expectRevert(instance.addLiquidity(1, mockToken.address), "ALLOWANCE_INSUFFICIENT");
     });
 
-    it("Test locking/unlocking addLiquidityV2 by owner", async () => {
-      // mock chainlink aggregator
+    it("Test addLiquidity unsupported token", async () => {
+      await expectRevert(instance.addLiquidity(1, constants.ZERO_ADDRESS), "UNSUPPORTED_TOKEN");
+    });
+
+    it("Test addLiquidity pass", async () => {
+      const allowance = IERC20.encodeFunctionData("allowance", [
+        randomUser,
+        instance.address,
+      ]);
+      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
+        instance.address,
+      ]);
+      const transferFrom = IERC20.encodeFunctionData("transferFrom", [
+        randomUser,
+        instance.address,
+        1,
+      ]);
+      await mockToken.givenMethodReturnUint(allowance, 1);
+      await mockToken.givenMethodReturnUint(balanceOf, 1);
+      await mockToken.givenMethodReturnBool(transferFrom, true);
+
       const returnData = abiCoder.encode(
         ["uint80", "int256", "uint256", "uint256", "uint80"],
-        [0, 100, 0, 0, 0]
+        [0, 1, 0, 0, 0]
       );
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
 
-      // mock erc20 token:
-      const mockToken = await MockContract.new();
+      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+
+      const trx = await instance.addLiquidity(1, mockToken.address, { from: randomUser });
+
+      const balance = await instance.balanceOf(randomUser);
+      assert.equal(balance.toNumber(), 1000);
+      await expectEvent(trx, "Transfer");
+      await expectEvent(trx, "DepositedAPT");
+      const count = await mockToken.invocationCountForMethod.call(transferFrom);
+      assert.equal(count, 1);
+    });
+
+    it("Test locking/unlocking addLiquidity by owner", async () => {
       const allowance = IERC20.encodeFunctionData("allowance", [
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
+        randomUser,
+        instance.address,
       ]);
-      await mockToken.givenMethodReturnUint(allowance, constants.MAX_UINT256);
       const balanceOf = IERC20.encodeFunctionData("balanceOf", [
-        ZERO_ADDRESS,
+        instance.address,
       ]);
-      await mockToken.givenMethodReturnUint(balanceOf, 1);
       const transferFrom = IERC20.encodeFunctionData("transferFrom", [
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
-        0,
+        randomUser,
+        instance.address,
+        1,
       ]);
+      await mockToken.givenMethodReturnUint(allowance, 1);
+      await mockToken.givenMethodReturnUint(balanceOf, 1);
       await mockToken.givenMethodReturnBool(transferFrom, true);
 
-      // setup pool to use mocks
+      const returnData = abiCoder.encode(
+        ["uint80", "int256", "uint256", "uint256", "uint80"],
+        [0, 10, 0, 0, 0]
+      );
+      const mockAgg = await MockContract.new();
+      await mockAgg.givenAnyReturn(returnData);
+
       await instance.addTokenSupport(mockToken.address, mockAgg.address);
 
       let trx = await instance.lockAddLiquidity({ from: owner });
-      expectEvent(trx, "AddLiquidityLocked");
+      await expectEvent(trx, "AddLiquidityLocked");
 
       await expectRevert(
-        instance.addLiquidityV2(1, mockToken.address, { from: randomUser }),
+        instance.addLiquidity(1, mockToken.address, { from: randomUser }),
         "LOCKED"
       );
 
       trx = await instance.unlockAddLiquidity({ from: owner });
-      expectEvent(trx, "AddLiquidityUnlocked");
+      await expectEvent(trx, "AddLiquidityUnlocked");
 
-      await instance.addLiquidityV2(1, mockToken.address, { from: randomUser });
+      await instance.addLiquidity(1, mockToken.address, { from: randomUser });
+    });
+
+    it("Test locking/unlocking addLiquidity by not owner", async () => {
+      await expectRevert(
+        instance.lockAddLiquidity({ from: randomUser }),
+        "Ownable: caller is not the owner"
+      );
+      await expectRevert(
+        instance.unlockAddLiquidity({ from: randomUser }),
+        "Ownable: caller is not the owner"
+      );
     });
   });
 
@@ -315,154 +340,36 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
   });
 
-  describe("Test setUnderlyerAddress", async () => {
-    it("Test setUnderlyerAddress pass", async () => {
-      await instance.setUnderlyerAddress(mockToken.address, { from: owner });
-    });
-
-    it("Test setUnderlyerAddress fail", async () => {
-      await expectRevert.unspecified(
-        instance.setUnderlyerAddress(mockToken.address, { from: randomUser })
-      );
-    });
-  });
-
-  describe("Test addLiquidity", async () => {
-    it("Test addLiquidity insufficient amount", async () => {
-      await expectRevert(instance.addLiquidity(0), "AMOUNT_INSUFFICIENT");
-    });
-
-    it("Test addLiquidity insufficient allowance", async () => {
-      const allowance = IERC20.encodeFunctionData("allowance", [
-        owner,
-        instance.address,
-      ]);
-      await mockToken.givenMethodReturnUint(allowance, 0);
-      await instance.setUnderlyerAddress(mockToken.address, { from: owner });
-      await expectRevert(instance.addLiquidity(1), "ALLOWANCE_INSUFFICIENT");
-    });
-
-    it("Test addLiquidity pass", async () => {
-
-      const allowance = IERC20.encodeFunctionData("allowance", [
-        randomUser,
-        instance.address,
-      ]);
-      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
-        instance.address,
-      ]);
-      const transferFrom = IERC20.encodeFunctionData("transferFrom", [
-        randomUser,
-        instance.address,
-        1,
-      ]);
-      await mockToken.givenMethodReturnUint(allowance, 1);
-      await mockToken.givenMethodReturnUint(balanceOf, 1);
-      await mockToken.givenMethodReturnBool(transferFrom, true);
-      await instance.setUnderlyerAddress(mockToken.address, { from: owner });
-      const trx = await instance.addLiquidity(1, { from: randomUser });
-
-      const balance = await instance.balanceOf(randomUser);
-      assert.equal(balance.toNumber(), 1000);
-      await expectEvent(trx, "Transfer");
-      await expectEvent(trx, "DepositedAPT");
-      const count = await mockToken.invocationCountForMethod.call(transferFrom);
-      assert.equal(count, 1);
-    });
-
-    it("Test locking/unlocking addLiquidity by owner", async () => {
-      const allowance = IERC20.encodeFunctionData("allowance", [
-        randomUser,
-        instance.address,
-      ]);
-      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
-        instance.address,
-      ]);
-      const transferFrom = IERC20.encodeFunctionData("transferFrom", [
-        randomUser,
-        instance.address,
-        1,
-      ]);
-      await mockToken.givenMethodReturnUint(allowance, 1);
-      await mockToken.givenMethodReturnUint(balanceOf, 1);
-      await mockToken.givenMethodReturnBool(transferFrom, true);
-      await instance.setUnderlyerAddress(mockToken.address, { from: owner });
-
-      let trx = await instance.lockAddLiquidity({ from: owner });
-      await expectEvent(trx, "AddLiquidityLocked");
-
-      await expectRevert(
-        instance.addLiquidity(1, { from: randomUser }),
-        "LOCKED"
-      );
-
-      trx = await instance.unlockAddLiquidity({ from: owner });
-      await expectEvent(trx, "AddLiquidityUnlocked");
-
-      await instance.addLiquidity(1, { from: randomUser });
-    });
-
-    it("Test locking/unlocking addLiquidity by not owner", async () => {
-      await expectRevert(
-        instance.lockAddLiquidity({ from: randomUser }),
-        "Ownable: caller is not the owner"
-      );
-      await expectRevert(
-        instance.unlockAddLiquidity({ from: randomUser }),
-        "Ownable: caller is not the owner"
-      );
-    });
-
-    it("Test locking/unlocking contract", async () => {
-      const allowance = IERC20.encodeFunctionData("allowance", [
-        randomUser,
-        instance.address,
-      ]);
-      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
-        instance.address,
-      ]);
-      const transferFrom = IERC20.encodeFunctionData("transferFrom", [
-        randomUser,
-        instance.address,
-        1,
-      ]);
-      await mockToken.givenMethodReturnUint(allowance, 1);
-      await mockToken.givenMethodReturnUint(balanceOf, 1);
-      await mockToken.givenMethodReturnBool(transferFrom, true);
-      await instance.setUnderlyerAddress(mockToken.address, { from: owner });
-
-      let trx = await instance.lock({ from: owner });
-      await expectEvent(trx, "Paused");
-
-      await expectRevert(
-        instance.addLiquidity(1, { from: randomUser }),
-        "Pausable: paused"
-      );
-
-      trx = await instance.unlock({ from: owner });
-      await expectEvent(trx, "Unpaused");
-
-      await instance.addLiquidity(1, { from: randomUser });
-    });
-  });
-
   describe("Test redeem", async () => {
     it("Test redeem insufficient amount", async () => {
-      await expectRevert(instance.redeem(0), "AMOUNT_INSUFFICIENT");
+      await expectRevert(instance.redeem(0, constants.ZERO_ADDRESS), "AMOUNT_INSUFFICIENT");
     });
 
     it("Test redeem insufficient balance", async () => {
       await instance.mint(randomUser, 1);
       await expectRevert(
-        instance.redeem(2, { from: randomUser }),
+        instance.redeem(2, constants.ZERO_ADDRESS, { from: randomUser }),
         "BALANCE_INSUFFICIENT"
       );
     });
 
     it("Test redeem pass", async () => {
       await instance.mint(randomUser, 100);
-      await instance.setUnderlyerAddress(mockToken.address, { from: owner });
-      const trx = await instance.redeem(50, { from: randomUser });
+      const returnData = abiCoder.encode(
+        ["uint80", "int256", "uint256", "uint256", "uint80"],
+        [0, 10, 0, 0, 0]
+      );
+      const mockAgg = await MockContract.new();
+      await mockAgg.givenAnyReturn(returnData);
+      const transferFrom = IERC20.encodeFunctionData("transfer", [
+        randomUser,
+        1,
+      ]);
+      await mockToken.givenMethodReturnBool(transferFrom, true);
+
+      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+
+      const trx = await instance.redeem(50, mockToken.address, { from: randomUser });
 
       const balance = await instance.balanceOf(randomUser);
       assert.equal(balance.toNumber(), 50);
@@ -472,27 +379,29 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
 
     it("Test locking/unlocking redeem by owner", async () => {
       await instance.mint(randomUser, 100);
-      await instance.setUnderlyerAddress(mockToken.address, { from: owner });
+      const mockAgg = await MockContract.new();
+      await instance.addTokenSupport(mockToken.address, mockAgg.address);
 
       let trx = await instance.lockRedeem({ from: owner });
       expectEvent(trx, "RedeemLocked");
 
-      await expectRevert(instance.redeem(50, { from: randomUser }), "LOCKED");
+      await expectRevert(instance.redeem(50, mockToken.address, { from: randomUser }), "LOCKED");
       trx = await instance.lockRedeem({ from: owner });
 
       trx = await instance.unlockRedeem({ from: owner });
       expectEvent(trx, "RedeemUnlocked");
     });
 
-    it("Test locking/unlocking contract", async () => {
+    it("Test locking/unlocking contract by not owner", async () => {
       await instance.mint(randomUser, 100);
-      await instance.setUnderlyerAddress(mockToken.address, { from: owner });
+      const mockAgg = await MockContract.new();
+      await instance.addTokenSupport(mockToken.address, mockAgg.address);
 
       let trx = await instance.lock({ from: owner });
       expectEvent(trx, "Paused");
 
       await expectRevert(
-        instance.redeem(50, { from: randomUser }),
+        instance.redeem(50, mockToken.address, { from: randomUser }),
         "Pausable: paused"
       );
 
@@ -518,7 +427,6 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
         instance.address,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, 0);
-      await instance.setUnderlyerAddress(mockToken.address, { from: owner });
       const mintAmount = await instance.calculateMintAmount(1000);
       assert.equal(mintAmount.toNumber(), 1000000);
     });

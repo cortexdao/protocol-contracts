@@ -38,7 +38,6 @@ contract APYLiquidityPoolImplementation is
     address public proxyAdmin;
     bool public addLiquidityLock;
     bool public redeemLock;
-    IERC20 public underlyer;
     mapping(IERC20 => AggregatorV3Interface) public priceAggs;
     IERC20[] internal _supportedTokens;
 
@@ -115,36 +114,12 @@ contract APYLiquidityPoolImplementation is
     }
 
     /**
-     * @notice Mint corresponding amount of APT supported for sent token amount.
-     * @dev If no APT tokens have been minted yet, fallback to a fixed ratio.
-     */
-    function addLiquidity(uint256 amount)
-        external
-        override
-        nonReentrant
-        whenNotPaused
-    {
-        require(!addLiquidityLock, "LOCKED");
-        require(amount > 0, "AMOUNT_INSUFFICIENT");
-        require(
-            underlyer.allowance(msg.sender, address(this)) >= amount,
-            "ALLOWANCE_INSUFFICIENT"
-        );
-        uint256 totalAmount = underlyer.balanceOf(address(this));
-        uint256 mintAmount = _calculateMintAmount(amount, totalAmount);
-
-        _mint(msg.sender, mintAmount);
-        underlyer.safeTransferFrom(msg.sender, address(this), amount);
-
-        emit DepositedAPT(msg.sender, mintAmount, amount, totalAmount);
-    }
-
-    /**
      * @notice Mint corresponding amount of APT tokens for sent token amount.
      * @dev If no APT tokens have been minted yet, fallback to a fixed ratio.
      */
-    function addLiquidityV2(uint256 amount, IERC20 token)
+    function addLiquidity(uint256 amount, IERC20 token)
         external
+        override
         nonReentrant
         whenNotPaused
     {
@@ -167,7 +142,14 @@ contract APYLiquidityPoolImplementation is
         _mint(msg.sender, mintAmount);
         token.safeTransferFrom(msg.sender, address(this), amount);
 
-        emit DepositedAPT(msg.sender, mintAmount, amount, poolTotalEthValue);
+        emit DepositedAPT(
+            msg.sender,
+            token,
+            amount,
+            mintAmount,
+            depositEthValue,
+            poolTotalEthValue
+        );
     }
 
     function getPoolTotalEthValue() public view returns (uint256) {
@@ -235,7 +217,7 @@ contract APYLiquidityPoolImplementation is
      * @notice Redeems APT amount for its underlying token amount.
      * @param aptAmount The amount of APT tokens to redeem
      */
-    function redeem(uint256 aptAmount)
+    function redeem(uint256 aptAmount, IERC20 token)
         external
         override
         nonReentrant
@@ -245,33 +227,19 @@ contract APYLiquidityPoolImplementation is
         require(aptAmount > 0, "AMOUNT_INSUFFICIENT");
         require(aptAmount <= balanceOf(msg.sender), "BALANCE_INSUFFICIENT");
 
-        uint256 underlyerAmount = getUnderlyerAmount(aptAmount);
-
-        _burn(msg.sender, aptAmount);
-        underlyer.transfer(msg.sender, underlyerAmount);
-
-        emit RedeemedAPT(msg.sender, aptAmount, underlyerAmount, underlyer.balanceOf(address(this)));
-    }
-
-    /**
-     * @notice Redeems APT amount for its underlying token amount.
-     * @param aptAmount The amount of APT tokens to redeem
-     */
-    function redeemV2(uint256 aptAmount, IERC20 token)
-        external
-        nonReentrant
-        whenNotPaused
-    {
-        require(!redeemLock, "LOCKED");
-        require(aptAmount > 0, "AMOUNT_INSUFFICIENT");
-        require(aptAmount <= balanceOf(msg.sender), "BALANCE_INSUFFICIENT");
-
-        uint256 underlyerAmount = getUnderlyerAmountV2(aptAmount, token);
+        uint256 underlyerAmount = getUnderlyerAmount(aptAmount, token);
 
         _burn(msg.sender, aptAmount);
         token.safeTransfer(msg.sender, underlyerAmount);
 
-        emit RedeemedAPT(msg.sender, aptAmount, underlyerAmount, getPoolTotalEthValue());
+        emit RedeemedAPT(
+            msg.sender,
+            token,
+            aptAmount,
+            underlyerAmount,
+            uint256(this.getTokenEthPrice(token)),
+            getPoolTotalEthValue()
+        );
     }
 
     function lockRedeem() external onlyOwner {
@@ -282,11 +250,6 @@ contract APYLiquidityPoolImplementation is
     function unlockRedeem() external onlyOwner {
         redeemLock = false;
         emit RedeemUnlocked();
-    }
-
-    /// @dev called during deployment
-    function setUnderlyerAddress(address underlyerAddress) public onlyOwner {
-        underlyer = IERC20(underlyerAddress);
     }
 
     function calculateMintAmount(uint256 underlyerAmount)
@@ -305,22 +268,21 @@ contract APYLiquidityPoolImplementation is
      *          mint amount / total supply (before deposit)
      *          = token amount sent / contract token balance (before deposit)
      */
-    function _calculateMintAmount(uint256 amount, uint256 totalAmount)
-        internal
-        view
-        returns (uint256)
-    {
+    function _calculateMintAmount(
+        uint256 depositEthAmount,
+        uint256 totalEthAmount
+    ) internal view returns (uint256) {
         uint256 totalSupply = totalSupply();
 
-        if (totalAmount == 0 || totalSupply == 0) {
-            return amount.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR);
+        if (totalEthAmount == 0 || totalSupply == 0) {
+            return depositEthAmount.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR);
         }
 
-        require(amount <= MAX_UINT128, "AMOUNT_OVERFLOW");
-        require(totalAmount <= MAX_UINT128, "TOTAL_AMOUNT_OVERFLOW");
+        require(depositEthAmount <= MAX_UINT128, "AMOUNT_OVERFLOW");
+        require(totalEthAmount <= MAX_UINT128, "TOTAL_AMOUNT_OVERFLOW");
         require(totalSupply <= MAX_UINT128, "TOTAL_SUPPLY_OVERFLOW");
 
-        return amount.divu(totalAmount).mulu(totalSupply);
+        return depositEthAmount.divu(totalEthAmount).mulu(totalSupply);
     }
 
     /**
@@ -328,25 +290,7 @@ contract APYLiquidityPoolImplementation is
      * @param aptAmount The amount of APT tokens
      * @return uint256 The underlying value of the APT tokens
      */
-    function getUnderlyerAmount(uint256 aptAmount)
-        public
-        view
-        returns (uint256)
-    {
-        int128 shareOfAPT = _getShareOfAPT(aptAmount);
-
-        uint256 underlyerTotal = underlyer.balanceOf(address(this));
-        require(underlyerTotal <= MAX_UINT128, "UNDERLYER_TOTAL_OVERFLOW");
-
-        return shareOfAPT.mulu(underlyerTotal);
-    }
-
-    /**
-     * @notice Get the underlying amount represented by APT amount.
-     * @param aptAmount The amount of APT tokens
-     * @return uint256 The underlying value of the APT tokens
-     */
-    function getUnderlyerAmountV2(uint256 aptAmount, IERC20 token)
+    function getUnderlyerAmount(uint256 aptAmount, IERC20 token)
         public
         view
         returns (uint256)
