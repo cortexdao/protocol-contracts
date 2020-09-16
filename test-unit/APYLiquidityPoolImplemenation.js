@@ -340,35 +340,36 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
   });
 
-  describe("Test setUnderlyerAddress", async () => {
-    it("Test setUnderlyerAddress pass", async () => {
-      await instance.setUnderlyerAddress(mockToken.address, { from: owner });
-    });
-
-    it("Test setUnderlyerAddress fail", async () => {
-      await expectRevert.unspecified(
-        instance.setUnderlyerAddress(mockToken.address, { from: randomUser })
-      );
-    });
-  });
-
   describe("Test redeem", async () => {
     it("Test redeem insufficient amount", async () => {
-      await expectRevert(instance.redeem(0), "AMOUNT_INSUFFICIENT");
+      await expectRevert(instance.redeem(0, constants.ZERO_ADDRESS), "AMOUNT_INSUFFICIENT");
     });
 
     it("Test redeem insufficient balance", async () => {
       await instance.mint(randomUser, 1);
       await expectRevert(
-        instance.redeem(2, { from: randomUser }),
+        instance.redeem(2, constants.ZERO_ADDRESS, { from: randomUser }),
         "BALANCE_INSUFFICIENT"
       );
     });
 
     it("Test redeem pass", async () => {
       await instance.mint(randomUser, 100);
-      await instance.setUnderlyerAddress(mockToken.address, { from: owner });
-      const trx = await instance.redeem(50, { from: randomUser });
+      const returnData = abiCoder.encode(
+        ["uint80", "int256", "uint256", "uint256", "uint80"],
+        [0, 10, 0, 0, 0]
+      );
+      const mockAgg = await MockContract.new();
+      await mockAgg.givenAnyReturn(returnData);
+      const transferFrom = IERC20.encodeFunctionData("transfer", [
+        randomUser,
+        1,
+      ]);
+      await mockToken.givenMethodReturnBool(transferFrom, true);
+
+      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+
+      const trx = await instance.redeem(50, mockToken.address, { from: randomUser });
 
       const balance = await instance.balanceOf(randomUser);
       assert.equal(balance.toNumber(), 50);
@@ -378,27 +379,29 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
 
     it("Test locking/unlocking redeem by owner", async () => {
       await instance.mint(randomUser, 100);
-      await instance.setUnderlyerAddress(mockToken.address, { from: owner });
+      const mockAgg = await MockContract.new();
+      await instance.addTokenSupport(mockToken.address, mockAgg.address);
 
       let trx = await instance.lockRedeem({ from: owner });
       expectEvent(trx, "RedeemLocked");
 
-      await expectRevert(instance.redeem(50, { from: randomUser }), "LOCKED");
+      await expectRevert(instance.redeem(50, mockToken.address, { from: randomUser }), "LOCKED");
       trx = await instance.lockRedeem({ from: owner });
 
       trx = await instance.unlockRedeem({ from: owner });
       expectEvent(trx, "RedeemUnlocked");
     });
 
-    it("Test locking/unlocking contract", async () => {
+    it("Test locking/unlocking contract by not owner", async () => {
       await instance.mint(randomUser, 100);
-      await instance.setUnderlyerAddress(mockToken.address, { from: owner });
+      const mockAgg = await MockContract.new();
+      await instance.addTokenSupport(mockToken.address, mockAgg.address);
 
       let trx = await instance.lock({ from: owner });
       expectEvent(trx, "Paused");
 
       await expectRevert(
-        instance.redeem(50, { from: randomUser }),
+        instance.redeem(50, mockToken.address, { from: randomUser }),
         "Pausable: paused"
       );
 
