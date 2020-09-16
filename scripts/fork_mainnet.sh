@@ -7,6 +7,7 @@ unlocked_addresses="$(node scripts/unlocked_addresses.js)"
 gas_limit=12500000  # 12.5 million, current mainnet block gas limit
 gas_price=40000000000  # 40 gwei
 default_balance_ether=10000
+host="0.0.0.0"
 
 # add option arg to args array
 args=( )
@@ -33,6 +34,9 @@ if [ -n "${gas_price}" ]; then
 fi
 if [ -n "${default_balance_ether}" ]; then
   args+=( --defaultBalanceEther "${default_balance_ether}" );
+fi
+if [ -n "${host}" ]; then
+  args+=( -h "${host}" );
 fi
 
 echo "args: ${args[@]}"

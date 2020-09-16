@@ -57,4 +57,12 @@ module.exports = {
   mocha: {
     timeout: 1000000,
   },
+  namedAccounts: {
+    deployer: {
+      default: 0
+    },
+    admin: {
+      default: 1
+    }
+  }
 };
