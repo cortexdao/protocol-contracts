@@ -252,13 +252,14 @@ contract APYLiquidityPoolImplementation is
         emit RedeemUnlocked();
     }
 
-    function calculateMintAmount(uint256 underlyerAmount)
+    function calculateMintAmount(uint256 underlyerAmount, IERC20 token)
         public
         view
         returns (uint256)
     {
-        uint256 underlyerTotal = underlyer.balanceOf(address(this));
-        return _calculateMintAmount(underlyerAmount, underlyerTotal);
+        uint256 amountEthValue = getTokenAmountEthValue(underlyerAmount, token);
+        uint256 poolTotalEthValue = getPoolTotalEthValue();
+        return _calculateMintAmount(amountEthValue, poolTotalEthValue);
     }
 
     /**
