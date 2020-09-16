@@ -673,22 +673,75 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
   });
 
   describe("Test _calculateMintAmount", async () => {
-    //
-    it("Test ...", async () => {
-      //
+    before(async () => {
+      instance._calculateMintAmount = instance.internalCalculateMintAmount;
+    });
+
+    it("Test _calculateMintAmount reverts on amount overflow", async () => {
+      await expectRevert(
+        instance._calculateMintAmount(MAX_UINT256, 1),
+        "AMOUNT_OVERFLOW"
+      );
+    });
+
+    it("Test _calculateMintAmount reverts on total amount overflow", async () => {
+      await expectRevert(
+        instance._calculateMintAmount(1, MAX_UINT256),
+        "TOTAL_AMOUNT_OVERFLOW"
+      );
+    });
+
+    it("Test _calculateMintAmount reverts on supply overflow", async () => {
+      await instance.mint(randomUser, constants.MAX_UINT256);
+      await expectRevert(
+        instance._calculateMintAmount(1, 1),
+        "TOTAL_SUPPLY_OVERFLOW"
+      );
+    });
+
+    it("Test _calculateMintAmount results", async () => {
+      const tolerance = new BN("100");
+      const totalSupply = erc20("1000", "18");
+      await instance.mint(instance.address, totalSupply);
+
+      let amount = erc20("100", "18");
+      let totalAmount = totalSupply;
+      let mintAmount = await instance._calculateMintAmount(amount, totalAmount);
+      expect(mintAmount.sub(amount)).to.be.bignumber.lt(tolerance);
+
+      amount = erc20("100", "18");
+      totalAmount = totalSupply.muln(2);
+      mintAmount = await instance._calculateMintAmount(amount, totalAmount);
+      expect(mintAmount.sub(amount.divn(2))).to.be.bignumber.lt(tolerance);
+
+      amount = erc20("100", "18");
+      totalAmount = totalSupply.divn(15);
+      mintAmount = await instance._calculateMintAmount(amount, totalAmount);
+      expect(mintAmount.sub(amount.muln(15))).to.be.bignumber.lt(tolerance);
+
+      amount = erc20("123", "18");
+      totalAmount = totalSupply.divn(3);
+      mintAmount = await instance._calculateMintAmount(amount, totalAmount);
+      expect(mintAmount.sub(amount.muln(3))).to.be.bignumber.lt(tolerance);
+    });
+
+    it("Test _calculateMintAmount exact results", async () => {
+      const totalSupply = new BN("1024");
+      await instance.mint(instance.address, totalSupply);
+
+      let amount = new BN("5");
+      let totalAmount = new BN("256");
+      let mintAmount = await instance._calculateMintAmount(amount, totalAmount);
+      expect(mintAmount).to.be.bignumber.equal("20");
+
+      amount = new BN("13");
+      totalAmount = new BN("64");
+      mintAmount = await instance._calculateMintAmount(amount, totalAmount);
+      expect(mintAmount).to.be.bignumber.equal("208");
     });
   });
 
-  describe.only("Test _getShareOfAPT", async () => {
-    /*  function _getShareOfAPT(uint256 amount) internal view returns (int128) {
-          require(amount <= MAX_UINT128, "AMOUNT_OVERFLOW");
-          require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-          require(totalSupply() <= MAX_UINT128, "TOTAL_SUPPLY_OVERFLOW");
-
-          int128 shareOfApt = amount.divu(totalSupply());
-          return shareOfApt;
-        } 
-    */
+  describe("Test _getShareOfAPT", async () => {
     before(async () => {
       instance._getShareOfAPT = instance.internalGetShareOfAPT;
     });
