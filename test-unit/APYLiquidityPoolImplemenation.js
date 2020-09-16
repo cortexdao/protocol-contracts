@@ -505,10 +505,17 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
         instance.address,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, constants.MAX_UINT256);
-      await instance.setUnderlyerAddress(mockToken.address, { from: owner });
+      const returnData = abiCoder.encode(
+        ["uint80", "int256", "uint256", "uint256", "uint80"],
+        [0, 1, 0, 0, 0]
+      );
+      const mockAgg = await MockContract.new();
+      await mockAgg.givenAnyReturn(returnData);
+      await instance.addTokenSupport(mockToken.address, mockAgg.address);
       await instance.mint(randomUser, 1);
+
       await expectRevert(
-        instance.calculateMintAmount(1, { from: randomUser }),
+        instance.calculateMintAmount(1, mockToken.address, { from: randomUser }),
         "TOTAL_AMOUNT_OVERFLOW"
       );
     });
@@ -518,10 +525,17 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
         instance.address,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, 1);
-      await instance.setUnderlyerAddress(mockToken.address, { from: owner });
+      const returnData = abiCoder.encode(
+        ["uint80", "int256", "uint256", "uint256", "uint80"],
+        [0, 1, 0, 0, 0]
+      );
+      const mockAgg = await MockContract.new();
+      await mockAgg.givenAnyReturn(returnData);
+      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+
       await instance.mint(randomUser, constants.MAX_UINT256);
       await expectRevert(
-        instance.calculateMintAmount(1, { from: randomUser }),
+        instance.calculateMintAmount(1, mockToken.address, { from: randomUser }),
         "TOTAL_SUPPLY_OVERFLOW"
       );
     });
