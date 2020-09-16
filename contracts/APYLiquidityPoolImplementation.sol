@@ -276,15 +276,15 @@ contract APYLiquidityPoolImplementation is
         uint256 depositEthAmount,
         uint256 totalEthAmount
     ) internal view returns (uint256) {
+        require(depositEthAmount <= MAX_UINT128, "AMOUNT_OVERFLOW");
+        require(totalEthAmount <= MAX_UINT128, "TOTAL_AMOUNT_OVERFLOW");
+
         uint256 totalSupply = totalSupply();
+        require(totalSupply <= MAX_UINT128, "TOTAL_SUPPLY_OVERFLOW");
 
         if (totalEthAmount == 0 || totalSupply == 0) {
             return depositEthAmount.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR);
         }
-
-        require(depositEthAmount <= MAX_UINT128, "AMOUNT_OVERFLOW");
-        require(totalEthAmount <= MAX_UINT128, "TOTAL_AMOUNT_OVERFLOW");
-        require(totalSupply <= MAX_UINT128, "TOTAL_SUPPLY_OVERFLOW");
 
         return depositEthAmount.divu(totalEthAmount).mulu(totalSupply);
     }
