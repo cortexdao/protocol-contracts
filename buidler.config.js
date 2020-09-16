@@ -5,7 +5,6 @@ usePlugin("@nomiclabs/buidler-ethers");
 usePlugin("@nomiclabs/buidler-truffle5");
 usePlugin("buidler-deploy");
 
-
 function getEnv(env) {
   let value = process.env[env];
 
@@ -40,11 +39,11 @@ module.exports = {
       },
     },
     localhost: {
-      url: 'http://127.0.0.1:8545',
+      url: "http://127.0.0.1:8545",
       timeout: 1000000,
     },
     coverage: {
-      url: 'http://localhost:8555'
+      url: "http://localhost:8555",
     },
   },
   solc: {
@@ -57,12 +56,17 @@ module.exports = {
   mocha: {
     timeout: 1000000,
   },
+  paths: {
+    deploy: "deploy",
+    deployments: "deployments",
+    imports: `imports`,
+  },
   namedAccounts: {
     deployer: {
-      default: 0
+      default: 0,
     },
     admin: {
-      default: 1
-    }
-  }
+      default: 1,
+    },
+  },
 };
