@@ -534,7 +534,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
   });
 
   describe("Test getUnderlyerAmount", async () => {
-    it.only("Test getUnderlyerAmount when amount overflows", async () => {
+    it("Test getUnderlyerAmount when amount overflows", async () => {
       await expectRevert(
         instance.getUnderlyerAmount.call(
           MAX_UINT128.addn(1),
@@ -544,15 +544,14 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       );
     });
 
-    it.only("Test getUnderlyerAmount when divide by zero", async () => {
-      // await instance.setUnderlyerAddress(mockToken.address, { from: owner });
+    it("Test getUnderlyerAmount when divide by zero", async () => {
       await expectRevert(
         instance.getUnderlyerAmount.call(100, mockToken.address),
         "INSUFFICIENT_TOTAL_SUPPLY"
       );
     });
 
-    it.only("Test getUnderlyerAmount when total supply overflows", async () => {
+    it("Test getUnderlyerAmount when total supply overflows", async () => {
       await instance.mint(randomUser, MAX_UINT128.addn(1));
       await expectRevert(
         instance.getUnderlyerAmount.call(100, mockToken.address),
@@ -560,7 +559,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       );
     });
 
-    it.only("Test getUnderlyerAmount when underyler total overflows", async () => {
+    it("Test getUnderlyerAmount when underyler total overflows", async () => {
       const balanceOf = IERC20.encodeFunctionData("balanceOf", [
         instance.address,
       ]);
