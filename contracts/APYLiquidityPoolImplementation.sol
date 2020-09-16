@@ -117,21 +117,21 @@ contract APYLiquidityPoolImplementation is
      * @notice Mint corresponding amount of APT tokens for sent token amount.
      * @dev If no APT tokens have been minted yet, fallback to a fixed ratio.
      */
-    function addLiquidity(uint256 amount, IERC20 token)
+    function addLiquidity(uint256 tokenAmt, IERC20 token)
         external
         override
         nonReentrant
         whenNotPaused
     {
         require(!addLiquidityLock, "LOCKED");
-        require(amount > 0, "AMOUNT_INSUFFICIENT");
+        require(tokenAmt > 0, "AMOUNT_INSUFFICIENT");
         require(address(priceAggs[token]) != address(0), "UNSUPPORTED_TOKEN");
         require(
-            token.allowance(msg.sender, address(this)) >= amount,
+            token.allowance(msg.sender, address(this)) >= tokenAmt,
             "ALLOWANCE_INSUFFICIENT"
         );
 
-        uint256 depositEthValue = getTokenAmountEthValue(amount, token);
+        uint256 depositEthValue = getTokenAmountEthValue(tokenAmt, token);
         uint256 poolTotalEthValue = getPoolTotalEthValue();
 
         uint256 mintAmount = _calculateMintAmount(
@@ -140,12 +140,12 @@ contract APYLiquidityPoolImplementation is
         );
 
         _mint(msg.sender, mintAmount);
-        token.safeTransferFrom(msg.sender, address(this), amount);
+        token.safeTransferFrom(msg.sender, address(this), tokenAmt);
 
         emit DepositedAPT(
             msg.sender,
             token,
-            amount,
+            tokenAmt,
             mintAmount,
             depositEthValue,
             poolTotalEthValue
@@ -227,16 +227,16 @@ contract APYLiquidityPoolImplementation is
         require(aptAmount > 0, "AMOUNT_INSUFFICIENT");
         require(aptAmount <= balanceOf(msg.sender), "BALANCE_INSUFFICIENT");
 
-        uint256 underlyerAmount = getUnderlyerAmount(aptAmount, token);
+        uint256 redeemTokenAmt = getUnderlyerAmount(aptAmount, token);
 
         _burn(msg.sender, aptAmount);
-        token.safeTransfer(msg.sender, underlyerAmount);
+        token.safeTransfer(msg.sender, redeemTokenAmt);
 
         emit RedeemedAPT(
             msg.sender,
             token,
+            redeemTokenAmt,
             aptAmount,
-            underlyerAmount,
             uint256(this.getTokenEthPrice(token)),
             getPoolTotalEthValue()
         );
@@ -257,9 +257,12 @@ contract APYLiquidityPoolImplementation is
         view
         returns (uint256)
     {
-        uint256 amountEthValue = getTokenAmountEthValue(underlyerAmount, token);
+        uint256 depositEthValue = getTokenAmountEthValue(
+            underlyerAmount,
+            token
+        );
         uint256 poolTotalEthValue = getPoolTotalEthValue();
-        return _calculateMintAmount(amountEthValue, poolTotalEthValue);
+        return _calculateMintAmount(depositEthValue, poolTotalEthValue);
     }
 
     /**
