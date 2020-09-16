@@ -427,7 +427,6 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
         instance.address,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, 0);
-      await instance.setUnderlyerAddress(mockToken.address, { from: owner });
       const mintAmount = await instance.calculateMintAmount(1000);
       assert.equal(mintAmount.toNumber(), 1000000);
     });

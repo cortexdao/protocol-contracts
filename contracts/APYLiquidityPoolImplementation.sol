@@ -252,6 +252,15 @@ contract APYLiquidityPoolImplementation is
         emit RedeemUnlocked();
     }
 
+    function calculateMintAmount(uint256 underlyerAmount)
+        public
+        view
+        returns (uint256)
+    {
+        uint256 underlyerTotal = underlyer.balanceOf(address(this));
+        return _calculateMintAmount(underlyerAmount, underlyerTotal);
+    }
+
     /**
      *  @notice amount of APT minted should be in same ratio to APT supply
      *          as token amount sent is to contract's token balance, i.e.:
@@ -259,22 +268,21 @@ contract APYLiquidityPoolImplementation is
      *          mint amount / total supply (before deposit)
      *          = token amount sent / contract token balance (before deposit)
      */
-    function _calculateMintAmount(uint256 amount, uint256 totalAmount)
-        internal
-        view
-        returns (uint256)
-    {
+    function _calculateMintAmount(
+        uint256 depositEthAmount,
+        uint256 totalEthAmount
+    ) internal view returns (uint256) {
         uint256 totalSupply = totalSupply();
 
-        if (totalAmount == 0 || totalSupply == 0) {
-            return amount.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR);
+        if (totalEthAmount == 0 || totalSupply == 0) {
+            return depositEthAmount.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR);
         }
 
-        require(amount <= MAX_UINT128, "AMOUNT_OVERFLOW");
-        require(totalAmount <= MAX_UINT128, "TOTAL_AMOUNT_OVERFLOW");
+        require(depositEthAmount <= MAX_UINT128, "AMOUNT_OVERFLOW");
+        require(totalEthAmount <= MAX_UINT128, "TOTAL_AMOUNT_OVERFLOW");
         require(totalSupply <= MAX_UINT128, "TOTAL_SUPPLY_OVERFLOW");
 
-        return amount.divu(totalAmount).mulu(totalSupply);
+        return depositEthAmount.divu(totalEthAmount).mulu(totalSupply);
     }
 
     /**
