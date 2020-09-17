@@ -437,7 +437,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
   });
 
-  describe.only("Test redeem", async () => {
+  describe("Test redeem", async () => {
     it("Test redeem insufficient amount", async () => {
       await expectRevert(
         instance.redeem(0, constants.ZERO_ADDRESS),
