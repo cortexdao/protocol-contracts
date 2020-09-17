@@ -8,7 +8,11 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
   console.log("Chain ID", chainId);
 
   const { deploy } = deployments;
-  const { deployer, admin } = await getNamedAccounts();
+  const { deployer } = await getNamedAccounts();
+
+  const proxyAdmin = await deploy("ProxyAdmin", {
+    from: deployer,
+  });
 
   const logic = await deploy("APYLiquidityPoolImplementation", {
     from: deployer,
@@ -16,12 +20,12 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
 
   let pool = await deploy("APYLiquidityPoolProxy", {
     from: deployer,
-    args: [logic.address, admin],
+    args: [logic.address, proxyAdmin.address],
   });
   pool = await APYLiquidityPoolImplementation.at(pool.address);
 
   // set admin address for initializer upgrade
-  await pool.setAdminAddress(admin, { from: deployer });
+  await pool.setAdminAddress(proxyAdmin.address, { from: deployer });
 
   // register each token and its price feed with pool
   const aggregators = chainIdToAggregators[chainId];

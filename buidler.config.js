@@ -64,9 +64,6 @@ module.exports = {
   namedAccounts: {
     deployer: {
       default: 0,
-    },
-    admin: {
-      default: 1,
-    },
-  },
+    }
+  }
 };
