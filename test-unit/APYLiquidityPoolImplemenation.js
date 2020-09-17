@@ -355,8 +355,20 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
   });
 
-  describe.skip("Test getTokenAmountEthValue", async () => {
-    it("Test ...", async () => { });
+  describe("Test getTokenAmountEthValue", async () => {
+    it("Test getTokenAmountEthValue returns expected amount", async () => {
+      const tokenA = await MockContract.new();
+      const returnData = abiCoder.encode(
+        ["uint80", "int256", "uint256", "uint256", "uint80"],
+        [0, 100, 0, 0, 0]
+      );
+      const mockAgg = await MockContract.new();
+      await mockAgg.givenAnyReturn(returnData);
+      await instance.addTokenSupport(tokenA.address, mockAgg.address);
+      // ((10 ^ 0) * 100) / 100
+      const tokenAmount = await instance.getTokenAmountFromEthValue(100, tokenA.address)
+      console.log(tokenAmount.toNumber());
+    });
   });
 
   describe("Test getTokenEthPrice", async () => {
