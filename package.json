@@ -10,7 +10,8 @@
   "files": [
     "contracts",
     "artifacts",
-    "config"
+    "config",
+    "deployments/kovan"
   ],
   "scripts": {
     "check": "yarn lint",
