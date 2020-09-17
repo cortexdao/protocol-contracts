@@ -182,10 +182,7 @@ contract APYLiquidityPoolImplementation is
     {
         uint256 tokenEthPrice = getTokenEthPrice(token);
         uint256 decimals = ERC20UpgradeSafe(address(token)).decimals();
-        uint256 ethValue = tokenEthPrice.divu(uint256(10)**decimals).mulu(
-            amount
-        );
-        return ethValue;
+        return tokenEthPrice / ((10**decimals) * amount); //ethValue
     }
 
     function getTokenAmountFromEthValue(uint256 ethValue, IERC20 token)
