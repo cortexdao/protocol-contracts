@@ -437,7 +437,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
   });
 
-  describe("Test redeem", async () => {
+  describe.only("Test redeem", async () => {
     it("Test redeem insufficient amount", async () => {
       await expectRevert(
         instance.redeem(0, constants.ZERO_ADDRESS),
@@ -454,33 +454,56 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
 
     it("Test redeem pass", async () => {
-      await instance.mint(randomUser, 100);
-      const returnData = abiCoder.encode(
-        ["uint80", "int256", "uint256", "uint256", "uint80"],
-        [0, 10, 0, 0, 0]
-      );
-      const mockAgg = await MockContract.new();
-      await mockAgg.givenAnyReturn(returnData);
-      const transferFrom = IERC20.encodeFunctionData("transfer", [
-        randomUser,
-        1,
-      ]);
-      await mockToken.givenMethodReturnBool(transferFrom, true);
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+      await instance.mint(randomUser, 1000);
 
+      const allowance = IERC20.encodeFunctionData("allowance", [
+        randomUser,
+        instance.address,
+      ]);
       const balanceOf = IERC20.encodeFunctionData("balanceOf", [
         instance.address,
       ]);
-      mockToken.givenMethodReturnUint(balanceOf, 1);
+      const transfer = IERC20.encodeFunctionData("transfer", [
+        randomUser,
+        1,
+      ]);
+      await mockToken.givenMethodReturnUint(allowance, 1);
+      await mockToken.givenMethodReturnUint(balanceOf, 1);
+      await mockToken.givenMethodReturnBool(transfer, true);
 
-      const trx = await instance.redeem(50, mockToken.address, {
+      const returnData = abiCoder.encode(
+        ["uint80", "int256", "uint256", "uint256", "uint80"],
+        [0, 1, 0, 0, 0]
+      );
+      const mockAgg = await MockContract.new();
+      await mockAgg.givenAnyReturn(returnData);
+
+      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+
+      const trx = await instance.redeem(1000, mockToken.address, {
         from: randomUser,
       });
 
-      const balance = await instance.balanceOf(randomUser);
-      assert.equal(balance.toNumber(), 50);
-      await expectEvent(trx, "Transfer");
-      await expectEvent(trx, "RedeemedAPT");
+      const bal = await instance.balanceOf(randomUser);
+      assert.equal(bal.toNumber(), 0);
+      await expectEvent(trx, "Transfer",
+        {
+          from: randomUser,
+          to: ZERO_ADDRESS,
+          value: new BN(1000)
+        }
+      );
+      await expectEvent(trx, "RedeemedAPT",
+        {
+          sender: randomUser,
+          token: mockToken.address,
+          redeemedTokenAmount: new BN(1),
+          aptRedeemAmount: new BN(1000),
+          tokenEthValue: new BN(1),
+          totalEthValueLocked: new BN(1)
+          //this value is a lie, but it's due to token.balance() = 1 and mockAgg.getLastRound() = 1
+        }
+      );
     });
 
     it("Test locking/unlocking redeem by owner", async () => {
