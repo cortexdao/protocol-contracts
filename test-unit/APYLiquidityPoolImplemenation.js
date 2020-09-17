@@ -355,7 +355,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
   });
 
-  describe.only("Test getTokenAmountEthValue", async () => {
+  describe("Test getTokenAmountEthValue", async () => {
     it("Test getTokenAmountEthValue returns expected amount", async () => {
       const tokenA = await MockContract.new();
       const returnData = abiCoder.encode(

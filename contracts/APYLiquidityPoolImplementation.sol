@@ -131,6 +131,7 @@ contract APYLiquidityPoolImplementation is
             "ALLOWANCE_INSUFFICIENT"
         );
 
+        // NOTE: calculateMintAmount() is not used to save gas
         uint256 depositEthValue = getTokenAmountEthValue(tokenAmt, token);
         uint256 poolTotalEthValue = getPoolTotalEthValue();
 
@@ -251,17 +252,14 @@ contract APYLiquidityPoolImplementation is
         emit RedeemUnlocked();
     }
 
-    function calculateMintAmount(uint256 underlyerAmount, IERC20 token)
+    function calculateMintAmount(uint256 tokenAmt, IERC20 token)
         public
         view
         returns (uint256)
     {
-        uint256 depositEthValue = getTokenAmountEthValue(
-            underlyerAmount,
-            token
-        );
+        uint256 depositEthValue = getTokenAmountEthValue(tokenAmt, token);
         uint256 poolTotalEthValue = getPoolTotalEthValue();
-        return _calculateMintAmount(depositEthValue, poolTotalEthValue);
+        return _calculateMintAmount(depositEthValue, poolTotalEthValue); // amount of APT
     }
 
     /**
@@ -278,14 +276,10 @@ contract APYLiquidityPoolImplementation is
         uint256 totalSupply = totalSupply();
 
         if (totalEthAmount == 0 || totalSupply == 0) {
-            return depositEthAmount.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR);
+            return depositEthAmount * DEFAULT_APT_TO_UNDERLYER_FACTOR;
         }
 
-        require(depositEthAmount <= MAX_UINT128, "AMOUNT_OVERFLOW");
-        require(totalEthAmount <= MAX_UINT128, "TOTAL_AMOUNT_OVERFLOW");
-        require(totalSupply <= MAX_UINT128, "TOTAL_SUPPLY_OVERFLOW");
-
-        return depositEthAmount.divu(totalEthAmount).mulu(totalSupply);
+        return (depositEthAmount * totalSupply) / totalEthAmount;
     }
 
     /**
@@ -298,15 +292,7 @@ contract APYLiquidityPoolImplementation is
         view
         returns (uint256)
     {
-        // int128 shareOfAPT = _getShareOfAPT(aptAmount);
-
-        uint256 poolTotalEthValue = getPoolTotalEthValue();
-        require(poolTotalEthValue <= MAX_UINT128, "UNDERLYER_TOTAL_OVERFLOW");
-
-        uint256 tokenEthValue = (aptAmount * poolTotalEthValue) / totalSupply();
-        // uint256 tokenEthValue = shareOfAPT.mulu(poolTotalEthValue);
-        uint256 tokenAmount = getTokenAmountFromEthValue(tokenEthValue, token);
-        return tokenAmount;
+        return getTokenAmountFromEthValue(getAPTEthValue(aptAmount), token);
     }
 
     // function _getShareOfAPT(uint256 amount) internal view returns (int128) {
