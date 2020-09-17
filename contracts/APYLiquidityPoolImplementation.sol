@@ -277,6 +277,9 @@ contract APYLiquidityPoolImplementation is
         uint256 depositEthAmount,
         uint256 totalEthAmount
     ) internal view returns (uint256) {
+        // NOTE: When totalSupply > 0 && totalEthAmount == 0
+        // others can lay claim to other users deposits
+
         uint256 totalSupply = totalSupply();
 
         if (totalEthAmount == 0 || totalSupply == 0) {
