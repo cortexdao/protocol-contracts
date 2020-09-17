@@ -1,0 +1,8 @@
+export SETH_CHAIN=kovan
+
+# Use Infura's Kovan testnet node for all RPC calls
+export ETH_RPC_URL='https://kovan.infura.io/v3/89c8bdd081fe4afa92b257fd9f88863a'
+
+# Set an address as the default sender
+export ETH_FROM=0xD9B189E60f26860e6607Fa03dF1A988216855627
+

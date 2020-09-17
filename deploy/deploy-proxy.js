@@ -28,4 +28,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
   for ({ token, aggregator } of aggregators) {
     await pool.addTokenSupport(token, aggregator, { from: deployer });
   }
+
+  // execute only once
+  return true;
 };
