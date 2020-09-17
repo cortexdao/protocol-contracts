@@ -2,9 +2,6 @@ const { ethers, web3, artifacts, contract } = require("@nomiclabs/buidler");
 const { defaultAbiCoder: abiCoder } = ethers.utils;
 const {
   BN,
-  ether,
-  balance,
-  send,
   constants,
   expectEvent, // Assertions for emitted events
   expectRevert, // Assertions for transactions that should fail
@@ -23,8 +20,6 @@ const APYLiquidityPoolImplementation = artifacts.require(
 );
 const IERC20 = new ethers.utils.Interface(artifacts.require("IERC20").abi);
 const ERC20 = new ethers.utils.Interface(artifacts.require("ERC20").abi);
-
-const { erc20 } = require("../utils/helpers");
 
 contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
   const [owner, instanceAdmin, randomUser, randomAddress] = accounts;
@@ -232,8 +227,24 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
 
       const balance = await instance.balanceOf(randomUser);
       assert.equal(balance.toNumber(), 1000);
-      await expectEvent(trx, "Transfer");
-      await expectEvent(trx, "DepositedAPT");
+      // this is the mint transfer
+      await expectEvent(trx, "Transfer",
+        {
+          from: ZERO_ADDRESS,
+          to: randomUser,
+          value: new BN(1000)
+        }
+      );
+      await expectEvent(trx, "DepositedAPT",
+        {
+          sender: randomUser,
+          token: mockToken.address,
+          tokenAmount: new BN(1),
+          aptMintAmount: new BN(1000),
+          tokenEthValue: new BN(1),
+          totalEthValueLocked: new BN(1)
+        }
+      );
       const count = await mockToken.invocationCountForMethod.call(transferFrom);
       assert.equal(count, 1);
     });
