@@ -319,6 +319,10 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
   });
 
   describe("Test getAPTEthValue", async () => {
+    it("Test getAPTEthValue when insufficient total supply", async () => {
+      await expectRevert(instance.getAPTEthValue(10), "INSUFFICIENT_TOTAL_SUPPLY")
+    })
+
     it("Test getAPTEthValue returns expected", async () => {
       await instance.mint(randomUser, 100);
 
@@ -674,7 +678,6 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       await mockAgg.givenAnyReturn(returnData);
 
       await instance.addTokenSupport(mockToken.address, mockAgg.address);
-
       await instance.mint(randomUser, 1);
       const underlyerAmount = await instance.getUnderlyerAmount.call(
         "1",

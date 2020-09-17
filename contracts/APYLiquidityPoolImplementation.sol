@@ -165,15 +165,13 @@ contract APYLiquidityPoolImplementation is
                 token.balanceOf(address(this)),
                 token
             );
-            poolTotalEthValue = poolTotalEthValue.add(tokenEthValue);
+            poolTotalEthValue = poolTotalEthValue + tokenEthValue;
         }
         return poolTotalEthValue;
     }
 
     function getAPTEthValue(uint256 amount) public view returns (uint256) {
-        require(amount <= MAX_UINT128, "AMOUNT_OVERFLOW");
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        require(totalSupply() <= MAX_UINT128, "TOTAL_SUPPLY_OVERFLOW");
         return (amount * getPoolTotalEthValue()) / totalSupply();
     }
 
@@ -197,9 +195,10 @@ contract APYLiquidityPoolImplementation is
     {
         uint256 tokenEthPrice = uint256(getTokenEthPrice(token));
         uint256 decimals = ERC20UpgradeSafe(address(token)).decimals();
-        uint256 tokenAmount = (uint256(10)**decimals).divu(tokenEthPrice).mulu(
-            ethValue
-        );
+        uint256 tokenAmount = ((10**decimals) * ethValue) / tokenEthPrice;
+        // uint256 tokenAmount = (uint256(10)**decimals).divu(tokenEthPrice).mulu(
+        //     ethValue
+        // );
         return tokenAmount;
     }
 
@@ -306,24 +305,25 @@ contract APYLiquidityPoolImplementation is
         view
         returns (uint256)
     {
-        int128 shareOfAPT = _getShareOfAPT(aptAmount);
+        // int128 shareOfAPT = _getShareOfAPT(aptAmount);
 
         uint256 poolTotalEthValue = getPoolTotalEthValue();
         require(poolTotalEthValue <= MAX_UINT128, "UNDERLYER_TOTAL_OVERFLOW");
 
-        uint256 tokenEthValue = shareOfAPT.mulu(poolTotalEthValue);
+        uint256 tokenEthValue = (aptAmount * poolTotalEthValue) / totalSupply();
+        // uint256 tokenEthValue = shareOfAPT.mulu(poolTotalEthValue);
         uint256 tokenAmount = getTokenAmountFromEthValue(tokenEthValue, token);
         return tokenAmount;
     }
 
-    function _getShareOfAPT(uint256 amount) internal view returns (int128) {
-        require(amount <= MAX_UINT128, "AMOUNT_OVERFLOW");
-        require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        require(totalSupply() <= MAX_UINT128, "TOTAL_SUPPLY_OVERFLOW");
+    // function _getShareOfAPT(uint256 amount) internal view returns (int128) {
+    //     require(amount <= MAX_UINT128, "AMOUNT_OVERFLOW");
+    //     require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
+    //     require(totalSupply() <= MAX_UINT128, "TOTAL_SUPPLY_OVERFLOW");
 
-        int128 shareOfApt = amount.divu(totalSupply());
-        return shareOfApt;
-    }
+    //     int128 shareOfApt = amount.divu(totalSupply());
+    //     return shareOfApt;
+    // }
 }
 
 /**
