@@ -516,8 +516,8 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
   });
 
-  describe.only("Test calculateMintAmount", async () => {
-    it("Test calculateMintAmount when token is 0 and supply is 0", async () => {
+  describe("Test calculateMintAmount", async () => {
+    it("Test calculateMintAmount when token is 0 and total supply is 0", async () => {
       // total supply is 0
 
       const balanceOf = IERC20.encodeFunctionData("balanceOf", [
@@ -538,12 +538,15 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       assert.equal(mintAmount.toNumber(), 1000000);
     });
 
-    it("Test calculateMintAmount when balanceOf > 0", async () => {
+    it("Test calculateMintAmount when balanceOf > 0 and total supply is 0", async () => {
+      // total supply is 0
+
       const balanceOf = IERC20.encodeFunctionData("balanceOf", [
         instance.address,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, 9999);
       const returnData = abiCoder.encode(
+
         ["uint80", "int256", "uint256", "uint256", "uint80"],
         [0, 1, 0, 0, 0]
       );
@@ -553,68 +556,6 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
 
       const mintAmount = await instance.calculateMintAmount(1000, mockToken.address);
       assert.equal(mintAmount.toNumber(), 1000000);
-    });
-
-    it("Test calculateMintAmount when amount overflows", async () => {
-      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
-        instance.address,
-      ]);
-      await mockToken.givenMethodReturnUint(balanceOf, 1);
-      const returnData = abiCoder.encode(
-        ["uint80", "int256", "uint256", "uint256", "uint80"],
-        [0, 1, 0, 0, 0]
-      );
-      const mockAgg = await MockContract.new();
-      await mockAgg.givenAnyReturn(returnData);
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
-
-      await instance.mint(randomUser, 1);
-      await expectRevert(
-        instance.calculateMintAmount(constants.MAX_UINT256, mockToken.address, {
-          from: randomUser,
-        }),
-        "AMOUNT_OVERFLOW"
-      );
-    });
-
-    it("Test calculateMintAmount when totalAmount overflows", async () => {
-      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
-        instance.address,
-      ]);
-      await mockToken.givenMethodReturnUint(balanceOf, constants.MAX_UINT256);
-      const returnData = abiCoder.encode(
-        ["uint80", "int256", "uint256", "uint256", "uint80"],
-        [0, 1, 0, 0, 0]
-      );
-      const mockAgg = await MockContract.new();
-      await mockAgg.givenAnyReturn(returnData);
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
-      await instance.mint(randomUser, 1);
-
-      await expectRevert(
-        instance.calculateMintAmount(1, mockToken.address, { from: randomUser }),
-        "TOTAL_AMOUNT_OVERFLOW"
-      );
-    });
-
-    it("Test calculateMintAmount when totalSupply overflows", async () => {
-      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
-        instance.address,
-      ]);
-      await mockToken.givenMethodReturnUint(balanceOf, 1);
-      const returnData = abiCoder.encode(
-        ["uint80", "int256", "uint256", "uint256", "uint80"],
-        [0, 1, 0, 0, 0]
-      );
-      const mockAgg = await MockContract.new();
-      await mockAgg.givenAnyReturn(returnData);
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
-
-      await instance.mint(randomUser, constants.MAX_UINT256);
-      await expectRevert(
-        instance.calculateMintAmount(1, mockToken.address, { from: randomUser }),
-        "TOTAL_SUPPLY_OVERFLOW"
-      );
     });
 
     it("Test calculateMintAmount returns expeted amount when total supply > 0", async () => {
