@@ -1,7 +1,7 @@
 /*
  * Command to run test script:
  *
- * $ yarn buidler --network kovan run test-deploy/test_proxy_deploy.js
+ * $ yarn buidler --network kovan run test-deploy/test_kovan_deploy.js
  */
 require("dotenv").config();
 const APYLiquidityPoolImplementationArtifact = require("../deployments/kovan/APYLiquidityPoolImplementation.json");
