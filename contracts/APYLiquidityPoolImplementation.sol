@@ -26,9 +26,7 @@ contract APYLiquidityPoolImplementation is
 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
-
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
-    uint192 public constant MAX_UINT128 = uint128(-1);
 
     /* ------------------------------- */
     /* impl-specific storage variables */
