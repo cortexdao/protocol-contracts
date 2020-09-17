@@ -171,7 +171,10 @@ contract APYLiquidityPoolImplementation is
     }
 
     function getAPTEthValue(uint256 amount) public view returns (uint256) {
-        return _getShareOfAPT(amount).mulu(getPoolTotalEthValue());
+        require(amount <= MAX_UINT128, "AMOUNT_OVERFLOW");
+        require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
+        require(totalSupply() <= MAX_UINT128, "TOTAL_SUPPLY_OVERFLOW");
+        return (amount * getPoolTotalEthValue()) / totalSupply();
     }
 
     function getTokenAmountEthValue(uint256 amount, IERC20 token)
