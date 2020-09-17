@@ -601,48 +601,10 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
   });
 
   describe("Test getUnderlyerAmount", async () => {
-    it("Test getUnderlyerAmount when amount overflows", async () => {
-      await expectRevert(
-        instance.getUnderlyerAmount.call(
-          constants.MAX_UINT256,
-          mockToken.address
-        ),
-        "AMOUNT_OVERFLOW"
-      );
-    });
-
     it("Test getUnderlyerAmount when divide by zero", async () => {
       await expectRevert(
         instance.getUnderlyerAmount.call(100, mockToken.address),
         "INSUFFICIENT_TOTAL_SUPPLY"
-      );
-    });
-
-    it("Test getUnderlyerAmount when total supply overflows", async () => {
-      await instance.mint(randomUser, constants.MAX_UINT256);
-      await expectRevert(
-        instance.getUnderlyerAmount.call(100, mockToken.address),
-        "TOTAL_SUPPLY_OVERFLOW"
-      );
-    });
-
-    it("Test getUnderlyerAmount when underyler total overflows", async () => {
-      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
-        instance.address,
-      ]);
-      await mockToken.givenMethodReturnUint(balanceOf, constants.MAX_UINT256);
-      const returnData = abiCoder.encode(
-        ["uint80", "int256", "uint256", "uint256", "uint80"],
-        [0, 1, 0, 0, 0]
-      );
-      const mockAgg = await MockContract.new();
-      await mockAgg.givenAnyReturn(returnData);
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
-
-      await instance.mint(randomUser, 1);
-      await expectRevert(
-        instance.getUnderlyerAmount.call(1, mockToken.address),
-        "UNDERLYER_TOTAL_OVERFLOW"
       );
     });
 
