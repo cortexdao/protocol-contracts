@@ -4,8 +4,11 @@ const APYLiquidityPoolImplementation = artifacts.require(
 );
 
 module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
+  console.log("");
+  console.log("Starting deploy script...");
   const chainId = await getChainId();
-  console.log("Chain ID", chainId);
+  console.log("Chain ID:", chainId);
+  console.log("");
 
   const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
