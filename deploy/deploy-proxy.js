@@ -36,6 +36,6 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
     await pool.addTokenSupport(token, aggregator, { from: deployer });
   }
 
-  // execute only once
+  // execute deploy script only once
   return true;
 };
