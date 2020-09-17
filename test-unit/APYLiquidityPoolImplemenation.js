@@ -355,7 +355,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
   });
 
-  describe.only("Test getTokenAmountFromEthValue", async () => {
+  describe("Test getTokenAmountFromEthValue", async () => {
     it("Test getEthValueFromTokenAmount returns expected amount", async () => {
       const tokenA = await MockContract.new();
       const returnData = abiCoder.encode(
@@ -516,18 +516,22 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
   });
 
-  describe("Test calculateMintAmount", async () => {
-    it("Test calculateMintAmount when balanceOf is 0", async () => {
+  describe.only("Test calculateMintAmount", async () => {
+    it("Test calculateMintAmount when token is 0 and supply is 0", async () => {
+      // total supply is 0
+
       const balanceOf = IERC20.encodeFunctionData("balanceOf", [
         instance.address,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, 0);
+
       const returnData = abiCoder.encode(
         ["uint80", "int256", "uint256", "uint256", "uint80"],
         [0, 1, 0, 0, 0]
       );
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
+
       await instance.addTokenSupport(mockToken.address, mockAgg.address);
 
       const mintAmount = await instance.calculateMintAmount(1000, mockToken.address);
