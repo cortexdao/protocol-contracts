@@ -12,6 +12,8 @@ const { abiCoder } = ethers.utils;
 const IERC20 = artifacts.require("IERC20");
 const ERC20 = artifacts.require("ERC20");
 
+const { BN } = require("@openzeppelin/test-helpers");
+const { expect } = require("chai");
 const { erc20 } = require("../utils/helpers");
 const { expectRevert } = require("@openzeppelin/test-helpers");
 
@@ -65,8 +67,16 @@ const main = async () => {
     const token = new ethers.Contract(address, ERC20.abi).connect(userWallet);
     const symbol = await token.symbol();
     tokenSymbols.push(symbol);
+
+    const price = await pool.getTokenEthPrice(address);
+    console.log(`${symbol}: ${price}`);
+
+    expect(price.toNumber()).to.be.gt(0);
   }
   expect(new Set(tokenSymbols)).to.eql(new Set(["DAI", "USDC", "USDT"]));
+
+  for (const address of tokenAddresses) {
+  }
 };
 
 main()
