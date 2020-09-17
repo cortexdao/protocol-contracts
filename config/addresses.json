@@ -19,17 +19,17 @@
   "42": [
     {
       "symbol": "DAI",
-      "token": "0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa",
+      "token": "0xff795577d9ac8bd7d90ee22b6c1703490b6512fd",
       "aggregator": "0x22B58f1EbEDfCA50feF632bD73368b2FdA96D541"
     },
     {
       "symbol": "USDC",
-      "token": "0x7079f3762805CFf9C979a5bDC6f5648bCFEE76C8",
+      "token": "0xe22da380ee6b445bb8273c81944adeb6e8450422",
       "aggregator": "0x64EaC61A2DFda2c3Fa04eED49AA33D021AeC8838"
     },
     {
       "symbol": "USDT",
-      "token": "0xA68895Df8F959F5827A6B6427C0176044A4beba6",
+      "token": "0x13512979ade267ab5100878e2e0f485b568328a4",
       "aggregator": "0x0bF499444525a23E7Bb61997539725cA2e928138"
     }
   ],
