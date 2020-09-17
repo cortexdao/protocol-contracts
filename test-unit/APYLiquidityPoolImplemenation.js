@@ -11,7 +11,10 @@ const {
 } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
 const timeMachine = require("ganache-time-traveler");
-const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
+const {
+  ZERO_ADDRESS,
+  MAX_UINT256,
+} = require("@openzeppelin/test-helpers/src/constants");
 const MockContract = artifacts.require("MockContract");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYLiquidityPoolProxy = artifacts.require("APYLiquidityPoolProxy");
