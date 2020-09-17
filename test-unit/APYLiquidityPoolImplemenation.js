@@ -367,7 +367,7 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
       await instance.addTokenSupport(tokenA.address, mockAgg.address);
       // ((10 ^ 0) * 100) / 100
       const tokenAmount = await instance.getTokenAmountFromEthValue(100, tokenA.address)
-      console.log(tokenAmount.toNumber());
+      assert.equal(tokenAmount.toNumber(), 1)
     });
   });
 

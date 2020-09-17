@@ -180,7 +180,7 @@ contract APYLiquidityPoolImplementation is
         view
         returns (uint256)
     {
-        uint256 tokenEthPrice = uint256(getTokenEthPrice(token));
+        uint256 tokenEthPrice = getTokenEthPrice(token);
         uint256 decimals = ERC20UpgradeSafe(address(token)).decimals();
         uint256 ethValue = tokenEthPrice.divu(uint256(10)**decimals).mulu(
             amount
@@ -193,16 +193,16 @@ contract APYLiquidityPoolImplementation is
         view
         returns (uint256)
     {
-        uint256 tokenEthPrice = uint256(getTokenEthPrice(token));
+        uint256 tokenEthPrice = getTokenEthPrice(token);
         uint256 decimals = ERC20UpgradeSafe(address(token)).decimals();
         return ((10**decimals) * ethValue) / tokenEthPrice; //tokenAmount
     }
 
-    function getTokenEthPrice(IERC20 token) public view returns (int256) {
+    function getTokenEthPrice(IERC20 token) public view returns (uint256) {
         AggregatorV3Interface agg = priceAggs[token];
         (, int256 price, , , ) = agg.latestRoundData();
         require(price > 0, "UNABLE_TO_RETRIEVE_ETH_PRICE");
-        return price;
+        return uint256(price);
     }
 
     function lockAddLiquidity() external onlyOwner {
@@ -239,7 +239,7 @@ contract APYLiquidityPoolImplementation is
             token,
             redeemTokenAmt,
             aptAmount,
-            uint256(this.getTokenEthPrice(token)),
+            getTokenEthPrice(token),
             getPoolTotalEthValue()
         );
     }
