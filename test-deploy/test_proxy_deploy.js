@@ -74,9 +74,6 @@ const main = async () => {
     expect(price.toNumber()).to.be.gt(0);
   }
   expect(new Set(tokenSymbols)).to.eql(new Set(["DAI", "USDC", "USDT"]));
-
-  for (const address of tokenAddresses) {
-  }
 };
 
 main()
