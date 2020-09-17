@@ -355,20 +355,38 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
     });
   });
 
-  describe("Test getTokenAmountEthValue", async () => {
-    it("Test getTokenAmountEthValue returns expected amount", async () => {
-      const tokenA = await MockContract.new();
+  describe.only("Test getEthValueFromTokenAmount", async () => {
+    // it("Test getEthValueFromTokenAmount returns expected amount", async () => {
+    //   const tokenA = await MockContract.new();
+    //   const returnData = abiCoder.encode(
+    //     ["uint80", "int256", "uint256", "uint256", "uint80"],
+    //     [0, 100, 0, 0, 0]
+    //   );
+    //   const mockAgg = await MockContract.new();
+    //   await mockAgg.givenAnyReturn(returnData);
+    //   await instance.addTokenSupport(tokenA.address, mockAgg.address);
+    //   // ((10 ^ 0) * 100) / 100
+    //   const tokenAmount = await instance.getTokenAmountFromEthValue(100, tokenA.address)
+    //   assert.equal(tokenAmount.toNumber(), 1)
+    // });
+
+    it("Test getEthValueFromTokenAmount returns 0 with 0 amount", async () => {
+      const val = await instance.getEthValueFromTokenAmount(0, mockToken.address)
+      assert.equal(val.toNumber(), 0)
+    })
+
+    it("Test getEthValueFromTokenAmount returns expected amount", async () => {
       const returnData = abiCoder.encode(
         ["uint80", "int256", "uint256", "uint256", "uint80"],
         [0, 100, 0, 0, 0]
       );
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
-      await instance.addTokenSupport(tokenA.address, mockAgg.address);
-      // ((10 ^ 0) * 100) / 100
-      const tokenAmount = await instance.getTokenAmountFromEthValue(100, tokenA.address)
-      assert.equal(tokenAmount.toNumber(), 1)
-    });
+      await instance.addTokenSupport(mockToken.address, mockAgg.address)
+
+      const val = await instance.getEthValueFromTokenAmount(1, mockToken.address)
+      assert.equal(val.toNumber(), 100)
+    })
   });
 
   describe("Test getTokenEthPrice", async () => {
@@ -432,8 +450,12 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
         1,
       ]);
       await mockToken.givenMethodReturnBool(transferFrom, true);
-
       await instance.addTokenSupport(mockToken.address, mockAgg.address);
+
+      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
+        instance.address,
+      ]);
+      mockToken.givenMethodReturnUint(balanceOf, 1);
 
       const trx = await instance.redeem(50, mockToken.address, {
         from: randomUser,

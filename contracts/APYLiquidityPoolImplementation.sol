@@ -132,7 +132,7 @@ contract APYLiquidityPoolImplementation is
         );
 
         // NOTE: calculateMintAmount() is not used to save gas
-        uint256 depositEthValue = getTokenAmountEthValue(tokenAmt, token);
+        uint256 depositEthValue = getEthValueFromTokenAmount(tokenAmt, token);
         uint256 poolTotalEthValue = getPoolTotalEthValue();
 
         uint256 mintAmount = _calculateMintAmount(
@@ -162,7 +162,7 @@ contract APYLiquidityPoolImplementation is
             }
 
             IERC20 token = _supportedTokens[i];
-            uint256 tokenEthValue = getTokenAmountEthValue(
+            uint256 tokenEthValue = getEthValueFromTokenAmount(
                 token.balanceOf(address(this)),
                 token
             );
@@ -176,11 +176,14 @@ contract APYLiquidityPoolImplementation is
         return (amount.mul(getPoolTotalEthValue())).div(totalSupply());
     }
 
-    function getTokenAmountEthValue(uint256 amount, IERC20 token)
+    function getEthValueFromTokenAmount(uint256 amount, IERC20 token)
         public
         view
         returns (uint256)
     {
+        if (amount == 0) {
+            return 0;
+        }
         uint256 tokenEthPrice = getTokenEthPrice(token);
         uint256 decimals = ERC20UpgradeSafe(address(token)).decimals();
         return tokenEthPrice.div((10**decimals).mul(amount)); //ethValue
@@ -257,7 +260,7 @@ contract APYLiquidityPoolImplementation is
         view
         returns (uint256)
     {
-        uint256 depositEthValue = getTokenAmountEthValue(tokenAmt, token);
+        uint256 depositEthValue = getEthValueFromTokenAmount(tokenAmt, token);
         uint256 poolTotalEthValue = getPoolTotalEthValue();
         return _calculateMintAmount(depositEthValue, poolTotalEthValue); // amount of APT
     }
