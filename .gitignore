@@ -5,6 +5,9 @@ node_modules/
 cache/
 artifacts/*
 
+# Deployment
+deployments/localhost/
+
 # Solidity coverage files
 coverage.json
 coverage/
