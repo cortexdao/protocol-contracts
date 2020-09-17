@@ -14,7 +14,6 @@ import {
     TransparentUpgradeableProxy
 } from "@openzeppelin/contracts/proxy/TransparentUpgradeableProxy.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
-import "abdk-libraries-solidity/ABDKMath64x64.sol";
 import "./interfaces/ILiquidityPool.sol";
 
 contract APYLiquidityPoolImplementation is
@@ -27,7 +26,6 @@ contract APYLiquidityPoolImplementation is
 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
-    using ABDKMath64x64 for *;
 
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
     uint192 public constant MAX_UINT128 = uint128(-1);
