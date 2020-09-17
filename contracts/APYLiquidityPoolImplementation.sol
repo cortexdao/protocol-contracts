@@ -166,14 +166,14 @@ contract APYLiquidityPoolImplementation is
                 token.balanceOf(address(this)),
                 token
             );
-            poolTotalEthValue = poolTotalEthValue + tokenEthValue;
+            poolTotalEthValue = poolTotalEthValue.add(tokenEthValue);
         }
         return poolTotalEthValue;
     }
 
     function getAPTEthValue(uint256 amount) public view returns (uint256) {
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        return (amount * getPoolTotalEthValue()) / totalSupply();
+        return (amount.mul(getPoolTotalEthValue())).div(totalSupply());
     }
 
     function getTokenAmountEthValue(uint256 amount, IERC20 token)
@@ -183,7 +183,7 @@ contract APYLiquidityPoolImplementation is
     {
         uint256 tokenEthPrice = getTokenEthPrice(token);
         uint256 decimals = ERC20UpgradeSafe(address(token)).decimals();
-        return tokenEthPrice / ((10**decimals) * amount); //ethValue
+        return tokenEthPrice.div((10**decimals).mul(amount)); //ethValue
     }
 
     function getTokenAmountFromEthValue(uint256 ethValue, IERC20 token)
@@ -193,7 +193,7 @@ contract APYLiquidityPoolImplementation is
     {
         uint256 tokenEthPrice = getTokenEthPrice(token);
         uint256 decimals = ERC20UpgradeSafe(address(token)).decimals();
-        return ((10**decimals) * ethValue) / tokenEthPrice; //tokenAmount
+        return ((10**decimals).mul(ethValue)).div(tokenEthPrice); //tokenAmount
     }
 
     function getTokenEthPrice(IERC20 token) public view returns (uint256) {
@@ -276,10 +276,10 @@ contract APYLiquidityPoolImplementation is
         uint256 totalSupply = totalSupply();
 
         if (totalEthAmount == 0 || totalSupply == 0) {
-            return depositEthAmount * DEFAULT_APT_TO_UNDERLYER_FACTOR;
+            return depositEthAmount.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR);
         }
 
-        return (depositEthAmount * totalSupply) / totalEthAmount;
+        return (depositEthAmount.mul(totalSupply)).div(totalEthAmount);
     }
 
     /**
@@ -294,15 +294,6 @@ contract APYLiquidityPoolImplementation is
     {
         return getTokenAmountFromEthValue(getAPTEthValue(aptAmount), token);
     }
-
-    // function _getShareOfAPT(uint256 amount) internal view returns (int128) {
-    //     require(amount <= MAX_UINT128, "AMOUNT_OVERFLOW");
-    //     require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-    //     require(totalSupply() <= MAX_UINT128, "TOTAL_SUPPLY_OVERFLOW");
-
-    //     int128 shareOfApt = amount.divu(totalSupply());
-    //     return shareOfApt;
-    // }
 }
 
 /**
