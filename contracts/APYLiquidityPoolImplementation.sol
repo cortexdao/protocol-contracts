@@ -131,7 +131,8 @@ contract APYLiquidityPoolImplementation is
             "ALLOWANCE_INSUFFICIENT"
         );
 
-        uint256 depositEthValue = getTokenAmountEthValue(tokenAmt, token);
+        // NOTE: calculateMintAmount() is not used to save gas
+        uint256 depositEthValue = getEthValueFromTokenAmount(tokenAmt, token);
         uint256 poolTotalEthValue = getPoolTotalEthValue();
 
         uint256 mintAmount = _calculateMintAmount(
@@ -161,7 +162,7 @@ contract APYLiquidityPoolImplementation is
             }
 
             IERC20 token = _supportedTokens[i];
-            uint256 tokenEthValue = getTokenAmountEthValue(
+            uint256 tokenEthValue = getEthValueFromTokenAmount(
                 token.balanceOf(address(this)),
                 token
             );
@@ -170,17 +171,22 @@ contract APYLiquidityPoolImplementation is
         return poolTotalEthValue;
     }
 
-    function getTokenAmountEthValue(uint256 amount, IERC20 token)
+    function getAPTEthValue(uint256 amount) public view returns (uint256) {
+        require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
+        return (amount.mul(getPoolTotalEthValue())).div(totalSupply());
+    }
+
+    function getEthValueFromTokenAmount(uint256 amount, IERC20 token)
         public
         view
         returns (uint256)
     {
-        uint256 tokenEthPrice = uint256(getTokenEthPrice(token));
+        if (amount == 0) {
+            return 0;
+        }
         uint256 decimals = ERC20UpgradeSafe(address(token)).decimals();
-        uint256 ethValue = tokenEthPrice.divu(uint256(10)**decimals).mulu(
-            amount
-        );
-        return ethValue;
+        // ethValue = (tokenEthPrice * amount) / decimals
+        return ((getTokenEthPrice(token)).mul(amount)).div(10**decimals);
     }
 
     function getTokenAmountFromEthValue(uint256 ethValue, IERC20 token)
@@ -188,19 +194,17 @@ contract APYLiquidityPoolImplementation is
         view
         returns (uint256)
     {
-        uint256 tokenEthPrice = uint256(getTokenEthPrice(token));
+        uint256 tokenEthPrice = getTokenEthPrice(token);
         uint256 decimals = ERC20UpgradeSafe(address(token)).decimals();
-        uint256 tokenAmount = (uint256(10)**decimals).divu(tokenEthPrice).mulu(
-            ethValue
-        );
-        return tokenAmount;
+        // amount = (ethValue * decimals) / tokenEthPrice
+        return ((10**decimals).mul(ethValue)).div(tokenEthPrice); //tokenAmount
     }
 
-    function getTokenEthPrice(IERC20 token) public view returns (int256) {
+    function getTokenEthPrice(IERC20 token) public view returns (uint256) {
         AggregatorV3Interface agg = priceAggs[token];
         (, int256 price, , , ) = agg.latestRoundData();
         require(price > 0, "UNABLE_TO_RETRIEVE_ETH_PRICE");
-        return price;
+        return uint256(price);
     }
 
     function lockAddLiquidity() external onlyOwner {
@@ -237,7 +241,7 @@ contract APYLiquidityPoolImplementation is
             token,
             redeemTokenAmt,
             aptAmount,
-            uint256(this.getTokenEthPrice(token)),
+            getTokenEthPrice(token),
             getPoolTotalEthValue()
         );
     }
@@ -252,17 +256,14 @@ contract APYLiquidityPoolImplementation is
         emit RedeemUnlocked();
     }
 
-    function calculateMintAmount(uint256 underlyerAmount, IERC20 token)
+    function calculateMintAmount(uint256 tokenAmt, IERC20 token)
         public
         view
         returns (uint256)
     {
-        uint256 depositEthValue = getTokenAmountEthValue(
-            underlyerAmount,
-            token
-        );
+        uint256 depositEthValue = getEthValueFromTokenAmount(tokenAmt, token);
         uint256 poolTotalEthValue = getPoolTotalEthValue();
-        return _calculateMintAmount(depositEthValue, poolTotalEthValue);
+        return _calculateMintAmount(depositEthValue, poolTotalEthValue); // amount of APT
     }
 
     /**
@@ -276,17 +277,16 @@ contract APYLiquidityPoolImplementation is
         uint256 depositEthAmount,
         uint256 totalEthAmount
     ) internal view returns (uint256) {
-        require(depositEthAmount <= MAX_UINT128, "AMOUNT_OVERFLOW");
-        require(totalEthAmount <= MAX_UINT128, "TOTAL_AMOUNT_OVERFLOW");
+        // NOTE: When totalSupply > 0 && totalEthAmount == 0
+        // others can lay claim to other users deposits
 
         uint256 totalSupply = totalSupply();
-        require(totalSupply <= MAX_UINT128, "TOTAL_SUPPLY_OVERFLOW");
 
         if (totalEthAmount == 0 || totalSupply == 0) {
             return depositEthAmount.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR);
         }
 
-        return depositEthAmount.divu(totalEthAmount).mulu(totalSupply);
+        return (depositEthAmount.mul(totalSupply)).div(totalEthAmount);
     }
 
     /**
@@ -299,23 +299,7 @@ contract APYLiquidityPoolImplementation is
         view
         returns (uint256)
     {
-        int128 shareOfAPT = _getShareOfAPT(aptAmount);
-
-        uint256 poolTotalEthValue = getPoolTotalEthValue();
-        require(poolTotalEthValue <= MAX_UINT128, "UNDERLYER_TOTAL_OVERFLOW");
-
-        uint256 tokenEthValue = shareOfAPT.mulu(poolTotalEthValue);
-        uint256 tokenAmount = getTokenAmountFromEthValue(tokenEthValue, token);
-        return tokenAmount;
-    }
-
-    function _getShareOfAPT(uint256 amount) internal view returns (int128) {
-        require(amount <= MAX_UINT128, "AMOUNT_OVERFLOW");
-        require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        require(totalSupply() <= MAX_UINT128, "TOTAL_SUPPLY_OVERFLOW");
-
-        int128 shareOfApt = amount.divu(totalSupply());
-        return shareOfApt;
+        return getTokenAmountFromEthValue(getAPTEthValue(aptAmount), token);
     }
 }
 
@@ -330,20 +314,5 @@ contract APYLiquidityPoolImplementationTEST is APYLiquidityPoolImplementation {
 
     function burn(address account, uint256 amount) public {
         _burn(account, amount);
-    }
-
-    function internalCalculateMintAmount(
-        uint256 depositEthAmount,
-        uint256 totalEthAmount
-    ) public view returns (uint256) {
-        return _calculateMintAmount(depositEthAmount, totalEthAmount);
-    }
-
-    function internalGetShareOfAPT(uint256 amount)
-        public
-        view
-        returns (int128)
-    {
-        return _getShareOfAPT(amount);
     }
 }
