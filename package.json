@@ -22,7 +22,9 @@
     "lint": "solhint contracts/**/*.sol",
     "coverage": "buidler coverage --network coverage --testfiles \"test-unit/*.js\"",
     "ganache": "ganache-cli",
-    "fork:mainnet": "./scripts/fork_mainnet.sh"
+    "fork:mainnet": "./scripts/fork_mainnet.sh",
+    "deploy:kovan": "yarn buidler --network kovan run",
+    "deploy:mainnet": "yarn buidler --network mainnet run"
   },
   "husky": {
     "hooks": {

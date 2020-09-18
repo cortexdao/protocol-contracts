@@ -29,11 +29,11 @@ async function main() {
   const instance = await APYLiquidityPoolImplementation.attach(proxy.address)
 
   await instance.setAdminAddress(proxyAdmin.address)
-  console.log("admin address set")
+  console.log(`Instance Admin address set: ${proxyAdmin.address}`)
 
   for ({ symbol, token, aggregator } of chainIdToAggregators[networkID]) {
     await instance.addTokenSupport(token, aggregator)
-    console.log(`${symbol}: ${token} -> ${aggregator}`)
+    console.log(`${symbol} -> ${aggregator} Chainlink Oracle Agg`)
   }
 }
 
