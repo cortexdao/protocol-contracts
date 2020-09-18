@@ -1,5 +1,6 @@
 # APY Subgraph
 ID: <ACCESS_TOKEN>
+Kovan ID: QmUCh5iYsqBVmJXMjDf3LnRgSanUfbTKbmfBiriwc9aQRF
 
 ## Prerequisites
 * Install `ganache-cli` globally with npm or yarn
