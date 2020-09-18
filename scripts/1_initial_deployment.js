@@ -1,9 +1,4 @@
 require('dotenv').config();
-const ProxyAdmin = artifacts.require("ProxyAdmin");
-const APYLiquidityPoolProxy = artifacts.require("APYLiquidityPoolProxy");
-const APYLiquidityPoolImplementation = artifacts.require(
-  "APYLiquidityPoolImplementation"
-);
 const chainIdToAggregators = require("../config/addresses.json");
 
 async function main() {
