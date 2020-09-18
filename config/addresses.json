@@ -1,5 +1,5 @@
 {
-  "1": [
+  "MAINNET": [
     {
       "symbol": "DAI",
       "token": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
@@ -16,7 +16,7 @@
       "aggregator": "0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46"
     }
   ],
-  "42": [
+  "KOVAN": [
     {
       "symbol": "DAI",
       "token": "0xff795577d9ac8bd7d90ee22b6c1703490b6512fd",
@@ -32,6 +32,5 @@
       "token": "0x13512979ade267ab5100878e2e0f485b568328a4",
       "aggregator": "0x0bF499444525a23E7Bb61997539725cA2e928138"
     }
-  ],
-  "1337": []
+  ]
 }
