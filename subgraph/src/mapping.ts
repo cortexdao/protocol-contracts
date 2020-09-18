@@ -8,6 +8,7 @@ export function handleDepositedAPT(event: DepositedAPT): void {
     + event.logIndex.toString()
     + event.transaction.hash.toHexString()
   )
+  tvl.timestamp = event.block.timestamp
   tvl.totalEthValueLocked = event.params.totalEthValueLocked
   tvl.save()
 }
@@ -19,6 +20,7 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
     + event.logIndex.toString()
     + event.transaction.hash.toHexString()
   )
+  tvl.timestamp = event.block.timestamp
   tvl.totalEthValueLocked = event.params.totalEthValueLocked
   tvl.save()
 }
