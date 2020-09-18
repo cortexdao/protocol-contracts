@@ -1,5 +1,4 @@
 require('dotenv').config();
-const { CHAIN_IDS, TOKEN_AGG_MAP } = require('../utils/constants.js')
 
 async function main() {
   const networkID = network.name.toUpperCase()

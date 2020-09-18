@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { CHAIN_IDS, TOKEN_AGG_MAP } = require('../utils/constants.js')
+const { updateDeployJsons } = require('../utils/helpers.js')
 
 async function main() {
   const networkID = network.name.toUpperCase()
@@ -25,6 +25,13 @@ async function main() {
   // NOTE: Select 1 of the following
   // await proxyAdmin.upgradeAndCall(proxy.address, newLogic.address, initData)
   // await proxyAdmin.upgrade(proxy.address, newLogic.address)
+
+  //Update Jsons
+  let deploy_data = {}
+  deploy_data['ProxyAdmin'] = proxyAdmin.address
+  deploy_data['APYLiquidityPoolImplementation'] = logic.address
+  deploy_data['APYLiquidityPoolProxy'] = proxy.address
+  await updateDeployJsons(NETWORK_NAME, deploy_data)
 }
 
 main()

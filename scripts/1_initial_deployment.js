@@ -1,24 +1,12 @@
 require('dotenv').config();
-const { CHAIN_IDS, TOKEN_AGG_MAP } = require('../utils/constants.js')
-const fs = require('fs')
+const { TOKEN_AGG_MAP } = require('../utils/constants.js')
+const { updateDeployJsons } = require('../utils/helpers.js')
 
 
 DEPLOYS_JSON = {
   ProxyAdmin: '../deployed_addresses/ProxyAdminAddresses.json',
   APYLiquidityPoolImplementation: '../deployed_addresses/APYLiquidityPoolImplementationAddresses.json',
   APYLiquidityPoolProxy: '../deployed_addresses/APYLiquidityPoolProxyAddresses.json'
-}
-
-async function updateDeployJsons(network, deploy_data) {
-  for (let [contract_name, file_path] of Object.entries(DEPLOYS_JSON)) {
-    // go through all deploys json and update them
-    address_json = require(file_path)
-    address_json[CHAIN_IDS[network]] = deploy_data[contract_name]
-    address_json_string = JSON.stringify(address_json, null, '  ')
-    fs.writeFileSync(__dirname + '/' + file_path, address_json_string, err => {
-      if (err) throw err
-    })
-  }
 }
 
 async function main() {
