@@ -29,6 +29,7 @@ yarn-error.log*
 # subgraph
 subgraph.yaml
 **/subgraph/generated
+subgraph/build
 
 # vim
 *.swp
