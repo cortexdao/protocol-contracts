@@ -22,7 +22,9 @@
     "lint": "solhint contracts/**/*.sol",
     "coverage": "buidler coverage --network coverage --testfiles \"test-unit/*.js\"",
     "ganache": "ganache-cli",
-    "fork:mainnet": "./scripts/fork_mainnet.sh"
+    "fork:mainnet": "./scripts/fork_mainnet.sh",
+    "deploy:kovan": "yarn buidler --network kovan run",
+    "deploy:mainnet": "yarn buidler --network mainnet run"
   },
   "husky": {
     "hooks": {
@@ -60,8 +62,7 @@
     "husky": "^4.2.5",
     "lint-staged": "^10.2.11",
     "solhint": "^3.2.0",
-    "solidity-coverage": "^0.7.10",
-    "buidler-deploy": "^0.6.0-beta.16"
+    "solidity-coverage": "^0.7.10"
   },
   "dependencies": {
     "@chainlink/contracts": "^0.0.9",

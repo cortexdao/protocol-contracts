@@ -44,6 +44,9 @@ jobs:
       run: yarn lint
     - name: Unit tests
       run: yarn test:unit
+      env: 
+        INFURA_API_KEY: ${{ secrets. INFURA_API_KEY }}
+        MNEMONIC: ${{ secrets. MNEMONIC }}
     # - name: Integration tests 
     #   run: |
     #     yarn fork:mainnet > /dev/null &
