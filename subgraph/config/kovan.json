@@ -1,5 +1,5 @@
 {
   "network": "kovan",
-  "pool_address": "",
-  "startBlock": 0
+  "pool_address": "0xd66E77A4Fb0701205a1C698E7F2D959dC5600644",
+  "startBlock": 20971498
 }
