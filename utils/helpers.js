@@ -1,5 +1,5 @@
 const { ether, BN } = require("@openzeppelin/test-helpers");
-const { CHAIN_IDS } = require('../utils/constants.js')
+const { CHAIN_IDS, DEPLOYS_JSON } = require('../utils/constants.js')
 const fs = require('fs')
 const IMintableERC20 = artifacts.require("IMintableERC20");
 const ERC20 = artifacts.require("ERC20");

@@ -2,13 +2,6 @@ require('dotenv').config();
 const { TOKEN_AGG_MAP } = require('../utils/constants.js')
 const { updateDeployJsons } = require('../utils/helpers.js')
 
-
-DEPLOYS_JSON = {
-  ProxyAdmin: '../deployed_addresses/ProxyAdminAddresses.json',
-  APYLiquidityPoolImplementation: '../deployed_addresses/APYLiquidityPoolImplementationAddresses.json',
-  APYLiquidityPoolProxy: '../deployed_addresses/APYLiquidityPoolProxyAddresses.json'
-}
-
 async function main() {
   const NETWORK_NAME = network.name.toUpperCase()
   console.log(`${NETWORK_NAME} selected`)

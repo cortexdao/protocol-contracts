@@ -84,6 +84,11 @@ const TOKEN_AGG_MAP = {
     }
   ]
 }
+const DEPLOYS_JSON = {
+  ProxyAdmin: '../deployed_addresses/ProxyAdminAddresses.json',
+  APYLiquidityPoolImplementation: '../deployed_addresses/APYLiquidityPoolImplementationAddresses.json',
+  APYLiquidityPoolProxy: '../deployed_addresses/APYLiquidityPoolProxyAddresses.json'
+}
 
 module.exports = {
   CDAI_ADDRESS,
@@ -102,5 +107,6 @@ module.exports = {
   UNLOCKED_ADDRESS,
   CHAIN_IDS,
   CHAIN_NAMES,
-  TOKEN_AGG_MAP
+  TOKEN_AGG_MAP,
+  DEPLOYS_JSON
 };
