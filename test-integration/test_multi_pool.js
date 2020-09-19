@@ -12,10 +12,8 @@ const { expect } = require("chai");
 const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
-const APYLiquidityPoolProxy = artifacts.require("APYLiquidityPoolProxy");
-const APYLiquidityPoolImplementation = artifacts.require(
-  "APYLiquidityPoolImplementation"
-);
+const APYPoolTokenProxy = artifacts.require("APYPoolTokenProxy");
+const APYPoolToken = artifacts.require("APYPoolToken");
 const ERC20 = artifacts.require("ERC20UpgradeSafe");
 const IMintableERC20 = artifacts.require("IMintableERC20");
 const {
@@ -41,7 +39,7 @@ const usdc = (amount) => {
   return erc20(amount, "6");
 };
 
-contract("APYLiquidityPool", async (accounts) => {
+contract("APYPoolToken", async (accounts) => {
   const [owner, admin, wallet, other] = accounts;
 
   let proxyAdmin;
@@ -63,11 +61,11 @@ contract("APYLiquidityPool", async (accounts) => {
 
   before(async () => {
     proxyAdmin = await ProxyAdmin.new({ from: owner });
-    logic = await APYLiquidityPoolImplementation.new({ from: owner });
-    proxy = await APYLiquidityPoolProxy.new(logic.address, proxyAdmin.address, {
+    logic = await APYPoolToken.new({ from: owner });
+    proxy = await APYPoolTokenProxy.new(logic.address, proxyAdmin.address, {
       from: owner,
     });
-    pool = await APYLiquidityPoolImplementation.at(proxy.address);
+    pool = await APYPoolToken.at(proxy.address);
 
     daiToken = await IMintableERC20.at(DAI_ADDRESS);
     tetherToken = await ERC20.at(USDT_ADDRESS);

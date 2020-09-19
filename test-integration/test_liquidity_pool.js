@@ -18,13 +18,11 @@ const {
 const ZERO_ADDRESS = constants.ZERO_ADDRESS;
 const timeMachine = require("ganache-time-traveler");
 
-const APYLiquidityPoolProxy = artifacts.require("APYLiquidityPoolProxy");
-const APYLiquidityPoolImplementation = artifacts.require(
-  "APYLiquidityPoolImplementation"
-);
+const APYPoolTokenProxy = artifacts.require("APYPoolTokenProxy");
+const APYPoolToken = artifacts.require("APYPoolToken");
 const IERC20 = artifacts.require("IERC20");
 
-contract("APYLiquidityPoolProxy", async (accounts) => {
+contract("APYPoolTokenProxy", async (accounts) => {
   const [deployer, admin, wallet, other] = accounts;
 
   let pool;
@@ -50,14 +48,14 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
   before(async () => {
     daiToken = await IERC20.at(DAI_ADDRESS);
 
-    poolImpl = await APYLiquidityPoolImplementation.new({ from: deployer });
-    poolProxy = await APYLiquidityPoolProxy.new(poolImpl.address, admin, {
+    poolImpl = await APYPoolToken.new({ from: deployer });
+    poolProxy = await APYPoolTokenProxy.new(poolImpl.address, admin, {
       from: deployer,
     });
 
     // trick Truffle into believing impl is at proxy address,
     // otherwise Truffle will give "no function" error
-    pool = await APYLiquidityPoolImplementation.at(poolProxy.address);
+    pool = await APYPoolToken.at(poolProxy.address);
   });
 
   describe("proxy delegates to implementation", async () => {
@@ -125,7 +123,7 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
     });
 
     it("admin can upgrade pool impl", async () => {
-      const newPoolImpl = await APYLiquidityPoolImplementation.new({
+      const newPoolImpl = await APYPoolToken.new({
         from: deployer,
       });
 
@@ -160,7 +158,7 @@ contract("APYLiquidityPoolProxy", async (accounts) => {
     });
 
     it("revert if non-admin upgrades pool impl", async () => {
-      const newPoolImpl = await APYLiquidityPoolImplementation.new({
+      const newPoolImpl = await APYPoolToken.new({
         from: deployer,
       });
 

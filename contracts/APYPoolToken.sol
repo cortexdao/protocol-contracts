@@ -16,7 +16,7 @@ import {
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/ILiquidityPool.sol";
 
-contract APYLiquidityPoolImplementation is
+contract APYPoolToken is
     ILiquidityPool,
     Initializable,
     OwnableUpgradeSafe,
@@ -303,7 +303,7 @@ contract APYLiquidityPoolImplementation is
  * @dev Proxy contract to test internal variables and functions
  *      Should not be used other than in test files!
  */
-contract APYLiquidityPoolImplementationTEST is APYLiquidityPoolImplementation {
+contract APYPoolTokenTEST is APYPoolToken {
     function mint(address account, uint256 amount) public {
         _mint(account, amount);
     }

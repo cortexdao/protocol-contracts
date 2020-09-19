@@ -2,11 +2,9 @@
 pragma solidity ^0.6.6;
 pragma experimental ABIEncoderV2;
 
-import "./APYLiquidityPoolImplementation.sol";
+import "./APYPoolToken.sol";
 
-contract APYLiquidityPoolImplementationUpgraded is
-    APYLiquidityPoolImplementation
-{
+contract APYPoolTokenUpgraded is APYPoolToken {
     bool public newlyAddedVariable;
 
     function initializeUpgrade() public override onlyAdmin {

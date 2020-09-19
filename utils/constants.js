@@ -86,8 +86,8 @@ const TOKEN_AGG_MAP = {
 }
 const DEPLOYS_JSON = {
   ProxyAdmin: '../deployed_addresses/ProxyAdminAddresses.json',
-  APYLiquidityPoolImplementation: '../deployed_addresses/APYLiquidityPoolImplementationAddresses.json',
-  APYLiquidityPoolProxy: '../deployed_addresses/APYLiquidityPoolProxyAddresses.json'
+  APYPoolToken: '../deployed_addresses/APYPoolTokenAddresses.json',
+  APYPoolTokenProxy: '../deployed_addresses/APYPoolTokenProxyAddresses.json'
 }
 
 module.exports = {

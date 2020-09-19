@@ -14,14 +14,12 @@ const {
 } = require("@openzeppelin/test-helpers/src/constants");
 const MockContract = artifacts.require("MockContract");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
-const APYLiquidityPoolProxy = artifacts.require("APYLiquidityPoolProxy");
-const APYLiquidityPoolImplementation = artifacts.require(
-  "APYLiquidityPoolImplementationTEST"
-);
+const APYPoolTokenProxy = artifacts.require("APYPoolTokenProxy");
+const APYPoolToken = artifacts.require("APYPoolTokenTEST");
 const IERC20 = new ethers.utils.Interface(artifacts.require("IERC20").abi);
 const ERC20 = new ethers.utils.Interface(artifacts.require("ERC20").abi);
 
-contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
+contract("APYPoolToken Unit Test", async (accounts) => {
   const [owner, instanceAdmin, randomUser, randomAddress] = accounts;
 
   let proxyAdmin;
@@ -44,11 +42,11 @@ contract("APYLiquidityPoolImplementation Unit Test", async (accounts) => {
 
   before(async () => {
     proxyAdmin = await ProxyAdmin.new({ from: owner });
-    logic = await APYLiquidityPoolImplementation.new({ from: owner });
-    proxy = await APYLiquidityPoolProxy.new(logic.address, proxyAdmin.address, {
+    logic = await APYPoolToken.new({ from: owner });
+    proxy = await APYPoolTokenProxy.new(logic.address, proxyAdmin.address, {
       from: owner,
     });
-    instance = await APYLiquidityPoolImplementation.at(proxy.address);
+    instance = await APYPoolToken.at(proxy.address);
     mockToken = await MockContract.new();
   });
 

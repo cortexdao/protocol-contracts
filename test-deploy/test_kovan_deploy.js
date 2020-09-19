@@ -4,8 +4,8 @@
  * $ yarn buidler --network kovan run test-deploy/test_kovan_deploy.js
  */
 require("dotenv").config();
-const APYLiquidityPoolImplementationArtifact = require("../deployments/kovan/APYLiquidityPoolImplementation.json");
-const APYLiquidityPoolProxyArtifact = require("../deployments/kovan/APYLiquidityPoolProxy.json");
+const APYPoolTokenArtifact = require("../deployments/kovan/APYPoolToken.json");
+const APYPoolTokenProxyArtifact = require("../deployments/kovan/APYPoolTokenProxy.json");
 const ProxyAdminArtifact = require("../deployments/kovan/ProxyAdmin.json");
 const { ethers, web3, artifacts } = require("@nomiclabs/buidler");
 const { abiCoder } = ethers.utils;
@@ -24,9 +24,9 @@ console.log("Endpoint:", endpoint);
 const main = async () => {
   const provider = new ethers.providers.JsonRpcProvider(endpoint);
 
-  const logicAddress = APYLiquidityPoolImplementationArtifact.address;
-  const logicAbi = APYLiquidityPoolImplementationArtifact.abi;
-  const proxyAddress = APYLiquidityPoolProxyArtifact.address;
+  const logicAddress = APYPoolTokenArtifact.address;
+  const logicAbi = APYPoolTokenArtifact.abi;
+  const proxyAddress = APYPoolTokenProxyArtifact.address;
   const adminAddress = ProxyAdminArtifact.address;
   const adminAbi = ProxyAdminArtifact.abi;
 
