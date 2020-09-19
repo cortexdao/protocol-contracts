@@ -86,6 +86,10 @@ async function updateDeployJsons(network, deploy_data) {
   for (let [contract_name, file_path] of Object.entries(DEPLOYS_JSON)) {
     // go through all deploys json and update them
     address_json = require(file_path)
+    // skip over contracts not changed
+    if (deploy_data[contract_name] === undefined) {
+      continue
+    }
     address_json[CHAIN_IDS[network]] = deploy_data[contract_name]
     address_json_string = JSON.stringify(address_json, null, '  ')
     fs.writeFileSync(__dirname + '/' + file_path, address_json_string, err => {
