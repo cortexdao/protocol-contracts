@@ -1,6 +1,9 @@
 require('dotenv').config();
-const { TOKEN_AGG_MAP } = require('../utils/constants.js')
+const { TOKEN_AGG_MAP, CHAIN_IDS, DEPLOYS_JSON } = require('../utils/constants.js')
 const { updateDeployJsons } = require('../utils/helpers.js')
+
+const PROXY_ADMIN_ADDRESSES = require(DEPLOYS_JSON['ProxyAdmin'])
+const APY_LIQUIDITY_POOL_PROXY_ADDRESSES = require(DEPLOYS_JSON['APYLiquidityPoolProxy'])
 
 const ContractData = artifacts.require(
   "APYLiquidityPoolImplementation"
@@ -14,13 +17,13 @@ async function main() {
   const APYLiquidityPoolImplementation = await ethers.getContractFactory("APYLiquidityPoolImplementation")
   const APYLiquidityPoolProxy = await ethers.getContractFactory("APYLiquidityPoolProxy")
 
-  const proxyAdmin = await ProxyAdmin.attach('0x6Ba40096c7629d3C5501b5b077dFC1d3F54f58FC')
+  const proxyAdmin = await ProxyAdmin.attach(PROXY_ADMIN_ADDRESSES[CHAIN_IDS[NETWORK_NAME]])
 
   const logic = await APYLiquidityPoolImplementation.deploy()
   await logic.deployed()
   console.log(`Implementation Logic: ${logic.address}`)
 
-  const proxy = await APYLiquidityPoolProxy.attach('0x6856903E7087fbdB5459362250426c878C5FdD73')
+  const proxy = await APYLiquidityPoolProxy.attach(APY_LIQUIDITY_POOL_PROXY_ADDRESSES[CHAIN_IDS[NETWORK_NAME]])
 
   const iImplementation = new ethers.utils.Interface(ContractData.abi);
   const initData = iImplementation.encodeFunctionData("initializeUpgrade", [])
