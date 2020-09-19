@@ -11,7 +11,7 @@
     "contracts",
     "artifacts",
     "config",
-    "deployments/kovan"
+    "deployed_addresses"
   ],
   "scripts": {
     "check": "yarn lint",
