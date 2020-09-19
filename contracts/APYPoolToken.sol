@@ -36,7 +36,7 @@ contract APYPoolToken is
 
     /* ------------------------------- */
 
-    function initialize() public initializer {
+    function initialize() external initializer {
         // initialize ancestor storage
         __Context_init_unchained();
         __Ownable_init_unchained();
@@ -51,9 +51,9 @@ contract APYPoolToken is
     }
 
     // solhint-disable-next-line no-empty-blocks
-    function initializeUpgrade() public virtual onlyAdmin {}
+    function initializeUpgrade() external virtual onlyAdmin {}
 
-    function setAdminAddress(address adminAddress) public onlyOwner {
+    function setAdminAddress(address adminAddress) external onlyOwner {
         proxyAdmin = adminAddress;
     }
 
