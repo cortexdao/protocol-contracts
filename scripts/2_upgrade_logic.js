@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { TOKEN_AGG_MAP, CHAIN_IDS, DEPLOYS_JSON } = require('../utils/constants.js')
+const { CHAIN_IDS, DEPLOYS_JSON } = require('../utils/constants.js')
 const { updateDeployJsons } = require('../utils/helpers.js')
 
 const PROXY_ADMIN_ADDRESSES = require(DEPLOYS_JSON['ProxyAdmin'])
