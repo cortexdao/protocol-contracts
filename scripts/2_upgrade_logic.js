@@ -19,9 +19,9 @@ async function main() {
 
   const proxyAdmin = await ProxyAdmin.attach(PROXY_ADMIN_ADDRESSES[CHAIN_IDS[NETWORK_NAME]])
 
-  const logic = await APYLiquidityPoolImplementation.deploy()
-  await logic.deployed()
-  console.log(`Implementation Logic: ${logic.address}`)
+  const newLogic = await APYLiquidityPoolImplementation.deploy()
+  await newLogic.deployed()
+  console.log(`New Implementation Logic: ${newLogic.address}`)
 
   const proxy = await APYLiquidityPoolProxy.attach(APY_LIQUIDITY_POOL_PROXY_ADDRESSES[CHAIN_IDS[NETWORK_NAME]])
 
@@ -29,12 +29,12 @@ async function main() {
   const initData = iImplementation.encodeFunctionData("initializeUpgrade", [])
 
   // NOTE: Select 1 of the following
-  await proxyAdmin.upgradeAndCall(proxy.address, logic.address, initData)
+  await proxyAdmin.upgradeAndCall(proxy.address, newLogic.address, initData)
   // await proxyAdmin.upgrade(proxy.address, newLogic.address)
 
   //Update Jsons
   let deploy_data = {}
-  deploy_data['APYLiquidityPoolImplementation'] = logic.address
+  deploy_data['APYLiquidityPoolImplementation'] = newLogic.address
   await updateDeployJsons(NETWORK_NAME, deploy_data)
 }
 
