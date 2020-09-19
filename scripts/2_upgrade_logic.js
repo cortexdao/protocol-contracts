@@ -33,37 +33,6 @@ async function main() {
   let deploy_data = {}
   deploy_data['APYLiquidityPoolImplementation'] = logic.address
   await updateDeployJsons(NETWORK_NAME, deploy_data)
-
-
-  // //Update Jsons
-  // let deploy_data = {}
-  // deploy_data['APYLiquidityPoolImplementation'] = logic.address
-  // await updateDeployJsons(NETWORK_NAME, deploy_data)
-
-  //=======================================
-
-  // const proxyAdmin = await ProxyAdmin.attach('')
-
-  // console.log(APYLiquidityPoolImplementation)
-
-  // // NOTE: update the contract name
-  // const newLogic = await APYLiquidityPoolImplementation.deploy()
-  // // await newLogic.deployed()
-  // // console.log(`New Implementation Logic: ${newLogic.address}`)
-
-  // // const proxy = await APYLiquidityPoolProxy.attach('0x7cFe3FA3bd81E56998693F0Afe2040777dFA08Fe')
-
-  // const iImplementation = new ethers.utils.Interface(ContractData.abi);
-  // const initData = iImplementation.encodeFunctionData("initializeUpgrade", [])
-
-  // // NOTE: Select 1 of the following
-  // await proxyAdmin.upgradeAndCall(proxy.address, newLogic.address, initData)
-  // // await proxyAdmin.upgrade(proxy.address, newLogic.address)
-
-  // // //Update Jsons
-  // // let deploy_data = {}
-  // // deploy_data['APYLiquidityPoolImplementation'] = newLogic.address
-  // // await updateDeployJsons(NETWORK_NAME, deploy_data)
 }
 
 main()
