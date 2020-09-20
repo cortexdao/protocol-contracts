@@ -11,154 +11,154 @@ const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYPoolTokenProxy = artifacts.require("APYPoolTokenProxy");
 const APYPoolToken = artifacts.require("APYPoolToken");
+const AGG = artifacts.require("AggregatorV3Interface.sol")
 const IERC20 = artifacts.require("IERC20");
 const IERC20_Interface = new ethers.utils.Interface(IERC20.abi);
 
 contract("APYPoolToken Integration Test", async (accounts) => {
   const [owner, instanceAdmin, randomUser, randomAddress] = accounts;
 
+  let DAI_AGG
+  let USDC_AGG
+  let USDT_AGG
+  let DAI
+  let USDC
+  let USDT
 
   let proxyAdmin;
   let logic;
   let proxy;
   let instance;
 
-  console.log("BEFORE")
-
   before("Setup", async () => {
-    console.log("SETUP")
-    // console.log(IERC20)
-    const DAI = await IERC20.at('0x6B175474E89094C44Da98b954EedeAC495271d0F')
-    const UDSC = await IERC20.at('0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48')
-    const USDT = await IERC20.at('0xdAC17F958D2ee523a2206206994597C13D831ec7')
+    DAI = await IERC20.at('0x6B175474E89094C44Da98b954EedeAC495271d0F')
+    USDC = await IERC20.at('0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48')
+    USDT = await IERC20.at('0xdAC17F958D2ee523a2206206994597C13D831ec7')
+    DAI_AGG = await AGG.at('0x773616E4d11A78F511299002da57A0a94577F1f4')
+    USDC_AGG = await AGG.at('0x986b5E1e1755e3C2440e960477f25201B0a8bbD4')
+    USDT_AGG = await AGG.at('0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46')
 
-    const DAI_AGG = '0x773616E4d11A78F511299002da57A0a94577F1f4'
-    const UDSC_AGG = '0x986b5E1e1755e3C2440e960477f25201B0a8bbD4'
-    const USDT_AGG = '0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46'
+    proxyAdmin = await ProxyAdmin.new({ from: owner });
+    logic = await APYPoolToken.new({ from: owner });
+    proxy = await APYPoolTokenProxy.new(logic.address, proxyAdmin.address, {
+      from: owner,
+    });
+    instance = await APYPoolToken.at(proxy.address);
 
-    console.log("seroiusly")
-
-    //   proxyAdmin = await ProxyAdmin.new({ from: owner });
-    //   logic = await APYPoolToken.new({ from: owner });
-    //   proxy = await APYPoolTokenProxy.new(logic.address, proxyAdmin.address, {
-    //     from: owner,
-    //   });
-    //   instance = await APYPoolToken.at(proxy.address);
-
-    //   console.log(`Proxy Admin: ${proxyAdmin.address}`)
-    //   console.log(`Logic: ${logic.address}`)
-    //   console.log(`Proxy: ${proxy.address}`)
+    console.log(`Proxy Admin: ${proxyAdmin.address}`)
+    console.log(`Logic: ${logic.address}`)
+    console.log(`Proxy: ${proxy.address}`)
   });
 
-  // describe("Test Defaults", async () => {
-  //   it("Test Owner", async () => {
-  //     assert.equal(await instance.owner.call(), owner);
-  //   });
+  describe("Test Defaults", async () => {
+    it("Test Owner", async () => {
+      assert.equal(await instance.owner.call(), owner);
+    });
 
-  //   it("Test DEFAULT_APT_TO_UNDERLYER_FACTOR", async () => {
-  //     assert.equal(await instance.DEFAULT_APT_TO_UNDERLYER_FACTOR.call(), 1000);
-  //   });
+    it("Test DEFAULT_APT_TO_UNDERLYER_FACTOR", async () => {
+      assert.equal(await instance.DEFAULT_APT_TO_UNDERLYER_FACTOR.call(), 1000);
+    });
 
-  //   it("Test Pool Token Name", async () => {
-  //     assert.equal(await instance.name.call(), "APY Pool Token");
-  //   });
+    it("Test Pool Token Name", async () => {
+      assert.equal(await instance.name.call(), "APY Pool Token");
+    });
 
-  //   it("Test Pool Symbol", async () => {
-  //     assert.equal(await instance.symbol.call(), "APT");
-  //   });
+    it("Test Pool Symbol", async () => {
+      assert.equal(await instance.symbol.call(), "APT");
+    });
 
-  //   it("Test Pool Decimals", async () => {
-  //     assert.equal(await instance.decimals.call(), 18);
-  //   });
+    it("Test Pool Decimals", async () => {
+      assert.equal(await instance.decimals.call(), 18);
+    });
 
-  //   it("Test sending Ether", async () => {
-  //     await expectRevert(instance.send(10), "DONT_SEND_ETHER");
-  //   });
-  // });
+    it("Test sending Ether", async () => {
+      await expectRevert(instance.send(10), "DONT_SEND_ETHER");
+    });
+  });
 
-  // describe("Test setAdminAdddress", async () => {
-  //   it("Test setAdminAddress pass", async () => {
-  //     await instance.setAdminAddress(instanceAdmin, { from: owner });
-  //     assert.equal(await instance.proxyAdmin.call(), instanceAdmin);
-  //   });
-  // });
+  describe("Test setAdminAdddress", async () => {
+    it("Test setAdminAddress pass", async () => {
+      await instance.setAdminAddress(instanceAdmin, { from: owner });
+      assert.equal(await instance.proxyAdmin.call(), instanceAdmin);
+    });
+  });
 
-  // describe("Test addTokenSupport", async () => {
-  //   it("Test addTokenSupport for DAI, USDC, USDT", async () => {
-  //     let trx
-  //     trx = await instance.addTokenSupport(
-  //       DAI.address,
-  //       DAI_AGG.address
-  //     );
-  //     await expectEvent(trx, "TokenSupported", {
-  //       token: DAI.address,
-  //       agg: DAI_AGG.address,
-  //     });
+  describe("Test addTokenSupport", async () => {
+    it("Test addTokenSupport for DAI, USDC, USDT", async () => {
+      let trx
+      trx = await instance.addTokenSupport(
+        DAI.address,
+        DAI_AGG.address
+      );
+      await expectEvent(trx, "TokenSupported", {
+        token: DAI.address,
+        agg: DAI_AGG.address,
+      });
 
-  //     trx = await instance.addTokenSupport(
-  //       UDSC.address,
-  //       UDSC_AGG.address
-  //     );
-  //     await expectEvent(trx, "TokenSupported", {
-  //       token: USDC.address,
-  //       agg: USDC_AGG.address,
-  //     });
+      trx = await instance.addTokenSupport(
+        USDC.address,
+        USDC_AGG.address
+      );
+      await expectEvent(trx, "TokenSupported", {
+        token: USDC.address,
+        agg: USDC_AGG.address,
+      });
 
-  //     trx = await instance.addTokenSupport(
-  //       USDT.address,
-  //       USDT_AGG.address
-  //     );
-  //     await expectEvent(trx, "TokenSupported", {
-  //       token: USDT.address,
-  //       agg: USDT_AGG.address
-  //     });
+      trx = await instance.addTokenSupport(
+        USDT.address,
+        USDT_AGG.address
+      );
+      await expectEvent(trx, "TokenSupported", {
+        token: USDT.address,
+        agg: USDT_AGG.address
+      });
 
-  //     // check aggs
-  //     let priceAgg
-  //     priceAgg = await instance.priceAggs.call(DAI.address);
-  //     assert.equal(priceAgg, DAI_AGG.address);
+      // check aggs
+      let priceAgg
+      priceAgg = await instance.priceAggs.call(DAI.address);
+      assert.equal(priceAgg, DAI_AGG.address);
 
-  //     priceAgg = await instance.priceAggs.call(UDSC.address);
-  //     assert.equal(priceAgg, USDC.address);
+      priceAgg = await instance.priceAggs.call(USDC.address);
+      assert.equal(priceAgg, USDC_AGG.address);
 
-  //     priceAgg = await instance.priceAggs.call(UDST.address);
-  //     assert.equal(priceAgg, USDT.address);
+      priceAgg = await instance.priceAggs.call(USDT.address);
+      assert.equal(priceAgg, USDT_AGG.address);
 
-  //     // check supported tokens
-  //     const supportedTokens = await instance.getSupportedTokens.call();
-  //     assert.equal(supportedTokens[0], DAI.address);
-  //     assert.equal(supportedTokens[1], UDSC.address);
-  //     assert.equal(supportedTokens[2], USDT.address);
-  //   });
-  // });
+      // check supported tokens
+      const supportedTokens = await instance.getSupportedTokens.call();
+      assert.equal(supportedTokens[0], DAI.address);
+      assert.equal(supportedTokens[1], USDC.address);
+      assert.equal(supportedTokens[2], USDT.address);
+    });
+  });
 
-  // describe("Test removeTokenSupport", async () => {
-  // it("Test removeTokenSupport for USDC", async () => {
-  //   const trx = await instance.removeTokenSupport(UDSC.address);
+  describe("Test removeTokenSupport", async () => {
+    it("Test removeTokenSupport for USDC", async () => {
+      const trx = await instance.removeTokenSupport(USDC.address);
 
-  //   // check aggs
-  //   let priceAgg
-  //   priceAgg = await instance.priceAggs.call(DAI.address);
-  //   assert.equal(priceAgg, DAI_AGG.address);
+      // check aggs
+      let priceAgg
+      priceAgg = await instance.priceAggs.call(DAI.address);
+      assert.equal(priceAgg, DAI_AGG.address);
 
-  //   priceAgg = await instance.priceAggs.call(UDSC.address);
-  //   assert.equal(priceAgg, USDC.address);
+      priceAgg = await instance.priceAggs.call(USDC.address);
+      assert.equal(priceAgg, ZERO_ADDRESS); //USDC removed
 
-  //   priceAgg = await instance.priceAggs.call(UDST.address);
-  //   assert.equal(priceAgg, USDT.address);
+      priceAgg = await instance.priceAggs.call(USDT.address);
+      assert.equal(priceAgg, USDT_AGG.address);
 
-  //   // check supported tokens
-  //   const supportedTokens = await instance.getSupportedTokens.call();
-  //   assert.equal(supportedTokens[0], DAI.address);
-  //   assert.equal(supportedTokens[1], ZERO_ADDRESS); // USDC removed
-  //   assert.equal(supportedTokens[2], USDT.address);
+      // check supported tokens
+      const supportedTokens = await instance.getSupportedTokens.call();
+      assert.equal(supportedTokens[0], DAI.address);
+      assert.equal(supportedTokens[1], ZERO_ADDRESS); // USDC removed
+      assert.equal(supportedTokens[2], USDT.address);
 
-  //   await expectEvent(trx, "TokenUnsupported", {
-  //     token: USDC.address,
-  //     agg: USDC_AGG.address,
-  //   });
-  // });
-  // });
+      await expectEvent(trx, "TokenUnsupported", {
+        token: USDC.address,
+        agg: USDC_AGG.address,
+      });
+    });
+  });
 
   //checkpoint
 
