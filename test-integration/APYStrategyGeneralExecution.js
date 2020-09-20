@@ -16,9 +16,9 @@ const { cDAI, DAI, COMP, COMPTROLLER } = require('../utils/Compound');
 const IMintableERC20 = artifacts.require("IMintableERC20");
 const APYStrategyGeneralExecutor = artifacts.require("APYStrategyGeneralExecutor");
 const ERC20 = artifacts.require("IERC20");
-const cERC20 = artifacts.require("CErc20");
-const OneInch = artifacts.require("IOneSplit");
-const IOneInch = new ethers.utils.Interface(OneInch.abi);
+// const cERC20 = artifacts.require("CErc20");
+// const OneInch = artifacts.require("IOneSplit");
+// const IOneInch = new ethers.utils.Interface(OneInch.abi);
 
 async function mintERC20Tokens(
   tokenAddress,
@@ -46,7 +46,7 @@ contract("APYStrategyExecution", async (accounts) => {
   before("Setup", async () => {
     exec = await APYStrategyGeneralExecutor.new();
     DAIInstance = await ERC20.at(DAI.address)
-    cDAIInstance = await cERC20.at(cDAI.address)
+    // cDAIInstance = await cERC20.at(cDAI.address)
 
     // mint to user
     await mintERC20Tokens(DAI.address, owner, DAI_MINTER, amount);
@@ -55,8 +55,8 @@ contract("APYStrategyExecution", async (accounts) => {
     await DAIInstance.approve(exec.address, daiBalance)
 
     await DAIInstance.approve(cDAI.address, daiBalance)
-    errCode = await cDAIInstance.mint.call(daiBalance)
-    console.log(`Mint Error Code: ${errCode.toString()}`)
+    // errCode = await cDAIInstance.mint.call(daiBalance)
+    // console.log(`Mint Error Code: ${errCode.toString()}`)
 
     // mint to exec
     await mintERC20Tokens(DAI.address, exec.address, DAI_MINTER, amount);

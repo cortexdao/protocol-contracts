@@ -17,8 +17,8 @@ const { cDAI, DAI, COMP, COMPTROLLER } = require('../utils/Compound');
 // Imports
 const IMintableERC20 = artifacts.require("IMintableERC20");
 const APYStrategyReturnExecutor = artifacts.require("APYStrategyReturnExecutor");
-const OneInch = artifacts.require("IOneSplit");
-const IOneInch = new ethers.utils.Interface(OneInch.abi);
+// const OneInch = artifacts.require("IOneSplit");
+// const IOneInch = new ethers.utils.Interface(OneInch.abi);
 
 // Selectors
 // const getExpectedReturn = IOneInch.getSighash("getExpectedReturn");
