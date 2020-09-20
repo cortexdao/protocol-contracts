@@ -38,6 +38,8 @@ contract("APYPoolToken Integration Test", async (accounts) => {
     USDC_AGG = await AGG.at('0x986b5E1e1755e3C2440e960477f25201B0a8bbD4')
     USDT_AGG = await AGG.at('0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46')
 
+    //give users temporary funds
+
     proxyAdmin = await ProxyAdmin.new({ from: owner });
     logic = await APYPoolToken.new({ from: owner });
     proxy = await APYPoolTokenProxy.new(logic.address, proxyAdmin.address, {
