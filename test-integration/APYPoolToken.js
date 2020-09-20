@@ -231,6 +231,27 @@ contract("APYPoolToken Integration Test", async (accounts) => {
     });
   });
 
+  describe("Test calculateMintAmount", async () => {
+    it("Test calculateMintAmount returns expeted amount when total supply > 0", async () => {
+      const mintAmount = await instance.calculateMintAmount(1000000000, USDC.address, {
+        from: randomUser,
+      });
+      console.log(mintAmount.toString())
+      assert(mintAmount.gt(0))
+    });
+  });
+
+  describe("Test getUnderlyerAmount", async () => {
+    it("Test getUnderlyerAmount returns value", async () => {
+      const underlyerAmount = await instance.getUnderlyerAmount.call(
+        new BN("2605000000000000000000"),
+        DAI.address
+      );
+      console.log(underlyerAmount.toString());
+      assert(underlyerAmount.gt(0))
+    });
+  });
+
   describe("Test redeem", async () => {
     it("Test redeem insufficient balance", async () => {
       await expectRevert(
@@ -278,46 +299,6 @@ contract("APYPoolToken Integration Test", async (accounts) => {
 
       trx = await instance.unlock({ from: owner });
       expectEvent(trx, "Unpaused");
-    });
-  });
-
-  describe("Test calculateMintAmount", async () => {
-    it("Test calculateMintAmount returns expeted amount when total supply > 0", async () => {
-      const mintAmount = await instance.calculateMintAmount(1000000000, USDC.address, {
-        from: randomUser,
-      });
-      console.log(mintAmount.toString())
-      assert(mintAmount.gt(0))
-    });
-  });
-
-  describe.skip("Test getUnderlyerAmount", async () => {
-    it("Test getUnderlyerAmount when divide by zero", async () => {
-      await expectRevert(
-        instance.getUnderlyerAmount.call(100, mockToken.address),
-        "INSUFFICIENT_TOTAL_SUPPLY"
-      );
-    });
-
-    it("Test getUnderlyerAmount returns expected amount", async () => {
-      const balanceOf = IERC20.encodeFunctionData("balanceOf", [ZERO_ADDRESS]);
-      await mockToken.givenMethodReturnUint(balanceOf, "1");
-      const decimals = ERC20.encodeFunctionData("decimals");
-      await mockToken.givenMethodReturnUint(decimals, "1");
-      const returnData = abiCoder.encode(
-        ["uint80", "int256", "uint256", "uint256", "uint80"],
-        [0, 10, 0, 0, 0]
-      );
-      const mockAgg = await MockContract.new();
-      await mockAgg.givenAnyReturn(returnData);
-
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
-      await instance.mint(randomUser, 1);
-      const underlyerAmount = await instance.getUnderlyerAmount.call(
-        "1",
-        mockToken.address
-      );
-      expect(underlyerAmount).to.bignumber.equal("1");
     });
   });
 });
