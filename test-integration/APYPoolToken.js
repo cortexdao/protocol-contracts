@@ -281,87 +281,13 @@ contract("APYPoolToken Integration Test", async (accounts) => {
     });
   });
 
-  describe.skip("Test calculateMintAmount", async () => {
-    it("Test calculateMintAmount when token is 0 and total supply is 0", async () => {
-      // total supply is 0
-
-      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
-        instance.address,
-      ]);
-      await mockToken.givenMethodReturnUint(balanceOf, 0);
-
-      const returnData = abiCoder.encode(
-        ["uint80", "int256", "uint256", "uint256", "uint80"],
-        [0, 1, 0, 0, 0]
-      );
-      const mockAgg = await MockContract.new();
-      await mockAgg.givenAnyReturn(returnData);
-
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
-
-      const mintAmount = await instance.calculateMintAmount(1000, mockToken.address);
-      assert.equal(mintAmount.toNumber(), 1000000);
-    });
-
-    it("Test calculateMintAmount when balanceOf > 0 and total supply is 0", async () => {
-      // total supply is 0
-
-      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
-        instance.address,
-      ]);
-      await mockToken.givenMethodReturnUint(balanceOf, 9999);
-      const returnData = abiCoder.encode(
-
-        ["uint80", "int256", "uint256", "uint256", "uint80"],
-        [0, 1, 0, 0, 0]
-      );
-      const mockAgg = await MockContract.new();
-      await mockAgg.givenAnyReturn(returnData);
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
-
-      const mintAmount = await instance.calculateMintAmount(1000, mockToken.address);
-      assert.equal(mintAmount.toNumber(), 1000000);
-    });
-
+  describe("Test calculateMintAmount", async () => {
     it("Test calculateMintAmount returns expeted amount when total supply > 0", async () => {
-      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
-        instance.address,
-      ]);
-      await mockToken.givenMethodReturnUint(balanceOf, 9999);
-      const returnData = abiCoder.encode(
-        ["uint80", "int256", "uint256", "uint256", "uint80"],
-        [0, 1, 0, 0, 0]
-      );
-      const mockAgg = await MockContract.new();
-      await mockAgg.givenAnyReturn(returnData);
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
-
-      await instance.mint(randomUser, 900);
-      // (1000/9999) * 900 = 90.0090009001 ~= 90
-      const mintAmount = await instance.calculateMintAmount(1000, mockToken.address, {
+      const mintAmount = await instance.calculateMintAmount(1000000000, USDC.address, {
         from: randomUser,
       });
-      assert.equal(mintAmount.toNumber(), 90);
-    });
-
-    it("Test calculateMintAmount returns expeted amount when total supply is 0", async () => {
-      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
-        instance.address,
-      ]);
-      await mockToken.givenMethodReturnUint(balanceOf, 9999);
-      const returnData = abiCoder.encode(
-        ["uint80", "int256", "uint256", "uint256", "uint80"],
-        [0, 1, 0, 0, 0]
-      );
-      const mockAgg = await MockContract.new();
-      await mockAgg.givenAnyReturn(returnData);
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
-
-      // 90 * 1000 = 90000
-      const mintAmount = await instance.calculateMintAmount(90, mockToken.address, {
-        from: randomUser,
-      });
-      assert.equal(mintAmount.toNumber(), 90000);
+      console.log(mintAmount.toString())
+      assert(mintAmount.gt(0))
     });
   });
 
