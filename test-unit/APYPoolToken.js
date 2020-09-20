@@ -328,6 +328,37 @@ contract("APYPoolToken Unit Test", async (accounts) => {
       const val = await instance.getPoolTotalEthValue.call();
       assert.equal(val.toNumber(), 300);
     });
+
+    it("Test getPoolTotalEthValue returns expected with skipped token", async () => {
+      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
+        instance.address,
+      ]);
+
+      const tokenA = await MockContract.new();
+      tokenA.givenMethodReturnUint(balanceOf, 1);
+
+      const tokenB = await MockContract.new();
+      tokenB.givenMethodReturnUint(balanceOf, 1);
+
+      const tokenC = await MockContract.new();
+      tokenC.givenMethodReturnUint(balanceOf, 1);
+
+      const returnData = abiCoder.encode(
+        ["uint80", "int256", "uint256", "uint256", "uint80"],
+        [0, 100, 0, 0, 0]
+      );
+      const mockAgg = await MockContract.new();
+      await mockAgg.givenAnyReturn(returnData);
+
+      await instance.addTokenSupport(tokenA.address, mockAgg.address);
+      await instance.addTokenSupport(tokenB.address, mockAgg.address);
+      await instance.addTokenSupport(tokenC.address, mockAgg.address);
+
+      await instance.removeTokenSupport(tokenB.address);
+
+      const val = await instance.getPoolTotalEthValue.call();
+      assert.equal(val.toNumber(), 200);
+    });
   });
 
   describe("Test getAPTEthValue", async () => {
