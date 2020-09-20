@@ -10,7 +10,7 @@
   "files": [
     "contracts",
     "artifacts",
-    "config",
+    "utils/constants.js",
     "deployed_addresses"
   ],
   "scripts": {
