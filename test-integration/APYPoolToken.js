@@ -6,6 +6,11 @@ const {
   expectEvent, // Assertions for emitted events
   expectRevert, // Assertions for transactions that should fail
 } = require("@openzeppelin/test-helpers");
+const {
+  DAI_WHALE,
+  USDC_WHALE,
+  USDT_WHALE
+} = require("../utils/constants");
 const { expect } = require("chai");
 const { ZERO_ADDRESS, MAX_UINT256 } = require("@openzeppelin/test-helpers/src/constants");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
@@ -39,6 +44,8 @@ contract("APYPoolToken Integration Test", async (accounts) => {
     USDT_AGG = await AGG.at('0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46')
 
     //give users temporary funds
+    await DAI.approve(owner, MAX_UINT256, { from: DAI_WHALE })
+    await DAI.transferFrom(DAI_WHALE, owner, await DAI.balanceOf(DAI_WHALE))
 
     proxyAdmin = await ProxyAdmin.new({ from: owner });
     logic = await APYPoolToken.new({ from: owner });
