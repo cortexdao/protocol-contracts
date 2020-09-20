@@ -165,8 +165,6 @@ contract("APYPoolToken Integration Test", async (accounts) => {
     });
   });
 
-  //checkpoint
-
   describe("Test addLiquidity", async () => {
     it("Test addLiquidity pass", async () => {
       //1000 UDSC
@@ -211,177 +209,75 @@ contract("APYPoolToken Integration Test", async (accounts) => {
 
   describe("Test getTokenAmountFromEthValue", async () => {
     it("Test getEthValueFromTokenAmount returns expected amount", async () => {
-      const tokenAmount = await instance.getTokenAmountFromEthValue(new BN(500), DAI.address)
+      const tokenAmount = await instance.getTokenAmountFromEthValue.call(new BN(500), DAI.address)
       console.log(tokenAmount.toString())
       assert(tokenAmount.gt(0))
     });
   })
 
-  describe.skip("Test getEthValueFromTokenAmount", async () => {
-    it("Test getEthValueFromTokenAmount returns 0 with 0 amount", async () => {
-      const val = await instance.getEthValueFromTokenAmount(0, mockToken.address)
-      assert.equal(val.toNumber(), 0)
-    })
-
-    it("Test getEthValueFromTokenAmount returns expected amount", async () => {
-      const returnData = abiCoder.encode(
-        ["uint80", "int256", "uint256", "uint256", "uint80"],
-        [0, 100, 0, 0, 0]
-      );
-      const mockAgg = await MockContract.new();
-      await mockAgg.givenAnyReturn(returnData);
-      await instance.addTokenSupport(mockToken.address, mockAgg.address)
-
-      const val = await instance.getEthValueFromTokenAmount(1, mockToken.address)
-      assert.equal(val.toNumber(), 100)
+  describe("Test getEthValueFromTokenAmount", async () => {
+    it("Test getEthValueFromTokenAmount returns value", async () => {
+      const val = await instance.getEthValueFromTokenAmount.call(new BN(5000), DAI.address)
+      console.log(val.toString())
+      assert(val.gt(0))
     })
   });
 
-  describe.skip("Test getTokenEthPrice", async () => {
-    it("Test getTokenEthPrice returns unexpected", async () => {
-      const returnData = abiCoder.encode(
-        ["uint80", "int256", "uint256", "uint256", "uint80"],
-        [0, 0, 0, 0, 0]
-      );
-      const mockAgg = await MockContract.new();
-      await mockAgg.givenAnyReturn(returnData);
-
-      const newToken = await MockContract.new();
-      await instance.addTokenSupport(newToken.address, mockAgg.address);
-      await expectRevert(
-        instance.getTokenEthPrice.call(newToken.address),
-        "UNABLE_TO_RETRIEVE_ETH_PRICE"
-      );
-    });
-
-    it("Test getTokenEthPrice returns expected", async () => {
-      const returnData = abiCoder.encode(
-        ["uint80", "int256", "uint256", "uint256", "uint80"],
-        [0, 100, 0, 0, 0]
-      );
-      const mockAgg = await MockContract.new();
-      await mockAgg.givenAnyReturn(returnData);
-
-      const newToken = await MockContract.new();
-      await instance.addTokenSupport(newToken.address, mockAgg.address);
-      const price = await instance.getTokenEthPrice.call(newToken.address);
-      assert.equal(price, 100);
+  describe("Test getTokenEthPrice", async () => {
+    it("Test getTokenEthPrice returns value", async () => {
+      const price = await instance.getTokenEthPrice.call(DAI.address);
+      console.log(price.toString())
+      assert(price.gt(0))
     });
   });
 
-  describe.skip("Test redeem", async () => {
-    it("Test redeem insufficient amount", async () => {
-      await expectRevert(
-        instance.redeem(0, constants.ZERO_ADDRESS),
-        "AMOUNT_INSUFFICIENT"
-      );
-    });
-
+  describe("Test redeem", async () => {
     it("Test redeem insufficient balance", async () => {
-      await instance.mint(randomUser, 1);
       await expectRevert(
-        instance.redeem(2, constants.ZERO_ADDRESS, { from: randomUser }),
+        instance.redeem(2, DAI.address, { from: randomUser }),
         "BALANCE_INSUFFICIENT"
       );
     });
 
     it("Test redeem pass", async () => {
-      await instance.mint(randomUser, 1000);
-
-      const allowance = IERC20.encodeFunctionData("allowance", [
-        randomUser,
-        instance.address,
-      ]);
-      const balanceOf = IERC20.encodeFunctionData("balanceOf", [
-        instance.address,
-      ]);
-      const transfer = IERC20.encodeFunctionData("transfer", [
-        randomUser,
-        1,
-      ]);
-      await mockToken.givenMethodReturnUint(allowance, 1);
-      await mockToken.givenMethodReturnUint(balanceOf, 1);
-      await mockToken.givenMethodReturnBool(transfer, true);
-
-      const returnData = abiCoder.encode(
-        ["uint80", "int256", "uint256", "uint256", "uint80"],
-        [0, 1, 0, 0, 0]
-      );
-      const mockAgg = await MockContract.new();
-      await mockAgg.givenAnyReturn(returnData);
-
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
-
-      const trx = await instance.redeem(1000, mockToken.address, {
-        from: randomUser,
+      const trx = await instance.redeem(new BN('2605000000000000000000'), USDC.address, {
+        from: owner,
       });
 
-      const bal = await instance.balanceOf(randomUser);
+      const bal = await instance.balanceOf(owner);
       assert.equal(bal.toNumber(), 0);
-      await expectEvent(trx, "Transfer",
-        {
-          from: randomUser,
-          to: ZERO_ADDRESS,
-          value: new BN(1000)
-        }
-      );
-      await expectEvent(trx, "RedeemedAPT",
-        {
-          sender: randomUser,
-          token: mockToken.address,
-          redeemedTokenAmount: new BN(1),
-          aptRedeemAmount: new BN(1000),
-          tokenEthValue: new BN(1),
-          totalEthValueLocked: new BN(1)
-          //this value is a lie, but it's due to token.balance() = 1 and mockAgg.getLastRound() = 1
-        }
-      );
+
+      const usdc_bal = await USDC.balanceOf(owner);
+      console.log(usdc_bal.toString())
+
+      await expectEvent(trx, "Transfer");
+      await expectEvent(trx, "RedeemedAPT");
     });
 
     it("Test locking/unlocking redeem by owner", async () => {
-      await instance.mint(randomUser, 100);
-      const mockAgg = await MockContract.new();
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
-
       let trx = await instance.lockRedeem({ from: owner });
       expectEvent(trx, "RedeemLocked");
 
       await expectRevert(
-        instance.redeem(50, mockToken.address, { from: randomUser }),
+        instance.redeem(50, DAI.address, { from: randomUser }),
         "LOCKED"
       );
-      trx = await instance.lockRedeem({ from: owner });
 
       trx = await instance.unlockRedeem({ from: owner });
       expectEvent(trx, "RedeemUnlocked");
     });
 
     it("Test locking/unlocking contract by not owner", async () => {
-      await instance.mint(randomUser, 100);
-      const mockAgg = await MockContract.new();
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
-
       let trx = await instance.lock({ from: owner });
       expectEvent(trx, "Paused");
 
       await expectRevert(
-        instance.redeem(50, mockToken.address, { from: randomUser }),
+        instance.redeem(50, DAI.address, { from: randomUser }),
         "Pausable: paused"
       );
 
       trx = await instance.unlock({ from: owner });
       expectEvent(trx, "Unpaused");
-    });
-
-    it("Test locking/unlocking redeem by not owner", async () => {
-      await expectRevert(
-        instance.lockRedeem({ from: randomUser }),
-        "Ownable: caller is not the owner"
-      );
-      await expectRevert(
-        instance.unlockRedeem({ from: randomUser }),
-        "Ownable: caller is not the owner"
-      );
     });
   });
 

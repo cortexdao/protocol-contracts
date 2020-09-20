@@ -513,7 +513,6 @@ contract("APYPoolToken Unit Test", async (accounts) => {
         instance.redeem(50, mockToken.address, { from: randomUser }),
         "LOCKED"
       );
-      trx = await instance.lockRedeem({ from: owner });
 
       trx = await instance.unlockRedeem({ from: owner });
       expectEvent(trx, "RedeemUnlocked");
