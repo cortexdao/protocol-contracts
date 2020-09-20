@@ -7,9 +7,7 @@ const {
   expectRevert, // Assertions for transactions that should fail
 } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
-const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
-const MockContract = artifacts.require("MockContract");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYPoolTokenProxy = artifacts.require("APYPoolTokenProxy");
 const APYPoolToken = artifacts.require("APYPoolTokenTEST");
@@ -19,23 +17,18 @@ const ERC20 = new ethers.utils.Interface(artifacts.require("ERC20").abi);
 contract("APYPoolToken Unit Test", async (accounts) => {
   const [owner, instanceAdmin, randomUser, randomAddress] = accounts;
 
+  const DAI = await IERC20.at('0x6B175474E89094C44Da98b954EedeAC495271d0F')
+  const UDSC = await IERC20.at('0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48')
+  const USDT = await IERC20.at('0xdAC17F958D2ee523a2206206994597C13D831ec7')
+
+  const DAI_AGG = '0x773616E4d11A78F511299002da57A0a94577F1f4'
+  const UDSC_AGG = '0x986b5E1e1755e3C2440e960477f25201B0a8bbD4'
+  const USDT_AGG = '0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46'
+
   let proxyAdmin;
   let logic;
   let proxy;
   let instance;
-  let mockToken;
-
-  // use EVM snapshots for test isolation
-  let snapshotId;
-
-  beforeEach(async () => {
-    let snapshot = await timeMachine.takeSnapshot();
-    snapshotId = snapshot["result"];
-  });
-
-  afterEach(async () => {
-    await timeMachine.revertToSnapshot(snapshotId);
-  });
 
   before(async () => {
     proxyAdmin = await ProxyAdmin.new({ from: owner });
@@ -44,7 +37,6 @@ contract("APYPoolToken Unit Test", async (accounts) => {
       from: owner,
     });
     instance = await APYPoolToken.at(proxy.address);
-    mockToken = await MockContract.new();
   });
 
   describe("Test Defaults", async () => {
@@ -78,88 +70,86 @@ contract("APYPoolToken Unit Test", async (accounts) => {
       await instance.setAdminAddress(instanceAdmin, { from: owner });
       assert.equal(await instance.proxyAdmin.call(), instanceAdmin);
     });
-
-    it("Test setAdminAddress fail", async () => {
-      await expectRevert.unspecified(
-        instance.setAdminAddress(instanceAdmin, { from: randomUser })
-      );
-    });
   });
 
   describe("Test addTokenSupport", async () => {
-    it("Test addSupportedTokens with invalid token", async () => {
-      await expectRevert(
-        instance.addTokenSupport(constants.ZERO_ADDRESS, randomAddress),
-        "INVALID_TOKEN"
+    it("Test addTokenSupport for DAI, USDC, USDT", async () => {
+      let trx
+      trx = await instance.addTokenSupport(
+        DAI.address,
+        DAI_AGG.address
       );
-    });
-
-    it("Test addSupportedTokens with invalid agg", async () => {
-      await expectRevert(
-        instance.addTokenSupport(randomAddress, constants.ZERO_ADDRESS),
-        "INVALID_AGG"
-      );
-    });
-
-    it("Test addTokenSupport when not owner", async () => {
-      await expectRevert(
-        instance.addTokenSupport(randomAddress, randomAddress, {
-          from: randomAddress,
-        }),
-        "Ownable: caller is not the owner"
-      );
-    });
-
-    it("Test addTokenSupport pass", async () => {
-      const newToken = await MockContract.new();
-      const newPriceAgg = await MockContract.new();
-      const trx = await instance.addTokenSupport(
-        newToken.address,
-        newPriceAgg.address
-      );
-
-      const priceAgg = await instance.priceAggs.call(newToken.address);
-      const supportedTokens = await instance.getSupportedTokens.call();
-
-      assert.equal(priceAgg, newPriceAgg.address);
-      assert.equal(supportedTokens[0], newToken.address);
       await expectEvent(trx, "TokenSupported", {
-        token: newToken.address,
-        agg: newPriceAgg.address,
+        token: DAI.address,
+        agg: DAI_AGG.address,
       });
+
+      trx = await instance.addTokenSupport(
+        UDSC.address,
+        UDSC_AGG.address
+      );
+      await expectEvent(trx, "TokenSupported", {
+        token: USDC.address,
+        agg: USDC_AGG.address,
+      });
+
+      trx = await instance.addTokenSupport(
+        USDT.address,
+        USDT_AGG.address
+      );
+      await expectEvent(trx, "TokenSupported", {
+        token: USDT.address,
+        agg: USDT_AGG.address
+      });
+
+      // check aggs
+      let priceAgg
+      priceAgg = await instance.priceAggs.call(DAI.address);
+      assert.equal(priceAgg, DAI_AGG.address);
+
+      priceAgg = await instance.priceAggs.call(UDSC.address);
+      assert.equal(priceAgg, USDC.address);
+
+      priceAgg = await instance.priceAggs.call(UDST.address);
+      assert.equal(priceAgg, USDT.address);
+
+      // check supported tokens
+      const supportedTokens = await instance.getSupportedTokens.call();
+      assert.equal(supportedTokens[0], DAI.address);
+      assert.equal(supportedTokens[1], UDSC.address);
+      assert.equal(supportedTokens[2], USDT.address);
     });
   });
 
   describe("Test removeTokenSupport", async () => {
-    it("Test removeTokenSupport with invalid token", async () => {
-      await expectRevert(
-        instance.removeTokenSupport(constants.ZERO_ADDRESS),
-        "INVALID_TOKEN"
-      );
-    });
+    it("Test removeTokenSupport for USDC", async () => {
+      const trx = await instance.removeTokenSupport(UDSC.address);
 
-    it("Test removeTokenSupport when not owner", async () => {
-      await expectRevert(
-        instance.removeTokenSupport(randomAddress, { from: randomAddress }),
-        "Ownable: caller is not the owner"
-      );
-    });
+      // check aggs
+      let priceAgg
+      priceAgg = await instance.priceAggs.call(DAI.address);
+      assert.equal(priceAgg, DAI_AGG.address);
 
-    it("Test removeTokenSupport pass", async () => {
-      const newToken = await MockContract.new();
-      const newPriceAgg = await MockContract.new();
-      await instance.addTokenSupport(newToken.address, newPriceAgg.address);
-      const trx = await instance.removeTokenSupport(newToken.address);
+      priceAgg = await instance.priceAggs.call(UDSC.address);
+      assert.equal(priceAgg, USDC.address);
 
+      priceAgg = await instance.priceAggs.call(UDST.address);
+      assert.equal(priceAgg, USDT.address);
+
+      // check supported tokens
       const supportedTokens = await instance.getSupportedTokens.call();
-      assert.equal(supportedTokens[0], constants.ZERO_ADDRESS);
+      assert.equal(supportedTokens[0], DAI.address);
+      assert.equal(supportedTokens[1], ZERO_ADDRESS); // USDC removed
+      assert.equal(supportedTokens[2], USDT.address);
 
       await expectEvent(trx, "TokenUnsupported", {
-        token: newToken.address,
-        agg: newPriceAgg.address,
+        token: USDC.address,
+        agg: USDC_AGG.address,
       });
     });
   });
+
+  //checkpoint
 
   describe("Test addLiquidity", async () => {
     it("Test addLiquidity insufficient amount", async () => {
