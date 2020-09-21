@@ -1,4 +1,4 @@
-const { ethers, web3, artifacts, contract } = require("@nomiclabs/buidler");
+const { ethers, artifacts, contract } = require("@nomiclabs/buidler");
 const { defaultAbiCoder: abiCoder } = ethers.utils;
 const {
   BN,
@@ -8,10 +8,7 @@ const {
 } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
 const timeMachine = require("ganache-time-traveler");
-const {
-  ZERO_ADDRESS,
-  MAX_UINT256,
-} = require("@openzeppelin/test-helpers/src/constants");
+const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const MockContract = artifacts.require("MockContract");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYPoolTokenProxy = artifacts.require("APYPoolTokenProxy");
@@ -547,7 +544,6 @@ contract("APYPoolToken Unit Test", async (accounts) => {
         instance.redeem(50, mockToken.address, { from: randomUser }),
         "LOCKED"
       );
-      trx = await instance.lockRedeem({ from: owner });
 
       trx = await instance.unlockRedeem({ from: owner });
       expectEvent(trx, "RedeemUnlocked");
