@@ -239,15 +239,15 @@ contract("APYPoolToken Integration Test", async (accounts) => {
     it("Test getPoolTotalEthValue returns value", async () => {
       const val = await instance.getPoolTotalEthValue.call();
       console.log(`\tPool Total Eth Value ${val.toString()}`)
-      assert(val.gt(0))
+      assert(val.toString(), aptMinted.div(new BN(1000)).toString())
     });
   });
 
   describe("Test getAPTEthValue", async () => {
     it("Test getAPTEthValue returns value", async () => {
-      const val = await instance.getAPTEthValue(new BN("2605000000000000000000"));
+      const val = await instance.getAPTEthValue(aptMinted);
       console.log(`\tAPT Eth Value: ${val.toString()}`)
-      assert(val.gt(0))
+      assert(val.toString(), aptMinted.div(new BN(1000)).toString())
     });
   });
 
