@@ -226,7 +226,7 @@ contract("APYPoolToken Integration Test", async (accounts) => {
 
       // comupting the exact amount is unreliable due to variance in USDC/ETH
       aptMinted = await instance.balanceOf(owner);
-      console.log(`\tAPT Minted: ${aptMinted.toString()}`)
+      console.log(`\tAPT Balance: ${aptMinted.toString()}`)
       assert(aptMinted.toString(), expectedAPTMinted.toString())
 
       // this is the mint transfer
@@ -320,17 +320,20 @@ contract("APYPoolToken Integration Test", async (accounts) => {
     });
 
     it("Test redeem pass", async () => {
+      let usdc_bal = await USDC.balanceOf(owner);
+      console.log(`\tUSDC Balance Before Redeem: ${usdc_bal.toString()}`)
+
       const trx = await instance.redeem(aptMinted, USDC.address, {
         from: owner,
       });
 
+      usdc_bal = await USDC.balanceOf(owner);
+      console.log(`\tUSDC Balance After Redeem: ${usdc_bal.toString()}`)
+      assert.equal(usdc_bal.toString(), usdcBalBefore.toString())
+
       const bal = await instance.balanceOf(owner);
       console.log(`\tAPT Balance: ${bal.toString()}`)
       assert.equal(bal.toString(), "0");
-
-      const usdc_bal = await USDC.balanceOf(owner);
-      console.log(`\tUSDC Balance: ${usdc_bal.toString()}`)
-      assert.equal(usdc_bal.toString(), usdcBalBefore.toString())
 
       await expectEvent(trx, "Transfer");
       await expectEvent(trx, "RedeemedAPT");
