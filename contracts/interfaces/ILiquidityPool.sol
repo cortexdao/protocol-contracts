@@ -20,13 +20,12 @@ interface ILiquidityPool {
         uint256 totalEthValueLocked
     );
     event TokenSupported(address token, address agg);
-    event TokenUnsupported(address token, address agg);
     event AddLiquidityLocked();
     event AddLiquidityUnlocked();
     event RedeemLocked();
     event RedeemUnlocked();
 
-    function addLiquidity(uint256 amount, IERC20 token) external;
+    function addLiquidity(uint256 amount) external;
 
-    function redeem(uint256 tokenAmount, IERC20 token) external;
+    function redeem(uint256 tokenAmount) external;
 }
