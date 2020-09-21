@@ -252,7 +252,7 @@ contract("APYPoolToken Integration Test", async (accounts) => {
   });
 
   describe("Test getTokenAmountFromEthValue", async () => {
-    it("Test getEthValueFromTokenAmount returns expected amount", async () => {
+    it("Test getTokenAmountFromEthValue returns expected amount", async () => {
       const tokenAmount = await instance.getTokenAmountFromEthValue.call(new BN(500), DAI.address)
       console.log(`\tToken Amount from Eth Value: ${tokenAmount.toString()}`)
       assert(tokenAmount.gt(0))
