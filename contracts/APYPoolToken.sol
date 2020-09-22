@@ -25,18 +25,29 @@ contract APYPoolToken is
     using SafeERC20 for IERC20;
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
 
+    event AdminChanged(address);
+    event PriceAggregatorChanged(address agg);
+
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
     address public proxyAdmin;
     bool public addLiquidityLock;
     bool public redeemLock;
-    mapping(IERC20 => AggregatorV3Interface) public priceAggs;
-    IERC20[] internal _supportedTokens;
+    IERC20 public underlyer;
+    AggregatorV3Interface public priceAgg;
 
     /* ------------------------------- */
 
-    function initialize() external initializer {
+    function initialize(
+        address adminAddress,
+        IERC20 _underlyer,
+        AggregatorV3Interface _priceAgg
+    ) external initializer {
+        require(adminAddress != address(0), "INVALID_ADMIN");
+        require(address(_underlyer) != address(0), "INVALID_TOKEN");
+        require(address(_priceAgg) != address(0), "INVALID_AGG");
+
         // initialize ancestor storage
         __Context_init_unchained();
         __Ownable_init_unchained();
@@ -45,16 +56,29 @@ contract APYPoolToken is
         __ERC20_init_unchained("APY Pool Token", "APT");
 
         // initialize impl-specific storage
+        setAdminAddress(adminAddress);
         addLiquidityLock = false;
         redeemLock = false;
-        // admin and underlyer will get set by deployer
+        underlyer = _underlyer;
+        setPriceAggregator(_priceAgg);
     }
 
     // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual onlyAdmin {}
 
-    function setAdminAddress(address adminAddress) external onlyOwner {
+    function setAdminAddress(address adminAddress) public onlyOwner {
+        require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
+        emit AdminChanged(adminAddress);
+    }
+
+    function setPriceAggregator(AggregatorV3Interface _priceAgg)
+        public
+        onlyOwner
+    {
+        require(address(_priceAgg) != address(0), "INVALID_AGG");
+        priceAgg = _priceAgg;
+        emit PriceAggregatorChanged(address(_priceAgg));
     }
 
     modifier onlyAdmin() {
@@ -74,43 +98,11 @@ contract APYPoolToken is
         revert("DONT_SEND_ETHER");
     }
 
-    function addTokenSupport(IERC20 token, AggregatorV3Interface priceAgg)
-        external
-        onlyOwner
-    {
-        require(address(token) != address(0), "INVALID_TOKEN");
-        require(address(priceAgg) != address(0), "INVALID_AGG");
-        priceAggs[token] = priceAgg;
-        _supportedTokens.push(token);
-        emit TokenSupported(address(token), address(priceAgg));
-    }
-
-    function removeTokenSupport(IERC20 token) external onlyOwner {
-        require(address(token) != address(0), "INVALID_TOKEN");
-        emit TokenUnsupported(address(token), address(priceAggs[token]));
-        delete priceAggs[token];
-        // zero out the supportedToken in the list
-        for (uint256 i = 0; i < _supportedTokens.length; i++) {
-            if (_supportedTokens[i] == token) {
-                _supportedTokens[i] = IERC20(address(0));
-                return;
-            }
-        }
-    }
-
-    function getSupportedTokens() external view returns (IERC20[] memory) {
-        IERC20[] memory returnList = new IERC20[](_supportedTokens.length);
-        for (uint256 i = 0; i < _supportedTokens.length; i++) {
-            returnList[i] = _supportedTokens[i];
-        }
-        return returnList;
-    }
-
     /**
      * @notice Mint corresponding amount of APT tokens for sent token amount.
      * @dev If no APT tokens have been minted yet, fallback to a fixed ratio.
      */
-    function addLiquidity(uint256 tokenAmt, IERC20 token)
+    function addLiquidity(uint256 tokenAmt)
         external
         override
         nonReentrant
@@ -118,14 +110,13 @@ contract APYPoolToken is
     {
         require(!addLiquidityLock, "LOCKED");
         require(tokenAmt > 0, "AMOUNT_INSUFFICIENT");
-        require(address(priceAggs[token]) != address(0), "UNSUPPORTED_TOKEN");
         require(
-            token.allowance(msg.sender, address(this)) >= tokenAmt,
+            underlyer.allowance(msg.sender, address(this)) >= tokenAmt,
             "ALLOWANCE_INSUFFICIENT"
         );
 
         // NOTE: calculateMintAmount() is not used to save gas
-        uint256 depositEthValue = getEthValueFromTokenAmount(tokenAmt, token);
+        uint256 depositEthValue = getEthValueFromTokenAmount(tokenAmt);
         uint256 poolTotalEthValue = getPoolTotalEthValue();
 
         uint256 mintAmount = _calculateMintAmount(
@@ -134,11 +125,11 @@ contract APYPoolToken is
         );
 
         _mint(msg.sender, mintAmount);
-        token.safeTransferFrom(msg.sender, address(this), tokenAmt);
+        underlyer.safeTransferFrom(msg.sender, address(this), tokenAmt);
 
         emit DepositedAPT(
             msg.sender,
-            token,
+            underlyer,
             tokenAmt,
             mintAmount,
             depositEthValue,
@@ -147,21 +138,7 @@ contract APYPoolToken is
     }
 
     function getPoolTotalEthValue() public view returns (uint256) {
-        uint256 poolTotalEthValue;
-        for (uint256 i = 0; i < _supportedTokens.length; i++) {
-            // skip over removed tokens
-            if (address(_supportedTokens[i]) == address(0)) {
-                continue;
-            }
-
-            IERC20 token = _supportedTokens[i];
-            uint256 tokenEthValue = getEthValueFromTokenAmount(
-                token.balanceOf(address(this)),
-                token
-            );
-            poolTotalEthValue = poolTotalEthValue.add(tokenEthValue);
-        }
-        return poolTotalEthValue;
+        return getEthValueFromTokenAmount(underlyer.balanceOf(address(this)));
     }
 
     function getAPTEthValue(uint256 amount) public view returns (uint256) {
@@ -169,7 +146,7 @@ contract APYPoolToken is
         return (amount.mul(getPoolTotalEthValue())).div(totalSupply());
     }
 
-    function getEthValueFromTokenAmount(uint256 amount, IERC20 token)
+    function getEthValueFromTokenAmount(uint256 amount)
         public
         view
         returns (uint256)
@@ -177,25 +154,24 @@ contract APYPoolToken is
         if (amount == 0) {
             return 0;
         }
-        uint256 decimals = ERC20UpgradeSafe(address(token)).decimals();
+        uint256 decimals = ERC20UpgradeSafe(address(underlyer)).decimals();
         // ethValue = (tokenEthPrice * amount) / decimals
-        return ((getTokenEthPrice(token)).mul(amount)).div(10**decimals);
+        return ((getTokenEthPrice()).mul(amount)).div(10**decimals);
     }
 
-    function getTokenAmountFromEthValue(uint256 ethValue, IERC20 token)
+    function getTokenAmountFromEthValue(uint256 ethValue)
         public
         view
         returns (uint256)
     {
-        uint256 tokenEthPrice = getTokenEthPrice(token);
-        uint256 decimals = ERC20UpgradeSafe(address(token)).decimals();
+        uint256 tokenEthPrice = getTokenEthPrice();
+        uint256 decimals = ERC20UpgradeSafe(address(underlyer)).decimals();
         // amount = (ethValue * decimals) / tokenEthPrice
         return ((10**decimals).mul(ethValue)).div(tokenEthPrice); //tokenAmount
     }
 
-    function getTokenEthPrice(IERC20 token) public view returns (uint256) {
-        AggregatorV3Interface agg = priceAggs[token];
-        (, int256 price, , , ) = agg.latestRoundData();
+    function getTokenEthPrice() public view returns (uint256) {
+        (, int256 price, , , ) = priceAgg.latestRoundData();
         require(price > 0, "UNABLE_TO_RETRIEVE_ETH_PRICE");
         return uint256(price);
     }
@@ -214,7 +190,7 @@ contract APYPoolToken is
      * @notice Redeems APT amount for its underlying token amount.
      * @param aptAmount The amount of APT tokens to redeem
      */
-    function redeem(uint256 aptAmount, IERC20 token)
+    function redeem(uint256 aptAmount)
         external
         override
         nonReentrant
@@ -224,17 +200,17 @@ contract APYPoolToken is
         require(aptAmount > 0, "AMOUNT_INSUFFICIENT");
         require(aptAmount <= balanceOf(msg.sender), "BALANCE_INSUFFICIENT");
 
-        uint256 redeemTokenAmt = getUnderlyerAmount(aptAmount, token);
+        uint256 redeemTokenAmt = getUnderlyerAmount(aptAmount);
 
         _burn(msg.sender, aptAmount);
-        token.safeTransfer(msg.sender, redeemTokenAmt);
+        underlyer.safeTransfer(msg.sender, redeemTokenAmt);
 
         emit RedeemedAPT(
             msg.sender,
-            token,
+            underlyer,
             redeemTokenAmt,
             aptAmount,
-            getTokenEthPrice(token),
+            getTokenEthPrice(),
             getPoolTotalEthValue()
         );
     }
@@ -249,12 +225,12 @@ contract APYPoolToken is
         emit RedeemUnlocked();
     }
 
-    function calculateMintAmount(uint256 tokenAmt, IERC20 token)
+    function calculateMintAmount(uint256 tokenAmt)
         public
         view
         returns (uint256)
     {
-        uint256 depositEthValue = getEthValueFromTokenAmount(tokenAmt, token);
+        uint256 depositEthValue = getEthValueFromTokenAmount(tokenAmt);
         uint256 poolTotalEthValue = getPoolTotalEthValue();
         return _calculateMintAmount(depositEthValue, poolTotalEthValue); // amount of APT
     }
@@ -287,12 +263,12 @@ contract APYPoolToken is
      * @param aptAmount The amount of APT tokens
      * @return uint256 The underlying value of the APT tokens
      */
-    function getUnderlyerAmount(uint256 aptAmount, IERC20 token)
+    function getUnderlyerAmount(uint256 aptAmount)
         public
         view
         returns (uint256)
     {
-        return getTokenAmountFromEthValue(getAPTEthValue(aptAmount), token);
+        return getTokenAmountFromEthValue(getAPTEthValue(aptAmount));
     }
 }
 
