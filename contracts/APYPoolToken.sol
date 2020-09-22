@@ -25,6 +25,9 @@ contract APYPoolToken is
     using SafeERC20 for IERC20;
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
 
+    event AdminChanged(address);
+    event PriceAggregatorChanged(address);
+
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
@@ -66,6 +69,7 @@ contract APYPoolToken is
     function setAdminAddress(address adminAddress) public onlyOwner {
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
+        emit AdminChanged(adminAddress);
     }
 
     function setPriceAggregator(AggregatorV3Interface _priceAgg)
@@ -74,6 +78,7 @@ contract APYPoolToken is
     {
         require(address(_priceAgg) != address(0), "INVALID_AGG");
         priceAgg = _priceAgg;
+        emit PriceAggregatorChanged(_priceAgg);
     }
 
     modifier onlyAdmin() {

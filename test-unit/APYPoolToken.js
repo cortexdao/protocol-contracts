@@ -38,13 +38,20 @@ contract("APYPoolToken Unit Test", async (accounts) => {
   });
 
   before(async () => {
+    mockToken = await MockContract.new();
+    mockPriceAgg = await MockContract.new();
     proxyAdmin = await ProxyAdmin.new({ from: owner });
     logic = await APYPoolToken.new({ from: owner });
-    proxy = await APYPoolTokenProxy.new(logic.address, proxyAdmin.address, {
-      from: owner,
-    });
+    proxy = await APYPoolTokenProxy.new(
+      logic.address,
+      proxyAdmin.address,
+      mockToken.address,
+      mockPriceAgg.address,
+      {
+        from: owner,
+      }
+    );
     instance = await APYPoolToken.at(proxy.address);
-    mockToken = await MockContract.new();
   });
 
   describe("Test Defaults", async () => {
@@ -86,45 +93,32 @@ contract("APYPoolToken Unit Test", async (accounts) => {
     });
   });
 
-  describe("Test addTokenSupport", async () => {
-    it("Test addSupportedTokens with invalid token", async () => {
-      await expectRevert(
-        instance.addTokenSupport(constants.ZERO_ADDRESS, randomAddress),
-        "INVALID_TOKEN"
-      );
-    });
-
+  describe("Test setPriceAggregator", async () => {
     it("Test addSupportedTokens with invalid agg", async () => {
       await expectRevert(
-        instance.addTokenSupport(randomAddress, constants.ZERO_ADDRESS),
+        instance.setPriceAggregator(constants.ZERO_ADDRESS),
         "INVALID_AGG"
       );
     });
 
-    it("Test addTokenSupport when not owner", async () => {
+    it("Test setPriceAggregator when not owner", async () => {
       await expectRevert(
-        instance.addTokenSupport(randomAddress, randomAddress, {
+        instance.addTokenSupport(randomAddress, {
           from: randomAddress,
         }),
         "Ownable: caller is not the owner"
       );
     });
 
-    it("Test addTokenSupport pass", async () => {
-      const newToken = await MockContract.new();
+    it("Test setPriceAggregator pass", async () => {
       const newPriceAgg = await MockContract.new();
-      const trx = await instance.addTokenSupport(
-        newToken.address,
-        newPriceAgg.address
-      );
+      const trx = await instance.setPriceAggregator(newPriceAgg.address);
 
       const priceAgg = await instance.priceAgg.call();
       const underlyer = await instance.underlyer.call();
 
       assert.equal(priceAgg, newPriceAgg.address);
-      assert.equal(underlyer, newToken.address);
-      await expectEvent(trx, "TokenSupported", {
-        token: newToken.address,
+      await expectEvent(trx, "PriceAggregatorChanged", {
         agg: newPriceAgg.address,
       });
     });
