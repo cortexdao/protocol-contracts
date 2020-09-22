@@ -25,9 +25,6 @@ contract APYPoolToken is
     using SafeERC20 for IERC20;
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
 
-    event AdminChanged(address);
-    event PriceAggregatorChanged(address agg);
-
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */

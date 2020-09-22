@@ -23,6 +23,8 @@ interface ILiquidityPool {
     event AddLiquidityUnlocked();
     event RedeemLocked();
     event RedeemUnlocked();
+    event AdminChanged(address);
+    event PriceAggregatorChanged(address agg);
 
     function addLiquidity(uint256 amount) external;
 
