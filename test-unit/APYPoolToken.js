@@ -103,7 +103,7 @@ contract("APYPoolToken Unit Test", async (accounts) => {
 
     it("Test setPriceAggregator when not owner", async () => {
       await expectRevert(
-        instance.addTokenSupport(randomAddress, {
+        instance.setPriceAggregator(randomAddress, {
           from: randomAddress,
         }),
         "Ownable: caller is not the owner"
@@ -135,7 +135,7 @@ contract("APYPoolToken Unit Test", async (accounts) => {
         instance.address,
       ]);
       const mockAgg = await MockContract.new();
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+      await instance.setPriceAggregator(mockAgg.address);
       await mockToken.givenMethodReturnUint(allowance, 0);
       await expectRevert(instance.addLiquidity(1), "ALLOWANCE_INSUFFICIENT");
     });
@@ -164,7 +164,7 @@ contract("APYPoolToken Unit Test", async (accounts) => {
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
 
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+      await instance.setPriceAggregator(mockAgg.address);
 
       const trx = await instance.addLiquidity(1, {
         from: randomUser,
@@ -214,7 +214,7 @@ contract("APYPoolToken Unit Test", async (accounts) => {
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
 
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+      await instance.setPriceAggregator(mockAgg.address);
 
       let trx = await instance.lockAddLiquidity({ from: owner });
       await expectEvent(trx, "AddLiquidityLocked");
@@ -258,7 +258,7 @@ contract("APYPoolToken Unit Test", async (accounts) => {
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
 
-      await instance.addTokenSupport(token.address, mockAgg.address);
+      await instance.setPriceAggregator(mockAgg.address);
 
       const val = await instance.getPoolTotalEthValue.call();
       assert.equal(val.toNumber(), 100);
@@ -290,7 +290,7 @@ contract("APYPoolToken Unit Test", async (accounts) => {
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
 
-      await instance.addTokenSupport(token.address, mockAgg.address);
+      await instance.setPriceAggregator(mockAgg.address);
 
       const val = await instance.getAPTEthValue(10);
       assert.equal(val.toNumber(), 10);
@@ -306,7 +306,7 @@ contract("APYPoolToken Unit Test", async (accounts) => {
       );
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
-      await instance.addTokenSupport(token.address, mockAgg.address);
+      await instance.setPriceAggregator(mockAgg.address);
       // ((10 ^ 0) * 100) / 100
       const tokenAmount = await instance.getTokenAmountFromEthValue(100);
       assert.equal(tokenAmount.toNumber(), 1);
@@ -326,7 +326,7 @@ contract("APYPoolToken Unit Test", async (accounts) => {
       );
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+      await instance.setPriceAggregator(mockAgg.address);
 
       const val = await instance.getEthValueFromTokenAmount(1);
       assert.equal(val.toNumber(), 100);
@@ -343,7 +343,7 @@ contract("APYPoolToken Unit Test", async (accounts) => {
       await mockAgg.givenAnyReturn(returnData);
 
       const newToken = await MockContract.new();
-      await instance.addTokenSupport(newToken.address, mockAgg.address);
+      await instance.setPriceAggregator(mockAgg.address);
       await expectRevert(
         instance.getTokenEthPrice.call(),
         "UNABLE_TO_RETRIEVE_ETH_PRICE"
@@ -359,7 +359,7 @@ contract("APYPoolToken Unit Test", async (accounts) => {
       await mockAgg.givenAnyReturn(returnData);
 
       const newToken = await MockContract.new();
-      await instance.addTokenSupport(newToken.address, mockAgg.address);
+      await instance.setPriceAggregator(mockAgg.address);
       const price = await instance.getTokenEthPrice.call();
       assert.equal(price, 100);
     });
@@ -400,7 +400,7 @@ contract("APYPoolToken Unit Test", async (accounts) => {
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
 
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+      await instance.setPriceAggregator(mockAgg.address);
 
       const trx = await instance.redeem(1000, {
         from: randomUser,
@@ -427,7 +427,7 @@ contract("APYPoolToken Unit Test", async (accounts) => {
     it("Test locking/unlocking redeem by owner", async () => {
       await instance.mint(randomUser, 100);
       const mockAgg = await MockContract.new();
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+      await instance.setPriceAggregator(mockAgg.address);
 
       let trx = await instance.lockRedeem({ from: owner });
       expectEvent(trx, "RedeemLocked");
@@ -441,7 +441,7 @@ contract("APYPoolToken Unit Test", async (accounts) => {
     it("Test locking/unlocking contract by not owner", async () => {
       await instance.mint(randomUser, 100);
       const mockAgg = await MockContract.new();
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+      await instance.setPriceAggregator(mockAgg.address);
 
       let trx = await instance.lock({ from: owner });
       expectEvent(trx, "Paused");
@@ -483,7 +483,7 @@ contract("APYPoolToken Unit Test", async (accounts) => {
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
 
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+      await instance.setPriceAggregator(mockAgg.address);
 
       const mintAmount = await instance.calculateMintAmount(1000);
       assert.equal(mintAmount.toNumber(), 1000000);
@@ -502,7 +502,7 @@ contract("APYPoolToken Unit Test", async (accounts) => {
       );
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+      await instance.setPriceAggregator(mockAgg.address);
 
       const mintAmount = await instance.calculateMintAmount(1000);
       assert.equal(mintAmount.toNumber(), 1000000);
@@ -519,7 +519,7 @@ contract("APYPoolToken Unit Test", async (accounts) => {
       );
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+      await instance.setPriceAggregator(mockAgg.address);
 
       await instance.mint(randomUser, 900);
       // (1000/9999) * 900 = 90.0090009001 ~= 90
@@ -540,7 +540,7 @@ contract("APYPoolToken Unit Test", async (accounts) => {
       );
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+      await instance.setPriceAggregator(mockAgg.address);
 
       // 90 * 1000 = 90000
       const mintAmount = await instance.calculateMintAmount(90, {
@@ -570,7 +570,7 @@ contract("APYPoolToken Unit Test", async (accounts) => {
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
 
-      await instance.addTokenSupport(mockToken.address, mockAgg.address);
+      await instance.setPriceAggregator(mockAgg.address);
       await instance.mint(randomUser, 1);
       const underlyerAmount = await instance.getUnderlyerAmount.call("1");
       expect(underlyerAmount).to.bignumber.equal("1");

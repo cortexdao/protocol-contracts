@@ -26,7 +26,7 @@ contract APYPoolToken is
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
 
     event AdminChanged(address);
-    event PriceAggregatorChanged(address);
+    event PriceAggregatorChanged(address agg);
 
     /* ------------------------------- */
     /* impl-specific storage variables */
