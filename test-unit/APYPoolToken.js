@@ -248,8 +248,7 @@ contract("APYPoolToken Unit Test", async (accounts) => {
         instance.address,
       ]);
 
-      const token = await MockContract.new();
-      token.givenMethodReturnUint(balanceOf, 1);
+      mockToken.givenMethodReturnUint(balanceOf, 1);
 
       const returnData = abiCoder.encode(
         ["uint80", "int256", "uint256", "uint256", "uint80"],
@@ -280,8 +279,7 @@ contract("APYPoolToken Unit Test", async (accounts) => {
         instance.address,
       ]);
 
-      const token = await MockContract.new();
-      token.givenMethodReturnUint(balanceOf, 1);
+      mockToken.givenMethodReturnUint(balanceOf, 1);
 
       const returnData = abiCoder.encode(
         ["uint80", "int256", "uint256", "uint256", "uint80"],
@@ -299,7 +297,6 @@ contract("APYPoolToken Unit Test", async (accounts) => {
 
   describe("Test getTokenAmountFromEthValue", async () => {
     it("Test getEthValueFromTokenAmount returns expected amount", async () => {
-      const token = await MockContract.new();
       const returnData = abiCoder.encode(
         ["uint80", "int256", "uint256", "uint256", "uint80"],
         [0, 100, 0, 0, 0]

@@ -1,4 +1,5 @@
 const { ethers, artifacts, contract } = require("@nomiclabs/buidler");
+const MockContract = artifacts.require("MockContract");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYPoolTokenProxy = artifacts.require("APYPoolTokenProxy");
 const APYPoolToken = artifacts.require("APYPoolToken");
@@ -56,9 +57,15 @@ contract("APYPoolTokenProxy Unit Test", async (accounts) => {
   describe("Test Upgradability through proxyAdmin", async () => {
     beforeEach(async () => {
       // reset variables
-      proxy = await APYPoolTokenProxy.new(logic.address, proxyAdmin.address, {
-        from: owner,
-      });
+      proxy = await APYPoolTokenProxy.new(
+        logic.address,
+        proxyAdmin.address,
+        mockToken.address,
+        mockPriceAgg.address,
+        {
+          from: owner,
+        }
+      );
       instance = await APYPoolToken.at(proxy.address);
     });
 
