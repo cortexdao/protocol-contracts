@@ -54,6 +54,50 @@ contract("APYPoolToken Unit Test", async (accounts) => {
     instance = await APYPoolToken.at(proxy.address);
   });
 
+  describe("Test Constructor", async () => {
+    it("Test params invalid admin", async () => {
+      await expectRevert.unspecified(
+        APYPoolTokenProxy.new(
+          logic.address,
+          ZERO_ADDRESS,
+          mockToken.address,
+          mockPriceAgg.address,
+          {
+            from: owner,
+          }
+        )
+      )
+    })
+
+    it("Test params invalid token", async () => {
+      await expectRevert.unspecified(
+        APYPoolTokenProxy.new(
+          logic.address,
+          proxyAdmin.address,
+          ZERO_ADDRESS,
+          mockPriceAgg.address,
+          {
+            from: owner,
+          }
+        )
+      )
+    })
+
+    it("Test params invalid agg", async () => {
+      await expectRevert.unspecified(
+        APYPoolTokenProxy.new(
+          logic.address,
+          proxyAdmin.address,
+          mockToken.address,
+          ZERO_ADDRESS,
+          {
+            from: owner,
+          }
+        )
+      )
+    })
+  })
+
   describe("Test Defaults", async () => {
     it("Test Owner", async () => {
       assert.equal(await instance.owner.call(), owner);
@@ -84,6 +128,12 @@ contract("APYPoolToken Unit Test", async (accounts) => {
     it("Test setAdminAddress pass", async () => {
       await instance.setAdminAddress(instanceAdmin, { from: owner });
       assert.equal(await instance.proxyAdmin.call(), instanceAdmin);
+    });
+
+    it("Test setAdminAddress invalid admin", async () => {
+      await expectRevert.unspecified(
+        instance.setAdminAddress(ZERO_ADDRESS, { from: owner })
+      );
     });
 
     it("Test setAdminAddress fail", async () => {
