@@ -22,6 +22,7 @@ async function main() {
   for ({ symbol, token, aggregator } of TOKEN_AGG_MAP[NETWORK_NAME]) {
     console.log("");
     console.log(`Deploying contracts for ${symbol}`);
+    console.log(`    --> ${aggregator} Chainlink Oracle Agg`);
 
     const logic = await APYPoolToken.deploy();
     await logic.deployed();
@@ -29,15 +30,14 @@ async function main() {
 
     const proxy = await APYPoolTokenProxy.deploy(
       logic.address,
-      proxyAdmin.address
+      proxyAdmin.address,
+      token,
+      aggregator
     );
     await proxy.deployed();
     console.log(`Proxy: ${proxy.address}`);
 
     const instance = await APYPoolToken.attach(proxy.address);
-
-    await instance.addTokenSupport(token, aggregator);
-    console.log(`${symbol} -> ${aggregator} Chainlink Oracle Agg`);
 
     await instance.setAdminAddress(proxyAdmin.address);
     console.log(`Instance Admin address set: ${proxyAdmin.address}`);
