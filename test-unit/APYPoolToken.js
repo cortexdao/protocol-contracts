@@ -130,6 +130,12 @@ contract("APYPoolToken Unit Test", async (accounts) => {
       assert.equal(await instance.proxyAdmin.call(), instanceAdmin);
     });
 
+    it("Test setAdminAddress invalid admin", async () => {
+      await expectRevert.unspecified(
+        instance.setAdminAddress(ZERO_ADDRESS, { from: owner })
+      );
+    });
+
     it("Test setAdminAddress fail", async () => {
       await expectRevert.unspecified(
         instance.setAdminAddress(instanceAdmin, { from: randomUser })
