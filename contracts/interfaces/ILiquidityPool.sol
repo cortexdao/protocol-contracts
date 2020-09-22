@@ -19,7 +19,6 @@ interface ILiquidityPool {
         uint256 tokenEthValue,
         uint256 totalEthValueLocked
     );
-    event TokenSupported(address token, address agg);
     event AddLiquidityLocked();
     event AddLiquidityUnlocked();
     event RedeemLocked();

@@ -31,12 +31,20 @@ contract APYPoolToken is
     address public proxyAdmin;
     bool public addLiquidityLock;
     bool public redeemLock;
-    AggregatorV3Interface public priceAgg;
     IERC20 public underlyer;
+    AggregatorV3Interface public priceAgg;
 
     /* ------------------------------- */
 
-    function initialize() external initializer {
+    function initialize(
+        address adminAddress,
+        IERC20 _underlyer,
+        AggregatorV3Interface _priceAgg
+    ) external initializer {
+        require(adminAddress != address(0), "INVALID_ADMIN");
+        require(address(_underlyer) != address(0), "INVALID_TOKEN");
+        require(address(_priceAgg) != address(0), "INVALID_AGG");
+
         // initialize ancestor storage
         __Context_init_unchained();
         __Ownable_init_unchained();
@@ -45,16 +53,27 @@ contract APYPoolToken is
         __ERC20_init_unchained("APY Pool Token", "APT");
 
         // initialize impl-specific storage
+        setAdminAddress(adminAddress);
         addLiquidityLock = false;
         redeemLock = false;
-        // admin and underlyer will get set by deployer
+        underlyer = _underlyer;
+        setPriceAggregator(_priceAgg);
     }
 
     // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual onlyAdmin {}
 
-    function setAdminAddress(address adminAddress) external onlyOwner {
+    function setAdminAddress(address adminAddress) public onlyOwner {
+        require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
+    }
+
+    function setPriceAggregator(AggregatorV3Interface _priceAgg)
+        public
+        onlyOwner
+    {
+        require(address(_priceAgg) != address(0), "INVALID_AGG");
+        priceAgg = _priceAgg;
     }
 
     modifier onlyAdmin() {
@@ -72,17 +91,6 @@ contract APYPoolToken is
 
     receive() external payable {
         revert("DONT_SEND_ETHER");
-    }
-
-    function addTokenSupport(IERC20 _token, AggregatorV3Interface _priceAgg)
-        external
-        onlyOwner
-    {
-        require(address(_token) != address(0), "INVALID_TOKEN");
-        require(address(_priceAgg) != address(0), "INVALID_AGG");
-        underlyer = _token;
-        priceAgg = _priceAgg;
-        emit TokenSupported(address(_token), address(_priceAgg));
     }
 
     /**
