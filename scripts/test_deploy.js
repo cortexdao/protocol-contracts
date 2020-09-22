@@ -71,25 +71,15 @@ const main = async () => {
       POOL_TOKEN_ADDRESSES[CHAIN_IDS[NETWORK_NAME]]
     );
 
-    console.log("Check tokens and chainlink is setup...");
-    const tokenAddresses = await pool.getSupportedTokens();
-    const tokenSymbols = [];
-    for (const address of tokenAddresses) {
-      const token = new ethers.Contract(address, ERC20.abi).connect(user);
-      const symbol = await token.symbol();
-      tokenSymbols.push(symbol);
+    console.log("Check underlyer is correct...");
+    const tokenAddress = await pool.underlyer();
+    const token = new ethers.Contract(tokenAddress, ERC20.abi).connect(user);
+    expect(await token.symbol()).to.equal(symbol);
 
-      const price = await pool.getTokenEthPrice(address);
-      console.log(`${symbol} price: ${price}`);
-
-      expect(price.toNumber()).to.be.gt(0);
-    }
-
-    console.log("Check pool supports only one token...");
-    expect(new Set(tokenSymbols)).to.eql(
-      new Set([symbol]),
-      `Pool should support only one ${symbol}!`
-    );
+    console.log("Check chainlink is setup...");
+    const price = await pool.getTokenEthPrice();
+    console.log(`    --> ${symbol} price: ${price}`);
+    expect(price.toNumber()).to.be.gt(0);
   }
 };
 
