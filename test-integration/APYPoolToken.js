@@ -65,9 +65,15 @@ contract("APYPoolToken Integration Test", async (accounts) => {
 
     proxyAdmin = await ProxyAdmin.new({ from: owner });
     logic = await APYPoolToken.new({ from: owner });
-    proxy = await APYPoolTokenProxy.new(logic.address, proxyAdmin.address, {
-      from: owner,
-    });
+    proxy = await APYPoolTokenProxy.new(
+      logic.address,
+      proxyAdmin.address,
+      USDC.address,
+      USDC_AGG.address,
+      {
+        from: owner,
+      }
+    );
     instance = await APYPoolToken.at(proxy.address);
 
     await acquireToken(DAI_WHALE, owner, DAI, "1000000")
@@ -117,86 +123,9 @@ contract("APYPoolToken Integration Test", async (accounts) => {
     });
   });
 
-  describe("Test addTokenSupport", async () => {
-    it("Test addTokenSupport for DAI, USDC, USDT", async () => {
-      let trx
-      trx = await instance.addTokenSupport(
-        DAI.address,
-        DAI_AGG.address
-      );
-      await expectEvent(trx, "TokenSupported", {
-        token: DAI.address,
-        agg: DAI_AGG.address,
-      });
-
-      trx = await instance.addTokenSupport(
-        USDC.address,
-        USDC_AGG.address
-      );
-      await expectEvent(trx, "TokenSupported", {
-        token: USDC.address,
-        agg: USDC_AGG.address,
-      });
-
-      trx = await instance.addTokenSupport(
-        USDT.address,
-        USDT_AGG.address
-      );
-      await expectEvent(trx, "TokenSupported", {
-        token: USDT.address,
-        agg: USDT_AGG.address
-      });
-
-      // check aggs
-      let priceAgg
-      priceAgg = await instance.priceAggs.call(DAI.address);
-      assert.equal(priceAgg, DAI_AGG.address);
-
-      priceAgg = await instance.priceAggs.call(USDC.address);
-      assert.equal(priceAgg, USDC_AGG.address);
-
-      priceAgg = await instance.priceAggs.call(USDT.address);
-      assert.equal(priceAgg, USDT_AGG.address);
-
-      // check supported tokens
-      const supportedTokens = await instance.getSupportedTokens.call();
-      assert.equal(supportedTokens[0], DAI.address);
-      assert.equal(supportedTokens[1], USDC.address);
-      assert.equal(supportedTokens[2], USDT.address);
-    });
-  });
-
-  describe("Test removeTokenSupport", async () => {
-    it("Test removeTokenSupport for USDC", async () => {
-      const trx = await instance.removeTokenSupport(USDT.address);
-
-      // check aggs
-      let priceAgg
-      priceAgg = await instance.priceAggs.call(DAI.address);
-      assert.equal(priceAgg, DAI_AGG.address);
-
-      priceAgg = await instance.priceAggs.call(USDC.address);
-      assert.equal(priceAgg, USDC_AGG.address);
-
-      priceAgg = await instance.priceAggs.call(USDT.address);
-      assert.equal(priceAgg, ZERO_ADDRESS); // USDT removed
-
-      // check supported tokens
-      const supportedTokens = await instance.getSupportedTokens.call();
-      assert.equal(supportedTokens[0], DAI.address);
-      assert.equal(supportedTokens[1], USDC.address);
-      assert.equal(supportedTokens[2], ZERO_ADDRESS); // USDT removed
-
-      await expectEvent(trx, "TokenUnsupported", {
-        token: USDT.address,
-        agg: USDT_AGG.address,
-      });
-    });
-  });
-
   describe("Test calculateMintAmount", async () => {
     it("Test calculateMintAmount returns expeted amount when total supply > 0", async () => {
-      expectedAPTMinted = await instance.calculateMintAmount(1000000000, USDC.address, {
+      expectedAPTMinted = await instance.calculateMintAmount(1000000000, {
         from: randomUser,
       });
       console.log(`\tExpected APT Minted: ${expectedAPTMinted.toString()}`)
@@ -217,7 +146,7 @@ contract("APYPoolToken Integration Test", async (accounts) => {
       usdcBalBefore = await USDC.balanceOf(owner)
       console.log(`\tUSDC Balance Before Mint: ${usdcBalBefore.toString()}`)
 
-      const trx = await instance.addLiquidity(1000000000, USDC.address, {
+      const trx = await instance.addLiquidity(1000000000, {
         from: owner,
       });
 
@@ -253,7 +182,7 @@ contract("APYPoolToken Integration Test", async (accounts) => {
 
   describe("Test getTokenAmountFromEthValue", async () => {
     it("Test getTokenAmountFromEthValue returns expected amount", async () => {
-      const tokenAmount = await instance.getTokenAmountFromEthValue.call(new BN(500), DAI.address)
+      const tokenAmount = await instance.getTokenAmountFromEthValue.call(new BN(500))
       console.log(`\tToken Amount from Eth Value: ${tokenAmount.toString()}`)
       assert(tokenAmount.gt(0))
     });
@@ -261,7 +190,7 @@ contract("APYPoolToken Integration Test", async (accounts) => {
 
   describe("Test getEthValueFromTokenAmount", async () => {
     it("Test getEthValueFromTokenAmount returns value", async () => {
-      const val = await instance.getEthValueFromTokenAmount.call(new BN(5000), DAI.address)
+      const val = await instance.getEthValueFromTokenAmount.call(new BN(5000))
       console.log(`\tEth Value from Token Amount ${val.toString()}`)
       assert(val.gt(0))
     })
@@ -269,7 +198,7 @@ contract("APYPoolToken Integration Test", async (accounts) => {
 
   describe("Test getTokenEthPrice", async () => {
     it("Test getTokenEthPrice returns value", async () => {
-      const price = await instance.getTokenEthPrice.call(DAI.address);
+      const price = await instance.getTokenEthPrice.call();
       console.log(`\tToken Eth Price: ${price.toString()}`)
       assert(price.gt(0))
     });
@@ -279,7 +208,6 @@ contract("APYPoolToken Integration Test", async (accounts) => {
     it("Test getUnderlyerAmount returns value", async () => {
       const underlyerAmount = await instance.getUnderlyerAmount.call(
         new BN("2605000000000000000000"),
-        DAI.address
       );
       console.log(`\tUnderlyer Amount: ${underlyerAmount.toString()}`);
       assert(underlyerAmount.gt(0))
@@ -292,7 +220,7 @@ contract("APYPoolToken Integration Test", async (accounts) => {
       expectEvent(trx, "RedeemLocked");
 
       await expectRevert(
-        instance.redeem(50, DAI.address, { from: randomUser }),
+        instance.redeem(50, { from: randomUser }),
         "LOCKED"
       );
 
@@ -305,7 +233,7 @@ contract("APYPoolToken Integration Test", async (accounts) => {
       expectEvent(trx, "Paused");
 
       await expectRevert(
-        instance.redeem(50, DAI.address, { from: randomUser }),
+        instance.redeem(50, { from: randomUser }),
         "Pausable: paused"
       );
 
@@ -314,7 +242,7 @@ contract("APYPoolToken Integration Test", async (accounts) => {
     });
     it("Test redeem insufficient balance", async () => {
       await expectRevert(
-        instance.redeem(2, DAI.address, { from: randomUser }),
+        instance.redeem(2, { from: randomUser }),
         "BALANCE_INSUFFICIENT"
       );
     });
@@ -323,7 +251,7 @@ contract("APYPoolToken Integration Test", async (accounts) => {
       let usdc_bal = await USDC.balanceOf(owner);
       console.log(`\tUSDC Balance Before Redeem: ${usdc_bal.toString()}`)
 
-      const trx = await instance.redeem(aptMinted, USDC.address, {
+      const trx = await instance.redeem(aptMinted, {
         from: owner,
       });
 
