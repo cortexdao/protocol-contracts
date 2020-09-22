@@ -4,15 +4,10 @@
  * $ yarn buidler --network <network name> run test-deploy/test_deploy.js
  */
 require("dotenv").config();
-const { ethers, web3, artifacts } = require("@nomiclabs/buidler");
-const { abiCoder } = ethers.utils;
-const IERC20 = artifacts.require("IERC20");
+const { ethers, artifacts } = require("@nomiclabs/buidler");
 const ERC20 = artifacts.require("ERC20");
 
-const { BN } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
-const { erc20 } = require("../utils/helpers");
-const { expectRevert } = require("@openzeppelin/test-helpers");
 const {
   CHAIN_IDS,
   DEPLOYS_JSON,
