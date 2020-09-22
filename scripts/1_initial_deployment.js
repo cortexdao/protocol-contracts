@@ -37,11 +37,6 @@ async function main() {
     await proxy.deployed();
     console.log(`Proxy: ${proxy.address}`);
 
-    const instance = await APYPoolToken.attach(proxy.address);
-
-    await instance.setAdminAddress(proxyAdmin.address);
-    console.log(`Instance Admin address set: ${proxyAdmin.address}`);
-
     deploy_data[symbol + "_APYPoolToken"] = logic.address;
     deploy_data[symbol + "_APYPoolTokenProxy"] = proxy.address;
   }
