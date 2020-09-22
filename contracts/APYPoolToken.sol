@@ -78,7 +78,7 @@ contract APYPoolToken is
     {
         require(address(_priceAgg) != address(0), "INVALID_AGG");
         priceAgg = _priceAgg;
-        emit PriceAggregatorChanged(_priceAgg);
+        emit PriceAggregatorChanged(address(_priceAgg));
     }
 
     modifier onlyAdmin() {
