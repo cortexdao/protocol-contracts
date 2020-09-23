@@ -7,7 +7,7 @@ unlocked_addresses="$(node scripts/unlocked_addresses.js)"
 gas_limit=12500000  # 12.5 million, current mainnet block gas limit
 gas_price=40000000000  # 40 gwei
 default_balance_ether=10000
-host="0.0.0.0"
+host="127.0.0.1"
 
 # add option arg to args array
 args=( )
