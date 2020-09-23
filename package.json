@@ -1,6 +1,6 @@
 {
   "name": "@apy-finance/apy-core",
-  "version": "1.0.0",
+  "version": "5.0.0",
   "description": "",
   "keywords": [
     "ethereum",
@@ -10,17 +10,21 @@
   "files": [
     "contracts",
     "artifacts",
-    "config"
+    "utils/constants.js",
+    "deployed_addresses"
   ],
   "scripts": {
     "check": "yarn lint",
     "clean": "buidler clean",
     "compile": "buidler compile",
-    "test": "buidler test",
+    "test:unit": "buidler test test-unit/*",
+    "test:integration": "buidler test test-integration/APYPoolToken.js",
     "lint": "solhint contracts/**/*.sol",
+    "coverage": "buidler coverage --network coverage --testfiles \"test-unit/*.js\"",
     "ganache": "ganache-cli",
     "fork:mainnet": "./scripts/fork_mainnet.sh",
-    "integration": "buidler --network ganache test ./integration/*.js"
+    "deploy:kovan": "yarn buidler --network kovan run",
+    "deploy:mainnet": "yarn buidler --network mainnet run"
   },
   "husky": {
     "hooks": {
@@ -46,23 +50,25 @@
   "homepage": "https://github.com/apy-finance/apy-core/README.md",
   "devDependencies": {
     "@gnosis.pm/mock-contract": "^4.0.0",
-    "@nomiclabs/buidler": "^1.4.4",
+    "@nomiclabs/buidler": "^1.4.6",
     "@nomiclabs/buidler-ethers": "^2.0.0",
     "@nomiclabs/buidler-truffle5": "^1.3.4",
     "@nomiclabs/buidler-web3": "^1.3.4",
     "@openzeppelin/test-helpers": "^0.5.6",
     "dotenv": "^8.2.0",
     "ethers": "^5.0.3",
-    "ganache-cli": "v6.10.1-beta.2",
+    "ganache-cli": "^6.10.2",
+    "ganache-time-traveler": "^1.0.15",
     "husky": "^4.2.5",
     "lint-staged": "^10.2.11",
     "solhint": "^3.2.0",
     "solidity-coverage": "^0.7.10"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "3.2.0-rc.0",
-    "abdk-libraries-solidity": "^2.3.0",
-    "ganache-time-traveler": "^1.0.14",
-    "solidity-fixedpoint": "^1.0.1"
+    "@chainlink/contracts": "^0.0.9",
+    "@compound-finance/compound-js": "^0.1.0",
+    "@openzeppelin/contracts": "^3.2.0",
+    "@openzeppelin/contracts-ethereum-package": "^3.0.0",
+    "abdk-libraries-solidity": "^2.3.0"
   }
 }

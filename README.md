@@ -1,9 +1,9 @@
-![CI](https://github.com/apy-finance/apy-core/workflows/CI/badge.svg?branch=master)
+![CI](https://github.com/apy-finance/apy-core/workflows/CI/badge.svg?branch=develop)
 
 # APY Smart Contracts
 
 TODOs:
-- [ ] Continuous integration
+- [ ] Continuous deployment
 - [ ] Links to architectural diagrams / specs
 
 ## Install Dependencies
@@ -17,7 +17,7 @@ TODOs:
 ## Run Tests
 
 ### Unit tests
-`yarn test`
+`yarn test:unit`
 
 ### Integration tests
 In one console:
@@ -26,7 +26,7 @@ In one console:
 
 and in another console:
 
-`yarn integration`
+`yarn test:integration --network localhost`
 
 Comments:
 - Forked mainnet uses `ganache-cli` with variables read from `.env` file.

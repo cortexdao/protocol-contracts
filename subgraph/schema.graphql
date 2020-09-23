@@ -1,0 +1,5 @@
+type TotalEthValueLocked @entity {
+  id: ID!
+  timestamp: BigInt!
+  totalEthValueLocked: BigInt!
+}

@@ -3,12 +3,12 @@
 name: CI
 
 # Controls when the action will run. Triggers the workflow on push or pull request
-# events but only for the master branch
+# events but only for the master and develop branches.
 on:
   push:
-    branches: [ master ]
+    branches: [ master, develop ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, develop ]
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:        
@@ -43,10 +43,16 @@ jobs:
     - name: Lint smart contracts
       run: yarn lint
     - name: Unit tests
-      run: yarn test
+      run: yarn test:unit
+      env: 
+        INFURA_API_KEY: ${{ secrets. INFURA_API_KEY }}
+        MNEMONIC: ${{ secrets. MNEMONIC }}
     - name: Integration tests 
       run: |
         yarn fork:mainnet > /dev/null &
         while netstat -lnt | awk '$4 ~ /:8545$/ {exit 1}'; do sleep 5; done
-        yarn integration
+        yarn test:integration --network localhost
         kill $(lsof -t -i:8545)
+      env: 
+        INFURA_API_KEY: ${{ secrets. INFURA_API_KEY }}
+        MNEMONIC: ${{ secrets. MNEMONIC }}

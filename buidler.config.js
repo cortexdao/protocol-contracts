@@ -4,49 +4,37 @@ usePlugin("solidity-coverage");
 usePlugin("@nomiclabs/buidler-ethers");
 usePlugin("@nomiclabs/buidler-truffle5");
 
-function getEnv(env) {
-  let value = process.env[env];
-
-  if (typeof value == "undefined") {
-    value = "";
-    console.error(`WARNING: ${env} environment variable has not been set`);
-  }
-
-  return value;
-}
-
-const mainnetEndpoint = getEnv("MAINNET_ENDPOINT");
-const mainnetMnemonic = getEnv("MAINNET_MNEMONIC");
-
-const kovanEndpoint = getEnv("KOVAN_ENDPOINT");
-const kovanMnemonic = getEnv("KOVAN_MNEMONIC");
-
 module.exports = {
   networks: {
+    localhost: {
+      url: "http://127.0.0.1:8545",
+      timeout: 1000000,
+    },
+    coverage: {
+      url: "http://localhost:8555",
+    },
     mainnet: {
-      url: mainnetEndpoint,
-      chainId: 1,
+      url: 'https://mainnet.infura.io/v3/' + process.env.INFURA_API_KEY,
+      gasPrice: 500e9,
       accounts: {
-        mnemonic: mainnetMnemonic,
+        mnemonic: process.env.MNEMONIC || '',
       },
     },
     kovan: {
-      url: kovanEndpoint,
-      chainId: 42,
+      url: 'https://kovan.infura.io/v3/' + process.env.INFURA_API_KEY,
       accounts: {
-        mnemonic: kovanMnemonic,
+        mnemonic: process.env.MNEMONIC || '',
       },
-    },
-    ganache: {
-      url: "http://127.0.0.1:8545",
-      timeout: 0,
-    },
+    }
   },
   solc: {
-    version: "0.6.6",
+    version: "0.6.11",
     optimizer: {
       enabled: true,
       runs: 999999,
     },
   },
+  mocha: {
+    timeout: 1000000,
+  }
 };

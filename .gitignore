@@ -4,14 +4,16 @@ node_modules/
 # Buidler files
 cache/
 artifacts/*
-!artifacts/mainnet.json
-!artifacts/ropsten.json
-!artifacts/rinkeby.json
-!artifacts/kovan.json
+
+# Deployment
+deployments/localhost/
 
 # Solidity coverage files
-coverage/
 coverage.json
+coverage/
+.coverage_artifacts/
+.coverage_cache/
+.coverage_contracts/
 
 # env files
 .env
@@ -23,6 +25,11 @@ coverage.json
 .yarnrc
 yarn-debug.log*
 yarn-error.log*
+
+# subgraph
+subgraph.yaml
+**/subgraph/generated
+subgraph/build
 
 # vim
 *.swp
