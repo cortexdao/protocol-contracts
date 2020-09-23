@@ -18,7 +18,7 @@
     "clean": "buidler clean",
     "compile": "buidler compile",
     "test:unit": "buidler test test-unit/*",
-    "test:integration": "buidler test test-integration/APYPoolToken.js --network localhost",
+    "test:integration": "buidler test test-integration/APYPoolToken.js",
     "lint": "solhint contracts/**/*.sol",
     "coverage": "buidler coverage --network coverage --testfiles \"test-unit/*.js\"",
     "ganache": "ganache-cli",
