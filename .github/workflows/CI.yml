@@ -53,3 +53,6 @@ jobs:
         while netstat -lnt | awk '$4 ~ /:8545$/ {exit 1}'; do sleep 5; done
         yarn test:integration --network localhost
         kill $(lsof -t -i:8545)
+      env: 
+        INFURA_API_KEY: ${{ secrets. INFURA_API_KEY }}
+        MNEMONIC: ${{ secrets. MNEMONIC }}
