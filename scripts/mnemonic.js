@@ -1,2 +1,2 @@
 require('dotenv').config()
-process.stdout.write(process.env.MNEMONIC)
+process.stdout.write(process.env.MNEMONIC || "")
