@@ -233,6 +233,7 @@ contract("APYPoolToken Integration Test USDC", async (accounts) => {
       trx = await instance.unlock({ from: owner });
       expectEvent(trx, "Unpaused");
     });
+
     it("Test redeem insufficient balance", async () => {
       await expectRevert(
         instance.redeem(2, { from: randomUser }),
@@ -250,7 +251,10 @@ contract("APYPoolToken Integration Test USDC", async (accounts) => {
 
       usdc_bal = await USDC.balanceOf(owner);
       console.log(`\tUSDC Balance After Redeem: ${usdc_bal.toString()}`)
+
+      // assert balances
       assert.equal(usdc_bal.toString(), usdcBalBefore.toString())
+      assert.equal(await USDC.balanceOf(instance.address), 0)
 
       const bal = await instance.balanceOf(owner);
       console.log(`\tAPT Balance: ${bal.toString()}`)
@@ -460,6 +464,7 @@ contract("APYPoolToken Integration DAI", async (accounts) => {
       trx = await instance.unlock({ from: owner });
       expectEvent(trx, "Unpaused");
     });
+
     it("Test redeem insufficient balance", async () => {
       await expectRevert(
         instance.redeem(2, { from: randomUser }),
@@ -477,7 +482,10 @@ contract("APYPoolToken Integration DAI", async (accounts) => {
 
       dai_bal = await DAI.balanceOf(owner);
       console.log(`\tDAI Balance After Redeem: ${dai_bal.toString()}`)
+
+      // assert balances
       assert.equal(dai_bal.toString(), daiBalBefore.toString())
+      assert.equal(await DAI.balanceOf(instance.address), 0)
 
       const bal = await instance.balanceOf(owner);
       console.log(`\tAPT Balance: ${bal.toString()}`)
@@ -686,6 +694,7 @@ contract("APYPoolToken Integration USDT", async (accounts) => {
       trx = await instance.unlock({ from: owner });
       expectEvent(trx, "Unpaused");
     });
+
     it("Test redeem insufficient balance", async () => {
       await expectRevert(
         instance.redeem(2, { from: randomUser }),
@@ -703,7 +712,10 @@ contract("APYPoolToken Integration USDT", async (accounts) => {
 
       usdt_bal = await USDT.balanceOf(owner);
       console.log(`\tUSDT Balance After Redeem: ${usdt_bal.toString()}`)
+
+      // assert balances
       assert.equal(usdt_bal.toString(), usdtBalBefore.toString())
+      assert.equal(await USDT.balanceOf(instance.address), 0)
 
       const bal = await instance.balanceOf(owner);
       console.log(`\tAPT Balance: ${bal.toString()}`)
