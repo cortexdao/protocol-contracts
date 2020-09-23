@@ -34,6 +34,9 @@ subgraph/build
 # lint
 .eslintcache
 
+# slither
+crytic-export/
+
 # virtual env
 .venv/
 
