@@ -134,12 +134,17 @@ contract("APYPoolToken Integration Test USDC", async (accounts) => {
       usdcBalBefore = await USDC.balanceOf(owner)
       console.log(`\tUSDC Balance Before Mint: ${usdcBalBefore.toString()}`)
 
-      const trx = await instance.addLiquidity(1000000000, {
+      const amount = 1000000000
+      const trx = await instance.addLiquidity(amount, {
         from: owner,
       });
 
       let bal = await USDC.balanceOf(owner)
       console.log(`\tUSDC Balance After Mint: ${bal.toString()}`)
+
+      // assert balances
+      assert(await USDC.balanceOf(instance.address), amount)
+      assert(await USDC.balanceOf(owner), usdcBalBefore - amount)
 
       // comupting the exact amount is unreliable due to variance in USDC/ETH
       aptMinted = await instance.balanceOf(owner);
@@ -271,7 +276,7 @@ contract("APYPoolToken Integration DAI", async (accounts) => {
 
   let expectedAPTMinted;
   let aptMinted;
-  let usdcBalBefore;
+  let daiBalBefore;
 
   before("Setup", async () => {
     DAI = await ERC20.at('0x6B175474E89094C44Da98b954EedeAC495271d0F')
@@ -353,17 +358,22 @@ contract("APYPoolToken Integration DAI", async (accounts) => {
     });
 
     it("Test addLiquidity pass", async () => {
-      usdcBalBefore = await DAI.balanceOf(owner)
-      console.log(`\DAI Balance Before Mint: ${usdcBalBefore.toString()}`)
+      daiBalBefore = await DAI.balanceOf(owner)
+      console.log(`\tDAI Balance Before Mint: ${daiBalBefore.toString()}`)
 
-      const trx = await instance.addLiquidity(1000000000, {
+      const amount = 1000000000
+      const trx = await instance.addLiquidity(amount, {
         from: owner,
       });
 
       let bal = await DAI.balanceOf(owner)
-      console.log(`\tUSDC Balance After Mint: ${bal.toString()}`)
+      console.log(`\tDAI Balance After Mint: ${bal.toString()}`)
 
-      // comupting the exact amount is unreliable due to variance in USDC/ETH
+      // assert balances
+      assert(await DAI.balanceOf(instance.address), amount)
+      assert(await DAI.balanceOf(owner), daiBalBefore - amount)
+
+      // comupting the exact amount is unreliable due to variance in DAI/ETH
       aptMinted = await instance.balanceOf(owner);
       console.log(`\tAPT Balance: ${aptMinted.toString()}`)
       assert(aptMinted.toString(), expectedAPTMinted.toString())
@@ -458,16 +468,16 @@ contract("APYPoolToken Integration DAI", async (accounts) => {
     });
 
     it("Test redeem pass", async () => {
-      let usdc_bal = await DAI.balanceOf(owner);
-      console.log(`\tUSDC Balance Before Redeem: ${usdc_bal.toString()}`)
+      let dai_bal = await DAI.balanceOf(owner);
+      console.log(`\tDAI Balance Before Redeem: ${dai_bal.toString()}`)
 
       const trx = await instance.redeem(aptMinted, {
         from: owner,
       });
 
-      usdc_bal = await DAI.balanceOf(owner);
-      console.log(`\tUSDC Balance After Redeem: ${usdc_bal.toString()}`)
-      assert.equal(usdc_bal.toString(), usdcBalBefore.toString())
+      dai_bal = await DAI.balanceOf(owner);
+      console.log(`\tDAI Balance After Redeem: ${dai_bal.toString()}`)
+      assert.equal(dai_bal.toString(), daiBalBefore.toString())
 
       const bal = await instance.balanceOf(owner);
       console.log(`\tAPT Balance: ${bal.toString()}`)
@@ -492,7 +502,7 @@ contract("APYPoolToken Integration USDT", async (accounts) => {
 
   let expectedAPTMinted;
   let aptMinted;
-  let usdcBalBefore;
+  let usdtBalBefore;
 
   before("Setup", async () => {
     USDT = await ERC20.at('0xdAC17F958D2ee523a2206206994597C13D831ec7')
@@ -574,17 +584,22 @@ contract("APYPoolToken Integration USDT", async (accounts) => {
     });
 
     it("Test addLiquidity pass", async () => {
-      usdcBalBefore = await USDT.balanceOf(owner)
-      console.log(`\USDT Balance Before Mint: ${usdcBalBefore.toString()}`)
+      usdtBalBefore = await USDT.balanceOf(owner)
+      console.log(`\tUSDT Balance Before Mint: ${usdtBalBefore.toString()}`)
 
-      const trx = await instance.addLiquidity(1000000000, {
+      const amount = 1000000000
+      const trx = await instance.addLiquidity(amount, {
         from: owner,
       });
 
       let bal = await USDT.balanceOf(owner)
-      console.log(`\tUSDC Balance After Mint: ${bal.toString()}`)
+      console.log(`\tUSDT Balance After Mint: ${bal.toString()}`)
 
-      // comupting the exact amount is unreliable due to variance in USDC/ETH
+      // assert balances
+      assert(await USDT.balanceOf(instance.address), amount)
+      assert(await USDT.balanceOf(owner), usdtBalBefore - amount)
+
+      // comupting the exact amount is unreliable due to variance in USDT/ETH
       aptMinted = await instance.balanceOf(owner);
       console.log(`\tAPT Balance: ${aptMinted.toString()}`)
       assert(aptMinted.toString(), expectedAPTMinted.toString())
@@ -679,16 +694,16 @@ contract("APYPoolToken Integration USDT", async (accounts) => {
     });
 
     it("Test redeem pass", async () => {
-      let usdc_bal = await USDT.balanceOf(owner);
-      console.log(`\tUSDC Balance Before Redeem: ${usdc_bal.toString()}`)
+      let usdt_bal = await USDT.balanceOf(owner);
+      console.log(`\tUSDT Balance Before Redeem: ${usdt_bal.toString()}`)
 
       const trx = await instance.redeem(aptMinted, {
         from: owner,
       });
 
-      usdc_bal = await USDT.balanceOf(owner);
-      console.log(`\tUSDC Balance After Redeem: ${usdc_bal.toString()}`)
-      assert.equal(usdc_bal.toString(), usdcBalBefore.toString())
+      usdt_bal = await USDT.balanceOf(owner);
+      console.log(`\tUSDT Balance After Redeem: ${usdt_bal.toString()}`)
+      assert.equal(usdt_bal.toString(), usdtBalBefore.toString())
 
       const bal = await instance.balanceOf(owner);
       console.log(`\tAPT Balance: ${bal.toString()}`)
