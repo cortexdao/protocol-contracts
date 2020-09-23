@@ -34,6 +34,9 @@ subgraph/build
 # lint
 .eslintcache
 
+# virtual env
+.venv/
+
 # vim
 *.swp
 *.swo
