@@ -130,7 +130,7 @@ contract APYPoolToken is
             tokenAmt,
             mintAmount,
             depositEthValue,
-            poolTotalEthValue
+            getPoolTotalEthValue()
         );
     }
 

@@ -30,7 +30,6 @@ async function acquireToken(fundAccount, receiver, token, amount) {
   const decimals = await token.decimals.call()
   const funds = (new BN("10").pow(decimals)).mul(new BN(amount))
 
-  // await token.approve(owner, MAX_UINT256, { from: fundAccount })
   await token.transfer(receiver, funds, { from: fundAccount })
   const tokenBal = await token.balanceOf(receiver)
   console.log(`${token.address} Balance: ${tokenBal.toString()}`)
@@ -299,7 +298,7 @@ contract("APYPoolToken Integration DAI", async (accounts) => {
     );
     instance = await APYPoolToken.at(proxy.address);
 
-    await acquireToken(DAI_WHALE, owner, DAI, "1000000")
+    await acquireToken(DAI_WHALE, owner, DAI, "10000")
 
     //handle allownaces
     await DAI.approve(instance.address, MAX_UINT256)
@@ -365,7 +364,7 @@ contract("APYPoolToken Integration DAI", async (accounts) => {
       daiBalBefore = await DAI.balanceOf(owner)
       console.log(`\tDAI Balance Before Mint: ${daiBalBefore.toString()}`)
 
-      const amount = 1000000000
+      const amount = 10000
       const trx = await instance.addLiquidity(amount, {
         from: owner,
       });
@@ -382,9 +381,26 @@ contract("APYPoolToken Integration DAI", async (accounts) => {
       console.log(`\tAPT Balance: ${aptMinted.toString()}`)
       assert(aptMinted.toString(), expectedAPTMinted.toString())
 
+      const tokenEthVal = await instance.getEthValueFromTokenAmount(amount)
+
+      await expectEvent.inTransaction(trx.tx, DAI, "Transfer", {
+        from: owner,
+        to: instance.address,
+        value: new BN(amount)
+      })
       // this is the mint transfer
-      await expectEvent(trx, "Transfer");
-      await expectEvent(trx, "DepositedAPT");
+      await expectEvent(trx, "Transfer", {
+        from: ZERO_ADDRESS,
+        to: owner,
+        value: aptMinted
+      });
+      await expectEvent(trx, "DepositedAPT", {
+        sender: owner,
+        tokenAmount: new BN(amount),
+        aptMintAmount: aptMinted,
+        tokenEthValue: tokenEthVal,
+        totalEthValueLocked: tokenEthVal
+      });
     });
   });
 
