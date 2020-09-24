@@ -207,7 +207,7 @@ contract APYPoolToken is
             underlyer,
             redeemTokenAmt,
             aptAmount,
-            getTokenEthPrice(),
+            getEthValueFromTokenAmount(redeemTokenAmt),
             getPoolTotalEthValue()
         );
     }
