@@ -1,5 +1,7 @@
 {
   "network": "kovan",
-  "pool_address": "0xd66E77A4Fb0701205a1C698E7F2D959dC5600644",
-  "startBlock": 20971498
+  "dai_pool_address": "0xf587EC50e2E6518F7f016d5A78561109Ab96FEa1",
+  "usdc_pool_address": "0xA138299A1BB17e90F2edCc2d567358C4BEeCa092",
+  "usdt_pool_address": "0x80073EeF3C57Ba05dC25E5cD5b78C5f9fb18e4D8",
+  "startBlock": 21074213
 }
