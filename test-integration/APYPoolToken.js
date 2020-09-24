@@ -153,7 +153,7 @@ contract("APYPoolToken Integration Test USDC", async (accounts) => {
       const tokenEthVal = await instance.getEthValueFromTokenAmount(amount)
 
       // this is the token transfer
-      await expectEvent.inTransaction(trx.tx, USDT, "Transfer", {
+      await expectEvent.inTransaction(trx.tx, USDC, "Transfer", {
         from: owner,
         to: instance.address,
         value: new BN(amount)
