@@ -150,9 +150,27 @@ contract("APYPoolToken Integration Test USDC", async (accounts) => {
       console.log(`\tAPT Balance: ${aptMinted.toString()}`)
       assert(aptMinted.toString(), expectedAPTMinted.toString())
 
+      const tokenEthVal = await instance.getEthValueFromTokenAmount(amount)
+
+      // this is the token transfer
+      await expectEvent.inTransaction(trx.tx, USDT, "Transfer", {
+        from: owner,
+        to: instance.address,
+        value: new BN(amount)
+      })
       // this is the mint transfer
-      await expectEvent(trx, "Transfer");
-      await expectEvent(trx, "DepositedAPT");
+      await expectEvent(trx, "Transfer", {
+        from: ZERO_ADDRESS,
+        to: owner,
+        value: aptMinted
+      });
+      await expectEvent(trx, "DepositedAPT", {
+        sender: owner,
+        tokenAmount: new BN(amount),
+        aptMintAmount: aptMinted,
+        tokenEthValue: tokenEthVal,
+        totalEthValueLocked: tokenEthVal
+      });
     });
   });
 
@@ -383,6 +401,7 @@ contract("APYPoolToken Integration DAI", async (accounts) => {
 
       const tokenEthVal = await instance.getEthValueFromTokenAmount(amount)
 
+      // this is the token transfer
       await expectEvent.inTransaction(trx.tx, DAI, "Transfer", {
         from: owner,
         to: instance.address,
@@ -630,7 +649,7 @@ contract("APYPoolToken Integration USDT", async (accounts) => {
 
       const tokenEthVal = await instance.getEthValueFromTokenAmount(amount)
 
-      // this is the mint transfer
+      // this is the token transfer
       await expectEvent.inTransaction(trx.tx, USDT, "Transfer", {
         from: owner,
         to: instance.address,
