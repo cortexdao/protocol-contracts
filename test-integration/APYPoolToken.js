@@ -16,14 +16,18 @@ const APYPoolToken = artifacts.require("APYPoolToken");
 const AGG = artifacts.require("AggregatorV3Interface.sol")
 const ERC20 = artifacts.require("ERC20");
 
+async function formattedAmount(token, value) {
+  const decimals = await token.decimals.call()
+  return ((new BN("10").pow(decimals)).mul(new BN(value))).toString()
+}
+
 async function acquireToken(fundAccount, receiver, token, amount) {
   // NOTE: Ganache is setup to control the WHALE addresses. This method moves requeted funds out of the fund account and into the specified wallet
 
   // fund the account with ETH so it can move funds
   await web3.eth.sendTransaction({ from: receiver, to: fundAccount, value: 1e10 })
 
-  const decimals = await token.decimals.call()
-  const funds = (new BN("10").pow(decimals)).mul(new BN(amount)).toString()
+  const funds = await formattedAmount(token, amount)
 
   await token.transfer(receiver, funds, { from: fundAccount })
   const tokenBal = await token.balanceOf(receiver)
@@ -128,7 +132,7 @@ contract("APYPoolToken Integration Test USDC", async (accounts) => {
       usdcBalBefore = await USDC.balanceOf(owner)
       console.log(`\tUSDC Balance Before Mint: ${usdcBalBefore.toString()}`)
 
-      const amount = 1000000000
+      const amount = await formattedAmount(USDC, 1000)
       const trx = await instance.addLiquidity(amount, {
         from: owner,
       });
@@ -393,7 +397,7 @@ contract("APYPoolToken Integration Test DAI", async (accounts) => {
       daiBalBefore = await DAI.balanceOf(owner)
       console.log(`\tDAI Balance Before Mint: ${daiBalBefore.toString()}`)
 
-      const amount = 300000000
+      const amount = await formattedAmount(DAI, 1000)
       const trx = await instance.addLiquidity(amount, {
         from: owner,
       });
@@ -658,7 +662,7 @@ contract("APYPoolToken Integration Test USDT", async (accounts) => {
       usdtBalBefore = await USDT.balanceOf(owner)
       console.log(`\tUSDT Balance Before Mint: ${usdtBalBefore.toString()}`)
 
-      const amount = 1000000000
+      const amount = await formattedAmount(USDT, 1000)
       const trx = await instance.addLiquidity(amount, {
         from: owner,
       });
