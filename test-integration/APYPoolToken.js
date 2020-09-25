@@ -398,7 +398,7 @@ contract("APYPoolToken Integration DAI", async (accounts) => {
       daiBalBefore = await DAI.balanceOf(owner)
       console.log(`\tDAI Balance Before Mint: ${daiBalBefore.toString()}`)
 
-      const amount = 10000
+      const amount = 300000000
       const trx = await instance.addLiquidity(amount, {
         from: owner,
       });
@@ -556,7 +556,7 @@ contract("APYPoolToken Integration DAI", async (accounts) => {
       })
       await expectEvent(trx, "RedeemedAPT", {
         sender: owner,
-        token: USDC.address,
+        token: DAI.address,
         redeemedTokenAmount: dai_bal_after.sub(dai_bal),
         tokenEthValue: tokenEthVal,
         totalEthValueLocked: new BN(0)
