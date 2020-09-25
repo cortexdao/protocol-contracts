@@ -130,7 +130,7 @@ contract APYPoolToken is
             tokenAmt,
             mintAmount,
             depositEthValue,
-            poolTotalEthValue
+            getPoolTotalEthValue()
         );
     }
 
@@ -207,7 +207,7 @@ contract APYPoolToken is
             underlyer,
             redeemTokenAmt,
             aptAmount,
-            getTokenEthPrice(),
+            getEthValueFromTokenAmount(redeemTokenAmt),
             getPoolTotalEthValue()
         );
     }
