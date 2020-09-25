@@ -1,8 +1,6 @@
-const { ethers, web3, artifacts, contract } = require("@nomiclabs/buidler");
-const { defaultAbiCoder: abiCoder } = ethers.utils;
+const { web3, artifacts, contract } = require("@nomiclabs/buidler");
 const {
   BN,
-  constants,
   expectEvent, // Assertions for emitted events
   expectRevert, // Assertions for transactions that should fail
 } = require("@openzeppelin/test-helpers");
@@ -11,15 +9,12 @@ const {
   USDC_WHALE,
   USDT_WHALE
 } = require("../utils/constants");
-const { expect } = require("chai");
 const { ZERO_ADDRESS, MAX_UINT256 } = require("@openzeppelin/test-helpers/src/constants");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYPoolTokenProxy = artifacts.require("APYPoolTokenProxy");
 const APYPoolToken = artifacts.require("APYPoolToken");
 const AGG = artifacts.require("AggregatorV3Interface.sol")
-const IERC20 = artifacts.require("IERC20");
 const ERC20 = artifacts.require("ERC20");
-const IERC20_Interface = new ethers.utils.Interface(IERC20.abi);
 
 async function acquireToken(fundAccount, receiver, token, amount) {
   // NOTE: Ganache is setup to control the WHALE addresses. This method moves requeted funds out of the fund account and into the specified wallet
@@ -28,7 +23,7 @@ async function acquireToken(fundAccount, receiver, token, amount) {
   await web3.eth.sendTransaction({ from: receiver, to: fundAccount, value: 1e10 })
 
   const decimals = await token.decimals.call()
-  const funds = (new BN("10").pow(decimals)).mul(new BN(amount))
+  const funds = (new BN("10").pow(decimals)).mul(new BN(amount)).toString()
 
   await token.transfer(receiver, funds, { from: fundAccount })
   const tokenBal = await token.balanceOf(receiver)
@@ -36,7 +31,7 @@ async function acquireToken(fundAccount, receiver, token, amount) {
 }
 
 contract("APYPoolToken Integration Test USDC", async (accounts) => {
-  const [owner, instanceAdmin, randomUser, randomAddress] = accounts;
+  const [owner, instanceAdmin, randomUser] = accounts;
 
   let USDC_AGG
   let USDC
@@ -301,7 +296,7 @@ contract("APYPoolToken Integration Test USDC", async (accounts) => {
 });
 
 contract("APYPoolToken Integration DAI", async (accounts) => {
-  const [owner, instanceAdmin, randomUser, randomAddress] = accounts;
+  const [owner, instanceAdmin, randomUser] = accounts;
 
   let DAI_AGG
   let DAI
@@ -566,7 +561,7 @@ contract("APYPoolToken Integration DAI", async (accounts) => {
 });
 
 contract("APYPoolToken Integration USDT", async (accounts) => {
-  const [owner, instanceAdmin, randomUser, randomAddress] = accounts;
+  const [owner, instanceAdmin, randomUser] = accounts;
 
   let USDT_AGG
   let USDT
