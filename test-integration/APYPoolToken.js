@@ -295,7 +295,7 @@ contract("APYPoolToken Integration Test USDC", async (accounts) => {
   });
 });
 
-contract("APYPoolToken Integration DAI", async (accounts) => {
+contract("APYPoolToken Integration Test DAI", async (accounts) => {
   const [owner, instanceAdmin, randomUser] = accounts;
 
   let DAI_AGG
@@ -560,7 +560,7 @@ contract("APYPoolToken Integration DAI", async (accounts) => {
   });
 });
 
-contract("APYPoolToken Integration USDT", async (accounts) => {
+contract("APYPoolToken Integration Test USDT", async (accounts) => {
   const [owner, instanceAdmin, randomUser] = accounts;
 
   let USDT_AGG
