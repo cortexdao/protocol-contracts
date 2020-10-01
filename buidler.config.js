@@ -20,6 +20,7 @@ module.exports = {
       accounts: {
         mnemonic: process.env.MNEMONIC || '',
       },
+      timeout: 1000000,
     },
     kovan: {
       url: "https://kovan.infura.io/v3/" + process.env.INFURA_API_KEY,
