@@ -13,6 +13,7 @@ const {
   DEPLOYS_JSON,
   TOKEN_AGG_MAP,
 } = require("../utils/constants.js");
+const { erc20 } = require("../utils/helpers.js");
 const PROXY_ADMIN_ADDRESSES = require(DEPLOYS_JSON["ProxyAdmin"]);
 
 const main = async () => {
@@ -80,6 +81,9 @@ const main = async () => {
     const price = await pool.getTokenEthPrice();
     console.log(`    --> ${symbol} price: ${price}`);
     expect(price.toNumber()).to.be.gt(0);
+
+    console.log("Check pool is locked...");
+    await expectRevert(pool.addLiquidity(erc20("1")), "Pausable: paused");
   }
 };
 
