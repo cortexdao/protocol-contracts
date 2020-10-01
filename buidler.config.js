@@ -3,6 +3,7 @@ require("dotenv").config();
 usePlugin("solidity-coverage");
 usePlugin("@nomiclabs/buidler-ethers");
 usePlugin("@nomiclabs/buidler-truffle5");
+usePlugin("@nomiclabs/buidler-etherscan");
 
 module.exports = {
   networks: {
@@ -14,18 +15,18 @@ module.exports = {
       url: "http://localhost:8555",
     },
     mainnet: {
-      url: 'https://mainnet.infura.io/v3/' + process.env.INFURA_API_KEY,
+      url: "https://mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
       gasPrice: 500e9,
       accounts: {
         mnemonic: process.env.MNEMONIC || '',
       },
     },
     kovan: {
-      url: 'https://kovan.infura.io/v3/' + process.env.INFURA_API_KEY,
+      url: "https://kovan.infura.io/v3/" + process.env.INFURA_API_KEY,
       accounts: {
         mnemonic: process.env.MNEMONIC || '',
       },
-    }
+    },
   },
   solc: {
     version: "0.6.11",
@@ -36,5 +37,8 @@ module.exports = {
   },
   mocha: {
     timeout: 1000000,
-  }
+  },
+  etherscan: {
+    apiKey: process.env.ETHERSCAN_API_KEY,
+  },
 };
