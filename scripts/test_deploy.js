@@ -83,7 +83,7 @@ const main = async () => {
     expect(price.toNumber()).to.be.gt(0);
 
     console.log("Check pool is locked...");
-    await expectRevert(pool.addLiquidity(erc20("1")), "Pausable: paused");
+    expect(await pool.paused()).to.equal(true);
   }
 };
 
