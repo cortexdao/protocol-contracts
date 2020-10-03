@@ -61,7 +61,11 @@ contract("APYToken Unit Test", async (accounts) => {
     });
 
     it("Test TOTAL_SUPPLY", async () => {
-      assert.equal(await instance.TOTAL_SUPPLY.call(), 1e8);
+      assert.equal(await instance.TOTAL_SUPPLY.call(), 1e26);
+    });
+
+    it("Test supply cap", async () => {
+      assert.equal(await instance.cap.call(), 1e26);
     });
 
     it("Test Pool Token Name", async () => {

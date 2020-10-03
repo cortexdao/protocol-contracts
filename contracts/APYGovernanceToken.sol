@@ -17,7 +17,7 @@ contract APYGovernanceToken is
     ERC20CappedUpgradeSafe,
     ERC20SnapshotUpgradeSafe
 {
-    uint256 public constant TOTAL_SUPPLY = 1e8;
+    uint256 public constant TOTAL_SUPPLY = 100000000e18;
 
     /* ------------------------------- */
     /* impl-specific storage variables */
