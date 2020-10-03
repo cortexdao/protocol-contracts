@@ -1,5 +1,4 @@
 const { ethers, artifacts, contract } = require("@nomiclabs/buidler");
-const { defaultAbiCoder: abiCoder } = ethers.utils;
 const {
   BN,
   constants,
@@ -9,12 +8,9 @@ const {
 const { expect } = require("chai");
 const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
-const MockContract = artifacts.require("MockContract");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYGovernanceTokenProxy = artifacts.require("APYGovernanceTokenProxy");
 const APYGovernanceToken = artifacts.require("APYGovernanceToken");
-const IERC20 = new ethers.utils.Interface(artifacts.require("IERC20").abi);
-const ERC20 = new ethers.utils.Interface(artifacts.require("ERC20").abi);
 
 contract("APYToken Unit Test", async (accounts) => {
   const [owner, instanceAdmin, randomUser, randomAddress] = accounts;
@@ -23,7 +19,6 @@ contract("APYToken Unit Test", async (accounts) => {
   let logic;
   let proxy;
   let instance;
-  let mockToken;
 
   // use EVM snapshots for test isolation
   let snapshotId;
