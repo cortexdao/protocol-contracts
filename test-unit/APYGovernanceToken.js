@@ -103,4 +103,22 @@ contract("APYToken Unit Test", async (accounts) => {
       );
     });
   });
+
+  describe("Test locking/unlocking contract", async () => {
+    it("owner can lock/unlock", async () => {
+      expectEvent(await instance.lock({ from: owner }), "Paused");
+      expectEvent(await instance.unlock({ from: owner }), "Unpaused");
+    });
+
+    it("revert if non-owner calls lock/unlock", async () => {
+      await expectRevert(
+        instance.lock({ from: randomUser }),
+        "Ownable: caller is not the owner"
+      );
+      await expectRevert(
+        instance.unlock({ from: randomUser }),
+        "Ownable: caller is not the owner"
+      );
+    });
+  });
 });
