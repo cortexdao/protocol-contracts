@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/proxy/TransparentUpgradeableProxy.sol";
 
-contract APYProxy is TransparentUpgradeableProxy {
+contract APYGovernanceTokenProxy is TransparentUpgradeableProxy {
     constructor(address _logic, address _proxyAdmin)
         public
         TransparentUpgradeableProxy(

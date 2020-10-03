@@ -9,7 +9,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20Capped.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20Snapshot.sol";
 
-contract APY is
+contract APYGovernanceToken is
     Initializable,
     OwnableUpgradeSafe,
     ReentrancyGuardUpgradeSafe,

@@ -11,8 +11,8 @@ const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const MockContract = artifacts.require("MockContract");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
-const APYTokenProxy = artifacts.require("APYProxy");
-const APYToken = artifacts.require("APY");
+const APYGovernanceTokenProxy = artifacts.require("APYGovernanceTokenProxy");
+const APYGovernanceToken = artifacts.require("APYGovernanceToken");
 const IERC20 = new ethers.utils.Interface(artifacts.require("IERC20").abi);
 const ERC20 = new ethers.utils.Interface(artifacts.require("ERC20").abi);
 
@@ -39,17 +39,21 @@ contract("APYToken Unit Test", async (accounts) => {
 
   before(async () => {
     proxyAdmin = await ProxyAdmin.new({ from: owner });
-    logic = await APYToken.new({ from: owner });
-    proxy = await APYTokenProxy.new(logic.address, proxyAdmin.address, {
-      from: owner,
-    });
-    instance = await APYToken.at(proxy.address);
+    logic = await APYGovernanceToken.new({ from: owner });
+    proxy = await APYGovernanceTokenProxy.new(
+      logic.address,
+      proxyAdmin.address,
+      {
+        from: owner,
+      }
+    );
+    instance = await APYGovernanceToken.at(proxy.address);
   });
 
   describe("Test Constructor", async () => {
     it("Test params invalid admin", async () => {
       await expectRevert.unspecified(
-        APYTokenProxy.new(logic.address, ZERO_ADDRESS, {
+        APYGovernanceTokenProxy.new(logic.address, ZERO_ADDRESS, {
           from: owner,
         })
       );
