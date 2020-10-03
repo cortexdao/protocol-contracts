@@ -7,17 +7,15 @@ import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20Capped.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20Snapshot.sol";
 
 contract APYGovernanceToken is
     Initializable,
     OwnableUpgradeSafe,
     ReentrancyGuardUpgradeSafe,
     PausableUpgradeSafe,
-    ERC20CappedUpgradeSafe,
-    ERC20SnapshotUpgradeSafe
+    ERC20CappedUpgradeSafe
 {
-    uint256 public constant TOTAL_SUPPLY = 100000000e18;
+    uint256 public constant TOTAL_SUPPLY = 100000000e18; // 100MM tokens
 
     /* ------------------------------- */
     /* impl-specific storage variables */
@@ -38,7 +36,6 @@ contract APYGovernanceToken is
         __Pausable_init_unchained();
         __ERC20_init_unchained("APY Governance Token", "APY");
         __ERC20Capped_init_unchained(TOTAL_SUPPLY);
-        __ERC20Snapshot_init_unchained();
 
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
@@ -68,37 +65,5 @@ contract APYGovernanceToken is
 
     receive() external payable {
         revert("DONT_SEND_ETHER");
-    }
-
-    function _mint(address account, uint256 value)
-        internal
-        virtual
-        override(ERC20SnapshotUpgradeSafe, ERC20UpgradeSafe)
-    {
-        super._mint(account, value);
-    }
-
-    function _burn(address account, uint256 value)
-        internal
-        virtual
-        override(ERC20SnapshotUpgradeSafe, ERC20UpgradeSafe)
-    {
-        super._burn(account, value);
-    }
-
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal virtual override(ERC20CappedUpgradeSafe, ERC20UpgradeSafe) {
-        super._beforeTokenTransfer(from, to, amount);
-    }
-
-    function _transfer(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) internal virtual override(ERC20SnapshotUpgradeSafe, ERC20UpgradeSafe) {
-        super._transfer(sender, recipient, amount);
     }
 }
