@@ -12,7 +12,6 @@ contract APYGovernanceToken is
     Initializable,
     OwnableUpgradeSafe,
     ReentrancyGuardUpgradeSafe,
-    PausableUpgradeSafe,
     ERC20UpgradeSafe
 {
     uint256 public constant TOTAL_SUPPLY = 100000000e18; // 100MM tokens
@@ -33,7 +32,6 @@ contract APYGovernanceToken is
         __Context_init_unchained();
         __Ownable_init_unchained();
         __ReentrancyGuard_init_unchained();
-        __Pausable_init_unchained();
         __ERC20_init_unchained("APY Governance Token", "APY");
 
         // initialize impl-specific storage
@@ -53,14 +51,6 @@ contract APYGovernanceToken is
     modifier onlyAdmin() {
         require(msg.sender == proxyAdmin, "ADMIN_ONLY");
         _;
-    }
-
-    function lock() external onlyOwner {
-        _pause();
-    }
-
-    function unlock() external onlyOwner {
-        _unpause();
     }
 
     receive() external payable {
