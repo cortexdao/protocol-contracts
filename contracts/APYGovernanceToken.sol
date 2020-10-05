@@ -11,8 +11,6 @@ contract APYGovernanceToken is
     OwnableUpgradeSafe,
     ERC20UpgradeSafe
 {
-    uint256 public constant TOTAL_SUPPLY = 100000000e18; // 100MM tokens
-
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
@@ -22,7 +20,10 @@ contract APYGovernanceToken is
 
     event AdminChanged(address);
 
-    function initialize(address adminAddress) external initializer {
+    function initialize(address adminAddress, uint256 totalSupply)
+        external
+        initializer
+    {
         require(adminAddress != address(0), "INVALID_ADMIN");
 
         // initialize ancestor storage
@@ -32,7 +33,8 @@ contract APYGovernanceToken is
 
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
-        _mint(msg.sender, TOTAL_SUPPLY);
+
+        _mint(msg.sender, totalSupply);
     }
 
     // solhint-disable-next-line no-empty-blocks

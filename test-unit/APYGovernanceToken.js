@@ -8,6 +8,7 @@ const {
 const { expect } = require("chai");
 const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
+const { erc20 } = require("../utils/helpers");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYGovernanceTokenProxy = artifacts.require("APYGovernanceTokenProxy");
 const APYGovernanceToken = artifacts.require("APYGovernanceToken");
@@ -19,6 +20,8 @@ contract("APYToken Unit Test", async (accounts) => {
   let logic;
   let proxy;
   let instance;
+
+  const totalSupply = erc20("100000000");
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -38,6 +41,7 @@ contract("APYToken Unit Test", async (accounts) => {
     proxy = await APYGovernanceTokenProxy.new(
       logic.address,
       proxyAdmin.address,
+      totalSupply,
       {
         from: owner,
       }
@@ -48,15 +52,19 @@ contract("APYToken Unit Test", async (accounts) => {
   describe("Test Constructor", async () => {
     it("Test params invalid admin", async () => {
       await expectRevert.unspecified(
-        APYGovernanceTokenProxy.new(logic.address, ZERO_ADDRESS, {
+        APYGovernanceTokenProxy.new(logic.address, ZERO_ADDRESS, totalSupply, {
           from: owner,
         })
       );
     });
 
+    it("Test totalSupply is set", async () => {
+      expect(await instance.totalSupply.call()).to.bignumber.equal(totalSupply);
+    });
+
     it("Test owner has total supply", async () => {
       expect(await instance.balanceOf.call(owner)).to.bignumber.equal(
-        await instance.TOTAL_SUPPLY.call()
+        await instance.totalSupply.call()
       );
     });
   });
@@ -64,10 +72,6 @@ contract("APYToken Unit Test", async (accounts) => {
   describe("Test Defaults", async () => {
     it("Test Owner", async () => {
       assert.equal(await instance.owner.call(), owner);
-    });
-
-    it("Test TOTAL_SUPPLY", async () => {
-      assert.equal(await instance.TOTAL_SUPPLY.call(), 1e26);
     });
 
     it("Test Pool Token Name", async () => {
