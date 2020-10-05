@@ -53,6 +53,12 @@ contract("APYToken Unit Test", async (accounts) => {
         })
       );
     });
+
+    it("Test owner has total supply", async () => {
+      expect(await instance.balanceOf.call(owner)).to.bignumber.equal(
+        await instance.TOTAL_SUPPLY.call()
+      );
+    });
   });
 
   describe("Test Defaults", async () => {
