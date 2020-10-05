@@ -3,15 +3,12 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 
 contract APYGovernanceToken is
     Initializable,
     OwnableUpgradeSafe,
-    ReentrancyGuardUpgradeSafe,
     ERC20UpgradeSafe
 {
     uint256 public constant TOTAL_SUPPLY = 100000000e18; // 100MM tokens
@@ -31,7 +28,6 @@ contract APYGovernanceToken is
         // initialize ancestor storage
         __Context_init_unchained();
         __Ownable_init_unchained();
-        __ReentrancyGuard_init_unchained();
         __ERC20_init_unchained("APY Governance Token", "APY");
 
         // initialize impl-specific storage
