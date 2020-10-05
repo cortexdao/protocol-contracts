@@ -6,14 +6,14 @@ import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20Capped.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 
 contract APYGovernanceToken is
     Initializable,
     OwnableUpgradeSafe,
     ReentrancyGuardUpgradeSafe,
     PausableUpgradeSafe,
-    ERC20CappedUpgradeSafe
+    ERC20UpgradeSafe
 {
     uint256 public constant TOTAL_SUPPLY = 100000000e18; // 100MM tokens
 
@@ -35,10 +35,10 @@ contract APYGovernanceToken is
         __ReentrancyGuard_init_unchained();
         __Pausable_init_unchained();
         __ERC20_init_unchained("APY Governance Token", "APY");
-        __ERC20Capped_init_unchained(TOTAL_SUPPLY);
 
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
+        _mint(msg.sender, TOTAL_SUPPLY);
     }
 
     // solhint-disable-next-line no-empty-blocks
