@@ -13,9 +13,9 @@ type Transfer @entity {
   value: BigInt!
 }
 
-type Users @entity {
+type User @entity {
   id: ID!
   poolAddress: Bytes!
   address: Bytes!
-  accountValue: BitInt!
+  accountValue: BigInt!
 }
