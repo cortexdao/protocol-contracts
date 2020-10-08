@@ -12,3 +12,10 @@ type Transfer @entity {
   to: Bytes!
   value: BigInt!
 }
+
+type Users @entity {
+  id: ID!
+  poolAddress: Bytes!
+  address: Bytes!
+  accountValue: BitInt!
+}
