@@ -31,63 +31,43 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
   tvl.poolAddress = event.address;
   tvl.totalEthValueLocked = event.params.totalEthValueLocked;
   tvl.save();
-
-  let userId = event.params.sender.toHexString() + event.address.toHexString();
-
-  let user = User.load(userId);
-  if (user === null) {
-    user = new User(userId);
-  }
-
-  user.poolAddress = event.address;
-  user.address = event.params.sender;
-
-  let contract = APYPoolToken.bind(event.address);
-  let balance = contract.balanceOf(event.params.sender);
-  let result = contract.try_getAPTEthValue(balance);
-
-  let ethValue = BigInt.fromI32(0);
-  if (!result.reverted) {
-    ethValue = result.value;
-  }
-
-  user.save();
 }
 
 export function handleTransfer(event: TransferEvent): void {
+  const poolAddress = event.address;
+  const toAddress = event.params.to;
+  const fromAddress = event.params.from;
+
   let transfer = new Transfer(
-    event.params.from.toHexString() +
-      event.params.to.toHexString() +
+    fromAddress.toHexString() +
+      toAddress.toHexString() +
       event.block.timestamp.toString() +
       event.logIndex.toString() +
       event.transaction.hash.toHexString()
   );
-  transfer.poolAddress = event.address;
-  transfer.from = event.params.from;
-  transfer.to = event.params.to;
+
+  transfer.poolAddress = poolAddress;
+  transfer.from = fromAddress;
+  transfer.to = toAddress;
   transfer.value = event.params.value;
   transfer.save();
 
-  let userId = event.params.to.toHexString() + event.address.toHexString();
+  const contract = APYPoolToken.bind(poolAddress);
 
-  let user = User.load(userId);
-  if (user === null) {
-    user = new User(userId);
+  for (let userAddress of [toAddress, fromAddress]) {
+    const userId = toAddress.toHexString() + poolAddress.toHexString();
+    const user = User.load(userId) || new User(userId);
+    user.poolAddress = poolAddress;
+    user.address = userAddress;
+
+    const balance = contract.balanceOf(userAddress);
+    const result = contract.try_getAPTEthValue(balance);
+    let ethValue = BigInt.fromI32(0);
+    if (!result.reverted) {
+      ethValue = result.value;
+    }
+
+    user.accountValue = ethValue;
+    user.save();
   }
-
-  user.poolAddress = event.address;
-  user.address = event.params.to;
-
-  let contract = APYPoolToken.bind(event.address);
-  let balance = contract.balanceOf(event.params.to);
-  let result = contract.try_getAPTEthValue(balance);
-
-  let ethValue = BigInt.fromI32(0);
-  if (!result.reverted) {
-    ethValue = result.value;
-  }
-
-  user.accountValue = ethValue;
-
-  user.save();
 }
