@@ -54,20 +54,33 @@ export function handleTransfer(event: TransferEvent): void {
 
   const contract = APYPoolToken.bind(poolAddress);
 
-  for (let userAddress of [toAddress, fromAddress]) {
-    const userId = toAddress.toHexString() + poolAddress.toHexString();
-    const user = User.load(userId) || new User(userId);
-    user.poolAddress = poolAddress;
-    user.address = userAddress;
+  const toUserId = toAddress.toHexString() + poolAddress.toHexString();
+  const toUser = User.load(toUserId) || new User(toUserId);
+  toUser.poolAddress = poolAddress;
+  toUser.address = toAddress;
 
-    const balance = contract.balanceOf(userAddress);
-    const result = contract.try_getAPTEthValue(balance);
-    let ethValue = BigInt.fromI32(0);
-    if (!result.reverted) {
-      ethValue = result.value;
-    }
-
-    user.accountValue = ethValue;
-    user.save();
+  let balance = contract.balanceOf(toAddress);
+  let result = contract.try_getAPTEthValue(balance);
+  let ethValue = BigInt.fromI32(0);
+  if (!result.reverted) {
+    ethValue = result.value;
   }
+
+  toUser.accountValue = ethValue;
+  toUser.save();
+
+  const fromUserId = fromAddress.toHexString() + poolAddress.toHexString();
+  const fromUser = User.load(fromUserId) || new User(fromUserId);
+  fromUser.poolAddress = poolAddress;
+  fromUser.address = fromAddress;
+
+  balance = contract.balanceOf(fromAddress);
+  result = contract.try_getAPTEthValue(balance);
+  ethValue = BigInt.fromI32(0);
+  if (!result.reverted) {
+    ethValue = result.value;
+  }
+
+  fromUser.accountValue = ethValue;
+  fromUser.save();
 }
