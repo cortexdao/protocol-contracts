@@ -66,13 +66,7 @@ contract("APYPoolToken Integration Test USDC", async (accounts) => {
     );
     instance = await APYPoolToken.at(proxy.address);
 
-<<<<<<< Updated upstream
     await acquireToken(USDC_WHALE, owner, USDC, "1000000")
-=======
-    await acquireToken(USDC_WHALE, user1, USDC, "10000000")
-    await acquireToken(USDC_WHALE, user2, USDC, "10000000")
-    await acquireToken(USDC_WHALE, user3, USDC, "10000000")
->>>>>>> Stashed changes
 
     //handle allownaces
     await USDC.approve(instance.address, MAX_UINT256)
@@ -126,7 +120,6 @@ contract("APYPoolToken Integration Test USDC", async (accounts) => {
   });
 
   describe("Test addLiquidity", async () => {
-<<<<<<< Updated upstream
     it("Test locking/unlocking addLiquidity by owner", async () => {
       let trx = await instance.lockAddLiquidity({ from: owner });
       await expectEvent(trx, "AddLiquidityLocked");
@@ -140,28 +133,16 @@ contract("APYPoolToken Integration Test USDC", async (accounts) => {
       console.log(`\tUSDC Balance Before Mint: ${usdcBalBefore.toString()}`)
 
       const amount = await formattedAmount(USDC, 1000)
-=======
-    it("Test addLiquidity user1", async () => {
-      usdcBalBeforeUser1 = await USDC.balanceOf(user1)
-      console.log(`\tUSDC Balance Before Mint: ${usdcBalBeforeUser1.div(new BN(10000000)).toString()}`)
-
-      const amount = await formattedAmount(USDC, 5000000)
->>>>>>> Stashed changes
       const trx = await instance.addLiquidity(amount, {
         from: owner,
       });
 
-<<<<<<< Updated upstream
       let bal = await USDC.balanceOf(owner)
       console.log(`\tUSDC Balance After Mint: ${bal.toString()}`)
 
       // assert balances
       assert(await USDC.balanceOf(instance.address), amount)
       assert(await USDC.balanceOf(owner), usdcBalBefore - amount)
-=======
-      let bal = await USDC.balanceOf(user1)
-      console.log(`\tUSDC Balance After Mint: ${bal.div(new BN(10000000)).toString()}`)
->>>>>>> Stashed changes
 
       // comupting the exact amount is unreliable due to variance in USDC/ETH
       aptMinted = await instance.balanceOf(owner);
@@ -192,7 +173,6 @@ contract("APYPoolToken Integration Test USDC", async (accounts) => {
     });
   });
 
-<<<<<<< Updated upstream
   describe("Test getPoolTotalEthValue", async () => {
     it("Test getPoolTotalEthValue returns value", async () => {
       const val = await instance.getPoolTotalEthValue.call();
@@ -418,24 +398,12 @@ contract("APYPoolToken Integration Test DAI", async (accounts) => {
       console.log(`\tDAI Balance Before Mint: ${daiBalBefore.toString()}`)
 
       const amount = await formattedAmount(DAI, 1000)
-=======
-    it("Test addLiquidity user2", async () => {
-      usdcBalBeforeUser2 = await USDC.balanceOf(user2)
-      console.log(`\tUSDC Balance Before Mint: ${usdcBalBeforeUser2.div(new BN(10000000)).toString()}`)
-
-      const amount = await formattedAmount(USDC, 10000)
->>>>>>> Stashed changes
       const trx = await instance.addLiquidity(amount, {
         from: owner,
       });
 
-<<<<<<< Updated upstream
       let bal = await DAI.balanceOf(owner)
       console.log(`\tDAI Balance After Mint: ${bal.toString()}`)
-=======
-      let bal = await USDC.balanceOf(user2)
-      console.log(`\tUSDC Balance After Mint: ${bal.div(new BN(10000000)).toString()}`)
->>>>>>> Stashed changes
 
       // assert balances
       assert(await DAI.balanceOf(instance.address), amount)
@@ -521,7 +489,6 @@ contract("APYPoolToken Integration Test DAI", async (accounts) => {
   });
 
   describe("Test redeem", async () => {
-<<<<<<< Updated upstream
     it("Test locking/unlocking redeem by owner", async () => {
       let trx = await instance.lockRedeem({ from: owner });
       expectEvent(trx, "RedeemLocked");
@@ -530,11 +497,6 @@ contract("APYPoolToken Integration Test DAI", async (accounts) => {
         instance.redeem(50, { from: randomUser }),
         "LOCKED"
       );
-=======
-    it("Test redeem pass user1 ", async () => {
-      let usdcBal = await USDC.balanceOf(user1);
-      console.log(`\tUSDC Balance Before Redeem: ${usdcBal.div(new BN(10000000)).toString()}`)
->>>>>>> Stashed changes
 
       trx = await instance.unlockRedeem({ from: owner });
       expectEvent(trx, "RedeemUnlocked");
@@ -568,17 +530,12 @@ contract("APYPoolToken Integration Test DAI", async (accounts) => {
         from: owner,
       });
 
-<<<<<<< Updated upstream
       let daiBalAfter = await DAI.balanceOf(owner);
       console.log(`\tDAI Balance After Redeem: ${daiBalAfter.toString()}`)
 
       // assert balances
       assert.equal(daiBalAfter.toString(), daiBalBefore.toString())
       assert.equal(await DAI.balanceOf(instance.address), 0)
-=======
-      let usdcBalAfter = await USDC.balanceOf(user1);
-      console.log(`\tUSDC Balance After Redeem: ${usdcBalAfter.div(new BN(10000000)).toString()}`)
->>>>>>> Stashed changes
 
       const bal = await instance.balanceOf(owner);
       console.log(`\tAPT Balance: ${bal.toString()}`)
@@ -610,7 +567,6 @@ contract("APYPoolToken Integration Test DAI", async (accounts) => {
 contract("APYPoolToken Integration Test USDT", async (accounts) => {
   const [owner, instanceAdmin, randomUser] = accounts;
 
-<<<<<<< Updated upstream
   let USDT_AGG
   let USDT
 
@@ -662,11 +618,6 @@ contract("APYPoolToken Integration Test USDT", async (accounts) => {
     it("Test Pool Token Name", async () => {
       assert.equal(await instance.name.call(), "APY Pool Token");
     });
-=======
-    it("Test redeem pass user2", async () => {
-      let usdcBal = await USDC.balanceOf(user2);
-      console.log(`\tUSDC Balance Before Redeem: ${usdcBal.div(new BN(10000000)).toString()}`)
->>>>>>> Stashed changes
 
     it("Test Pool Symbol", async () => {
       assert.equal(await instance.symbol.call(), "APT");
@@ -844,17 +795,12 @@ contract("APYPoolToken Integration Test USDT", async (accounts) => {
         from: owner,
       });
 
-<<<<<<< Updated upstream
       let usdtBalAfter = await USDT.balanceOf(owner);
       console.log(`\tUSDT Balance After Redeem: ${usdtBalAfter.toString()}`)
 
       // assert balances
       assert.equal(usdtBalAfter.toString(), usdtBalBefore.toString())
       assert.equal(await USDT.balanceOf(instance.address), 0)
-=======
-      let usdcBalAfter = await USDC.balanceOf(user2);
-      console.log(`\tUSDC Balance After Redeem: ${usdcBalAfter.div(new BN(10000000)).toString()}`)
->>>>>>> Stashed changes
 
       const bal = await instance.balanceOf(owner);
       console.log(`\tAPT Balance: ${bal.toString()}`)
