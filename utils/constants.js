@@ -1,6 +1,6 @@
-const DAI_WHALE = '0x131a9A36Ea25aFB4Ed1a4510eE4B36E369d0F699'
-const USDC_WHALE = '0x8cee3eeab46774c1CDe4F6368E3ae68BcCd760Bf'
-const USDT_WHALE = '0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8'
+const DAI_WHALE = "0x131a9A36Ea25aFB4Ed1a4510eE4B36E369d0F699";
+const USDC_WHALE = "0x8cee3eeab46774c1CDe4F6368E3ae68BcCd760Bf";
+const USDT_WHALE = "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8";
 
 const CHAIN_IDS = {
   MAINNET: "1",
@@ -54,6 +54,10 @@ const TOKEN_AGG_MAP = {
 };
 const DEPLOYS_JSON = {
   ProxyAdmin: "../deployed_addresses/ProxyAdminAddresses.json",
+  APYProxyAdmin: "../deployed_addresses/APYProxyAdminAddresses.json",
+  APYGovernanceToken: "../deployed_addresses/APYGovernanceTokenAddresses.json",
+  APYGovernanceTokenProxy:
+    "../deployed_addresses/APYGovernanceTokenProxyAddresses.json",
   DAI_APYPoolToken: "../deployed_addresses/DAI_APYPoolTokenAddresses.json",
   DAI_APYPoolTokenProxy:
     "../deployed_addresses/DAI_APYPoolTokenProxyAddresses.json",
