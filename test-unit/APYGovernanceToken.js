@@ -13,7 +13,7 @@ const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYGovernanceTokenProxy = artifacts.require("APYGovernanceTokenProxy");
 const APYGovernanceToken = artifacts.require("APYGovernanceToken");
 
-contract("APYToken Unit Test", async (accounts) => {
+contract("APYGovernanceToken Unit Test", async (accounts) => {
   const [owner, instanceAdmin, randomUser, randomAddress] = accounts;
 
   let proxyAdmin;
