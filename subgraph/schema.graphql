@@ -4,3 +4,18 @@ type TotalEthValueLocked @entity {
   poolAddress: Bytes!
   totalEthValueLocked: BigInt!
 }
+
+type Transfer @entity {
+  id: ID!
+  poolAddress: Bytes!
+  from: Bytes!
+  to: Bytes!
+  value: BigInt!
+}
+
+type User @entity {
+  id: ID!
+  poolAddress: Bytes!
+  address: Bytes!
+  accountValue: BigInt!
+}

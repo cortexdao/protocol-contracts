@@ -17,6 +17,8 @@ dataSources:
       language: wasm/assemblyscript
       entities:
         - TotalEthValueLocked
+        - Transfer
+        - User
       abis:
         - name: APYPoolToken
           file: ../artifacts/APYPoolToken.json
@@ -25,6 +27,8 @@ dataSources:
           handler: handleDepositedAPT
         - event: RedeemedAPT(indexed address,address,uint256,uint256,uint256,uint256)
           handler: handleRedeemedAPT
+        - event: Transfer(indexed address,indexed address,uint256)
+          handler: handleTransfer
       file: ./src/mapping.ts
   - kind: ethereum/contract
     name: USDC_APYPoolToken
@@ -39,6 +43,8 @@ dataSources:
       language: wasm/assemblyscript
       entities:
         - TotalEthValueLocked
+        - Transfer
+        - User
       abis:
         - name: APYPoolToken
           file: ../artifacts/APYPoolToken.json
@@ -47,6 +53,8 @@ dataSources:
           handler: handleDepositedAPT
         - event: RedeemedAPT(indexed address,address,uint256,uint256,uint256,uint256)
           handler: handleRedeemedAPT
+        - event: Transfer(indexed address,indexed address,uint256)
+          handler: handleTransfer
       file: ./src/mapping.ts
   - kind: ethereum/contract
     name: USDT_APYPoolToken
@@ -61,6 +69,8 @@ dataSources:
       language: wasm/assemblyscript
       entities:
         - TotalEthValueLocked
+        - Transfer
+        - User
       abis:
         - name: APYPoolToken
           file: ../artifacts/APYPoolToken.json
@@ -69,4 +79,6 @@ dataSources:
           handler: handleDepositedAPT
         - event: RedeemedAPT(indexed address,address,uint256,uint256,uint256,uint256)
           handler: handleRedeemedAPT
+        - event: Transfer(indexed address,indexed address,uint256)
+          handler: handleTransfer
       file: ./src/mapping.ts
