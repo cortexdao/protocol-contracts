@@ -33,7 +33,7 @@ contract("APYPoolTokenProxy Unit Test", async (accounts) => {
   });
 
   describe("Test Defaults", async () => {
-    it("Test Proxy's Admin owner", async () => {
+    it("Test ProxyAdmin's owner", async () => {
       assert.equal(await proxyAdmin.owner.call(), owner);
     });
 
@@ -93,7 +93,6 @@ contract("APYPoolTokenProxy Unit Test", async (accounts) => {
 
       // create the new implementation and point the proxy to it
       const newLogic = await APYPoolTokenUpgraded.new({ from: owner });
-      await instance.setAdminAddress(proxyAdmin.address);
       await proxyAdmin.upgrade(proxy.address, newLogic.address, {
         from: owner,
       });
@@ -166,8 +165,6 @@ contract("APYPoolTokenProxy Unit Test", async (accounts) => {
         []
       );
 
-      // set admin since only proxy admin can call 'initializeUpgrade'
-      await instance.setAdminAddress(proxyAdmin.address);
       await proxyAdmin.upgradeAndCall(
         proxy.address,
         newLogic.address,
