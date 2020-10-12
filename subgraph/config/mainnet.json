@@ -1,5 +1,8 @@
 {
   "network": "mainnet",
   "pool_address": "",
-  "startBlock": 0
+  "dai_pool_address": "0x75CE0E501E2E6776FCAAA514F394A88A772A8970",
+  "usdc_pool_address": "0xe18b0365D5D09F394f84eE56ed29DD2d8D6Fba5f",
+  "usdt_pool_address": "0xeA9c5a2717D5Ab75afaAC340151e73a7e37d99A7",
+  "startBlock": 10968418
 }
