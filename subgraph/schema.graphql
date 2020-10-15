@@ -1,6 +1,7 @@
 type TotalEthValueLocked @entity {
   id: ID!
   timestamp: BigInt!
+  sequenceNumber: BigInt!
   poolAddress: Bytes!
   totalEthValueLocked: BigInt!
 }

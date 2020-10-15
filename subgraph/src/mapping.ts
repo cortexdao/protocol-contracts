@@ -15,6 +15,7 @@ export function handleDepositedAPT(event: DepositedAPT): void {
       event.transaction.hash.toHexString()
   );
   tvl.timestamp = event.block.timestamp;
+  tvl.sequenceNumber = (event.block.timestamp * BigInt.fromI32(100000000)) + event.logIndex;
   tvl.poolAddress = event.address;
   tvl.totalEthValueLocked = event.params.totalEthValueLocked;
   tvl.save();
@@ -28,6 +29,7 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
       event.transaction.hash.toHexString()
   );
   tvl.timestamp = event.block.timestamp;
+  tvl.sequenceNumber = (event.block.timestamp * BigInt.fromI32(100000000)) + event.logIndex;
   tvl.poolAddress = event.address;
   tvl.totalEthValueLocked = event.params.totalEthValueLocked;
   tvl.save();
