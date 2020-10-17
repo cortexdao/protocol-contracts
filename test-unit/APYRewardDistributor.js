@@ -11,10 +11,10 @@ const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const MockContract = artifacts.require("MockContract");
 const ERC20 = new ethers.utils.Interface(artifacts.require("ERC20").abi);
-const RewardDistributor = artifacts.require("APYRewardDistributor");
+const APYRewardDistributor = artifacts.require("APYRewardDistributor");
 
 contract("APYRewardDistributor Unit Test", async (accounts) => {
-  const [owner, instanceAdmin, randomUser, randomAddress] = accounts;
+  const [owner, signer] = accounts;
 
   let rewardDistributor;
   let mockToken;
@@ -31,7 +31,7 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
 
   before(async () => {
     mockToken = await MockContract.new();
-    rewardDistributor = await APYRewardDistributor.at();
+    rewardDistributor = await APYRewardDistributor.new(mockToken.address, signer, { from: owner });
   });
 
   describe("Test Constructor", async () => {
