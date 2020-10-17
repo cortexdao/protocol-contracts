@@ -12,16 +12,16 @@ contract APYRewardDistributor is Ownable {
     using SafeERC20 for IERC20;
 
     event SignerSet(address newSigner);
-    event Claimed(uint256 nonce, address recipient);
+    event Claimed(uint256 nonce, address recipient, uint256 amount);
 
     IERC20 public immutable apyToken;
     mapping(address => uint256) public accountNonces;
     address public signer;
 
     constructor(IERC20 token, address signerAddress) public {
-        require(token != address(0), "Invalid APY Address");
+        require(address(token) != address(0), "Invalid APY Address");
         require(signerAddress != address(0), "Invalid Signer Address");
-        apyToken = apyContract;
+        apyToken = token;
         signer = signerAddress;
     }
 
@@ -39,10 +39,13 @@ contract APYRewardDistributor is Ownable {
         address msgSigner = h.toEthSignedMessageHash().recover(signature);
         require(msgSigner == signer, "Invalid signature");
         require(accountNonces[recipient] == nonce, "Nonce Mismatch");
-        require(token.balanceOf(this) >= claimAmt, "Insufficient Funds");
+        require(
+            apyToken.balanceOf(address(this)) >= claimAmt,
+            "Insufficient Funds"
+        );
 
         accountNonces[recipient] += 1;
-        token.safeTransfer(recipient, claimAmt);
+        apyToken.safeTransfer(recipient, claimAmt);
 
         emit Claimed(nonce, recipient, claimAmt);
     }
