@@ -6,6 +6,7 @@ const {
   expectRevert, // Assertions for transactions that should fail
 } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
+const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const timeMachine = require("ganache-time-traveler");
 const MockContract = artifacts.require("MockContract");
 const ERC20 = new ethers.utils.Interface(artifacts.require("ERC20").abi);
@@ -43,6 +44,16 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
   });
 
   describe("Test Constructor", async () => {
+    it("Test Invalid APY Address", async () => {
+      await expectRevert(APYRewardDistributor.new(ZERO_ADDRESS, SIGNER, { from: owner }), "Invalid APY Address")
+    })
+
+    it("Test Invalid Signer Address", async () => {
+      await expectRevert(APYRewardDistributor.new(mockToken.address, ZERO_ADDRESS, { from: owner }), "Invalid Signer Address")
+    })
+  })
+
+  describe("Test Defaults", async () => {
     it("Test APY Contract set", async () => {
       const tokenAddress = await rewardDistributor.apyToken.call()
       assert(tokenAddress, mockToken.address)
