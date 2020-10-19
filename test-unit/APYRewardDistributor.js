@@ -181,5 +181,19 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
       signature = await generateSignature(process.env.ROTATED_PRIVATE_KEY, nonce.toString(), recipient1, amount)
       await rewardDistributor.claim(nonce.toString(), recipient1, amount, signature, { from: recipient1 })
     });
+
+    it("Test Claim event is emitted", async () => {
+      const amount = 10
+      const transfer = await ERC20.encodeFunctionData('transfer', [recipient1, amount])
+      await mockToken.givenMethodReturnBool(transfer, true)
+
+      const balanceOf = await ERC20.encodeFunctionData('balanceOf', [recipient1])
+      await mockToken.givenMethodReturnUint(balanceOf, amount)
+
+      const nonce = await rewardDistributor.accountNonces.call(recipient1)
+      const signature = await generateSignature(process.env.PRIVATE_KEY, nonce.toString(), recipient1, amount)
+      const trx = await rewardDistributor.claim(nonce.toString(), recipient1, amount, signature, { from: recipient1 })
+      expectEvent(trx, "Claimed", { nonce: new BN(0), recipient: recipient1, amount: new BN(amount) })
+    });
   });
 });
