@@ -25,6 +25,15 @@ contract APYRewardDistributor is Ownable {
         signer = signerAddress;
     }
 
+    function _getChainID() private view returns (uint256) {
+        uint256 id;
+        // no-inline-assembly
+        assembly {
+            id := chainid()
+        }
+        return id;
+    }
+
     function setSigner(address newSigner) external onlyOwner {
         signer = newSigner;
     }
@@ -35,7 +44,10 @@ contract APYRewardDistributor is Ownable {
         uint256 claimAmt,
         bytes calldata signature
     ) external {
-        bytes32 h = keccak256(abi.encodePacked(nonce, recipient, claimAmt));
+        uint256 chain = _getChainID();
+        bytes32 h = keccak256(
+            abi.encodePacked(nonce, recipient, claimAmt, chain)
+        );
         address msgSigner = h.toEthSignedMessageHash().recover(signature);
         require(msgSigner == signer, "Invalid signature");
         require(accountNonces[recipient] == nonce, "Nonce Mismatch");
