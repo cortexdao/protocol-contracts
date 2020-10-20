@@ -11,8 +11,8 @@ const timeMachine = require("ganache-time-traveler");
 const MockContract = artifacts.require("MockContract");
 const ERC20 = new ethers.utils.Interface(artifacts.require("ERC20").abi);
 const APYRewardDistributor = artifacts.require("APYRewardDistributor");
-const SIGNER = '0x6EAF0ab3455787bA10089800dB91F11fDf6370BE'
-const ROTATED_SIGNER = '0x6391391254B4C05d77DE6b6a6aBd82F2066d86f7'
+const SIGNER = process.env.ACCOUNT_1
+const ROTATED_SIGNER = process.env.ACCOUNT_2
 
 async function generateSignature(key, nonce, recipient, amount) {
   const wallet = new ethers.Wallet(key)
@@ -85,7 +85,7 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
   describe("Test Claiming", async () => {
     it("Test Signature mismatch", async () => {
       let nonce = await rewardDistributor.accountNonces.call(recipient1)
-      const signature = await generateSignature(process.env.PRIVATE_KEY, nonce.toString(), recipient1, 1)
+      const signature = await generateSignature(process.env.ACCOUNT_1_PRIV, nonce.toString(), recipient1, 1)
       await expectRevert(rewardDistributor.claim(nonce.toString(), recipient1, 100, signature, { from: recipient1 }), "Invalid signature")
     });
 
@@ -98,11 +98,11 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
       await mockToken.givenMethodReturnUint(balanceOf, amount)
 
       let nonce = await rewardDistributor.accountNonces.call(recipient1)
-      let signature = await generateSignature(process.env.PRIVATE_KEY, nonce.toString(), recipient1, amount)
+      let signature = await generateSignature(process.env.ACCOUNT_1_PRIV, nonce.toString(), recipient1, amount)
       await rewardDistributor.claim(nonce.toString(), recipient1, amount, signature, { from: recipient1 })
 
       //signature is created using nonce 0, when nonce = 1
-      signature = await generateSignature(process.env.PRIVATE_KEY, nonce.toString(), recipient1, amount)
+      signature = await generateSignature(process.env.ACCOUNT_1_PRIV, nonce.toString(), recipient1, amount)
       await expectRevert(rewardDistributor.claim(nonce.toString(), recipient1, amount, signature, { from: recipient1 }), "Nonce Mismatch")
     });
 
@@ -115,12 +115,12 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
       await mockToken.givenMethodReturnUint(balanceOf, amount)
 
       let nonce = await rewardDistributor.accountNonces.call(recipient1)
-      let signature = await generateSignature(process.env.PRIVATE_KEY, nonce.toString(), recipient1, amount)
+      let signature = await generateSignature(process.env.ACCOUNT_1_PRIV, nonce.toString(), recipient1, amount)
       await rewardDistributor.claim(nonce.toString(), recipient1, amount, signature, { from: recipient1 })
 
       //signature is created using nonce 2, when nonce = 1
       nonce = 2
-      signature = await generateSignature(process.env.PRIVATE_KEY, nonce.toString(), recipient1, amount)
+      signature = await generateSignature(process.env.ACCOUNT_1_PRIV, nonce.toString(), recipient1, amount)
       await expectRevert(rewardDistributor.claim(nonce.toString(), recipient1, amount, signature, { from: recipient1 }), "Nonce Mismatch")
     });
 
@@ -133,7 +133,7 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
       await mockToken.givenMethodReturnUint(balanceOf, amount - 1)
 
       let nonce = await rewardDistributor.accountNonces.call(recipient1)
-      let signature = await generateSignature(process.env.PRIVATE_KEY, nonce.toString(), recipient1, amount)
+      let signature = await generateSignature(process.env.ACCOUNT_1_PRIV, nonce.toString(), recipient1, amount)
       await expectRevert(rewardDistributor.claim(nonce.toString(), recipient1, amount, signature, { from: recipient1 }), "Insufficient Funds")
     });
 
@@ -146,7 +146,7 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
       await mockToken.givenMethodReturnUint(balanceOf, amount)
 
       let nonce = await rewardDistributor.accountNonces.call(recipient1)
-      let signature = await generateSignature(process.env.PRIVATE_KEY, nonce.toString(), recipient1, amount)
+      let signature = await generateSignature(process.env.ACCOUNT_1_PRIV, nonce.toString(), recipient1, amount)
       await rewardDistributor.claim(nonce.toString(), recipient1, amount, signature, { from: recipient2 })
     });
 
@@ -159,7 +159,7 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
       await mockToken.givenMethodReturnUint(balanceOf, amount)
 
       let nonce = await rewardDistributor.accountNonces.call(recipient1)
-      let signature = await generateSignature(process.env.PRIVATE_KEY, nonce.toString(), owner, amount)
+      let signature = await generateSignature(process.env.ACCOUNT_1_PRIV, nonce.toString(), owner, amount)
       await rewardDistributor.claim(nonce.toString(), owner, amount, signature, { from: owner })
     });
 
@@ -172,13 +172,13 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
       await mockToken.givenMethodReturnUint(balanceOf, amount)
 
       let nonce = await rewardDistributor.accountNonces.call(recipient1)
-      let signature = await generateSignature(process.env.PRIVATE_KEY, nonce.toString(), recipient1, amount)
+      let signature = await generateSignature(process.env.ACCOUNT_1_PRIV, nonce.toString(), recipient1, amount)
       await rewardDistributor.claim(nonce.toString(), recipient1, amount, signature, { from: recipient1 })
 
       await rewardDistributor.setSigner(ROTATED_SIGNER, { from: owner })
 
       nonce = await rewardDistributor.accountNonces.call(recipient1)
-      signature = await generateSignature(process.env.ROTATED_PRIVATE_KEY, nonce.toString(), recipient1, amount)
+      signature = await generateSignature(process.env.ACCOUNT_2_PRIV, nonce.toString(), recipient1, amount)
       await rewardDistributor.claim(nonce.toString(), recipient1, amount, signature, { from: recipient1 })
     });
 
@@ -191,7 +191,7 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
       await mockToken.givenMethodReturnUint(balanceOf, amount)
 
       const nonce = await rewardDistributor.accountNonces.call(recipient1)
-      const signature = await generateSignature(process.env.PRIVATE_KEY, nonce.toString(), recipient1, amount)
+      const signature = await generateSignature(process.env.ACCOUNT_1_PRIV, nonce.toString(), recipient1, amount)
       const trx = await rewardDistributor.claim(nonce.toString(), recipient1, amount, signature, { from: recipient1 })
       expectEvent(trx, "Claimed", { nonce: new BN(0), recipient: recipient1, amount: new BN(amount) })
     });
