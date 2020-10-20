@@ -13,10 +13,11 @@ const ERC20 = new ethers.utils.Interface(artifacts.require("ERC20").abi);
 const APYRewardDistributor = artifacts.require("APYRewardDistributor");
 const SIGNER = process.env.ACCOUNT_1
 const ROTATED_SIGNER = process.env.ACCOUNT_2
+const DEV_CHAIN_ID = 31337
 
-async function generateSignature(key, nonce, recipient, amount) {
+async function generateSignature(key, nonce, recipient, amount, chain = DEV_CHAIN_ID) {
   const wallet = new ethers.Wallet(key)
-  const hash = ethers.utils.solidityKeccak256(['uint256', 'address', 'uint256'], [nonce, recipient, amount])
+  const hash = ethers.utils.solidityKeccak256(['uint256', 'address', 'uint256', 'uint256'], [nonce, recipient, amount, chain])
   const message = ethers.utils.arrayify(hash)
   const signature = await wallet.signMessage(message)
   return signature
