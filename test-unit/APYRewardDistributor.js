@@ -37,8 +37,12 @@ async function generateSignature(key, contract, nonce, recipient, amount, chain 
 
   const provider = ethers.getDefaultProvider('mainnet', { projectId: process.env.INFURA_API_KEY })
   const wallet = new ethers.Wallet(key, provider)
-  const signature = await wallet._signTypedData(domain, types, data)
-  return signature
+  let signature = await wallet._signTypedData(domain, types, data)
+  signature = signature.slice(2)
+  const r = "0x" + signature.substring(0, 64);
+  const s = "0x" + signature.substring(64, 128);
+  const v = parseInt(signature.substring(128, 130), 16);
+  return { r, s, v }
 }
 
 contract("APYRewardDistributor Unit Test", async (accounts) => {
@@ -102,10 +106,11 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
   })
 
   describe("Test Claiming", async () => {
-    it("Test Signature mismatch", async () => {
+    it.only("Test Signature mismatch", async () => {
       let nonce = await rewardDistributor.accountNonces.call(recipient1)
-      const signature = await generateSignature(process.env.ACCOUNT_1_PRIV, rewardDistributor.address, nonce.toString(), recipient1, 1)
-      await expectRevert(rewardDistributor.claim(nonce.toString(), recipient1, 100, signature, { from: recipient1 }), "Invalid signature")
+      const { r, s, v } = await generateSignature(process.env.ACCOUNT_1_PRIV, rewardDistributor.address, nonce.toString(), recipient1, 1)
+      const recipientData = [nonce.toString(), recipient1, 1]
+      await expectRevert(rewardDistributor.claim(recipientData, v, r, s, { from: recipient1 }), "Invalid Signature")
     });
 
     it("Test claiming nonce < user nonce", async () => {
