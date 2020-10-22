@@ -31,5 +31,9 @@ subgraph.yaml
 **/subgraph/generated
 subgraph/build
 
+# lint
+.eslintcache
+
 # vim
 *.swp
+
