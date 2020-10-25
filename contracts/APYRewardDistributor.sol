@@ -27,7 +27,7 @@ contract APYRewardDistributor is Ownable {
         uint256 amount;
     }
 
-    bytes32 private constant EIP712DOMAIN_TYPEHASH = keccak256(
+    bytes32 private constant EIP712_DOMAIN_TYPEHASH = keccak256(
         "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
     );
 
@@ -65,7 +65,7 @@ contract APYRewardDistributor is Ownable {
         return
             keccak256(
                 abi.encode(
-                    EIP712DOMAIN_TYPEHASH,
+                    EIP712_DOMAIN_TYPEHASH,
                     keccak256(bytes(eip712Domain.name)),
                     keccak256(bytes(eip712Domain.version)),
                     eip712Domain.chainId,
