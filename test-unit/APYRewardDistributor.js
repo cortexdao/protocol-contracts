@@ -110,7 +110,8 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
       let nonce = await rewardDistributor.accountNonces.call(recipient1)
       const { r, s, v } = await generateSignature(process.env.ACCOUNT_1_PRIV, rewardDistributor.address, nonce.toString(), recipient1, 1)
       const recipientData = [nonce.toString(), recipient1, 1]
-      await expectRevert(rewardDistributor.claim(recipientData, v, r, s, { from: recipient1 }), "Invalid Signature")
+      await rewardDistributor.claim(recipientData, v, r, s, { from: recipient1 })
+      // await expectRevert(rewardDistributor.claim(recipientData, v, r, s, { from: recipient1 }), "Invalid Signature")
     });
 
     it("Test claiming nonce < user nonce", async () => {
