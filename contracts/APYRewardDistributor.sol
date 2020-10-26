@@ -94,7 +94,7 @@ contract APYRewardDistributor is Ownable {
         return
             keccak256(
                 abi.encodePacked(
-                    "\\x19\\x01",
+                    "\x19\x01",
                     DOMAIN_SEPARATOR,
                     _hashRecipient(recipient)
                 )
@@ -115,9 +115,6 @@ contract APYRewardDistributor is Ownable {
     }
 
     function claim(
-        // uint256 nonce,
-        // address recipient,
-        // uint256 claimAmt,
         Recipient calldata recipient,
         uint8 v,
         bytes32 r,
@@ -126,21 +123,18 @@ contract APYRewardDistributor is Ownable {
         address signatureSigner = ecrecover(_hash(recipient), v, r, s);
         require(signatureSigner == signer, "Invalid Signature");
 
-        // uint256 chain = _getChainID();
-        // bytes32 h = keccak256(
-        //     abi.encodePacked(nonce, recipient, claimAmt, chain)
-        // );
-        // address msgSigner = h.toEthSignedMessageHash().recover(signature);
-        // require(msgSigner == signer, "Invalid signature");
-        // require(accountNonces[recipient] == nonce, "Nonce Mismatch");
-        // require(
-        //     apyToken.balanceOf(address(this)) >= claimAmt,
-        //     "Insufficient Funds"
-        // );
+        require(
+            recipient.nonce == accountNonces[recipient.wallet],
+            "Nonce Mismatch"
+        );
+        require(
+            apyToken.balanceOf(address(this)) >= recipient.amount,
+            "Insufficient Funds"
+        );
 
-        // accountNonces[recipient] += 1;
-        // apyToken.safeTransfer(recipient, claimAmt);
+        accountNonces[recipient.wallet] += 1;
+        apyToken.safeTransfer(recipient.wallet, recipient.amount);
 
-        // emit Claimed(nonce, recipient, claimAmt);
+        emit Claimed(recipient.nonce, recipient.wallet, recipient.amount);
     }
 }
