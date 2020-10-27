@@ -41,9 +41,6 @@ async function generateSignature(
     amount: amount,
   };
 
-  // const provider = ethers.getDefaultProvider("mainnet", {
-  //   projectId: process.env.INFURA_API_KEY,
-  // });
   const provider = ethers.provider;
   const wallet = new ethers.Wallet(key, provider);
   let signature = await wallet._signTypedData(domain, types, data);
