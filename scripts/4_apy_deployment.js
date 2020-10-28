@@ -9,12 +9,6 @@ async function main() {
   console.log("");
   console.log(`${NETWORK_NAME} selected`);
   console.log("");
-  console.log(
-    `Total supply: ${totalSupply.toString()}  (length: ${
-      totalSupply.toString().length
-    })`
-  );
-  console.log("");
 
   const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
   const APYGovernanceToken = await ethers.getContractFactory(
@@ -39,13 +33,22 @@ async function main() {
   const proxy = await APYGovernanceTokenProxy.deploy(
     logic.address,
     proxyAdmin.address,
-    totalSupply
+    totalSupply.toString()
   );
   await proxy.deployed();
   deploy_data["APYGovernanceTokenProxy"] = proxy.address;
   console.log(`Proxy: ${proxy.address}`);
 
   await updateDeployJsons(NETWORK_NAME, deploy_data);
+
+  const instance = await APYGovernanceToken.attach(proxy.address);
+  const deployer = await (await ethers.getSigners())[0].getAddress();
+  console.log("Total supply:", (await instance.totalSupply()).toString());
+  console.log(
+    "APY balance:",
+    (await instance.balanceOf(deployer)).toString() /
+      10 ** (await instance.decimals())
+  );
 }
 
 main()
