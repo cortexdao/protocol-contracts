@@ -24,7 +24,8 @@
     "ganache": "ganache-cli",
     "fork:mainnet": "./scripts/fork_mainnet.sh",
     "deploy:kovan": "yarn buidler --network kovan run",
-    "deploy:mainnet": "yarn buidler --network mainnet run"
+    "deploy:mainnet": "yarn buidler --network mainnet run",
+    "sign": "node scripts/generate_signature.js"
   },
   "husky": {
     "hooks": {
