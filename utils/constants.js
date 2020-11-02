@@ -54,6 +54,10 @@ const TOKEN_AGG_MAP = {
 };
 const DEPLOYS_JSON = {
   ProxyAdmin: "../deployed_addresses/ProxyAdminAddresses.json",
+  APYProxyAdmin: "../deployed_addresses/APYProxyAdminAddresses.json",
+  APYGovernanceToken: "../deployed_addresses/APYGovernanceTokenAddresses.json",
+  APYGovernanceTokenProxy:
+    "../deployed_addresses/APYGovernanceTokenProxyAddresses.json",
   DAI_APYPoolToken: "../deployed_addresses/DAI_APYPoolTokenAddresses.json",
   DAI_APYPoolTokenProxy:
     "../deployed_addresses/DAI_APYPoolTokenProxyAddresses.json",
