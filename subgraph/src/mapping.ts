@@ -84,6 +84,7 @@ export function handleTransfer(event: TransferEvent): void {
     ethValue = result.value;
   }
 
+  toUser.accountBalance = balance;
   toUser.accountValue = ethValue;
   toUser.save();
 
@@ -99,6 +100,7 @@ export function handleTransfer(event: TransferEvent): void {
     ethValue = result.value;
   }
 
+  fromUser.accountBalance = balance;
   fromUser.accountValue = ethValue;
   fromUser.save();
 }

@@ -19,6 +19,7 @@ type User @entity {
   poolAddress: Bytes!
   address: Bytes!
   accountValue: BigInt!
+  accountBalance: BigInt!
 }
 
 type TokenEthPrice @entity {
