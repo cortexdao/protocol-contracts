@@ -20,6 +20,7 @@ type User @entity {
   address: Bytes!
   accountValue: BigInt!
   accountBalance: BigInt!
+  aptSupply: BigInt!
 }
 
 type TokenEthPrice @entity {
@@ -27,5 +28,6 @@ type TokenEthPrice @entity {
   price: BigInt!
   symbol: String!
   decimals: Int!
+  totalSupply: BigInt!
   poolAddress: Bytes!
 }

@@ -69,6 +69,7 @@ export function handleTransfer(event: TransferEvent): void {
   tokenEthPrice.price = price;
   tokenEthPrice.symbol = underlyer.symbol();
   tokenEthPrice.decimals = underlyer.decimals();
+  tokenEthPrice.totalSupply = underlyer.totalSupply();
   tokenEthPrice.poolAddress = poolAddress;
   tokenEthPrice.save();
 
@@ -86,6 +87,7 @@ export function handleTransfer(event: TransferEvent): void {
 
   toUser.accountBalance = balance;
   toUser.accountValue = ethValue;
+  toUser.aptSupply = contract.totalSupply();
   toUser.save();
 
   const fromUserId = fromAddress.toHexString() + poolAddress.toHexString();
@@ -102,5 +104,6 @@ export function handleTransfer(event: TransferEvent): void {
 
   fromUser.accountBalance = balance;
   fromUser.accountValue = ethValue;
+  fromUser.aptSupply = contract.totalSupply();
   fromUser.save();
 }
