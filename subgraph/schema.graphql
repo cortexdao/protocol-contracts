@@ -20,14 +20,14 @@ type User @entity {
   address: Bytes!
   accountValue: BigInt!
   accountBalance: BigInt!
-  aptSupply: BigInt!
 }
 
 type TokenEthPrice @entity {
   id: ID!
+  poolAddress: Bytes!
   price: BigInt!
   symbol: String!
   decimals: Int!
   poolUnderlyerBalance: BigInt!
-  poolAddress: Bytes!
+  aptSupply: BigInt!
 }
