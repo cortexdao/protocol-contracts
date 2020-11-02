@@ -69,7 +69,7 @@ export function handleTransfer(event: TransferEvent): void {
   tokenEthPrice.price = price;
   tokenEthPrice.symbol = underlyer.symbol();
   tokenEthPrice.decimals = underlyer.decimals();
-  tokenEthPrice.totalSupply = underlyer.totalSupply();
+  tokenEthPrice.poolUnderlyerBalance = underlyer.balanceOf(poolAddress);
   tokenEthPrice.poolAddress = poolAddress;
   tokenEthPrice.save();
 
