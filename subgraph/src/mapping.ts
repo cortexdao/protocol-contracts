@@ -3,8 +3,9 @@ import {
   DepositedAPT,
   RedeemedAPT,
   Transfer as TransferEvent,
+  ERC20UpgradeSafe,
 } from "../generated/DAI_APYPoolToken/APYPoolToken";
-import { TotalEthValueLocked, Transfer, User } from "../generated/schema";
+import { TotalEthValueLocked, Transfer, User, TokenEthPrice } from "../generated/schema";
 import { BigInt } from "@graphprotocol/graph-ts";
 
 export function handleDepositedAPT(event: DepositedAPT): void {
@@ -55,6 +56,21 @@ export function handleTransfer(event: TransferEvent): void {
   transfer.save();
 
   const contract = APYPoolToken.bind(poolAddress);
+  const underlyer = ERC20UpgradeSafe.bind(contract.underlyer());
+
+  const priceResult = contract.try_getTokenEthPrice();
+  let price = BigInt.fromI32(0);
+  if (!priceResult.reverted) {
+    price = priceResult.value;
+  }
+
+  const priceId = poolAddress.toHexString();
+  const tokenEthPrice = TokenEthPrice.load(priceId) || new TokenEthPrice(priceId);
+  tokenEthPrice.price = price;
+  tokenEthPrice.symbol = underlyer.symbol();
+  tokenEthPrice.decimals = underlyer.decimals();
+  tokenEthPrice.poolAddress = poolAddress;
+  tokenEthPrice.save();
 
   const toUserId = toAddress.toHexString() + poolAddress.toHexString();
   const toUser = User.load(toUserId) || new User(toUserId);

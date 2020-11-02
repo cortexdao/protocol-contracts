@@ -19,6 +19,7 @@ dataSources:
         - TotalEthValueLocked
         - Transfer
         - User
+        - TokenEthPrice
       abis:
         - name: APYPoolToken
           file: ../artifacts/APYPoolToken.json
@@ -45,6 +46,7 @@ dataSources:
         - TotalEthValueLocked
         - Transfer
         - User
+        - TokenEthPrice
       abis:
         - name: APYPoolToken
           file: ../artifacts/APYPoolToken.json
@@ -71,6 +73,7 @@ dataSources:
         - TotalEthValueLocked
         - Transfer
         - User
+        - TokenEthPrice
       abis:
         - name: APYPoolToken
           file: ../artifacts/APYPoolToken.json

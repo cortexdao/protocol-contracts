@@ -20,3 +20,11 @@ type User @entity {
   address: Bytes!
   accountValue: BigInt!
 }
+
+type TokenEthPrice @entity {
+  id: ID!
+  price: BigInt!
+  symbol: String!
+  decimals: Int!
+  poolAddress: Bytes!
+}
