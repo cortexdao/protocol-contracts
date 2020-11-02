@@ -19,12 +19,13 @@
     "compile": "buidler compile",
     "test:unit": "buidler test test-unit/*",
     "test:integration": "buidler test test-integration/APYPoolToken.js",
-    "lint": "solhint contracts/**/*.sol",
+    "lint": "solhint contracts/**/*.sol contracts/*.sol",
     "coverage": "buidler coverage --network coverage --testfiles \"test-unit/*.js\"",
     "ganache": "ganache-cli",
     "fork:mainnet": "./scripts/fork_mainnet.sh",
     "deploy:kovan": "yarn buidler --network kovan run",
-    "deploy:mainnet": "yarn buidler --network mainnet run"
+    "deploy:mainnet": "yarn buidler --network mainnet run",
+    "sign": "node scripts/generate_signature.js"
   },
   "husky": {
     "hooks": {
@@ -33,7 +34,9 @@
     }
   },
   "lint-staged": {
-    "contracts/**/*.sol": "solhint -w 0"
+    "contracts/**/*.sol": "solhint -w 0",
+    "*.js": "eslint --cache --fix",
+    "*.{js,css,md}": "prettier --write"
   },
   "repository": {
     "type": "git",
@@ -57,11 +60,14 @@
     "@nomiclabs/buidler-web3": "^1.3.4",
     "@openzeppelin/test-helpers": "^0.5.6",
     "dotenv": "^8.2.0",
-    "ethers": "^5.0.3",
+    "eslint": "^7.11.0",
+    "eslint-config-prettier": "^6.14.0",
+    "ethers": "5.0.18",
     "ganache-cli": "^6.10.2",
     "ganache-time-traveler": "^1.0.15",
-    "husky": "^4.2.5",
+    "husky": "4.0.10",
     "lint-staged": "^10.2.11",
+    "prettier": "2.1.2",
     "solhint": "^3.2.0",
     "solidity-coverage": "^0.7.10"
   },
@@ -70,6 +76,7 @@
     "@compound-finance/compound-js": "^0.1.0",
     "@openzeppelin/contracts": "^3.2.0",
     "@openzeppelin/contracts-ethereum-package": "^3.0.0",
-    "abdk-libraries-solidity": "^2.3.0"
+    "abdk-libraries-solidity": "^2.3.0",
+    "commander": "^6.2.0"
   }
 }
