@@ -3,8 +3,8 @@ import {
   DepositedAPT,
   RedeemedAPT,
   Transfer as TransferEvent,
-  ERC20UpgradeSafe,
 } from "../generated/DAI_APYPoolToken/APYPoolToken";
+import {ERC20UpgradeSafe} from "../generated/DAI_APYPoolToken/ERC20UpgradeSafe";
 import { TotalEthValueLocked, Transfer, User, TokenEthPrice } from "../generated/schema";
 import { BigInt } from "@graphprotocol/graph-ts";
 
