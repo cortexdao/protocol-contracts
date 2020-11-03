@@ -22,12 +22,12 @@ type User @entity {
   accountBalance: BigInt!
 }
 
-type TokenEthPrice @entity {
+type Pool @entity {
   id: ID!
-  poolAddress: Bytes!
-  price: BigInt!
-  symbol: String!
-  decimals: Int!
-  poolUnderlyerBalance: BigInt!
+  address: Bytes!
+  underlyerPrice: BigInt!
+  underlyerSymbol: String!
+  underlyerDecimals: Int!
+  underlyerBalance: BigInt!
   aptSupply: BigInt!
 }
