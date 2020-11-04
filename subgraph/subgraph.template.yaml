@@ -19,9 +19,12 @@ dataSources:
         - TotalEthValueLocked
         - Transfer
         - User
+        - TokenEthPrice
       abis:
         - name: APYPoolToken
           file: ../artifacts/APYPoolToken.json
+        - name: ERC20UpgradeSafe
+          file: ../artifacts/ERC20UpgradeSafe.json
       eventHandlers:
         - event: DepositedAPT(indexed address,address,uint256,uint256,uint256,uint256)
           handler: handleDepositedAPT
@@ -45,9 +48,12 @@ dataSources:
         - TotalEthValueLocked
         - Transfer
         - User
+        - TokenEthPrice
       abis:
         - name: APYPoolToken
           file: ../artifacts/APYPoolToken.json
+        - name: ERC20UpgradeSafe
+          file: ../artifacts/ERC20UpgradeSafe.json
       eventHandlers:
         - event: DepositedAPT(indexed address,address,uint256,uint256,uint256,uint256)
           handler: handleDepositedAPT
@@ -71,9 +77,12 @@ dataSources:
         - TotalEthValueLocked
         - Transfer
         - User
+        - TokenEthPrice
       abis:
         - name: APYPoolToken
           file: ../artifacts/APYPoolToken.json
+        - name: ERC20UpgradeSafe
+          file: ../artifacts/ERC20UpgradeSafe.json
       eventHandlers:
         - event: DepositedAPT(indexed address,address,uint256,uint256,uint256,uint256)
           handler: handleDepositedAPT

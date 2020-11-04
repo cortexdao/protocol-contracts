@@ -19,4 +19,15 @@ type User @entity {
   poolAddress: Bytes!
   address: Bytes!
   accountValue: BigInt!
+  accountBalance: BigInt!
+}
+
+type Pool @entity {
+  id: ID!
+  address: Bytes!
+  underlyerPrice: BigInt!
+  underlyerSymbol: String!
+  underlyerDecimals: Int!
+  underlyerBalance: BigInt!
+  aptSupply: BigInt!
 }
