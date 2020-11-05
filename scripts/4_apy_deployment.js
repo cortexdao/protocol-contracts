@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { TOKEN_AGG_MAP } = require("../utils/constants.js");
+const { ethers, network } = require("@nomiclabs/buidler");
 const { updateDeployJsons, erc20 } = require("../utils/helpers.js");
 
 const totalSupply = erc20("100000000", "18"); // 100MM
@@ -9,6 +9,10 @@ async function main() {
   console.log("");
   console.log(`${NETWORK_NAME} selected`);
   console.log("");
+
+  const signers = await ethers.getSigners();
+  const deployer = await signers[0].getAddress();
+  console.log("Deployer address:", deployer);
 
   const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
   const APYGovernanceToken = await ethers.getContractFactory(
@@ -42,7 +46,6 @@ async function main() {
   await updateDeployJsons(NETWORK_NAME, deploy_data);
 
   const instance = await APYGovernanceToken.attach(proxy.address);
-  const deployer = await (await ethers.getSigners())[0].getAddress();
   console.log("Total supply:", (await instance.totalSupply()).toString());
   console.log(
     "APY balance:",
