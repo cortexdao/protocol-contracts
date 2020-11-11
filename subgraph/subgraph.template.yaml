@@ -20,6 +20,7 @@ dataSources:
         - Transfer
         - User
         - TokenEthPrice
+        - AccountClaims
       abis:
         - name: APYPoolToken
           file: ../artifacts/APYPoolToken.json
@@ -90,4 +91,24 @@ dataSources:
           handler: handleRedeemedAPT
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer
+      file: ./src/mapping.ts
+  - kind: ethereum/contract
+    name: APYRewardDistributor
+    network: '{{network}}'
+    source:
+      address: '{{reward_distributor_address}}'
+      abi: APYRewardDistributor
+      startBlock: {{startBlock}}
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.4
+      language: wasm/assemblyscript
+      entities:
+        - AccountClaims
+      abis:
+        - name: APYRewardDistributor
+          file: ../artifacts/APYRewardDistributor.json
+      eventHandlers:
+        - event: Claimed(uint256 nonce,address recipient,uint256 amount)
+          handler: handleClaimed
       file: ./src/mapping.ts
