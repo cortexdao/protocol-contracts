@@ -109,6 +109,6 @@ dataSources:
         - name: APYRewardDistributor
           file: ../artifacts/APYRewardDistributor.json
       eventHandlers:
-        - event: Claimed(uint256 nonce,address recipient,uint256 amount)
+        - event: Claimed(uint256,address,uint256)
           handler: handleClaimed
       file: ./src/mapping.ts
