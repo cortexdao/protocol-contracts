@@ -32,7 +32,7 @@ type Pool @entity {
   aptSupply: BigInt!
 }
 
-type AccountClaims @entity {
+type AccountClaim @entity {
   id: ID!
   account: Bytes!
   nonce: Int!

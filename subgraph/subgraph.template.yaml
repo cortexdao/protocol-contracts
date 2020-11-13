@@ -20,7 +20,7 @@ dataSources:
         - Transfer
         - User
         - TokenEthPrice
-        - AccountClaims
+        - AccountClaim
       abis:
         - name: APYPoolToken
           file: ../artifacts/APYPoolToken.json
@@ -104,7 +104,7 @@ dataSources:
       apiVersion: 0.0.4
       language: wasm/assemblyscript
       entities:
-        - AccountClaims
+        - AccountClaim
       abis:
         - name: APYRewardDistributor
           file: ../artifacts/APYRewardDistributor.json

@@ -6,7 +6,7 @@ import {
 } from "../generated/DAI_APYPoolToken/APYPoolToken";
 import { ERC20UpgradeSafe } from "../generated/DAI_APYPoolToken/ERC20UpgradeSafe";
 import { Claimed } from "../generated/APYRewardDistributor/APYRewardDistributor";
-import { TotalEthValueLocked, Transfer, User, Pool, AccountClaims } from "../generated/schema";
+import { TotalEthValueLocked, Transfer, User, Pool, AccountClaim } from "../generated/schema";
 import { BigInt } from "@graphprotocol/graph-ts";
 
 export function handleDepositedAPT(event: DepositedAPT): void {
