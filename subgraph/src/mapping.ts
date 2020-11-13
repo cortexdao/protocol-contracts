@@ -109,12 +109,19 @@ export function handleTransfer(event: TransferEvent): void {
 }
 
 export function handleClaimed(event: Claimed): void {
-  let accountClaimId = event.params.recipient.toHexString()
-  let accountClaim = AccountClaims.load(accountClaimId)
-    || new AccountClaims(accountClaimId)
+  let accountClaimId = event.params.recipient.toHex()
+  let accountClaim = AccountClaim.load(accountClaimId)
+
+  if (accountClaim == null) {
+    accountClaim = new AccountClaim(accountClaimId)
+    accountClaim.claimAmount = event.params.amount
+  } else {
+    accountClaim.claimAmount = event.params.amount.plus(
+      accountClaim.claimAmount
+    )
+  }
 
   accountClaim.account = event.params.recipient
-  accountClaim.nonce += 1
-  accountClaim.claimAmount += event.params.amount
+  accountClaim.nonce = event.params.nonce
   accountClaim.save()
 }
