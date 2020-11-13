@@ -35,6 +35,6 @@ type Pool @entity {
 type AccountClaim @entity {
   id: ID!
   account: Bytes!
-  nonce: Int!
+  nonce: BigInt!
   claimAmount: BigInt!
 }
