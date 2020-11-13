@@ -114,6 +114,7 @@ export function handleClaimed(event: Claimed): void {
     || new AccountClaims(accountClaimId)
 
   accountClaim.account = event.params.recipient
+  accountClaim.nonce += 1
   accountClaim.claimAmount += event.params.amount
   accountClaim.save()
 }
