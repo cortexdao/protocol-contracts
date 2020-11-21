@@ -4,8 +4,9 @@ import {
   RedeemedAPT,
   Transfer as TransferEvent,
 } from "../generated/DAI_APYPoolToken/APYPoolToken";
-import {ERC20UpgradeSafe} from "../generated/DAI_APYPoolToken/ERC20UpgradeSafe";
-import { TotalEthValueLocked, Transfer, User, Pool } from "../generated/schema";
+import { ERC20UpgradeSafe } from "../generated/DAI_APYPoolToken/ERC20UpgradeSafe";
+import { Claimed } from "../generated/APYRewardDistributor/APYRewardDistributor";
+import { TotalEthValueLocked, Transfer, User, Pool, AccountClaim } from "../generated/schema";
 import { BigInt } from "@graphprotocol/graph-ts";
 
 export function handleDepositedAPT(event: DepositedAPT): void {
@@ -105,4 +106,22 @@ export function handleTransfer(event: TransferEvent): void {
   fromUser.accountBalance = balance;
   fromUser.accountValue = ethValue;
   fromUser.save();
+}
+
+export function handleClaimed(event: Claimed): void {
+  let accountClaimId = event.params.recipient.toHex()
+  let accountClaim = AccountClaim.load(accountClaimId)
+
+  if (accountClaim == null) {
+    accountClaim = new AccountClaim(accountClaimId)
+    accountClaim.claimAmount = event.params.amount
+  } else {
+    accountClaim.claimAmount = event.params.amount.plus(
+      accountClaim.claimAmount
+    )
+  }
+
+  accountClaim.account = event.params.recipient
+  accountClaim.nonce = event.params.nonce
+  accountClaim.save()
 }

@@ -1,6 +1,6 @@
-const DAI_WHALE = '0x897607ab556177b0e0938541073ac1e01c55e483'
-const USDC_WHALE = '0x8cee3eeab46774c1CDe4F6368E3ae68BcCd760Bf'
-const USDT_WHALE = '0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8'
+const DAI_WHALE = "0x897607ab556177b0e0938541073ac1e01c55e483";
+const USDC_WHALE = "0x8cee3eeab46774c1CDe4F6368E3ae68BcCd760Bf";
+const USDT_WHALE = "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8";
 
 const CHAIN_IDS = {
   MAINNET: "1",
@@ -10,10 +10,10 @@ const CHAIN_IDS = {
 };
 
 const CHAIN_NAMES = {
-  "1": "MAINNET",
-  "4": "RINKEBY",
-  "5": "GOERLI",
-  "42": "KOVAN",
+  1: "MAINNET",
+  4: "RINKEBY",
+  5: "GOERLI",
+  42: "KOVAN",
 };
 
 const TOKEN_AGG_MAP = {
@@ -67,6 +67,7 @@ const DEPLOYS_JSON = {
   USDT_APYPoolToken: "../deployed_addresses/USDT_APYPoolTokenAddresses.json",
   USDT_APYPoolTokenProxy:
     "../deployed_addresses/USDT_APYPoolTokenProxyAddresses.json",
+  APYRewardDistributor: "../deployed_addresses/APYRewardDistributor.json",
 };
 
 module.exports = {

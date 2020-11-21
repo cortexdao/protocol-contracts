@@ -5,6 +5,9 @@ usePlugin("@nomiclabs/buidler-ethers");
 usePlugin("@nomiclabs/buidler-truffle5");
 usePlugin("@nomiclabs/buidler-etherscan");
 
+require("./scripts/claim_rewards");
+require("./scripts/fund_rewards");
+
 module.exports = {
   networks: {
     localhost: {
