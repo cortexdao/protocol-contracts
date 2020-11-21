@@ -19,16 +19,21 @@ async function main() {
     "APYRewardDistributor"
   );
 
-  let deploy_data = {};
+  const SIGNER_MNEMONIC = process.env.SIGNER_MNEMONIC;
+  const path = "m/44’/60’/0’/0/0";
+  const wallet = ethers.Wallet.fromMnemonic(SIGNER_MNEMONIC, path);
+  const signerAddress = wallet.address;
+  console.log("Signer address:", signerAddress);
 
   const rewardDistributor = await RewardDistributor.deploy(
     TOKEN_ADDRESS[CHAIN_IDS[NETWORK_NAME]],
-    deployer
+    signerAddress
   );
   await rewardDistributor.deployed();
+
+  const deploy_data = {};
   deploy_data["APYRewardDistributor"] = rewardDistributor.address;
   console.log(`APYRewardDistributor: ${rewardDistributor.address}`);
-
   await updateDeployJsons(NETWORK_NAME, deploy_data);
 }
 
