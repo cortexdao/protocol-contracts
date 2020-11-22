@@ -31,3 +31,10 @@ type Pool @entity {
   underlyerBalance: BigInt!
   aptSupply: BigInt!
 }
+
+type AccountClaim @entity {
+  id: ID!
+  account: Bytes!
+  nonce: BigInt!
+  claimAmount: BigInt!
+}
