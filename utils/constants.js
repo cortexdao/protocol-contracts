@@ -7,6 +7,7 @@ const CHAIN_IDS = {
   RINKEBY: "4",
   GOERLI: "5",
   KOVAN: "42",
+  LOCALHOST: "1", //should be 99, but signature claiming fails in emergency withdraw otherwise
 };
 
 const CHAIN_NAMES = {
@@ -14,6 +15,7 @@ const CHAIN_NAMES = {
   4: "RINKEBY",
   5: "GOERLI",
   42: "KOVAN",
+  99: "LOCALHOST",
 };
 
 const TOKEN_AGG_MAP = {
