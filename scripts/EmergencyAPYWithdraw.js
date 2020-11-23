@@ -6,6 +6,11 @@ const APY_GOV_PROXY = require(DEPLOYS_JSON["APYGovernanceTokenProxy"]);
 const APY_DISTRIBUTOR_ADDR = require(DEPLOYS_JSON["APYRewardDistributor"]);
 
 async function main() {
+  if (!process.env.SIGNER) {
+    console.log("Private key env SIGNER is not set");
+    return;
+  }
+
   const NETWORK_NAME = network.name.toUpperCase();
   console.log(`${NETWORK_NAME} selected`);
 
