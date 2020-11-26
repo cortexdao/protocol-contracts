@@ -39,6 +39,7 @@ async function main() {
 
 main()
   .then(() => {
+    console.log("");
     console.log("Deployment successful.");
     console.log("");
     process.exit(0);
