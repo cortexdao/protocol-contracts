@@ -20,8 +20,7 @@ async function main() {
   );
 
   const SIGNER_MNEMONIC = process.env.SIGNER_MNEMONIC;
-  const path = "m/44’/60’/0’/0/0";
-  const wallet = ethers.Wallet.fromMnemonic(SIGNER_MNEMONIC, path);
+  const wallet = ethers.Wallet.fromMnemonic(SIGNER_MNEMONIC);
   const signerAddress = wallet.address;
   console.log("Signer address:", signerAddress);
 
