@@ -5,6 +5,12 @@ const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants.js");
 
 const DISTRIBUTOR_ADDRESS = require(DEPLOYS_JSON["APYRewardDistributor"]);
 
+/* **************************************************
+ *** increment address index to get new key ********
+ ************************************************* */
+const addressIndex = 1;
+/* *********************************************** */
+
 async function main() {
   const NETWORK_NAME = network.name.toUpperCase();
   console.log("");
@@ -31,8 +37,6 @@ async function main() {
   console.log("Old signer address:", await rewardDistributor["signer()"]());
   console.log("");
 
-  // increment address index to get new path
-  const addressIndex = 1;
   const path = "m/44'/60'/0'/0/" + addressIndex.toString();
   console.log("New key derivation path:", path);
   const SIGNER_MNEMONIC = process.env.SIGNER_MNEMONIC;
