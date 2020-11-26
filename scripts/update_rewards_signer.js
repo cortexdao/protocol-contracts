@@ -1,8 +1,9 @@
 require("dotenv").config();
+const assert = require("assert");
 const { ethers, network } = require("@nomiclabs/buidler");
 const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants.js");
 
-const TOKEN_ADDRESS = require(DEPLOYS_JSON["APYGovernanceTokenProxy"]);
+const DISTRIBUTOR_ADDRESS = require(DEPLOYS_JSON["APYRewardDistributor"]);
 
 async function main() {
   const NETWORK_NAME = network.name.toUpperCase();
@@ -18,25 +19,40 @@ async function main() {
     "APYRewardDistributor"
   );
 
+  const contractAddress = DISTRIBUTOR_ADDRESS[CHAIN_IDS[NETWORK_NAME]];
+  const rewardDistributor = await RewardDistributor.attach(contractAddress);
+  console.log("Contract address:", contractAddress);
+
+  assert.strictEqual(
+    await rewardDistributor.owner(),
+    deployer,
+    "Deployer must be owner."
+  );
+  console.log("Old signer address:", await rewardDistributor["signer()"]());
+  console.log("");
+
   // increment address index to get new path
   const addressIndex = 1;
   const path = "m/44'/60'/0'/0/" + addressIndex.toString();
+  console.log("New key derivation path:", path);
   const SIGNER_MNEMONIC = process.env.SIGNER_MNEMONIC;
   const wallet = ethers.Wallet.fromMnemonic(SIGNER_MNEMONIC, path);
   const signerAddress = wallet.address;
-  console.log("Signer address:", signerAddress);
-  console.log("Private key:", wallet.privateKey);
+  console.log("New signer address:", signerAddress);
+  console.log("New private key:", wallet.privateKey);
+  console.log("");
 
-  const rewardDistributor = await RewardDistributor.attach(
-    TOKEN_ADDRESS[CHAIN_IDS[NETWORK_NAME]]
-  );
   const transaction = await rewardDistributor.setSigner(signerAddress);
   const receipt = await transaction.wait();
-  console.log("Transaction hash:", receipt.transactionHash);
+  console.log(
+    "Etherscan:",
+    `https://etherscan.io/tx/${receipt.transactionHash}`
+  );
 }
 
 main()
   .then(() => {
+    console.log("");
     console.log("Set new signer successfully.");
     console.log("");
     process.exit(0);
