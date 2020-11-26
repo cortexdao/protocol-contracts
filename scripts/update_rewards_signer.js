@@ -24,7 +24,8 @@ async function main() {
   const SIGNER_MNEMONIC = process.env.SIGNER_MNEMONIC;
   const wallet = ethers.Wallet.fromMnemonic(SIGNER_MNEMONIC, path);
   const signerAddress = wallet.address;
-  console.log("New signer address:", signerAddress);
+  console.log("Signer address:", signerAddress);
+  console.log("Private key:", wallet.privateKey);
 
   const rewardDistributor = await RewardDistributor.attach(
     TOKEN_ADDRESS[CHAIN_IDS[NETWORK_NAME]]
