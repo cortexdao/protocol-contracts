@@ -8,7 +8,7 @@ const DISTRIBUTOR_ADDRESS = require(DEPLOYS_JSON["APYRewardDistributor"]);
 /* **************************************************
  *** increment address index to get new key ********
  ************************************************* */
-const addressIndex = 1;
+const addressIndex = 0;
 /* *********************************************** */
 
 async function main() {
