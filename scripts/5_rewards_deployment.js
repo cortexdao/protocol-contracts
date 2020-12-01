@@ -23,6 +23,7 @@ async function main() {
   const wallet = ethers.Wallet.fromMnemonic(SIGNER_MNEMONIC);
   const signerAddress = wallet.address;
   console.log("Signer address:", signerAddress);
+  console.log("Private key:", wallet.privateKey);
 
   const rewardDistributor = await RewardDistributor.deploy(
     TOKEN_ADDRESS[CHAIN_IDS[NETWORK_NAME]],
@@ -38,6 +39,7 @@ async function main() {
 
 main()
   .then(() => {
+    console.log("");
     console.log("Deployment successful.");
     console.log("");
     process.exit(0);
