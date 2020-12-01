@@ -1,5 +1,7 @@
 require("dotenv").config();
 const assert = require("assert");
+const { argv } = require("yargs");
+const bre = require("@nomiclabs/buidler");
 const { ethers, network } = require("@nomiclabs/buidler");
 const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants.js");
 
@@ -11,11 +13,13 @@ const DISTRIBUTOR_ADDRESS = require(DEPLOYS_JSON["APYRewardDistributor"]);
 const addressIndex = 0;
 /* *********************************************** */
 
-async function main() {
+async function main(argv) {
+  await bre.run("compile");
   const NETWORK_NAME = network.name.toUpperCase();
   console.log("");
   console.log(`${NETWORK_NAME} selected`);
   console.log("");
+  const chainId = CHAIN_IDS[NETWORK_NAME];
 
   const signers = await ethers.getSigners();
   const deployer = await signers[0].getAddress();
@@ -25,7 +29,7 @@ async function main() {
     "APYRewardDistributor"
   );
 
-  const contractAddress = DISTRIBUTOR_ADDRESS[CHAIN_IDS[NETWORK_NAME]];
+  const contractAddress = DISTRIBUTOR_ADDRESS[chainId];
   const rewardDistributor = await RewardDistributor.attach(contractAddress);
   console.log("Contract address:", contractAddress);
 
@@ -46,23 +50,37 @@ async function main() {
   console.log("New private key:", wallet.privateKey);
   console.log("");
 
-  const transaction = await rewardDistributor.setSigner(signerAddress);
-  const receipt = await transaction.wait();
-  console.log(
-    "Etherscan:",
-    `https://etherscan.io/tx/${receipt.transactionHash}`
-  );
+  if (argv.dryRun) {
+    console.log("");
+    console.log("Doing a dry run ...");
+    const gasEstimate = await rewardDistributor.estimateGas.setSigner(
+      signerAddress
+    );
+    console.log("Gas estimate:", gasEstimate.toString());
+    console.log("");
+  } else {
+    const transaction = await rewardDistributor.setSigner(signerAddress);
+    const receipt = await transaction.wait();
+    console.log(
+      "Etherscan:",
+      `https://etherscan.io/tx/${receipt.transactionHash}`
+    );
+  }
 }
 
-main()
-  .then(() => {
-    console.log("");
-    console.log("Set new signer successfully.");
-    console.log("");
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error(error);
-    console.log("");
-    process.exit(1);
-  });
+if (!module.parent) {
+  main(argv)
+    .then(() => {
+      console.log("");
+      console.log("Set new signer successfully.");
+      console.log("");
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error(error);
+      console.log("");
+      process.exit(1);
+    });
+} else {
+  module.exports = main;
+}
