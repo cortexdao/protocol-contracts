@@ -1,9 +1,9 @@
 require("dotenv").config();
 
-usePlugin("solidity-coverage");
-usePlugin("@nomiclabs/buidler-ethers");
-usePlugin("@nomiclabs/buidler-truffle5");
-usePlugin("@nomiclabs/buidler-etherscan");
+require("solidity-coverage");
+require("@nomiclabs/hardhat-ethers");
+require("@nomiclabs/hardhat-truffle5");
+require("@nomiclabs/hardhat-etherscan");
 
 require("./scripts/claim_rewards");
 require("./scripts/fund_rewards");
@@ -21,18 +21,18 @@ module.exports = {
       url: "https://mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
       gasPrice: 72e9,
       accounts: {
-        mnemonic: process.env.MNEMONIC || '',
+        mnemonic: process.env.MNEMONIC || "",
       },
       timeout: 1000000,
     },
     kovan: {
       url: "https://kovan.infura.io/v3/" + process.env.INFURA_API_KEY,
       accounts: {
-        mnemonic: process.env.MNEMONIC || '',
+        mnemonic: process.env.MNEMONIC || "",
       },
     },
   },
-  solc: {
+  solidity: {
     version: "0.6.11",
     optimizer: {
       enabled: true,
