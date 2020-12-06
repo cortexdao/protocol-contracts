@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { ethers, network } = require("@nomiclabs/buidler");
+const { ethers, network } = require("hardhat");
 const { generateSignature } = require("./generate_signature");
 const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants.js");
 const APY_GOV_PROXY = require(DEPLOYS_JSON["APYGovernanceTokenProxy"]);
