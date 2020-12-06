@@ -15,18 +15,18 @@
   ],
   "scripts": {
     "check": "yarn lint",
-    "clean": "buidler clean",
-    "compile": "buidler compile",
-    "test:unit": "buidler test test-unit/*",
-    "test:integration": "buidler test test-integration/APYPoolToken.js",
+    "clean": "hardhat clean",
+    "compile": "hardhat compile",
+    "test:unit": "hardhat test test-unit/*",
+    "test:integration": "hardhat test test-integration/APYPoolToken.js",
     "lint": "solhint contracts/**/*.sol contracts/*.sol",
-    "coverage": "buidler coverage --network coverage --testfiles \"test-unit/*.js\"",
+    "coverage": "hardhat coverage --network coverage --testfiles \"test-unit/*.js\"",
     "ganache": "ganache-cli",
     "fork:mainnet": "./scripts/fork_mainnet.sh",
-    "deploy:kovan": "yarn buidler --network kovan run",
-    "deploy:mainnet": "yarn buidler --network mainnet run",
+    "deploy:kovan": "yarn hardhat --network kovan run",
+    "deploy:mainnet": "yarn hardhat --network mainnet run",
     "sign": "node scripts/generate_signature.js",
-    "emergency:withdraw": "yarn buidler --network localhost run scripts/EmergencyAPYWithdraw.js"
+    "emergency:withdraw": "yarn hardhat --network localhost run scripts/EmergencyAPYWithdraw.js"
   },
   "husky": {
     "hooks": {
