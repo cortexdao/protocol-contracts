@@ -1,4 +1,4 @@
-const { ethers, artifacts, contract } = require("@nomiclabs/buidler");
+const { ethers, artifacts, contract } = require("hardhat");
 const {
   BN,
   expectEvent, // Assertions for emitted events
@@ -8,7 +8,9 @@ const { assert } = require("chai");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const timeMachine = require("ganache-time-traveler");
 const MockContract = artifacts.require("MockContract");
-const ERC20 = new ethers.utils.Interface(artifacts.require("ERC20").abi);
+const ERC20 = new ethers.utils.Interface(
+  artifacts.require("@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20").abi
+);
 const APYRewardDistributor = artifacts.require("APYRewardDistributor");
 const SIGNER = process.env.ACCOUNT_1;
 const ROTATED_SIGNER = process.env.ACCOUNT_2;
@@ -59,7 +61,7 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
   let snapshotId;
 
   beforeEach(async () => {
-    let snapshot = await timeMachine.takeSnapshot();
+    const snapshot = await timeMachine.takeSnapshot();
     snapshotId = snapshot["result"];
   });
 
