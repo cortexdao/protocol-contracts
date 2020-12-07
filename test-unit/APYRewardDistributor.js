@@ -1,4 +1,4 @@
-const { ethers, artifacts, contract } = require("@nomiclabs/buidler");
+const { ethers, artifacts, contract } = require("hardhat");
 const {
   BN,
   expectEvent, // Assertions for emitted events
@@ -8,10 +8,17 @@ const { assert } = require("chai");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const timeMachine = require("ganache-time-traveler");
 const MockContract = artifacts.require("MockContract");
-const ERC20 = new ethers.utils.Interface(artifacts.require("ERC20").abi);
+const ERC20 = new ethers.utils.Interface(
+  artifacts.require("@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20").abi
+);
 const APYRewardDistributor = artifacts.require("APYRewardDistributor");
-const SIGNER = process.env.ACCOUNT_1;
-const ROTATED_SIGNER = process.env.ACCOUNT_2;
+const SIGNER = "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1";
+const ROTATED_SIGNER = "0xFFcf8FDEE72ac11b5c542428B35EEF5769C409f0";
+const SIGNER_KEY =
+  "0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d";
+const ROTATED_SIGNER_KEY =
+  "0x6cbed15c793ce57650b9877cf6fa156fbef513c4e6134f022a85b1ffdd59b2a1";
+
 const DEV_CHAIN_ID = 31337;
 
 async function generateSignature(
@@ -59,7 +66,7 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
   let snapshotId;
 
   beforeEach(async () => {
-    let snapshot = await timeMachine.takeSnapshot();
+    const snapshot = await timeMachine.takeSnapshot();
     snapshotId = snapshot["result"];
   });
 
@@ -129,7 +136,7 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
     it("Test Signature mismatch", async () => {
       let nonce = await rewardDistributor.accountNonces.call(recipient1);
       const { r, s, v } = await generateSignature(
-        process.env.ACCOUNT_1_PRIV,
+        SIGNER_KEY,
         rewardDistributor.address,
         nonce.toString(),
         recipient1,
@@ -159,7 +166,7 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
 
       let nonce = await rewardDistributor.accountNonces.call(recipient1);
       const sig1 = await generateSignature(
-        process.env.ACCOUNT_1_PRIV,
+        SIGNER_KEY,
         rewardDistributor.address,
         nonce.toString(),
         recipient1,
@@ -172,7 +179,7 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
 
       //signature is created using nonce 0, when it should have been created with nonce = 1
       const sig2 = await generateSignature(
-        process.env.ACCOUNT_1_PRIV,
+        SIGNER_KEY,
         rewardDistributor.address,
         nonce.toString(),
         recipient1,
@@ -201,7 +208,7 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
 
       let nonce = await rewardDistributor.accountNonces.call(recipient1);
       const sig1 = await generateSignature(
-        process.env.ACCOUNT_1_PRIV,
+        SIGNER_KEY,
         rewardDistributor.address,
         nonce.toString(),
         recipient1,
@@ -214,7 +221,7 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
 
       //signature is created using nonce > current nonce
       const sig2 = await generateSignature(
-        process.env.ACCOUNT_1_PRIV,
+        SIGNER_KEY,
         rewardDistributor.address,
         2,
         recipient1,
@@ -244,7 +251,7 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
 
       let nonce = await rewardDistributor.accountNonces.call(recipient1);
       const sig1 = await generateSignature(
-        process.env.ACCOUNT_1_PRIV,
+        SIGNER_KEY,
         rewardDistributor.address,
         nonce.toString(),
         recipient1,
@@ -274,7 +281,7 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
 
       let nonce = await rewardDistributor.accountNonces.call(recipient1);
       const sig1 = await generateSignature(
-        process.env.ACCOUNT_1_PRIV,
+        SIGNER_KEY,
         rewardDistributor.address,
         nonce.toString(),
         recipient1,
@@ -303,7 +310,7 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
 
       let nonce = await rewardDistributor.accountNonces.call(recipient1);
       const sig1 = await generateSignature(
-        process.env.ACCOUNT_1_PRIV,
+        SIGNER_KEY,
         rewardDistributor.address,
         nonce.toString(),
         recipient1,
@@ -330,7 +337,7 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
 
       let nonce = await rewardDistributor.accountNonces.call(recipient1);
       const sig1 = await generateSignature(
-        process.env.ACCOUNT_1_PRIV,
+        SIGNER_KEY,
         rewardDistributor.address,
         nonce.toString(),
         recipient1,
@@ -345,7 +352,7 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
 
       nonce = await rewardDistributor.accountNonces.call(recipient1);
       const sig2 = await generateSignature(
-        process.env.ACCOUNT_2_PRIV,
+        ROTATED_SIGNER_KEY,
         rewardDistributor.address,
         nonce.toString(),
         recipient1,
@@ -372,7 +379,7 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
 
       let nonce = await rewardDistributor.accountNonces.call(recipient1);
       const sig1 = await generateSignature(
-        process.env.ACCOUNT_1_PRIV,
+        SIGNER_KEY,
         rewardDistributor.address,
         nonce.toString(),
         recipient1,
@@ -409,7 +416,7 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
 
       let nonce = await rewardDistributor.accountNonces.call(recipient1);
       const sig1 = await generateSignature(
-        process.env.ACCOUNT_1_PRIV,
+        SIGNER_KEY,
         rewardDistributor.address,
         nonce.toString(),
         recipient1,
@@ -443,7 +450,7 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
 
       let nonce = await rewardDistributor.accountNonces.call(recipient1);
       const sig1 = await generateSignature(
-        process.env.ACCOUNT_1_PRIV,
+        SIGNER_KEY,
         rewardDistributor.address,
         nonce.toString(),
         recipient1,

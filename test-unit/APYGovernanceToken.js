@@ -1,10 +1,6 @@
-const { ethers, artifacts, contract } = require("@nomiclabs/buidler");
-const {
-  BN,
-  constants,
-  expectEvent, // Assertions for emitted events
-  expectRevert, // Assertions for transactions that should fail
-} = require("@openzeppelin/test-helpers");
+const { assert } = require("chai");
+const { artifacts, contract } = require("hardhat");
+const { expectRevert } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
 const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
@@ -14,7 +10,7 @@ const APYGovernanceTokenProxy = artifacts.require("APYGovernanceTokenProxy");
 const APYGovernanceToken = artifacts.require("APYGovernanceToken");
 
 contract("APYGovernanceToken Unit Test", async (accounts) => {
-  const [owner, instanceAdmin, randomUser, randomAddress] = accounts;
+  const [owner, instanceAdmin, randomUser] = accounts;
 
   let proxyAdmin;
   let logic;

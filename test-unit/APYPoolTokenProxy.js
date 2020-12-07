@@ -1,4 +1,5 @@
-const { ethers, artifacts, contract } = require("@nomiclabs/buidler");
+const { assert } = require("chai");
+const { ethers, artifacts, contract } = require("hardhat");
 const MockContract = artifacts.require("MockContract");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYPoolTokenProxy = artifacts.require("APYPoolTokenProxy");
@@ -14,6 +15,10 @@ contract("APYPoolTokenProxy Unit Test", async (accounts) => {
   let proxyAdmin;
   let logic;
   let proxy;
+  let instance;
+
+  let mockToken;
+  let mockPriceAgg;
 
   before(async () => {
     mockToken = await MockContract.new();

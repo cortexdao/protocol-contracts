@@ -1,8 +1,8 @@
 require("dotenv").config();
 const assert = require("assert");
 const { argv } = require("yargs");
-const bre = require("@nomiclabs/buidler");
-const { ethers, network } = require("@nomiclabs/buidler");
+const hre = require("hardhat");
+const { ethers, network } = require("hardhat");
 const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants.js");
 
 const DISTRIBUTOR_ADDRESS = require(DEPLOYS_JSON["APYRewardDistributor"]);
@@ -14,7 +14,7 @@ const addressIndex = 0;
 /* *********************************************** */
 
 async function main(argv) {
-  await bre.run("compile");
+  await hre.run("compile");
   const NETWORK_NAME = network.name.toUpperCase();
   console.log("");
   console.log(`${NETWORK_NAME} selected`);

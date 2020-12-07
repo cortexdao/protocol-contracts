@@ -1,4 +1,5 @@
-const { ethers, artifacts, contract } = require("@nomiclabs/buidler");
+const { assert } = require("chai");
+const { ethers, artifacts, contract } = require("hardhat");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYGovernanceTokenUpgraded = artifacts.require(
   "APYGovernanceTokenUpgraded"

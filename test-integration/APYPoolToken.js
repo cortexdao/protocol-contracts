@@ -1,44 +1,48 @@
-const { web3, artifacts, contract } = require("@nomiclabs/buidler");
+const { assert } = require("chai");
+const { web3, artifacts, contract } = require("hardhat");
 const {
   BN,
   expectEvent, // Assertions for emitted events
   expectRevert, // Assertions for transactions that should fail
 } = require("@openzeppelin/test-helpers");
+const { DAI_WHALE, USDC_WHALE, USDT_WHALE } = require("../utils/constants");
 const {
-  DAI_WHALE,
-  USDC_WHALE,
-  USDT_WHALE
-} = require("../utils/constants");
-const { ZERO_ADDRESS, MAX_UINT256 } = require("@openzeppelin/test-helpers/src/constants");
+  ZERO_ADDRESS,
+  MAX_UINT256,
+} = require("@openzeppelin/test-helpers/src/constants");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYPoolTokenProxy = artifacts.require("APYPoolTokenProxy");
 const APYPoolToken = artifacts.require("APYPoolToken");
-const AGG = artifacts.require("AggregatorV3Interface.sol")
+const AGG = artifacts.require("AggregatorV3Interface.sol");
 const ERC20 = artifacts.require("ERC20");
 
 async function formattedAmount(token, value) {
-  const decimals = await token.decimals.call()
-  return ((new BN("10").pow(decimals)).mul(new BN(value))).toString()
+  const decimals = await token.decimals.call();
+  return new BN("10").pow(decimals).mul(new BN(value)).toString();
 }
 
 async function acquireToken(fundAccount, receiver, token, amount) {
   // NOTE: Ganache is setup to control the WHALE addresses. This method moves requeted funds out of the fund account and into the specified wallet
 
   // fund the account with ETH so it can move funds
-  await web3.eth.sendTransaction({ from: receiver, to: fundAccount, value: 1e18 })
+  await web3.eth.sendTransaction({
+    from: receiver,
+    to: fundAccount,
+    value: 1e18,
+  });
 
-  const funds = await formattedAmount(token, amount)
+  const funds = await formattedAmount(token, amount);
 
-  await token.transfer(receiver, funds, { from: fundAccount })
-  const tokenBal = await token.balanceOf(receiver)
-  console.log(`${token.address} Balance: ${tokenBal.toString()}`)
+  await token.transfer(receiver, funds, { from: fundAccount });
+  const tokenBal = await token.balanceOf(receiver);
+  console.log(`${token.address} Balance: ${tokenBal.toString()}`);
 }
 
 contract("APYPoolToken Integration Test USDC", async (accounts) => {
   const [owner, instanceAdmin, randomUser] = accounts;
 
-  let USDC_AGG
-  let USDC
+  let USDC_AGG;
+  let USDC;
 
   let proxyAdmin;
   let logic;
@@ -50,8 +54,8 @@ contract("APYPoolToken Integration Test USDC", async (accounts) => {
   let usdcBalBefore;
 
   before("Setup", async () => {
-    USDC = await ERC20.at('0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48')
-    USDC_AGG = await AGG.at('0x986b5E1e1755e3C2440e960477f25201B0a8bbD4')
+    USDC = await ERC20.at("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
+    USDC_AGG = await AGG.at("0x986b5E1e1755e3C2440e960477f25201B0a8bbD4");
 
     proxyAdmin = await ProxyAdmin.new({ from: owner });
     logic = await APYPoolToken.new({ from: owner });
@@ -66,14 +70,14 @@ contract("APYPoolToken Integration Test USDC", async (accounts) => {
     );
     instance = await APYPoolToken.at(proxy.address);
 
-    await acquireToken(USDC_WHALE, owner, USDC, "1000000")
+    await acquireToken(USDC_WHALE, owner, USDC, "1000000");
 
     //handle allownaces
-    await USDC.approve(instance.address, MAX_UINT256)
+    await USDC.approve(instance.address, MAX_UINT256);
 
-    console.log(`Proxy Admin: ${proxyAdmin.address}`)
-    console.log(`Logic: ${logic.address}`)
-    console.log(`Proxy: ${proxy.address}`)
+    console.log(`Proxy Admin: ${proxyAdmin.address}`);
+    console.log(`Logic: ${logic.address}`);
+    console.log(`Proxy: ${proxy.address}`);
   });
 
   describe("Test Defaults", async () => {
@@ -114,8 +118,8 @@ contract("APYPoolToken Integration Test USDC", async (accounts) => {
       expectedAPTMinted = await instance.calculateMintAmount(1000000000, {
         from: randomUser,
       });
-      console.log(`\tExpected APT Minted: ${expectedAPTMinted.toString()}`)
-      assert(expectedAPTMinted.gt(0))
+      console.log(`\tExpected APT Minted: ${expectedAPTMinted.toString()}`);
+      assert(expectedAPTMinted.gt(0));
     });
   });
 
@@ -129,46 +133,46 @@ contract("APYPoolToken Integration Test USDC", async (accounts) => {
     });
 
     it("Test addLiquidity pass", async () => {
-      usdcBalBefore = await USDC.balanceOf(owner)
-      console.log(`\tUSDC Balance Before Mint: ${usdcBalBefore.toString()}`)
+      usdcBalBefore = await USDC.balanceOf(owner);
+      console.log(`\tUSDC Balance Before Mint: ${usdcBalBefore.toString()}`);
 
-      const amount = await formattedAmount(USDC, 1000)
+      const amount = await formattedAmount(USDC, 1000);
       const trx = await instance.addLiquidity(amount, {
         from: owner,
       });
 
-      let bal = await USDC.balanceOf(owner)
-      console.log(`\tUSDC Balance After Mint: ${bal.toString()}`)
+      let bal = await USDC.balanceOf(owner);
+      console.log(`\tUSDC Balance After Mint: ${bal.toString()}`);
 
       // assert balances
-      assert(await USDC.balanceOf(instance.address), amount)
-      assert(await USDC.balanceOf(owner), usdcBalBefore - amount)
+      assert(await USDC.balanceOf(instance.address), amount);
+      assert(await USDC.balanceOf(owner), usdcBalBefore - amount);
 
       // comupting the exact amount is unreliable due to variance in USDC/ETH
       aptMinted = await instance.balanceOf(owner);
-      console.log(`\tAPT Balance: ${aptMinted.toString()}`)
-      assert(aptMinted.toString(), expectedAPTMinted.toString())
+      console.log(`\tAPT Balance: ${aptMinted.toString()}`);
+      assert(aptMinted.toString(), expectedAPTMinted.toString());
 
-      const tokenEthVal = await instance.getEthValueFromTokenAmount(amount)
+      const tokenEthVal = await instance.getEthValueFromTokenAmount(amount);
 
       // this is the token transfer
       await expectEvent.inTransaction(trx.tx, USDC, "Transfer", {
         from: owner,
         to: instance.address,
-        value: new BN(amount)
-      })
+        value: new BN(amount),
+      });
       // this is the mint transfer
       await expectEvent(trx, "Transfer", {
         from: ZERO_ADDRESS,
         to: owner,
-        value: aptMinted
+        value: aptMinted,
       });
       await expectEvent(trx, "DepositedAPT", {
         sender: owner,
         tokenAmount: new BN(amount),
         aptMintAmount: aptMinted,
         tokenEthValue: tokenEthVal,
-        totalEthValueLocked: tokenEthVal
+        totalEthValueLocked: tokenEthVal,
       });
     });
   });
@@ -176,50 +180,52 @@ contract("APYPoolToken Integration Test USDC", async (accounts) => {
   describe("Test getPoolTotalEthValue", async () => {
     it("Test getPoolTotalEthValue returns value", async () => {
       const val = await instance.getPoolTotalEthValue.call();
-      console.log(`\tPool Total Eth Value ${val.toString()}`)
-      assert(val.toString(), aptMinted.div(new BN(1000)).toString())
+      console.log(`\tPool Total Eth Value ${val.toString()}`);
+      assert(val.toString(), aptMinted.div(new BN(1000)).toString());
     });
   });
 
   describe("Test getAPTEthValue", async () => {
     it("Test getAPTEthValue returns value", async () => {
       const val = await instance.getAPTEthValue(aptMinted);
-      console.log(`\tAPT Eth Value: ${val.toString()}`)
-      assert(val.toString(), aptMinted.div(new BN(1000)).toString())
+      console.log(`\tAPT Eth Value: ${val.toString()}`);
+      assert(val.toString(), aptMinted.div(new BN(1000)).toString());
     });
   });
 
   describe("Test getTokenAmountFromEthValue", async () => {
     it("Test getTokenAmountFromEthValue returns expected amount", async () => {
-      const tokenAmount = await instance.getTokenAmountFromEthValue.call(new BN(500))
-      console.log(`\tToken Amount from Eth Value: ${tokenAmount.toString()}`)
-      assert(tokenAmount.gt(0))
+      const tokenAmount = await instance.getTokenAmountFromEthValue.call(
+        new BN(500)
+      );
+      console.log(`\tToken Amount from Eth Value: ${tokenAmount.toString()}`);
+      assert(tokenAmount.gt(0));
     });
-  })
+  });
 
   describe("Test getEthValueFromTokenAmount", async () => {
     it("Test getEthValueFromTokenAmount returns value", async () => {
-      const val = await instance.getEthValueFromTokenAmount.call(new BN(5000))
-      console.log(`\tEth Value from Token Amount ${val.toString()}`)
-      assert(val.gt(0))
-    })
+      const val = await instance.getEthValueFromTokenAmount.call(new BN(5000));
+      console.log(`\tEth Value from Token Amount ${val.toString()}`);
+      assert(val.gt(0));
+    });
   });
 
   describe("Test getTokenEthPrice", async () => {
     it("Test getTokenEthPrice returns value", async () => {
       const price = await instance.getTokenEthPrice.call();
-      console.log(`\tToken Eth Price: ${price.toString()}`)
-      assert(price.gt(0))
+      console.log(`\tToken Eth Price: ${price.toString()}`);
+      assert(price.gt(0));
     });
   });
 
   describe("Test getUnderlyerAmount", async () => {
     it("Test getUnderlyerAmount returns value", async () => {
       const underlyerAmount = await instance.getUnderlyerAmount.call(
-        new BN("2605000000000000000000"),
+        new BN("2605000000000000000000")
       );
       console.log(`\tUnderlyer Amount: ${underlyerAmount.toString()}`);
-      assert(underlyerAmount.gt(0))
+      assert(underlyerAmount.gt(0));
     });
   });
 
@@ -228,10 +234,7 @@ contract("APYPoolToken Integration Test USDC", async (accounts) => {
       let trx = await instance.lockRedeem({ from: owner });
       expectEvent(trx, "RedeemLocked");
 
-      await expectRevert(
-        instance.redeem(50, { from: randomUser }),
-        "LOCKED"
-      );
+      await expectRevert(instance.redeem(50, { from: randomUser }), "LOCKED");
 
       trx = await instance.unlockRedeem({ from: owner });
       expectEvent(trx, "RedeemUnlocked");
@@ -259,41 +262,43 @@ contract("APYPoolToken Integration Test USDC", async (accounts) => {
 
     it("Test redeem pass", async () => {
       let usdcBal = await USDC.balanceOf(owner);
-      console.log(`\tUSDC Balance Before Redeem: ${usdcBal.toString()}`)
+      console.log(`\tUSDC Balance Before Redeem: ${usdcBal.toString()}`);
 
       const trx = await instance.redeem(aptMinted, {
         from: owner,
       });
 
       let usdcBalAfter = await USDC.balanceOf(owner);
-      console.log(`\tUSDC Balance After Redeem: ${usdcBalAfter.toString()}`)
+      console.log(`\tUSDC Balance After Redeem: ${usdcBalAfter.toString()}`);
 
       // assert balances
-      assert.equal(usdcBalAfter.toString(), usdcBalBefore.toString())
-      assert.equal(await USDC.balanceOf(instance.address), 0)
+      assert.equal(usdcBalAfter.toString(), usdcBalBefore.toString());
+      assert.equal(await USDC.balanceOf(instance.address), 0);
 
       const bal = await instance.balanceOf(owner);
-      console.log(`\tAPT Balance: ${bal.toString()}`)
+      console.log(`\tAPT Balance: ${bal.toString()}`);
       assert.equal(bal.toString(), "0");
 
-      const tokenEthVal = await instance.getEthValueFromTokenAmount(usdcBalAfter.sub(usdcBal))
+      const tokenEthVal = await instance.getEthValueFromTokenAmount(
+        usdcBalAfter.sub(usdcBal)
+      );
 
       await expectEvent.inTransaction(trx.tx, USDC, "Transfer", {
         from: instance.address,
         to: owner,
-        value: usdcBalAfter.sub(usdcBal)
-      })
+        value: usdcBalAfter.sub(usdcBal),
+      });
       await expectEvent(trx, "Transfer", {
         from: owner,
         to: ZERO_ADDRESS,
-        value: aptMinted
-      })
+        value: aptMinted,
+      });
       await expectEvent(trx, "RedeemedAPT", {
         sender: owner,
         token: USDC.address,
         redeemedTokenAmount: usdcBalAfter.sub(usdcBal),
         tokenEthValue: tokenEthVal,
-        totalEthValueLocked: new BN(0)
+        totalEthValueLocked: new BN(0),
       });
     });
   });
@@ -302,8 +307,8 @@ contract("APYPoolToken Integration Test USDC", async (accounts) => {
 contract("APYPoolToken Integration Test DAI", async (accounts) => {
   const [owner, instanceAdmin, randomUser] = accounts;
 
-  let DAI_AGG
-  let DAI
+  let DAI_AGG;
+  let DAI;
 
   let proxyAdmin;
   let logic;
@@ -315,8 +320,8 @@ contract("APYPoolToken Integration Test DAI", async (accounts) => {
   let daiBalBefore;
 
   before("Setup", async () => {
-    DAI = await ERC20.at('0x6B175474E89094C44Da98b954EedeAC495271d0F')
-    DAI_AGG = await AGG.at('0x773616E4d11A78F511299002da57A0a94577F1f4')
+    DAI = await ERC20.at("0x6B175474E89094C44Da98b954EedeAC495271d0F");
+    DAI_AGG = await AGG.at("0x773616E4d11A78F511299002da57A0a94577F1f4");
 
     proxyAdmin = await ProxyAdmin.new({ from: owner });
     logic = await APYPoolToken.new({ from: owner });
@@ -331,14 +336,14 @@ contract("APYPoolToken Integration Test DAI", async (accounts) => {
     );
     instance = await APYPoolToken.at(proxy.address);
 
-    await acquireToken(DAI_WHALE, owner, DAI, "10000")
+    await acquireToken(DAI_WHALE, owner, DAI, "10000");
 
     //handle allownaces
-    await DAI.approve(instance.address, MAX_UINT256)
+    await DAI.approve(instance.address, MAX_UINT256);
 
-    console.log(`Proxy Admin: ${proxyAdmin.address}`)
-    console.log(`Logic: ${logic.address}`)
-    console.log(`Proxy: ${proxy.address}`)
+    console.log(`Proxy Admin: ${proxyAdmin.address}`);
+    console.log(`Logic: ${logic.address}`);
+    console.log(`Proxy: ${proxy.address}`);
   });
 
   describe("Test Defaults", async () => {
@@ -379,8 +384,8 @@ contract("APYPoolToken Integration Test DAI", async (accounts) => {
       expectedAPTMinted = await instance.calculateMintAmount(1000000000, {
         from: randomUser,
       });
-      console.log(`\tExpected APT Minted: ${expectedAPTMinted.toString()}`)
-      assert(expectedAPTMinted.gt(0))
+      console.log(`\tExpected APT Minted: ${expectedAPTMinted.toString()}`);
+      assert(expectedAPTMinted.gt(0));
     });
   });
 
@@ -394,46 +399,46 @@ contract("APYPoolToken Integration Test DAI", async (accounts) => {
     });
 
     it("Test addLiquidity pass", async () => {
-      daiBalBefore = await DAI.balanceOf(owner)
-      console.log(`\tDAI Balance Before Mint: ${daiBalBefore.toString()}`)
+      daiBalBefore = await DAI.balanceOf(owner);
+      console.log(`\tDAI Balance Before Mint: ${daiBalBefore.toString()}`);
 
-      const amount = await formattedAmount(DAI, 1000)
+      const amount = await formattedAmount(DAI, 1000);
       const trx = await instance.addLiquidity(amount, {
         from: owner,
       });
 
-      let bal = await DAI.balanceOf(owner)
-      console.log(`\tDAI Balance After Mint: ${bal.toString()}`)
+      let bal = await DAI.balanceOf(owner);
+      console.log(`\tDAI Balance After Mint: ${bal.toString()}`);
 
       // assert balances
-      assert(await DAI.balanceOf(instance.address), amount)
-      assert(await DAI.balanceOf(owner), daiBalBefore - amount)
+      assert(await DAI.balanceOf(instance.address), amount);
+      assert(await DAI.balanceOf(owner), daiBalBefore - amount);
 
       // comupting the exact amount is unreliable due to variance in DAI/ETH
       aptMinted = await instance.balanceOf(owner);
-      console.log(`\tAPT Balance: ${aptMinted.toString()}`)
-      assert(aptMinted.toString(), expectedAPTMinted.toString())
+      console.log(`\tAPT Balance: ${aptMinted.toString()}`);
+      assert(aptMinted.toString(), expectedAPTMinted.toString());
 
-      const tokenEthVal = await instance.getEthValueFromTokenAmount(amount)
+      const tokenEthVal = await instance.getEthValueFromTokenAmount(amount);
 
       // this is the token transfer
       await expectEvent.inTransaction(trx.tx, DAI, "Transfer", {
         from: owner,
         to: instance.address,
-        value: new BN(amount)
-      })
+        value: new BN(amount),
+      });
       // this is the mint transfer
       await expectEvent(trx, "Transfer", {
         from: ZERO_ADDRESS,
         to: owner,
-        value: aptMinted
+        value: aptMinted,
       });
       await expectEvent(trx, "DepositedAPT", {
         sender: owner,
         tokenAmount: new BN(amount),
         aptMintAmount: aptMinted,
         tokenEthValue: tokenEthVal,
-        totalEthValueLocked: tokenEthVal
+        totalEthValueLocked: tokenEthVal,
       });
     });
   });
@@ -441,50 +446,52 @@ contract("APYPoolToken Integration Test DAI", async (accounts) => {
   describe("Test getPoolTotalEthValue", async () => {
     it("Test getPoolTotalEthValue returns value", async () => {
       const val = await instance.getPoolTotalEthValue.call();
-      console.log(`\tPool Total Eth Value ${val.toString()}`)
-      assert(val.toString(), aptMinted.div(new BN(1000)).toString())
+      console.log(`\tPool Total Eth Value ${val.toString()}`);
+      assert(val.toString(), aptMinted.div(new BN(1000)).toString());
     });
   });
 
   describe("Test getAPTEthValue", async () => {
     it("Test getAPTEthValue returns value", async () => {
       const val = await instance.getAPTEthValue(aptMinted);
-      console.log(`\tAPT Eth Value: ${val.toString()}`)
-      assert(val.toString(), aptMinted.div(new BN(1000)).toString())
+      console.log(`\tAPT Eth Value: ${val.toString()}`);
+      assert(val.toString(), aptMinted.div(new BN(1000)).toString());
     });
   });
 
   describe("Test getTokenAmountFromEthValue", async () => {
     it("Test getTokenAmountFromEthValue returns expected amount", async () => {
-      const tokenAmount = await instance.getTokenAmountFromEthValue.call(new BN(500))
-      console.log(`\tToken Amount from Eth Value: ${tokenAmount.toString()}`)
-      assert(tokenAmount.gt(0))
+      const tokenAmount = await instance.getTokenAmountFromEthValue.call(
+        new BN(500)
+      );
+      console.log(`\tToken Amount from Eth Value: ${tokenAmount.toString()}`);
+      assert(tokenAmount.gt(0));
     });
-  })
+  });
 
   describe("Test getEthValueFromTokenAmount", async () => {
     it("Test getEthValueFromTokenAmount returns value", async () => {
-      const val = await instance.getEthValueFromTokenAmount.call(new BN(5000))
-      console.log(`\tEth Value from Token Amount ${val.toString()}`)
-      assert(val.gt(0))
-    })
+      const val = await instance.getEthValueFromTokenAmount.call(new BN(5000));
+      console.log(`\tEth Value from Token Amount ${val.toString()}`);
+      assert(val.gt(0));
+    });
   });
 
   describe("Test getTokenEthPrice", async () => {
     it("Test getTokenEthPrice returns value", async () => {
       const price = await instance.getTokenEthPrice.call();
-      console.log(`\tToken Eth Price: ${price.toString()}`)
-      assert(price.gt(0))
+      console.log(`\tToken Eth Price: ${price.toString()}`);
+      assert(price.gt(0));
     });
   });
 
   describe("Test getUnderlyerAmount", async () => {
     it("Test getUnderlyerAmount returns value", async () => {
       const underlyerAmount = await instance.getUnderlyerAmount.call(
-        new BN("2605000000000000000000"),
+        new BN("2605000000000000000000")
       );
       console.log(`\tUnderlyer Amount: ${underlyerAmount.toString()}`);
-      assert(underlyerAmount.gt(0))
+      assert(underlyerAmount.gt(0));
     });
   });
 
@@ -493,10 +500,7 @@ contract("APYPoolToken Integration Test DAI", async (accounts) => {
       let trx = await instance.lockRedeem({ from: owner });
       expectEvent(trx, "RedeemLocked");
 
-      await expectRevert(
-        instance.redeem(50, { from: randomUser }),
-        "LOCKED"
-      );
+      await expectRevert(instance.redeem(50, { from: randomUser }), "LOCKED");
 
       trx = await instance.unlockRedeem({ from: owner });
       expectEvent(trx, "RedeemUnlocked");
@@ -524,41 +528,43 @@ contract("APYPoolToken Integration Test DAI", async (accounts) => {
 
     it("Test redeem pass", async () => {
       let daiBal = await DAI.balanceOf(owner);
-      console.log(`\tDAI Balance Before Redeem: ${daiBal.toString()}`)
+      console.log(`\tDAI Balance Before Redeem: ${daiBal.toString()}`);
 
       const trx = await instance.redeem(aptMinted, {
         from: owner,
       });
 
       let daiBalAfter = await DAI.balanceOf(owner);
-      console.log(`\tDAI Balance After Redeem: ${daiBalAfter.toString()}`)
+      console.log(`\tDAI Balance After Redeem: ${daiBalAfter.toString()}`);
 
       // assert balances
-      assert.equal(daiBalAfter.toString(), daiBalBefore.toString())
-      assert.equal(await DAI.balanceOf(instance.address), 0)
+      assert.equal(daiBalAfter.toString(), daiBalBefore.toString());
+      assert.equal(await DAI.balanceOf(instance.address), 0);
 
       const bal = await instance.balanceOf(owner);
-      console.log(`\tAPT Balance: ${bal.toString()}`)
+      console.log(`\tAPT Balance: ${bal.toString()}`);
       assert.equal(bal.toString(), "0");
 
-      const tokenEthVal = await instance.getEthValueFromTokenAmount(daiBalAfter.sub(daiBal))
+      const tokenEthVal = await instance.getEthValueFromTokenAmount(
+        daiBalAfter.sub(daiBal)
+      );
 
       await expectEvent.inTransaction(trx.tx, DAI, "Transfer", {
         from: instance.address,
         to: owner,
-        value: daiBalAfter.sub(daiBal)
-      })
+        value: daiBalAfter.sub(daiBal),
+      });
       await expectEvent(trx, "Transfer", {
         from: owner,
         to: ZERO_ADDRESS,
-        value: aptMinted
-      })
+        value: aptMinted,
+      });
       await expectEvent(trx, "RedeemedAPT", {
         sender: owner,
         token: DAI.address,
         redeemedTokenAmount: daiBalAfter.sub(daiBal),
         tokenEthValue: tokenEthVal,
-        totalEthValueLocked: new BN(0)
+        totalEthValueLocked: new BN(0),
       });
     });
   });
@@ -567,8 +573,8 @@ contract("APYPoolToken Integration Test DAI", async (accounts) => {
 contract("APYPoolToken Integration Test USDT", async (accounts) => {
   const [owner, instanceAdmin, randomUser] = accounts;
 
-  let USDT_AGG
-  let USDT
+  let USDT_AGG;
+  let USDT;
 
   let proxyAdmin;
   let logic;
@@ -580,8 +586,8 @@ contract("APYPoolToken Integration Test USDT", async (accounts) => {
   let usdtBalBefore;
 
   before("Setup", async () => {
-    USDT = await ERC20.at('0xdAC17F958D2ee523a2206206994597C13D831ec7')
-    USDT_AGG = await AGG.at('0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46')
+    USDT = await ERC20.at("0xdAC17F958D2ee523a2206206994597C13D831ec7");
+    USDT_AGG = await AGG.at("0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46");
 
     proxyAdmin = await ProxyAdmin.new({ from: owner });
     logic = await APYPoolToken.new({ from: owner });
@@ -596,14 +602,14 @@ contract("APYPoolToken Integration Test USDT", async (accounts) => {
     );
     instance = await APYPoolToken.at(proxy.address);
 
-    await acquireToken(USDT_WHALE, owner, USDT, "1000000")
+    await acquireToken(USDT_WHALE, owner, USDT, "1000000");
 
     //handle allownaces
-    await USDT.approve(instance.address, MAX_UINT256)
+    await USDT.approve(instance.address, MAX_UINT256);
 
-    console.log(`Proxy Admin: ${proxyAdmin.address}`)
-    console.log(`Logic: ${logic.address}`)
-    console.log(`Proxy: ${proxy.address}`)
+    console.log(`Proxy Admin: ${proxyAdmin.address}`);
+    console.log(`Logic: ${logic.address}`);
+    console.log(`Proxy: ${proxy.address}`);
   });
 
   describe("Test Defaults", async () => {
@@ -644,8 +650,8 @@ contract("APYPoolToken Integration Test USDT", async (accounts) => {
       expectedAPTMinted = await instance.calculateMintAmount(1000000000, {
         from: randomUser,
       });
-      console.log(`\tExpected APT Minted: ${expectedAPTMinted.toString()}`)
-      assert(expectedAPTMinted.gt(0))
+      console.log(`\tExpected APT Minted: ${expectedAPTMinted.toString()}`);
+      assert(expectedAPTMinted.gt(0));
     });
   });
 
@@ -659,46 +665,46 @@ contract("APYPoolToken Integration Test USDT", async (accounts) => {
     });
 
     it("Test addLiquidity pass", async () => {
-      usdtBalBefore = await USDT.balanceOf(owner)
-      console.log(`\tUSDT Balance Before Mint: ${usdtBalBefore.toString()}`)
+      usdtBalBefore = await USDT.balanceOf(owner);
+      console.log(`\tUSDT Balance Before Mint: ${usdtBalBefore.toString()}`);
 
-      const amount = await formattedAmount(USDT, 1000)
+      const amount = await formattedAmount(USDT, 1000);
       const trx = await instance.addLiquidity(amount, {
         from: owner,
       });
 
-      let bal = await USDT.balanceOf(owner)
-      console.log(`\tUSDT Balance After Mint: ${bal.toString()}`)
+      let bal = await USDT.balanceOf(owner);
+      console.log(`\tUSDT Balance After Mint: ${bal.toString()}`);
 
       // assert balances
-      assert(await USDT.balanceOf(instance.address), amount)
-      assert(await USDT.balanceOf(owner), usdtBalBefore - amount)
+      assert(await USDT.balanceOf(instance.address), amount);
+      assert(await USDT.balanceOf(owner), usdtBalBefore - amount);
 
       // comupting the exact amount is unreliable due to variance in USDT/ETH
       aptMinted = await instance.balanceOf(owner);
-      console.log(`\tAPT Balance: ${aptMinted.toString()}`)
-      assert(aptMinted.toString(), expectedAPTMinted.toString())
+      console.log(`\tAPT Balance: ${aptMinted.toString()}`);
+      assert(aptMinted.toString(), expectedAPTMinted.toString());
 
-      const tokenEthVal = await instance.getEthValueFromTokenAmount(amount)
+      const tokenEthVal = await instance.getEthValueFromTokenAmount(amount);
 
       // this is the token transfer
       await expectEvent.inTransaction(trx.tx, USDT, "Transfer", {
         from: owner,
         to: instance.address,
-        value: new BN(amount)
-      })
+        value: new BN(amount),
+      });
       // this is the mint transfer
       await expectEvent(trx, "Transfer", {
         from: ZERO_ADDRESS,
         to: owner,
-        value: aptMinted
+        value: aptMinted,
       });
       await expectEvent(trx, "DepositedAPT", {
         sender: owner,
         tokenAmount: new BN(amount),
         aptMintAmount: aptMinted,
         tokenEthValue: tokenEthVal,
-        totalEthValueLocked: tokenEthVal
+        totalEthValueLocked: tokenEthVal,
       });
     });
   });
@@ -706,50 +712,52 @@ contract("APYPoolToken Integration Test USDT", async (accounts) => {
   describe("Test getPoolTotalEthValue", async () => {
     it("Test getPoolTotalEthValue returns value", async () => {
       const val = await instance.getPoolTotalEthValue.call();
-      console.log(`\tPool Total Eth Value ${val.toString()}`)
-      assert(val.toString(), aptMinted.div(new BN(1000)).toString())
+      console.log(`\tPool Total Eth Value ${val.toString()}`);
+      assert(val.toString(), aptMinted.div(new BN(1000)).toString());
     });
   });
 
   describe("Test getAPTEthValue", async () => {
     it("Test getAPTEthValue returns value", async () => {
       const val = await instance.getAPTEthValue(aptMinted);
-      console.log(`\tAPT Eth Value: ${val.toString()}`)
-      assert(val.toString(), aptMinted.div(new BN(1000)).toString())
+      console.log(`\tAPT Eth Value: ${val.toString()}`);
+      assert(val.toString(), aptMinted.div(new BN(1000)).toString());
     });
   });
 
   describe("Test getTokenAmountFromEthValue", async () => {
     it("Test getTokenAmountFromEthValue returns expected amount", async () => {
-      const tokenAmount = await instance.getTokenAmountFromEthValue.call(new BN(500))
-      console.log(`\tToken Amount from Eth Value: ${tokenAmount.toString()}`)
-      assert(tokenAmount.gt(0))
+      const tokenAmount = await instance.getTokenAmountFromEthValue.call(
+        new BN(500)
+      );
+      console.log(`\tToken Amount from Eth Value: ${tokenAmount.toString()}`);
+      assert(tokenAmount.gt(0));
     });
-  })
+  });
 
   describe("Test getEthValueFromTokenAmount", async () => {
     it("Test getEthValueFromTokenAmount returns value", async () => {
-      const val = await instance.getEthValueFromTokenAmount.call(new BN(5000))
-      console.log(`\tEth Value from Token Amount ${val.toString()}`)
-      assert(val.gt(0))
-    })
+      const val = await instance.getEthValueFromTokenAmount.call(new BN(5000));
+      console.log(`\tEth Value from Token Amount ${val.toString()}`);
+      assert(val.gt(0));
+    });
   });
 
   describe("Test getTokenEthPrice", async () => {
     it("Test getTokenEthPrice returns value", async () => {
       const price = await instance.getTokenEthPrice.call();
-      console.log(`\tToken Eth Price: ${price.toString()}`)
-      assert(price.gt(0))
+      console.log(`\tToken Eth Price: ${price.toString()}`);
+      assert(price.gt(0));
     });
   });
 
   describe("Test getUnderlyerAmount", async () => {
     it("Test getUnderlyerAmount returns value", async () => {
       const underlyerAmount = await instance.getUnderlyerAmount.call(
-        new BN("2605000000000000000000"),
+        new BN("2605000000000000000000")
       );
       console.log(`\tUnderlyer Amount: ${underlyerAmount.toString()}`);
-      assert(underlyerAmount.gt(0))
+      assert(underlyerAmount.gt(0));
     });
   });
 
@@ -758,10 +766,7 @@ contract("APYPoolToken Integration Test USDT", async (accounts) => {
       let trx = await instance.lockRedeem({ from: owner });
       expectEvent(trx, "RedeemLocked");
 
-      await expectRevert(
-        instance.redeem(50, { from: randomUser }),
-        "LOCKED"
-      );
+      await expectRevert(instance.redeem(50, { from: randomUser }), "LOCKED");
 
       trx = await instance.unlockRedeem({ from: owner });
       expectEvent(trx, "RedeemUnlocked");
@@ -789,41 +794,43 @@ contract("APYPoolToken Integration Test USDT", async (accounts) => {
 
     it("Test redeem pass", async () => {
       let usdtBal = await USDT.balanceOf(owner);
-      console.log(`\tUSDT Balance Before Redeem: ${usdtBal.toString()}`)
+      console.log(`\tUSDT Balance Before Redeem: ${usdtBal.toString()}`);
 
       const trx = await instance.redeem(aptMinted, {
         from: owner,
       });
 
       let usdtBalAfter = await USDT.balanceOf(owner);
-      console.log(`\tUSDT Balance After Redeem: ${usdtBalAfter.toString()}`)
+      console.log(`\tUSDT Balance After Redeem: ${usdtBalAfter.toString()}`);
 
       // assert balances
-      assert.equal(usdtBalAfter.toString(), usdtBalBefore.toString())
-      assert.equal(await USDT.balanceOf(instance.address), 0)
+      assert.equal(usdtBalAfter.toString(), usdtBalBefore.toString());
+      assert.equal(await USDT.balanceOf(instance.address), 0);
 
       const bal = await instance.balanceOf(owner);
-      console.log(`\tAPT Balance: ${bal.toString()}`)
+      console.log(`\tAPT Balance: ${bal.toString()}`);
       assert.equal(bal.toString(), "0");
 
-      const tokenEthVal = await instance.getEthValueFromTokenAmount(usdtBalAfter.sub(usdtBal))
+      const tokenEthVal = await instance.getEthValueFromTokenAmount(
+        usdtBalAfter.sub(usdtBal)
+      );
 
       await expectEvent.inTransaction(trx.tx, USDT, "Transfer", {
         from: instance.address,
         to: owner,
-        value: usdtBalAfter.sub(usdtBal)
-      })
+        value: usdtBalAfter.sub(usdtBal),
+      });
       await expectEvent(trx, "Transfer", {
         from: owner,
         to: ZERO_ADDRESS,
-        value: aptMinted
-      })
+        value: aptMinted,
+      });
       await expectEvent(trx, "RedeemedAPT", {
         sender: owner,
         token: USDT.address,
         redeemedTokenAmount: usdtBalAfter.sub(usdtBal),
         tokenEthValue: tokenEthVal,
-        totalEthValueLocked: new BN(0)
+        totalEthValueLocked: new BN(0),
       });
     });
   });

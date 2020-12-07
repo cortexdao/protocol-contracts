@@ -1,4 +1,5 @@
-const { ethers, artifacts, contract } = require("@nomiclabs/buidler");
+const { assert } = require("chai");
+const { ethers, artifacts, contract } = require("hardhat");
 const { defaultAbiCoder: abiCoder } = ethers.utils;
 const {
   BN,
@@ -13,8 +14,12 @@ const MockContract = artifacts.require("MockContract");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYPoolTokenProxy = artifacts.require("APYPoolTokenProxy");
 const APYPoolToken = artifacts.require("APYPoolTokenTEST");
-const IERC20 = new ethers.utils.Interface(artifacts.require("IERC20").abi);
-const ERC20 = new ethers.utils.Interface(artifacts.require("ERC20").abi);
+const IERC20 = new ethers.utils.Interface(
+  artifacts.require("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20").abi
+);
+const ERC20 = new ethers.utils.Interface(
+  artifacts.require("@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20").abi
+);
 
 contract("APYPoolToken Unit Test", async (accounts) => {
   const [owner, instanceAdmin, randomUser, randomAddress] = accounts;
@@ -23,7 +28,9 @@ contract("APYPoolToken Unit Test", async (accounts) => {
   let logic;
   let proxy;
   let instance;
+
   let mockToken;
+  let mockPriceAgg;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -66,8 +73,8 @@ contract("APYPoolToken Unit Test", async (accounts) => {
             from: owner,
           }
         )
-      )
-    })
+      );
+    });
 
     it("Test params invalid token", async () => {
       await expectRevert.unspecified(
@@ -80,8 +87,8 @@ contract("APYPoolToken Unit Test", async (accounts) => {
             from: owner,
           }
         )
-      )
-    })
+      );
+    });
 
     it("Test params invalid agg", async () => {
       await expectRevert.unspecified(
@@ -94,9 +101,9 @@ contract("APYPoolToken Unit Test", async (accounts) => {
             from: owner,
           }
         )
-      )
-    })
-  })
+      );
+    });
+  });
 
   describe("Test Defaults", async () => {
     it("Test Owner", async () => {
@@ -165,7 +172,6 @@ contract("APYPoolToken Unit Test", async (accounts) => {
       const trx = await instance.setPriceAggregator(newPriceAgg.address);
 
       const priceAgg = await instance.priceAgg.call();
-      const underlyer = await instance.underlyer.call();
 
       assert.equal(priceAgg, newPriceAgg.address);
       await expectEvent(trx, "PriceAggregatorChanged", {
@@ -389,7 +395,6 @@ contract("APYPoolToken Unit Test", async (accounts) => {
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
 
-      const newToken = await MockContract.new();
       await instance.setPriceAggregator(mockAgg.address);
       await expectRevert(
         instance.getTokenEthPrice.call(),
@@ -405,7 +410,6 @@ contract("APYPoolToken Unit Test", async (accounts) => {
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
 
-      const newToken = await MockContract.new();
       await instance.setPriceAggregator(mockAgg.address);
       const price = await instance.getTokenEthPrice.call();
       assert.equal(price, 100);
