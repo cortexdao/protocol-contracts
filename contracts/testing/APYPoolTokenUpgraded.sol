@@ -2,9 +2,9 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "./APYGovernanceToken.sol";
+import "../APYPoolToken.sol";
 
-contract APYGovernanceTokenUpgraded is APYGovernanceToken {
+contract APYPoolTokenUpgraded is APYPoolToken {
     bool public newlyAddedVariable;
 
     function initializeUpgrade() public override onlyAdmin {

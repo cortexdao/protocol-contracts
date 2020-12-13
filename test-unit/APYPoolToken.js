@@ -13,7 +13,7 @@ const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const MockContract = artifacts.require("MockContract");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYPoolTokenProxy = artifacts.require("APYPoolTokenProxy");
-const APYPoolToken = artifacts.require("APYPoolTokenTEST");
+const APYPoolToken = artifacts.require("TestAPYPoolToken");
 const IERC20 = new ethers.utils.Interface(
   artifacts.require("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20").abi
 );

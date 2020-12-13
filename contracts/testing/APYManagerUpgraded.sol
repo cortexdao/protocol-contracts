@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.11;
-pragma experimental ABIEncoderV2;
 
-import "./APYPoolToken.sol";
+import "../APYManager.sol";
 
-contract APYPoolTokenUpgraded is APYPoolToken {
+contract APYManagerUpgraded is APYManager {
     bool public newlyAddedVariable;
 
     function initializeUpgrade() public override onlyAdmin {
