@@ -9,10 +9,12 @@ contract APYAddressRegistry is Initializable, OwnableUpgradeSafe {
     /* impl-specific storage variables */
     /* ------------------------------- */
     address public proxyAdmin;
+    mapping(string => address) internal _addresses;
 
     /* ------------------------------- */
 
     event AdminChanged(address);
+    event AddressChanged(string name, address _address);
 
     function initialize(address adminAddress) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");
@@ -41,5 +43,37 @@ contract APYAddressRegistry is Initializable, OwnableUpgradeSafe {
 
     receive() external payable {
         revert("DONT_SEND_ETHER");
+    }
+
+    function setAddress(string memory name, address _address) external {
+        require(_address != address(0), "Invalid address");
+        _addresses[name] = _address;
+        emit AddressChanged(name, _address);
+    }
+
+    function getAddress(string memory name) public view returns (address) {
+        address _address = _addresses[name];
+        require(_address != address(0), "Missing address");
+        return _address;
+    }
+
+    function managerAddress() public view returns (address) {
+        return getAddress("manager");
+    }
+
+    function chainlinkRegistryAddress() public view returns (address) {
+        return getAddress("chainlinkRegistry");
+    }
+
+    function daiPoolAddress() public view returns (address) {
+        return getAddress("daiPool");
+    }
+
+    function usdcPoolAddress() public view returns (address) {
+        return getAddress("usdcPool");
+    }
+
+    function usdtPoolAddress() public view returns (address) {
+        return getAddress("usdtPool");
     }
 }
