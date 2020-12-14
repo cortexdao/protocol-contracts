@@ -2,7 +2,7 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "./APYGovernanceToken.sol";
+import "../APYGovernanceToken.sol";
 
 contract APYGovernanceTokenUpgraded is APYGovernanceToken {
     bool public newlyAddedVariable;
