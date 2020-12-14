@@ -20,7 +20,7 @@ contract("APYAddressRegistry", async (accounts) => {
   let snapshotId;
 
   beforeEach(async () => {
-    let snapshot = await timeMachine.takeSnapshot();
+    const snapshot = await timeMachine.takeSnapshot();
     snapshotId = snapshot["result"];
   });
 
@@ -80,7 +80,7 @@ contract("APYAddressRegistry", async (accounts) => {
     });
   });
 
-  describe.only("Register new address", async () => {
+  describe("Register new address", async () => {
     const DUMMY_NAME = "dummyName";
     const DUMMY_ADDRESS = web3.utils.toChecksumAddress(
       "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
@@ -106,6 +106,90 @@ contract("APYAddressRegistry", async (accounts) => {
       await expectRevert(
         registry.registerAddress(DUMMY_NAME, ZERO_ADDRESS, { from: deployer }),
         "Invalid address"
+      );
+    });
+  });
+
+  describe.only("Retrieve addresses", async () => {
+    const DUMMY_NAME = "dummyName";
+    const DUMMY_ADDRESS = web3.utils.toChecksumAddress(
+      "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+    );
+    const managerAddress = web3.utils.toChecksumAddress(
+      "0x1AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+    );
+    const chainlinkRegistryAddress = web3.utils.toChecksumAddress(
+      "0x2AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+    );
+    const daiPoolAddress = web3.utils.toChecksumAddress(
+      "0x3AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+    );
+    const usdcPoolAddress = web3.utils.toChecksumAddress(
+      "0x4AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+    );
+    const usdtPoolAddress = web3.utils.toChecksumAddress(
+      "0x5AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+    );
+    before("Prep addresses", async () => {
+      await registry.registerAddress(DUMMY_NAME, DUMMY_ADDRESS);
+      await registry.registerAddress("manager", managerAddress);
+      await registry.registerAddress(
+        "chainlinkRegistry",
+        chainlinkRegistryAddress
+      );
+      await registry.registerAddress("daiPool", daiPoolAddress);
+      await registry.registerAddress("usdcPool", usdcPoolAddress);
+      await registry.registerAddress("usdtPool", usdtPoolAddress);
+    });
+
+    it("User can retrieve generic addresses", async () => {
+      assert.equal(
+        await registry.getAddress(DUMMY_NAME, { from: randomUser }),
+        DUMMY_ADDRESS
+      );
+    });
+
+    it("Revert when retrieving missing address", async () => {
+      await expectRevert(
+        registry.getAddress("notRegistered", {
+          from: randomUser,
+        }),
+        "Missing address"
+      );
+    });
+
+    it("User can retrieve manager", async () => {
+      assert.equal(
+        await registry.managerAddress({ from: randomUser }),
+        managerAddress
+      );
+    });
+
+    it("User can retrieve Chainlink registry", async () => {
+      assert.equal(
+        await registry.chainlinkRegistryAddress({ from: randomUser }),
+        chainlinkRegistryAddress
+      );
+    });
+
+    it("User can retrieve DAI pool", async () => {
+      assert.equal(
+        await registry.daiPoolAddress({ from: randomUser }),
+        daiPoolAddress
+      );
+    });
+
+    it("User can retrieve USDC pool", async () => {
+      assert.equal(
+        await registry.usdcPoolAddress({ from: randomUser }),
+        usdcPoolAddress
+      );
+    });
+
+    it("User can retrieve USDT pool", async () => {
+      assert.equal(
+        await registry.usdtPoolAddress({ from: randomUser }),
+        usdtPoolAddress
       );
     });
   });
