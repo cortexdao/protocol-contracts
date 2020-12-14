@@ -1,5 +1,5 @@
 const { assert } = require("chai");
-const { artifacts, contract } = require("hardhat");
+const { artifacts, contract, web3 } = require("hardhat");
 const { expectRevert } = require("@openzeppelin/test-helpers");
 const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
@@ -41,7 +41,7 @@ contract("APYAddressRegistry", async (accounts) => {
     registry = await APYAddressRegistry.at(proxy.address);
   });
 
-  describe("Test Constructor", async () => {
+  describe("Constructor", async () => {
     it("Revert when proxy admin is zero address", async () => {
       await expectRevert.unspecified(
         APYAddressRegistryProxy.new(logic.address, ZERO_ADDRESS, {
@@ -61,7 +61,7 @@ contract("APYAddressRegistry", async (accounts) => {
     });
   });
 
-  describe("Setting admin address", async () => {
+  describe("Set admin address", async () => {
     it("Owner can set to valid address", async () => {
       await registry.setAdminAddress(randomUser, { from: deployer });
       assert.equal(await registry.proxyAdmin(), randomUser);
@@ -76,6 +76,36 @@ contract("APYAddressRegistry", async (accounts) => {
     it("Cannot set to zero address", async () => {
       await expectRevert.unspecified(
         registry.setAdminAddress(ZERO_ADDRESS, { from: deployer })
+      );
+    });
+  });
+
+  describe.only("Register new address", async () => {
+    const DUMMY_NAME = "dummyName";
+    const DUMMY_ADDRESS = web3.utils.toChecksumAddress(
+      "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+    );
+
+    it("Owner can register address", async () => {
+      await registry.registerAddress(DUMMY_NAME, DUMMY_ADDRESS, {
+        from: deployer,
+      });
+      assert.equal(await registry.getAddress(DUMMY_NAME), DUMMY_ADDRESS);
+    });
+
+    it("Revert when non-owner attempts to register", async () => {
+      await expectRevert(
+        registry.registerAddress(DUMMY_NAME, DUMMY_ADDRESS, {
+          from: randomUser,
+        }),
+        "Ownable: caller is not the owner"
+      );
+    });
+
+    it("Cannot register zero address", async () => {
+      await expectRevert(
+        registry.registerAddress(DUMMY_NAME, ZERO_ADDRESS, { from: deployer }),
+        "Invalid address"
       );
     });
   });

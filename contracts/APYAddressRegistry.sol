@@ -14,7 +14,7 @@ contract APYAddressRegistry is Initializable, OwnableUpgradeSafe {
     /* ------------------------------- */
 
     event AdminChanged(address);
-    event AddressChanged(string name, address _address);
+    event AddressRegistered(string name, address _address);
 
     function initialize(address adminAddress) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");
@@ -45,10 +45,13 @@ contract APYAddressRegistry is Initializable, OwnableUpgradeSafe {
         revert("DONT_SEND_ETHER");
     }
 
-    function setAddress(string memory name, address _address) external {
+    function registerAddress(string memory name, address _address)
+        external
+        onlyOwner
+    {
         require(_address != address(0), "Invalid address");
         _addresses[name] = _address;
-        emit AddressChanged(name, _address);
+        emit AddressRegistered(name, _address);
     }
 
     function getAddress(string memory name) public view returns (address) {
