@@ -3,10 +3,8 @@ pragma solidity 0.6.11;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 
-contract APYManager is Initializable, OwnableUpgradeSafe
-{
+contract APYManager is Initializable, OwnableUpgradeSafe {
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
@@ -16,10 +14,7 @@ contract APYManager is Initializable, OwnableUpgradeSafe
 
     event AdminChanged(address);
 
-    function initialize(address adminAddress)
-        external
-        initializer
-    {
+    function initialize(address adminAddress) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");
 
         // initialize ancestor storage
