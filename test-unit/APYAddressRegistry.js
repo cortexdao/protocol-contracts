@@ -14,7 +14,7 @@ contract("APYAddressRegistry", async (accounts) => {
   let proxyAdmin;
   let logic;
   let proxy;
-  let manager;
+  let registry;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -38,7 +38,7 @@ contract("APYAddressRegistry", async (accounts) => {
         from: deployer,
       }
     );
-    manager = await APYAddressRegistry.at(proxy.address);
+    registry = await APYAddressRegistry.at(proxy.address);
   });
 
   describe("Test Constructor", async () => {
@@ -53,29 +53,29 @@ contract("APYAddressRegistry", async (accounts) => {
 
   describe("Defaults", async () => {
     it("Owner is set to deployer", async () => {
-      assert.equal(await manager.owner(), deployer);
+      assert.equal(await registry.owner(), deployer);
     });
 
     it("Revert when ETH is sent", async () => {
-      await expectRevert(manager.send(10), "DONT_SEND_ETHER");
+      await expectRevert(registry.send(10), "DONT_SEND_ETHER");
     });
   });
 
   describe("Setting admin address", async () => {
     it("Owner can set to valid address", async () => {
-      await manager.setAdminAddress(randomUser, { from: deployer });
-      assert.equal(await manager.proxyAdmin(), randomUser);
+      await registry.setAdminAddress(randomUser, { from: deployer });
+      assert.equal(await registry.proxyAdmin(), randomUser);
     });
 
     it("Revert when non-owner attempts to set", async () => {
       await expectRevert.unspecified(
-        manager.setAdminAddress(admin, { from: randomUser })
+        registry.setAdminAddress(admin, { from: randomUser })
       );
     });
 
     it("Cannot set to zero address", async () => {
       await expectRevert.unspecified(
-        manager.setAdminAddress(ZERO_ADDRESS, { from: deployer })
+        registry.setAdminAddress(ZERO_ADDRESS, { from: deployer })
       );
     });
   });
