@@ -68,22 +68,28 @@ contract("APYAddressRegistry", async (accounts) => {
     });
 
     it("Revert when non-owner attempts to set", async () => {
-      await expectRevert.unspecified(
-        registry.setAdminAddress(admin, { from: randomUser })
+      await expectRevert(
+        registry.setAdminAddress(admin, { from: randomUser }),
+        "Ownable: caller is not the owner"
       );
     });
 
     it("Cannot set to zero address", async () => {
-      await expectRevert.unspecified(
-        registry.setAdminAddress(ZERO_ADDRESS, { from: deployer })
+      await expectRevert(
+        registry.setAdminAddress(ZERO_ADDRESS, { from: deployer }),
+        "INVALID_ADMIN"
       );
     });
   });
 
-  describe("Register new address", async () => {
+  describe("Register addresses", async () => {
     const DUMMY_NAME = "dummyName";
     const DUMMY_ADDRESS = web3.utils.toChecksumAddress(
       "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+    );
+    const ANOTHER_NAME = "anotherName";
+    const ANOTHER_ADDRESS = web3.utils.toChecksumAddress(
+      "0xBAADC0FFEEBAADC0FFEEBAADC0FFEEBAADC0FFEE"
     );
 
     it("Owner can register address", async () => {
@@ -108,9 +114,47 @@ contract("APYAddressRegistry", async (accounts) => {
         "Invalid address"
       );
     });
+
+    it("Owner can register multiple addresses", async () => {
+      await registry.registerMultipleAddresses(
+        [DUMMY_NAME, ANOTHER_NAME],
+        [DUMMY_ADDRESS, ANOTHER_ADDRESS],
+        {
+          from: deployer,
+        }
+      );
+      assert.equal(await registry.getAddress(DUMMY_NAME), DUMMY_ADDRESS);
+      assert.equal(await registry.getAddress(ANOTHER_NAME), ANOTHER_ADDRESS);
+    });
+
+    it("Revert when non-owner attempts to register multiple addresses", async () => {
+      await expectRevert(
+        registry.registerMultipleAddresses(
+          [DUMMY_NAME, ANOTHER_NAME],
+          [DUMMY_ADDRESS, ANOTHER_ADDRESS],
+          {
+            from: randomUser,
+          }
+        ),
+        "Ownable: caller is not the owner"
+      );
+    });
+
+    it("Cannot register zero address in multiple registration", async () => {
+      await expectRevert(
+        registry.registerMultipleAddresses(
+          [DUMMY_NAME, ANOTHER_NAME],
+          [DUMMY_ADDRESS, ZERO_ADDRESS],
+          {
+            from: deployer,
+          }
+        ),
+        "Invalid address"
+      );
+    });
   });
 
-  describe.only("Retrieve addresses", async () => {
+  describe("Retrieve addresses", async () => {
     const DUMMY_NAME = "dummyName";
     const DUMMY_ADDRESS = web3.utils.toChecksumAddress(
       "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
@@ -131,15 +175,23 @@ contract("APYAddressRegistry", async (accounts) => {
       "0x5AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
     before("Prep addresses", async () => {
-      await registry.registerAddress(DUMMY_NAME, DUMMY_ADDRESS);
-      await registry.registerAddress("manager", managerAddress);
-      await registry.registerAddress(
+      const names = [
+        DUMMY_NAME,
+        "manager",
         "chainlinkRegistry",
-        chainlinkRegistryAddress
-      );
-      await registry.registerAddress("daiPool", daiPoolAddress);
-      await registry.registerAddress("usdcPool", usdcPoolAddress);
-      await registry.registerAddress("usdtPool", usdtPoolAddress);
+        "daiPool",
+        "usdcPool",
+        "usdtPool",
+      ];
+      const addresses = [
+        DUMMY_ADDRESS,
+        managerAddress,
+        chainlinkRegistryAddress,
+        daiPoolAddress,
+        usdcPoolAddress,
+        usdtPoolAddress,
+      ];
+      await registry.registerMultipleAddresses(names, addresses);
     });
 
     it("User can retrieve generic addresses", async () => {

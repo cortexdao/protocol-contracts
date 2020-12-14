@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.11;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
@@ -46,12 +47,27 @@ contract APYAddressRegistry is Initializable, OwnableUpgradeSafe {
     }
 
     function registerAddress(string memory name, address _address)
-        external
+        public
         onlyOwner
     {
         require(_address != address(0), "Invalid address");
         _addresses[name] = _address;
         emit AddressRegistered(name, _address);
+    }
+
+    function registerMultipleAddresses(
+        string[] calldata names,
+        address[] calldata addresses
+    ) external onlyOwner {
+        require(
+            names.length == addresses.length,
+            "Inputs have differing length"
+        );
+        for (uint256 i = 0; i < names.length; i++) {
+            string memory name = names[i];
+            address _address = addresses[i];
+            registerAddress(name, _address);
+        }
     }
 
     function getAddress(string memory name) public view returns (address) {
