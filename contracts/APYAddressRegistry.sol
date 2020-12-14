@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.11;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
@@ -9,10 +10,12 @@ contract APYAddressRegistry is Initializable, OwnableUpgradeSafe {
     /* impl-specific storage variables */
     /* ------------------------------- */
     address public proxyAdmin;
+    mapping(string => address) internal _addresses;
 
     /* ------------------------------- */
 
     event AdminChanged(address);
+    event AddressRegistered(string name, address _address);
 
     function initialize(address adminAddress) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");
@@ -41,5 +44,55 @@ contract APYAddressRegistry is Initializable, OwnableUpgradeSafe {
 
     receive() external payable {
         revert("DONT_SEND_ETHER");
+    }
+
+    function registerAddress(string memory name, address _address)
+        public
+        onlyOwner
+    {
+        require(_address != address(0), "Invalid address");
+        _addresses[name] = _address;
+        emit AddressRegistered(name, _address);
+    }
+
+    function registerMultipleAddresses(
+        string[] calldata names,
+        address[] calldata addresses
+    ) external onlyOwner {
+        require(
+            names.length == addresses.length,
+            "Inputs have differing length"
+        );
+        for (uint256 i = 0; i < names.length; i++) {
+            string memory name = names[i];
+            address _address = addresses[i];
+            registerAddress(name, _address);
+        }
+    }
+
+    function getAddress(string memory name) public view returns (address) {
+        address _address = _addresses[name];
+        require(_address != address(0), "Missing address");
+        return _address;
+    }
+
+    function managerAddress() public view returns (address) {
+        return getAddress("manager");
+    }
+
+    function chainlinkRegistryAddress() public view returns (address) {
+        return getAddress("chainlinkRegistry");
+    }
+
+    function daiPoolAddress() public view returns (address) {
+        return getAddress("daiPool");
+    }
+
+    function usdcPoolAddress() public view returns (address) {
+        return getAddress("usdcPool");
+    }
+
+    function usdtPoolAddress() public view returns (address) {
+        return getAddress("usdtPool");
     }
 }

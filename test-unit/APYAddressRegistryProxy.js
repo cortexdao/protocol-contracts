@@ -10,7 +10,7 @@ const APYAddressRegistryUpgraded = artifacts.require(
 const APYAddressRegistryProxy = artifacts.require("APYAddressRegistryProxy");
 const APYAddressRegistry = artifacts.require("APYAddressRegistry");
 
-contract("APYAddressRegistry", async (accounts) => {
+contract("APYAddressRegistryProxy", async (accounts) => {
   const [deployer, randomUser] = accounts;
 
   let proxyAdmin;
