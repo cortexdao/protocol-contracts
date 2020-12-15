@@ -9,6 +9,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAddressRegistry.sol";
+import "./APYPoolToken.sol";
 
 contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
     using SafeMath for uint256;
@@ -129,5 +130,37 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
         returns (string memory)
     {
         return ERC20UpgradeSafe(token).symbol();
+    }
+
+    /**
+     * @notice Redeems ACT amount for the pool into its underlyer token.
+     * @param poolAddress The address for the selected pool.
+     */
+    function pushFunds(address payable poolAddress) external onlyOwner {
+        APYPoolToken pool = APYPoolToken(poolAddress);
+        uint256 actAmount = mApt.balanceOf(address(pool));
+        mApt.burn(msg.sender, actAmount);
+
+        uint256 tokenEthPrice = pool.getTokenEthPrice();
+        uint256 poolAmount = mApt.calculatePoolAmount(actAmount, tokenEthPrice);
+        IERC20 token = pool.underlyer();
+        token.transfer(address(pool), poolAmount);
+    }
+
+    /**
+     * @notice Mint corresponding amount of ACT tokens for pulled amount.
+     * @dev If no ACT tokens have been minted yet, fallback to a fixed ratio.
+     */
+    function pullFunds(address payable poolAddress) external onlyOwner {
+        APYPoolToken pool = APYPoolToken(poolAddress);
+        uint256 drainedAmount = pool.drain();
+        uint256 drainedValue = pool.getEthValueFromTokenAmount(drainedAmount);
+
+        uint256 tokenEthPrice = pool.getTokenEthPrice();
+        uint256 mintAmount = mApt.calculateMintAmount(
+            drainedValue,
+            tokenEthPrice
+        );
+        mApt.mint(msg.sender, mintAmount);
     }
 }
