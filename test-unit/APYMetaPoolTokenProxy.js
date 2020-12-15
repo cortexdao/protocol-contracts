@@ -4,11 +4,11 @@ const timeMachine = require("ganache-time-traveler");
 const { expectRevert } = require("@openzeppelin/test-helpers");
 
 const ProxyAdmin = artifacts.require("ProxyAdmin");
-const APYCapitalTokenUpgraded = artifacts.require("APYCapitalTokenUpgraded");
-const APYCapitalTokenProxy = artifacts.require("APYCapitalTokenProxy");
-const APYCapitalToken = artifacts.require("APYCapitalToken");
+const APYMetaPoolTokenUpgraded = artifacts.require("APYMetaPoolTokenUpgraded");
+const APYMetaPoolTokenProxy = artifacts.require("APYMetaPoolTokenProxy");
+const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
 
-contract("APYCapitalTokenProxy", async (accounts) => {
+contract("APYMetaPoolTokenProxy", async (accounts) => {
   const [deployer, randomUser] = accounts;
 
   let proxyAdmin;
@@ -30,9 +30,9 @@ contract("APYCapitalTokenProxy", async (accounts) => {
 
   before(async () => {
     proxyAdmin = await ProxyAdmin.new({ from: deployer });
-    logic = await APYCapitalToken.new({ from: deployer });
+    logic = await APYMetaPoolToken.new({ from: deployer });
     const fakeTvlAggAddress = "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE";
-    proxy = await APYCapitalTokenProxy.new(
+    proxy = await APYMetaPoolTokenProxy.new(
       logic.address,
       proxyAdmin.address,
       fakeTvlAggAddress,
@@ -66,7 +66,7 @@ contract("APYCapitalTokenProxy", async (accounts) => {
 
   describe("Upgradability", async () => {
     beforeEach(async () => {
-      token = await APYCapitalToken.at(proxy.address);
+      token = await APYMetaPoolToken.at(proxy.address);
     });
 
     it("Owner can upgrade logic", async () => {
@@ -74,14 +74,14 @@ contract("APYCapitalTokenProxy", async (accounts) => {
       assert.equal(typeof token.newlyAddedVariable, "undefined");
 
       //prematurely point instance to upgraded implementation
-      token = await APYCapitalTokenUpgraded.at(proxy.address);
+      token = await APYMetaPoolTokenUpgraded.at(proxy.address);
       assert.equal(typeof token.newlyAddedVariable, "function");
 
       //function should fail due to the proxy not pointing to the correct implementation
       await expectRevert.unspecified(token.newlyAddedVariable());
 
       // create the new implementation and point the proxy to it
-      const newLogic = await APYCapitalTokenUpgraded.new({ from: deployer });
+      const newLogic = await APYMetaPoolTokenUpgraded.new({ from: deployer });
       await proxyAdmin.upgrade(proxy.address, newLogic.address, {
         from: deployer,
       });
@@ -97,7 +97,7 @@ contract("APYCapitalTokenProxy", async (accounts) => {
     });
 
     it("Revert when non-owner attempts upgrade", async () => {
-      const newLogic = await APYCapitalTokenUpgraded.new({ from: deployer });
+      const newLogic = await APYMetaPoolTokenUpgraded.new({ from: deployer });
       await expectRevert(
         proxyAdmin.upgrade(proxy.address, newLogic.address, {
           from: randomUser,
@@ -115,10 +115,10 @@ contract("APYCapitalTokenProxy", async (accounts) => {
 
     it("Revert when non-admin attempts `upgradeAndCall`", async () => {
       // deploy new implementation
-      const newLogic = await APYCapitalTokenUpgraded.new({ from: deployer });
+      const newLogic = await APYMetaPoolTokenUpgraded.new({ from: deployer });
       // construct init data
       const iImplementation = new ethers.utils.Interface(
-        APYCapitalTokenUpgraded.abi
+        APYMetaPoolTokenUpgraded.abi
       );
       const initData = iImplementation.encodeFunctionData(
         "initializeUpgrade",
@@ -138,16 +138,16 @@ contract("APYCapitalTokenProxy", async (accounts) => {
       assert.equal(typeof token.newlyAddedVariable, "undefined");
 
       //prematurely point instance to upgraded implementation
-      token = await APYCapitalTokenUpgraded.at(proxy.address);
+      token = await APYMetaPoolTokenUpgraded.at(proxy.address);
       assert.equal(typeof token.newlyAddedVariable, "function");
 
       //function should fail due to the proxy not pointing to the correct implementation
       await expectRevert.unspecified(token.newlyAddedVariable());
 
       // create the new implementation and point the proxy to it
-      const newLogic = await APYCapitalTokenUpgraded.new({ from: deployer });
+      const newLogic = await APYMetaPoolTokenUpgraded.new({ from: deployer });
       const iImplementation = new ethers.utils.Interface(
-        APYCapitalTokenUpgraded.abi
+        APYMetaPoolTokenUpgraded.abi
       );
       const initData = iImplementation.encodeFunctionData(
         "initializeUpgrade",

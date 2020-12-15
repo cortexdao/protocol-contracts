@@ -5,15 +5,15 @@ const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 
 const ProxyAdmin = artifacts.require("ProxyAdmin");
-const APYCapitalTokenProxy = artifacts.require("APYCapitalTokenProxy");
-const APYCapitalToken = artifacts.require("APYCapitalToken");
+const APYMetaPoolTokenProxy = artifacts.require("APYMetaPoolTokenProxy");
+const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
 const MockContract = artifacts.require("MockContract");
 
 const DUMMY_ADDRESS = web3.utils.toChecksumAddress(
   "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
 );
 
-contract("APYCapitalToken", async (accounts) => {
+contract("APYMetaPoolToken", async (accounts) => {
   const [deployer, admin, randomUser, anotherUser] = accounts;
 
   let proxyAdmin;
@@ -36,9 +36,9 @@ contract("APYCapitalToken", async (accounts) => {
 
   before(async () => {
     proxyAdmin = await ProxyAdmin.new({ from: deployer });
-    logic = await APYCapitalToken.new({ from: deployer });
+    logic = await APYMetaPoolToken.new({ from: deployer });
     mockTvlAgg = await MockContract.new();
-    proxy = await APYCapitalTokenProxy.new(
+    proxy = await APYMetaPoolTokenProxy.new(
       logic.address,
       proxyAdmin.address,
       mockTvlAgg.address,
@@ -46,13 +46,13 @@ contract("APYCapitalToken", async (accounts) => {
         from: deployer,
       }
     );
-    token = await APYCapitalToken.at(proxy.address);
+    token = await APYMetaPoolToken.at(proxy.address);
   });
 
   describe("Constructor", async () => {
     it("Revert when logic is not a contract address", async () => {
       await expectRevert(
-        APYCapitalTokenProxy.new(
+        APYMetaPoolTokenProxy.new(
           DUMMY_ADDRESS,
           proxyAdmin.address,
           DUMMY_ADDRESS,
@@ -66,7 +66,7 @@ contract("APYCapitalToken", async (accounts) => {
 
     it("Revert when proxy admin is zero address", async () => {
       await expectRevert.unspecified(
-        APYCapitalTokenProxy.new(logic.address, ZERO_ADDRESS, DUMMY_ADDRESS, {
+        APYMetaPoolTokenProxy.new(logic.address, ZERO_ADDRESS, DUMMY_ADDRESS, {
           from: deployer,
         })
       );
@@ -74,7 +74,7 @@ contract("APYCapitalToken", async (accounts) => {
 
     it("Revert when TVL aggregator is zero address", async () => {
       await expectRevert.unspecified(
-        APYCapitalTokenProxy.new(logic.address, DUMMY_ADDRESS, ZERO_ADDRESS, {
+        APYMetaPoolTokenProxy.new(logic.address, DUMMY_ADDRESS, ZERO_ADDRESS, {
           from: deployer,
         })
       );

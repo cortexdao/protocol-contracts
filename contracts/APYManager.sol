@@ -10,6 +10,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAddressRegistry.sol";
 import "./APYPoolToken.sol";
+import "./APYMetaPoolToken.sol";
 
 contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
     using SafeMath for uint256;
@@ -20,7 +21,7 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
     /* ------------------------------- */
     address public proxyAdmin;
     IAddressRegistry public addressRegistry;
-    address public mApt; // placeholder for future-proofing storage
+    APYMetaPoolToken public mApt;
 
     bytes32[] internal _poolIds;
     address[] internal _tokenAddresses;

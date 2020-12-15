@@ -13,7 +13,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/IMintable.sol";
 
-contract APYCapitalToken is
+contract APYMetaPoolToken is
     Initializable,
     OwnableUpgradeSafe,
     ReentrancyGuardUpgradeSafe,
@@ -50,7 +50,7 @@ contract APYCapitalToken is
         __Ownable_init_unchained();
         __ReentrancyGuard_init_unchained();
         __Pausable_init_unchained();
-        __ERC20_init_unchained("APY Capital Token", "ACT");
+        __ERC20_init_unchained("APY MetaPool Token", "mAPT");
 
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
