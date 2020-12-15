@@ -89,7 +89,7 @@ contract APYCapitalToken is
         emit Mint(account, amount);
     }
 
-    function burn(address account, uint256 amount) public override {
+    function burn(address account, uint256 amount) public override onlyOwner {
         _burn(account, amount);
         emit Burn(account, amount);
     }

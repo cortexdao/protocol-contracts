@@ -50,9 +50,31 @@ contract("APYCapitalToken", async (accounts) => {
   });
 
   describe("Constructor", async () => {
+    it("Revert when logic is not a contract address", async () => {
+      await expectRevert(
+        APYCapitalTokenProxy.new(
+          DUMMY_ADDRESS,
+          proxyAdmin.address,
+          DUMMY_ADDRESS,
+          {
+            from: deployer,
+          }
+        ),
+        "UpgradeableProxy: new implementation is not a contract"
+      );
+    });
+
     it("Revert when proxy admin is zero address", async () => {
       await expectRevert.unspecified(
-        APYCapitalTokenProxy.new(logic.address, ZERO_ADDRESS, {
+        APYCapitalTokenProxy.new(logic.address, ZERO_ADDRESS, DUMMY_ADDRESS, {
+          from: deployer,
+        })
+      );
+    });
+
+    it("Revert when TVL aggregator is zero address", async () => {
+      await expectRevert.unspecified(
+        APYCapitalTokenProxy.new(logic.address, DUMMY_ADDRESS, ZERO_ADDRESS, {
           from: deployer,
         })
       );
@@ -147,7 +169,7 @@ contract("APYCapitalToken", async (accounts) => {
 
     it("Revert when non-owner attempts to burn", async () => {
       await expectRevert(
-        token.mint(anotherUser, new BN("1"), { from: randomUser }),
+        token.burn(anotherUser, new BN("1"), { from: randomUser }),
         "Ownable: caller is not the owner"
       );
     });
