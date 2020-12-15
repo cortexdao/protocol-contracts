@@ -6,12 +6,12 @@ import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/ILiquidityPool.sol";
+import "./interfaces/IDetailedERC20.sol";
 
 contract APYPoolToken is
     ILiquidityPool,
@@ -22,7 +22,7 @@ contract APYPoolToken is
     ERC20UpgradeSafe
 {
     using SafeMath for uint256;
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IDetailedERC20;
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
 
     /* ------------------------------- */
@@ -31,14 +31,14 @@ contract APYPoolToken is
     address public proxyAdmin;
     bool public addLiquidityLock;
     bool public redeemLock;
-    IERC20 public underlyer;
+    IDetailedERC20 public underlyer;
     AggregatorV3Interface public priceAgg;
 
     /* ------------------------------- */
 
     function initialize(
         address adminAddress,
-        IERC20 _underlyer,
+        IDetailedERC20 _underlyer,
         AggregatorV3Interface _priceAgg
     ) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");
@@ -151,7 +151,7 @@ contract APYPoolToken is
         if (amount == 0) {
             return 0;
         }
-        uint256 decimals = ERC20UpgradeSafe(address(underlyer)).decimals();
+        uint256 decimals = underlyer.decimals();
         // ethValue = (tokenEthPrice * amount) / decimals
         return ((getTokenEthPrice()).mul(amount)).div(10**decimals);
     }
@@ -162,7 +162,7 @@ contract APYPoolToken is
         returns (uint256)
     {
         uint256 tokenEthPrice = getTokenEthPrice();
-        uint256 decimals = ERC20UpgradeSafe(address(underlyer)).decimals();
+        uint256 decimals = underlyer.decimals();
         // amount = (ethValue * decimals) / tokenEthPrice
         return ((10**decimals).mul(ethValue)).div(tokenEthPrice); //tokenAmount
     }

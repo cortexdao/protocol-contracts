@@ -1,8 +1,8 @@
+const { artifacts } = require("hardhat");
 const { ether, BN } = require("@openzeppelin/test-helpers");
-const { CHAIN_IDS, DEPLOYS_JSON } = require('../utils/constants.js')
-const fs = require('fs')
+const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants.js");
+const fs = require("fs");
 const IMintableERC20 = artifacts.require("IMintableERC20");
-const ERC20 = artifacts.require("ERC20");
 
 const dai = ether;
 
@@ -56,7 +56,7 @@ const transferERC20Tokens = async (
   ownerAddress,
   amount
 ) => {
-  const token = await ERC20.at(tokenAddress);
+  const token = await IMintableERC20.at(tokenAddress);
   await token.transfer(receiverAddress, amount, {
     from: ownerAddress,
     gasPrice: 0,
@@ -64,7 +64,7 @@ const transferERC20Tokens = async (
 };
 
 const getERC20Balance = async (contractAddress, accountAddress) => {
-  const token = await ERC20.at(contractAddress);
+  const token = await IMintableERC20.at(contractAddress);
   const balance = await token.balanceOf(accountAddress);
   const symbol = await token.symbol();
   const decimals = await token.decimals();
@@ -85,16 +85,20 @@ console.debugging = false;
 async function updateDeployJsons(network, deploy_data) {
   for (let [contract_name, file_path] of Object.entries(DEPLOYS_JSON)) {
     // go through all deploys json and update them
-    address_json = require(file_path)
+    const address_json = require(file_path);
     // skip over contracts not changed
     if (deploy_data[contract_name] === undefined) {
-      continue
+      continue;
     }
-    address_json[CHAIN_IDS[network]] = deploy_data[contract_name]
-    address_json_string = JSON.stringify(address_json, null, '  ')
-    fs.writeFileSync(__dirname + '/' + file_path, address_json_string, err => {
-      if (err) throw err
-    })
+    address_json[CHAIN_IDS[network]] = deploy_data[contract_name];
+    const address_json_string = JSON.stringify(address_json, null, "  ");
+    fs.writeFileSync(
+      __dirname + "/" + file_path,
+      address_json_string,
+      (err) => {
+        if (err) throw err;
+      }
+    );
   }
 }
 
@@ -106,5 +110,5 @@ module.exports = {
   getERC20Balance,
   undoErc20,
   console,
-  updateDeployJsons
+  updateDeployJsons,
 };
