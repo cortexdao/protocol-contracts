@@ -84,7 +84,7 @@ contract APYCapitalToken is
         revert("DONT_SEND_ETHER");
     }
 
-    function mint(address account, uint256 amount) public override {
+    function mint(address account, uint256 amount) public override onlyOwner {
         _mint(account, amount);
         emit Mint(account, amount);
     }
