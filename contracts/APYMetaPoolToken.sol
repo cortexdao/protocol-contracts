@@ -101,17 +101,23 @@ contract APYMetaPoolToken is
     }
 
     /** @notice Calculate ACT amount to be minted for given pool's underlyer amount.
-     *  @param depositAmount pool underlyer amount to be converted
-     *  @param tokenEthPrice Pool underlyer's ETH price in token bits
-     *  @dev Price parameter must be the ETH value (in wei) per underlyer's
-     *       "small" unit (bits).
+     *  @param depositAmount Pool underlyer amount to be converted
+     *  @param tokenEthPrice Pool underlyer's ETH price (in wei) per underlyer token
+     *  @param decimals Pool underlyer's number of decimals
+     *  @dev Price parameter is in units of wei per token ("big" unit), since
+     *       attempting to express wei per token bit ("small" unit) will be
+     *       fractional, requiring fixed-point representation.  This means we need
+     *       to also pass in the underlyer's number of decimals to do the appropriate
+     *       multiplication in the calculation.
      */
-    function calculateMintAmount(uint256 depositAmount, uint256 tokenEthPrice)
-        public
-        view
-        returns (uint256)
-    {
-        uint256 depositValue = depositAmount.mul(tokenEthPrice);
+    function calculateMintAmount(
+        uint256 depositAmount,
+        uint256 tokenEthPrice,
+        uint8 decimals
+    ) public view returns (uint256) {
+        uint256 depositValue = depositAmount.mul(tokenEthPrice).div(
+            10**decimals
+        );
         uint256 totalValue = getTVL();
         return _calculateMintAmount(depositValue, totalValue);
     }

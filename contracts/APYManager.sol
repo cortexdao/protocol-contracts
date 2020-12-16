@@ -11,6 +11,7 @@ import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAddressRegistry.sol";
 import "./APYPoolToken.sol";
 import "./APYMetaPoolToken.sol";
+import "./interfaces/IDetailedERC20.sol";
 
 contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
     using SafeMath for uint256;
@@ -158,9 +159,12 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
         uint256 drainedValue = pool.getEthValueFromTokenAmount(drainedAmount);
 
         uint256 tokenEthPrice = pool.getTokenEthPrice();
+        address poolUnderlyer = address(pool.underlyer());
+        uint8 decimals = ERC20UpgradeSafe(poolUnderlyer).decimals();
         uint256 mintAmount = mApt.calculateMintAmount(
             drainedValue,
-            tokenEthPrice
+            tokenEthPrice,
+            decimals
         );
         mApt.mint(msg.sender, mintAmount);
     }

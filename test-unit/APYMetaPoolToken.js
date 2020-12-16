@@ -1,8 +1,10 @@
 const { assert, expect } = require("chai");
-const { artifacts, contract, web3 } = require("hardhat");
+const { artifacts, contract, ethers, web3 } = require("hardhat");
 const { expectRevert, BN } = require("@openzeppelin/test-helpers");
 const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
+const { defaultAbiCoder } = ethers.utils;
+const { erc20 } = require("../utils/helpers");
 
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYMetaPoolTokenProxy = artifacts.require("APYMetaPoolTokenProxy");
@@ -172,6 +174,45 @@ contract("APYMetaPoolToken", async (accounts) => {
         token.burn(anotherUser, new BN("1"), { from: randomUser }),
         "Ownable: caller is not the owner"
       );
+    });
+  });
+
+  describe.only("Calculations", async () => {
+    it("Check mock TVL aggregator setup", async () => {
+      const tvl = 100;
+      const returnData = defaultAbiCoder.encode(
+        ["uint80", "int256", "uint256", "uint256", "uint80"],
+        [0, tvl, 0, 0, 0]
+      );
+      await mockTvlAgg.givenAnyReturn(returnData);
+
+      assert.equal(await token.getTVL(), tvl);
+    });
+
+    it("Calculate mint amount", async () => {
+      const tvl = 100;
+      const returnData = defaultAbiCoder.encode(
+        ["uint80", "int256", "uint256", "uint256", "uint80"],
+        [0, tvl, 0, 0, 0]
+      );
+      await mockTvlAgg.givenAnyReturn(returnData);
+
+      const depositAmount = erc20(100);
+      const tokenEthPrice = 1602950450000000;
+      const decimals = 18;
+      await token.calculateMintAmount(depositAmount, tokenEthPrice, decimals);
+    });
+
+    it("test 1", async () => {
+      //
+    });
+
+    it("test 1", async () => {
+      //
+    });
+
+    it("test 1", async () => {
+      //
     });
   });
 });
