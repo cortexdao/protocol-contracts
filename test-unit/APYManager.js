@@ -1,11 +1,16 @@
 const { assert } = require("chai");
-const { artifacts, contract, web3 } = require("hardhat");
+const { artifacts, contract, ethers, web3 } = require("hardhat");
 const { expectRevert } = require("@openzeppelin/test-helpers");
 const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
+
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYManagerProxy = artifacts.require("APYManagerProxy");
 const APYManager = artifacts.require("APYManager");
+const IDetailedERC20 = new ethers.utils.Interface(
+  artifacts.require("IDetailedERC20").abi
+);
+const MockContract = artifacts.require("MockContract");
 
 contract("APYManager", async (accounts) => {
   const [deployer, admin, randomUser] = accounts;
@@ -92,11 +97,28 @@ contract("APYManager", async (accounts) => {
       });
 
       it("deleteTokenAddresses", async () => {
-        //
+        const FAKE_ADDRESS_1 = web3.utils.toChecksumAddress(
+          "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+        );
+        const FAKE_ADDRESS_2 = web3.utils.toChecksumAddress(
+          "0xBAADC0FFEEBAADC0FFEEBAADC0FFEEBAADC0FFEE"
+        );
+        const tokenAddresses = [FAKE_ADDRESS_1, FAKE_ADDRESS_2];
+        await manager.setTokenAddresses(tokenAddresses);
+
+        await manager.deleteTokenAddresses();
+        assert.isEmpty(await manager.getTokenAddresses());
       });
 
       it("balanceOf", async () => {
-        //
+        const mockToken = MockContract.new();
+        const balanceOf = IDetailedERC20.encodeFunctionData("balanceOf", [
+          ZERO_ADDRESS,
+        ]);
+        await mockToken.givenMethodReturnUint(balanceOf, 1);
+
+        const balance = await manager.balanceOf(mockToken.address);
+        console.log("balance:", balance);
       });
 
       it("symbolOf", async () => {

@@ -80,9 +80,7 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
     /// @dev part of temporary implementation for Chainlink integration;
     ///      likely need this to clear out storage prior to real upgrade.
     function deleteTokenAddresses() external onlyOwner {
-        for (uint256 i = 0; i < _tokenAddresses.length; i++) {
-            _tokenAddresses[i] = address(0);
-        }
+        delete _tokenAddresses;
     }
 
     /** @notice Returns the total balance in the system for given token.
