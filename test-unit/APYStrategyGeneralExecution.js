@@ -8,6 +8,8 @@ contract("Test GenericExecutor", async (accounts) => {
     const exec = await GenericExecutor.new()
 
     console.log(legos.maker.addresses.DAI)
+    console.log(legos.compound.addresses.cDAI)
+    console.log(legos.curvefi.addresses.cDAI_cUSDC)
 
     // const trx = await exec.execute(
     //   [
