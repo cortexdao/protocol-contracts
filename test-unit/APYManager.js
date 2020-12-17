@@ -1,5 +1,5 @@
 const { assert } = require("chai");
-const { artifacts, contract } = require("hardhat");
+const { artifacts, contract, web3 } = require("hardhat");
 const { expectRevert } = require("@openzeppelin/test-helpers");
 const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
@@ -72,6 +72,40 @@ contract("APYManager", async (accounts) => {
       await expectRevert.unspecified(
         manager.setAdminAddress(ZERO_ADDRESS, { from: deployer })
       );
+    });
+  });
+
+  describe("Asset allocation", async () => {
+    describe.only("Temporary implementation for Chainlink", async () => {
+      it("Set and get token addresses", async () => {
+        assert.isEmpty(await manager.getTokenAddresses());
+
+        const FAKE_ADDRESS_1 = web3.utils.toChecksumAddress(
+          "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+        );
+        const FAKE_ADDRESS_2 = web3.utils.toChecksumAddress(
+          "0xBAADC0FFEEBAADC0FFEEBAADC0FFEEBAADC0FFEE"
+        );
+        const tokenAddresses = [FAKE_ADDRESS_1, FAKE_ADDRESS_2];
+        await manager.setTokenAddresses(tokenAddresses);
+        assert.deepEqual(await manager.getTokenAddresses(), tokenAddresses);
+      });
+
+      it("deleteTokenAddresses", async () => {
+        //
+      });
+
+      it("balanceOf", async () => {
+        //
+      });
+
+      it("symbolOf", async () => {
+        //
+      });
+
+      it("foo", async () => {
+        //
+      });
     });
   });
 });
