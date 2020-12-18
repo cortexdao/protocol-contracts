@@ -8,17 +8,18 @@
  * $ HARDHAT_NETWORK=<network name> node run scripts/<script filename> --arg1=val1 --arg2=val2
  */
 require("dotenv").config();
-const { ethers, artifacts, network } = require("hardhat");
-
+const { ethers, network } = require("hardhat");
+const { argv } = require("yargs");
 const { assert, expect } = require("chai");
 const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants.js");
-const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 
 const PROXY_ADMIN_ADDRESSES = require(DEPLOYS_JSON[
   "APYAddressRegistryProxyAdmin"
 ]);
+const PROXY_ADDRESSES = require(DEPLOYS_JSON["APYAddressRegistryProxy"]);
 
-const main = async () => {
+// eslint-disable-next-line no-unused-vars
+const main = async (argv) => {
   const NETWORK_NAME = network.name.toUpperCase();
   console.log("");
   console.log(`${NETWORK_NAME} selected`);
@@ -38,11 +39,8 @@ const main = async () => {
   );
   admin = admin.connect(user);
 
-  const PROXY_ADDRESSES = require(DEPLOYS_JSON["APYAddressRegistryProxy"]);
-  const APYAddressRegistry = await ethers.getContractFactory(
-    "APYAddressRegistry"
-  );
-  let registry = await APYAddressRegistry.attach(
+  let registry = await ethers.getContractAt(
+    "APYAddressRegistry",
     PROXY_ADDRESSES[CHAIN_IDS[NETWORK_NAME]]
   );
   registry = registry.connect(user);
@@ -67,28 +65,63 @@ const main = async () => {
   );
 
   console.log("Check logic is accessible through the proxy...");
-  assert.notEqual(await registry.managerAddress(), ZERO_ADDRESS);
-  assert.notEqual(await registry.chainlinkRegistryAddress(), ZERO_ADDRESS);
-  assert.notEqual(await registry.daiPoolAddress(), ZERO_ADDRESS);
-  assert.notEqual(await registry.usdcPoolAddress(), ZERO_ADDRESS);
-  assert.notEqual(await registry.usdtPoolAddress(), ZERO_ADDRESS);
+  const managerAddress = await registry.managerAddress();
+  const chainlinkRegistryAddress = await registry.chainlinkRegistryAddress();
+  const daiPoolAddress = await registry.daiPoolAddress();
+  const usdcPoolAddress = await registry.usdcPoolAddress();
+  const usdtPoolAddress = await registry.usdtPoolAddress();
 
-  // console.log("Check manager is correct...");
-  // const managerAddress = await registry.managerAddress();
-  // const token = new ethers.Contract(managerAddress, APYManager.abi).connect(
-  //   user
-  // );
-  // expect(await token.symbol()).to.equal(symbol);
+  console.log("Check manager address is correct...");
+  const manager = ethers
+    .getContractAt("APYManager", managerAddress)
+    .connect(user);
+  assert.deepEqual(await manager.poolNames(), [
+    "daiPool",
+    "usdcPool",
+    "usdtPool",
+  ]);
+
+  console.log("Check chainlink registry address is the same as manager...");
+  expect(managerAddress).to.equal(chainlinkRegistryAddress);
+
+  console.log("Check DAI pool address is correct...");
+  const daiPool = ethers
+    .getContractAt("APYPoolToken", daiPoolAddress)
+    .connect(user);
+  const daiAddress = await daiPool.underlyer();
+  const dai = await ethers.getContractAt("IDetailedERC20", daiAddress);
+  expect(await dai.symbol()).to.equal("DAI");
+
+  console.log("Check USDC pool address is correct...");
+  const usdcPool = ethers
+    .getContractAt("APYPoolToken", usdcPoolAddress)
+    .connect(user);
+  const usdcAddress = await usdcPool.underlyer();
+  const usdc = await ethers.getContractAt("IDetailedERC20", usdcAddress);
+  expect(await usdc.symbol()).to.equal("USDC");
+
+  console.log("Check USDT pool address is correct...");
+  const usdtPool = ethers
+    .getContractAt("APYPoolToken", usdtPoolAddress)
+    .connect(user);
+  const usdtAddress = await usdtPool.underlyer();
+  const usdt = await ethers.getContractAt("IDetailedERC20", usdtAddress);
+  expect(await usdt.symbol()).to.equal("USDT");
 };
 
-main()
-  .then((text) => {
-    console.log("");
-    console.log("Finished with no errors.");
-    console.log("");
-    process.exit(0);
-  })
-  .catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+if (!module.parent) {
+  main(argv)
+    .then(() => {
+      console.log("");
+      console.log("Finished with no errors.");
+      console.log("");
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error(error);
+      console.log("");
+      process.exit(1);
+    });
+} else {
+  module.exports = main;
+}
