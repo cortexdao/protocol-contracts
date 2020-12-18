@@ -1,5 +1,4 @@
-const { ethers, artifacts, contract, waffle } = require("hardhat");
-const provider = waffle.provider;
+const { ethers, artifacts, contract } = require("hardhat");
 const BN = ethers.BigNumber
 const GenericExecutor = artifacts.require("APYGenericExecutor");
 const { expectEvent } = require("@openzeppelin/test-helpers");
@@ -9,7 +8,8 @@ contract("Test GenericExecutor", async (accounts) => {
   const [_, account1] = accounts
   it.only("Execution Test", async () => {
 
-    const DAI = new ethers.Contract(legos.maker.addresses.DAI, legos.maker.abis.DAI, provider)
+    const DAI = new ethers.Contract(legos.maker.addresses.DAI, legos.maker.abis.DAI, ethers.getDefaultProvider());
+    console.log(DAI)
 
     const exec = await GenericExecutor.new()
 
