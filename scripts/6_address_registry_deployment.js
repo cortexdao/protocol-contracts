@@ -1,8 +1,17 @@
+/*
+ * Command to run script:
+ *
+ * $ yarn hardhat --network <network name> run scripts/<script filename>
+ *
+ * Alternatively, to pass command-line arguments:
+ *
+ * $ HARDHAT_NETWORK=<network name> node run scripts/<script filename> --arg1=val1 --arg2=val2
+ */
 require("dotenv").config();
 const { assert } = require("chai");
 const { argv } = require("yargs");
 const hre = require("hardhat");
-const { ethers, network } = require("@nomiclabs/buidler");
+const { ethers, network } = require("hardhat");
 const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants.js");
 const { updateDeployJsons } = require("../utils/helpers.js");
 
@@ -12,7 +21,7 @@ async function main(argv) {
   console.log("");
   console.log(`${NETWORK_NAME} selected`);
   console.log("");
-  const chainId = CHAIN_IDS[NETWORK_NAME];
+  // const chainId = CHAIN_IDS[NETWORK_NAME];
 
   const signers = await ethers.getSigners();
   const deployer = await signers[0].getAddress();
