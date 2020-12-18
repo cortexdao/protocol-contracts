@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 # populate option args using a script or hardcoded-value
-fork="$(node scripts/infura.js)"
-mnemonic="$(node scripts/mnemonic.js)"
-unlocked_addresses="$(node scripts/unlocked_addresses.js)"
+fork="$(node scripts/ganache/infura.js)"
+mnemonic="$(node scripts/ganache/mnemonic.js)"
+unlocked_addresses="$(node scripts/ganache/unlocked_addresses.js)"
 gas_limit=12500000  # 12.5 million, current mainnet block gas limit
 gas_price=40000000000  # 40 gwei
 default_balance_ether=10000
