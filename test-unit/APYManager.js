@@ -1,4 +1,4 @@
-const { assert } = require("chai");
+const { assert, expect } = require("chai");
 const { artifacts, contract, ethers, web3 } = require("hardhat");
 const { expectRevert } = require("@openzeppelin/test-helpers");
 const timeMachine = require("ganache-time-traveler");
@@ -81,7 +81,7 @@ contract("APYManager", async (accounts) => {
   });
 
   describe("Asset allocation", async () => {
-    describe.only("Temporary implementation for Chainlink", async () => {
+    describe("Temporary implementation for Chainlink", async () => {
       it("Set and get token addresses", async () => {
         assert.isEmpty(await manager.getTokenAddresses());
 
@@ -111,22 +111,32 @@ contract("APYManager", async (accounts) => {
       });
 
       it("balanceOf", async () => {
-        const mockToken = MockContract.new();
+        const mockToken = await MockContract.new();
+        await manager.setPool(
+          "testPool_1",
+          "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+        );
+        await manager.setPool(
+          "testPool_2",
+          "0xBAADC0FFEEBAADC0FFEEBAADC0FFEEBAADC0FFEE"
+        );
+
         const balanceOf = IDetailedERC20.encodeFunctionData("balanceOf", [
           ZERO_ADDRESS,
         ]);
         await mockToken.givenMethodReturnUint(balanceOf, 1);
 
         const balance = await manager.balanceOf(mockToken.address);
-        console.log("balance:", balance);
+        expect(balance).to.bignumber.equal("2");
       });
 
       it("symbolOf", async () => {
-        //
-      });
+        const mockToken = await MockContract.new();
+        const symbol = IDetailedERC20.encodeFunctionData("symbol", []);
+        const mockString = web3.eth.abi.encodeParameter("string", "MOCK");
+        await mockToken.givenMethodReturn(symbol, mockString);
 
-      it("foo", async () => {
-        //
+        assert.equal(await manager.symbolOf(mockToken.address), "MOCK");
       });
     });
   });

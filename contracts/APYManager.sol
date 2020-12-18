@@ -101,6 +101,20 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
         return balance;
     }
 
+    function setPool(string memory poolName, address poolAddress)
+        external
+        onlyOwner
+    {
+        for (uint256 i = 0; i < poolNames.length; i++) {
+            if (keccak256(bytes(poolNames[i])) == keccak256(bytes(poolName))) {
+                pools[poolName] = poolAddress;
+                return;
+            }
+        }
+        poolNames.push(poolName);
+        pools[poolName] = poolAddress;
+    }
+
     /// @notice Returns the symbol of the given token.
     function symbolOf(address token)
         external
