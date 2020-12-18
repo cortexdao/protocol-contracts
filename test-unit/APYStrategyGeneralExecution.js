@@ -1,25 +1,25 @@
-const { ethers, artifacts, contract } = require("hardhat");
+const { ethers, artifacts, contract, waffle } = require("hardhat");
+const provider = waffle.provider;
+const BN = ethers.BigNumber
 const GenericExecutor = artifacts.require("APYGenericExecutor");
 const { expectEvent } = require("@openzeppelin/test-helpers");
 const legos = require('defi-legos')
 
 contract("Test GenericExecutor", async (accounts) => {
-  it("Execution Test", async () => {
-    const exec = await GenericExecutor.new()
+  const [_, account1] = accounts
+  it.only("Execution Test", async () => {
 
-    console.log(legos.maker.addresses.DAI)
-    console.log(legos.compound.addresses.cDAI)
-    console.log(legos.curvefi.addresses.cDAI_cUSDC)
+    const DAI = new ethers.Contract(legos.maker.addresses.DAI, legos.maker.abis.DAI, provider)
+
+    const exec = await GenericExecutor.new()
 
     // const trx = await exec.execute(
     //   [
-    //     [legos.maker.addresses.DAI, iA.encodeFunctionData('executeA', [100])],
-    //     [A.address, iA.encodeFunctionData('executeAMultiParam', [1, 1, 1])],
-    //     [A.address, iA.encodeFunctionData('executeAReturnArray', [1])],
-    //     [A.address, iA.encodeFunctionData('executeAArrayParam', [100])],
-    //     [A.address, iA.encodeFunctionData('approve', [A.address, 100])],
+    //     [legos.maker.addresses.DAI, legos.maker.DAI.encodeApprove(account1, BN.from('999'))],
+    //     [legos.compound.addresses.cDAI, legos.maker.cDAI.encodeApprove(account1, BN.from('999'))],
     //   ]
     // )
+    // await expectEvent.inTransaction(trx.tx, legos.maker, 'Approval', { owner: exec.address, spender: account1, value: '999' })
 
     // await expectEvent.inTransaction(trx.tx, A, 'ExecuteAUint256', { a: '100' })
     // await expectEvent.inTransaction(trx.tx, A, 'ExecuteABytes32', { a: '0x0000000000000000000000000000000000000000000000000000000000000064' })

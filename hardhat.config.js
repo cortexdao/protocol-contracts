@@ -4,7 +4,7 @@ require("solidity-coverage");
 require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-truffle5");
 require("@nomiclabs/hardhat-etherscan");
-
+require("@nomiclabs/hardhat-waffle");
 require("./scripts/claim_rewards");
 require("./scripts/fund_rewards");
 
