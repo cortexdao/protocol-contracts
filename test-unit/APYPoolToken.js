@@ -15,10 +15,14 @@ const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYPoolTokenProxy = artifacts.require("APYPoolTokenProxy");
 const APYPoolToken = artifacts.require("TestAPYPoolToken");
 const IERC20 = new ethers.utils.Interface(
-  artifacts.require("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20").abi
+  artifacts.require(
+    "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol:IERC20"
+  ).abi
 );
 const ERC20 = new ethers.utils.Interface(
-  artifacts.require("@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20").abi
+  artifacts.require(
+    "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol:ERC20UpgradeSafe"
+  ).abi
 );
 
 contract("APYPoolToken Unit Test", async (accounts) => {
