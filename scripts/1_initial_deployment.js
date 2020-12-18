@@ -1,4 +1,5 @@
 require("dotenv").config();
+const { ethers, network } = require("hardhat");
 const { TOKEN_AGG_MAP } = require("../utils/constants.js");
 const { updateDeployJsons } = require("../utils/helpers.js");
 
@@ -17,9 +18,9 @@ async function main() {
   console.log(`ProxyAdmin: ${proxyAdmin.address}`);
 
   let deploy_data = {};
-  deploy_data["ProxyAdmin"] = proxyAdmin.address;
+  deploy_data["APYPoolTokenProxyAdmin"] = proxyAdmin.address;
 
-  for ({ symbol, token, aggregator } of TOKEN_AGG_MAP[NETWORK_NAME]) {
+  for (const { symbol, token, aggregator } of TOKEN_AGG_MAP[NETWORK_NAME]) {
     console.log("");
     console.log(`Deploying contracts for ${symbol}`);
     console.log(`    --> ${aggregator} Chainlink Oracle Agg`);

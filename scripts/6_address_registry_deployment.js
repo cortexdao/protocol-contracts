@@ -30,7 +30,7 @@ async function main(argv) {
 
   const proxyAdmin = await ProxyAdmin.deploy();
   await proxyAdmin.deployed();
-  deploy_data["AddressRegistryProxyAdmin"] = proxyAdmin.address;
+  deploy_data["APYAddressRegistryProxyAdmin"] = proxyAdmin.address;
   console.log(`ProxyAdmin: ${proxyAdmin.address}`);
 
   const logic = await APYAddressRegistry.deploy();
