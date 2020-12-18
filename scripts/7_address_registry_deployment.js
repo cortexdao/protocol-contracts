@@ -25,8 +25,13 @@ async function main(argv) {
   const signers = await ethers.getSigners();
   const deployer = await signers[0].getAddress();
   console.log("Deployer address:", deployer);
+  console.log("");
 
   /* Deploy address registry with proxy and admin */
+  console.log("");
+  console.log("Deploying ...");
+  console.log("");
+
   const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
   const APYAddressRegistry = await ethers.getContractFactory(
     "APYAddressRegistry"
@@ -59,10 +64,11 @@ async function main(argv) {
 
   /* Register addresses for manager and pools */
   console.log("");
-  console.log("Registering addresses...");
-  // const MANAGER_ADDRESSES = DEPLOYS_JSON["APYManagerProxy"];
-  // const managerAddress = MANAGER_ADDRESSES[CHAIN_IDS[NETWORK_NAME]];
-  // console.log("Manager address:", managerAddress);
+  console.log("Registering addresses ...");
+  console.log("");
+  const MANAGER_ADDRESSES = require(DEPLOYS_JSON["APYManagerProxy"]);
+  const managerAddress = MANAGER_ADDRESSES[CHAIN_IDS[NETWORK_NAME]];
+  console.log("Manager address:", managerAddress);
   const DAI_POOL_ADDRESSES = require(DEPLOYS_JSON["DAI_APYPoolTokenProxy"]);
   const daiPoolAddress = DAI_POOL_ADDRESSES[CHAIN_IDS[NETWORK_NAME]];
   console.log("DAI pool address:", daiPoolAddress);
@@ -75,11 +81,10 @@ async function main(argv) {
 
   const registry = await APYAddressRegistry.attach(proxy.address);
   await registry.registerMultipleAddresses(
-    // ["manager", "chainlinkRegistry", "daiPool", "usdcPool", "usdtPool"],
-    ["daiPool", "usdcPool", "usdtPool"],
+    ["manager", "chainlinkRegistry", "daiPool", "usdcPool", "usdtPool"],
     [
-      // managerAddress,
-      // managerAddress,
+      managerAddress,
+      managerAddress,
       daiPoolAddress,
       usdcPoolAddress,
       usdtPoolAddress,

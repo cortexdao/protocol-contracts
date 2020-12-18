@@ -72,38 +72,28 @@ const main = async (argv) => {
   const usdtPoolAddress = await registry.usdtPoolAddress();
 
   console.log("Check manager address is correct...");
-  const manager = ethers
-    .getContractAt("APYManager", managerAddress)
-    .connect(user);
-  assert.deepEqual(await manager.poolNames(), [
-    "daiPool",
-    "usdcPool",
-    "usdtPool",
-  ]);
+  const manager = await ethers.getContractAt("APYManager", managerAddress);
+  assert.equal(await manager.poolNames(0), "daiPool");
+  assert.equal(await manager.poolNames(1), "usdcPool");
+  assert.equal(await manager.poolNames(2), "usdtPool");
 
   console.log("Check chainlink registry address is the same as manager...");
   expect(managerAddress).to.equal(chainlinkRegistryAddress);
 
   console.log("Check DAI pool address is correct...");
-  const daiPool = ethers
-    .getContractAt("APYPoolToken", daiPoolAddress)
-    .connect(user);
+  const daiPool = await ethers.getContractAt("APYPoolToken", daiPoolAddress);
   const daiAddress = await daiPool.underlyer();
   const dai = await ethers.getContractAt("IDetailedERC20", daiAddress);
   expect(await dai.symbol()).to.equal("DAI");
 
   console.log("Check USDC pool address is correct...");
-  const usdcPool = ethers
-    .getContractAt("APYPoolToken", usdcPoolAddress)
-    .connect(user);
+  const usdcPool = await ethers.getContractAt("APYPoolToken", usdcPoolAddress);
   const usdcAddress = await usdcPool.underlyer();
   const usdc = await ethers.getContractAt("IDetailedERC20", usdcAddress);
   expect(await usdc.symbol()).to.equal("USDC");
 
   console.log("Check USDT pool address is correct...");
-  const usdtPool = ethers
-    .getContractAt("APYPoolToken", usdtPoolAddress)
-    .connect(user);
+  const usdtPool = await ethers.getContractAt("APYPoolToken", usdtPoolAddress);
   const usdtAddress = await usdtPool.underlyer();
   const usdt = await ethers.getContractAt("IDetailedERC20", usdtAddress);
   expect(await usdt.symbol()).to.equal("USDT");
