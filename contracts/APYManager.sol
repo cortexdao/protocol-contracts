@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.so
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "./interfaces/IAssetAllocation.sol";
+import "./interfaces/IAddressRegistry.sol";
 
 contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
     using SafeMath for uint256;
@@ -17,10 +18,10 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
     /* impl-specific storage variables */
     /* ------------------------------- */
     address public proxyAdmin;
+    IAddressRegistry public addressRegistry;
     address public mApt; // placeholder for future-proofing storage
 
-    mapping(string => address) public pools;
-    string[] public poolNames;
+    bytes32[] internal _poolIds;
     address[] internal _tokenAddresses;
 
     /* ------------------------------- */
@@ -82,6 +83,12 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
         delete _tokenAddresses;
     }
 
+    /// @dev part of temporary implementation for Chainlink integration;
+    ///      likely need this to clear out storage prior to real upgrade.
+    function deletePoolIds() external onlyOwner {
+        delete _poolIds;
+    }
+
     /** @notice Returns the total balance in the system for given token.
      *  @dev The balance is possibly aggregated from multiple contracts
      *       holding the token.
@@ -93,25 +100,12 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
     function balanceOf(address token) external override view returns (uint256) {
         IERC20 erc20 = IERC20(token);
         uint256 balance = 0;
-        for (uint256 i = 0; i < poolNames.length; i++) {
-            uint256 poolBalance = erc20.balanceOf(pools[poolNames[i]]);
+        for (uint256 i = 0; i < _poolIds.length; i++) {
+            address pool = addressRegistry.getAddress(_poolIds[i]);
+            uint256 poolBalance = erc20.balanceOf(pool);
             balance = balance.add(poolBalance);
         }
         return balance;
-    }
-
-    function setPool(string memory poolName, address poolAddress)
-        external
-        onlyOwner
-    {
-        for (uint256 i = 0; i < poolNames.length; i++) {
-            if (keccak256(bytes(poolNames[i])) == keccak256(bytes(poolName))) {
-                pools[poolName] = poolAddress;
-                return;
-            }
-        }
-        poolNames.push(poolName);
-        pools[poolName] = poolAddress;
     }
 
     /// @notice Returns the symbol of the given token.
