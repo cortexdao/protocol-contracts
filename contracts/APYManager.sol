@@ -56,6 +56,15 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
     /// @dev Allow contract to receive Ether.
     receive() external payable {} // solhint-disable-line no-empty-blocks
 
+    function setAddressRegistry(address _addressRegistry) public onlyOwner {
+        require(_addressRegistry != address(0), "Invalid address");
+        addressRegistry = IAddressRegistry(_addressRegistry);
+    }
+
+    function setPoolIds(bytes32[] memory poolIds) public onlyOwner {
+        _poolIds = poolIds;
+    }
+
     /** @notice Returns the list of asset addresses.
      *  @dev Address list will be populated automatically from the set
      *       of input and output assets for each strategy.

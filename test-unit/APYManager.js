@@ -12,6 +12,8 @@ const IDetailedERC20 = new ethers.utils.Interface(
 );
 const MockContract = artifacts.require("MockContract");
 
+const bytes32 = ethers.utils.formatBytes32String;
+
 contract("APYManager", async (accounts) => {
   const [deployer, admin, randomUser] = accounts;
 
@@ -107,16 +109,11 @@ contract("APYManager", async (accounts) => {
       });
 
       it("balanceOf", async () => {
-        const mockToken = await MockContract.new();
-        await manager.setPool(
-          "testPool_1",
-          "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
-        );
-        await manager.setPool(
-          "testPool_2",
-          "0xBAADC0FFEEBAADC0FFEEBAADC0FFEEBAADC0FFEE"
-        );
+        const mockRegistry = await MockContract.new();
+        await manager.setAddressRegistry(mockRegistry.address);
+        await manager.setPoolIds([bytes32("pool 1"), bytes32("pool 2")]);
 
+        const mockToken = await MockContract.new();
         const balanceOf = IDetailedERC20.encodeFunctionData("balanceOf", [
           ZERO_ADDRESS,
         ]);
