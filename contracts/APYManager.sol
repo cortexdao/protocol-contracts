@@ -52,9 +52,8 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
         _;
     }
 
-    receive() external payable {
-        revert("DONT_SEND_ETHER");
-    }
+    /// @dev Allow contract to receive Ether.
+    receive() external payable {} // solhint-disable-line no-empty-blocks
 
     /** @notice Returns the list of asset addresses.
      *  @dev Address list will be populated automatically from the set

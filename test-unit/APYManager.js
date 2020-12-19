@@ -55,10 +55,6 @@ contract("APYManager", async (accounts) => {
     it("Owner is set to deployer", async () => {
       assert.equal(await manager.owner(), deployer);
     });
-
-    it("Revert when ETH is sent", async () => {
-      await expectRevert(manager.send(10), "DONT_SEND_ETHER");
-    });
   });
 
   describe("Setting admin address", async () => {
