@@ -1,5 +1,5 @@
 const { assert } = require("chai");
-const { artifacts, contract, web3 } = require("hardhat");
+const { artifacts, contract, ethers, web3 } = require("hardhat");
 const { expectRevert } = require("@openzeppelin/test-helpers");
 const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
@@ -7,6 +7,8 @@ const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYAddressRegistryProxy = artifacts.require("APYAddressRegistryProxy");
 const APYAddressRegistry = artifacts.require("APYAddressRegistry");
+
+const bytes32 = ethers.utils.formatBytes32String;
 
 contract("APYAddressRegistry", async (accounts) => {
   const [deployer, admin, randomUser] = accounts;
@@ -83,11 +85,11 @@ contract("APYAddressRegistry", async (accounts) => {
   });
 
   describe("Register addresses", async () => {
-    const DUMMY_NAME = "dummyName";
+    const DUMMY_NAME = bytes32("dummyName");
     const DUMMY_ADDRESS = web3.utils.toChecksumAddress(
       "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
-    const ANOTHER_NAME = "anotherName";
+    const ANOTHER_NAME = bytes32("anotherName");
     const ANOTHER_ADDRESS = web3.utils.toChecksumAddress(
       "0xBAADC0FFEEBAADC0FFEEBAADC0FFEEBAADC0FFEE"
     );
@@ -155,7 +157,7 @@ contract("APYAddressRegistry", async (accounts) => {
   });
 
   describe("Retrieve addresses", async () => {
-    const DUMMY_NAME = "dummyName";
+    const DUMMY_NAME = bytes32("dummyName");
     const DUMMY_ADDRESS = web3.utils.toChecksumAddress(
       "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
@@ -177,11 +179,11 @@ contract("APYAddressRegistry", async (accounts) => {
     before("Prep addresses", async () => {
       const names = [
         DUMMY_NAME,
-        "manager",
-        "chainlinkRegistry",
-        "daiPool",
-        "usdcPool",
-        "usdtPool",
+        bytes32("manager"),
+        bytes32("chainlinkRegistry"),
+        bytes32("daiPool"),
+        bytes32("usdcPool"),
+        bytes32("usdtPool"),
       ];
       const addresses = [
         DUMMY_ADDRESS,
@@ -194,6 +196,17 @@ contract("APYAddressRegistry", async (accounts) => {
       await registry.registerMultipleAddresses(names, addresses);
     });
 
+    it("ID list is populated", async () => {
+      assert.deepEqual(await registry.getIds({ from: randomUser }), [
+        DUMMY_NAME,
+        bytes32("manager"),
+        bytes32("chainlinkRegistry"),
+        bytes32("daiPool"),
+        bytes32("usdcPool"),
+        bytes32("usdtPool"),
+      ]);
+    });
+
     it("User can retrieve generic addresses", async () => {
       assert.equal(
         await registry.getAddress(DUMMY_NAME, { from: randomUser }),
@@ -203,7 +216,7 @@ contract("APYAddressRegistry", async (accounts) => {
 
     it("Revert when retrieving missing address", async () => {
       await expectRevert(
-        registry.getAddress("notRegistered", {
+        registry.getAddress(bytes32("notRegistered"), {
           from: randomUser,
         }),
         "Missing address"
