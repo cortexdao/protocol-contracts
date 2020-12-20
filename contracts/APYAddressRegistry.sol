@@ -4,8 +4,13 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
+import "./interfaces/IAddressRegistry.sol";
 
-contract APYAddressRegistry is Initializable, OwnableUpgradeSafe {
+contract APYAddressRegistry is
+    Initializable,
+    OwnableUpgradeSafe,
+    IAddressRegistry
+{
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
@@ -47,7 +52,7 @@ contract APYAddressRegistry is Initializable, OwnableUpgradeSafe {
         revert("DONT_SEND_ETHER");
     }
 
-    function getIds() public view returns (bytes32[] memory) {
+    function getIds() public override view returns (bytes32[] memory) {
         return _idList;
     }
 
@@ -73,7 +78,7 @@ contract APYAddressRegistry is Initializable, OwnableUpgradeSafe {
         }
     }
 
-    function getAddress(bytes32 id) public view returns (address) {
+    function getAddress(bytes32 id) public override view returns (address) {
         address _address = _idToAddress[id];
         require(_address != address(0), "Missing address");
         return _address;
