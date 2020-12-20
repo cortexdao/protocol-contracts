@@ -22,7 +22,8 @@ async function formattedAmount(token, value) {
 }
 
 async function acquireToken(fundAccount, receiver, token, amount) {
-  // NOTE: Ganache is setup to control the WHALE addresses. This method moves requeted funds out of the fund account and into the specified wallet
+  /* NOTE: Ganache is setup to control "whale" addresses. This method moves
+  requested funds out of the fund account and into the specified wallet */
 
   // fund the account with ETH so it can move funds
   await web3.eth.sendTransaction({
