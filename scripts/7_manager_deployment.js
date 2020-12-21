@@ -35,7 +35,9 @@ async function main(argv) {
 
   const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
   const APYManager = await ethers.getContractFactory("APYManager");
-  const APYManagerProxy = await ethers.getContractFactory("APYManagerProxy");
+  const TransparentUpgradeableProxy = await ethers.getContractFactory(
+    "TransparentUpgradeableProxy"
+  );
 
   let deploy_data = {};
 
@@ -49,7 +51,35 @@ async function main(argv) {
   deploy_data["APYManager"] = logic.address;
   console.log(`Implementation Logic: ${logic.address}`);
 
-  const proxy = await APYManagerProxy.deploy(logic.address, proxyAdmin.address);
+  const CONSTRUCTOR_ARG_ADDRESSES = require(DEPLOYS_JSON[
+    "ProxyConstructorArg"
+  ]);
+  const constructorArgAddress =
+    CONSTRUCTOR_ARG_ADDRESSES[CHAIN_IDS[NETWORK_NAME]];
+  let constructorArgContract;
+  if (!constructorArgAddress) {
+    const ConstructorArg = await ethers.getContractFactory(
+      "ProxyConstructorArg"
+    );
+    constructorArgContract = await ConstructorArg.deploy();
+    await constructorArgContract.deployed();
+    deploy_data["ProxyConstructorArg"] = constructorArgContract.address;
+  } else {
+    constructorArgContract = await ethers.getContractAt(
+      "ProxyConstructorArg",
+      constructorArgAddress
+    );
+  }
+  const encodedArg = await constructorArgContract.getEncodedArg(
+    proxyAdmin.address
+  );
+  console.log("Encoded constructor arg:", encodedArg);
+
+  const proxy = await TransparentUpgradeableProxy.deploy(
+    logic.address,
+    proxyAdmin.address,
+    encodedArg
+  );
   await proxy.deployed();
   deploy_data["APYManagerProxy"] = proxy.address;
   console.log(`Proxy: ${proxy.address}`);
@@ -112,6 +142,13 @@ async function main(argv) {
   console.log("USDT address:", usdtAddress);
 
   await manager.setTokenAddresses([daiAddress, usdcAddress, usdtAddress]);
+
+  console.log("");
+  console.log("Use the following for Etherscan verification:");
+  console.log(
+    `yarn hardhat --network <NETWORK NAME> verify ${proxy.address} ${logic.address} ${proxyAdmin.address} ${encodedArg}`
+  );
+  console.log("");
 }
 
 if (!module.parent) {
