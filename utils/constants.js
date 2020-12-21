@@ -74,6 +74,7 @@ const DEPLOYS_JSON = {
   APYManagerProxyAdmin: "../deployed_addresses/APYManagerProxyAdmin.json",
   APYManager: "../deployed_addresses/APYManager.json",
   APYManagerProxy: "../deployed_addresses/APYManagerProxy.json",
+  ProxyConstructorArg: "../deployed_addresses/ProxyConstructorArg.json",
 };
 
 module.exports = {
