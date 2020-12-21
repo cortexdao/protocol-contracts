@@ -12,7 +12,7 @@ const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
 const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants.js");
-const { updateDeployJsons } = require("../utils/helpers.js");
+const { updateDeployJsons, bytes32 } = require("../utils/helpers.js");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -62,13 +62,15 @@ async function main(argv) {
 
   await updateDeployJsons(NETWORK_NAME, deploy_data);
 
-  /* Register addresses for manager and pools */
+  /*
+   * Register addresses for liquidity pools.
+   *
+   * Manager needs to be registered when it is deployed, as it also
+   * will need a reference to the address registry.
+   */
   console.log("");
   console.log("Registering addresses ...");
   console.log("");
-  const MANAGER_ADDRESSES = require(DEPLOYS_JSON["APYManagerProxy"]);
-  const managerAddress = MANAGER_ADDRESSES[CHAIN_IDS[NETWORK_NAME]];
-  console.log("Manager address:", managerAddress);
   const DAI_POOL_ADDRESSES = require(DEPLOYS_JSON["DAI_APYPoolTokenProxy"]);
   const daiPoolAddress = DAI_POOL_ADDRESSES[CHAIN_IDS[NETWORK_NAME]];
   console.log("DAI pool address:", daiPoolAddress);
@@ -81,14 +83,8 @@ async function main(argv) {
 
   const registry = await APYAddressRegistry.attach(proxy.address);
   await registry.registerMultipleAddresses(
-    ["manager", "chainlinkRegistry", "daiPool", "usdcPool", "usdtPool"],
-    [
-      managerAddress,
-      managerAddress,
-      daiPoolAddress,
-      usdcPoolAddress,
-      usdtPoolAddress,
-    ]
+    [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
+    [daiPoolAddress, usdcPoolAddress, usdtPoolAddress]
   );
 }
 

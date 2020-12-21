@@ -11,8 +11,9 @@ require("dotenv").config();
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
+const { assert } = require("chai");
 const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants.js");
-const { updateDeployJsons } = require("../utils/helpers.js");
+const { updateDeployJsons, bytes32 } = require("../utils/helpers.js");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -56,34 +57,47 @@ async function main(argv) {
   await updateDeployJsons(NETWORK_NAME, deploy_data);
 
   console.log("");
-  console.log("Set pools ...");
+  console.log("Set address registry ...");
   console.log("");
-  const DAI_POOL_ADDRESSES = require(DEPLOYS_JSON["DAI_APYPoolTokenProxy"]);
-  const daiPoolAddress = DAI_POOL_ADDRESSES[CHAIN_IDS[NETWORK_NAME]];
-  console.log("DAI pool address:", daiPoolAddress);
-  const USDC_POOL_ADDRESSES = require(DEPLOYS_JSON["USDC_APYPoolTokenProxy"]);
-  const usdcPoolAddress = USDC_POOL_ADDRESSES[CHAIN_IDS[NETWORK_NAME]];
-  console.log("USDC pool address:", usdcPoolAddress);
-  const USDT_POOL_ADDRESSES = require(DEPLOYS_JSON["USDT_APYPoolTokenProxy"]);
-  const usdtPoolAddress = USDT_POOL_ADDRESSES[CHAIN_IDS[NETWORK_NAME]];
-  console.log("USDT pool address:", usdtPoolAddress);
+  const ADDRESS_REGISTRY_ADDRESSES = require(DEPLOYS_JSON[
+    "APYAddressRegistryProxy"
+  ]);
+  const addressRegistryAddress =
+    ADDRESS_REGISTRY_ADDRESSES[CHAIN_IDS[NETWORK_NAME]];
+  console.log("Address registry address:", addressRegistryAddress);
 
   const manager = await ethers.getContractAt("APYManager", proxy.address);
+  await manager.setAddressRegistry(addressRegistryAddress);
+  await manager.setPoolIds([
+    bytes32("daiPool"),
+    bytes32("usdcPool"),
+    bytes32("usdtPool"),
+  ]);
 
-  await manager.setPool("daiPool", daiPoolAddress);
-  await manager.setPool("usdcPool", usdcPoolAddress);
-  await manager.setPool("usdtPool", usdtPoolAddress);
+  const registry = await ethers.getContractAt(
+    "APYAddressRegistry",
+    addressRegistryAddress
+  );
+  await registry.registerAddress(bytes32("manager"), manager.address);
+  assert.equal(
+    await registry.managerAddress(),
+    manager.address,
+    "Manager address is not registered correctly."
+  );
 
   console.log("");
   console.log("Set tokens ...");
   console.log("");
 
+  const daiPoolAddress = await registry.daiPoolAddress();
   const daiPool = await ethers.getContractAt("APYPoolToken", daiPoolAddress);
   const daiAddress = await daiPool.underlyer();
   console.log("DAI address:", daiAddress);
+  const usdcPoolAddress = await registry.usdcPoolAddress();
   const usdcPool = await ethers.getContractAt("APYPoolToken", usdcPoolAddress);
   const usdcAddress = await usdcPool.underlyer();
   console.log("USDC address:", usdcAddress);
+  const usdtPoolAddress = await registry.usdtPoolAddress();
   const usdtPool = await ethers.getContractAt("APYPoolToken", usdtPoolAddress);
   const usdtAddress = await usdtPool.underlyer();
   console.log("USDT address:", usdtAddress);
