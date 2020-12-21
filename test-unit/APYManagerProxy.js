@@ -5,7 +5,10 @@ const { expectRevert } = require("@openzeppelin/test-helpers");
 
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYManagerUpgraded = artifacts.require("APYManagerUpgraded");
-const APYManagerProxy = artifacts.require("APYManagerProxy");
+const TransparentUpgradeableProxy = artifacts.require(
+  "TransparentUpgradeableProxy"
+);
+const ProxyConstructorArg = artifacts.require("ProxyConstructorArg");
 const APYManager = artifacts.require("APYManager");
 
 contract("APYManagerProxy", async (accounts) => {
@@ -31,9 +34,17 @@ contract("APYManagerProxy", async (accounts) => {
   before(async () => {
     proxyAdmin = await ProxyAdmin.new({ from: deployer });
     logic = await APYManager.new({ from: deployer });
-    proxy = await APYManagerProxy.new(logic.address, proxyAdmin.address, {
-      from: deployer,
-    });
+    const encodedArg = await (await ProxyConstructorArg.new()).getEncodedArg(
+      proxyAdmin.address
+    );
+    proxy = await TransparentUpgradeableProxy.new(
+      logic.address,
+      proxyAdmin.address,
+      encodedArg,
+      {
+        from: deployer,
+      }
+    );
   });
 
   describe("ProxyAdmin defaults", async () => {
