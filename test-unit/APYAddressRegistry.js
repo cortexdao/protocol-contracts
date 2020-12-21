@@ -5,7 +5,10 @@ const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 
 const ProxyAdmin = artifacts.require("ProxyAdmin");
-const APYAddressRegistryProxy = artifacts.require("APYAddressRegistryProxy");
+const TransparentUpgradeableProxy = artifacts.require(
+  "TransparentUpgradeableProxy"
+);
+const ProxyConstructorArg = artifacts.require("ProxyConstructorArg");
 const APYAddressRegistry = artifacts.require("APYAddressRegistry");
 
 const bytes32 = ethers.utils.formatBytes32String;
@@ -33,9 +36,13 @@ contract("APYAddressRegistry", async (accounts) => {
   before(async () => {
     proxyAdmin = await ProxyAdmin.new({ from: deployer });
     logic = await APYAddressRegistry.new({ from: deployer });
-    proxy = await APYAddressRegistryProxy.new(
+    const encodedArg = await (await ProxyConstructorArg.new()).getEncodedArg(
+      proxyAdmin.address
+    );
+    proxy = await TransparentUpgradeableProxy.new(
       logic.address,
       proxyAdmin.address,
+      encodedArg,
       {
         from: deployer,
       }
@@ -45,10 +52,18 @@ contract("APYAddressRegistry", async (accounts) => {
 
   describe("Constructor", async () => {
     it("Revert when proxy admin is zero address", async () => {
+      const encodedArg = await (await ProxyConstructorArg.new()).getEncodedArg(
+        ZERO_ADDRESS
+      );
       await expectRevert.unspecified(
-        APYAddressRegistryProxy.new(logic.address, ZERO_ADDRESS, {
-          from: deployer,
-        })
+        TransparentUpgradeableProxy.new(
+          logic.address,
+          ZERO_ADDRESS,
+          encodedArg,
+          {
+            from: deployer,
+          }
+        )
       );
     });
   });
