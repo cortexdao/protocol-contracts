@@ -1,8 +1,10 @@
-const { artifacts } = require("hardhat");
+const { artifacts, ethers } = require("hardhat");
 const { ether, BN } = require("@openzeppelin/test-helpers");
 const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants.js");
 const fs = require("fs");
 const IMintableERC20 = artifacts.require("IMintableERC20");
+
+const bytes32 = ethers.utils.formatBytes32String;
 
 const dai = ether;
 
@@ -103,6 +105,7 @@ async function updateDeployJsons(network, deploy_data) {
 }
 
 module.exports = {
+  bytes32,
   dai,
   erc20,
   mintERC20Tokens,

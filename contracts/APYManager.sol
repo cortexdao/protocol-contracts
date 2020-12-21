@@ -65,6 +65,10 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
         _poolIds = poolIds;
     }
 
+    function getPoolIds() public view returns (bytes32[] memory) {
+        return _poolIds;
+    }
+
     /** @notice Returns the list of asset addresses.
      *  @dev Address list will be populated automatically from the set
      *       of input and output assets for each strategy.

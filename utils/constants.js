@@ -55,21 +55,25 @@ const TOKEN_AGG_MAP = {
   ],
 };
 const DEPLOYS_JSON = {
-  ProxyAdmin: "../deployed_addresses/ProxyAdminAddresses.json",
-  APYProxyAdmin: "../deployed_addresses/APYProxyAdminAddresses.json",
-  APYGovernanceToken: "../deployed_addresses/APYGovernanceTokenAddresses.json",
-  APYGovernanceTokenProxy:
-    "../deployed_addresses/APYGovernanceTokenProxyAddresses.json",
-  DAI_APYPoolToken: "../deployed_addresses/DAI_APYPoolTokenAddresses.json",
-  DAI_APYPoolTokenProxy:
-    "../deployed_addresses/DAI_APYPoolTokenProxyAddresses.json",
-  USDC_APYPoolToken: "../deployed_addresses/USDC_APYPoolTokenAddresses.json",
-  USDC_APYPoolTokenProxy:
-    "../deployed_addresses/USDC_APYPoolTokenProxyAddresses.json",
-  USDT_APYPoolToken: "../deployed_addresses/USDT_APYPoolTokenAddresses.json",
-  USDT_APYPoolTokenProxy:
-    "../deployed_addresses/USDT_APYPoolTokenProxyAddresses.json",
+  APYGovernanceTokenProxyAdmin:
+    "../deployed_addresses/APYGovernanceTokenProxyAdmin.json",
+  APYGovernanceToken: "../deployed_addresses/APYGovernanceToken.json",
+  APYGovernanceTokenProxy: "../deployed_addresses/APYGovernanceTokenProxy.json",
+  APYPoolTokenProxyAdmin: "../deployed_addresses/APYPoolTokenProxyAdmin.json",
+  DAI_APYPoolToken: "../deployed_addresses/DAI_APYPoolToken.json",
+  DAI_APYPoolTokenProxy: "../deployed_addresses/DAI_APYPoolTokenProxy.json",
+  USDC_APYPoolToken: "../deployed_addresses/USDC_APYPoolToken.json",
+  USDC_APYPoolTokenProxy: "../deployed_addresses/USDC_APYPoolTokenProxy.json",
+  USDT_APYPoolToken: "../deployed_addresses/USDT_APYPoolToken.json",
+  USDT_APYPoolTokenProxy: "../deployed_addresses/USDT_APYPoolTokenProxy.json",
   APYRewardDistributor: "../deployed_addresses/APYRewardDistributor.json",
+  APYAddressRegistryProxyAdmin:
+    "../deployed_addresses/APYAddressRegistryProxyAdmin.json",
+  APYAddressRegistry: "../deployed_addresses/APYAddressRegistry.json",
+  APYAddressRegistryProxy: "../deployed_addresses/APYAddressRegistryProxy.json",
+  APYManagerProxyAdmin: "../deployed_addresses/APYManagerProxyAdmin.json",
+  APYManager: "../deployed_addresses/APYManager.json",
+  APYManagerProxy: "../deployed_addresses/APYManagerProxy.json",
 };
 
 module.exports = {
