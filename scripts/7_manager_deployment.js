@@ -57,7 +57,7 @@ async function main(argv) {
   await updateDeployJsons(NETWORK_NAME, deploy_data);
 
   console.log("");
-  console.log("Set address registry ...");
+  console.log("Set address registry and pool IDs ...");
   console.log("");
   const ADDRESS_REGISTRY_ADDRESSES = require(DEPLOYS_JSON[
     "APYAddressRegistryProxy"
@@ -74,6 +74,9 @@ async function main(argv) {
     bytes32("usdtPool"),
   ]);
 
+  console.log("");
+  console.log("Register addresses for manager and chainlink registry ...");
+  console.log("");
   const registry = await ethers.getContractAt(
     "APYAddressRegistry",
     addressRegistryAddress
@@ -83,6 +86,12 @@ async function main(argv) {
     await registry.managerAddress(),
     manager.address,
     "Manager address is not registered correctly."
+  );
+  await registry.registerAddress(bytes32("chainlinkRegistry"), manager.address);
+  assert.equal(
+    await registry.chainlinkRegistryAddress(),
+    manager.address,
+    "Chainlink registry address is not registered correctly."
   );
 
   console.log("");

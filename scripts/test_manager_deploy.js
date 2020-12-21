@@ -12,6 +12,7 @@ const { ethers, network } = require("hardhat");
 const { argv } = require("yargs");
 const { assert, expect } = require("chai");
 const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants.js");
+const { bytes32 } = require("../utils/helpers.js");
 
 const PROXY_ADMIN_ADDRESSES = require(DEPLOYS_JSON["APYManagerProxyAdmin"]);
 const PROXY_ADDRESSES = require(DEPLOYS_JSON["APYManagerProxy"]);
@@ -53,44 +54,53 @@ const main = async (argv) => {
   //    b. set in logic contract's portion of storage, to protect the initializer
   // 2. check logic address is set on the proxy
   console.log(
-    "Check admin address set in both unstructured and structured storage..."
+    "Check admin address set in both unstructured and structured storage ..."
   );
   expect(await admin.getProxyAdmin(manager.address)).to.equal(admin.address);
   expect(await manager.proxyAdmin()).to.equal(admin.address);
-  console.log("Check logic address is set on proxy...");
+  console.log("... done.");
+
+  console.log("Check logic address is set on proxy ...");
   const MANAGER_ADDRESSES = require(DEPLOYS_JSON["APYManager"]);
   expect(await admin.getProxyImplementation(manager.address)).to.equal(
     MANAGER_ADDRESSES[CHAIN_IDS[NETWORK_NAME]]
   );
+  console.log("... done.");
 
-  console.log("Check logic is accessible through the proxy...");
+  console.log("Check pool IDs ...");
+
+  assert.deepEqual(await manager.getPoolIds(), [
+    bytes32("daiPool"),
+    bytes32("usdcPool"),
+    bytes32("usdtPool"),
+  ]);
+  console.log("... done.");
+
+  console.log("");
+  console.log("Check token addresses ...");
+  console.log("");
+
   const tokenAddresses = await manager.getTokenAddresses();
   assert.lengthOf(tokenAddresses, 3);
-  const poolName_0 = await manager.poolNames(0);
-  const poolName_1 = await manager.poolNames(1);
-  const poolName_2 = await manager.poolNames(2);
-  const poolAddress_0 = await manager.pools(poolName_0);
-  const poolAddress_1 = await manager.pools(poolName_1);
-  const poolAddress_2 = await manager.pools(poolName_2);
 
+  for (const tokenAddress of tokenAddresses) {
+    console.log("Address:", tokenAddress);
+    let token = await ethers.getContractAt("IDetailedERC20", tokenAddress);
+    console.log("Symbol:", await token.symbol());
+  }
   console.log("");
-  console.log("Token addresses:", tokenAddresses);
-  console.log("");
+  console.log("... done.");
 
-  let pool = await ethers.getContractAt("APYPoolToken", poolAddress_0);
-  let underlyer = await pool.underlyer();
-  let token = await ethers.getContractAt("IDetailedERC20", underlyer);
-  console.log("Token symbol:", await token.symbol());
-
-  pool = await ethers.getContractAt("APYPoolToken", poolAddress_1);
-  underlyer = await pool.underlyer();
-  token = await ethers.getContractAt("IDetailedERC20", underlyer);
-  console.log("Token symbol:", await token.symbol());
-
-  pool = await ethers.getContractAt("APYPoolToken", poolAddress_2);
-  underlyer = await pool.underlyer();
-  token = await ethers.getContractAt("IDetailedERC20", underlyer);
-  console.log("Token symbol:", await token.symbol());
+  console.log("Check address registry ...");
+  const registryAddress = await manager.addressRegistry();
+  assert.ok(registryAddress);
+  console.log("Address registry:", registryAddress);
+  const registry = await ethers.getContractAt(
+    "APYAddressRegistry",
+    registryAddress
+  );
+  assert.equal(await registry.managerAddress(), manager.address);
+  console.log("... done.");
 };
 
 if (!module.parent) {

@@ -58,45 +58,54 @@ const main = async (argv) => {
   );
   expect(await admin.getProxyAdmin(registry.address)).to.equal(admin.address);
   expect(await registry.proxyAdmin()).to.equal(admin.address);
+  console.log("... done.");
+
   console.log("Check logic address is set on proxy...");
   const REGISTRY_ADDRESSES = require(DEPLOYS_JSON["APYAddressRegistry"]);
   expect(await admin.getProxyImplementation(registry.address)).to.equal(
     REGISTRY_ADDRESSES[CHAIN_IDS[NETWORK_NAME]]
   );
+  console.log("... done.");
 
-  console.log("Check logic is accessible through the proxy...");
+  console.log("Check logic is accessible through the proxy ...");
+  // use registry functions to get addresses, which we'll
+  // check below in subsequent tests.
   const managerAddress = await registry.managerAddress();
   const chainlinkRegistryAddress = await registry.chainlinkRegistryAddress();
   const daiPoolAddress = await registry.daiPoolAddress();
   const usdcPoolAddress = await registry.usdcPoolAddress();
   const usdtPoolAddress = await registry.usdtPoolAddress();
+  console.log("... done.");
 
-  console.log("Check manager address is correct...");
+  console.log("Check manager address is correct ...");
   const manager = await ethers.getContractAt("APYManager", managerAddress);
-  assert.equal(await manager.poolNames(0), "daiPool");
-  assert.equal(await manager.poolNames(1), "usdcPool");
-  assert.equal(await manager.poolNames(2), "usdtPool");
+  assert.isNotEmpty(await manager.getPoolIds());
+  console.log("... done.");
 
-  console.log("Check chainlink registry address is the same as manager...");
+  console.log("Check chainlink registry address is the same as manager ...");
   expect(managerAddress).to.equal(chainlinkRegistryAddress);
+  console.log("... done.");
 
-  console.log("Check DAI pool address is correct...");
+  console.log("Check DAI pool address is correct ...");
   const daiPool = await ethers.getContractAt("APYPoolToken", daiPoolAddress);
   const daiAddress = await daiPool.underlyer();
   const dai = await ethers.getContractAt("IDetailedERC20", daiAddress);
   expect(await dai.symbol()).to.equal("DAI");
+  console.log("... done.");
 
-  console.log("Check USDC pool address is correct...");
+  console.log("Check USDC pool address is correct ...");
   const usdcPool = await ethers.getContractAt("APYPoolToken", usdcPoolAddress);
   const usdcAddress = await usdcPool.underlyer();
   const usdc = await ethers.getContractAt("IDetailedERC20", usdcAddress);
   expect(await usdc.symbol()).to.equal("USDC");
+  console.log("... done.");
 
-  console.log("Check USDT pool address is correct...");
+  console.log("Check USDT pool address is correct ...");
   const usdtPool = await ethers.getContractAt("APYPoolToken", usdtPoolAddress);
   const usdtAddress = await usdtPool.underlyer();
   const usdt = await ethers.getContractAt("IDetailedERC20", usdtAddress);
   expect(await usdt.symbol()).to.equal("USDT");
+  console.log("... done.");
 };
 
 if (!module.parent) {
