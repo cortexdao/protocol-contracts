@@ -3,7 +3,6 @@ pragma solidity 0.6.11;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAddressRegistry.sol";
@@ -129,7 +128,7 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
         view
         returns (string memory)
     {
-        return ERC20UpgradeSafe(token).symbol();
+        return IDetailedERC20(token).symbol();
     }
 
     /**
@@ -137,19 +136,22 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
      * @param poolAddress The address for the selected pool.
      */
     function pushFunds(address payable poolAddress) external onlyOwner {
-        APYPoolToken pool = APYPoolToken(poolAddress);
-        uint256 mAptAmount = mApt.balanceOf(address(pool));
-        mApt.burn(msg.sender, mAptAmount);
+        uint256 mAptAmount = mApt.balanceOf(poolAddress);
 
+        APYPoolToken pool = APYPoolToken(poolAddress);
         uint256 tokenEthPrice = pool.getTokenEthPrice();
         IDetailedERC20 poolUnderlyer = pool.underlyer();
         uint8 decimals = poolUnderlyer.decimals();
+
         uint256 poolAmount = mApt.calculatePoolAmount(
             mAptAmount,
             tokenEthPrice,
             decimals
         );
-        poolUnderlyer.transfer(address(pool), poolAmount);
+        // Burn must happen after pool amount calc, as quantities
+        // being compared are post-deposit amounts.
+        mApt.burn(poolAddress, mAptAmount);
+        poolUnderlyer.safeTransfer(address(pool), poolAmount);
     }
 
     /**

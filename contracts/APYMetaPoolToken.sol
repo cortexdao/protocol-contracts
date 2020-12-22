@@ -144,7 +144,7 @@ contract APYMetaPoolToken is
     }
 
     /** @notice Calculate amount in pool's underlyer token from given mAPT amount.
-     *  @param actAmount mAPT amount to be converted
+     *  @param mAptAmount mAPT amount to be converted
      *  @param tokenEthPrice Pool underlyer's ETH price (in wei) per underlyer token
      *  @param decimals Pool underlyer's number of decimals
      *  @dev Price parameter is in units of wei per token ("big" unit), since
@@ -154,12 +154,12 @@ contract APYMetaPoolToken is
      *       multiplication in the calculation.
      */
     function calculatePoolAmount(
-        uint256 actAmount,
+        uint256 mAptAmount,
         uint256 tokenEthPrice,
         uint256 decimals
     ) public view returns (uint256) {
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        uint256 poolEthValue = actAmount.mul(getTVL()).div(totalSupply());
+        uint256 poolEthValue = mAptAmount.mul(getTVL()).div(totalSupply());
         uint256 poolAmount = poolEthValue.mul(10**decimals).div(tokenEthPrice);
         return poolAmount;
     }
