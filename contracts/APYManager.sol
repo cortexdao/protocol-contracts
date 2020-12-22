@@ -171,6 +171,6 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
             tokenEthPrice,
             decimals
         );
-        mApt.mint(msg.sender, mintAmount);
+        mApt.mint(poolAddress, mintAmount);
     }
 }
