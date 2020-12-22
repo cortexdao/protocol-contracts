@@ -11,7 +11,6 @@ require("dotenv").config();
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const { assert } = require("chai");
 const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants.js");
 const { updateDeployJsons, bytes32 } = require("../utils/helpers.js");
 
@@ -105,28 +104,13 @@ async function main(argv) {
   ]);
 
   console.log("");
-  console.log("Register addresses for manager and chainlink registry ...");
+  console.log("Set tokens ...");
   console.log("");
+
   const registry = await ethers.getContractAt(
     "APYAddressRegistry",
     addressRegistryAddress
   );
-  await registry.registerAddress(bytes32("manager"), manager.address);
-  assert.equal(
-    await registry.managerAddress(),
-    manager.address,
-    "Manager address is not registered correctly."
-  );
-  await registry.registerAddress(bytes32("chainlinkRegistry"), manager.address);
-  assert.equal(
-    await registry.chainlinkRegistryAddress(),
-    manager.address,
-    "Chainlink registry address is not registered correctly."
-  );
-
-  console.log("");
-  console.log("Set tokens ...");
-  console.log("");
 
   const daiPoolAddress = await registry.daiPoolAddress();
   const daiPool = await ethers.getContractAt("APYPoolToken", daiPoolAddress);
