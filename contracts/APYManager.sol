@@ -56,6 +56,10 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
     /// @dev Allow contract to receive Ether.
     receive() external payable {} // solhint-disable-line no-empty-blocks
 
+    function setMetaPoolToken(address payable _mApt) public onlyOwner {
+        mApt = APYMetaPoolToken(_mApt);
+    }
+
     function setAddressRegistry(address _addressRegistry) public onlyOwner {
         require(_addressRegistry != address(0), "Invalid address");
         addressRegistry = IAddressRegistry(_addressRegistry);
