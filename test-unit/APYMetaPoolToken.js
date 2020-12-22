@@ -198,8 +198,8 @@ contract("APYMetaPoolToken", async (accounts) => {
       await mockTvlAgg.givenAnyReturn(returnData);
 
       const depositAmount = erc20(100);
-      const tokenEthPrice = 1602950450000000;
-      const decimals = 18;
+      const tokenEthPrice = new BN("1602950450000000");
+      const decimals = new BN("18");
       await token.calculateMintAmount(depositAmount, tokenEthPrice, decimals);
     });
 

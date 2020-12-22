@@ -23,7 +23,7 @@ contract APYMetaPoolToken is
 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
-    uint256 public constant DEFAULT_ACT_TO_UNDERLYER_FACTOR = 1000;
+    uint256 public constant DEFAULT_MAPT_TO_UNDERLYER_FACTOR = 1000;
 
     /* ------------------------------- */
     /* impl-specific storage variables */
@@ -113,7 +113,7 @@ contract APYMetaPoolToken is
     function calculateMintAmount(
         uint256 depositAmount,
         uint256 tokenEthPrice,
-        uint8 decimals
+        uint256 decimals
     ) public view returns (uint256) {
         uint256 depositValue = depositAmount.mul(tokenEthPrice).div(
             10**decimals
@@ -137,7 +137,7 @@ contract APYMetaPoolToken is
         uint256 totalSupply = totalSupply();
 
         if (totalValue == 0 || totalSupply == 0) {
-            return depositValue.mul(DEFAULT_ACT_TO_UNDERLYER_FACTOR);
+            return depositValue.mul(DEFAULT_MAPT_TO_UNDERLYER_FACTOR);
         }
 
         return (depositValue.mul(totalSupply)).div(totalValue);
