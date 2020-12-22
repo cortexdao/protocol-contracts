@@ -3,19 +3,17 @@ pragma solidity 0.6.11;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAddressRegistry.sol";
+import "./interfaces/IDetailedERC20.sol";
 import "./APYPoolToken.sol";
 import "./APYMetaPoolToken.sol";
-import "./interfaces/IDetailedERC20.sol";
 
 contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
     using SafeMath for uint256;
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IDetailedERC20;
 
     /* ------------------------------- */
     /* impl-specific storage variables */
@@ -114,7 +112,7 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
      *       as their funds will not be tokenized into mAPT.
      */
     function balanceOf(address token) external override view returns (uint256) {
-        IERC20 erc20 = IERC20(token);
+        IDetailedERC20 erc20 = IDetailedERC20(token);
         uint256 balance = 0;
         for (uint256 i = 0; i < _poolIds.length; i++) {
             address pool = addressRegistry.getAddress(_poolIds[i]);
@@ -135,7 +133,7 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
     }
 
     /**
-     * @notice Redeems ACT amount for the pool into its underlyer token.
+     * @notice Redeems mAPT amount for the pool into its underlyer token.
      * @param poolAddress The address for the selected pool.
      */
     function pushFunds(address payable poolAddress) external onlyOwner {
@@ -150,8 +148,8 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
     }
 
     /**
-     * @notice Mint corresponding amount of ACT tokens for pulled amount.
-     * @dev If no ACT tokens have been minted yet, fallback to a fixed ratio.
+     * @notice Mint corresponding amount of mAPT tokens for pulled amount.
+     * @dev If no mAPT tokens have been minted yet, fallback to a fixed ratio.
      */
     function pullFunds(address payable poolAddress) external onlyOwner {
         APYPoolToken pool = APYPoolToken(poolAddress);
@@ -159,8 +157,8 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
         uint256 drainedValue = pool.getEthValueFromTokenAmount(drainedAmount);
 
         uint256 tokenEthPrice = pool.getTokenEthPrice();
-        address poolUnderlyer = address(pool.underlyer());
-        uint8 decimals = ERC20UpgradeSafe(poolUnderlyer).decimals();
+        IDetailedERC20 poolUnderlyer = pool.underlyer();
+        uint8 decimals = poolUnderlyer.decimals();
         uint256 mintAmount = mApt.calculateMintAmount(
             drainedValue,
             tokenEthPrice,
