@@ -156,21 +156,24 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
 
     /**
      * @notice Mint corresponding amount of mAPT tokens for pulled amount.
-     * @dev If no mAPT tokens have been minted yet, fallback to a fixed ratio.
+     * @dev Pool must approve manager to transfer its underlyer token.
      */
     function pullFunds(address payable poolAddress) external onlyOwner {
         APYPoolToken pool = APYPoolToken(poolAddress);
-        uint256 drainedAmount = pool.drain();
-        uint256 drainedValue = pool.getEthValueFromTokenAmount(drainedAmount);
+        IDetailedERC20 underlyer = pool.underlyer();
+        uint256 poolAmount = underlyer.balanceOf(poolAddress);
+        uint256 poolValue = pool.getEthValueFromTokenAmount(poolAmount);
 
         uint256 tokenEthPrice = pool.getTokenEthPrice();
         IDetailedERC20 poolUnderlyer = pool.underlyer();
         uint8 decimals = poolUnderlyer.decimals();
         uint256 mintAmount = mApt.calculateMintAmount(
-            drainedValue,
+            poolValue,
             tokenEthPrice,
             decimals
         );
+
         mApt.mint(poolAddress, mintAmount);
+        underlyer.safeTransferFrom(poolAddress, address(this), poolAmount);
     }
 }

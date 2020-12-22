@@ -12,11 +12,9 @@ import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/ILiquidityPool.sol";
 import "./interfaces/IDetailedERC20.sol";
-import "./interfaces/IManagedPool.sol";
 
 contract APYPoolToken is
     ILiquidityPool,
-    IManagedPool,
     Initializable,
     OwnableUpgradeSafe,
     ReentrancyGuardUpgradeSafe,
@@ -35,7 +33,6 @@ contract APYPoolToken is
     bool public redeemLock;
     IDetailedERC20 public underlyer;
     AggregatorV3Interface public priceAgg;
-    address public override manager;
 
     /* ------------------------------- */
 
@@ -271,23 +268,16 @@ contract APYPoolToken is
         return getTokenAmountFromEthValue(getAPTEthValue(aptAmount));
     }
 
-    /**
-     * @notice Pulls underlyer balance, sending it to the sender (manager).
-     */
-    function drain()
+    function infiniteApprove(address delegate)
         external
-        override
         nonReentrant
         whenNotPaused
-        returns (uint256)
+        onlyOwner
     {
-        require(manager == msg.sender, "ONLY_MANAGER");
+        underlyer.approve(delegate, type(uint256).max);
+    }
 
-        uint256 poolUnderlyerBalance = underlyer.balanceOf(address(this));
-        underlyer.safeTransfer(msg.sender, poolUnderlyerBalance);
-
-        emit PoolDrained(underlyer, poolUnderlyerBalance);
-
-        return poolUnderlyerBalance;
+    function revokeApprove(address delegate) external nonReentrant onlyOwner {
+        underlyer.approve(delegate, 0);
     }
 }
