@@ -1,11 +1,21 @@
-const { assert } = require("chai");
-const { artifacts, contract } = require("hardhat");
+const { assert, expect } = require("chai");
+const { artifacts, contract, ethers, web3 } = require("hardhat");
 const { expectRevert } = require("@openzeppelin/test-helpers");
 const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
+
 const ProxyAdmin = artifacts.require("ProxyAdmin");
-const APYManagerProxy = artifacts.require("APYManagerProxy");
+const TransparentUpgradeableProxy = artifacts.require(
+  "TransparentUpgradeableProxy"
+);
+const ProxyConstructorArg = artifacts.require("ProxyConstructorArg");
 const APYManager = artifacts.require("APYManager");
+const IDetailedERC20 = new ethers.utils.Interface(
+  artifacts.require("IDetailedERC20").abi
+);
+const MockContract = artifacts.require("MockContract");
+
+const bytes32 = ethers.utils.formatBytes32String;
 
 contract("APYManager", async (accounts) => {
   const [deployer, admin, randomUser] = accounts;
@@ -30,18 +40,34 @@ contract("APYManager", async (accounts) => {
   before(async () => {
     proxyAdmin = await ProxyAdmin.new({ from: deployer });
     logic = await APYManager.new({ from: deployer });
-    proxy = await APYManagerProxy.new(logic.address, proxyAdmin.address, {
-      from: deployer,
-    });
+    const encodedArg = await (await ProxyConstructorArg.new()).getEncodedArg(
+      proxyAdmin.address
+    );
+    proxy = await TransparentUpgradeableProxy.new(
+      logic.address,
+      proxyAdmin.address,
+      encodedArg,
+      {
+        from: deployer,
+      }
+    );
     manager = await APYManager.at(proxy.address);
   });
 
   describe("Test Constructor", async () => {
     it("Revert when proxy admin is zero address", async () => {
+      const encodedArg = await (await ProxyConstructorArg.new()).getEncodedArg(
+        ZERO_ADDRESS
+      );
       await expectRevert.unspecified(
-        APYManagerProxy.new(logic.address, ZERO_ADDRESS, {
-          from: deployer,
-        })
+        TransparentUpgradeableProxy.new(
+          logic.address,
+          ZERO_ADDRESS,
+          encodedArg,
+          {
+            from: deployer,
+          }
+        )
       );
     });
   });
@@ -49,10 +75,6 @@ contract("APYManager", async (accounts) => {
   describe("Defaults", async () => {
     it("Owner is set to deployer", async () => {
       assert.equal(await manager.owner(), deployer);
-    });
-
-    it("Revert when ETH is sent", async () => {
-      await expectRevert(manager.send(10), "DONT_SEND_ETHER");
     });
   });
 
@@ -72,6 +94,62 @@ contract("APYManager", async (accounts) => {
       await expectRevert.unspecified(
         manager.setAdminAddress(ZERO_ADDRESS, { from: deployer })
       );
+    });
+  });
+
+  describe("Asset allocation", async () => {
+    describe("Temporary implementation for Chainlink", async () => {
+      it("Set and get token addresses", async () => {
+        assert.isEmpty(await manager.getTokenAddresses());
+
+        const FAKE_ADDRESS_1 = web3.utils.toChecksumAddress(
+          "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+        );
+        const FAKE_ADDRESS_2 = web3.utils.toChecksumAddress(
+          "0xBAADC0FFEEBAADC0FFEEBAADC0FFEEBAADC0FFEE"
+        );
+        const tokenAddresses = [FAKE_ADDRESS_1, FAKE_ADDRESS_2];
+        await manager.setTokenAddresses(tokenAddresses);
+        assert.deepEqual(await manager.getTokenAddresses(), tokenAddresses);
+      });
+
+      it("deleteTokenAddresses", async () => {
+        const FAKE_ADDRESS_1 = web3.utils.toChecksumAddress(
+          "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+        );
+        const FAKE_ADDRESS_2 = web3.utils.toChecksumAddress(
+          "0xBAADC0FFEEBAADC0FFEEBAADC0FFEEBAADC0FFEE"
+        );
+        const tokenAddresses = [FAKE_ADDRESS_1, FAKE_ADDRESS_2];
+        await manager.setTokenAddresses(tokenAddresses);
+
+        await manager.deleteTokenAddresses();
+        assert.isEmpty(await manager.getTokenAddresses());
+      });
+
+      it("balanceOf", async () => {
+        const mockRegistry = await MockContract.new();
+        await manager.setAddressRegistry(mockRegistry.address);
+        await manager.setPoolIds([bytes32("pool 1"), bytes32("pool 2")]);
+
+        const mockToken = await MockContract.new();
+        const balanceOf = IDetailedERC20.encodeFunctionData("balanceOf", [
+          ZERO_ADDRESS,
+        ]);
+        await mockToken.givenMethodReturnUint(balanceOf, 1);
+
+        const balance = await manager.balanceOf(mockToken.address);
+        expect(balance).to.bignumber.equal("2");
+      });
+
+      it("symbolOf", async () => {
+        const mockToken = await MockContract.new();
+        const symbol = IDetailedERC20.encodeFunctionData("symbol", []);
+        const mockString = web3.eth.abi.encodeParameter("string", "MOCK");
+        await mockToken.givenMethodReturn(symbol, mockString);
+
+        assert.equal(await manager.symbolOf(mockToken.address), "MOCK");
+      });
     });
   });
 });

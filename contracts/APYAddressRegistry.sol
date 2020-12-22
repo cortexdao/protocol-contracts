@@ -4,18 +4,24 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
+import "./interfaces/IAddressRegistry.sol";
 
-contract APYAddressRegistry is Initializable, OwnableUpgradeSafe {
+contract APYAddressRegistry is
+    Initializable,
+    OwnableUpgradeSafe,
+    IAddressRegistry
+{
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
     address public proxyAdmin;
-    mapping(string => address) internal _addresses;
+    bytes32[] internal _idList;
+    mapping(bytes32 => address) internal _idToAddress;
 
     /* ------------------------------- */
 
     event AdminChanged(address);
-    event AddressRegistered(string name, address _address);
+    event AddressRegistered(bytes32 id, address _address);
 
     function initialize(address adminAddress) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");
@@ -46,32 +52,34 @@ contract APYAddressRegistry is Initializable, OwnableUpgradeSafe {
         revert("DONT_SEND_ETHER");
     }
 
-    function registerAddress(string memory name, address _address)
-        public
-        onlyOwner
-    {
+    function getIds() public override view returns (bytes32[] memory) {
+        return _idList;
+    }
+
+    function registerAddress(bytes32 id, address _address) public onlyOwner {
         require(_address != address(0), "Invalid address");
-        _addresses[name] = _address;
-        emit AddressRegistered(name, _address);
+        if (_idToAddress[id] == address(0)) {
+            // id wasn't registered before, so add it to the list
+            _idList.push(id);
+        }
+        _idToAddress[id] = _address;
+        emit AddressRegistered(id, _address);
     }
 
     function registerMultipleAddresses(
-        string[] calldata names,
+        bytes32[] calldata ids,
         address[] calldata addresses
     ) external onlyOwner {
-        require(
-            names.length == addresses.length,
-            "Inputs have differing length"
-        );
-        for (uint256 i = 0; i < names.length; i++) {
-            string memory name = names[i];
+        require(ids.length == addresses.length, "Inputs have differing length");
+        for (uint256 i = 0; i < ids.length; i++) {
+            bytes32 id = ids[i];
             address _address = addresses[i];
-            registerAddress(name, _address);
+            registerAddress(id, _address);
         }
     }
 
-    function getAddress(string memory name) public view returns (address) {
-        address _address = _addresses[name];
+    function getAddress(bytes32 id) public override view returns (address) {
+        address _address = _idToAddress[id];
         require(_address != address(0), "Missing address");
         return _address;
     }

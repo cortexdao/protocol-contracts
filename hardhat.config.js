@@ -39,9 +39,11 @@ module.exports = {
   },
   solidity: {
     version: "0.6.11",
-    optimizer: {
-      enabled: true,
-      runs: 999999,
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 999999,
+      },
     },
   },
   mocha: {

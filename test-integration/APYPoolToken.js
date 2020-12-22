@@ -14,7 +14,7 @@ const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYPoolTokenProxy = artifacts.require("APYPoolTokenProxy");
 const APYPoolToken = artifacts.require("APYPoolToken");
 const AGG = artifacts.require("AggregatorV3Interface.sol");
-const ERC20 = artifacts.require("ERC20");
+const IDetailedERC20 = artifacts.require("IDetailedERC20");
 
 async function formattedAmount(token, value) {
   const decimals = await token.decimals.call();
@@ -22,7 +22,8 @@ async function formattedAmount(token, value) {
 }
 
 async function acquireToken(fundAccount, receiver, token, amount) {
-  // NOTE: Ganache is setup to control the WHALE addresses. This method moves requeted funds out of the fund account and into the specified wallet
+  /* NOTE: Ganache is setup to control "whale" addresses. This method moves
+  requested funds out of the fund account and into the specified wallet */
 
   // fund the account with ETH so it can move funds
   await web3.eth.sendTransaction({
@@ -54,7 +55,9 @@ contract("APYPoolToken Integration Test USDC", async (accounts) => {
   let usdcBalBefore;
 
   before("Setup", async () => {
-    USDC = await ERC20.at("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
+    USDC = await IDetailedERC20.at(
+      "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+    );
     USDC_AGG = await AGG.at("0x986b5E1e1755e3C2440e960477f25201B0a8bbD4");
 
     proxyAdmin = await ProxyAdmin.new({ from: owner });
@@ -320,7 +323,7 @@ contract("APYPoolToken Integration Test DAI", async (accounts) => {
   let daiBalBefore;
 
   before("Setup", async () => {
-    DAI = await ERC20.at("0x6B175474E89094C44Da98b954EedeAC495271d0F");
+    DAI = await IDetailedERC20.at("0x6B175474E89094C44Da98b954EedeAC495271d0F");
     DAI_AGG = await AGG.at("0x773616E4d11A78F511299002da57A0a94577F1f4");
 
     proxyAdmin = await ProxyAdmin.new({ from: owner });
@@ -586,7 +589,9 @@ contract("APYPoolToken Integration Test USDT", async (accounts) => {
   let usdtBalBefore;
 
   before("Setup", async () => {
-    USDT = await ERC20.at("0xdAC17F958D2ee523a2206206994597C13D831ec7");
+    USDT = await IDetailedERC20.at(
+      "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+    );
     USDT_AGG = await AGG.at("0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46");
 
     proxyAdmin = await ProxyAdmin.new({ from: owner });

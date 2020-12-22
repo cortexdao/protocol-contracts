@@ -4,7 +4,7 @@
  * $ yarn buidler --network <network name> run test-deploy/test_deploy.js
  */
 require("dotenv").config();
-const { ethers, artifacts } = require("@nomiclabs/buidler");
+const { ethers, artifacts, network } = require("@nomiclabs/buidler");
 const ERC20 = artifacts.require("ERC20");
 
 const { expect } = require("chai");
@@ -13,8 +13,7 @@ const {
   DEPLOYS_JSON,
   TOKEN_AGG_MAP,
 } = require("../utils/constants.js");
-const { erc20 } = require("../utils/helpers.js");
-const PROXY_ADMIN_ADDRESSES = require(DEPLOYS_JSON["ProxyAdmin"]);
+const PROXY_ADMIN_ADDRESSES = require(DEPLOYS_JSON["APYPoolTokenProxyAdmin"]);
 
 const main = async () => {
   const NETWORK_NAME = network.name.toUpperCase();
@@ -22,7 +21,6 @@ const main = async () => {
   console.log(`${NETWORK_NAME} selected`);
   console.log("");
 
-  const provider = ethers.provider;
   const signers = await ethers.getSigners();
   const deployer = signers[0];
   console.log("Account 0 (deployer):", await deployer.getAddress());
@@ -36,7 +34,7 @@ const main = async () => {
     PROXY_ADMIN_ADDRESSES[CHAIN_IDS[NETWORK_NAME]]
   );
 
-  for ({ symbol } of TOKEN_AGG_MAP[NETWORK_NAME]) {
+  for (const { symbol } of TOKEN_AGG_MAP[NETWORK_NAME]) {
     console.log("");
     console.log(`Start tests for ${symbol}`);
     console.log("");

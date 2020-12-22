@@ -1,4 +1,5 @@
 require("dotenv").config();
+const { artifacts, ethers, network } = require("hardhat");
 const {
   CHAIN_IDS,
   DEPLOYS_JSON,
@@ -6,7 +7,7 @@ const {
 } = require("../utils/constants.js");
 const { updateDeployJsons } = require("../utils/helpers.js");
 
-const PROXY_ADMIN_ADDRESSES = require(DEPLOYS_JSON["ProxyAdmin"]);
+const PROXY_ADMIN_ADDRESSES = require(DEPLOYS_JSON["APYPoolTokenProxyAdmin"]);
 
 const ContractData = artifacts.require("APYPoolToken");
 
@@ -24,7 +25,7 @@ async function main() {
     PROXY_ADMIN_ADDRESSES[CHAIN_IDS[NETWORK_NAME]]
   );
 
-  for ({ symbol } of TOKEN_AGG_MAP[NETWORK_NAME]) {
+  for (const { symbol } of TOKEN_AGG_MAP[NETWORK_NAME]) {
     const newLogic = await APYPoolToken.deploy();
     await newLogic.deployed();
     console.log(`New Implementation Logic: ${newLogic.address}`);

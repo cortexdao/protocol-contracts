@@ -1,14 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.11;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./IDetailedERC20.sol";
+import "./IMintable.sol";
 
-interface IMintableERC20 is IERC20 {
-    function mint(address account, uint256 amount) external;
+// solhint-disable no-empty-blocks
+interface IMintableERC20 is IDetailedERC20, IMintable {
 
-    function name() external view returns (string memory);
-
-    function symbol() external view returns (string memory);
-
-    function decimals() external view returns (uint8);
 }

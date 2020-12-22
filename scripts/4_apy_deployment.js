@@ -26,7 +26,7 @@ async function main() {
 
   const proxyAdmin = await ProxyAdmin.deploy();
   await proxyAdmin.deployed();
-  deploy_data["APYProxyAdmin"] = proxyAdmin.address;
+  deploy_data["APYGovernanceTokenProxyAdmin"] = proxyAdmin.address;
   console.log(`ProxyAdmin: ${proxyAdmin.address}`);
 
   const logic = await APYGovernanceToken.deploy();

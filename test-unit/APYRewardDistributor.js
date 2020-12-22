@@ -9,7 +9,9 @@ const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const timeMachine = require("ganache-time-traveler");
 const MockContract = artifacts.require("MockContract");
 const ERC20 = new ethers.utils.Interface(
-  artifacts.require("@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20").abi
+  artifacts.require(
+    "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol:ERC20UpgradeSafe"
+  ).abi
 );
 const APYRewardDistributor = artifacts.require("APYRewardDistributor");
 const SIGNER = "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1";

@@ -7,7 +7,10 @@ const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYAddressRegistryUpgraded = artifacts.require(
   "APYAddressRegistryUpgraded"
 );
-const APYAddressRegistryProxy = artifacts.require("APYAddressRegistryProxy");
+const TransparentUpgradeableProxy = artifacts.require(
+  "TransparentUpgradeableProxy"
+);
+const ProxyConstructorArg = artifacts.require("ProxyConstructorArg");
 const APYAddressRegistry = artifacts.require("APYAddressRegistry");
 
 contract("APYAddressRegistryProxy", async (accounts) => {
@@ -33,9 +36,13 @@ contract("APYAddressRegistryProxy", async (accounts) => {
   before(async () => {
     proxyAdmin = await ProxyAdmin.new({ from: deployer });
     logic = await APYAddressRegistry.new({ from: deployer });
-    proxy = await APYAddressRegistryProxy.new(
+    const encodedArg = await (await ProxyConstructorArg.new()).getEncodedArg(
+      proxyAdmin.address
+    );
+    proxy = await TransparentUpgradeableProxy.new(
       logic.address,
       proxyAdmin.address,
+      encodedArg,
       {
         from: deployer,
       }
