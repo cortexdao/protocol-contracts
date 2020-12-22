@@ -6,7 +6,7 @@ const { expectEvent } = require("@openzeppelin/test-helpers");
 const legos = require("defi-legos");
 
 contract("Test GenericExecutor", async () => {
-  it("Execution Test", async () => {
+  it.only("Execution Test", async () => {
     const [signer1] = await ethers.getSigners();
     const signer1Address = await signer1.getAddress();
 
@@ -23,7 +23,7 @@ contract("Test GenericExecutor", async () => {
     const trx = await exec.execute([
       [
         legos.maker.addresses.DAI,
-        legos.maker.codecs.DAI.encodeApprove(signer1Address, BN.from("999")),
+        legos.maker.codecs.DAI.encodeApprove(legos.compound.addresses.cDAI, BN.from("999")),
       ],
       [
         legos.compound.addresses.cDAI,
@@ -34,7 +34,7 @@ contract("Test GenericExecutor", async () => {
 
     await expectEvent.inTransaction(trx.tx, DAI, "Approval", {
       src: exec.address,
-      guy: signer1Address,
+      guy: legos.compound.addresses.cDAI,
       wad: "999",
     });
     await expectEvent.inTransaction(trx.tx, cDAI, "Mint", {
