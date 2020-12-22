@@ -100,7 +100,7 @@ contract APYMetaPoolToken is
         return uint256(price);
     }
 
-    /** @notice Calculate ACT amount to be minted for given pool's underlyer amount.
+    /** @notice Calculate mAPT amount to be minted for given pool's underlyer amount.
      *  @param depositAmount Pool underlyer amount to be converted
      *  @param tokenEthPrice Pool underlyer's ETH price (in wei) per underlyer token
      *  @param decimals Pool underlyer's number of decimals
@@ -123,7 +123,7 @@ contract APYMetaPoolToken is
     }
 
     /**
-     *  @notice amount of ACT minted should be in same ratio to ACT supply
+     *  @notice amount of mAPT minted should be in same ratio to mAPT supply
      *          as token amount sent is to contract's token balance, i.e.:
      *
      *          mint amount / total supply (before deposit)
@@ -143,20 +143,24 @@ contract APYMetaPoolToken is
         return (depositValue.mul(totalSupply)).div(totalValue);
     }
 
-    /** @notice Calculate amount in pool's underlyer token from given ACT amount.
-     *  @param actAmount ACT amount to be converted
-     *  @param tokenEthPrice Pool underlyer's ETH price in token bits
-     *  @dev Price parameter must be the ETH value (in wei) per underlyer's
-     *       "small" unit (bits).
+    /** @notice Calculate amount in pool's underlyer token from given mAPT amount.
+     *  @param actAmount mAPT amount to be converted
+     *  @param tokenEthPrice Pool underlyer's ETH price (in wei) per underlyer token
+     *  @param decimals Pool underlyer's number of decimals
+     *  @dev Price parameter is in units of wei per token ("big" unit), since
+     *       attempting to express wei per token bit ("small" unit) will be
+     *       fractional, requiring fixed-point representation.  This means we need
+     *       to also pass in the underlyer's number of decimals to do the appropriate
+     *       multiplication in the calculation.
      */
-    function calculatePoolAmount(uint256 actAmount, uint256 tokenEthPrice)
-        public
-        view
-        returns (uint256)
-    {
+    function calculatePoolAmount(
+        uint256 actAmount,
+        uint256 tokenEthPrice,
+        uint256 decimals
+    ) public view returns (uint256) {
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
         uint256 poolEthValue = actAmount.mul(getTVL()).div(totalSupply());
-        uint256 poolAmount = poolEthValue.div(tokenEthPrice);
+        uint256 poolAmount = poolEthValue.mul(10**decimals).div(tokenEthPrice);
         return poolAmount;
     }
 }

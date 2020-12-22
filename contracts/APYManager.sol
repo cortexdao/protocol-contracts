@@ -138,13 +138,18 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
      */
     function pushFunds(address payable poolAddress) external onlyOwner {
         APYPoolToken pool = APYPoolToken(poolAddress);
-        uint256 actAmount = mApt.balanceOf(address(pool));
-        mApt.burn(msg.sender, actAmount);
+        uint256 mAptAmount = mApt.balanceOf(address(pool));
+        mApt.burn(msg.sender, mAptAmount);
 
         uint256 tokenEthPrice = pool.getTokenEthPrice();
-        uint256 poolAmount = mApt.calculatePoolAmount(actAmount, tokenEthPrice);
-        IERC20 token = pool.underlyer();
-        token.transfer(address(pool), poolAmount);
+        IDetailedERC20 poolUnderlyer = pool.underlyer();
+        uint8 decimals = poolUnderlyer.decimals();
+        uint256 poolAmount = mApt.calculatePoolAmount(
+            mAptAmount,
+            tokenEthPrice,
+            decimals
+        );
+        poolUnderlyer.transfer(address(pool), poolAmount);
     }
 
     /**
