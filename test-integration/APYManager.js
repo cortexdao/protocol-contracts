@@ -146,7 +146,8 @@ contract("APYManager", async (accounts) => {
       await usdcPool.infiniteApprove(manager.address, { from: deployer });
 
       const poolAmount = await usdcToken.balanceOf(usdcPool.address);
-      console.log("Pool amount:", poolAmount.toString());
+      console.debug("Pool amount:", poolAmount.toString());
+
       const poolValue = await usdcPool.getEthValueFromTokenAmount(poolAmount);
       const tokenEthPrice = await usdcPool.getTokenEthPrice();
       const mintAmount = await mApt.calculateMintAmount(
@@ -154,26 +155,45 @@ contract("APYManager", async (accounts) => {
         tokenEthPrice,
         "6"
       );
-      console.log("Mint amount:", mintAmount.toString());
+      console.debug("Mint amount:", mintAmount.toString());
 
-      // assert correct mAPT minted for pool
-      // 1. check mint event
-      // 2. assert mAPT balance
       await manager.pullFunds(usdcPool.address, { from: deployer });
-      expect(await mApt.balanceOf(usdcPool.address)).to.be.bignumber.gt("0");
       expect(await mApt.balanceOf(usdcPool.address)).to.bignumber.equal(
         mintAmount
       );
 
-      // assert underlyer token balance for manager
+      expect(await usdcToken.balanceOf(manager.address)).to.bignumber.equal(
+        poolAmount
+      );
     });
 
     it("Push funds", async () => {
-      //
-      // assert correct mAPT burned for pool
-      // 1. check burn event
-      // 2. assert 0 mAPT balance
-      // assert underlyer token balance for manager
+      // setup for push without invoking pull:
+      // 1. put USDC into the manager
+      // 2. mint mAPT for the pool
+      await usdcToken.transfer(manager.address, usdc("100"), {
+        from: deployer,
+      });
+      await mApt.setManagerAddress(deployer);
+      await mApt.mint(usdcPool.address, erc20("10"), { from: deployer });
+      await mApt.setManagerAddress(manager.address);
+
+      const mintedAmount = await mApt.balanceOf(usdcPool.address);
+      console.debug("Minted amount:", mintedAmount.toString());
+
+      const tokenEthPrice = await usdcPool.getTokenEthPrice();
+      const poolAmount = await mApt.calculatePoolAmount(
+        mintedAmount,
+        tokenEthPrice,
+        "6"
+      );
+      console.debug("Pool amount:", poolAmount.toString());
+
+      await manager.pushFunds(usdcPool.address, { from: deployer });
+      expect(await mApt.balanceOf(usdcPool.address)).to.bignumber.equal("0");
+      expect(await usdcToken.balanceOf(usdcPool.address)).to.bignumber.equal(
+        poolAmount
+      );
     });
 
     it("Check pull and push results in no change", async () => {
