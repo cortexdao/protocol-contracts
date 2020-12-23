@@ -2,7 +2,7 @@ const {
   //assert,
   expect,
 } = require("chai");
-const { artifacts, contract, web3 } = require("hardhat");
+const { artifacts, contract, ethers, web3 } = require("hardhat");
 const {
   BN,
   // expectEvent, expectRevert
@@ -22,6 +22,7 @@ const ProxyConstructorArg = artifacts.require("ProxyConstructorArg");
 const APYManager = artifacts.require("APYManager");
 const MockContract = artifacts.require("MockContract");
 const { USDC_WHALE } = require("../utils/constants");
+const { defaultAbiCoder } = ethers.utils;
 const APYPoolTokenProxy = artifacts.require("APYPoolTokenProxy");
 const APYPoolToken = artifacts.require("APYPoolToken");
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
@@ -132,36 +133,51 @@ contract("APYManager", async (accounts) => {
 
     await mApt.setManagerAddress(manager.address);
     await manager.setMetaPoolToken(mApt.address);
-    // workaround until real TVL aggregator is ready
-    await mApt.setTvlAggregator(USDC_PRICE_AGG);
   });
 
   describe.only("Push and pull funds from pool", async () => {
-    it("Pull funds", async () => {
-      expect(await mApt.balanceOf(usdcPool.address)).to.bignumber.equal("0");
+    let mockTvlAgg;
 
+    before(async () => {
       await usdcToken.transfer(usdcPool.address, usdc("100"), {
         from: deployer,
       });
-      await usdcPool.infiniteApprove(manager.address, { from: deployer });
 
+      // workaround until real TVL aggregator is ready
+      mockTvlAgg = await MockContract.new();
+      await mApt.setTvlAggregator(mockTvlAgg.address);
+    });
+
+    it("Pull funds", async () => {
       const poolAmount = await usdcToken.balanceOf(usdcPool.address);
-      console.debug("Pool amount:", poolAmount.toString());
+      console.log("Pool amount:", poolAmount.toString());
 
       const poolValue = await usdcPool.getEthValueFromTokenAmount(poolAmount);
       const tokenEthPrice = await usdcPool.getTokenEthPrice();
+
+      // for minting, we don't really care what gets returned as TVL
+      await mApt.setTvlAggregator(USDC_PRICE_AGG);
+
       const mintAmount = await mApt.calculateMintAmount(
         poolValue,
         tokenEthPrice,
         "6"
       );
-      console.debug("Mint amount:", mintAmount.toString());
+      console.log("Mint amount:", mintAmount.toString());
 
+      // check balances before pull
+      expect(await mApt.balanceOf(usdcPool.address)).to.bignumber.equal("0");
+      expect(await usdcToken.balanceOf(manager.address)).to.bignumber.equal(
+        "0"
+      );
+
+      await usdcPool.infiniteApprove(manager.address, { from: deployer });
       await manager.pullFunds(usdcPool.address, { from: deployer });
+
+      // check balances after pull
       expect(await mApt.balanceOf(usdcPool.address)).to.bignumber.equal(
         mintAmount
       );
-
       expect(await usdcToken.balanceOf(manager.address)).to.bignumber.equal(
         poolAmount
       );
@@ -179,7 +195,7 @@ contract("APYManager", async (accounts) => {
       await mApt.setManagerAddress(manager.address);
 
       const mintedAmount = await mApt.balanceOf(usdcPool.address);
-      console.log("Minted amount:", mintedAmount.toString());
+      console.debug("Minted amount:", mintedAmount.toString());
 
       const tokenEthPrice = await usdcPool.getTokenEthPrice();
       const poolAmount = await mApt.calculatePoolAmount(
@@ -189,24 +205,37 @@ contract("APYManager", async (accounts) => {
       );
       console.debug("Pool amount:", poolAmount.toString());
 
+      const managerBalance = await usdcToken.balanceOf(manager.address);
+      const tvl = managerBalance.mul(tokenEthPrice).div("6");
+      const returnData = defaultAbiCoder.encode(
+        ["uint80", "int256", "uint256", "uint256", "uint80"],
+        [0, tvl, 0, 0, 0]
+      );
+      await mockTvlAgg.givenAnyReturn(returnData);
+
       await manager.pushFunds(usdcPool.address, { from: deployer });
+
       expect(await mApt.balanceOf(usdcPool.address)).to.bignumber.equal("0");
       expect(await usdcToken.balanceOf(usdcPool.address)).to.bignumber.equal(
         poolAmount
       );
+      expect(await usdcToken.balanceOf(manager.address)).to.bignumber.equal(
+        "0"
+      );
     });
 
     it("Check pull and push results in no change", async () => {
-      // setup pool with USDC and approve manager to transfer it
-      const poolBalance = usdc("100");
-      await usdcToken.transfer(usdcPool.address, poolBalance, {
-        from: deployer,
-      });
-      await usdcPool.infiniteApprove(manager.address, { from: deployer });
+      const poolBalance = await usdcToken.balanceOf(usdcPool.address);
 
+      await usdcPool.infiniteApprove(manager.address, { from: deployer });
       await manager.pullFunds(usdcPool.address, { from: deployer });
+
+      expect(await usdcToken.balanceOf(manager.address)).to.bignumber.equal(
+        poolBalance
+      );
       const mintedAmount = await mApt.balanceOf(usdcPool.address);
       console.log("Minted amount:", mintedAmount.toString());
+
       await manager.pushFunds(usdcPool.address, { from: deployer });
 
       expect(await mApt.balanceOf(usdcPool.address)).to.bignumber.equal("0");
