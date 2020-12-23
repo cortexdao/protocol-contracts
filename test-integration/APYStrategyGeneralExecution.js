@@ -3,7 +3,7 @@ const BN = ethers.BigNumber;
 
 const GenericExecutor = artifacts.require("APYGenericExecutor");
 const { expectEvent } = require("@openzeppelin/test-helpers");
-const legos = require("defi-legos");
+// const legos = require("defi-legos");
 
 contract("Test GenericExecutor", async () => {
   it("Execution Test", async () => {
@@ -23,7 +23,10 @@ contract("Test GenericExecutor", async () => {
     const trx = await exec.execute([
       [
         legos.maker.addresses.DAI,
-        legos.maker.codecs.DAI.encodeApprove(legos.compound.addresses.cDAI, BN.from("999")),
+        legos.maker.codecs.DAI.encodeApprove(
+          legos.compound.addresses.cDAI,
+          BN.from("999")
+        ),
       ],
       [
         legos.compound.addresses.cDAI,
