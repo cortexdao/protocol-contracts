@@ -169,8 +169,7 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
         uint256 poolValue = pool.getEthValueFromTokenAmount(poolAmount);
 
         uint256 tokenEthPrice = pool.getTokenEthPrice();
-        IDetailedERC20 poolUnderlyer = pool.underlyer();
-        uint8 decimals = poolUnderlyer.decimals();
+        uint8 decimals = underlyer.decimals();
         uint256 mintAmount = mApt.calculateMintAmount(
             poolValue,
             tokenEthPrice,

@@ -30,12 +30,14 @@ contract APYMetaPoolToken is
     /* ------------------------------- */
     address public proxyAdmin;
     AggregatorV3Interface public tvlAgg;
+    address public manager;
 
     /* ------------------------------- */
 
     event Mint(address acccount, uint256 amount);
     event Burn(address acccount, uint256 amount);
     event AdminChanged(address);
+    event ManagerChanged(address);
     event TvlAggregatorChanged(address agg);
 
     function initialize(address adminAddress, AggregatorV3Interface _tvlAgg)
@@ -84,14 +86,25 @@ contract APYMetaPoolToken is
         revert("DONT_SEND_ETHER");
     }
 
-    function mint(address account, uint256 amount) public override onlyOwner {
+    function mint(address account, uint256 amount) public override onlyManager {
         _mint(account, amount);
         emit Mint(account, amount);
     }
 
-    function burn(address account, uint256 amount) public override onlyOwner {
+    function burn(address account, uint256 amount) public override onlyManager {
         _burn(account, amount);
         emit Burn(account, amount);
+    }
+
+    function setManagerAddress(address managerAddress) public onlyOwner {
+        require(managerAddress != address(0), "INVALID_ADMIN");
+        manager = managerAddress;
+        emit ManagerChanged(managerAddress);
+    }
+
+    modifier onlyManager() {
+        require(msg.sender == manager, "MANAGER_ONLY");
+        _;
     }
 
     function getTVL() public view returns (uint256) {
