@@ -128,9 +128,8 @@ contract APYMetaPoolToken is
         uint256 tokenEthPrice,
         uint256 decimals
     ) public view returns (uint256) {
-        uint256 depositValue = depositAmount.mul(tokenEthPrice).div(
-            10**decimals
-        );
+        uint256 depositValue =
+            (depositAmount.mul(tokenEthPrice)).div(10**decimals);
         uint256 totalValue = getTVL();
         return _calculateMintAmount(depositValue, totalValue);
     }
@@ -172,8 +171,9 @@ contract APYMetaPoolToken is
         uint256 decimals
     ) public view returns (uint256) {
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        uint256 poolEthValue = mAptAmount.mul(getTVL()).div(totalSupply());
-        uint256 poolAmount = poolEthValue.mul(10**decimals).div(tokenEthPrice);
+        uint256 poolEthValue = (mAptAmount.mul(getTVL())).div(totalSupply());
+        uint256 poolAmount =
+            (poolEthValue.mul(10**decimals)).div(tokenEthPrice);
         return poolAmount;
     }
 }
