@@ -177,7 +177,7 @@ contract("APYMetaPoolToken", async (accounts) => {
     });
   });
 
-  describe.only("Calculations", async () => {
+  describe("Calculations", async () => {
     it("Check mock TVL aggregator setup", async () => {
       const tvl = 100;
       const returnData = defaultAbiCoder.encode(
@@ -200,11 +200,31 @@ contract("APYMetaPoolToken", async (accounts) => {
       const depositAmount = erc20(100);
       const tokenEthPrice = new BN("1602950450000000");
       const decimals = new BN("18");
-      await token.calculateMintAmount(depositAmount, tokenEthPrice, decimals);
+      const mintAmount = await token.calculateMintAmount(
+        depositAmount,
+        tokenEthPrice,
+        decimals
+      );
+      expect(mintAmount).to.be.bignumber.gt("0");
     });
 
-    it("test 1", async () => {
-      //
+    it("Calculate pool amount", async () => {
+      const tvl = 100;
+      const returnData = defaultAbiCoder.encode(
+        ["uint80", "int256", "uint256", "uint256", "uint80"],
+        [0, tvl, 0, 0, 0]
+      );
+      await mockTvlAgg.givenAnyReturn(returnData);
+
+      const depositAmount = erc20(100);
+      const tokenEthPrice = new BN("1602950450000000");
+      const decimals = new BN("18");
+      const mintAmount = await token.calculateMintAmount(
+        depositAmount,
+        tokenEthPrice,
+        decimals
+      );
+      expect(mintAmount).to.be.bignumber.gt("0");
     });
 
     it("test 1", async () => {
