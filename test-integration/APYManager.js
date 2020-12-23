@@ -133,30 +133,21 @@ contract("APYManager", async (accounts) => {
 
     await mApt.setManagerAddress(manager.address);
     await manager.setMetaPoolToken(mApt.address);
+
+    // workaround until real TVL aggregator is ready
+    await mApt.setTvlAggregator(usdcPool.address);
   });
 
   describe.only("Push and pull funds from pool", async () => {
-    let mockTvlAgg;
-
-    before(async () => {
+    it("Pull funds", async () => {
       await usdcToken.transfer(usdcPool.address, usdc("100"), {
         from: deployer,
       });
-
-      // workaround until real TVL aggregator is ready
-      mockTvlAgg = await MockContract.new();
-      await mApt.setTvlAggregator(mockTvlAgg.address);
-    });
-
-    it("Pull funds", async () => {
       const poolAmount = await usdcToken.balanceOf(usdcPool.address);
       console.log("Pool amount:", poolAmount.toString());
 
       const poolValue = await usdcPool.getEthValueFromTokenAmount(poolAmount);
       const tokenEthPrice = await usdcPool.getTokenEthPrice();
-
-      // for minting, we don't really care what gets returned as TVL
-      await mApt.setTvlAggregator(USDC_PRICE_AGG);
 
       const mintAmount = await mApt.calculateMintAmount(
         poolValue,
@@ -195,7 +186,7 @@ contract("APYManager", async (accounts) => {
       await mApt.setManagerAddress(manager.address);
 
       const mintedAmount = await mApt.balanceOf(usdcPool.address);
-      console.debug("Minted amount:", mintedAmount.toString());
+      console.log("Minted amount:", mintedAmount.toString());
 
       const tokenEthPrice = await usdcPool.getTokenEthPrice();
       const poolAmount = await mApt.calculatePoolAmount(
@@ -203,15 +194,7 @@ contract("APYManager", async (accounts) => {
         tokenEthPrice,
         "6"
       );
-      console.debug("Pool amount:", poolAmount.toString());
-
-      const managerBalance = await usdcToken.balanceOf(manager.address);
-      const tvl = managerBalance.mul(tokenEthPrice).div("6");
-      const returnData = defaultAbiCoder.encode(
-        ["uint80", "int256", "uint256", "uint256", "uint80"],
-        [0, tvl, 0, 0, 0]
-      );
-      await mockTvlAgg.givenAnyReturn(returnData);
+      console.log("Pool amount:", poolAmount.toString());
 
       await manager.pushFunds(usdcPool.address, { from: deployer });
 
@@ -225,6 +208,9 @@ contract("APYManager", async (accounts) => {
     });
 
     it("Check pull and push results in no change", async () => {
+      await usdcToken.transfer(usdcPool.address, usdc("100"), {
+        from: deployer,
+      });
       const poolBalance = await usdcToken.balanceOf(usdcPool.address);
 
       await usdcPool.infiniteApprove(manager.address, { from: deployer });

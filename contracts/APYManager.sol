@@ -9,6 +9,7 @@ import "./interfaces/IAddressRegistry.sol";
 import "./interfaces/IDetailedERC20.sol";
 import "./APYPoolToken.sol";
 import "./APYMetaPoolToken.sol";
+import "hardhat/console.sol";
 
 contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
     using SafeMath for uint256;
@@ -79,8 +80,8 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
      */
     function getTokenAddresses()
         external
-        override
         view
+        override
         returns (address[] memory)
     {
         return _tokenAddresses;
@@ -114,7 +115,7 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
      *       In actuality, we will not be computing the TVL from the pools,
      *       as their funds will not be tokenized into mAPT.
      */
-    function balanceOf(address token) external override view returns (uint256) {
+    function balanceOf(address token) external view override returns (uint256) {
         IDetailedERC20 erc20 = IDetailedERC20(token);
         uint256 balance = 0;
         for (uint256 i = 0; i < _poolIds.length; i++) {
@@ -128,8 +129,8 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
     /// @notice Returns the symbol of the given token.
     function symbolOf(address token)
         external
-        override
         view
+        override
         returns (string memory)
     {
         return IDetailedERC20(token).symbol();
@@ -146,15 +147,15 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
         uint256 tokenEthPrice = pool.getTokenEthPrice();
         IDetailedERC20 poolUnderlyer = pool.underlyer();
         uint8 decimals = poolUnderlyer.decimals();
+        console.log("hey hey hey");
 
-        uint256 poolAmount = mApt.calculatePoolAmount(
-            mAptAmount,
-            tokenEthPrice,
-            decimals
-        );
+        uint256 poolAmount =
+            mApt.calculatePoolAmount(mAptAmount, tokenEthPrice, decimals);
         // Burn must happen after pool amount calc, as quantities
         // being compared are post-deposit amounts.
+
         mApt.burn(poolAddress, mAptAmount);
+        console.log(poolAmount);
         poolUnderlyer.safeTransfer(address(pool), poolAmount);
     }
 
@@ -170,11 +171,8 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
 
         uint256 tokenEthPrice = pool.getTokenEthPrice();
         uint8 decimals = underlyer.decimals();
-        uint256 mintAmount = mApt.calculateMintAmount(
-            poolValue,
-            tokenEthPrice,
-            decimals
-        );
+        uint256 mintAmount =
+            mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
 
         mApt.mint(poolAddress, mintAmount);
         underlyer.safeTransferFrom(poolAddress, address(this), poolAmount);

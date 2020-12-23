@@ -11,7 +11,9 @@ import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
+import "./APYPoolToken.sol";
 import "./interfaces/IMintable.sol";
+import "./interfaces/IDetailedERC20.sol";
 
 contract APYMetaPoolToken is
     Initializable,
@@ -29,7 +31,7 @@ contract APYMetaPoolToken is
     /* impl-specific storage variables */
     /* ------------------------------- */
     address public proxyAdmin;
-    AggregatorV3Interface public tvlAgg;
+    APYPoolToken public tvlAgg; // workaround for non-existent TVL aggregator
     address public manager;
 
     /* ------------------------------- */
@@ -40,7 +42,7 @@ contract APYMetaPoolToken is
     event ManagerChanged(address);
     event TvlAggregatorChanged(address agg);
 
-    function initialize(address adminAddress, AggregatorV3Interface _tvlAgg)
+    function initialize(address adminAddress, address payable _tvlAgg)
         external
         initializer
     {
@@ -68,13 +70,10 @@ contract APYMetaPoolToken is
         emit AdminChanged(adminAddress);
     }
 
-    function setTvlAggregator(AggregatorV3Interface _priceAgg)
-        public
-        onlyOwner
-    {
-        require(address(_priceAgg) != address(0), "INVALID_AGG");
-        tvlAgg = _priceAgg;
-        emit TvlAggregatorChanged(address(_priceAgg));
+    function setTvlAggregator(address payable apt) public onlyOwner {
+        require(address(apt) != address(0), "INVALID_AGG");
+        tvlAgg = APYPoolToken(apt);
+        emit TvlAggregatorChanged(address(apt));
     }
 
     modifier onlyAdmin() {
@@ -108,9 +107,14 @@ contract APYMetaPoolToken is
     }
 
     function getTVL() public view returns (uint256) {
-        (, int256 price, , , ) = tvlAgg.latestRoundData();
+        AggregatorV3Interface agg = tvlAgg.priceAgg();
+        (, int256 price, , , ) = agg.latestRoundData();
         require(price > 0, "UNABLE_TO_RETRIEVE_TVL");
-        return uint256(price);
+        IDetailedERC20 underlyer = tvlAgg.underlyer();
+        return
+            uint256(price).mul(underlyer.balanceOf(manager)).div(
+                10**uint256(underlyer.decimals())
+            );
     }
 
     /** @notice Calculate mAPT amount to be minted for given pool's underlyer amount.
