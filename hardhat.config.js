@@ -2,14 +2,19 @@ require("dotenv").config();
 
 require("solidity-coverage");
 require("@nomiclabs/hardhat-ethers");
+require("@nomiclabs/hardhat-waffle")
 require("@nomiclabs/hardhat-truffle5");
 require("@nomiclabs/hardhat-etherscan");
-
 require("./scripts/claim_rewards");
 require("./scripts/fund_rewards");
 
 module.exports = {
   networks: {
+    hardhat: {
+      forking: {
+        url: "https://mainnet.infura.io/v3/" + process.env.INFURA_API_KEY
+      }
+    },
     localhost: {
       url: "http://127.0.0.1:8545",
       timeout: 1000000,
