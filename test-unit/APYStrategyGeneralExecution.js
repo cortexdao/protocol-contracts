@@ -5,10 +5,10 @@ const { expect } = require("chai");
 const BN = ethers.BigNumber
 
 const GenericExecutor = artifacts.require("APYGenericExecutor");
-const legos = require('defi-legos')
+// const legos = require('defi-legos')
 
 contract("Test GenericExecutor", async () => {
-  it.only("Execution Test", async () => {
+  it.skip("Execution Test", async () => {
 
     const [signer1, signer2] = await ethers.getSigners()
 

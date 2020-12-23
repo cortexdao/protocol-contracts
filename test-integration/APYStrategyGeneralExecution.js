@@ -6,7 +6,7 @@ const { expectEvent } = require("@openzeppelin/test-helpers");
 // const legos = require("defi-legos");
 
 contract("Test GenericExecutor", async () => {
-  it("Execution Test", async () => {
+  it.skip("Execution Test", async () => {
     const [signer1] = await ethers.getSigners();
     const signer1Address = await signer1.getAddress();
 
