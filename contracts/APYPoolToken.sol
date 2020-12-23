@@ -116,10 +116,8 @@ contract APYPoolToken is
         uint256 depositEthValue = getEthValueFromTokenAmount(tokenAmt);
         uint256 poolTotalEthValue = getPoolTotalEthValue();
 
-        uint256 mintAmount = _calculateMintAmount(
-            depositEthValue,
-            poolTotalEthValue
-        );
+        uint256 mintAmount =
+            _calculateMintAmount(depositEthValue, poolTotalEthValue);
 
         _mint(msg.sender, mintAmount);
         underlyer.safeTransferFrom(msg.sender, address(this), tokenAmt);
@@ -173,11 +171,13 @@ contract APYPoolToken is
         return uint256(price);
     }
 
+    /** @notice Disable deposits. */
     function lockAddLiquidity() external onlyOwner {
         addLiquidityLock = true;
         emit AddLiquidityLocked();
     }
 
+    /** @notice Enable deposits. */
     function unlockAddLiquidity() external onlyOwner {
         addLiquidityLock = false;
         emit AddLiquidityUnlocked();
@@ -212,16 +212,22 @@ contract APYPoolToken is
         );
     }
 
+    /** @notice Disable APT redeeming. */
     function lockRedeem() external onlyOwner {
         redeemLock = true;
         emit RedeemLocked();
     }
 
+    /** @notice Enable APT redeeming. */
     function unlockRedeem() external onlyOwner {
         redeemLock = false;
         emit RedeemUnlocked();
     }
 
+    /** @notice Calculate APT amount to be minted from deposit amount.
+     *  @param tokenAmt The deposit amount of stablecoin
+     *  @return The mint amount
+     */
     function calculateMintAmount(uint256 tokenAmt)
         public
         view
@@ -229,15 +235,15 @@ contract APYPoolToken is
     {
         uint256 depositEthValue = getEthValueFromTokenAmount(tokenAmt);
         uint256 poolTotalEthValue = getPoolTotalEthValue();
-        return _calculateMintAmount(depositEthValue, poolTotalEthValue); // amount of APT
+        return _calculateMintAmount(depositEthValue, poolTotalEthValue);
     }
 
     /**
-     *  @notice amount of APT minted should be in same ratio to APT supply
-     *          as token amount sent is to contract's token balance, i.e.:
+     *  @dev amount of APT minted should be in same ratio to APT supply
+     *       as token amount sent is to contract's token balance, i.e.:
      *
-     *          mint amount / total supply (before deposit)
-     *          = token amount sent / contract token balance (before deposit)
+     *       mint amount / total supply (before deposit)
+     *       = token amount sent / contract token balance (before deposit)
      */
     function _calculateMintAmount(
         uint256 depositEthAmount,
