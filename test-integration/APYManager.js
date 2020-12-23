@@ -179,7 +179,7 @@ contract("APYManager", async (accounts) => {
       await mApt.setManagerAddress(manager.address);
 
       const mintedAmount = await mApt.balanceOf(usdcPool.address);
-      console.debug("Minted amount:", mintedAmount.toString());
+      console.log("Minted amount:", mintedAmount.toString());
 
       const tokenEthPrice = await usdcPool.getTokenEthPrice();
       const poolAmount = await mApt.calculatePoolAmount(
@@ -197,7 +197,25 @@ contract("APYManager", async (accounts) => {
     });
 
     it("Check pull and push results in no change", async () => {
-      //
+      // setup pool with USDC and approve manager to transfer it
+      const poolBalance = usdc("100");
+      await usdcToken.transfer(usdcPool.address, poolBalance, {
+        from: deployer,
+      });
+      await usdcPool.infiniteApprove(manager.address, { from: deployer });
+
+      await manager.pullFunds(usdcPool.address, { from: deployer });
+      const mintedAmount = await mApt.balanceOf(usdcPool.address);
+      console.log("Minted amount:", mintedAmount.toString());
+      await manager.pushFunds(usdcPool.address, { from: deployer });
+
+      expect(await mApt.balanceOf(usdcPool.address)).to.bignumber.equal("0");
+      expect(await usdcToken.balanceOf(manager.address)).to.bignumber.equal(
+        "0"
+      );
+      expect(await usdcToken.balanceOf(usdcPool.address)).to.bignumber.equal(
+        poolBalance
+      );
     });
   });
 });
