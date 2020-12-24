@@ -8,7 +8,11 @@ contract APYGenericExecutor is Ownable {
         bytes data;
     }
 
-    function execute(Data[] calldata executionSteps) external payable {
+    function execute(Data[] calldata executionSteps)
+        external
+        payable
+        onlyOwner
+    {
         bytes memory returnData;
         for (uint256 i = 0; i < executionSteps.length; i++) {
             returnData = _call(
