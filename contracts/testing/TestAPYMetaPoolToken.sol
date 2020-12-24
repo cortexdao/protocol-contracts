@@ -20,6 +20,12 @@ import "../interfaces/IDetailedERC20.sol";
 */
 contract TestAPYMetaPoolToken is APYMetaPoolToken {
     APYPoolToken public apt;
+    uint256 internal _tvl;
+
+    /** @dev Used for mocking in unit tests. */
+    function setTVL(uint256 tvl) public {
+        _tvl = tvl;
+    }
 
     /** @dev set the APT token needed for testing with single pool */
     function setApt(address payable _apt) public {
@@ -28,8 +34,13 @@ contract TestAPYMetaPoolToken is APYMetaPoolToken {
 
     /** @dev The fake implementation gets the ETH value of the
      *       manager's underlyer balance.
+     *
+     *       Used for integration tests.
      */
     function getTVL() public view override returns (uint256) {
+        if (address(apt) == address(0)) {
+            return _tvl;
+        }
         AggregatorV3Interface agg = apt.priceAgg();
         (, int256 price, , , ) = agg.latestRoundData();
         require(price > 0, "UNABLE_TO_RETRIEVE_TVL");
