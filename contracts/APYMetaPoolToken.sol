@@ -10,7 +10,6 @@ import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.so
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./APYPoolToken.sol";
 import "./interfaces/IMintable.sol";
 import "./interfaces/IDetailedERC20.sol";
@@ -31,7 +30,7 @@ contract APYMetaPoolToken is
     /* impl-specific storage variables */
     /* ------------------------------- */
     address public proxyAdmin;
-    APYPoolToken public tvlAgg; // workaround for non-existent TVL aggregator
+    address public tvlAgg;
     address public manager;
 
     /* ------------------------------- */
@@ -70,10 +69,10 @@ contract APYMetaPoolToken is
         emit AdminChanged(adminAddress);
     }
 
-    function setTvlAggregator(address payable apt) public onlyOwner {
-        require(address(apt) != address(0), "INVALID_AGG");
-        tvlAgg = APYPoolToken(apt);
-        emit TvlAggregatorChanged(address(apt));
+    function setTvlAggregator(address _tvlAgg) public onlyOwner {
+        require(address(_tvlAgg) != address(0), "INVALID_AGG");
+        tvlAgg = _tvlAgg;
+        emit TvlAggregatorChanged(address(_tvlAgg));
     }
 
     modifier onlyAdmin() {
@@ -106,15 +105,9 @@ contract APYMetaPoolToken is
         _;
     }
 
-    function getTVL() public view returns (uint256) {
-        AggregatorV3Interface agg = tvlAgg.priceAgg();
-        (, int256 price, , , ) = agg.latestRoundData();
-        require(price > 0, "UNABLE_TO_RETRIEVE_TVL");
-        IDetailedERC20 underlyer = tvlAgg.underlyer();
-        return
-            uint256(price).mul(underlyer.balanceOf(manager)).div(
-                10**uint256(underlyer.decimals())
-            );
+    function getTVL() public view virtual returns (uint256) {
+        revert("TVL aggregator not ready yet.");
+        return 0;
     }
 
     /** @notice Calculate mAPT amount to be minted for given pool's underlyer amount.
