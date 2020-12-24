@@ -9,7 +9,6 @@ import "./interfaces/IAddressRegistry.sol";
 import "./interfaces/IDetailedERC20.sol";
 import "./APYPoolToken.sol";
 import "./APYMetaPoolToken.sol";
-import "hardhat/console.sol";
 
 contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
     using SafeMath for uint256;
@@ -145,18 +144,15 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
 
         APYPoolToken pool = APYPoolToken(poolAddress);
         uint256 tokenEthPrice = pool.getTokenEthPrice();
-        IDetailedERC20 poolUnderlyer = pool.underlyer();
-        uint8 decimals = poolUnderlyer.decimals();
-        console.log("hey hey hey");
-
+        IDetailedERC20 underlyer = pool.underlyer();
+        uint8 decimals = underlyer.decimals();
         uint256 poolAmount =
             mApt.calculatePoolAmount(mAptAmount, tokenEthPrice, decimals);
+
         // Burn must happen after pool amount calc, as quantities
         // being compared are post-deposit amounts.
-
         mApt.burn(poolAddress, mAptAmount);
-        console.log(poolAmount);
-        poolUnderlyer.safeTransfer(address(pool), poolAmount);
+        underlyer.safeTransfer(poolAddress, poolAmount);
     }
 
     /**
