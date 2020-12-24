@@ -2,7 +2,7 @@ const {
   //assert,
   expect,
 } = require("chai");
-const { artifacts, contract, ethers, web3 } = require("hardhat");
+const { artifacts, contract, web3 } = require("hardhat");
 const {
   BN,
   // expectEvent, expectRevert
@@ -22,12 +22,11 @@ const ProxyConstructorArg = artifacts.require("ProxyConstructorArg");
 const APYManager = artifacts.require("APYManager");
 const MockContract = artifacts.require("MockContract");
 const { USDC_WHALE } = require("../utils/constants");
-const { defaultAbiCoder } = ethers.utils;
 const APYPoolTokenProxy = artifacts.require("APYPoolTokenProxy");
 const APYPoolToken = artifacts.require("APYPoolToken");
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
 const APYMetaPoolTokenProxy = artifacts.require("APYMetaPoolTokenProxy");
-const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
+const APYMetaPoolToken = artifacts.require("TestAPYMetaPoolToken");
 
 /* ************************ */
 /* set DEBUG log level here */
@@ -134,17 +133,18 @@ contract("APYManager", async (accounts) => {
     await mApt.setManagerAddress(manager.address);
     await manager.setMetaPoolToken(mApt.address);
 
-    // workaround until real TVL aggregator is ready
-    await mApt.setTvlAggregator(usdcPool.address);
+    // workaround until real TVL aggregator is ready;
+    // see NatSpec for `setApt` in `TestAPYMetaPoolToken`.
+    await mApt.setApt(usdcPool.address);
   });
 
-  describe.only("Push and pull funds from pool", async () => {
+  describe("Push and pull funds from pool", async () => {
     it("Pull funds", async () => {
       await usdcToken.transfer(usdcPool.address, usdc("100"), {
         from: deployer,
       });
       const poolAmount = await usdcToken.balanceOf(usdcPool.address);
-      console.log("Pool amount:", poolAmount.toString());
+      console.debug("Pool amount:", poolAmount.toString());
 
       const poolValue = await usdcPool.getEthValueFromTokenAmount(poolAmount);
       const tokenEthPrice = await usdcPool.getTokenEthPrice();
@@ -154,7 +154,7 @@ contract("APYManager", async (accounts) => {
         tokenEthPrice,
         "6"
       );
-      console.log("Mint amount:", mintAmount.toString());
+      console.debug("Mint amount:", mintAmount.toString());
 
       // check balances before pull
       expect(await mApt.balanceOf(usdcPool.address)).to.bignumber.equal("0");
@@ -186,7 +186,7 @@ contract("APYManager", async (accounts) => {
       await mApt.setManagerAddress(manager.address);
 
       const mintedAmount = await mApt.balanceOf(usdcPool.address);
-      console.log("Minted amount:", mintedAmount.toString());
+      console.debug("Minted amount:", mintedAmount.toString());
 
       const tokenEthPrice = await usdcPool.getTokenEthPrice();
       const poolAmount = await mApt.calculatePoolAmount(
@@ -194,7 +194,7 @@ contract("APYManager", async (accounts) => {
         tokenEthPrice,
         "6"
       );
-      console.log("Pool amount:", poolAmount.toString());
+      console.debug("Pool amount:", poolAmount.toString());
 
       await manager.pushFunds(usdcPool.address, { from: deployer });
 
@@ -220,7 +220,7 @@ contract("APYManager", async (accounts) => {
         poolBalance
       );
       const mintedAmount = await mApt.balanceOf(usdcPool.address);
-      console.log("Minted amount:", mintedAmount.toString());
+      console.debug("Minted amount:", mintedAmount.toString());
 
       await manager.pushFunds(usdcPool.address, { from: deployer });
 
