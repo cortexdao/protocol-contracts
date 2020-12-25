@@ -1,0 +1,60 @@
+title Deployment of Capital
+
+participant USDCPool#steelblue
+participant DAIPool#yellow
+participant USDTPool#lightgreen
+participant USDC#steelblue
+participant DAI#yellow
+participant USDT#lightgreen
+participant Manager#violet
+participant mAPT#hotpink
+participant Strategy(proxy)
+participant General Executor#silver
+
+
+# Give permission to Manager to move funds
+group Setup Manager Moving Funds
+USDCPool -> USDC: approve(Manager, max)
+DAIPool -> DAI: approve(Manager, max)
+USDTPool -> USDT: approve(Manager, max)
+end
+
+abox over Manager#pink: Deployment Initiated
+activate Manager #pink
+
+Manager -> ]: deploy strategy proxy
+
+# Pull funds for deployment
+group #steelblue USDC Funds:
+Manager -> USDC: transferFrom(USDCPool, Strategy, amount)
+Manager ->mAPT: mint(USDCPool, amount)
+abox over Strategy(proxy)#steelblue: USDC aquired
+end
+group #yellow DAI Funds:
+Manager -> DAI: transferFrom(DAIPool, Strategy, amount)
+Manager ->mAPT: mint(DAIPool, amount)
+abox over Strategy(proxy)#yellow: DAI aquired
+end 
+group #lightgreen USDT Funds:
+Manager -> USDT: transferFrom(USDTPool, Strategy, amount)
+Manager ->mAPT: mint(USDTPool, amount)
+abox over Strategy(proxy)#lightgreen: USDT aquired
+end
+
+#Deploy funds
+group #red Deployment
+Manager ->Strategy(proxy): execute(executionData)
+activate Strategy(proxy)
+Strategy(proxy) ->General Executor: delegateCall(executionData)
+activate General Executor #silver
+General Executor -> ]: deploy funds
+General Executor -> ]: deploy funds
+General Executor -> ]: deploy funds
+General Executor -->Strategy(proxy):
+deactivate General Executor
+Strategy(proxy) -->Manager:
+deactivate Strategy(proxy)
+end
+
+abox over Manager#pink: Funds Deployed
+deactivate Manager

@@ -1,0 +1,56 @@
+title Unroll of Capital
+
+participant USDCPool#steelblue
+participant DAIPool#yellow
+participant USDTPool#lightgreen
+participant USDC#steelblue
+participant DAI#yellow
+participant USDT#lightgreen
+participant Manager#violet
+participant mAPT#hotpink
+participant Strategy(proxy)
+participant General Executor#silver
+
+abox over Manager#pink: Unroll Initiated
+activate Manager #pink
+
+#Unroll funds
+group #red Unroll
+Manager ->Strategy(proxy): execute(executionData)
+activate Strategy(proxy)
+Strategy(proxy) ->General Executor: delegateCall(executionData)
+activate General Executor #silver
+group #silver Enable Manager to move funds
+General Executor ->USDC: approve(Manager, max)
+General Executor ->DAI: approve(Manager, max)
+General Executor ->USDT: approve(Manager, max)
+end
+General Executor -> ]: unroll funds
+General Executor -> ]: unroll funds
+General Executor -> ]: unroll funds
+General Executor -->Strategy(proxy):
+deactivate General Executor
+Strategy(proxy) -->Manager:
+deactivate Strategy(proxy)
+end 
+
+# Pull funds for deployment
+group #steelblue USDC Funds:
+Manager -> USDC: transferFrom(Strategy, USDCPool, amount)
+Manager ->mAPT: burn(USDCPool, amount)
+abox over Strategy(proxy)#steelblue: USDC relinquished
+end
+group #yellow DAI Funds:
+Manager -> DAI: transferFrom(Strategy, DAIPool, amount)
+Manager ->mAPT: burn(DAIPool, amount)
+abox over Strategy(proxy)#yellow: DAI relinquished
+end 
+group #lightgreen USDT Funds:
+Manager -> USDT: transferFrom(Strategy, USDTPool, amount)
+Manager ->mAPT: burn(USDTPool, amount)
+abox over Strategy(proxy)#lightgreen: USDT relinquished
+end
+
+
+abox over Manager#pink: Funds Unrolled
+deactivate Manager
