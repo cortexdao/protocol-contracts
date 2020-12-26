@@ -167,6 +167,7 @@ contract APYMetaPoolToken is
         uint256 tokenEthPrice,
         uint256 decimals
     ) public view returns (uint256) {
+        if (mAptAmount == 0) return 0;
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
         uint256 poolEthValue = (mAptAmount.mul(getTVL())).div(totalSupply());
         uint256 poolAmount =
