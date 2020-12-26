@@ -13,6 +13,9 @@ const DUMMY_ADDRESS = web3.utils.toChecksumAddress(
   "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
 );
 
+const usdc = (amount) => erc20(amount, "6");
+const dai = (amount) => erc20(amount, "18");
+
 contract("APYMetaPoolToken", async (accounts) => {
   const [deployer, admin, manager, randomUser, anotherUser] = accounts;
 
@@ -207,19 +210,66 @@ contract("APYMetaPoolToken", async (accounts) => {
       expect(mintAmount).to.be.bignumber.gt("0");
     });
 
-    it("Calculate pool amount", async () => {
-      const tvl = 100;
+    it("Calculate pool amount with 1 pool", async () => {
+      const usdcEthPrice = new BN("1602950450000000");
+      const usdcAmount = usdc(107);
+      const tvl = usdcEthPrice.mul(usdcAmount).div(usdc(1));
       await mApt.setTVL(tvl);
 
-      const depositAmount = erc20(100);
-      const tokenEthPrice = new BN("1602950450000000");
-      const decimals = new BN("18");
-      const mintAmount = await mApt.calculateMintAmount(
-        depositAmount,
-        tokenEthPrice,
-        decimals
+      const totalSupply = erc20(21);
+      await mApt.testMint(anotherUser, totalSupply);
+
+      let poolAmount = await mApt.calculatePoolAmount(
+        totalSupply,
+        usdcEthPrice,
+        "6"
       );
-      expect(mintAmount).to.be.bignumber.gt("0");
+      expect(poolAmount).to.be.bignumber.equal(usdcAmount);
+
+      const mAptAmount = erc20(5);
+      const expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
+      const expectedPoolAmount = expectedPoolValue
+        .mul(usdc(1))
+        .div(usdcEthPrice);
+      poolAmount = await mApt.calculatePoolAmount(
+        mAptAmount,
+        usdcEthPrice,
+        "6"
+      );
+      expect(poolAmount).to.be.bignumber.equal(expectedPoolAmount);
+    });
+
+    it("Calculate pool amount with 2 pools", async () => {
+      const usdcEthPrice = new BN("1602950450000000");
+      const daiEthPrice = new BN("1603100000000000");
+      const usdcAmount = usdc(107);
+      const daiAmount = dai(10);
+      const usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
+      const daiValue = daiEthPrice.mul(daiAmount).div(dai(1));
+      const tvl = usdcValue.add(daiValue);
+      await mApt.setTVL(tvl);
+
+      const totalSupply = erc20(21);
+      let mAptAmount = erc20(10);
+      let expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
+      let expectedPoolAmount = expectedPoolValue.mul(usdc(1)).div(usdcEthPrice);
+      await mApt.testMint(anotherUser, totalSupply);
+      let poolAmount = await mApt.calculatePoolAmount(
+        mAptAmount,
+        usdcEthPrice,
+        "6"
+      );
+      expect(poolAmount).to.be.bignumber.equal(expectedPoolAmount);
+
+      mAptAmount = totalSupply.sub(mAptAmount);
+      expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
+      expectedPoolAmount = expectedPoolValue.mul(dai(1)).div(daiEthPrice);
+      poolAmount = await mApt.calculatePoolAmount(
+        mAptAmount,
+        daiEthPrice,
+        "18"
+      );
+      expect(poolAmount).to.be.bignumber.equal(expectedPoolAmount);
     });
   });
 });
