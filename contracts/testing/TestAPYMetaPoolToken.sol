@@ -22,6 +22,20 @@ contract TestAPYMetaPoolToken is APYMetaPoolToken {
     APYPoolToken public apt;
     uint256 internal _tvl;
 
+    /** @dev Used for manipulating supply for testing.
+     *  Regular `mint` is only usable by account set as manager.
+     */
+    function testMint(address account, uint256 amount) public {
+        _mint(account, amount);
+    }
+
+    /** @dev Used for manipulating supply for testing.
+     *  Regular `burn` is only usable by account set as manager.
+     */
+    function testBurn(address account, uint256 amount) public {
+        _burn(account, amount);
+    }
+
     /** @dev Used for mocking in unit tests. */
     function setTVL(uint256 tvl) public {
         _tvl = tvl;
