@@ -186,11 +186,11 @@ contract("APYMetaPoolToken", async (accounts) => {
   });
 
   describe.only("Calculations", async () => {
-    it("Check mock TVL setup", async () => {
-      const tvl = 100;
-      await mApt.setTVL(tvl);
-      assert.equal(await mApt.getTVL(), tvl);
-    });
+    // it("Check mock TVL setup", async () => {
+    //   const tvl = 100;
+    //   await mApt.setTVL(tvl);
+    //   assert.equal(await mApt.getTVL(), tvl);
+    // });
 
     it("Calculate mint amount", async () => {
       const tvl = 100;
