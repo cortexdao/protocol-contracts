@@ -188,26 +188,67 @@ contract("APYMetaPoolToken", async (accounts) => {
     });
   });
 
-  describe.only("Calculations", async () => {
-    // it("Check mock TVL setup", async () => {
-    //   const tvl = 100;
-    //   await mApt.setTVL(tvl);
-    //   assert.equal(await mApt.getTVL(), tvl);
-    // });
+  describe("Calculations", async () => {
+    it("Calculate mint amount with zero deployed TVL", async () => {
+      const usdcEthPrice = new BN("1602950450000000");
+      let usdcAmount = usdc(107);
+      let usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
 
-    it("Calculate mint amount", async () => {
-      const tvl = 100;
+      await mApt.testMint(anotherUser, erc20(100));
+
+      const mintAmount = await mApt.calculateMintAmount(
+        usdcAmount,
+        usdcEthPrice,
+        "6"
+      );
+      const expectedMintAmount = usdcValue.mul(
+        await mApt.DEFAULT_MAPT_TO_UNDERLYER_FACTOR()
+      );
+      expect(mintAmount).to.be.bignumber.equal(expectedMintAmount);
+    });
+
+    it("Calculate mint amount with zero total supply", async () => {
+      const usdcEthPrice = new BN("1602950450000000");
+      let usdcAmount = usdc(107);
+      let usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
+      await mApt.setTVL(1);
+
+      const mintAmount = await mApt.calculateMintAmount(
+        usdcAmount,
+        usdcEthPrice,
+        "6"
+      );
+      const expectedMintAmount = usdcValue.mul(
+        await mApt.DEFAULT_MAPT_TO_UNDERLYER_FACTOR()
+      );
+      expect(mintAmount).to.be.bignumber.equal(expectedMintAmount);
+    });
+
+    it("Calculate mint amount with non-zero total supply", async () => {
+      const usdcEthPrice = new BN("1602950450000000");
+      let usdcAmount = usdc(107);
+      let tvl = usdcEthPrice.mul(usdcAmount).div(usdc(1));
       await mApt.setTVL(tvl);
 
-      const depositAmount = erc20(100);
-      const tokenEthPrice = new BN("1602950450000000");
-      const decimals = new BN("18");
-      const mintAmount = await mApt.calculateMintAmount(
-        depositAmount,
-        tokenEthPrice,
-        decimals
+      const totalSupply = erc20(21);
+      await mApt.testMint(anotherUser, totalSupply);
+
+      let mintAmount = await mApt.calculateMintAmount(
+        usdcAmount,
+        usdcEthPrice,
+        "6"
       );
-      expect(mintAmount).to.be.bignumber.gt("0");
+      expect(mintAmount).to.be.bignumber.equal(totalSupply);
+
+      tvl = usdcEthPrice.mul(usdcAmount.muln(2)).div(usdc(1));
+      await mApt.setTVL(tvl);
+      const expectedMintAmount = totalSupply.divn(2);
+      mintAmount = await mApt.calculateMintAmount(
+        usdcAmount,
+        usdcEthPrice,
+        "6"
+      );
+      expect(mintAmount).to.be.bignumber.equal(expectedMintAmount);
     });
 
     it("Calculate pool amount with 1 pool", async () => {
