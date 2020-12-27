@@ -3,7 +3,9 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@optionality.io/clone-factory/contracts/CloneFactory.sol";
+// import "@optionality.io/clone-factory/contracts/CloneFactory.sol";
+import "./CloneFactory.sol";
+import "./CapitalDeployer.sol";
 
 contract CapitalDeployerFactory is Ownable, CloneFactory {
     address public libraryAddress;
@@ -18,7 +20,7 @@ contract CapitalDeployerFactory is Ownable, CloneFactory {
         libraryAddress = _libraryAddress;
     }
 
-    function create(string id, address executor) public onlyOwner {
+    function create(string memory id, address executor) public onlyOwner {
         address clone = createClone(libraryAddress);
         CapitalDeployer(clone).initialize(id, executor);
         emit CapitalDeployerCreated(clone);
