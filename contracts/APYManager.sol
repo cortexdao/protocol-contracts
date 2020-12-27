@@ -3,23 +3,23 @@ pragma solidity 0.6.11;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAddressRegistry.sol";
+import "./interfaces/IDetailedERC20.sol";
+import "./APYPoolToken.sol";
+import "./APYMetaPoolToken.sol";
 
 contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
     using SafeMath for uint256;
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IDetailedERC20;
 
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
     address public proxyAdmin;
     IAddressRegistry public addressRegistry;
-    address public mApt; // placeholder for future-proofing storage
+    APYMetaPoolToken public mApt;
 
     bytes32[] internal _poolIds;
     address[] internal _tokenAddresses;
@@ -56,6 +56,10 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
     /// @dev Allow contract to receive Ether.
     receive() external payable {} // solhint-disable-line no-empty-blocks
 
+    function setMetaPoolToken(address payable _mApt) public onlyOwner {
+        mApt = APYMetaPoolToken(_mApt);
+    }
+
     function setAddressRegistry(address _addressRegistry) public onlyOwner {
         require(_addressRegistry != address(0), "Invalid address");
         addressRegistry = IAddressRegistry(_addressRegistry);
@@ -75,8 +79,8 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
      */
     function getTokenAddresses()
         external
-        override
         view
+        override
         returns (address[] memory)
     {
         return _tokenAddresses;
@@ -110,8 +114,8 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
      *       In actuality, we will not be computing the TVL from the pools,
      *       as their funds will not be tokenized into mAPT.
      */
-    function balanceOf(address token) external override view returns (uint256) {
-        IERC20 erc20 = IERC20(token);
+    function balanceOf(address token) external view override returns (uint256) {
+        IDetailedERC20 erc20 = IDetailedERC20(token);
         uint256 balance = 0;
         for (uint256 i = 0; i < _poolIds.length; i++) {
             address pool = addressRegistry.getAddress(_poolIds[i]);
@@ -124,10 +128,49 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
     /// @notice Returns the symbol of the given token.
     function symbolOf(address token)
         external
-        override
         view
+        override
         returns (string memory)
     {
-        return ERC20UpgradeSafe(token).symbol();
+        return IDetailedERC20(token).symbol();
+    }
+
+    /**
+     * @notice Redeems mAPT amount for the pool into its underlyer token.
+     * @param poolAddress The address for the selected pool.
+     */
+    function pushFunds(address payable poolAddress) external onlyOwner {
+        uint256 mAptAmount = mApt.balanceOf(poolAddress);
+
+        APYPoolToken pool = APYPoolToken(poolAddress);
+        uint256 tokenEthPrice = pool.getTokenEthPrice();
+        IDetailedERC20 underlyer = pool.underlyer();
+        uint8 decimals = underlyer.decimals();
+        uint256 poolAmount =
+            mApt.calculatePoolAmount(mAptAmount, tokenEthPrice, decimals);
+
+        // Burn must happen after pool amount calc, as quantities
+        // being compared are post-deposit amounts.
+        mApt.burn(poolAddress, mAptAmount);
+        underlyer.safeTransfer(poolAddress, poolAmount);
+    }
+
+    /**
+     * @notice Mint corresponding amount of mAPT tokens for pulled amount.
+     * @dev Pool must approve manager to transfer its underlyer token.
+     */
+    function pullFunds(address payable poolAddress) external onlyOwner {
+        APYPoolToken pool = APYPoolToken(poolAddress);
+        IDetailedERC20 underlyer = pool.underlyer();
+        uint256 poolAmount = underlyer.balanceOf(poolAddress);
+        uint256 poolValue = pool.getEthValueFromTokenAmount(poolAmount);
+
+        uint256 tokenEthPrice = pool.getTokenEthPrice();
+        uint8 decimals = underlyer.decimals();
+        uint256 mintAmount =
+            mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
+
+        mApt.mint(poolAddress, mintAmount);
+        underlyer.safeTransferFrom(poolAddress, address(this), poolAmount);
     }
 }
