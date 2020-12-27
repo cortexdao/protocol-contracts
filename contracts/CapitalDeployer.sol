@@ -2,33 +2,23 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract CapitalDeployer is
-    Initializable,
-    OwnableUpgradeSafe,
-    ReentrancyGuardUpgradeSafe,
-    PausableUpgradeSafe
-{
-    /* ------------------------------- */
-    /* impl-specific storage variables */
-    /* ------------------------------- */
-    bytes32 public id;
-    address public executor;
+interface ICapitalDeployer {
+    function id() external returns (bytes32);
 
-    /* ------------------------------- */
+    function executor() external returns (address);
+}
 
-    function initialize(bytes32 _id, address _executor) external initializer {
-        // initialize ancestor storage
-        __Context_init_unchained();
-        __Ownable_init_unchained();
-        __ReentrancyGuard_init_unchained();
-        __Pausable_init_unchained();
+contract CapitalDeployer is Ownable, ICapitalDeployer {
+    bytes32 public override id;
+    address public override executor;
 
-        // initialize impl-specific storage
+    address[] public inputAssets;
+    address[] public outputAssets;
+
+    function initialize(bytes32 _id, address _executor) external {
+        if (id != 0) return;
         id = _id;
         executor = _executor;
     }
