@@ -53,6 +53,23 @@ const TOKEN_AGG_MAP = {
       aggregator: "0x0bF499444525a23E7Bb61997539725cA2e928138",
     },
   ],
+  LOCALHOST: [
+    {
+      symbol: "DAI",
+      token: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+      aggregator: "0x773616E4d11A78F511299002da57A0a94577F1f4",
+    },
+    {
+      symbol: "USDC",
+      token: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      aggregator: "0x986b5E1e1755e3C2440e960477f25201B0a8bbD4",
+    },
+    {
+      symbol: "USDT",
+      token: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+      aggregator: "0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46",
+    },
+  ],
 };
 const DEPLOYS_JSON = {
   APYGovernanceTokenProxyAdmin:
