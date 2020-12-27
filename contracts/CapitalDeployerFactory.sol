@@ -3,14 +3,13 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-// import "@optionality.io/clone-factory/contracts/CloneFactory.sol";
 import "./CloneFactory.sol";
 import "./CapitalDeployer.sol";
 
 contract CapitalDeployerFactory is Ownable, CloneFactory {
     address public libraryAddress;
 
-    event CapitalDeployerCreated(address newThingAddress);
+    event CapitalDeployerCreated(address clone);
 
     constructor(address _libraryAddress) public {
         libraryAddress = _libraryAddress;
