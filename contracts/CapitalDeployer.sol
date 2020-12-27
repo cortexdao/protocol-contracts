@@ -8,6 +8,8 @@ interface ICapitalDeployer {
     function id() external returns (bytes32);
 
     function executor() external returns (address);
+
+    function initialize(bytes32 _id, address _executor) external;
 }
 
 contract CapitalDeployer is Ownable, ICapitalDeployer {
@@ -17,7 +19,7 @@ contract CapitalDeployer is Ownable, ICapitalDeployer {
     address[] public inputAssets;
     address[] public outputAssets;
 
-    function initialize(bytes32 _id, address _executor) external {
+    function initialize(bytes32 _id, address _executor) external override {
         if (id != 0) return;
         id = _id;
         executor = _executor;

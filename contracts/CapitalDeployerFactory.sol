@@ -9,6 +9,9 @@ import "./CapitalDeployer.sol";
 contract CapitalDeployerFactory is Ownable, CloneFactory {
     address public libraryAddress;
 
+    bytes32[] public ids;
+    mapping(bytes32 => ICapitalDeployer) public idToDeployer;
+
     mapping(bytes32 => address[]) public idToTokens;
     mapping(address => bytes32[]) public tokenToIds;
 
@@ -24,7 +27,10 @@ contract CapitalDeployerFactory is Ownable, CloneFactory {
 
     function create(bytes32 id, address executor) public onlyOwner {
         address clone = createClone(libraryAddress);
-        CapitalDeployer(clone).initialize(id, executor);
+        ICapitalDeployer deployer = ICapitalDeployer(clone);
+        deployer.initialize(id, executor);
+        ids.push(id);
+        idToDeployer[id] = deployer;
         emit CapitalDeployerCreated(id, executor, clone);
     }
 
