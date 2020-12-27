@@ -16,15 +16,12 @@ contract CapitalDeployer is
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
-    string public id;
+    bytes32 public id;
     address public executor;
 
     /* ------------------------------- */
 
-    function initialize(string memory _id, address _executor)
-        external
-        initializer
-    {
+    function initialize(bytes32 _id, address _executor) external initializer {
         // initialize ancestor storage
         __Context_init_unchained();
         __Ownable_init_unchained();

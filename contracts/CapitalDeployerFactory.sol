@@ -9,7 +9,10 @@ import "./CapitalDeployer.sol";
 contract CapitalDeployerFactory is Ownable, CloneFactory {
     address public libraryAddress;
 
-    event CapitalDeployerCreated(address clone);
+    mapping(bytes32 => address[]) public idToTokens;
+    mapping(address => bytes32[]) public tokenToIds;
+
+    event CapitalDeployerCreated(bytes32 id, address executor, address clone);
 
     constructor(address _libraryAddress) public {
         libraryAddress = _libraryAddress;
@@ -19,9 +22,20 @@ contract CapitalDeployerFactory is Ownable, CloneFactory {
         libraryAddress = _libraryAddress;
     }
 
-    function create(string memory id, address executor) public onlyOwner {
+    function create(bytes32 id, address executor) public onlyOwner {
         address clone = createClone(libraryAddress);
         CapitalDeployer(clone).initialize(id, executor);
-        emit CapitalDeployerCreated(clone);
+        emit CapitalDeployerCreated(id, executor, clone);
+    }
+
+    function registerTokens(bytes32 id, address[] memory tokenAddresses)
+        public
+        onlyOwner
+    {
+        for (uint256 i = 0; i < tokenAddresses.length; i++) {
+            address token = tokenAddresses[i];
+            tokenToIds[token].push(id);
+        }
+        idToTokens[id] = tokenAddresses;
     }
 }
