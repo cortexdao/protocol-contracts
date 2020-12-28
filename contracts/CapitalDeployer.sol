@@ -6,7 +6,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./CloneFactory.sol";
-import "./CapitalDeployment.sol";
+import "./CapitalAccount.sol";
 
 contract CapitalDeployer is Ownable, CloneFactory {
     using SafeERC20 for IERC20;
@@ -17,7 +17,6 @@ contract CapitalDeployer is Ownable, CloneFactory {
     address[] internal _tokenAddresses;
 
     mapping(bytes32 => address) public idToAccount;
-    mapping(bytes32 => address[]) public idToExecutor;
 
     mapping(bytes32 => address[]) public idToTokens;
     mapping(address => bytes32[]) public tokenToIds;
