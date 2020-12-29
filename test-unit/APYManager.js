@@ -101,7 +101,7 @@ contract("APYManager", async (accounts) => {
   });
 
   describe("Asset allocation", async () => {
-    describe("Temporary implementation for Chainlink", async () => {
+    describe.skip("Temporary implementation for Chainlink", async () => {
       it("Set and get token addresses", async () => {
         assert.isEmpty(await manager.getTokenAddresses());
 
@@ -144,19 +144,19 @@ contract("APYManager", async (accounts) => {
         const balance = await manager.balanceOf(mockToken.address);
         expect(balance).to.bignumber.equal("2");
       });
+    });
 
-      it("symbolOf", async () => {
-        const mockToken = await MockContract.new();
-        const symbol = IDetailedERC20.encodeFunctionData("symbol", []);
-        const mockString = web3.eth.abi.encodeParameter("string", "MOCK");
-        await mockToken.givenMethodReturn(symbol, mockString);
+    it("symbolOf", async () => {
+      const mockToken = await MockContract.new();
+      const symbol = IDetailedERC20.encodeFunctionData("symbol", []);
+      const mockString = web3.eth.abi.encodeParameter("string", "MOCK");
+      await mockToken.givenMethodReturn(symbol, mockString);
 
-        assert.equal(await manager.symbolOf(mockToken.address), "MOCK");
-      });
+      assert.equal(await manager.symbolOf(mockToken.address), "MOCK");
     });
   });
 
-  describe.only("Strategy factory", async () => {
+  describe("Strategy factory", async () => {
     let strategyLogic;
     let genericExecutor;
     let strategy;
