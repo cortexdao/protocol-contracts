@@ -16,13 +16,19 @@ interface IStrategyFactory {
     function deploy(address generalExecutor) external;
 
     function updateTokens(address strategy, address[] calldata tokens) external;
+
+    function transferAndExecute(address strategy, bytes calldata steps)
+        external;
+
+    function execute(address strategy, bytes calldata steps) external;
 }
 
 contract APYManager is
     Initializable,
     OwnableUpgradeSafe,
     IAssetAllocation,
-    CloneFactory
+    CloneFactory,
+    IStrategyFactory
 {
     using SafeMath for uint256;
     using SafeERC20 for IDetailedERC20;
@@ -41,8 +47,8 @@ contract APYManager is
 
     mapping(address => bool) public deployedAddresses;
 
-    mapping(address => address[]) strategyToTokens;
-    mapping(address => address[]) tokenToStrategies;
+    mapping(address => address[]) public strategyToTokens;
+    mapping(address => address[]) public tokenToStrategies;
     /* ------------------------------- */
 
     event AdminChanged(address);
@@ -66,7 +72,7 @@ contract APYManager is
         libraryAddress = _libraryAddress;
     }
 
-    function deploy(address generalExecutor) public onlyOwner {
+    function deploy(address generalExecutor) external override onlyOwner {
         address strategy = createClone(libraryAddress);
         IStrategy(strategy).initialize(generalExecutor);
         deployedAddresses[strategy] = true;
@@ -75,6 +81,7 @@ contract APYManager is
 
     function updateTokens(address strategy, address[] calldata tokens)
         external
+        override
     {
         // need this for as-yet-unknown tokens that may be air-dropped, etc.
         // XXX: need to handle duplicates instead of nuking old tokens
@@ -85,10 +92,21 @@ contract APYManager is
         }
     }
 
-    // function transferFundsAndExecute
-    // function execute() public {
+    function transferAndExecute(address strategy, bytes calldata steps)
+        external
+        override
+    {
+        for (uint256 i = 0; i < _poolIds.length; i++) {
+            bytes32 poolId = _poolIds[i];
+            address poolAddress = addressRegistry.getAddress(poolId);
+            transferFunds(payable(poolAddress), strategy);
+        }
+        execute(strategy, steps);
+    }
 
-    // }
+    function execute(address strategy, bytes calldata steps) public override {
+        IStrategy(strategy).execute(steps);
+    }
 
     function setAdminAddress(address adminAddress) public onlyOwner {
         require(adminAddress != address(0), "INVALID_ADMIN");
@@ -220,5 +238,32 @@ contract APYManager is
 
         mApt.mint(poolAddress, mintAmount);
         underlyer.safeTransferFrom(poolAddress, address(this), poolAmount);
+    }
+
+    /**
+     * @notice Mint corresponding amount of mAPT tokens for pulled amount.
+     * @dev Pool must approve manager to transfer its underlyer token.
+     */
+    function transferFunds(address payable poolAddress, address strategyAddress)
+        public
+        onlyOwner
+    {
+        require(
+            deployedAddresses[strategyAddress] == true,
+            "Invalid strategy address"
+        );
+
+        APYPoolToken pool = APYPoolToken(poolAddress);
+        IDetailedERC20 underlyer = pool.underlyer();
+        uint256 poolAmount = underlyer.balanceOf(poolAddress);
+        uint256 poolValue = pool.getEthValueFromTokenAmount(poolAmount);
+
+        uint256 tokenEthPrice = pool.getTokenEthPrice();
+        uint8 decimals = underlyer.decimals();
+        uint256 mintAmount =
+            mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
+
+        mApt.mint(poolAddress, mintAmount);
+        underlyer.safeTransferFrom(poolAddress, strategyAddress, poolAmount);
     }
 }
