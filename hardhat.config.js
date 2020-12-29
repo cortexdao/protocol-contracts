@@ -39,12 +39,12 @@ module.exports = {
   },
   solidity: {
     version: "0.6.11",
-    // settings: {
-    //   optimizer: {
-    //     enabled: true,
-    //     runs: 999999,
-    //   },
-    // },
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 999999,
+      },
+    },
   },
   mocha: {
     timeout: 1000000,
