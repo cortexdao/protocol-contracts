@@ -24,9 +24,11 @@ contract Strategy is Ownable, IStrategy {
     }
 
     function execute(bytes calldata steps) external override {
-        // TODO: find the representation for "execute" signature
         bytes memory data =
-            abi.encodePacked(bytes4("execute(SOMETHING HERE!!)"), steps);
+            abi.encodeWithSelector(
+                APYGenericExecutor(generalExecutor).execute.selector,
+                steps
+            );
         _delegate(generalExecutor, data, "steps execution failed");
     }
 
