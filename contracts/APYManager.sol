@@ -35,7 +35,7 @@ contract APYManager is
 
     address public libraryAddress;
 
-    mapping(address => bool) public deployedAddresses;
+    mapping(address => bool) public isStrategyDeployed;
 
     mapping(address => address[]) public strategyToTokens;
     mapping(address => address[]) public tokenToStrategies;
@@ -65,11 +65,11 @@ contract APYManager is
     function deploy(address generalExecutor) external override onlyOwner {
         address strategy = createClone(libraryAddress);
         IStrategy(strategy).initialize(generalExecutor);
-        deployedAddresses[strategy] = true;
+        isStrategyDeployed[strategy] = true;
         emit StrategyDeployed(strategy, generalExecutor);
     }
 
-    function updateTokens(address strategy, address[] calldata tokens)
+    function registerTokens(address strategy, address[] calldata tokens)
         external
         override
     {
@@ -78,8 +78,17 @@ contract APYManager is
         strategyToTokens[strategy] = tokens;
         for (uint256 i = 0; i < tokens.length; i++) {
             address token = tokens[i];
-            tokenToStrategies[token].push(strategy);
+
+            if (!isTokenRegistered(token)) {
+                _tokenAddresses.push(token);
+            }
+
+            tokenToStrategies[token].push(strategy); // FIXME: handle case when it's already in list
         }
+    }
+
+    function isTokenRegistered(address token) public view returns (bool) {
+        return tokenToStrategies[token].length > 0;
     }
 
     function transferAndExecute(address strategy, bytes calldata steps)
@@ -142,14 +151,6 @@ contract APYManager is
         return _tokenAddresses;
     }
 
-    /// @dev part of temporary implementation for Chainlink integration
-    function setTokenAddresses(address[] calldata tokenAddresses)
-        external
-        onlyOwner
-    {
-        _tokenAddresses = tokenAddresses;
-    }
-
     /// @dev part of temporary implementation for Chainlink integration;
     ///      likely need this to clear out storage prior to real upgrade.
     function deleteTokenAddresses() external onlyOwner {
@@ -165,18 +166,15 @@ contract APYManager is
     /** @notice Returns the total balance in the system for given token.
      *  @dev The balance is possibly aggregated from multiple contracts
      *       holding the token.
-     *
-     *       This is a temporary implementation until there are deployed funds.
-     *       In actuality, we will not be computing the TVL from the pools,
-     *       as their funds will not be tokenized into mAPT.
      */
     function balanceOf(address token) external view override returns (uint256) {
         IDetailedERC20 erc20 = IDetailedERC20(token);
+        address[] storage strategies = tokenToStrategies[token];
         uint256 balance = 0;
-        for (uint256 i = 0; i < _poolIds.length; i++) {
-            address pool = addressRegistry.getAddress(_poolIds[i]);
-            uint256 poolBalance = erc20.balanceOf(pool);
-            balance = balance.add(poolBalance);
+        for (uint256 i = 0; i < strategies.length; i++) {
+            address strategy = strategies[i];
+            uint256 strategyBalance = erc20.balanceOf(strategy);
+            balance = balance.add(strategyBalance);
         }
         return balance;
     }
@@ -239,7 +237,7 @@ contract APYManager is
         onlyOwner
     {
         require(
-            deployedAddresses[strategyAddress] == true,
+            isStrategyDeployed[strategyAddress] == true,
             "Invalid strategy address"
         );
 
