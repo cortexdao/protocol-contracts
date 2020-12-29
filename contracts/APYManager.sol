@@ -9,8 +9,15 @@ import "./interfaces/IAddressRegistry.sol";
 import "./interfaces/IDetailedERC20.sol";
 import "./APYPoolToken.sol";
 import "./APYMetaPoolToken.sol";
+import "./CloneFactory.sol";
+import "./Strategy.sol";
 
-contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
+contract APYManager is
+    Initializable,
+    OwnableUpgradeSafe,
+    IAssetAllocation,
+    CloneFactory
+{
     using SafeMath for uint256;
     using SafeERC20 for IDetailedERC20;
 
@@ -24,9 +31,14 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
     bytes32[] internal _poolIds;
     address[] internal _tokenAddresses;
 
+    address public libraryAddress;
+
+    mapping(address => bool) public deployedAddresses;
+
     /* ------------------------------- */
 
     event AdminChanged(address);
+    event StrategyDeployed(address strategy, address generalExecutor);
 
     function initialize(address adminAddress) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");
@@ -41,6 +53,17 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
 
     // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual onlyAdmin {}
+
+    function setLibraryAddress(address _libraryAddress) public onlyOwner {
+        libraryAddress = _libraryAddress;
+    }
+
+    function deploy(address generalExecutor) public onlyOwner {
+        address strategy = createClone(libraryAddress);
+        IStrategy(strategy).initialize(generalExecutor);
+        deployedAddresses[strategy] = true;
+        emit StrategyDeployed(strategy, generalExecutor);
+    }
 
     function setAdminAddress(address adminAddress) public onlyOwner {
         require(adminAddress != address(0), "INVALID_ADMIN");
