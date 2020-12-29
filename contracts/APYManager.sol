@@ -12,6 +12,12 @@ import "./APYMetaPoolToken.sol";
 import "./CloneFactory.sol";
 import "./Strategy.sol";
 
+interface IStrategyFactory {
+    function deploy(address generalExecutor) external;
+
+    function updateTokens(address strategy, address[] calldata tokens) external;
+}
+
 contract APYManager is
     Initializable,
     OwnableUpgradeSafe,
@@ -35,6 +41,8 @@ contract APYManager is
 
     mapping(address => bool) public deployedAddresses;
 
+    mapping(address => address[]) strategyToTokens;
+    mapping(address => address[]) tokenToStrategies;
     /* ------------------------------- */
 
     event AdminChanged(address);
@@ -64,6 +72,23 @@ contract APYManager is
         deployedAddresses[strategy] = true;
         emit StrategyDeployed(strategy, generalExecutor);
     }
+
+    function updateTokens(address strategy, address[] calldata tokens)
+        external
+    {
+        // need this for as-yet-unknown tokens that may be air-dropped, etc.
+        // XXX: need to handle duplicates instead of nuking old tokens
+        strategyToTokens[strategy] = tokens;
+        for (uint256 i = 0; i < tokens.length; i++) {
+            address token = tokens[i];
+            tokenToStrategies[token].push(strategy);
+        }
+    }
+
+    // function transferFundsAndExecute
+    // function execute() public {
+
+    // }
 
     function setAdminAddress(address adminAddress) public onlyOwner {
         require(adminAddress != address(0), "INVALID_ADMIN");
