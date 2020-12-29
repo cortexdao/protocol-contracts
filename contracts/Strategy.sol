@@ -5,13 +5,8 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
+import "./interfaces/IStrategy.sol";
 import "./APYGenericExecutor.sol";
-
-interface IStrategy {
-    function initialize(address generalExecutor) external;
-
-    function execute(bytes calldata steps) external;
-}
 
 contract Strategy is Ownable, IStrategy {
     using SafeERC20 for IERC20;

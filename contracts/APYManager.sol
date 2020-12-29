@@ -7,21 +7,11 @@ import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAddressRegistry.sol";
 import "./interfaces/IDetailedERC20.sol";
+import "./interfaces/IStrategyFactory.sol";
 import "./APYPoolToken.sol";
 import "./APYMetaPoolToken.sol";
 import "./CloneFactory.sol";
 import "./Strategy.sol";
-
-interface IStrategyFactory {
-    function deploy(address generalExecutor) external;
-
-    function updateTokens(address strategy, address[] calldata tokens) external;
-
-    function transferAndExecute(address strategy, bytes calldata steps)
-        external;
-
-    function execute(address strategy, bytes calldata steps) external;
-}
 
 contract APYManager is
     Initializable,
