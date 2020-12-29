@@ -2,15 +2,24 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "./interfaces/IStrategy.sol";
 import "./APYGenericExecutor.sol";
 
-contract Strategy is Ownable, IStrategy {
+contract Strategy is Initializable, OwnableUpgradeSafe, IStrategy {
     address public generalExecutor;
 
-    function initialize(address _generalExecutor) external override {
-        if (generalExecutor != address(0)) return;
+    function initialize(address _generalExecutor)
+        external
+        override
+        initializer
+    {
+        // initialize ancestor storage
+        __Context_init_unchained();
+        __Ownable_init_unchained();
+
+        // initialize impl-specific storage
         generalExecutor = _generalExecutor;
     }
 

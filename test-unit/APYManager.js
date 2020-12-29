@@ -10,6 +10,8 @@ const TransparentUpgradeableProxy = artifacts.require(
 );
 const ProxyConstructorArg = artifacts.require("ProxyConstructorArg");
 const APYManager = artifacts.require("APYManager");
+const APYGenericExecutor = artifacts.require("APYGenericExecutor");
+const Strategy = artifacts.require("Strategy");
 const IDetailedERC20 = new ethers.utils.Interface(
   artifacts.require("IDetailedERC20").abi
 );
@@ -150,6 +152,30 @@ contract("APYManager", async (accounts) => {
 
         assert.equal(await manager.symbolOf(mockToken.address), "MOCK");
       });
+    });
+  });
+
+  describe.only("Strategy deploy", async () => {
+    let strategyLogic;
+    let genericExecutor;
+
+    before("Deploy logic (library)", async () => {
+      strategyLogic = await Strategy.new();
+      console.log("Strategy logic:", strategyLogic.address);
+      await manager.setLibraryAddress(strategyLogic.address);
+
+      genericExecutor = await APYGenericExecutor.new();
+    });
+
+    it("Can deploy minimal proxy", async () => {
+      const strategyAddress = await manager.deploy.call(
+        genericExecutor.address
+      );
+      await manager.deploy(genericExecutor.address);
+      console.log("Strategy:", strategyAddress);
+
+      const strategy = await Strategy.at(strategyAddress);
+      expect(await strategy.owner()).to.equal(manager.address);
     });
   });
 });

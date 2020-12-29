@@ -62,11 +62,17 @@ contract APYManager is
         libraryAddress = _libraryAddress;
     }
 
-    function deploy(address generalExecutor) external override onlyOwner {
+    function deploy(address generalExecutor)
+        external
+        override
+        onlyOwner
+        returns (address)
+    {
         address strategy = createClone(libraryAddress);
         IStrategy(strategy).initialize(generalExecutor);
         isStrategyDeployed[strategy] = true;
         emit StrategyDeployed(strategy, generalExecutor);
+        return strategy;
     }
 
     function registerTokens(address strategy, address[] calldata tokens)

@@ -2,7 +2,7 @@
 pragma solidity 0.6.11;
 
 interface IStrategyFactory {
-    function deploy(address generalExecutor) external;
+    function deploy(address generalExecutor) external returns (address);
 
     function registerTokens(address strategy, address[] calldata tokens)
         external;
