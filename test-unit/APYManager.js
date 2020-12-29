@@ -1,6 +1,7 @@
 const { assert, expect } = require("chai");
-const { artifacts, contract, ethers, web3 } = require("hardhat");
-const { expectRevert } = require("@openzeppelin/test-helpers");
+const hre = require("hardhat");
+const { artifacts, contract, ethers, web3 } = hre;
+const { expectRevert, send, ether } = require("@openzeppelin/test-helpers");
 const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 
@@ -155,27 +156,52 @@ contract("APYManager", async (accounts) => {
     });
   });
 
-  describe.only("Strategy deploy", async () => {
+  describe.only("Strategy factory", async () => {
     let strategyLogic;
     let genericExecutor;
+    let strategy;
 
-    before("Deploy logic (library)", async () => {
-      strategyLogic = await Strategy.new();
-      console.log("Strategy logic:", strategyLogic.address);
+    before("Deploy strategy", async () => {
+      genericExecutor = await APYGenericExecutor.new({ from: deployer });
+      strategyLogic = await Strategy.new({ from: deployer });
       await manager.setLibraryAddress(strategyLogic.address);
 
-      genericExecutor = await APYGenericExecutor.new();
+      const strategyAddress = await manager.deploy.call(
+        genericExecutor.address,
+        { from: deployer }
+      );
+      await manager.deploy(genericExecutor.address, { from: deployer });
+      strategy = await Strategy.at(strategyAddress);
     });
 
-    it("Can deploy minimal proxy", async () => {
-      const strategyAddress = await manager.deploy.call(
-        genericExecutor.address
-      );
-      await manager.deploy(genericExecutor.address);
-      console.log("Strategy:", strategyAddress);
-
-      const strategy = await Strategy.at(strategyAddress);
+    it("Strategy owner is manager", async () => {
       expect(await strategy.owner()).to.equal(manager.address);
+    });
+
+    it("Owner can call execute", async () => {
+      await hre.network.provider.request({
+        method: "hardhat_impersonateAccount",
+        params: [manager.address],
+      });
+      await send.ether(deployer, manager.address, ether("1"));
+      const steps = web3.utils.fromAscii("bytes data");
+
+      await expectRevert(
+        strategy.execute(steps, { from: manager.address }),
+        "steps execution failed"
+      );
+    });
+
+    it("Revert when non-owner calls execute", async () => {
+      const steps = web3.utils.fromAscii("bytes data");
+      await expectRevert(
+        strategy.execute(steps, { from: deployer }),
+        "Ownable: caller is not the owner"
+      );
+      await expectRevert(
+        strategy.execute(steps, { from: randomUser }),
+        "Ownable: caller is not the owner"
+      );
     });
   });
 });
