@@ -84,7 +84,7 @@ console.debug = function () {
 
 console.debugging = false;
 
-async function updateDeployJsons(network, deploy_data) {
+function updateDeployJsons(network, deploy_data) {
   for (let [contract_name, file_path] of Object.entries(DEPLOYS_JSON)) {
     // go through all deploys json and update them
     const address_json = require(file_path);
