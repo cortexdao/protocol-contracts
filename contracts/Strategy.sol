@@ -23,7 +23,11 @@ contract Strategy is Initializable, OwnableUpgradeSafe, IStrategy {
         generalExecutor = _generalExecutor;
     }
 
-    function execute(bytes calldata steps) external override onlyOwner {
+    function execute(APYGenericExecutor.Data[] memory steps)
+        external
+        override
+        onlyOwner
+    {
         bytes memory data =
             abi.encodeWithSelector(
                 APYGenericExecutor(generalExecutor).execute.selector,

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.11;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
@@ -97,10 +98,10 @@ contract APYManager is
         return tokenToStrategies[token].length > 0;
     }
 
-    function transferAndExecute(address strategy, bytes calldata steps)
-        external
-        override
-    {
+    function transferAndExecute(
+        address strategy,
+        APYGenericExecutor.Data[] memory steps
+    ) external override {
         for (uint256 i = 0; i < _poolIds.length; i++) {
             bytes32 poolId = _poolIds[i];
             address poolAddress = addressRegistry.getAddress(poolId);
@@ -109,7 +110,10 @@ contract APYManager is
         execute(strategy, steps);
     }
 
-    function execute(address strategy, bytes calldata steps) public override {
+    function execute(address strategy, APYGenericExecutor.Data[] memory steps)
+        public
+        override
+    {
         IStrategy(strategy).execute(steps);
     }
 
