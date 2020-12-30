@@ -104,6 +104,12 @@ async function updateDeployJsons(network, deploy_data) {
   }
 }
 
+function getDeployedAddress(contractName, network) {
+  const contractAddresses = require(DEPLOYS_JSON[contractName]);
+  const deployedAddress = contractAddresses[CHAIN_IDS[network]];
+  return deployedAddress;
+}
+
 module.exports = {
   bytes32,
   dai,
@@ -114,4 +120,5 @@ module.exports = {
   undoErc20,
   console,
   updateDeployJsons,
+  getDeployedAddress,
 };
