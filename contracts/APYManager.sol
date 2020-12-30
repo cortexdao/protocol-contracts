@@ -7,10 +7,19 @@ import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAddressRegistry.sol";
 import "./interfaces/IDetailedERC20.sol";
+import "./interfaces/IStrategyFactory.sol";
 import "./APYPoolToken.sol";
 import "./APYMetaPoolToken.sol";
+import "./CloneFactory.sol";
+import "./Strategy.sol";
 
-contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
+contract APYManager is
+    Initializable,
+    OwnableUpgradeSafe,
+    IAssetAllocation,
+    CloneFactory,
+    IStrategyFactory
+{
     using SafeMath for uint256;
     using SafeERC20 for IDetailedERC20;
 
@@ -24,9 +33,16 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
     bytes32[] internal _poolIds;
     address[] internal _tokenAddresses;
 
+    address public libraryAddress;
+
+    mapping(address => bool) public isStrategyDeployed;
+
+    mapping(address => address[]) public strategyToTokens;
+    mapping(address => address[]) public tokenToStrategies;
     /* ------------------------------- */
 
     event AdminChanged(address);
+    event StrategyDeployed(address strategy, address generalExecutor);
 
     function initialize(address adminAddress) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");
@@ -41,6 +57,61 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
 
     // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual onlyAdmin {}
+
+    function setLibraryAddress(address _libraryAddress) public onlyOwner {
+        libraryAddress = _libraryAddress;
+    }
+
+    function deploy(address generalExecutor)
+        external
+        override
+        onlyOwner
+        returns (address)
+    {
+        address strategy = createClone(libraryAddress);
+        IStrategy(strategy).initialize(generalExecutor);
+        isStrategyDeployed[strategy] = true;
+        emit StrategyDeployed(strategy, generalExecutor);
+        return strategy;
+    }
+
+    function registerTokens(address strategy, address[] calldata tokens)
+        external
+        override
+    {
+        // need this for as-yet-unknown tokens that may be air-dropped, etc.
+        // XXX: need to handle duplicates instead of nuking old tokens
+        strategyToTokens[strategy] = tokens;
+        for (uint256 i = 0; i < tokens.length; i++) {
+            address token = tokens[i];
+
+            if (!isTokenRegistered(token)) {
+                _tokenAddresses.push(token);
+            }
+
+            tokenToStrategies[token].push(strategy); // FIXME: handle case when it's already in list
+        }
+    }
+
+    function isTokenRegistered(address token) public view returns (bool) {
+        return tokenToStrategies[token].length > 0;
+    }
+
+    function transferAndExecute(address strategy, bytes calldata steps)
+        external
+        override
+    {
+        for (uint256 i = 0; i < _poolIds.length; i++) {
+            bytes32 poolId = _poolIds[i];
+            address poolAddress = addressRegistry.getAddress(poolId);
+            transferFunds(payable(poolAddress), strategy);
+        }
+        execute(strategy, steps);
+    }
+
+    function execute(address strategy, bytes calldata steps) public override {
+        IStrategy(strategy).execute(steps);
+    }
 
     function setAdminAddress(address adminAddress) public onlyOwner {
         require(adminAddress != address(0), "INVALID_ADMIN");
@@ -86,14 +157,6 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
         return _tokenAddresses;
     }
 
-    /// @dev part of temporary implementation for Chainlink integration
-    function setTokenAddresses(address[] calldata tokenAddresses)
-        external
-        onlyOwner
-    {
-        _tokenAddresses = tokenAddresses;
-    }
-
     /// @dev part of temporary implementation for Chainlink integration;
     ///      likely need this to clear out storage prior to real upgrade.
     function deleteTokenAddresses() external onlyOwner {
@@ -109,18 +172,15 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
     /** @notice Returns the total balance in the system for given token.
      *  @dev The balance is possibly aggregated from multiple contracts
      *       holding the token.
-     *
-     *       This is a temporary implementation until there are deployed funds.
-     *       In actuality, we will not be computing the TVL from the pools,
-     *       as their funds will not be tokenized into mAPT.
      */
     function balanceOf(address token) external view override returns (uint256) {
         IDetailedERC20 erc20 = IDetailedERC20(token);
+        address[] storage strategies = tokenToStrategies[token];
         uint256 balance = 0;
-        for (uint256 i = 0; i < _poolIds.length; i++) {
-            address pool = addressRegistry.getAddress(_poolIds[i]);
-            uint256 poolBalance = erc20.balanceOf(pool);
-            balance = balance.add(poolBalance);
+        for (uint256 i = 0; i < strategies.length; i++) {
+            address strategy = strategies[i];
+            uint256 strategyBalance = erc20.balanceOf(strategy);
+            balance = balance.add(strategyBalance);
         }
         return balance;
     }
@@ -172,5 +232,32 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
 
         mApt.mint(poolAddress, mintAmount);
         underlyer.safeTransferFrom(poolAddress, address(this), poolAmount);
+    }
+
+    /**
+     * @notice Mint corresponding amount of mAPT tokens for pulled amount.
+     * @dev Pool must approve manager to transfer its underlyer token.
+     */
+    function transferFunds(address payable poolAddress, address strategyAddress)
+        public
+        onlyOwner
+    {
+        require(
+            isStrategyDeployed[strategyAddress] == true,
+            "Invalid strategy address"
+        );
+
+        APYPoolToken pool = APYPoolToken(poolAddress);
+        IDetailedERC20 underlyer = pool.underlyer();
+        uint256 poolAmount = underlyer.balanceOf(poolAddress);
+        uint256 poolValue = pool.getEthValueFromTokenAmount(poolAmount);
+
+        uint256 tokenEthPrice = pool.getTokenEthPrice();
+        uint8 decimals = underlyer.decimals();
+        uint256 mintAmount =
+            mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
+
+        mApt.mint(poolAddress, mintAmount);
+        underlyer.safeTransferFrom(poolAddress, strategyAddress, poolAmount);
     }
 }

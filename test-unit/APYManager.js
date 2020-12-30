@@ -1,6 +1,7 @@
 const { assert, expect } = require("chai");
-const { artifacts, contract, ethers, web3 } = require("hardhat");
-const { expectRevert } = require("@openzeppelin/test-helpers");
+const hre = require("hardhat");
+const { artifacts, contract, ethers, web3 } = hre;
+const { expectRevert, send, ether } = require("@openzeppelin/test-helpers");
 const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 
@@ -10,6 +11,8 @@ const TransparentUpgradeableProxy = artifacts.require(
 );
 const ProxyConstructorArg = artifacts.require("ProxyConstructorArg");
 const APYManager = artifacts.require("APYManager");
+const APYGenericExecutor = artifacts.require("APYGenericExecutor");
+const Strategy = artifacts.require("Strategy");
 const IDetailedERC20 = new ethers.utils.Interface(
   artifacts.require("IDetailedERC20").abi
 );
@@ -98,7 +101,7 @@ contract("APYManager", async (accounts) => {
   });
 
   describe("Asset allocation", async () => {
-    describe("Temporary implementation for Chainlink", async () => {
+    describe.skip("Temporary implementation for Chainlink", async () => {
       it("Set and get token addresses", async () => {
         assert.isEmpty(await manager.getTokenAddresses());
 
@@ -141,15 +144,64 @@ contract("APYManager", async (accounts) => {
         const balance = await manager.balanceOf(mockToken.address);
         expect(balance).to.bignumber.equal("2");
       });
+    });
 
-      it("symbolOf", async () => {
-        const mockToken = await MockContract.new();
-        const symbol = IDetailedERC20.encodeFunctionData("symbol", []);
-        const mockString = web3.eth.abi.encodeParameter("string", "MOCK");
-        await mockToken.givenMethodReturn(symbol, mockString);
+    it("symbolOf", async () => {
+      const mockToken = await MockContract.new();
+      const symbol = IDetailedERC20.encodeFunctionData("symbol", []);
+      const mockString = web3.eth.abi.encodeParameter("string", "MOCK");
+      await mockToken.givenMethodReturn(symbol, mockString);
 
-        assert.equal(await manager.symbolOf(mockToken.address), "MOCK");
+      assert.equal(await manager.symbolOf(mockToken.address), "MOCK");
+    });
+  });
+
+  describe("Strategy factory", async () => {
+    let strategyLogic;
+    let genericExecutor;
+    let strategy;
+
+    before("Deploy strategy", async () => {
+      genericExecutor = await APYGenericExecutor.new({ from: deployer });
+      strategyLogic = await Strategy.new({ from: deployer });
+      await manager.setLibraryAddress(strategyLogic.address);
+
+      const strategyAddress = await manager.deploy.call(
+        genericExecutor.address,
+        { from: deployer }
+      );
+      await manager.deploy(genericExecutor.address, { from: deployer });
+      strategy = await Strategy.at(strategyAddress);
+    });
+
+    it("Strategy owner is manager", async () => {
+      expect(await strategy.owner()).to.equal(manager.address);
+    });
+
+    it("Owner can call execute", async () => {
+      await hre.network.provider.request({
+        method: "hardhat_impersonateAccount",
+        params: [manager.address],
       });
+      await send.ether(deployer, manager.address, ether("1"));
+      const steps = web3.utils.fromAscii("bytes data");
+
+      await expectRevert(
+        strategy.execute(steps, { from: manager.address }),
+        "steps execution failed"
+      );
+    });
+
+    it("Revert when non-owner calls execute", async () => {
+      const steps = web3.utils.fromAscii("bytes data");
+      await expectRevert(
+        strategy.execute(steps, { from: deployer }),
+        "Ownable: caller is not the owner"
+      );
+      await expectRevert(
+        strategy.execute(steps, { from: randomUser }),
+        "Ownable: caller is not the owner"
+      );
     });
   });
 });
