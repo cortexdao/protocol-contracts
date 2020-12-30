@@ -31,10 +31,10 @@ async function acquireToken(fundAccount, receiver, token, amount) {
 
 contract("Test GenericExecutor", async (accounts) => {
   it.only("Execution Test", async () => {
-    await hre.network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [DAI_WHALE],
-    });
+    // await hre.network.provider.request({
+    //   method: "hardhat_impersonateAccount",
+    //   params: [DAI_WHALE],
+    // });
 
     await web3.eth.sendTransaction({
       from: accounts[0],
@@ -48,10 +48,10 @@ contract("Test GenericExecutor", async (accounts) => {
     const amountOfStables = "1000000";
     await acquireToken(DAI_WHALE, daiPool.address, DAI, amountOfStables);
 
-    await hre.network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [USDC_WHALE],
-    });
+    // await hre.network.provider.request({
+    //   method: "hardhat_impersonateAccount",
+    //   params: [USDC_WHALE],
+    // });
 
     await web3.eth.sendTransaction({
       from: accounts[0],
@@ -64,10 +64,10 @@ contract("Test GenericExecutor", async (accounts) => {
 
     await acquireToken(USDC_WHALE, usdcPool.address, USDC, amountOfStables);
 
-    await hre.network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [USDT_WHALE],
-    });
+    // await hre.network.provider.request({
+    //   method: "hardhat_impersonateAccount",
+    //   params: [USDT_WHALE],
+    // });
 
     await web3.eth.sendTransaction({
       from: accounts[0],
@@ -85,15 +85,13 @@ contract("Test GenericExecutor", async (accounts) => {
       legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD
     );
 
-    const exec = await GenericExecutor.new();
-
     const manager = await APYManager.at(APYManagerAddresses["1"]);
 
     const poolOwner = await daiPool.owner();
-    await hre.network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [poolOwner],
-    });
+    // await hre.network.provider.request({
+    //   method: "hardhat_impersonateAccount",
+    //   params: [poolOwner],
+    // });
     await daiPool.infiniteApprove(manager.address, { from: poolOwner });
     const daiBalance = await DAI.balanceOf(daiPool.address);
     console.log(daiBalance.toString());
@@ -106,15 +104,15 @@ contract("Test GenericExecutor", async (accounts) => {
     const usdtBalance = await USDT.balanceOf(usdtPool.address);
     console.log(usdtBalance.toString());
 
-    const trx = await exec.execute([
-      [manager.address, legos.apy.codecs.APY_MANAGER.encodePullFunds(daiPool)],
-      [manager.address, legos.apy.codecs.APY_MANAGER.encodePullFunds(usdcPool)],
-      [manager.address, legos.apy.codecs.APY_MANAGER.encodePullFunds(usdtPool)],
-      [
-        legos.curvefi.addresses.DEPOSIT_Y,
-        legos.curvefi.codecs.DEPOSIT_Y.encodeAddLiquidity([100000, 0, 0, 0], 0),
-      ],
-    ]);
+    const genericExecutor = await GenericExecutor.new();
+    const strategyAddress = await manager.deploy.call(genericExecutor.address);
+    await manager.deploy(genericExecutor.address);
+
+    const data = [
+      legos.curvefi.addresses.DEPOSIT_Y,
+      legos.curvefi.codecs.DEPOSIT_Y.encodeAddLiquidity([100000, 0, 0, 0], 0),
+    ];
+    const trx = await manager.transferAndExecute(strategyAddress, data);
 
     await expectEvent.inTransaction(trx.tx, stableSwapY, "AddLiquidity");
   });

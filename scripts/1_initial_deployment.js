@@ -50,9 +50,9 @@ async function main() {
     deploy_data[symbol + "_APYPoolToken"] = logic.address;
     deploy_data[symbol + "_APYPoolTokenProxy"] = proxy.address;
 
-    const instance = await APYPoolToken.attach(proxy.address);
-    await instance.lock();
-    console.log(`${symbol} pool locked.`);
+    // const instance = await APYPoolToken.attach(proxy.address);
+    // await instance.lock();
+    // console.log(`${symbol} pool locked.`);
   }
 
   await updateDeployJsons(NETWORK_NAME, deploy_data);
