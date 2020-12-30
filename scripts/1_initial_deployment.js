@@ -1,11 +1,20 @@
 require("dotenv").config();
-const { ethers, network } = require("hardhat");
+const hre = require("hardhat");
+const { ethers, network } = hre;
 const { TOKEN_AGG_MAP } = require("../utils/constants.js");
 const { updateDeployJsons } = require("../utils/helpers.js");
 
 async function main() {
+  await hre.run("compile");
   const NETWORK_NAME = network.name.toUpperCase();
+  console.log("");
   console.log(`${NETWORK_NAME} selected`);
+  console.log("");
+
+  const signers = await ethers.getSigners();
+  const deployer = await signers[0].getAddress();
+  console.log("Deployer address:", deployer);
+  console.log("");
 
   const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
   const APYPoolToken = await ethers.getContractFactory("APYPoolToken");
