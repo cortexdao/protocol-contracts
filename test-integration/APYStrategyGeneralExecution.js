@@ -131,7 +131,7 @@ contract("Test GenericExecutor", async (accounts) => {
         depositY,
         legos.curvefi.codecs.DEPOSIT_Y.encodeAddLiquidity(
           [depositAmount, 0, 0, 0],
-          dai("1000000000000").toString()
+          dai("0").toString()
         ),
       ],
     ];
