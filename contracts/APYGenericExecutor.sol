@@ -17,6 +17,7 @@ contract APYGenericExecutor {
                 executionSteps[i].target,
                 executionSteps[i].data
             );
+            revert("Holy batman");
         }
     }
 

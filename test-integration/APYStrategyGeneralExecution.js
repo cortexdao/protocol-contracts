@@ -8,6 +8,7 @@ const { DAI_WHALE, USDC_WHALE, USDT_WHALE } = require("../utils/constants");
 
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
 const GenericExecutor = artifacts.require("APYGenericExecutor");
+const Strategy = artifacts.require("Strategy");
 const APYManager = artifacts.require("APYManager");
 const APYPoolToken = artifacts.require("APYPoolToken");
 const { expectEvent, BN } = require("@openzeppelin/test-helpers");
@@ -117,8 +118,12 @@ contract("Test GenericExecutor", async (accounts) => {
     // console.log(usdtBalance.toString());
 
     const genericExecutor = await GenericExecutor.new();
-    const strategyAddress = await manager.deploy.call(genericExecutor.address);
-    await manager.deploy(genericExecutor.address);
+    // const strategyAddress = await manager.deploy.call(genericExecutor.address);
+    // await manager.deploy(genericExecutor.address);
+    const strategy = await Strategy.new();
+    await strategy.initialize(genericExecutor.address);
+    const strategyAddress = strategy.address;
+    await strategy.transferOwnership(manager.address);
 
     // const depositAmount = dai("100000").toString();
     const depositAmount = dai("100000").toString();
@@ -161,7 +166,8 @@ contract("Test GenericExecutor", async (accounts) => {
       console.error(`Generic executor failed: ${err}`);
     }
 
-    await manager.transferFunds(daiPool.address, strategyAddress);
+    // await manager.transferFunds(daiPool.address, strategyAddress);
+    await acquireToken(DAI_WHALE, strategyAddress, DAI, amountOfStables);
     // console.log(
     //   "Strategy balance (before):",
     //   (await DAI.balanceOf(strategyAddress)).toString()
