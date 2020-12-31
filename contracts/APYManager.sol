@@ -11,14 +11,12 @@ import "./interfaces/IDetailedERC20.sol";
 import "./interfaces/IStrategyFactory.sol";
 import "./APYPoolToken.sol";
 import "./APYMetaPoolToken.sol";
-import "./CloneFactory.sol";
 import "./Strategy.sol";
 
 contract APYManager is
     Initializable,
     OwnableUpgradeSafe,
     IAssetAllocation,
-    CloneFactory,
     IStrategyFactory
 {
     using SafeMath for uint256;
@@ -69,11 +67,10 @@ contract APYManager is
         onlyOwner
         returns (address)
     {
-        address strategy = createClone(libraryAddress);
-        IStrategy(strategy).initialize(generalExecutor);
-        isStrategyDeployed[strategy] = true;
-        emit StrategyDeployed(strategy, generalExecutor);
-        return strategy;
+        Strategy strategy = new Strategy(generalExecutor);
+        isStrategyDeployed[address(strategy)] = true;
+        emit StrategyDeployed(address(strategy), generalExecutor);
+        return address(strategy);
     }
 
     function registerTokens(address strategy, address[] calldata tokens)
