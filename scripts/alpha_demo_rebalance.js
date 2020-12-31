@@ -93,7 +93,7 @@ async function main() {
   const manager = APYManager.attach(managerProxyAddress).connect(managerSigner);
 
   console.log("Approving manager for pools ...");
-  for (const { symbol, pool } of Object.entries(pools)) {
+  for (const [symbol, pool] of Object.entries(pools)) {
     console.log("  pool:", symbol);
     await pool.revokeApprove(manager.address);
     await pool.infiniteApprove(manager.address);
@@ -114,10 +114,22 @@ async function main() {
   console.log("Strategy address:", strategyAddress);
   console.log("");
 
+  // TODO: when testing on same forked mainnet, this will only show
+  // funds tranferred the first time, as subsequent times the pools
+  // will have zero funds
   console.log("Transferring funds to manager ...");
-  for (const { symbol, pool } of Object.entries(pools)) {
+  for (const [symbol, pool] of Object.entries(pools)) {
     console.log("  pool:", symbol);
-    await manager.transferFunds(pool.address, strategyAddress);
+    console.log(
+      "    before:",
+      (await stablecoins[symbol].balanceOf(strategyAddress)).toString()
+    );
+    const trx = await manager.transferFunds(pool.address, strategyAddress);
+    await trx.wait();
+    console.log(
+      "    after:",
+      (await stablecoins[symbol].balanceOf(strategyAddress)).toString()
+    );
   }
   console.log("... done.");
   console.log("");
