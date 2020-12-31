@@ -12,6 +12,7 @@ const APYManager = artifacts.require("APYManager");
 const APYPoolToken = artifacts.require("APYPoolToken");
 const { expectEvent, BN } = require("@openzeppelin/test-helpers");
 const legos = require("defi-legos");
+const { dai } = require("../utils/helpers");
 
 async function formattedAmount(token, value) {
   const decimals = await token.decimals.call();
@@ -119,37 +120,68 @@ contract("Test GenericExecutor", async (accounts) => {
     const strategyAddress = await manager.deploy.call(genericExecutor.address);
     await manager.deploy(genericExecutor.address);
 
+    // const depositAmount = dai("100000").toString();
+    const depositAmount = dai("100000").toString();
     console.log("Strategy address:", strategyAddress);
     console.log("Y deposit:", legos.curvefi.addresses.DEPOSIT_Y);
-    console.log(
-      "Data:",
-      legos.curvefi.codecs.DEPOSIT_Y.encodeAddLiquidity([100000, 0, 0, 0], 0)
-    );
     const depositY = legos.curvefi.addresses.DEPOSIT_Y;
     const data = [
-      [DAI.address, legos.maker.codecs.DAI.encodeApprove(depositY, 100000)],
+      [
+        DAI.address,
+        legos.maker.codecs.DAI.encodeApprove(depositY, depositAmount),
+      ],
       [
         depositY,
-        legos.curvefi.codecs.DEPOSIT_Y.encodeAddLiquidity([100000, 0, 0, 0], 0),
+        legos.curvefi.codecs.DEPOSIT_Y.encodeAddLiquidity(
+          [depositAmount, 0, 0, 0],
+          dai("1000000000000").toString()
+        ),
       ],
     ];
-    await manager.transferFunds(daiPool.address, strategyAddress);
-    console.log(
-      "Strategy balance (before):",
-      (await DAI.balanceOf(strategyAddress)).toString()
+    console.log("Data:", data);
+
+    const genericExecutor_2 = await GenericExecutor.new();
+    await acquireToken(
+      DAI_WHALE,
+      genericExecutor_2.address,
+      DAI,
+      amountOfStables
     );
-    const trx = await manager.execute(strategyAddress, data);
-    // const trx = await manager.transferAndExecute(strategyAddress, data);
-    // console.log(trx);
+    try {
+      await genericExecutor_2.execute(data, { gas: 9e6 });
+      console.log(
+        "LP token balance:",
+        (await yPoolToken.balanceOf(genericExecutor_2.address)).toString()
+      );
+      console.log(
+        "DAI balance:",
+        (await DAI.balanceOf(genericExecutor_2.address)).toString()
+      );
+    } catch (err) {
+      console.error(`Generic executor failed: ${err}`);
+    }
+
+    await manager.transferFunds(daiPool.address, strategyAddress);
+    // console.log(
+    //   "Strategy balance (before):",
+    //   (await DAI.balanceOf(strategyAddress)).toString()
+    // );
+    const trx = await manager.execute(strategyAddress, data, { gas: 9e6 });
+    // // const trx = await manager.transferAndExecute(strategyAddress, data);
+    // // console.log(trx);
     console.log(
       "LP token balance:",
       (await yPoolToken.balanceOf(strategyAddress)).toString()
     );
-
-    // await expectEvent.inTransaction(trx.tx, stableSwapY, "AddLiquidity");
     console.log(
-      "Strategy balance (after):",
+      "DAI balance:",
       (await DAI.balanceOf(strategyAddress)).toString()
     );
+
+    // // await expectEvent.inTransaction(trx.tx, stableSwapY, "AddLiquidity");
+    // console.log(
+    //   "Strategy balance (after):",
+    //   (await DAI.balanceOf(strategyAddress)).toString()
+    // );
   });
 });
