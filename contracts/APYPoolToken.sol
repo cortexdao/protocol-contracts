@@ -280,10 +280,10 @@ contract APYPoolToken is
         whenNotPaused
         onlyOwner
     {
-        underlyer.approve(delegate, type(uint256).max);
+        underlyer.safeApprove(delegate, type(uint256).max);
     }
 
     function revokeApprove(address delegate) external nonReentrant onlyOwner {
-        underlyer.approve(delegate, 0);
+        underlyer.safeApprove(delegate, 0);
     }
 }
