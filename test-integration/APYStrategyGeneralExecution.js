@@ -11,9 +11,10 @@ const GenericExecutor = artifacts.require("APYGenericExecutor");
 const Strategy = artifacts.require("Strategy");
 const APYManager = artifacts.require("APYManager");
 const APYPoolToken = artifacts.require("APYPoolToken");
-const { expectEvent, BN } = require("@openzeppelin/test-helpers");
+const { expectEvent, BN, send } = require("@openzeppelin/test-helpers");
 const legos = require("defi-legos");
 const { dai } = require("../utils/helpers");
+const ether = require("@openzeppelin/test-helpers/src/ether");
 
 async function formattedAmount(token, value) {
   const decimals = await token.decimals.call();
@@ -33,10 +34,10 @@ async function acquireToken(fundAccount, receiver, token, amount) {
 
 contract("Test GenericExecutor", async (accounts) => {
   it.only("Execution Test", async () => {
-    // await hre.network.provider.request({
-    //   method: "hardhat_impersonateAccount",
-    //   params: [DAI_WHALE],
-    // });
+    await hre.network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [DAI_WHALE],
+    });
 
     await web3.eth.sendTransaction({
       from: accounts[0],
@@ -97,10 +98,11 @@ contract("Test GenericExecutor", async (accounts) => {
     const manager = await APYManager.at(APYManagerAddresses["1"]);
 
     const poolOwner = await daiPool.owner();
-    // await hre.network.provider.request({
-    //   method: "hardhat_impersonateAccount",
-    //   params: [poolOwner],
-    // });
+    await send.ether(accounts[0], poolOwner, ether("1"));
+    await hre.network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [poolOwner],
+    });
     await daiPool.infiniteApprove(manager.address, { from: poolOwner });
     const daiBalance = await DAI.balanceOf(daiPool.address);
     console.log(daiBalance.toString());
@@ -113,9 +115,16 @@ contract("Test GenericExecutor", async (accounts) => {
     // const usdtBalance = await USDT.balanceOf(usdtPool.address);
     // console.log(usdtBalance.toString());
 
+    const managerOwner = await manager.owner();
+    await hre.network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [managerOwner],
+    });
     const genericExecutor = await GenericExecutor.new();
-    const strategyAddress = await manager.deploy.call(genericExecutor.address);
-    await manager.deploy(genericExecutor.address);
+    const strategyAddress = await manager.deploy.call(genericExecutor.address, {
+      from: managerOwner,
+    });
+    await manager.deploy(genericExecutor.address, { from: managerOwner });
 
     // const depositAmount = dai("100000").toString();
     const depositAmount = dai("100000").toString();
@@ -164,7 +173,10 @@ contract("Test GenericExecutor", async (accounts) => {
     //   "Strategy balance (before):",
     //   (await DAI.balanceOf(strategyAddress)).toString()
     // );
-    const trx = await manager.execute(strategyAddress, data, { gas: 9e6 });
+    const trx = await manager.execute(strategyAddress, data, {
+      from: managerOwner,
+      gas: 9e6,
+    });
     // // const trx = await manager.transferAndExecute(strategyAddress, data);
     // // console.log(trx);
     console.log(
@@ -175,11 +187,13 @@ contract("Test GenericExecutor", async (accounts) => {
       "DAI balance:",
       (await DAI.balanceOf(strategyAddress)).toString()
     );
+    // const receipt = await web3.eth.getTransactionReceipt(trx.tx);
+    // console.log(receipt.logs);
 
-    // // await expectEvent.inTransaction(trx.tx, stableSwapY, "AddLiquidity");
-    // console.log(
-    //   "Strategy balance (after):",
-    //   (await DAI.balanceOf(strategyAddress)).toString()
-    // );
+    const stableSwapY = new web3.eth.Contract(
+      legos.curvefi.abis.yDAI_yUSDC_yUSDT_ytUSD,
+      legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD
+    );
+    await expectEvent.inTransaction(trx.tx, stableSwapY, "AddLiquidity");
   });
 });

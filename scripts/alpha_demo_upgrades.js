@@ -19,36 +19,34 @@ async function main() {
   console.log("Deployer address:", deployer);
   console.log("");
 
-  const POOL_MNEMONIC = process.env.POOL_MNEMONIC;
-  const poolWallet = ethers.Wallet.fromMnemonic(POOL_MNEMONIC).connect(
-    ethers.provider
-  );
-  const poolDeployerAddress = poolWallet.address;
-  console.log("");
-  console.log("Pool deployer address:", poolDeployerAddress);
-  console.log("");
-
-  /* For testing only */
-  if (NETWORK_NAME === "LOCALHOST") {
-    await web3.eth.sendTransaction({
-      from: deployer,
-      to: poolDeployerAddress,
-      value: 1e18,
-    });
-  }
-  /* *************** */
-
   let ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-  const APYPoolToken = (
-    await ethers.getContractFactory("APYPoolToken")
-  ).connect(poolWallet);
-
-  ProxyAdmin = ProxyAdmin.connect(poolWallet);
   const poolProxyAdminAddress = getDeployedAddress(
     "APYPoolTokenProxyAdmin",
     NETWORK_NAME
   );
-  const poolProxyAdmin = await ProxyAdmin.attach(poolProxyAdminAddress);
+  let poolProxyAdmin = await ProxyAdmin.attach(poolProxyAdminAddress);
+  const poolOwnerAddress = await poolProxyAdmin.owner();
+  await hre.network.provider.request({
+    method: "hardhat_impersonateAccount",
+    params: [poolOwnerAddress],
+  });
+  const poolSigner = await ethers.provider.getSigner(poolOwnerAddress);
+  poolProxyAdmin = poolProxyAdmin.connect(poolSigner);
+  console.log("");
+  console.log("Pool deployer address:", await poolSigner.getAddress());
+  console.log("");
+  const APYPoolToken = (
+    await ethers.getContractFactory("APYPoolToken")
+  ).connect(poolSigner);
+  /* For testing only */
+  if (NETWORK_NAME === "LOCALHOST") {
+    await web3.eth.sendTransaction({
+      from: deployer,
+      to: poolOwnerAddress,
+      value: 1e18,
+    });
+  }
+  /* *************** */
 
   let poolProxyAddress;
   for (const { symbol } of TOKEN_AGG_MAP[NETWORK_NAME]) {
@@ -68,20 +66,26 @@ async function main() {
     updateDeployJsons(NETWORK_NAME, deploy_data);
   }
 
-  const MANAGER_MNEMONIC = process.env.MANAGER_MNEMONIC;
-  const managerWallet = ethers.Wallet.fromMnemonic(MANAGER_MNEMONIC).connect(
-    ethers.provider
+  let APYManager = await ethers.getContractFactory("APYManager");
+  const managerProxyAddress = getDeployedAddress(
+    "APYManagerProxy",
+    NETWORK_NAME
   );
-  const managerDeployerAddress = managerWallet.address;
+  const manager = await APYManager.attach(managerProxyAddress);
+  const managerOwnerAddress = await manager.owner();
+  await hre.network.provider.request({
+    method: "hardhat_impersonateAccount",
+    params: [managerOwnerAddress],
+  });
+  const managerSigner = await ethers.provider.getSigner(managerOwnerAddress);
   console.log("");
-  console.log("Manager deployer address:", managerDeployerAddress);
+  console.log("Manager deployer address:", await managerSigner.getAddress());
   console.log("");
-
   /* For testing only */
   if (NETWORK_NAME === "LOCALHOST") {
     await web3.eth.sendTransaction({
       from: deployer,
-      to: managerDeployerAddress,
+      to: managerOwnerAddress,
       value: 1e18,
     });
   }
@@ -91,21 +95,16 @@ async function main() {
     "APYManagerProxyAdmin",
     NETWORK_NAME
   );
-  ProxyAdmin = ProxyAdmin.connect(managerWallet);
-  const managerProxyAdmin = await ProxyAdmin.attach(managerProxyAdminAddress);
+  const managerProxyAdmin = (
+    await ProxyAdmin.attach(managerProxyAdminAddress)
+  ).connect(managerSigner);
 
-  const APYManager = (await ethers.getContractFactory("APYManager")).connect(
-    managerWallet
-  );
+  APYManager = APYManager.connect(managerSigner);
   const newManagerLogic = await APYManager.deploy();
   await newManagerLogic.deployed();
   console.log(`New Implementation Logic: ${newManagerLogic.address}`);
   console.log("");
 
-  const managerProxyAddress = getDeployedAddress(
-    "APYManagerProxy",
-    NETWORK_NAME
-  );
   await managerProxyAdmin.upgrade(managerProxyAddress, newManagerLogic.address);
 
   const deploy_data = {
