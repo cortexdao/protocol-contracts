@@ -1,10 +1,7 @@
 require("dotenv").config();
 const hre = require("hardhat");
 const { ethers, network, web3 } = hre;
-const {
-  updateDeployJsons,
-  getDeployedAddress,
-} = require("../utils/helpers.js");
+const { getDeployedAddress } = require("../utils/helpers.js");
 const { TOKEN_AGG_MAP } = require("../utils/constants.js");
 
 async function main() {
@@ -19,56 +16,63 @@ async function main() {
   console.log("Deployer address:", deployer);
   console.log("");
 
-  const POOL_MNEMONIC = process.env.POOL_MNEMONIC;
-  const poolWallet = ethers.Wallet.fromMnemonic(POOL_MNEMONIC).connect(
-    ethers.provider
+  const poolProxyAdminAddress = getDeployedAddress(
+    "APYPoolTokenProxyAdmin",
+    NETWORK_NAME
   );
-  const poolDeployerAddress = poolWallet.address;
+  const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+  const poolOwnerAddress = await ProxyAdmin.attach(
+    poolProxyAdminAddress
+  ).owner();
+  await hre.network.provider.request({
+    method: "hardhat_impersonateAccount",
+    params: [poolOwnerAddress],
+  });
+  const poolSigner = await ethers.provider.getSigner(poolOwnerAddress);
   console.log("");
-  console.log("Pool deployer address:", poolDeployerAddress);
+  console.log("Pool deployer address:", await poolSigner.getAddress());
   console.log("");
 
   /* For testing only */
   if (NETWORK_NAME === "LOCALHOST") {
     await web3.eth.sendTransaction({
       from: deployer,
-      to: poolDeployerAddress,
+      to: poolOwnerAddress,
       value: 1e18,
     });
   }
   /* *************** */
 
-  const MANAGER_MNEMONIC = process.env.MANAGER_MNEMONIC;
-  const managerWallet = ethers.Wallet.fromMnemonic(MANAGER_MNEMONIC).connect(
-    ethers.provider
-  );
-  const managerDeployerAddress = managerWallet.address;
-  console.log("");
-  console.log("Manager deployer address:", managerDeployerAddress);
-  console.log("");
-
-  /* For testing only */
-  if (NETWORK_NAME === "LOCALHOST") {
-    await web3.eth.sendTransaction({
-      from: deployer,
-      to: managerDeployerAddress,
-      value: 1e18,
-    });
-  }
-  /* *************** */
-
+  const APYManager = await ethers.getContractFactory("APYManager");
   const managerProxyAddress = getDeployedAddress(
     "APYManagerProxy",
     NETWORK_NAME
   );
-  const APYManager = (await ethers.getContractFactory("APYManager")).connect(
-    managerWallet
-  );
-  const manager = await APYManager.attach(managerProxyAddress);
+  const managerOwnerAddress = await APYManager.attach(
+    managerProxyAddress
+  ).owner();
+  await hre.network.provider.request({
+    method: "hardhat_impersonateAccount",
+    params: [managerOwnerAddress],
+  });
+  const managerSigner = await ethers.provider.getSigner(managerOwnerAddress);
+  console.log("");
+  console.log("Manager deployer address:", await managerSigner.getAddress());
+  console.log("");
+  /* For testing only */
+  if (NETWORK_NAME === "LOCALHOST") {
+    await web3.eth.sendTransaction({
+      from: deployer,
+      to: managerOwnerAddress,
+      value: 1e18,
+    });
+  }
+  /* *************** */
 
+  const manager = APYManager.attach(managerProxyAddress).connect(managerSigner);
   const APYPoolToken = (
     await ethers.getContractFactory("APYPoolToken")
-  ).connect(poolWallet);
+  ).connect(poolSigner);
 
   console.log("Approving manager for pools ...");
   let poolProxyAddress;
@@ -77,13 +81,11 @@ async function main() {
       symbol + "_APYPoolTokenProxy",
       NETWORK_NAME
     );
-    const pool = await APYPoolToken.attach(poolProxyAddress);
+    const pool = APYPoolToken.attach(poolProxyAddress);
     await pool.infiniteApprove(manager.address);
   }
   console.log("... done.");
   console.log("");
-
-  //
 }
 
 main()
