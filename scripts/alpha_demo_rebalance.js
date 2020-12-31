@@ -1,11 +1,24 @@
 require("dotenv").config();
 const hre = require("hardhat");
 const { ethers, network, web3 } = hre;
-const { getDeployedAddress } = require("../utils/helpers.js");
+const { getDeployedAddress, erc20 } = require("../utils/helpers.js");
 
-const { expectEvent } = require("@openzeppelin/test-helpers");
+const { expectEvent, ether, send } = require("@openzeppelin/test-helpers");
 const legos = require("defi-legos");
 const { dai } = require("../utils/helpers");
+const { WHALE_ADDRESSES } = require("../utils/constants.js");
+
+async function acquireToken(fundAccount, receiver, token, amount) {
+  /* NOTE: Ganache is setup to control "whale" addresses. This method moves
+  requested funds out of the fund account and into the specified wallet */
+
+  amount = amount.toString();
+  const fundAccountSigner = await ethers.provider.getSigner(fundAccount);
+  const trx = await token.connect(fundAccountSigner).transfer(receiver, amount);
+  trx.wait();
+  const tokenBal = await token.balanceOf(receiver);
+  console.log(`${token.address} Balance: ${tokenBal.toString()}`);
+}
 
 async function main() {
   await hre.run("compile");
@@ -133,6 +146,19 @@ async function main() {
   }
   console.log("... done.");
   console.log("");
+
+  console.log("Acquire extra funds for testing ...");
+  for (const [symbol, pool] of Object.entries(pools)) {
+    const token = stablecoins[symbol];
+    const amount = erc20("100000", await token.decimals());
+    await hre.network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [WHALE_ADDRESSES[symbol]],
+    });
+    await send.ether(deployer, WHALE_ADDRESSES[symbol], ether("1"));
+    await acquireToken(WHALE_ADDRESSES[symbol], pool.address, token, amount);
+  }
+
   await manager.deploy(genericExecutor.address);
 
   const depositAmount = dai("100000").toString();
