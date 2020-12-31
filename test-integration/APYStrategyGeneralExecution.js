@@ -45,7 +45,7 @@ contract("Test GenericExecutor", async (accounts) => {
     const daiPool = await APYPoolToken.at(DAI_APYPoolTokenAddresses["1"]);
     const DAI = await IDetailedERC20.at(await daiPool.underlyer());
 
-    const amountOfStables = "1000000";
+    const amountOfStables = "100000";
     await acquireToken(DAI_WHALE, daiPool.address, DAI, amountOfStables);
 
     // await hre.network.provider.request({
@@ -53,36 +53,47 @@ contract("Test GenericExecutor", async (accounts) => {
     //   params: [USDC_WHALE],
     // });
 
-    await web3.eth.sendTransaction({
-      from: accounts[0],
-      to: USDC_WHALE,
-      value: 1e18,
-    });
+    // await web3.eth.sendTransaction({
+    //   from: accounts[0],
+    //   to: USDC_WHALE,
+    //   value: 1e18,
+    // });
 
-    const usdcPool = await APYPoolToken.at(USDC_APYPoolTokenAddresses["1"]);
-    const USDC = await IDetailedERC20.at(await usdcPool.underlyer());
+    // const usdcPool = await APYPoolToken.at(USDC_APYPoolTokenAddresses["1"]);
+    // const USDC = await IDetailedERC20.at(await usdcPool.underlyer());
 
-    await acquireToken(USDC_WHALE, usdcPool.address, USDC, amountOfStables);
+    // await acquireToken(USDC_WHALE, usdcPool.address, USDC, amountOfStables);
 
     // await hre.network.provider.request({
     //   method: "hardhat_impersonateAccount",
     //   params: [USDT_WHALE],
     // });
 
-    await web3.eth.sendTransaction({
-      from: accounts[0],
-      to: USDT_WHALE,
-      value: 1e18,
-    });
+    // await web3.eth.sendTransaction({
+    //   from: accounts[0],
+    //   to: USDT_WHALE,
+    //   value: 1e18,
+    // });
 
-    const usdtPool = await APYPoolToken.at(USDT_APYPoolTokenAddresses["1"]);
-    const USDT = await IDetailedERC20.at(await usdtPool.underlyer());
+    // const usdtPool = await APYPoolToken.at(USDT_APYPoolTokenAddresses["1"]);
+    // const USDT = await IDetailedERC20.at(await usdtPool.underlyer());
 
-    await acquireToken(USDT_WHALE, usdtPool.address, USDT, amountOfStables);
+    // await acquireToken(USDT_WHALE, usdtPool.address, USDT, amountOfStables);
 
     const stableSwapY = new web3.eth.Contract(
       legos.curvefi.abis.yDAI_yUSDC_yUSDT_ytUSD,
       legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD
+    );
+    const yPoolToken = await IDetailedERC20.at(
+      legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token
+    );
+    console.log(
+      "Y Pool address:",
+      legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD
+    );
+    console.log(
+      "LP token address:",
+      legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token
     );
 
     const manager = await APYManager.at(APYManagerAddresses["1"]);
@@ -96,24 +107,49 @@ contract("Test GenericExecutor", async (accounts) => {
     const daiBalance = await DAI.balanceOf(daiPool.address);
     console.log(daiBalance.toString());
 
-    await usdcPool.infiniteApprove(manager.address, { from: poolOwner });
-    const usdcBalance = await USDC.balanceOf(usdcPool.address);
-    console.log(usdcBalance.toString());
+    // await usdcPool.infiniteApprove(manager.address, { from: poolOwner });
+    // const usdcBalance = await USDC.balanceOf(usdcPool.address);
+    // console.log(usdcBalance.toString());
 
-    await usdtPool.infiniteApprove(manager.address, { from: poolOwner });
-    const usdtBalance = await USDT.balanceOf(usdtPool.address);
-    console.log(usdtBalance.toString());
+    // await usdtPool.infiniteApprove(manager.address, { from: poolOwner });
+    // const usdtBalance = await USDT.balanceOf(usdtPool.address);
+    // console.log(usdtBalance.toString());
 
     const genericExecutor = await GenericExecutor.new();
     const strategyAddress = await manager.deploy.call(genericExecutor.address);
     await manager.deploy(genericExecutor.address);
 
+    console.log("Strategy address:", strategyAddress);
+    console.log("Y deposit:", legos.curvefi.addresses.DEPOSIT_Y);
+    console.log(
+      "Data:",
+      legos.curvefi.codecs.DEPOSIT_Y.encodeAddLiquidity([100000, 0, 0, 0], 0)
+    );
+    const depositY = legos.curvefi.addresses.DEPOSIT_Y;
     const data = [
-      legos.curvefi.addresses.DEPOSIT_Y,
-      legos.curvefi.codecs.DEPOSIT_Y.encodeAddLiquidity([100000, 0, 0, 0], 0),
+      [DAI.address, legos.maker.codecs.DAI.encodeApprove(depositY, 100000)],
+      [
+        depositY,
+        legos.curvefi.codecs.DEPOSIT_Y.encodeAddLiquidity([100000, 0, 0, 0], 0),
+      ],
     ];
-    const trx = await manager.transferAndExecute(strategyAddress, data);
+    await manager.transferFunds(daiPool.address, strategyAddress);
+    console.log(
+      "Strategy balance (before):",
+      (await DAI.balanceOf(strategyAddress)).toString()
+    );
+    const trx = await manager.execute(strategyAddress, data);
+    // const trx = await manager.transferAndExecute(strategyAddress, data);
+    // console.log(trx);
+    console.log(
+      "LP token balance:",
+      (await yPoolToken.balanceOf(strategyAddress)).toString()
+    );
 
-    await expectEvent.inTransaction(trx.tx, stableSwapY, "AddLiquidity");
+    // await expectEvent.inTransaction(trx.tx, stableSwapY, "AddLiquidity");
+    console.log(
+      "Strategy balance (after):",
+      (await DAI.balanceOf(strategyAddress)).toString()
+    );
   });
 });

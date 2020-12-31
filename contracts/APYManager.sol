@@ -258,10 +258,10 @@ contract APYManager is
 
         uint256 tokenEthPrice = pool.getTokenEthPrice();
         uint8 decimals = underlyer.decimals();
-        uint256 mintAmount =
-            mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
+        // uint256 mintAmount =
+        //     mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
 
-        mApt.mint(poolAddress, mintAmount);
+        // mApt.mint(poolAddress, mintAmount);
         underlyer.safeTransferFrom(poolAddress, strategyAddress, poolAmount);
     }
 }
