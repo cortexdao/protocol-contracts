@@ -82,10 +82,6 @@ contract("Test GenericExecutor", async (accounts) => {
 
     // await acquireToken(USDT_WHALE, usdtPool.address, USDT, amountOfStables);
 
-    const stableSwapY = new web3.eth.Contract(
-      legos.curvefi.abis.yDAI_yUSDC_yUSDT_ytUSD,
-      legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD
-    );
     const yPoolToken = await IDetailedERC20.at(
       legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token
     );
@@ -118,12 +114,8 @@ contract("Test GenericExecutor", async (accounts) => {
     // console.log(usdtBalance.toString());
 
     const genericExecutor = await GenericExecutor.new();
-    // const strategyAddress = await manager.deploy.call(genericExecutor.address);
-    // await manager.deploy(genericExecutor.address);
-    const strategy = await Strategy.new();
-    await strategy.initialize(genericExecutor.address);
-    const strategyAddress = strategy.address;
-    await strategy.transferOwnership(manager.address);
+    const strategyAddress = await manager.deploy.call(genericExecutor.address);
+    await manager.deploy(genericExecutor.address);
 
     // const depositAmount = dai("100000").toString();
     const depositAmount = dai("100000").toString();
