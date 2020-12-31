@@ -46,7 +46,8 @@ async function main() {
   }
   /* *************** */
 
-  const pools = [];
+  const pools = {};
+  const stablecoins = {};
   const APYPoolToken = (
     await ethers.getContractFactory("APYPoolToken")
   ).connect(poolSigner);
@@ -56,7 +57,11 @@ async function main() {
       NETWORK_NAME
     );
     const pool = APYPoolToken.attach(poolProxyAddress);
-    pools.push(pool);
+    pools[symbol] = pool;
+    stablecoins[symbol] = await ethers.getContractAt(
+      "IDetailedERC20",
+      await pool.underlyer()
+    );
   }
 
   const APYManager = await ethers.getContractFactory("APYManager");
@@ -88,12 +93,8 @@ async function main() {
   const manager = APYManager.attach(managerProxyAddress).connect(managerSigner);
 
   console.log("Approving manager for pools ...");
-  for (const pool of pools) {
-    const underlyer = await ethers.getContractAt(
-      "IDetailedERC20",
-      await pool.underlyer()
-    );
-    console.log("  pool:", await underlyer.symbol());
+  for (const { symbol, pool } of Object.entries(pools)) {
+    console.log("  pool:", symbol);
     await pool.revokeApprove(manager.address);
     await pool.infiniteApprove(manager.address);
   }
@@ -114,12 +115,8 @@ async function main() {
   console.log("");
 
   console.log("Transferring funds to manager ...");
-  for (const pool of pools) {
-    const underlyer = await ethers.getContractAt(
-      "IDetailedERC20",
-      await pool.underlyer()
-    );
-    console.log("  pool:", await underlyer.symbol());
+  for (const { symbol, pool } of Object.entries(pools)) {
+    console.log("  pool:", symbol);
     await manager.transferFunds(pool.address, strategyAddress);
   }
   console.log("... done.");
