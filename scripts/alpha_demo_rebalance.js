@@ -2,7 +2,10 @@ require("dotenv").config();
 const hre = require("hardhat");
 const { ethers, network, web3 } = hre;
 const { getDeployedAddress } = require("../utils/helpers.js");
-const { TOKEN_AGG_MAP } = require("../utils/constants.js");
+
+// const { expectEvent, BN, send } = require("@openzeppelin/test-helpers");
+// const legos = require("defi-legos");
+// const { ether, dai } = require("../utils/helpers");
 
 async function main() {
   await hre.run("compile");
@@ -43,6 +46,19 @@ async function main() {
   }
   /* *************** */
 
+  const pools = [];
+  const APYPoolToken = (
+    await ethers.getContractFactory("APYPoolToken")
+  ).connect(poolSigner);
+  for (const symbol of ["DAI", "USDC", "USDT"]) {
+    const poolProxyAddress = getDeployedAddress(
+      symbol + "_APYPoolTokenProxy",
+      NETWORK_NAME
+    );
+    const pool = APYPoolToken.attach(poolProxyAddress);
+    pools.push(pool);
+  }
+
   const APYManager = await ethers.getContractFactory("APYManager");
   const managerProxyAddress = getDeployedAddress(
     "APYManagerProxy",
@@ -70,22 +86,45 @@ async function main() {
   /* *************** */
 
   const manager = APYManager.attach(managerProxyAddress).connect(managerSigner);
-  const APYPoolToken = (
-    await ethers.getContractFactory("APYPoolToken")
-  ).connect(poolSigner);
 
   console.log("Approving manager for pools ...");
-  let poolProxyAddress;
-  for (const { symbol } of TOKEN_AGG_MAP[NETWORK_NAME]) {
-    poolProxyAddress = getDeployedAddress(
-      symbol + "_APYPoolTokenProxy",
-      NETWORK_NAME
+  for (const pool of pools) {
+    const underlyer = await ethers.getContractAt(
+      "IDetailedERC20",
+      await pool.underlyer()
     );
-    const pool = APYPoolToken.attach(poolProxyAddress);
+    console.log("  pool:", await underlyer.symbol());
+    await pool.revokeApprove(manager.address);
     await pool.infiniteApprove(manager.address);
   }
   console.log("... done.");
   console.log("");
+
+  const GenericExecutor = (
+    await ethers.getContractFactory("APYGenericExecutor")
+  ).connect(managerSigner);
+  const genericExecutor = await GenericExecutor.deploy();
+  await genericExecutor.deployed();
+  console.log("Executor address:", genericExecutor.address);
+  const strategyAddress = await manager.callStatic.deploy(
+    genericExecutor.address
+  );
+  await manager.deploy(genericExecutor.address);
+  console.log("Strategy address:", strategyAddress);
+  console.log("");
+
+  console.log("Transferring funds to manager ...");
+  for (const pool of pools) {
+    const underlyer = await ethers.getContractAt(
+      "IDetailedERC20",
+      await pool.underlyer()
+    );
+    console.log("  pool:", await underlyer.symbol());
+    await manager.transferFunds(pool.address, strategyAddress);
+  }
+  console.log("... done.");
+  console.log("");
+  await manager.deploy(genericExecutor.address);
 }
 
 main()
