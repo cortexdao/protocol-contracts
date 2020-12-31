@@ -3,9 +3,9 @@ const hre = require("hardhat");
 const { ethers, network, web3 } = hre;
 const { getDeployedAddress } = require("../utils/helpers.js");
 
-// const { expectEvent, BN, send } = require("@openzeppelin/test-helpers");
-// const legos = require("defi-legos");
-// const { ether, dai } = require("../utils/helpers");
+const { expectEvent } = require("@openzeppelin/test-helpers");
+const legos = require("defi-legos");
+const { dai } = require("../utils/helpers");
 
 async function main() {
   await hre.run("compile");
@@ -117,7 +117,7 @@ async function main() {
   // TODO: when testing on same forked mainnet, this will only show
   // funds tranferred the first time, as subsequent times the pools
   // will have zero funds
-  console.log("Transferring funds to manager ...");
+  console.log("Transferring funds to strategy ...");
   for (const [symbol, pool] of Object.entries(pools)) {
     console.log("  pool:", symbol);
     console.log(
@@ -134,6 +134,59 @@ async function main() {
   console.log("... done.");
   console.log("");
   await manager.deploy(genericExecutor.address);
+
+  const depositAmount = dai("100000").toString();
+  console.log("Strategy address:", strategyAddress);
+  console.log("Y deposit:", legos.curvefi.addresses.DEPOSIT_Y);
+  const depositY = legos.curvefi.addresses.DEPOSIT_Y;
+  const data = [
+    [
+      stablecoins["DAI"].address,
+      legos.maker.codecs.DAI.encodeApprove(depositY, depositAmount),
+    ],
+    [
+      depositY,
+      legos.curvefi.codecs.DEPOSIT_Y.encodeAddLiquidity(
+        [depositAmount, 0, 0, 0],
+        dai("0").toString()
+      ),
+    ],
+  ];
+
+  const yPoolToken = await ethers.getContractAt(
+    "IDetailedERC20",
+    legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token
+  );
+  console.log(
+    "Y Pool address:",
+    legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD
+  );
+  console.log(
+    "LP token address:",
+    legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token
+  );
+
+  const trx = await manager.execute(strategyAddress, data, {
+    gasLimit: 9e6,
+  });
+  await trx.wait();
+  // // const trx = await manager.transferAndExecute(strategyAddress, data);
+  console.log(
+    "LP token balance:",
+    (await yPoolToken.balanceOf(strategyAddress)).toString()
+  );
+  console.log(
+    "DAI balance:",
+    (await stablecoins["DAI"].balanceOf(strategyAddress)).toString()
+  );
+  // const receipt = await web3.eth.getTransactionReceipt(trx.tx);
+  // console.log(receipt.logs);
+
+  const stableSwapY = new web3.eth.Contract(
+    legos.curvefi.abis.yDAI_yUSDC_yUSDT_ytUSD,
+    legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD
+  );
+  await expectEvent.inTransaction(trx.hash, stableSwapY, "AddLiquidity");
 }
 
 main()
