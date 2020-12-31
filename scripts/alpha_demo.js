@@ -29,11 +29,13 @@ async function main() {
   console.log("");
 
   /* For testing only */
-  await web3.eth.sendTransaction({
-    from: deployer,
-    to: poolDeployerAddress,
-    value: 1e18,
-  });
+  if (NETWORK_NAME === "LOCALHOST") {
+    await web3.eth.sendTransaction({
+      from: deployer,
+      to: poolDeployerAddress,
+      value: 1e18,
+    });
+  }
   /* *************** */
 
   let ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
@@ -76,11 +78,13 @@ async function main() {
   console.log("");
 
   /* For testing only */
-  await web3.eth.sendTransaction({
-    from: deployer,
-    to: managerDeployerAddress,
-    value: 1e18,
-  });
+  if (NETWORK_NAME === "LOCALHOST") {
+    await web3.eth.sendTransaction({
+      from: deployer,
+      to: managerDeployerAddress,
+      value: 1e18,
+    });
+  }
   /* *************** */
 
   const managerProxyAdminAddress = getDeployedAddress(
