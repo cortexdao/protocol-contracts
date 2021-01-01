@@ -129,8 +129,8 @@ contract("Test GenericExecutor", async (accounts) => {
     // const depositAmount = dai("100000").toString();
     const depositAmount = dai("100000").toString();
     console.log("Strategy address:", strategyAddress);
-    console.log("Y deposit:", legos.curvefi.addresses.DEPOSIT_Y);
-    const depositY = legos.curvefi.addresses.DEPOSIT_Y;
+    console.log("Y deposit:", legos.curvefi.addresses.Deposit_Y);
+    const depositY = legos.curvefi.addresses.Deposit_Y;
     const data = [
       [
         DAI.address,
@@ -138,7 +138,7 @@ contract("Test GenericExecutor", async (accounts) => {
       ],
       [
         depositY,
-        legos.curvefi.codecs.DEPOSIT_Y.encodeAddLiquidity(
+        legos.curvefi.codecs.Deposit_Y.encodeAddLiquidity(
           [depositAmount, 0, 0, 0],
           dai("0").toString()
         ),
