@@ -8,7 +8,7 @@ const {
   getStablecoinAddress,
 } = require("../utils/helpers.js");
 const { expectEvent } = require("@openzeppelin/test-helpers");
-const legos = require("defi-legos");
+const legos = require("@apy-finance/defi-legos");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
