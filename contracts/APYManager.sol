@@ -34,6 +34,7 @@ contract APYManager is
 
     address public libraryAddress;
 
+    mapping(bytes32 => address) public getStrategy;
     mapping(address => bool) public isStrategyDeployed;
 
     mapping(address => address[]) public strategyToTokens;
@@ -73,9 +74,14 @@ contract APYManager is
         return address(strategy);
     }
 
+    function setStrategyId(bytes32 id, address strategy) public onlyOwner {
+        getStrategy[id] = strategy;
+    }
+
     function registerTokens(address strategy, address[] calldata tokens)
         external
         override
+        onlyOwner
     {
         // need this for as-yet-unknown tokens that may be air-dropped, etc.
         // XXX: need to handle duplicates instead of nuking old tokens
@@ -98,7 +104,7 @@ contract APYManager is
     function transferAndExecute(
         address strategy,
         APYGenericExecutor.Data[] memory steps
-    ) external override {
+    ) external override onlyOwner {
         for (uint256 i = 0; i < _poolIds.length; i++) {
             bytes32 poolId = _poolIds[i];
             address poolAddress = addressRegistry.getAddress(poolId);
@@ -110,6 +116,7 @@ contract APYManager is
     function execute(address strategy, APYGenericExecutor.Data[] memory steps)
         public
         override
+        onlyOwner
     {
         IStrategy(strategy).execute(steps);
     }
