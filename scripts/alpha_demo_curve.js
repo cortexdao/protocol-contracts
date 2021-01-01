@@ -5,7 +5,6 @@ const { argv } = require("yargs");
 const { getDeployedAddress, bytes32 } = require("../utils/helpers.js");
 const { expectEvent } = require("@openzeppelin/test-helpers");
 const legos = require("defi-legos");
-const { dai } = require("../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -43,25 +42,53 @@ async function main(argv) {
   console.log("Strategy address:", strategyAddress);
   console.log("");
 
-  const depositAmount = dai("100000").toString();
-  console.log("Strategy address:", strategyAddress);
-  console.log("Y deposit:", legos.curvefi.addresses.Deposit_Y);
-  const depositY = legos.curvefi.addresses.Deposit_Y;
+  const stablecoins = {};
+  const APYPoolToken = await ethers.getContractFactory("APYPoolToken");
+  for (const symbol of ["DAI", "USDC", "USDT"]) {
+    const poolProxyAddress = getDeployedAddress(
+      symbol + "_APYPoolTokenProxy",
+      NETWORK_NAME
+    );
+    const pool = APYPoolToken.attach(poolProxyAddress);
+    stablecoins[symbol] = await ethers.getContractAt(
+      "IDetailedERC20",
+      await pool.underlyer()
+    );
+  }
+  const daiAmount = (
+    await stablecoins["DAI"].balanceOf(strategyAddress)
+  ).toString();
+  const usdcAmount = (
+    await stablecoins["USDC"].balanceOf(strategyAddress)
+  ).toString();
+  const usdtAmount = (
+    await stablecoins["USDT"].balanceOf(strategyAddress)
+  ).toString();
+  console.log("DAI balance:", daiAmount);
+  console.log("USDC balance:", usdcAmount);
+  console.log("USDT balance:", usdtAmount);
 
-  const daiToken = await ethers.getContractAt(
-    "IDetailedERC20",
-    legos.maker.addresses.DAI
-  );
+  const depositY = legos.curvefi.addresses.Deposit_Y;
+  console.log("Y Deposit:", legos.curvefi.addresses.Deposit_Y);
+
   const data = [
     [
-      legos.maker.addresses.DAI,
-      legos.maker.codecs.DAI.encodeApprove(depositY, depositAmount),
+      stablecoins["DAI"].address,
+      legos.maker.codecs.DAI.encodeApprove(depositY, daiAmount),
+    ],
+    [
+      stablecoins["USDC"].address,
+      legos.maker.codecs.DAI.encodeApprove(depositY, usdcAmount),
+    ],
+    [
+      stablecoins["USDT"].address,
+      legos.maker.codecs.DAI.encodeApprove(depositY, usdtAmount),
     ],
     [
       depositY,
       legos.curvefi.codecs.Deposit_Y.encodeAddLiquidity(
-        [depositAmount, 0, 0, 0],
-        dai("0").toString()
+        [daiAmount, usdcAmount, usdtAmount, 0],
+        0
       ),
     ],
   ];
@@ -70,14 +97,12 @@ async function main(argv) {
     "IDetailedERC20",
     legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token
   );
+  console.log("Y Pool:", legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD);
   console.log(
-    "Y Pool address:",
-    legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD
-  );
-  console.log(
-    "LP token address:",
+    "LP token:",
     legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token
   );
+  console.log("");
 
   const trx = await manager.execute(strategyAddress, data, {
     gasLimit: 9e6,
@@ -90,7 +115,15 @@ async function main(argv) {
   );
   console.log(
     "DAI balance:",
-    (await daiToken.balanceOf(strategyAddress)).toString()
+    (await stablecoins["DAI"].balanceOf(strategyAddress)).toString()
+  );
+  console.log(
+    "USDC balance:",
+    (await stablecoins["USDC"].balanceOf(strategyAddress)).toString()
+  );
+  console.log(
+    "USDT balance:",
+    (await stablecoins["USDT"].balanceOf(strategyAddress)).toString()
   );
 
   const stableSwapY = new web3.eth.Contract(
