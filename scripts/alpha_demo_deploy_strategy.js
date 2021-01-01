@@ -1,4 +1,5 @@
 require("dotenv").config();
+const chalk = require("chalk");
 const hre = require("hardhat");
 const { ethers, network, web3 } = hre;
 const { argv } = require("yargs");
@@ -6,16 +7,14 @@ const { getDeployedAddress, bytes32 } = require("../utils/helpers.js");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
+  console.log('-------------DEPLOY and FUND-------------')
   await hre.run("compile");
   const NETWORK_NAME = network.name.toUpperCase();
-  console.log("");
   console.log(`${NETWORK_NAME} selected`);
-  console.log("");
 
   const signers = await ethers.getSigners();
   const deployer = await signers[0].getAddress();
-  console.log("Deployer address:", deployer);
-  console.log("");
+  console.log("Deployer address:", chalk.green(deployer));
 
   const poolProxyAdminAddress = getDeployedAddress(
     "APYPoolTokenProxyAdmin",
@@ -30,9 +29,7 @@ async function main(argv) {
     params: [poolOwnerAddress],
   });
   const poolSigner = await ethers.provider.getSigner(poolOwnerAddress);
-  console.log("");
-  console.log("Pool deployer address:", await poolSigner.getAddress());
-  console.log("");
+  console.log("Pool deployer address:", chalk.green(await poolSigner.getAddress()));
 
   await web3.eth.sendTransaction({
     from: deployer,
@@ -71,9 +68,7 @@ async function main(argv) {
     params: [managerOwnerAddress],
   });
   const managerSigner = await ethers.provider.getSigner(managerOwnerAddress);
-  console.log("");
-  console.log("Manager deployer address:", await managerSigner.getAddress());
-  console.log("");
+  console.log("Manager deployer address:", chalk.green(await managerSigner.getAddress()));
   await web3.eth.sendTransaction({
     from: deployer,
     to: managerOwnerAddress,
@@ -84,25 +79,22 @@ async function main(argv) {
 
   console.log("Approving manager for pools ...");
   for (const [symbol, pool] of Object.entries(pools)) {
-    console.log("  pool:", symbol);
+    console.log("\tpool:", chalk.yellow(symbol));
     await pool.revokeApprove(manager.address);
     await pool.infiniteApprove(manager.address);
   }
-  console.log("... done.");
-  console.log("");
 
   const GenericExecutor = (
     await ethers.getContractFactory("APYGenericExecutor")
   ).connect(managerSigner);
   const genericExecutor = await GenericExecutor.deploy();
   await genericExecutor.deployed();
-  console.log("Executor address:", genericExecutor.address);
+  console.log("Executor address:", chalk.green(genericExecutor.address));
   const strategyAddress = await manager.callStatic.deploy(
     genericExecutor.address
   );
   await manager.deploy(genericExecutor.address);
-  console.log("Strategy address:", strategyAddress);
-  console.log("");
+  console.log("Strategy address:", chalk.green(strategyAddress));
 
   await manager.setStrategyId(bytes32("curve_y"), strategyAddress);
 
@@ -111,20 +103,18 @@ async function main(argv) {
   // will have zero funds
   console.log("Transferring funds to strategy ...");
   for (const [symbol, pool] of Object.entries(pools)) {
-    console.log("  pool:", symbol);
+    console.log("\tpool:", chalk.yellow(symbol));
     console.log(
-      "    before:",
-      (await stablecoins[symbol].balanceOf(strategyAddress)).toString()
+      "\t\tbefore:",
+      chalk.yellow((await stablecoins[symbol].balanceOf(strategyAddress)).toString())
     );
     const trx = await manager.transferFunds(pool.address, strategyAddress);
     await trx.wait();
     console.log(
-      "    after:",
-      (await stablecoins[symbol].balanceOf(strategyAddress)).toString()
+      "\t\tafter:",
+      chalk.yellow((await stablecoins[symbol].balanceOf(strategyAddress)).toString())
     );
   }
-  console.log("... done.");
-  console.log("");
 }
 
 if (!module.parent) {
