@@ -1,13 +1,15 @@
 require("dotenv").config();
 const hre = require("hardhat");
 const { ethers, network, web3 } = hre;
+const { argv } = require("yargs");
 const {
   updateDeployJsons,
   getDeployedAddress,
 } = require("../utils/helpers.js");
 const { TOKEN_AGG_MAP } = require("../utils/constants.js");
 
-async function main() {
+// eslint-disable-next-line no-unused-vars
+async function main(argv) {
   await hre.run("compile");
   const NETWORK_NAME = network.name.toUpperCase();
   console.log("");
@@ -113,9 +115,13 @@ async function main() {
   updateDeployJsons(NETWORK_NAME, deploy_data);
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+if (!module.parent) {
+  main(argv)
+    .then(() => process.exit(0))
+    .catch((error) => {
+      console.error(error);
+      process.exit(1);
+    });
+} else {
+  module.exports = main;
+}

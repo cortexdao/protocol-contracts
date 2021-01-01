@@ -1,11 +1,9 @@
 require("dotenv").config();
 const hre = require("hardhat");
 const { ethers, network, web3 } = hre;
-const { getDeployedAddress, erc20 } = require("../utils/helpers.js");
-
-const { expectEvent, ether, send } = require("@openzeppelin/test-helpers");
-const legos = require("defi-legos");
-const { dai } = require("../utils/helpers");
+const { argv } = require("yargs");
+const { getDeployedAddress, erc20, bytes32 } = require("../utils/helpers.js");
+const { ether, send } = require("@openzeppelin/test-helpers");
 const { WHALE_ADDRESSES } = require("../utils/constants.js");
 
 async function acquireToken(fundAccount, receiver, token, amount) {
@@ -20,7 +18,8 @@ async function acquireToken(fundAccount, receiver, token, amount) {
   console.log(`${token.address} Balance: ${tokenBal.toString()}`);
 }
 
-async function main() {
+// eslint-disable-next-line no-unused-vars
+async function main(argv) {
   await hre.run("compile");
   const NETWORK_NAME = network.name.toUpperCase();
   console.log("");
@@ -127,6 +126,8 @@ async function main() {
   console.log("Strategy address:", strategyAddress);
   console.log("");
 
+  await manager.setStrategyId(bytes32("curve_y"), strategyAddress);
+
   // TODO: when testing on same forked mainnet, this will only show
   // funds tranferred the first time, as subsequent times the pools
   // will have zero funds
@@ -158,66 +159,15 @@ async function main() {
     await send.ether(deployer, WHALE_ADDRESSES[symbol], ether("1"));
     await acquireToken(WHALE_ADDRESSES[symbol], pool.address, token, amount);
   }
-
-  await manager.deploy(genericExecutor.address);
-
-  const depositAmount = dai("100000").toString();
-  console.log("Strategy address:", strategyAddress);
-  console.log("Y deposit:", legos.curvefi.addresses.DEPOSIT_Y);
-  const depositY = legos.curvefi.addresses.DEPOSIT_Y;
-  const data = [
-    [
-      stablecoins["DAI"].address,
-      legos.maker.codecs.DAI.encodeApprove(depositY, depositAmount),
-    ],
-    [
-      depositY,
-      legos.curvefi.codecs.DEPOSIT_Y.encodeAddLiquidity(
-        [depositAmount, 0, 0, 0],
-        dai("0").toString()
-      ),
-    ],
-  ];
-
-  const yPoolToken = await ethers.getContractAt(
-    "IDetailedERC20",
-    legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token
-  );
-  console.log(
-    "Y Pool address:",
-    legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD
-  );
-  console.log(
-    "LP token address:",
-    legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token
-  );
-
-  const trx = await manager.execute(strategyAddress, data, {
-    gasLimit: 9e6,
-  });
-  await trx.wait();
-  // // const trx = await manager.transferAndExecute(strategyAddress, data);
-  console.log(
-    "LP token balance:",
-    (await yPoolToken.balanceOf(strategyAddress)).toString()
-  );
-  console.log(
-    "DAI balance:",
-    (await stablecoins["DAI"].balanceOf(strategyAddress)).toString()
-  );
-  // const receipt = await web3.eth.getTransactionReceipt(trx.tx);
-  // console.log(receipt.logs);
-
-  const stableSwapY = new web3.eth.Contract(
-    legos.curvefi.abis.yDAI_yUSDC_yUSDT_ytUSD,
-    legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD
-  );
-  await expectEvent.inTransaction(trx.hash, stableSwapY, "AddLiquidity");
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+if (!module.parent) {
+  main(argv)
+    .then(() => process.exit(0))
+    .catch((error) => {
+      console.error(error);
+      process.exit(1);
+    });
+} else {
+  module.exports = main;
+}
