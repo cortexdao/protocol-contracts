@@ -2,21 +2,7 @@ require("dotenv").config();
 const hre = require("hardhat");
 const { ethers, network, web3 } = hre;
 const { argv } = require("yargs");
-const { getDeployedAddress, erc20, bytes32 } = require("../utils/helpers.js");
-const { ether, send } = require("@openzeppelin/test-helpers");
-const { WHALE_ADDRESSES } = require("../utils/constants.js");
-
-async function acquireToken(fundAccount, receiver, token, amount) {
-  /* NOTE: Ganache is setup to control "whale" addresses. This method moves
-  requested funds out of the fund account and into the specified wallet */
-
-  amount = amount.toString();
-  const fundAccountSigner = await ethers.provider.getSigner(fundAccount);
-  const trx = await token.connect(fundAccountSigner).transfer(receiver, amount);
-  trx.wait();
-  const tokenBal = await token.balanceOf(receiver);
-  console.log(`${token.address} Balance: ${tokenBal.toString()}`);
-}
+const { getDeployedAddress, bytes32 } = require("../utils/helpers.js");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -48,15 +34,11 @@ async function main(argv) {
   console.log("Pool deployer address:", await poolSigner.getAddress());
   console.log("");
 
-  /* For testing only */
-  if (NETWORK_NAME === "LOCALHOST") {
-    await web3.eth.sendTransaction({
-      from: deployer,
-      to: poolOwnerAddress,
-      value: 1e18,
-    });
-  }
-  /* *************** */
+  await web3.eth.sendTransaction({
+    from: deployer,
+    to: poolOwnerAddress,
+    value: 1e18,
+  });
 
   const pools = {};
   const stablecoins = {};
@@ -92,15 +74,11 @@ async function main(argv) {
   console.log("");
   console.log("Manager deployer address:", await managerSigner.getAddress());
   console.log("");
-  /* For testing only */
-  if (NETWORK_NAME === "LOCALHOST") {
-    await web3.eth.sendTransaction({
-      from: deployer,
-      to: managerOwnerAddress,
-      value: 1e18,
-    });
-  }
-  /* *************** */
+  await web3.eth.sendTransaction({
+    from: deployer,
+    to: managerOwnerAddress,
+    value: 1e18,
+  });
 
   const manager = APYManager.attach(managerProxyAddress).connect(managerSigner);
 
@@ -128,7 +106,7 @@ async function main(argv) {
 
   await manager.setStrategyId(bytes32("curve_y"), strategyAddress);
 
-  // TODO: when testing on same forked mainnet, this will only show
+  // WARNING: when testing on same forked mainnet, this will only show
   // funds tranferred the first time, as subsequent times the pools
   // will have zero funds
   console.log("Transferring funds to strategy ...");
@@ -147,18 +125,6 @@ async function main(argv) {
   }
   console.log("... done.");
   console.log("");
-
-  console.log("Acquire extra funds for testing ...");
-  for (const [symbol, pool] of Object.entries(pools)) {
-    const token = stablecoins[symbol];
-    const amount = erc20("100000", await token.decimals());
-    await hre.network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [WHALE_ADDRESSES[symbol]],
-    });
-    await send.ether(deployer, WHALE_ADDRESSES[symbol], ether("1"));
-    await acquireToken(WHALE_ADDRESSES[symbol], pool.address, token, amount);
-  }
 }
 
 if (!module.parent) {
