@@ -112,7 +112,6 @@ async function main(argv) {
     }
   );
   await liquidityTrx.wait();
-  // // const liquidityTrx = await manager.transferAndExecute(strategyAddress, addLiquidityData);
   console.log(
     "LP token balance:",
     (await yPoolToken.balanceOf(strategyAddress)).toString()
@@ -140,9 +139,7 @@ async function main(argv) {
     "AddLiquidity"
   );
 
-  const lpBalance = ethers.BigNumber.from(
-    (await yPoolToken.balanceOf(strategyAddress)).toString()
-  );
+  const lpBalance = await yPoolToken.balanceOf(strategyAddress);
   const depositData = [
     [
       legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token,
@@ -165,7 +162,7 @@ async function main(argv) {
     legos.curvefi.abis.yLiquidityGauge,
     legos.curvefi.addresses.y_Liquidity_Guage
   );
-  await expectEvent.inTransaction(depositTrx.tx, yLiquidityGauge, "Deposit");
+  await expectEvent.inTransaction(depositTrx.hash, yLiquidityGauge, "Deposit");
 }
 
 if (!module.parent) {
