@@ -1,4 +1,5 @@
 require("dotenv").config();
+const chalk = require("chalk");
 const hre = require("hardhat");
 const { ethers, network, web3 } = hre;
 const { argv } = require("yargs");
@@ -12,14 +13,11 @@ const { TOKEN_AGG_MAP } = require("../utils/constants.js");
 async function main(argv) {
   await hre.run("compile");
   const NETWORK_NAME = network.name.toUpperCase();
-  console.log("");
   console.log(`${NETWORK_NAME} selected`);
-  console.log("");
 
   const signers = await ethers.getSigners();
   const deployer = await signers[0].getAddress();
-  console.log("Deployer address:", deployer);
-  console.log("");
+  console.log("Deployer address:", chalk.green(deployer));
 
   let ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
   const poolProxyAdminAddress = getDeployedAddress(
@@ -34,9 +32,10 @@ async function main(argv) {
   });
   const poolSigner = await ethers.provider.getSigner(poolOwnerAddress);
   poolProxyAdmin = poolProxyAdmin.connect(poolSigner);
-  console.log("");
-  console.log("Pool deployer address:", await poolSigner.getAddress());
-  console.log("");
+  console.log(
+    "Pool deployer address:",
+    chalk.green(await poolSigner.getAddress())
+  );
   const APYPoolToken = (
     await ethers.getContractFactory("APYPoolToken")
   ).connect(poolSigner);
@@ -54,7 +53,11 @@ async function main(argv) {
   for (const { symbol } of TOKEN_AGG_MAP[NETWORK_NAME]) {
     const newLogic = await APYPoolToken.deploy();
     await newLogic.deployed();
-    console.log(`New Implementation Logic: ${newLogic.address}`);
+    console.log(
+      `New Implementation Logic for ${chalk.yellow(symbol)} Pool: ${chalk.green(
+        newLogic.address
+      )}`
+    );
 
     poolProxyAddress = getDeployedAddress(
       symbol + "_APYPoolTokenProxy",
@@ -80,9 +83,10 @@ async function main(argv) {
     params: [managerOwnerAddress],
   });
   const managerSigner = await ethers.provider.getSigner(managerOwnerAddress);
-  console.log("");
-  console.log("Manager deployer address:", await managerSigner.getAddress());
-  console.log("");
+  console.log(
+    "Manager deployer address:",
+    chalk.green(await managerSigner.getAddress())
+  );
   /* For testing only */
   if (NETWORK_NAME === "LOCALHOST") {
     await web3.eth.sendTransaction({
@@ -104,8 +108,11 @@ async function main(argv) {
   APYManager = APYManager.connect(managerSigner);
   const newManagerLogic = await APYManager.deploy();
   await newManagerLogic.deployed();
-  console.log(`New Implementation Logic: ${newManagerLogic.address}`);
-  console.log("");
+  console.log(
+    `New Implementation Logic for ${chalk.yellow("APYManager")}: ${chalk.green(
+      newManagerLogic.address
+    )}`
+  );
 
   await managerProxyAdmin.upgrade(managerProxyAddress, newManagerLogic.address);
 
