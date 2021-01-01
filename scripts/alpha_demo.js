@@ -9,7 +9,7 @@ async function main(argv) {
   await hre.run("compile");
   await demoUpgrades(argv);
   await demoDeployStrategy(argv);
-  // await demoCurve(argv);
+  await demoCurve(argv);
 }
 
 main(argv)

@@ -1,4 +1,5 @@
 require("dotenv").config();
+const chalk = require("chalk");
 const hre = require("hardhat");
 const { ethers, network, web3 } = hre;
 const { argv } = require("yargs");
@@ -12,16 +13,14 @@ const legos = require("@apy-finance/defi-legos");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
+  console.log("-------------CURVE-------------");
   await hre.run("compile");
   const NETWORK_NAME = network.name.toUpperCase();
-  console.log("");
   console.log(`${NETWORK_NAME} selected`);
-  console.log("");
 
   const signers = await ethers.getSigners();
   const deployer = await signers[0].getAddress();
-  console.log("Deployer address:", deployer);
-  console.log("");
+  console.log("Deployer address:", chalk.green(deployer));
 
   console.log("Protocol addresses:");
   const yPoolToken = await ethers.getContractAt(
@@ -29,13 +28,15 @@ async function main(argv) {
     legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token
   );
   const depositY = legos.curvefi.addresses.Deposit_Y;
-  console.log("Y Deposit:", legos.curvefi.addresses.Deposit_Y);
-  console.log("Y Pool:", legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD);
+  console.log("Y Deposit:", chalk.green(legos.curvefi.addresses.Deposit_Y));
+  console.log(
+    "Y Pool:",
+    chalk.green(legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD)
+  );
   console.log(
     "LP Token:",
-    legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token
+    chalk.green(legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token)
   );
-  console.log("");
 
   const APYManager = await ethers.getContractFactory("APYManager");
   const managerProxyAddress = getDeployedAddress(
@@ -50,15 +51,15 @@ async function main(argv) {
     params: [managerOwnerAddress],
   });
   const managerSigner = await ethers.provider.getSigner(managerOwnerAddress);
-  console.log("");
-  console.log("Manager deployer address:", await managerSigner.getAddress());
-  console.log("");
+  console.log(
+    "Manager deployer address:",
+    chalk.green(await managerSigner.getAddress())
+  );
 
   const manager = APYManager.attach(managerProxyAddress).connect(managerSigner);
 
   const strategyAddress = await manager.getStrategy(bytes32("curve_y"));
-  console.log("Strategy address:", strategyAddress);
-  console.log("");
+  console.log("Strategy address:", chalk.green(strategyAddress));
 
   const stablecoins = {};
   for (const symbol of ["DAI", "USDC", "USDT"]) {
@@ -80,12 +81,12 @@ async function main(argv) {
 
   console.log("Strategy balances (before):");
   console.log(
-    "LP token:",
-    (await yPoolToken.balanceOf(strategyAddress)).toString()
+    "\tLP token:",
+    chalk.yellow((await yPoolToken.balanceOf(strategyAddress)).toString())
   );
-  console.log("DAI:", daiAmount);
-  console.log("USDC:", usdcAmount);
-  console.log("USDT:", usdtAmount);
+  console.log("\tDAI:", chalk.yellow(daiAmount));
+  console.log("\tUSDC:", chalk.yellow(usdcAmount));
+  console.log("\tUSDT:", chalk.yellow(usdtAmount));
 
   const addLiquidityData = [
     [
@@ -119,20 +120,26 @@ async function main(argv) {
   await liquidityTrx.wait();
   console.log("Strategy balances (after):");
   console.log(
-    "LP token:",
-    (await yPoolToken.balanceOf(strategyAddress)).toString()
+    "\tLP token:",
+    chalk.yellow((await yPoolToken.balanceOf(strategyAddress)).toString())
   );
   console.log(
-    "DAI:",
-    (await stablecoins["DAI"].balanceOf(strategyAddress)).toString()
+    "\tDAI:",
+    chalk.yellow(
+      (await stablecoins["DAI"].balanceOf(strategyAddress)).toString()
+    )
   );
   console.log(
-    "USDC:",
-    (await stablecoins["USDC"].balanceOf(strategyAddress)).toString()
+    "\tUSDC:",
+    chalk.yellow(
+      (await stablecoins["USDC"].balanceOf(strategyAddress)).toString()
+    )
   );
   console.log(
-    "USDT:",
-    (await stablecoins["USDT"].balanceOf(strategyAddress)).toString()
+    "\tUSDT:",
+    chalk.yellow(
+      (await stablecoins["USDT"].balanceOf(strategyAddress)).toString()
+    )
   );
 
   const stableSwapY = new web3.eth.Contract(
@@ -165,7 +172,7 @@ async function main(argv) {
   });
 
   const yLiquidityGauge = new web3.eth.Contract(
-    legos.curvefi.abis.yLiquidityGauge,
+    legos.curvefi.abis.y_Liquidity_Gauge,
     legos.curvefi.addresses.y_Liquidity_Guage
   );
   await expectEvent.inTransaction(depositTrx.hash, yLiquidityGauge, "Deposit");
