@@ -11,6 +11,7 @@ const { TOKEN_AGG_MAP } = require("../utils/constants.js");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
+  console.log('-------------UPDATE IMPLEMENTATIONS-------------')
   await hre.run("compile");
   const NETWORK_NAME = network.name.toUpperCase();
   console.log(`${NETWORK_NAME} selected`);
