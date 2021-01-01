@@ -41,33 +41,80 @@ async function main(argv) {
   console.log("Strategy address:", strategyAddress);
   console.log("");
 
-  const daiToken = await ethers.getContractAt(
-    "IDetailedERC20",
-    legos.maker.addresses.DAI
-  );
-  const depositAmount = (await daiToken.balanceOf(strategyAddress)).toString();
+  const stablecoins = {};
+  const APYPoolToken = await ethers.getContractFactory("APYPoolToken");
+  for (const symbol of ["DAI", "USDC", "USDT"]) {
+    const poolProxyAddress = getDeployedAddress(
+      symbol + "_APYPoolTokenProxy",
+      NETWORK_NAME
+    );
+    const pool = APYPoolToken.attach(poolProxyAddress);
+    stablecoins[symbol] = await ethers.getContractAt(
+      "IDetailedERC20",
+      await pool.underlyer()
+    );
+  }
+  const daiAmount = (
+    await stablecoins["DAI"].balanceOf(strategyAddress)
+  ).toString();
+  const usdcAmount = (
+    await stablecoins["USDC"].balanceOf(strategyAddress)
+  ).toString();
+  const usdtAmount = (
+    await stablecoins["USDT"].balanceOf(strategyAddress)
+  ).toString();
+  console.log("DAI balance:", daiAmount);
+  console.log("USDC balance:", usdcAmount);
+  console.log("USDT balance:", usdtAmount);
 
   const micDaiPoolAddress = legos.mith.addresses.MICDAIPool;
+  const micUsdcPoolAddress = legos.mith.addresses.MICUSDCPool;
+  const micUsdtPoolAddress = legos.mith.addresses.MICUSDTPool;
   const data = [
     [
-      legos.maker.addresses.DAI,
-      legos.maker.codecs.DAI.encodeApprove(micDaiPoolAddress, depositAmount),
+      stablecoins["DAI"].address,
+      legos.maker.codecs.DAI.encodeApprove(micDaiPoolAddress, daiAmount),
     ],
+    [micDaiPoolAddress, legos.mith.codecs.MICDAIPool.encodeStake(daiAmount)],
     [
-      micDaiPoolAddress,
-      legos.mith.codecs.MICDAIPool.encodeStake(depositAmount),
+      stablecoins["USDC"].address,
+      legos.maker.codecs.DAI.encodeApprove(micUsdcPoolAddress, usdcAmount),
     ],
+    [micUsdcPoolAddress, legos.mith.codecs.MICDAIPool.encodeStake(usdcAmount)],
+    [
+      stablecoins["USDT"].address,
+      legos.maker.codecs.DAI.encodeApprove(micUsdtPoolAddress, usdtAmount),
+    ],
+    [micUsdtPoolAddress, legos.mith.codecs.MICDAIPool.encodeStake(usdtAmount)],
   ];
 
   const micDaiPoolToken = await ethers.getContractAt(
     "IDetailedERC20",
     micDaiPoolAddress
   );
-  console.log("LP token address:", micDaiPoolAddress);
+  console.log("MIC-DAI token address:", micDaiPoolAddress);
+  const micUsdcPoolToken = await ethers.getContractAt(
+    "IDetailedERC20",
+    micUsdcPoolAddress
+  );
+  console.log("MIC-USDC token address:", micDaiPoolAddress);
+  const micUsdtPoolToken = await ethers.getContractAt(
+    "IDetailedERC20",
+    micUsdtPoolAddress
+  );
+  console.log("MIC-USDT token address:", micDaiPoolAddress);
 
   console.log(
     "DAI balance (before):",
-    (await daiToken.balanceOf(strategyAddress)).toString()
+    (await stablecoins["DAI"].balanceOf(strategyAddress)).toString()
+  );
+  console.log(
+    "USDC balance (before):",
+    (await stablecoins["USDC"].balanceOf(strategyAddress)).toString()
+  );
+  console.log(
+    "USDT balance (before):",
+    (await stablecoins["USDT"].balanceOf(strategyAddress)).toString()
   );
 
   const trx = await manager.execute(strategyAddress, data, {
@@ -75,19 +122,29 @@ async function main(argv) {
   });
   await trx.wait();
   console.log(
-    "LP token balance:",
+    "MIC-DAI token balance:",
     (await micDaiPoolToken.balanceOf(strategyAddress)).toString()
   );
   console.log(
-    "DAI balance (after):",
-    (await daiToken.balanceOf(strategyAddress)).toString()
+    "MIC-USDC token balance:",
+    (await micUsdcPoolToken.balanceOf(strategyAddress)).toString()
   );
-
-  // const stableSwapY = new web3.eth.Contract(
-  //   legos.curvefi.abis.yDAI_yUSDC_yUSDT_ytUSD,
-  //   legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD
-  // );
-  // await expectEvent.inTransaction(trx.hash, stableSwapY, "AddLiquidity");
+  console.log(
+    "MIC-USDT token balance:",
+    (await micUsdtPoolToken.balanceOf(strategyAddress)).toString()
+  );
+  console.log(
+    "DAI balance (after):",
+    (await stablecoins["DAI"].balanceOf(strategyAddress)).toString()
+  );
+  console.log(
+    "USDC balance (after):",
+    (await stablecoins["USDC"].balanceOf(strategyAddress)).toString()
+  );
+  console.log(
+    "USDT balance (after):",
+    (await stablecoins["USDT"].balanceOf(strategyAddress)).toString()
+  );
 }
 
 if (!module.parent) {
