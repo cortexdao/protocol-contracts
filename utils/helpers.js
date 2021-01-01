@@ -1,6 +1,10 @@
 const { artifacts, ethers } = require("hardhat");
 const { ether, BN } = require("@openzeppelin/test-helpers");
-const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants.js");
+const {
+  CHAIN_IDS,
+  DEPLOYS_JSON,
+  TOKEN_AGG_MAP,
+} = require("../utils/constants.js");
 const fs = require("fs");
 const IMintableERC20 = artifacts.require("IMintableERC20");
 
@@ -110,6 +114,16 @@ function getDeployedAddress(contractName, network) {
   return deployedAddress;
 }
 
+function getStablecoinAddress(symbol, network) {
+  const aggItems = TOKEN_AGG_MAP[network.toUpperCase()];
+  for (const aggItem of aggItems) {
+    if (symbol == aggItem["symbol"]) {
+      return aggItem["token"];
+    }
+  }
+  throw new Error(`Could not find address for ${symbol}`);
+}
+
 module.exports = {
   bytes32,
   dai,
@@ -121,4 +135,5 @@ module.exports = {
   console,
   updateDeployJsons,
   getDeployedAddress,
+  getStablecoinAddress,
 };

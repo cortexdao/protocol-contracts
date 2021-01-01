@@ -2,7 +2,11 @@ require("dotenv").config();
 const hre = require("hardhat");
 const { ethers, network } = hre;
 const { argv } = require("yargs");
-const { getDeployedAddress, bytes32 } = require("../utils/helpers.js");
+const {
+  getDeployedAddress,
+  bytes32,
+  getStablecoinAddress,
+} = require("../utils/helpers.js");
 const legos = require("defi-legos");
 
 // eslint-disable-next-line no-unused-vars
@@ -63,16 +67,11 @@ async function main(argv) {
   console.log("");
 
   const stablecoins = {};
-  const APYPoolToken = await ethers.getContractFactory("APYPoolToken");
   for (const symbol of ["DAI", "USDC", "USDT"]) {
-    const poolProxyAddress = getDeployedAddress(
-      symbol + "_APYPoolTokenProxy",
-      NETWORK_NAME
-    );
-    const pool = APYPoolToken.attach(poolProxyAddress);
+    const stablecoinAddress = getStablecoinAddress(symbol, NETWORK_NAME);
     stablecoins[symbol] = await ethers.getContractAt(
       "IDetailedERC20",
-      await pool.underlyer()
+      stablecoinAddress
     );
   }
 
