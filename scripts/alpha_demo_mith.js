@@ -18,6 +18,27 @@ async function main(argv) {
   console.log("Deployer address:", deployer);
   console.log("");
 
+  console.log("Protocol addresses:");
+  const micDaiPoolAddress = legos.mith.addresses.MICDAIPool;
+  const micUsdcPoolAddress = legos.mith.addresses.MICUSDCPool;
+  const micUsdtPoolAddress = legos.mith.addresses.MICUSDTPool;
+  const micDaiPoolToken = await ethers.getContractAt(
+    "IDetailedERC20",
+    micDaiPoolAddress
+  );
+  console.log("MIC-DAI Pool/Token:", micDaiPoolAddress);
+  const micUsdcPoolToken = await ethers.getContractAt(
+    "IDetailedERC20",
+    micUsdcPoolAddress
+  );
+  console.log("MIC-USDC Pool/Token:", micDaiPoolAddress);
+  const micUsdtPoolToken = await ethers.getContractAt(
+    "IDetailedERC20",
+    micUsdtPoolAddress
+  );
+  console.log("MIC-USDT Pool/Token:", micDaiPoolAddress);
+  console.log("");
+
   const APYManager = await ethers.getContractFactory("APYManager");
   const managerProxyAddress = getDeployedAddress(
     "APYManagerProxy",
@@ -54,6 +75,8 @@ async function main(argv) {
       await pool.underlyer()
     );
   }
+
+  console.log("Strategy balances (before):");
   const daiAmount = (
     await stablecoins["DAI"].balanceOf(strategyAddress)
   ).toString();
@@ -63,13 +86,22 @@ async function main(argv) {
   const usdtAmount = (
     await stablecoins["USDT"].balanceOf(strategyAddress)
   ).toString();
-  console.log("DAI balance:", daiAmount);
-  console.log("USDC balance:", usdcAmount);
-  console.log("USDT balance:", usdtAmount);
+  console.log("DAI:", daiAmount);
+  console.log("USDC:", usdcAmount);
+  console.log("USDT:", usdtAmount);
+  console.log(
+    "MIC-DAI:",
+    (await micDaiPoolToken.balanceOf(strategyAddress)).toString()
+  );
+  console.log(
+    "MIC-USDC:",
+    (await micUsdcPoolToken.balanceOf(strategyAddress)).toString()
+  );
+  console.log(
+    "MIC-USDT:",
+    (await micUsdtPoolToken.balanceOf(strategyAddress)).toString()
+  );
 
-  const micDaiPoolAddress = legos.mith.addresses.MICDAIPool;
-  const micUsdcPoolAddress = legos.mith.addresses.MICUSDCPool;
-  const micUsdtPoolAddress = legos.mith.addresses.MICUSDTPool;
   const data = [
     [
       stablecoins["DAI"].address,
@@ -88,62 +120,34 @@ async function main(argv) {
     [micUsdtPoolAddress, legos.mith.codecs.MICDAIPool.encodeStake(usdtAmount)],
   ];
 
-  const micDaiPoolToken = await ethers.getContractAt(
-    "IDetailedERC20",
-    micDaiPoolAddress
-  );
-  console.log("MIC-DAI token address:", micDaiPoolAddress);
-  const micUsdcPoolToken = await ethers.getContractAt(
-    "IDetailedERC20",
-    micUsdcPoolAddress
-  );
-  console.log("MIC-USDC token address:", micDaiPoolAddress);
-  const micUsdtPoolToken = await ethers.getContractAt(
-    "IDetailedERC20",
-    micUsdtPoolAddress
-  );
-  console.log("MIC-USDT token address:", micDaiPoolAddress);
-
-  console.log(
-    "DAI balance (before):",
-    (await stablecoins["DAI"].balanceOf(strategyAddress)).toString()
-  );
-  console.log(
-    "USDC balance (before):",
-    (await stablecoins["USDC"].balanceOf(strategyAddress)).toString()
-  );
-  console.log(
-    "USDT balance (before):",
-    (await stablecoins["USDT"].balanceOf(strategyAddress)).toString()
-  );
-
   const trx = await manager.execute(strategyAddress, data, {
     gasLimit: 9e6,
   });
   await trx.wait();
+  console.log("Strategy balances (after):");
   console.log(
-    "MIC-DAI token balance:",
-    (await micDaiPoolToken.balanceOf(strategyAddress)).toString()
-  );
-  console.log(
-    "MIC-USDC token balance:",
-    (await micUsdcPoolToken.balanceOf(strategyAddress)).toString()
-  );
-  console.log(
-    "MIC-USDT token balance:",
-    (await micUsdtPoolToken.balanceOf(strategyAddress)).toString()
-  );
-  console.log(
-    "DAI balance (after):",
+    "DAI:",
     (await stablecoins["DAI"].balanceOf(strategyAddress)).toString()
   );
   console.log(
-    "USDC balance (after):",
+    "USDC:",
     (await stablecoins["USDC"].balanceOf(strategyAddress)).toString()
   );
   console.log(
-    "USDT balance (after):",
+    "USDT:",
     (await stablecoins["USDT"].balanceOf(strategyAddress)).toString()
+  );
+  console.log(
+    "MIC-DAI:",
+    (await micDaiPoolToken.balanceOf(strategyAddress)).toString()
+  );
+  console.log(
+    "MIC-USDC:",
+    (await micUsdcPoolToken.balanceOf(strategyAddress)).toString()
+  );
+  console.log(
+    "MIC-USDT:",
+    (await micUsdtPoolToken.balanceOf(strategyAddress)).toString()
   );
 }
 
