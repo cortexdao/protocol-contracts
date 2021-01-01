@@ -19,6 +19,20 @@ async function main(argv) {
   console.log("Deployer address:", deployer);
   console.log("");
 
+  console.log("Protocol addresses:");
+  const yPoolToken = await ethers.getContractAt(
+    "IDetailedERC20",
+    legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token
+  );
+  const depositY = legos.curvefi.addresses.Deposit_Y;
+  console.log("Y Deposit:", legos.curvefi.addresses.Deposit_Y);
+  console.log("Y Pool:", legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD);
+  console.log(
+    "LP Token:",
+    legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token
+  );
+  console.log("");
+
   const APYManager = await ethers.getContractFactory("APYManager");
   const managerProxyAddress = getDeployedAddress(
     "APYManagerProxy",
@@ -64,12 +78,15 @@ async function main(argv) {
   const usdtAmount = (
     await stablecoins["USDT"].balanceOf(strategyAddress)
   ).toString();
-  console.log("DAI balance:", daiAmount);
-  console.log("USDC balance:", usdcAmount);
-  console.log("USDT balance:", usdtAmount);
 
-  const depositY = legos.curvefi.addresses.Deposit_Y;
-  console.log("Y Deposit:", legos.curvefi.addresses.Deposit_Y);
+  console.log("Strategy balances (before):");
+  console.log(
+    "LP token:",
+    (await yPoolToken.balanceOf(strategyAddress)).toString()
+  );
+  console.log("DAI:", daiAmount);
+  console.log("USDC:", usdcAmount);
+  console.log("USDT:", usdtAmount);
 
   const addLiquidityData = [
     [
@@ -93,17 +110,6 @@ async function main(argv) {
     ],
   ];
 
-  const yPoolToken = await ethers.getContractAt(
-    "IDetailedERC20",
-    legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token
-  );
-  console.log("Y Pool:", legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD);
-  console.log(
-    "LP token:",
-    legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token
-  );
-  console.log("");
-
   const liquidityTrx = await manager.execute(
     strategyAddress,
     addLiquidityData,
@@ -112,20 +118,21 @@ async function main(argv) {
     }
   );
   await liquidityTrx.wait();
+  console.log("Strategy balances (after):");
   console.log(
-    "LP token balance:",
+    "LP token:",
     (await yPoolToken.balanceOf(strategyAddress)).toString()
   );
   console.log(
-    "DAI balance:",
+    "DAI:",
     (await stablecoins["DAI"].balanceOf(strategyAddress)).toString()
   );
   console.log(
-    "USDC balance:",
+    "USDC:",
     (await stablecoins["USDC"].balanceOf(strategyAddress)).toString()
   );
   console.log(
-    "USDT balance:",
+    "USDT:",
     (await stablecoins["USDT"].balanceOf(strategyAddress)).toString()
   );
 
