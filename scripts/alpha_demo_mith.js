@@ -12,6 +12,7 @@ const legos = require("@apy-finance/defi-legos");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
+  console.log("-------------MITH-------------");
   await hre.run("compile");
   const NETWORK_NAME = network.name.toUpperCase();
   console.log(`${NETWORK_NAME} selected`);
