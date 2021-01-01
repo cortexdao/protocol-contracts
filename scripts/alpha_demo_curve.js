@@ -71,7 +71,7 @@ async function main(argv) {
   const depositY = legos.curvefi.addresses.Deposit_Y;
   console.log("Y Deposit:", legos.curvefi.addresses.Deposit_Y);
 
-  const data = [
+  const addLiquidityData = [
     [
       stablecoins["DAI"].address,
       legos.maker.codecs.DAI.encodeApprove(depositY, daiAmount),
@@ -104,11 +104,15 @@ async function main(argv) {
   );
   console.log("");
 
-  const trx = await manager.execute(strategyAddress, data, {
-    gasLimit: 9e6,
-  });
-  await trx.wait();
-  // // const trx = await manager.transferAndExecute(strategyAddress, data);
+  const liquidityTrx = await manager.execute(
+    strategyAddress,
+    addLiquidityData,
+    {
+      gasLimit: 9e6,
+    }
+  );
+  await liquidityTrx.wait();
+  // // const liquidityTrx = await manager.transferAndExecute(strategyAddress, addLiquidityData);
   console.log(
     "LP token balance:",
     (await yPoolToken.balanceOf(strategyAddress)).toString()
@@ -130,7 +134,38 @@ async function main(argv) {
     legos.curvefi.abis.yDAI_yUSDC_yUSDT_ytUSD,
     legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD
   );
-  await expectEvent.inTransaction(trx.hash, stableSwapY, "AddLiquidity");
+  await expectEvent.inTransaction(
+    liquidityTrx.hash,
+    stableSwapY,
+    "AddLiquidity"
+  );
+
+  const lpBalance = ethers.BigNumber.from(
+    (await yPoolToken.balanceOf(strategyAddress)).toString()
+  );
+  const depositData = [
+    [
+      legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token,
+      legos.curvefi.codecs.yDAI_yUSDC_yUSDT_ytUSD_Token.encodeApprove(
+        legos.curvefi.addresses.y_Liquidity_Gauge,
+        lpBalance
+      ),
+    ],
+    [
+      legos.curvefi.addresses.y_Liquidity_Gauge,
+      legos.curvefi.codecs.yLiquidityGauge.encodeDeposit(lpBalance),
+    ],
+  ];
+
+  const depositTrx = await manager.execute(strategyAddress, depositData, {
+    gasLimit: 9e6,
+  });
+
+  const yLiquidityGauge = new web3.eth.Contract(
+    legos.curvefi.abis.yLiquidityGauge,
+    legos.curvefi.addresses.y_Liquidity_Guage
+  );
+  await expectEvent.inTransaction(depositTrx.tx, yLiquidityGauge, "Deposit");
 }
 
 if (!module.parent) {
