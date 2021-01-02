@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.11;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
@@ -10,14 +11,12 @@ import "./interfaces/IDetailedERC20.sol";
 import "./interfaces/IStrategyFactory.sol";
 import "./APYPoolToken.sol";
 import "./APYMetaPoolToken.sol";
-import "./CloneFactory.sol";
 import "./Strategy.sol";
 
 contract APYManager is
     Initializable,
     OwnableUpgradeSafe,
     IAssetAllocation,
-    CloneFactory,
     IStrategyFactory
 {
     using SafeMath for uint256;
@@ -35,6 +34,7 @@ contract APYManager is
 
     address public libraryAddress;
 
+    mapping(bytes32 => address) public getStrategy;
     mapping(address => bool) public isStrategyDeployed;
 
     mapping(address => address[]) public strategyToTokens;
@@ -68,16 +68,20 @@ contract APYManager is
         onlyOwner
         returns (address)
     {
-        address strategy = createClone(libraryAddress);
-        IStrategy(strategy).initialize(generalExecutor);
-        isStrategyDeployed[strategy] = true;
-        emit StrategyDeployed(strategy, generalExecutor);
-        return strategy;
+        Strategy strategy = new Strategy(generalExecutor);
+        isStrategyDeployed[address(strategy)] = true;
+        emit StrategyDeployed(address(strategy), generalExecutor);
+        return address(strategy);
+    }
+
+    function setStrategyId(bytes32 id, address strategy) public onlyOwner {
+        getStrategy[id] = strategy;
     }
 
     function registerTokens(address strategy, address[] calldata tokens)
         external
         override
+        onlyOwner
     {
         // need this for as-yet-unknown tokens that may be air-dropped, etc.
         // XXX: need to handle duplicates instead of nuking old tokens
@@ -97,10 +101,10 @@ contract APYManager is
         return tokenToStrategies[token].length > 0;
     }
 
-    function transferAndExecute(address strategy, bytes calldata steps)
-        external
-        override
-    {
+    function transferAndExecute(
+        address strategy,
+        APYGenericExecutor.Data[] memory steps
+    ) external override onlyOwner {
         for (uint256 i = 0; i < _poolIds.length; i++) {
             bytes32 poolId = _poolIds[i];
             address poolAddress = addressRegistry.getAddress(poolId);
@@ -109,7 +113,11 @@ contract APYManager is
         execute(strategy, steps);
     }
 
-    function execute(address strategy, bytes calldata steps) public override {
+    function execute(address strategy, APYGenericExecutor.Data[] memory steps)
+        public
+        override
+        onlyOwner
+    {
         IStrategy(strategy).execute(steps);
     }
 
@@ -254,10 +262,10 @@ contract APYManager is
 
         uint256 tokenEthPrice = pool.getTokenEthPrice();
         uint8 decimals = underlyer.decimals();
-        uint256 mintAmount =
-            mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
+        // uint256 mintAmount =
+        //     mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
 
-        mApt.mint(poolAddress, mintAmount);
+        // mApt.mint(poolAddress, mintAmount);
         underlyer.safeTransferFrom(poolAddress, strategyAddress, poolAmount);
     }
 }

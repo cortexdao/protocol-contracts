@@ -4,13 +4,17 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract APYGenericExecutor {
+contract APYGenericExecutor is Ownable {
     struct Data {
         address target;
         bytes data;
     }
 
-    function execute(Data[] calldata executionSteps) external payable {
+    function execute(Data[] calldata executionSteps)
+        external
+        payable
+        onlyOwner
+    {
         bytes memory returnData;
         for (uint256 i = 0; i < executionSteps.length; i++) {
             returnData = _call(

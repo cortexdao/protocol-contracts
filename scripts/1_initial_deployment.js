@@ -55,7 +55,7 @@ async function main() {
     console.log(`${symbol} pool locked.`);
   }
 
-  await updateDeployJsons(NETWORK_NAME, deploy_data);
+  updateDeployJsons(NETWORK_NAME, deploy_data);
 }
 
 main()

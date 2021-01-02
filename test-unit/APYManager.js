@@ -163,7 +163,9 @@ contract("APYManager", async (accounts) => {
 
     before("Deploy strategy", async () => {
       genericExecutor = await APYGenericExecutor.new({ from: deployer });
-      strategyLogic = await Strategy.new({ from: deployer });
+      strategyLogic = await Strategy.new(genericExecutor.address, {
+        from: deployer,
+      });
       await manager.setLibraryAddress(strategyLogic.address);
 
       const strategyAddress = await manager.deploy.call(
@@ -184,22 +186,26 @@ contract("APYManager", async (accounts) => {
         params: [manager.address],
       });
       await send.ether(deployer, manager.address, ether("1"));
-      const steps = web3.utils.fromAscii("bytes data");
-
-      await expectRevert(
-        strategy.execute(steps, { from: manager.address }),
-        "steps execution failed"
-      );
+      const interface = new ethers.utils.Interface(APYManager._json.abi);
+      const method = interface.encodeFunctionData("balanceOf", [
+        manager.address,
+      ]);
+      const step = [manager.address, method];
+      await strategy.execute([step], { from: manager.address });
     });
 
     it("Revert when non-owner calls execute", async () => {
-      const steps = web3.utils.fromAscii("bytes data");
+      const interface = new ethers.utils.Interface(APYManager._json.abi);
+      const method = interface.encodeFunctionData("balanceOf", [
+        manager.address,
+      ]);
+      const step = [manager.address, method];
       await expectRevert(
-        strategy.execute(steps, { from: deployer }),
+        strategy.execute([step], { from: deployer }),
         "Ownable: caller is not the owner"
       );
       await expectRevert(
-        strategy.execute(steps, { from: randomUser }),
+        strategy.execute([step], { from: randomUser }),
         "Ownable: caller is not the owner"
       );
     });
