@@ -1,0 +1,14 @@
+[
+  {
+    "strategy": "yDAI_yUSDC_yUSDT_yTUSD",
+    "DAI": 10,
+    "USDC": 5,
+    "USDT": 5
+  },
+  {
+    "strategy": "DODO",
+    "DAI": 0,
+    "USDC": 10,
+    "USDT": 10
+  }
+]

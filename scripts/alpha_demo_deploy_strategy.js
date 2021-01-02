@@ -7,7 +7,7 @@ const { getDeployedAddress, bytes32 } = require("../utils/helpers.js");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
-  console.log('-------------DEPLOY and FUND-------------')
+  console.log("-------------DEPLOY and FUND-------------");
   await hre.run("compile");
   const NETWORK_NAME = network.name.toUpperCase();
   console.log(`${NETWORK_NAME} selected`);
@@ -29,7 +29,10 @@ async function main(argv) {
     params: [poolOwnerAddress],
   });
   const poolSigner = await ethers.provider.getSigner(poolOwnerAddress);
-  console.log("Pool deployer address:", chalk.green(await poolSigner.getAddress()));
+  console.log(
+    "Pool deployer address:",
+    chalk.green(await poolSigner.getAddress())
+  );
 
   await web3.eth.sendTransaction({
     from: deployer,
@@ -68,7 +71,10 @@ async function main(argv) {
     params: [managerOwnerAddress],
   });
   const managerSigner = await ethers.provider.getSigner(managerOwnerAddress);
-  console.log("Manager deployer address:", chalk.green(await managerSigner.getAddress()));
+  console.log(
+    "Manager deployer address:",
+    chalk.green(await managerSigner.getAddress())
+  );
   await web3.eth.sendTransaction({
     from: deployer,
     to: managerOwnerAddress,
@@ -102,19 +108,25 @@ async function main(argv) {
   // funds tranferred the first time, as subsequent times the pools
   // will have zero funds
   console.log("Transferring funds to strategy ...");
+  const stablecoinBalances = {};
   for (const [symbol, pool] of Object.entries(pools)) {
     console.log("\tpool:", chalk.yellow(symbol));
     console.log(
       "\t\tbefore:",
-      chalk.yellow((await stablecoins[symbol].balanceOf(strategyAddress)).toString())
+      chalk.yellow(
+        (await stablecoins[symbol].balanceOf(strategyAddress)).toString()
+      )
     );
     const trx = await manager.transferFunds(pool.address, strategyAddress);
     await trx.wait();
-    console.log(
-      "\t\tafter:",
-      chalk.yellow((await stablecoins[symbol].balanceOf(strategyAddress)).toString())
-    );
+    const balance = (
+      await stablecoins[symbol].balanceOf(strategyAddress)
+    ).toString();
+    console.log("\t\tafter:", chalk.yellow(balance));
+    stablecoinBalances[symbol] = balance;
   }
+
+  return stablecoinBalances;
 }
 
 if (!module.parent) {
