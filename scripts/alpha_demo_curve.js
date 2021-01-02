@@ -128,8 +128,6 @@ async function main(argv) {
   console.log("\tUSDC:", chalk.yellow(usdcAmount));
   console.log("\tUSDT:", chalk.yellow(usdtAmount));
 
-  //======================================================================================================
-
   const addLiquidityData = [
     [
       stablecoins["DAI"].address,
