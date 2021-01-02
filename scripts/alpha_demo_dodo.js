@@ -22,7 +22,8 @@ async function main(argv) {
   console.log("Deployer address:", chalk.green(deployer));
 
   console.log("Protocol addresses:");
-
+  const dodoPoolAddress = legos.dodo.addresses.USDT_USDC_DODO;
+  console.log("DODO USDT-USDC Pool:", chalk.green(dodoPoolAddress));
   const usdtDlpAddress = legos.dodo.addresses.USDT_DLP;
   const usdtDlpToken = await ethers.getContractAt(
     "IDetailedERC20",
