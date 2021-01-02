@@ -69,7 +69,9 @@ async function main(argv) {
 
   const selectedPool = argv.pool;
   if (!(selectedPool in curveMappings)) {
-    console.log("Select supported pool");
+    console.log(
+      `Select supported pool: ${chalk.red(Object.keys(curveMappings))}`
+    );
     process.exit(0);
   }
 
