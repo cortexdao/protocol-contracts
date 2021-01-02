@@ -11,6 +11,31 @@ const {
 const { expectEvent } = require("@openzeppelin/test-helpers");
 const legos = require("@apy-finance/defi-legos");
 
+const curveMappings = {
+  cDAI_cUSDC: {
+    pool_address: legos.curvefi.addresses.cDAI_cUSDC,
+    lp_token_address: legos.curvefi.addresses.cDAI_cUSDC_cUSDT_Token,
+    depositor: legos.curvefi.addresses.Deposit_Compound,
+    gauge: legos.curvefi.addresses.compound_Liquidity_Gauge,
+  },
+  cDAI_cUSDC_cUSDT: {
+    pool_address: legos.curvefi.addresses.cDAI_cUSDC_cUSDT,
+    lp_token_address: legos.curvefi.addresses.cDAI_cUSDC_cUSDT_Token,
+    depositor: legos.curvefi.addresses.Deposit_USDT,
+    gauge: legos.curvefi.addresses.usdt_Liquidity_Gauge,
+  },
+  yDAI_yUSDC_yUSDT_ytUSD: {
+    pool_address: legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD,
+    pool_abi: legos.curvefi.abis.yDAI_yUSDC_yUSDT_ytUSD,
+    lp_token_address: legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token,
+    lp_token_codec: legos.curvefi.codecs.yDAI_yUSDC_yUSDT_ytUSD_Token,
+    depositor_address: legos.curvefi.addresses.Deposit_Y,
+    gauge_address: legos.curvefi.addresses.y_Liquidity_Gauge,
+    gauge_abi: legos.curvefi.abis.y_Liquidity_Gauge,
+    gauge_codec: legos.curvefi.codecs.yLiquidityGauge,
+  },
+};
+
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
   console.log("-------------CURVE-------------");
@@ -22,20 +47,30 @@ async function main(argv) {
   const deployer = await signers[0].getAddress();
   console.log("Deployer address:", chalk.green(deployer));
 
+  const selectedPool = argv.pool;
+  if (!(selectedPool in curveMappings)) {
+    console.log("Select supported pool");
+    process.exit(0);
+  }
+
+  const pool_abi = curveMappings[selectedPool].pool_abi;
+  const pool_address = curveMappings[selectedPool].pool_address;
+  const lp_token_address = curveMappings[selectedPool].lp_token_address;
+  const lp_token_codec = curveMappings[selectedPool].lp_token_codec;
+  const depositor_address = curveMappings[selectedPool].depositor_address;
+  const gauge_address = curveMappings[selectedPool].gauge_address;
+  const gauge_abi = curveMappings[selectedPool].gauge_abi;
+  const gauge_codec = curveMappings[selectedPool].gauge_codec;
+
   console.log("Protocol addresses:");
-  const yPoolToken = await ethers.getContractAt(
+  console.log("\tPool:", chalk.green(pool_address));
+  console.log("\tLP Token:", chalk.green(lp_token_address));
+  console.log("\tDepositor:", chalk.green(depositor_address));
+  console.log("\tGauge:", chalk.green(gauge_address));
+
+  const lp_token = await ethers.getContractAt(
     "IDetailedERC20",
-    legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token
-  );
-  const depositY = legos.curvefi.addresses.Deposit_Y;
-  console.log("Y Deposit:", chalk.green(legos.curvefi.addresses.Deposit_Y));
-  console.log(
-    "Y Pool:",
-    chalk.green(legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD)
-  );
-  console.log(
-    "LP Token:",
-    chalk.green(legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token)
+    lp_token_address
   );
 
   const APYManager = await ethers.getContractFactory("APYManager");
@@ -82,27 +117,29 @@ async function main(argv) {
   console.log("Strategy balances (before):");
   console.log(
     "\tLP token:",
-    chalk.yellow((await yPoolToken.balanceOf(strategyAddress)).toString())
+    chalk.yellow((await lp_token.balanceOf(strategyAddress)).toString())
   );
   console.log("\tDAI:", chalk.yellow(daiAmount));
   console.log("\tUSDC:", chalk.yellow(usdcAmount));
   console.log("\tUSDT:", chalk.yellow(usdtAmount));
 
+  //======================================================================================================
+
   const addLiquidityData = [
     [
       stablecoins["DAI"].address,
-      legos.maker.codecs.DAI.encodeApprove(depositY, daiAmount),
+      legos.maker.codecs.DAI.encodeApprove(depositor_address, daiAmount),
     ],
     [
       stablecoins["USDC"].address,
-      legos.maker.codecs.DAI.encodeApprove(depositY, usdcAmount),
+      legos.maker.codecs.DAI.encodeApprove(depositor_address, usdcAmount),
     ],
     [
       stablecoins["USDT"].address,
-      legos.maker.codecs.DAI.encodeApprove(depositY, usdtAmount),
+      legos.maker.codecs.DAI.encodeApprove(depositor_address, usdtAmount),
     ],
     [
-      depositY,
+      depositor_address,
       legos.curvefi.codecs.Deposit_Y.encodeAddLiquidity(
         [daiAmount, usdcAmount, usdtAmount, 0],
         0
@@ -121,7 +158,7 @@ async function main(argv) {
   console.log("Strategy balances (after):");
   console.log(
     "\tLP token:",
-    chalk.yellow((await yPoolToken.balanceOf(strategyAddress)).toString())
+    chalk.yellow((await lp_token.balanceOf(strategyAddress)).toString())
   );
   console.log(
     "\tDAI:",
@@ -142,40 +179,25 @@ async function main(argv) {
     )
   );
 
-  const stableSwapY = new web3.eth.Contract(
-    legos.curvefi.abis.yDAI_yUSDC_yUSDT_ytUSD,
-    legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD
-  );
+  const stableSwapY = new web3.eth.Contract(pool_abi, pool_address);
   await expectEvent.inTransaction(
     liquidityTrx.hash,
     stableSwapY,
     "AddLiquidity"
   );
 
-  const lpBalance = await yPoolToken.balanceOf(strategyAddress);
+  const lpBalance = await lp_token.balanceOf(strategyAddress);
   const depositData = [
-    [
-      legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token,
-      legos.curvefi.codecs.yDAI_yUSDC_yUSDT_ytUSD_Token.encodeApprove(
-        legos.curvefi.addresses.y_Liquidity_Gauge,
-        lpBalance
-      ),
-    ],
-    [
-      legos.curvefi.addresses.y_Liquidity_Gauge,
-      legos.curvefi.codecs.yLiquidityGauge.encodeDeposit(lpBalance),
-    ],
+    [lp_token_address, lp_token_codec.encodeApprove(gauge_address, lpBalance)],
+    [gauge_address, gauge_codec.encodeDeposit(lpBalance)],
   ];
 
   const depositTrx = await manager.execute(strategyAddress, depositData, {
     gasLimit: 9e6,
   });
 
-  const yLiquidityGauge = new web3.eth.Contract(
-    legos.curvefi.abis.y_Liquidity_Gauge,
-    legos.curvefi.addresses.y_Liquidity_Guage
-  );
-  await expectEvent.inTransaction(depositTrx.hash, yLiquidityGauge, "Deposit");
+  const liquidityGauge = new web3.eth.Contract(gauge_abi, gauge_address);
+  await expectEvent.inTransaction(depositTrx.hash, liquidityGauge, "Deposit");
 }
 
 if (!module.parent) {
