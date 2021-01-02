@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@apy-finance/defi-legos@^1.0.5":
-  version "1.0.5"
-  resolved "https://npm.pkg.github.com/download/@apy-finance/defi-legos/1.0.5/61e459f1a11801024194e2c29c60eedaded0b5301ad1ceba2269c7d5af40f9ab#48308ad87accf0beb95346976c6670508f5cb05d"
-  integrity sha512-yYyyD3r3Wl/IbhiXfo1bs09hBqyG1zwqSMRIr6mq5E/UsmuCBQqj2Yqs1hmZItX093JPZv6JifLDZABYt5WmAg==
+"@apy-finance/defi-legos@^1.0.6":
+  version "1.0.6"
+  resolved "https://npm.pkg.github.com/download/@apy-finance/defi-legos/1.0.6/c926b5476bb0498d36a01b88dcf9e91bc83f7ddbb7e35144706c367531133619#4ec6745b89aaa0bb610ea94baa874f52486d95d0"
+  integrity sha512-T+yNNjDdGirkjvj1kQ1vO0rZBLP1zNagDzdyvo7MJOLitKvBV9pbcix+J7/eO6O8NJ+zRprn0IErNKX6cxSyLw==
   dependencies:
     axios "^0.21.0"
     chalk "^4.1.0"
