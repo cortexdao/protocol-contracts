@@ -30,6 +30,7 @@ const curveMappings = {
     lp_token_address: legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token,
     lp_token_codec: legos.curvefi.codecs.yDAI_yUSDC_yUSDT_ytUSD_Token,
     depositor_address: legos.curvefi.addresses.Deposit_Y,
+    depositor_codec: legos.curvefi.codecs.Deposit_Y,
     gauge_address: legos.curvefi.addresses.y_Liquidity_Gauge,
     gauge_abi: legos.curvefi.abis.y_Liquidity_Gauge,
     gauge_codec: legos.curvefi.codecs.yLiquidityGauge,
@@ -58,6 +59,7 @@ async function main(argv) {
   const lp_token_address = curveMappings[selectedPool].lp_token_address;
   const lp_token_codec = curveMappings[selectedPool].lp_token_codec;
   const depositor_address = curveMappings[selectedPool].depositor_address;
+  const depositor_codec = curveMappings[selectedPool].depositor_codec;
   const gauge_address = curveMappings[selectedPool].gauge_address;
   const gauge_abi = curveMappings[selectedPool].gauge_abi;
   const gauge_codec = curveMappings[selectedPool].gauge_codec;
@@ -140,7 +142,7 @@ async function main(argv) {
     ],
     [
       depositor_address,
-      legos.curvefi.codecs.Deposit_Y.encodeAddLiquidity(
+      depositor_codec.encodeAddLiquidity(
         [daiAmount, usdcAmount, usdtAmount, 0],
         0
       ),
