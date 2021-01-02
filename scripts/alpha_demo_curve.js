@@ -40,7 +40,7 @@ const curveMappings = {
     gauge_abi: legos.curvefi.abis.Liquidity_Gauge_USDT,
     gauge_codec: legos.curvefi.addresses.Liquidity_Gauge_USDT,
   },
-  yDAI_yUSDC_yUSDT_ytUSD: {
+  yDAI_yUSDC_yUSDT_yTUSD: {
     pool_address: legos.curvefi.addresses.Pool_yDAI_yUSDC_yUSDT_yTUSD,
     pool_abi: legos.curvefi.abis.Pool_yDAI_yUSDC_yUSDT_yTUSD,
 
