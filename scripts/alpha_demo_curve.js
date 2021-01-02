@@ -13,46 +13,46 @@ const legos = require("@apy-finance/defi-legos");
 
 const curveMappings = {
   cDAI_cUSDC: {
-    pool_address: legos.curvefi.addresses.cDAI_cUSDC,
-    pool_abi: legos.curvefi.abis.cDAI_cUSDC,
+    pool_address: legos.curvefi.addresses.Pool_cDAI_cUSDC,
+    pool_abi: legos.curvefi.abis.Pool_cDAI_cUSDC,
 
-    lp_token_address: legos.curvefi.addresses.cDAI_cUSDC_cUSDT_Token,
-    lp_token_codec: legos.curvefi.codecs.cDAI_cUSDC_cUSDT_Token,
+    lp_token_address: legos.curvefi.addresses.Token_cDAI_cUSDC_cUSDT,
+    lp_token_codec: legos.curvefi.codecs.Token_cDAI_cUSDC_cUSDT,
 
     depositor_address: legos.curvefi.addresses.Deposit_Compound,
     depositor_codec: legos.curvefi.codecs.Deposit_Compound,
 
-    gauge_address: legos.curvefi.addresses.compound_Liquidity_Gauge,
-    gauge_abi: legos.curvefi.abis.compound_Liquidity_Gauge,
-    gauge_codec: legos.curvefi.codecs.compound_Liquidity_Gauge,
+    gauge_address: legos.curvefi.addresses.Liquidity_Gauge_Compound,
+    gauge_abi: legos.curvefi.abis.Liquidity_Gauge_Compound,
+    gauge_codec: legos.curvefi.codecs.Liquidity_Gauge_Compound,
   },
   cDAI_cUSDC_cUSDT: {
-    pool_address: legos.curvefi.addresses.cDAI_cUSDC_cUSDT,
-    pool_abi: legos.curvefi.abis.cDAI_cUSDC_cUSDT,
+    pool_address: legos.curvefi.addresses.Pool_cDAI_cUSDC_cUSDT,
+    pool_abi: legos.curvefi.abis.Pool_cDAI_cUSDC_cUSDT,
 
-    lp_token_address: legos.curvefi.addresses.cDAI_cUSDC_cUSDT_Token,
-    lp_token_codec: legos.curvefi.codecs.cDAI_cUSDC_cUSDT,
+    lp_token_address: legos.curvefi.addresses.Token_cDAI_cUSDC_cUSDT,
+    lp_token_codec: legos.curvefi.codecs.Token_cDAI_cUSDC_cUSDT,
 
     depositor_address: legos.curvefi.addresses.Deposit_USDT,
     depositor_codec: legos.curvefi.codecs.Deposit_USDT,
 
-    gauge_address: legos.curvefi.addresses.usdt_Liquidity_Gauge,
-    gauge_abi: legos.curvefi.abis.usdt_Liquidity_Gauge,
-    gauge_codec: legos.curvefi.addresses.usdt_Liquidity_Gauge,
+    gauge_address: legos.curvefi.addresses.Liquidity_Gauge_USDT,
+    gauge_abi: legos.curvefi.abis.Liquidity_Gauge_USDT,
+    gauge_codec: legos.curvefi.addresses.Liquidity_Gauge_USDT,
   },
   yDAI_yUSDC_yUSDT_ytUSD: {
-    pool_address: legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD,
-    pool_abi: legos.curvefi.abis.yDAI_yUSDC_yUSDT_ytUSD,
+    pool_address: legos.curvefi.addresses.Pool_yDAI_yUSDC_yUSDT_yTUSD,
+    pool_abi: legos.curvefi.abis.Pool_yDAI_yUSDC_yUSDT_yTUSD,
 
-    lp_token_address: legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token,
-    lp_token_codec: legos.curvefi.codecs.yDAI_yUSDC_yUSDT_ytUSD_Token,
+    lp_token_address: legos.curvefi.addresses.Token_yDAI_yUSDC_yUSDT_yTUSD,
+    lp_token_codec: legos.curvefi.codecs.Token_yDAI_yUSDC_yUSDT_yTUSD,
 
     depositor_address: legos.curvefi.addresses.Deposit_Y,
     depositor_codec: legos.curvefi.codecs.Deposit_Y,
 
-    gauge_address: legos.curvefi.addresses.y_Liquidity_Gauge,
-    gauge_abi: legos.curvefi.abis.y_Liquidity_Gauge,
-    gauge_codec: legos.curvefi.codecs.yLiquidityGauge,
+    gauge_address: legos.curvefi.addresses.Liquidity_Gauge_Y,
+    gauge_abi: legos.curvefi.abis.Liquidity_Gauge_Y,
+    gauge_codec: legos.curvefi.codecs.Liquidity_Gauge_Y,
   },
 };
 
