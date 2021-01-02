@@ -38,7 +38,7 @@ const curveMappings = {
 
     gauge_address: legos.curvefi.addresses.Liquidity_Gauge_USDT,
     gauge_abi: legos.curvefi.abis.Liquidity_Gauge_USDT,
-    gauge_codec: legos.curvefi.addresses.Liquidity_Gauge_USDT,
+    gauge_codec: legos.curvefi.codecs.Liquidity_Gauge_USDT,
   },
   yDAI_yUSDC_yUSDT_yTUSD: {
     pool_address: legos.curvefi.addresses.Pool_yDAI_yUSDC_yUSDT_yTUSD,
@@ -149,6 +149,16 @@ async function main(argv) {
   console.log("\tUSDC:", chalk.yellow(usdcAmount));
   console.log("\tUSDT:", chalk.yellow(usdtAmount));
 
+  let balanceAllocation = [];
+
+  if (selectedPool === "cDAI_cUSDC") {
+    balanceAllocation = [daiAmount, usdcAmount];
+  } else if (selectedPool === "cDAI_cUSDC_cUSDT") {
+    balanceAllocation = [daiAmount, usdcAmount, usdtAmount];
+  } else if (selectedPool === "yDAI_yUSDC_yUSDT_yTUSD") {
+    balanceAllocation = [daiAmount, usdcAmount, usdtAmount, 0];
+  }
+
   const addLiquidityData = [
     [
       stablecoins["DAI"].address,
@@ -164,10 +174,7 @@ async function main(argv) {
     ],
     [
       depositor_address,
-      depositor_codec.encodeAddLiquidity(
-        [daiAmount, usdcAmount, usdtAmount, 0],
-        0
-      ),
+      depositor_codec.encodeAddLiquidity(balanceAllocation, 0),
     ],
   ];
 
