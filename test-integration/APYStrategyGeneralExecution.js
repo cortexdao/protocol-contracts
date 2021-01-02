@@ -12,7 +12,7 @@ const Strategy = artifacts.require("Strategy");
 const APYManager = artifacts.require("APYManager");
 const APYPoolToken = artifacts.require("APYPoolToken");
 const { expectEvent, BN, send } = require("@openzeppelin/test-helpers");
-const legos = require("defi-legos");
+const legos = require("@apy-finance/defi-legos");
 const { dai } = require("../utils/helpers");
 const ether = require("@openzeppelin/test-helpers/src/ether");
 
@@ -84,15 +84,15 @@ contract("Test GenericExecutor", async (accounts) => {
     // await acquireToken(USDT_WHALE, usdtPool.address, USDT, amountOfStables);
 
     const yPoolToken = await IDetailedERC20.at(
-      legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token
+      legos.curvefi.addresses.Token_yDAI_yUSDC_yUSDT_yTUSD
     );
     console.log(
       "Y Pool address:",
-      legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD
+      legos.curvefi.addresses.yDAI_yUSDC_yUSDT_yTUSD
     );
     console.log(
       "LP token address:",
-      legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token
+      legos.curvefi.addresses.Token_yDAI_yUSDC_yUSDT_yTUSD
     );
 
     const manager = await APYManager.at(APYManagerAddresses["1"]);
