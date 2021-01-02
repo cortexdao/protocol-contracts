@@ -130,15 +130,15 @@ async function main(argv) {
       stablecoinAddress
     );
   }
-  const daiAmount = (
-    await stablecoins["DAI"].balanceOf(strategyAddress)
-  ).toString();
-  const usdcAmount = (
-    await stablecoins["USDC"].balanceOf(strategyAddress)
-  ).toString();
-  const usdtAmount = (
-    await stablecoins["USDT"].balanceOf(strategyAddress)
-  ).toString();
+  const daiAmount = argv.daiBal
+    ? argv.daiBal
+    : (await stablecoins["DAI"].balanceOf(strategyAddress)).toString();
+  const usdcAmount = argv.usdcBal
+    ? argv.usdcBal
+    : (await stablecoins["USDC"].balanceOf(strategyAddress)).toString();
+  const usdtAmount = argv.usdtBal
+    ? argv.usdtBal
+    : (await stablecoins["USDT"].balanceOf(strategyAddress)).toString();
 
   console.log("Strategy balances (before):");
   console.log(
