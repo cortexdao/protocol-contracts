@@ -130,24 +130,29 @@ async function main(argv) {
       stablecoinAddress
     );
   }
-  const daiAmount = argv.daiBal
-    ? argv.daiBal
-    : (await stablecoins["DAI"].balanceOf(strategyAddress)).toString();
-  const usdcAmount = argv.usdcBal
-    ? argv.usdcBal
-    : (await stablecoins["USDC"].balanceOf(strategyAddress)).toString();
-  const usdtAmount = argv.usdtBal
-    ? argv.usdtBal
-    : (await stablecoins["USDT"].balanceOf(strategyAddress)).toString();
+  const daiBalance = (
+    await stablecoins["DAI"].balanceOf(strategyAddress)
+  ).toString();
+  const daiAmount = argv.daiBal ? argv.daiBal : daiBalance;
+
+  const usdcBalance = (
+    await stablecoins["USDC"].balanceOf(strategyAddress)
+  ).toString();
+  const usdcAmount = argv.usdcBal ? argv.usdcBal : usdcBalance;
+
+  const usdtBalance = (
+    await stablecoins["USDT"].balanceOf(strategyAddress)
+  ).toString();
+  const usdtAmount = argv.usdtBal ? argv.usdtBal : usdtBalance;
 
   console.log("Strategy balances (before):");
   console.log(
     "\tLP token:",
     chalk.yellow((await lp_token.balanceOf(strategyAddress)).toString())
   );
-  console.log("\tDAI:", chalk.yellow(daiAmount));
-  console.log("\tUSDC:", chalk.yellow(usdcAmount));
-  console.log("\tUSDT:", chalk.yellow(usdtAmount));
+  console.log("\tDAI:", chalk.yellow(daiBalance));
+  console.log("\tUSDC:", chalk.yellow(usdcBalance));
+  console.log("\tUSDT:", chalk.yellow(usdtBalance));
 
   let balanceAllocation = [];
 
