@@ -14,23 +14,42 @@ const legos = require("@apy-finance/defi-legos");
 const curveMappings = {
   cDAI_cUSDC: {
     pool_address: legos.curvefi.addresses.cDAI_cUSDC,
+    pool_abi: legos.curvefi.abis.cDAI_cUSDC,
+
     lp_token_address: legos.curvefi.addresses.cDAI_cUSDC_cUSDT_Token,
-    depositor: legos.curvefi.addresses.Deposit_Compound,
-    gauge: legos.curvefi.addresses.compound_Liquidity_Gauge,
+    lp_token_codec: legos.curvefi.codecs.cDAI_cUSDC_cUSDT_Token,
+
+    depositor_address: legos.curvefi.addresses.Deposit_Compound,
+    depositor_codec: legos.curvefi.codecs.Deposit_Compound,
+
+    gauge_address: legos.curvefi.addresses.compound_Liquidity_Gauge,
+    gauge_abi: legos.curvefi.abis.compound_Liquidity_Gauge,
+    gauge_codec: legos.curvefi.codecs.compound_Liquidity_Gauge,
   },
   cDAI_cUSDC_cUSDT: {
     pool_address: legos.curvefi.addresses.cDAI_cUSDC_cUSDT,
+    pool_abi: legos.curvefi.abis.cDAI_cUSDC_cUSDT,
+
     lp_token_address: legos.curvefi.addresses.cDAI_cUSDC_cUSDT_Token,
-    depositor: legos.curvefi.addresses.Deposit_USDT,
-    gauge: legos.curvefi.addresses.usdt_Liquidity_Gauge,
+    lp_token_codec: legos.curvefi.codecs.cDAI_cUSDC_cUSDT,
+
+    depositor_address: legos.curvefi.addresses.Deposit_USDT,
+    depositor_codec: legos.curvefi.codecs.Deposit_USDT,
+
+    gauge_address: legos.curvefi.addresses.usdt_Liquidity_Gauge,
+    gauge_abi: legos.curvefi.abis.usdt_Liquidity_Gauge,
+    gauge_codec: legos.curvefi.addresses.usdt_Liquidity_Gauge,
   },
   yDAI_yUSDC_yUSDT_ytUSD: {
     pool_address: legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD,
     pool_abi: legos.curvefi.abis.yDAI_yUSDC_yUSDT_ytUSD,
+
     lp_token_address: legos.curvefi.addresses.yDAI_yUSDC_yUSDT_ytUSD_Token,
     lp_token_codec: legos.curvefi.codecs.yDAI_yUSDC_yUSDT_ytUSD_Token,
+
     depositor_address: legos.curvefi.addresses.Deposit_Y,
     depositor_codec: legos.curvefi.codecs.Deposit_Y,
+
     gauge_address: legos.curvefi.addresses.y_Liquidity_Gauge,
     gauge_abi: legos.curvefi.abis.y_Liquidity_Gauge,
     gauge_codec: legos.curvefi.codecs.yLiquidityGauge,
