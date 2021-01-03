@@ -88,7 +88,7 @@ contract("Test GenericExecutor", async (accounts) => {
     );
     console.log(
       "Y Pool address:",
-      legos.curvefi.addresses.yDAI_yUSDC_yUSDT_yTUSD
+      legos.curvefi.addresses.Token_yDAI_yUSDC_yUSDT_yTUSD
     );
     console.log(
       "LP token address:",
@@ -103,6 +103,7 @@ contract("Test GenericExecutor", async (accounts) => {
       method: "hardhat_impersonateAccount",
       params: [poolOwner],
     });
+    console.log(manager.address, poolOwner)
     await daiPool.infiniteApprove(manager.address, { from: poolOwner });
     const daiBalance = await DAI.balanceOf(daiPool.address);
     console.log(daiBalance.toString());
