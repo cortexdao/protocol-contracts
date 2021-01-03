@@ -11,6 +11,7 @@ require("./scripts/fund_rewards");
 module.exports = {
   networks: {
     hardhat: {
+      chainId: 1,
       forking: {
         url: "https://mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
       },
