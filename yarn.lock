@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@apy-finance/defi-legos@^1.0.7":
-  version "1.0.7"
-  resolved "https://npm.pkg.github.com/download/@apy-finance/defi-legos/1.0.7/cb21e48a5e2d65234742ef03626d078cd8ef1e33ff677129fd28aab9bcf43e6f#4e732b4689d00d884e7e2cbbb722c6a2699fd106"
-  integrity sha512-JXGpOjJYbzqlInSKOiO0kxWzsLhUeEjvazUapve5MNLBqP8pjw6G2EWzvSHxrUigd9oU5AcHB/2pT7RS+HPB7A==
+"@apy-finance/defi-legos@^1.0.10":
+  version "1.0.11"
+  resolved "https://npm.pkg.github.com/download/@apy-finance/defi-legos/1.0.11/6ce3c288ffd846a87730c8ccdb4054977fc08f6da9e624f56004fa54c33399d3#e36ded1d6913d052f94ccdba2390d52896eaffa4"
+  integrity sha512-gdvgmZKECjgk8wJw8hLRDnoj5rx3YA8Omv3vkTXQOUe1nQ0tEJtTVlEwPNkfTFa6b2v8gaV/NTC0FoXQqQ98wg==
   dependencies:
     axios "^0.21.0"
     chalk "^4.1.0"
@@ -1155,9 +1155,9 @@ ajv@^6.10.0, ajv@^6.10.2, ajv@^6.12.3, ajv@^6.12.4, ajv@^6.6.1, ajv@^6.9.1:
     uri-js "^4.2.2"
 
 ajv@^7.0.2:
-  version "7.0.2"
-  resolved "https://registry.yarnpkg.com/ajv/-/ajv-7.0.2.tgz#04ccc89a93449c64382fe0846d45a7135d986dbc"
-  integrity sha512-qIaxO9RXjaXyO21tJr0EvwPcZa49m64GcXCU8ZrLjCAlFyMuOcPpI560So4A11M1WsKslJYIXn6jSyG5P0xIeg==
+  version "7.0.3"
+  resolved "https://registry.yarnpkg.com/ajv/-/ajv-7.0.3.tgz#13ae747eff125cafb230ac504b2406cf371eece2"
+  integrity sha512-R50QRlXSxqXcQP5SvKUrw8VZeypvo12i2IX0EeR5PiZ7bEKeHWgzgo264LDadUsCU42lTJVhFikTqJwNeH34gQ==
   dependencies:
     fast-deep-equal "^3.1.1"
     json-schema-traverse "^1.0.0"
@@ -2236,9 +2236,9 @@ buffer@^5.0.5, buffer@^5.2.1, buffer@^5.5.0, buffer@^5.6.0:
     ieee754 "^1.1.13"
 
 bufferutil@^4.0.1:
-  version "4.0.2"
-  resolved "https://registry.yarnpkg.com/bufferutil/-/bufferutil-4.0.2.tgz#79f68631910f6b993d870fc77dc0a2894eb96cd5"
-  integrity sha512-AtnG3W6M8B2n4xDQ5R+70EXvOpnXsFYg/AK2yTZd+HQ/oxAdz+GI+DvjmhBw3L0ole+LJ0ngqY4JMbDzkfNzhA==
+  version "4.0.3"
+  resolved "https://registry.yarnpkg.com/bufferutil/-/bufferutil-4.0.3.tgz#66724b756bed23cd7c28c4d306d7994f9943cc6b"
+  integrity sha512-yEYTwGndELGvfXsImMBLop58eaGW+YdONi1fNjTINSY98tmMmFijBG6WXgdkfuLNt4imzQNtIE+eBp1PVpMCSw==
   dependencies:
     node-gyp-build "^4.2.0"
 
@@ -2361,9 +2361,9 @@ caseless@~0.12.0:
   integrity sha1-G2gcIf+EAzyCZUMJBolCDRhxUdw=
 
 cbor@^5.0.2, cbor@^5.1.0:
-  version "5.1.2"
-  resolved "https://registry.yarnpkg.com/cbor/-/cbor-5.1.2.tgz#6139cc6d0b1a39d12e438001519fcbc200414535"
-  integrity sha512-m0un2dOWV9IZ/4YsDagN1tC0Lzv80wvLt8erjWF2xgTYwvIz4K/LvJoI3yQTXnX1jMa9Pr587cCGUro+HMB49w==
+  version "5.2.0"
+  resolved "https://registry.yarnpkg.com/cbor/-/cbor-5.2.0.tgz#4cca67783ccd6de7b50ab4ed62636712f287a67c"
+  integrity sha512-5IMhi9e1QU76ppa5/ajP1BmMWZ2FHkhAhjeVKQ/EFCgYSEaeVaoGtL7cxJskf9oCCk+XjzaIdc3IuU/dbA/o2A==
   dependencies:
     bignumber.js "^9.0.1"
     nofilter "^1.0.4"

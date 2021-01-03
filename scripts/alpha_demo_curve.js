@@ -54,6 +54,48 @@ const curveMappings = {
     gauge_abi: legos.curvefi.abis.Liquidity_Gauge_Y,
     gauge_codec: legos.curvefi.codecs.Liquidity_Gauge_Y,
   },
+  Aave: {
+    pool_address: legos.curvefi.addresses.Pool_Aave,
+    pool_abi: legos.curvefi.abis.Pool_Aave,
+
+    lp_token_address: legos.curvefi.addresses.Token_Aave,
+    lp_token_codec: legos.curvefi.codecs.Token_Aave,
+
+    depositor_address: legos.curvefi.addresses.Deposit_Aave,
+    depositor_codec: legos.curvefi.codecs.Deposit_Aave,
+
+    gauge_address: legos.curvefi.addresses.Liquidity_Gauge_Aave,
+    gauge_abi: legos.curvefi.abis.Liquidity_Gauge_Aave,
+    gauge_codec: legos.curvefi.codecs.Liquidity_Gauge_Aave,
+  },
+  DUSD: {
+    pool_address: legos.curvefi.addresses.Pool_DUSD,
+    pool_abi: legos.curvefi.abis.Pool_DUSD,
+
+    lp_token_address: legos.curvefi.addresses.Token_DUSD,
+    lp_token_codec: legos.curvefi.codecs.Token_DUSD,
+
+    depositor_address: legos.curvefi.addresses.Deposit_DUSD,
+    depositor_codec: legos.curvefi.codecs.Deposit_DUSD,
+
+    gauge_address: legos.curvefi.addresses.Liquidity_Gauge_DUSD,
+    gauge_abi: legos.curvefi.abis.Liquidity_Gauge_DUSD,
+    gauge_codec: legos.curvefi.codecs.Liquidity_Gauge_DUSD,
+  },
+  sUSD: {
+    pool_address: legos.curvefi.addresses.Pool_sUSD,
+    pool_abi: legos.curvefi.abis.Pool_sUSD,
+
+    lp_token_address: legos.curvefi.addresses.Token_sUSD,
+    lp_token_codec: legos.curvefi.codecs.Token_sUSD,
+
+    depositor_address: legos.curvefi.addresses.Deposit_sUSD,
+    depositor_codec: legos.curvefi.codecs.Deposit_sUSD,
+
+    gauge_address: legos.curvefi.addresses.Liquidity_Gauge_sUSD,
+    gauge_abi: legos.curvefi.abis.Liquidity_Gauge_sUSD,
+    gauge_codec: legos.curvefi.codecs.Liquidity_Gauge_sUSD,
+  },
 };
 
 // eslint-disable-next-line no-unused-vars
@@ -155,12 +197,17 @@ async function main(argv) {
   console.log("\tUSDT:", chalk.yellow(usdtBalance));
 
   let balanceAllocation = [];
-
   if (selectedPool === "cDAI_cUSDC") {
     balanceAllocation = [daiAmount, usdcAmount];
   } else if (selectedPool === "cDAI_cUSDC_cUSDT") {
     balanceAllocation = [daiAmount, usdcAmount, usdtAmount];
   } else if (selectedPool === "yDAI_yUSDC_yUSDT_yTUSD") {
+    balanceAllocation = [daiAmount, usdcAmount, usdtAmount, 0];
+  } else if (selectedPool === "Aave") {
+    balanceAllocation = [daiAmount, usdcAmount, usdtAmount];
+  } else if (selectedPool === "DUSD") {
+    balanceAllocation = [0, daiAmount, usdcAmount, usdtAmount];
+  } else if (selectedPool === "sUSD") {
     balanceAllocation = [daiAmount, usdcAmount, usdtAmount, 0];
   }
 

@@ -16,6 +16,9 @@ const STRATEGY_TO_SCRIPT = {
   cDAI_cUSDC_cUSDT: [demoCurve, { pool: "cDAI_cUSDC_cUSDT" }],
   cDAI_cUSDC: [demoCurve, { pool: "cDAI_cUSDC" }],
   yDAI_yUSDC_yUSDT_yTUSD: [demoCurve, { pool: "yDAI_yUSDC_yUSDT_yTUSD" }],
+  Aave: [demoCurve, { pool: "Aave" }],
+  DUSD: [demoCurve, { pool: "DUSD" }],
+  sUSD: [demoCurve, { pool: "sUSD" }],
   DODO: [demoDodo, {}],
   MITH: [demoMith, {}],
 };

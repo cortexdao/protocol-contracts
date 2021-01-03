@@ -18,6 +18,24 @@
     "USDT": 0
   },
   {
+    "strategy": "Aave",
+    "DAI": 0,
+    "USDC": 2,
+    "USDT": 0
+  },
+  {
+    "strategy": "DUSD",
+    "DAI": 0,
+    "USDC": 2,
+    "USDT": 0
+  },
+  {
+    "strategy": "sUSD",
+    "DAI": 0,
+    "USDC": 2,
+    "USDT": 0
+  },
+  {
     "strategy": "DODO",
     "DAI": 0,
     "USDC": 10,
