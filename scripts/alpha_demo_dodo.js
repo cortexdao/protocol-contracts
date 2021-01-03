@@ -71,14 +71,16 @@ async function main(argv) {
   }
 
   console.log("Strategy balances (before):");
-  const usdcAmount = argv.usdcBal
-    ? argv.usdcBal
-    : (await stablecoins["USDC"].balanceOf(strategyAddress)).toString();
-  const usdtAmount = argv.usdtBal
-    ? argv.usdtBal
-    : (await stablecoins["USDT"].balanceOf(strategyAddress)).toString();
-  console.log("\tUSDC:", chalk.yellow(usdcAmount));
-  console.log("\tUSDT:", chalk.yellow(usdtAmount));
+  const usdcBalance = (
+    await stablecoins["USDC"].balanceOf(strategyAddress)
+  ).toString();
+  const usdtBalance = (
+    await stablecoins["USDT"].balanceOf(strategyAddress)
+  ).toString();
+  const usdcAmount = argv.usdcBal || usdcBalance;
+  const usdtAmount = argv.usdtBal || usdtBalance;
+  console.log("\tUSDC:", chalk.yellow(usdcBalance));
+  console.log("\tUSDT:", chalk.yellow(usdtBalance));
   console.log(
     "\tUSDC DLP:",
     chalk.yellow((await usdcDlpToken.balanceOf(strategyAddress)).toString())
@@ -141,6 +143,7 @@ async function main(argv) {
   const usdtDlpAmount = await usdtDlpToken.balanceOf(strategyAddress);
   console.log("\tUSDT DLP:", chalk.yellow(usdtDlpAmount.toString()));
 
+  const dodoMineAddress = legos.dodo.addresses.DODO_MINE;
   const stakingData = [
     [
       legos.dodo.addresses.USDC_DLP,
@@ -150,7 +153,7 @@ async function main(argv) {
       ),
     ],
     [
-      legos.dodo.addresses.DODO_MINE,
+      dodoMineAddress,
       legos.dodo.codecs.DODO_MINE.encodeDeposit(
         legos.dodo.addresses.USDC_DLP,
         usdcDlpAmount
@@ -164,7 +167,7 @@ async function main(argv) {
       ),
     ],
     [
-      legos.dodo.addresses.DODO_MINE,
+      dodoMineAddress,
       legos.dodo.codecs.DODO_MINE.encodeDeposit(
         legos.dodo.addresses.USDT_DLP,
         usdtDlpAmount
@@ -172,6 +175,7 @@ async function main(argv) {
     ],
   ];
 
+  console.log("DODOMine:", dodoMineAddress);
   const stakingTrx = await manager.execute(strategyAddress, stakingData, {
     gasLimit: 9e6,
   });
