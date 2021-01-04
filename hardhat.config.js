@@ -11,6 +11,8 @@ require("./scripts/fund_rewards");
 module.exports = {
   networks: {
     hardhat: {
+      // Default mnemonic:
+      // "test test test test test test test test test test test junk"
       chainId: 1,
       forking: {
         url: "https://mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
