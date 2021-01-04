@@ -7,7 +7,7 @@ const { getDeployedAddress, bytes32 } = require("../utils/helpers.js");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
-  console.log("-------------DEPLOY and FUND-------------");
+  console.log("--------- DEPLOY STRATEGY AND APPROVE -----------");
   await hre.run("compile");
   const NETWORK_NAME = network.name.toUpperCase();
   console.log(`${NETWORK_NAME} selected`);
@@ -103,30 +103,6 @@ async function main(argv) {
   console.log("Strategy address:", chalk.green(strategyAddress));
 
   await manager.setStrategyId(bytes32("curve_y"), strategyAddress);
-
-  // WARNING: when testing on same forked mainnet, this will only show
-  // funds tranferred the first time, as subsequent times the pools
-  // will have zero funds
-  console.log("Transferring funds to strategy ...");
-  const stablecoinBalances = {};
-  for (const [symbol, pool] of Object.entries(pools)) {
-    console.log("\tpool:", chalk.yellow(symbol));
-    console.log(
-      "\t\tbefore:",
-      chalk.yellow(
-        (await stablecoins[symbol].balanceOf(strategyAddress)).toString()
-      )
-    );
-    const trx = await manager.transferFunds(pool.address, strategyAddress);
-    await trx.wait();
-    const balance = (
-      await stablecoins[symbol].balanceOf(strategyAddress)
-    ).toString();
-    console.log("\t\tafter:", chalk.yellow(balance));
-    stablecoinBalances[symbol] = balance;
-  }
-
-  return stablecoinBalances;
 }
 
 if (!module.parent) {
