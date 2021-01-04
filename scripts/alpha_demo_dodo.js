@@ -85,7 +85,7 @@ async function main(argv) {
     ethers.BigNumber.from(usdtAmount).eq("0")
   ) {
     console.log("No liquidity available");
-    process.exit(0);
+    return;
   }
 
   console.log("\tUSDC:", chalk.yellow(usdcBalance));
