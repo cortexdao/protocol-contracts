@@ -187,6 +187,15 @@ async function main(argv) {
   ).toString();
   const usdtAmount = argv.usdtBal ? argv.usdtBal : usdtBalance;
 
+  if (
+    ethers.BigNumber.from(daiAmount).eq("0") &&
+    ethers.BigNumber.from(usdcAmount).eq("0") &&
+    ethers.BigNumber.from(usdtAmount).eq("0")
+  ) {
+    console.log("No liquidity available");
+    process.exit(0);
+  }
+
   console.log("Strategy balances (before):");
   console.log(
     "\tLP token:",

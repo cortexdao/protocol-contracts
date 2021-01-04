@@ -84,6 +84,16 @@ async function main(argv) {
   const usdtAmount = argv.usdtBal
     ? argv.usdtBal
     : (await stablecoins["USDT"].balanceOf(strategyAddress)).toString();
+
+  if (
+    ethers.BigNumber.from(daiAmount).eq("0") &&
+    ethers.BigNumber.from(usdcAmount).eq("0") &&
+    ethers.BigNumber.from(usdtAmount).eq("0")
+  ) {
+    console.log("No liquidity available");
+    process.exit(0);
+  }
+
   console.log("\tDAI:", chalk.yellow(daiAmount));
   console.log("\tUSDC:", chalk.yellow(usdcAmount));
   console.log("\tUSDT:", chalk.yellow(usdtAmount));

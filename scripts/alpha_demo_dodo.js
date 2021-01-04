@@ -79,6 +79,15 @@ async function main(argv) {
   ).toString();
   const usdcAmount = argv.usdcBal || usdcBalance;
   const usdtAmount = argv.usdtBal || usdtBalance;
+
+  if (
+    ethers.BigNumber.from(usdcAmount).eq("0") &&
+    ethers.BigNumber.from(usdtAmount).eq("0")
+  ) {
+    console.log("No liquidity available");
+    process.exit(0);
+  }
+
   console.log("\tUSDC:", chalk.yellow(usdcBalance));
   console.log("\tUSDT:", chalk.yellow(usdtBalance));
   console.log(
