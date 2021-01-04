@@ -75,15 +75,18 @@ async function main(argv) {
   }
 
   console.log("Strategy balances (before):");
-  const daiAmount = argv.daiBal
-    ? argv.daiBal
-    : (await stablecoins["DAI"].balanceOf(strategyAddress)).toString();
-  const usdcAmount = argv.usdcBal
-    ? argv.usdcBal
-    : (await stablecoins["USDC"].balanceOf(strategyAddress)).toString();
-  const usdtAmount = argv.usdtBal
-    ? argv.usdtBal
-    : (await stablecoins["USDT"].balanceOf(strategyAddress)).toString();
+  const daiBalance = (
+    await stablecoins["DAI"].balanceOf(strategyAddress)
+  ).toString();
+  const daiAmount = argv.daiBal || daiBalance;
+  const usdcBalance = (
+    await stablecoins["USDC"].balanceOf(strategyAddress)
+  ).toString();
+  const usdcAmount = argv.usdcBal || usdcBalance;
+  const usdtBalance = (
+    await stablecoins["USDT"].balanceOf(strategyAddress)
+  ).toString();
+  const usdtAmount = argv.usdtBal || usdtBalance;
 
   if (
     ethers.BigNumber.from(daiAmount).eq("0") &&
@@ -91,12 +94,12 @@ async function main(argv) {
     ethers.BigNumber.from(usdtAmount).eq("0")
   ) {
     console.log("No liquidity available");
-    process.exit(0);
+    return;
   }
 
-  console.log("\tDAI:", chalk.yellow(daiAmount));
-  console.log("\tUSDC:", chalk.yellow(usdcAmount));
-  console.log("\tUSDT:", chalk.yellow(usdtAmount));
+  console.log("\tDAI:", chalk.yellow(daiBalance));
+  console.log("\tUSDC:", chalk.yellow(usdcBalance));
+  console.log("\tUSDT:", chalk.yellow(usdtBalance));
   console.log(
     "\tMIC-DAI:",
     chalk.yellow((await micDaiPoolToken.balanceOf(strategyAddress)).toString())
@@ -110,23 +113,37 @@ async function main(argv) {
     chalk.yellow((await micUsdtPoolToken.balanceOf(strategyAddress)).toString())
   );
 
-  const data = [
-    [
+  const data = [];
+  if (daiAmount.gt("0")) {
+    data.push([
       stablecoins["DAI"].address,
       legos.maker.codecs.DAI.encodeApprove(micDaiPoolAddress, daiAmount),
-    ],
-    [micDaiPoolAddress, legos.mith.codecs.MICDAIPool.encodeStake(daiAmount)],
-    [
+    ]);
+    data.push([
+      micDaiPoolAddress,
+      legos.mith.codecs.MICDAIPool.encodeStake(daiAmount),
+    ]);
+  }
+  if (usdcAmount.gt("0")) {
+    data.push([
       stablecoins["USDC"].address,
       legos.maker.codecs.DAI.encodeApprove(micUsdcPoolAddress, usdcAmount),
-    ],
-    [micUsdcPoolAddress, legos.mith.codecs.MICDAIPool.encodeStake(usdcAmount)],
-    [
+    ]);
+    data.push([
+      micUsdcPoolAddress,
+      legos.mith.codecs.MICUSDCPool.encodeStake(usdcAmount),
+    ]);
+  }
+  if (usdtAmount.gt("0")) {
+    data.push([
       stablecoins["USDT"].address,
       legos.maker.codecs.DAI.encodeApprove(micUsdtPoolAddress, usdtAmount),
-    ],
-    [micUsdtPoolAddress, legos.mith.codecs.MICDAIPool.encodeStake(usdtAmount)],
-  ];
+    ]);
+    data.push([
+      micUsdtPoolAddress,
+      legos.mith.codecs.MICUSDTPool.encodeStake(usdtAmount),
+    ]);
+  }
 
   const trx = await manager.execute(strategyAddress, data, {
     gasLimit: 9e6,
