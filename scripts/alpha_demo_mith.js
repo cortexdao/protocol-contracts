@@ -114,7 +114,7 @@ async function main(argv) {
   );
 
   const data = [];
-  if (daiAmount.gt("0")) {
+  if (daiAmount > 0) {
     data.push([
       stablecoins["DAI"].address,
       legos.maker.codecs.DAI.encodeApprove(micDaiPoolAddress, daiAmount),
@@ -124,7 +124,7 @@ async function main(argv) {
       legos.mith.codecs.MICDAIPool.encodeStake(daiAmount),
     ]);
   }
-  if (usdcAmount.gt("0")) {
+  if (usdcAmount > 0) {
     data.push([
       stablecoins["USDC"].address,
       legos.maker.codecs.DAI.encodeApprove(micUsdcPoolAddress, usdcAmount),
@@ -134,7 +134,7 @@ async function main(argv) {
       legos.mith.codecs.MICUSDCPool.encodeStake(usdcAmount),
     ]);
   }
-  if (usdtAmount.gt("0")) {
+  if (usdtAmount > 0) {
     data.push([
       stablecoins["USDT"].address,
       legos.maker.codecs.DAI.encodeApprove(micUsdtPoolAddress, usdtAmount),
