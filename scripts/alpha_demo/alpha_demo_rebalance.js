@@ -2,14 +2,12 @@
 const hre = require("hardhat");
 const { argv } = require("yargs");
 const { BigNumber } = require("ethers");
-const demoUpgrades = require("./alpha_demo_upgrades");
-const demoDeployStrategy = require("./alpha_demo_deploy_strategy");
 const demoFundStrategy = require("./alpha_demo_fund_strategy");
 const demoCurve = require("./alpha_demo_curve");
 const demoDodo = require("./alpha_demo_dodo");
 const demoMith = require("./alpha_demo_mith");
-const BALANCE_PROPORTION_ENTRIES = require("../config/alpha_demo.json");
-const { console } = require("../utils/helpers");
+const BALANCE_PROPORTION_ENTRIES = require("../../config/alpha_demo.json");
+const { console } = require("../../utils/helpers");
 
 console.debugging = true;
 
@@ -44,8 +42,6 @@ function processBalanceProportions(balanceProportionEntries, stableSymbols) {
 async function main(argv) {
   await hre.run("compile");
 
-  await demoUpgrades(argv);
-  await demoDeployStrategy(argv);
   const stablecoinBalances = await demoFundStrategy(argv);
   console.debug(stablecoinBalances);
 

@@ -2,14 +2,9 @@ require("dotenv").config();
 const hre = require("hardhat");
 const { ethers, network } = hre;
 const { argv } = require("yargs");
-const {
-  getDeployedAddress,
-  erc20,
-  bytes32,
-  getStablecoinAddress,
-} = require("../utils/helpers.js");
+const { erc20, getStablecoinAddress } = require("../../utils/helpers.js");
 const { ether, send } = require("@openzeppelin/test-helpers");
-const { WHALE_ADDRESSES } = require("../utils/constants.js");
+const { WHALE_ADDRESSES } = require("../../utils/constants.js");
 
 async function acquireToken(fundAccount, receiver, token, amount) {
   /* NOTE: Ganache is setup to control "whale" addresses. This method moves
@@ -20,7 +15,8 @@ async function acquireToken(fundAccount, receiver, token, amount) {
   const trx = await token.connect(fundAccountSigner).transfer(receiver, amount);
   trx.wait();
   const tokenBal = await token.balanceOf(receiver);
-  console.log(`${token.address} Balance: ${tokenBal.toString()}`);
+  const symbol = await token.symbol();
+  console.log(`${symbol} balance: ${tokenBal.toString()}`);
 }
 
 // eslint-disable-next-line no-unused-vars
@@ -45,26 +41,28 @@ async function main(argv) {
     );
   }
 
-  const APYManager = await ethers.getContractFactory("APYManager");
-  const managerProxyAddress = getDeployedAddress(
-    "APYManagerProxy",
-    NETWORK_NAME
-  );
-  const manager = APYManager.attach(managerProxyAddress);
-  const strategyAddress = await manager.getStrategy(bytes32("curve_y"));
-  console.log("Strategy address:", strategyAddress);
-  console.log("");
+  const testAccountIndex = argv.accountIndex || 1;
+  console.log("Account index:", testAccountIndex);
+  const testerAddress = await signers[testAccountIndex].getAddress();
+  console.log("Recipient address:", testerAddress);
+  const amounts = {
+    // in token units, not wei
+    DAI: 100000,
+    USDC: 100000,
+    USDT: 100000,
+  };
 
-  console.log("Acquire extra funds for testing ...");
+  console.log("Acquire stablecoins for testing ...");
   for (const symbol of Object.keys(stablecoins)) {
     const token = stablecoins[symbol];
-    const amount = erc20("100000", await token.decimals());
+    let amount = amounts[symbol].toString();
+    amount = erc20(amount, await token.decimals());
     await hre.network.provider.request({
       method: "hardhat_impersonateAccount",
       params: [WHALE_ADDRESSES[symbol]],
     });
-    await send.ether(deployer, WHALE_ADDRESSES[symbol], ether("1"));
-    await acquireToken(WHALE_ADDRESSES[symbol], strategyAddress, token, amount);
+    await send.ether(deployer, WHALE_ADDRESSES[symbol], ether("0.25"));
+    await acquireToken(WHALE_ADDRESSES[symbol], testerAddress, token, amount);
   }
 }
 
