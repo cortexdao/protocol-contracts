@@ -1,4 +1,5 @@
 const { artifacts, ethers } = require("hardhat");
+const { BigNumber } = ethers;
 const { ether, BN } = require("@openzeppelin/test-helpers");
 const {
   CHAIN_IDS,
@@ -41,6 +42,15 @@ const undoErc20 = (amount, decimals) => {
     decimals -= 1;
   }
   return amount.div(new BN(base));
+};
+
+const tokenAmountToBigNumber = (amount, decimals) => {
+  if (BigNumber.isBigNumber(amount)) return amount;
+
+  amount = amount.toString();
+  amount = erc20(amount, decimals);
+  amount = BigNumber.from(amount.toString());
+  return amount;
 };
 
 const mintERC20Tokens = async (
@@ -136,4 +146,5 @@ module.exports = {
   updateDeployJsons,
   getDeployedAddress,
   getStablecoinAddress,
+  tokenAmountToBigNumber,
 };

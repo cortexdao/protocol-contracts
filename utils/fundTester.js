@@ -1,8 +1,10 @@
 const hre = require("hardhat");
 const { ethers, network } = hre;
 const { argv } = require("yargs");
-const { BigNumber } = require("ethers");
-const { erc20, getStablecoinAddress } = require("./helpers.js");
+const {
+  getStablecoinAddress,
+  tokenAmountToBigNumber,
+} = require("./helpers.js");
 const { send } = require("@openzeppelin/test-helpers");
 
 const AMOUNTS = {
@@ -99,15 +101,6 @@ async function forciblySendEth(recipient, amount, ethFunder) {
   await send.ether(ethFunder, ethSender.address, amount);
   await ethSender.send(recipient);
 }
-
-const tokenAmountToBigNumber = (amount, decimals) => {
-  if (BigNumber.isBigNumber(amount)) return amount;
-
-  amount = amount.toString();
-  amount = erc20(amount, decimals);
-  amount = BigNumber.from(amount.toString());
-  return amount;
-};
 
 if (!module.parent) {
   main(argv)
