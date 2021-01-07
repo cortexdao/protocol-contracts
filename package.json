@@ -61,6 +61,7 @@
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@openzeppelin/test-helpers": "^0.5.9",
+    "axios": "^0.21.1",
     "dotenv": "^8.2.0",
     "eslint": "^7.11.0",
     "eslint-config-prettier": "^6.14.0",
