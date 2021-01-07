@@ -21,7 +21,9 @@ const SIGNER_KEY =
 const ROTATED_SIGNER_KEY =
   "0x6cbed15c793ce57650b9877cf6fa156fbef513c4e6134f022a85b1ffdd59b2a1";
 
-const DEV_CHAIN_ID = 31337;
+// Hardhat default is 3133 but currently "hardhat" network
+// is configured with chainId = 1 to reflect forked mainnet.
+const DEV_CHAIN_ID = 1;
 
 async function generateSignature(
   key,
