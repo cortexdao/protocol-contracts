@@ -10,11 +10,11 @@ const { argv } = require("yargs")
     description: "Gas price in gwei; omitting uses EthGasStation value",
   });
 const hre = require("hardhat");
-const axios = require("axios");
 const { network, ethers } = hre;
 const {
   tokenAmountToBigNumber,
   getDeployedAddress,
+  getGasPrice,
 } = require("../utils/helpers.js");
 
 // deployments were done through Remix
@@ -22,33 +22,6 @@ const BALANCERPOOL_ABI = require("./abi/balancerpool.json");
 const UNIPOOL_ABI = require("./abi/unipool.json");
 const BALANCER_STAKING_ADDRESS = "0xFe82ea0Ef14DfdAcd5dB1D49F563497A1a751bA1";
 const UNISWAP_STAKING_ADDRESS = "0x0310DEE97b42063BbB46d02a674727C13eb79cFD";
-
-async function getGasPrice(gasPrice, speed = "fastest") {
-  /*
-  gasPrice must be an integer representing gwei
-
-  speed can be:
-  - safeLow
-  - average / standard
-  - fast
-  - fastest
-  */
-  if (gasPrice) {
-    console.log("Using provided gas price (gwei):", gasPrice);
-  } else {
-    const { data } = await axios.get(
-      "https://ethgasstation.info/json/ethgasAPI.json"
-    );
-    speed = speed.toLowerCase();
-    if (speed == "standard") speed = "average";
-    if (speed == "safelow") speed = "safeLow";
-    gasPrice = data[speed] / 10; // for some reason, result is in 10 * gwei
-    console.log(`Using "${speed}" gas price (gwei):`, gasPrice);
-  }
-
-  gasPrice = parseInt(gasPrice * 1e9);
-  return gasPrice;
-}
 
 async function main(argv) {
   await hre.run("compile");
