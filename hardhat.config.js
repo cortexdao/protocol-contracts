@@ -5,8 +5,6 @@ require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-truffle5");
 require("@nomiclabs/hardhat-etherscan");
-require("./scripts/claim_rewards");
-require("./scripts/fund_rewards");
 
 module.exports = {
   networks: {
