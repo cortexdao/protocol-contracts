@@ -18,7 +18,7 @@
     "clean": "hardhat clean",
     "compile": "hardhat compile",
     "test:unit": "hardhat test test-unit/*",
-    "test:integration": "hardhat test test-integration/*",
+    "test:integration": "ENABLE_FORKING=true hardhat test test-integration/*",
     "lint": "solhint contracts/**/*.sol contracts/*.sol",
     "coverage": "hardhat coverage --network coverage --testfiles \"test-unit/*.js\"",
     "ganache": "ganache-cli",
