@@ -12,7 +12,7 @@ const Strategy = artifacts.require("Strategy");
 const APYManager = artifacts.require("APYManager");
 const APYPoolToken = artifacts.require("APYPoolToken");
 const { expectEvent, BN, send } = require("@openzeppelin/test-helpers");
-const legos = require("@apy-finance/defi-legos");
+// const legos = require("@apy-finance/defi-legos");
 const { dai } = require("../utils/helpers");
 const ether = require("@openzeppelin/test-helpers/src/ether");
 
@@ -33,7 +33,7 @@ async function acquireToken(fundAccount, receiver, token, amount) {
 }
 
 contract("Test GenericExecutor", async (accounts) => {
-  it.only("Execution Test", async () => {
+  it.skip("Execution Test", async () => {
     await hre.network.provider.request({
       method: "hardhat_impersonateAccount",
       params: [DAI_WHALE],
@@ -103,7 +103,7 @@ contract("Test GenericExecutor", async (accounts) => {
       method: "hardhat_impersonateAccount",
       params: [poolOwner],
     });
-    console.log(manager.address, poolOwner)
+    console.log(manager.address, poolOwner);
     await daiPool.infiniteApprove(manager.address, { from: poolOwner });
     const daiBalance = await DAI.balanceOf(daiPool.address);
     console.log(daiBalance.toString());
