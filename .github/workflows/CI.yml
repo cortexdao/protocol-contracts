@@ -57,15 +57,8 @@ jobs:
       run: yarn lint
     - name: Unit tests
       run: yarn test:unit
-      env: 
-        INFURA_API_KEY: ${{ secrets. INFURA_API_KEY }}
-        ACCOUNT_1: ${{ secrets. ACCOUNT_1 }}
-        ACCOUNT_2: ${{ secrets. ACCOUNT_2 }}
-        ACCOUNT_1_PRIV: ${{ secrets. ACCOUNT_1_PRIV }}
-        ACCOUNT_2_PRIV: ${{ secrets. ACCOUNT_2_PRIV }}
     - name: Integration tests 
       run: |
         yarn test:integration
       env: 
         INFURA_API_KEY: ${{ secrets. INFURA_API_KEY }}
-        MNEMONIC: ${{ secrets. MNEMONIC }}
