@@ -8,6 +8,14 @@ const WHALE_ADDRESSES = {
   USDT: USDT_WHALE,
 };
 
+const STABLECOIN_POOLS = {
+  // sUSD curve pool has plenty of these stablecoins
+  // https://etherscan.io/address/0xa5407eae9ba41422680e2e00537571bcc53efbfd
+  DAI: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD",
+  USDC: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD",
+  USDT: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD",
+};
+
 const CHAIN_IDS = {
   MAINNET: "1",
   RINKEBY: "4",
@@ -104,9 +112,10 @@ module.exports = {
   DAI_WHALE,
   USDC_WHALE,
   USDT_WHALE,
+  WHALE_ADDRESSES,
+  STABLECOIN_POOLS,
   CHAIN_IDS,
   CHAIN_NAMES,
   TOKEN_AGG_MAP,
   DEPLOYS_JSON,
-  WHALE_ADDRESSES,
 };

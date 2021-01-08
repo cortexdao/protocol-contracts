@@ -1,15 +1,14 @@
 const { assert } = require("chai");
-const { web3, artifacts, contract } = require("hardhat");
+const { artifacts, contract, ethers } = require("hardhat");
 const {
   BN,
   expectEvent, // Assertions for emitted events
   expectRevert, // Assertions for transactions that should fail
+  constants,
 } = require("@openzeppelin/test-helpers");
-const { DAI_WHALE, USDC_WHALE, USDT_WHALE } = require("../utils/constants");
-const {
-  ZERO_ADDRESS,
-  MAX_UINT256,
-} = require("@openzeppelin/test-helpers/src/constants");
+const { ZERO_ADDRESS, MAX_UINT256 } = constants;
+const { STABLECOIN_POOLS } = require("../utils/constants");
+const { acquireToken: ethersAcquireToken } = require("../utils/helpers");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYPoolTokenProxy = artifacts.require("APYPoolTokenProxy");
 const APYPoolToken = artifacts.require("APYPoolToken");
@@ -22,21 +21,15 @@ async function formattedAmount(token, value) {
 }
 
 async function acquireToken(fundAccount, receiver, token, amount) {
-  /* NOTE: Ganache is setup to control "whale" addresses. This method moves
-  requested funds out of the fund account and into the specified wallet */
+  /* This function is deprecated by the new ethers-based `acquireToken` which
+  leverages several features, including hardhat impersonation and forcibly
+  sending ETH to a liquidity pool address.  
 
-  // fund the account with ETH so it can move funds
-  await web3.eth.sendTransaction({
-    from: receiver,
-    to: fundAccount,
-    value: 1e18,
-  });
-
-  const funds = await formattedAmount(token, amount);
-
-  await token.transfer(receiver, funds, { from: fundAccount });
-  const tokenBal = await token.balanceOf(receiver);
-  console.log(`${token.address} Balance: ${tokenBal.toString()}`);
+  We keep it here since more work will be required to transition these tests
+  to ethers.  Instead, we simply wrap the new function in the old, converting
+  the truffle contract to an ethers one. */
+  token = await ethers.getContractAt("IDetailedERC20", token.address);
+  await ethersAcquireToken(fundAccount, receiver, token, amount, receiver);
 }
 
 contract("APYPoolToken Integration Test USDC", async (accounts) => {
@@ -73,7 +66,7 @@ contract("APYPoolToken Integration Test USDC", async (accounts) => {
     );
     instance = await APYPoolToken.at(proxy.address);
 
-    await acquireToken(USDC_WHALE, owner, USDC, "1000000");
+    await acquireToken(STABLECOIN_POOLS["USDC"], owner, USDC, "1000000");
 
     //handle allownaces
     await USDC.approve(instance.address, MAX_UINT256);
@@ -339,7 +332,7 @@ contract("APYPoolToken Integration Test DAI", async (accounts) => {
     );
     instance = await APYPoolToken.at(proxy.address);
 
-    await acquireToken(DAI_WHALE, owner, DAI, "10000");
+    await acquireToken(STABLECOIN_POOLS["DAI"], owner, DAI, "10000");
 
     //handle allownaces
     await DAI.approve(instance.address, MAX_UINT256);
@@ -607,7 +600,7 @@ contract("APYPoolToken Integration Test USDT", async (accounts) => {
     );
     instance = await APYPoolToken.at(proxy.address);
 
-    await acquireToken(USDT_WHALE, owner, USDT, "1000000");
+    await acquireToken(STABLECOIN_POOLS["USDT"], owner, USDT, "1000000");
 
     //handle allownaces
     await USDT.approve(instance.address, MAX_UINT256);

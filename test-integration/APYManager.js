@@ -2,17 +2,18 @@ const {
   //assert,
   expect,
 } = require("chai");
-const { artifacts, contract, web3 } = require("hardhat");
+const { artifacts, contract, ethers } = require("hardhat");
+const { constants } = require("@openzeppelin/test-helpers");
 const {
-  BN,
-  // expectEvent, expectRevert
-} = require("@openzeppelin/test-helpers");
+  MAX_UINT256,
+  // ZERO_ADDRESS,
+} = constants;
 const timeMachine = require("ganache-time-traveler");
 const {
-  // ZERO_ADDRESS,
-  MAX_UINT256,
-} = require("@openzeppelin/test-helpers/src/constants");
-const { console, erc20 } = require("../utils/helpers");
+  console,
+  erc20,
+  acquireToken: ethersAcquireToken,
+} = require("../utils/helpers");
 
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const TransparentUpgradeableProxy = artifacts.require(
@@ -21,7 +22,7 @@ const TransparentUpgradeableProxy = artifacts.require(
 const ProxyConstructorArg = artifacts.require("ProxyConstructorArg");
 const APYManager = artifacts.require("APYManager");
 const MockContract = artifacts.require("MockContract");
-const { USDC_WHALE } = require("../utils/constants");
+const { STABLECOIN_POOLS } = require("../utils/constants");
 const APYPoolTokenProxy = artifacts.require("APYPoolTokenProxy");
 const APYPoolToken = artifacts.require("APYPoolToken");
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
@@ -39,27 +40,16 @@ const USDC_PRICE_AGG = "0x986b5E1e1755e3C2440e960477f25201B0a8bbD4";
 
 const usdc = (amount) => erc20(amount, "6");
 
-async function formattedAmount(token, value) {
-  const decimals = await token.decimals.call();
-  return new BN("10").pow(decimals).mul(new BN(value)).toString();
-}
-
 async function acquireToken(fundAccount, receiver, token, amount) {
-  /* NOTE: Ganache is setup to control "whale" addresses. This method moves
-  requested funds out of the fund account and into the specified wallet */
+  /* This function is deprecated by the new ethers-based `acquireToken` which
+  leverages several features, including hardhat impersonation and forcibly
+  sending ETH to a liquidity pool address.  
 
-  // fund the account with ETH so it can move funds
-  await web3.eth.sendTransaction({
-    from: receiver,
-    to: fundAccount,
-    value: 1e18,
-  });
-
-  const funds = await formattedAmount(token, amount);
-
-  await token.transfer(receiver, funds, { from: fundAccount });
-  const tokenBal = await token.balanceOf(receiver);
-  console.debug(`${token.address} Balance: ${tokenBal.toString()}`);
+  We keep it here since more work will be required to transition these tests
+  to ethers.  Instead, we simply wrap the new function in the old, converting
+  the truffle contract to an ethers one. */
+  token = await ethers.getContractAt("IDetailedERC20", token.address);
+  await ethersAcquireToken(fundAccount, receiver, token, amount, receiver);
 }
 
 contract("APYManager", async (accounts) => {
@@ -112,7 +102,12 @@ contract("APYManager", async (accounts) => {
     );
     usdcPool = await APYPoolToken.at(aptProxy.address);
 
-    await acquireToken(USDC_WHALE, deployer, usdcToken, "1000000");
+    await acquireToken(
+      STABLECOIN_POOLS["USDC"],
+      deployer,
+      usdcToken,
+      "1000000"
+    );
 
     //handle allownaces
     await usdcToken.approve(usdcPool.address, MAX_UINT256, { from: deployer });
