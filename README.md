@@ -112,6 +112,24 @@ Balancer Staking: [0xFe82ea0Ef14DfdAcd5dB1D49F563497A1a751bA1](https://etherscan
 Uniswap Pool: [0xF043c39A106db6B58C76995F30Ba35fD211c3b76](https://etherscan.io/address/0xF043c39A106db6B58C76995F30Ba35fD211c3b76)\
 Uniswap Staking: [0x0310DEE97b42063BbB46d02a674727C13eb79cFD](https://etherscan.io/address/0x0310DEE97b42063BbB46d02a674727C13eb79cFD)
 
+### Address Registry
+
+Deployer: [0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3](https://etherscan.io/address/0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3)
+
+Registry (proxy): [0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303](https://etherscan.io/address/0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303)
+
+- admin: [0xFbF6c940c1811C3ebc135A9c4e39E042d02435d1](https://etherscan.io/address/0xFbF6c940c1811C3ebc135A9c4e39E042d02435d1)
+- logic: [0x3Aa5C6148eeec291C5da1fdAE4Ca29Cf961b41A5](https://etherscan.io/address/0x3Aa5C6148eeec291C5da1fdAE4Ca29Cf961b41A5)
+
+### Manager
+
+Deployer:[0x0f7B66a4a3f7CfeAc2517c2fb9F0518D48457d41](https://etherscan.io/address/0x0f7B66a4a3f7CfeAc2517c2fb9F0518D48457d41)
+
+Manager (proxy): [0xfed91F1f9d7DcA3E6e4a4B83CEf1B14380AbDE79](https://etherscan.io/address/0xfed91F1f9d7DcA3E6e4a4B83CEf1B14380AbDE79)
+
+- admin: [0x10d44E4bC2370dedB80Faa06613a9ebfAd6bDE11](https://etherscan.io/address/0x10d44E4bC2370dedB80Faa06613a9ebfAd6bDE11)
+- logic: [0x2A07D00710DF6BC79d77339014a8bc7e2ebc6dE2](https://etherscan.io/address/0x2A07D00710DF6BC79d77339014a8bc7e2ebc6dE2)
+
 ## Deployment and Unroll of Capital
 
 ![deployment](https://github.com/apy-finance/apy-core/blob/d73b9121806b61d5d184447ab0dc9c339aa0b456/DeploymentOfCapital.png?raw=true)
