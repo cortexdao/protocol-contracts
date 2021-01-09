@@ -98,13 +98,13 @@ async function main(argv) {
       gasPrice: gasPrice,
     });
     console.log("Etherscan:", `https://etherscan.io/tx/${bTx.hash}`);
+    await bTx.wait();
+    console.log(`Transferred ${amount} tokens to ${BALANCER_STAKING_ADDRESS}`);
+
     const uTx = await token.transfer(UNISWAP_STAKING_ADDRESS, amount, {
       gasPrice: gasPrice,
     });
     console.log("Etherscan:", `https://etherscan.io/tx/${uTx.hash}`);
-
-    await bTx.wait();
-    console.log(`Transferred ${amount} tokens to ${BALANCER_STAKING_ADDRESS}`);
     await uTx.wait();
     console.log(`Transferred ${amount} tokens to ${UNISWAP_STAKING_ADDRESS}`);
     console.log("");
@@ -154,13 +154,13 @@ async function main(argv) {
       gasPrice: gasPrice,
     });
     console.log("Etherscan:", `https://etherscan.io/tx/${bNotifyTx.hash}`);
+    await bNotifyTx.wait();
+    console.log("Called `notifyRewardAmount` on Balancerpool.");
+
     const uNotifyTx = await unipool.notifyRewardAmount(amount, {
       gasPrice: gasPrice,
     });
     console.log("Etherscan:", `https://etherscan.io/tx/${uNotifyTx.hash}`);
-
-    await bNotifyTx.wait();
-    console.log("Called `notifyRewardAmount` on Balancerpool.");
     await uNotifyTx.wait();
     console.log("Called `notifyRewardAmount` on Unipool.");
   }
