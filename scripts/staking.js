@@ -1,6 +1,12 @@
 #!/usr/bin/env node
 
 const { argv } = require("yargs")
+  .option("amount", {
+    type: "number",
+    default: 35000,
+    description:
+      'Amount in token ("big") units to send to each staking contract',
+  })
   .option("dryRun", {
     type: "boolean",
     description: "Simulates transactions to estimate ETH cost",
@@ -47,8 +53,7 @@ async function main(argv) {
   let gasPrice = await getGasPrice(argv.gasPrice);
   console.log("");
 
-  let amount = argv.amount || 35000;
-  amount = tokenAmountToBigNumber(amount, "18");
+  const amount = tokenAmountToBigNumber(argv.amount, "18");
 
   const APYGovernanceToken = await ethers.getContractFactory(
     "APYGovernanceToken"
@@ -65,6 +70,14 @@ async function main(argv) {
     console.log("");
     console.log("Doing a dry run ...");
     console.log("");
+
+    console.log(
+      "Token amount (wei):",
+      amount.toString(),
+      `(length: ${amount.toString().length})`
+    );
+    console.log("");
+
     let gasEstimate = await token.estimateGas.transfer(
       BALANCER_STAKING_ADDRESS,
       amount
@@ -124,6 +137,18 @@ async function main(argv) {
       "Current ETH balance for staking deployer:",
       balance.toString()
     );
+    console.log("");
+
+    const balPeriodFinish = await balancerpool.periodFinish();
+    const balFinishDate = new Date(balPeriodFinish * 1000);
+    console.log("Balancer period finish:", balFinishDate.toUTCString());
+    console.log("Balancer period finish:", balFinishDate.toLocaleString());
+    console.log("");
+
+    const uniPeriodFinish = await unipool.periodFinish();
+    const uniFinishDate = new Date(uniPeriodFinish * 1000);
+    console.log("Uniswap period finish:", uniFinishDate.toUTCString());
+    console.log("Uniswap period finish:", uniFinishDate.toLocaleString());
   } else {
     const bNotifyTx = await balancerpool.notifyRewardAmount(amount, {
       gasPrice: gasPrice,

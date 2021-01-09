@@ -63,6 +63,13 @@ async function main(argv) {
     console.log("");
     console.log("Doing a dry run ...");
     console.log("");
+    console.log(
+      "Token amount (wei):",
+      amount.toString(),
+      `(length: ${amount.toString().length})`
+    );
+    console.log("");
+
     const gasEstimate = await token.estimateGas.transfer(
       rewardDistributorAddress,
       amount
