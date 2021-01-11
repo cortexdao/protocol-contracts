@@ -182,7 +182,7 @@ async function acquireToken(sender, recipient, token, amount, ethFunder) {
   await trx.wait();
   const balance = (await token.balanceOf(recipient)).toString();
   const symbol = await token.symbol();
-  console.log(`${symbol} balance: ${balance / 10 ** decimals}`);
+  console.debug(`${symbol} balance: ${balance / 10 ** decimals}`);
 }
 
 async function prepareTokenSender(sender, ethAmount, ethFunder) {
