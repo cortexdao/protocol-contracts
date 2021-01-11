@@ -1,12 +1,10 @@
-const { assert } = require("chai");
-const { contract, ethers } = require("hardhat");
+const { assert, expect } = require("chai");
+const { ethers } = require("hardhat");
 const {
   BN,
   expectEvent, // Assertions for emitted events
   expectRevert, // Assertions for transactions that should fail
-  // constants,
 } = require("@openzeppelin/test-helpers");
-// const { ZERO_ADDRESS, MAX_UINT256 } = constants;
 const { AddressZero: ZERO_ADDRESS, MaxUint256: MAX_UINT256 } = ethers.constants;
 const { STABLECOIN_POOLS } = require("../utils/constants");
 const {
@@ -37,14 +35,22 @@ async function acquireToken(fundAccount, receiver, token, amount) {
   await ethersAcquireToken(fundAccount, receiver, token, amount, receiver);
 }
 
-contract("APYPoolToken", async (accounts) => {
-  const [owner, instanceAdmin, randomUser] = accounts;
+describe("Contract: APYPoolToken", () => {
+  let owner;
+  let admin;
+  let randomUser;
 
-  const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-  const APYPoolTokenProxy = await ethers.getContractFactory(
-    "APYPoolTokenProxy"
-  );
-  const APYPoolToken = await ethers.getContractFactory("APYPoolToken");
+  let ProxyAdmin;
+  let APYPoolTokenProxy;
+  let APYPoolToken;
+
+  before(async () => {
+    [owner, admin, randomUser] = await ethers.getSigners();
+
+    ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+    APYPoolTokenProxy = await ethers.getContractFactory("APYPoolTokenProxy");
+    APYPoolToken = await ethers.getContractFactory("APYPoolToken");
+  });
 
   const tokenParams = [
     {
@@ -137,14 +143,17 @@ contract("APYPoolToken", async (accounts) => {
         });
 
         it("Test sending Ether", async () => {
-          await expectRevert(poolToken.send(10), "DONT_SEND_ETHER");
+          const signer = (await ethers.getSigners())[0];
+          await expect(
+            signer.sendTransaction({ to: poolToken.address, value: "10" })
+          ).to.be.revertedWith("DONT_SEND_ETHER");
         });
       });
 
       describe("Test setAdminAdddress", async () => {
         it("Test setAdminAddress pass", async () => {
-          await poolToken.setAdminAddress(instanceAdmin, { from: owner });
-          assert.equal(await poolToken.proxyAdmin.call(), instanceAdmin);
+          await poolToken.setAdminAddress(admin, { from: owner });
+          assert.equal(await poolToken.proxyAdmin.call(), admin);
         });
       });
 
@@ -160,11 +169,16 @@ contract("APYPoolToken", async (accounts) => {
 
       describe("Test addLiquidity", async () => {
         it("Test locking/unlocking addLiquidity by owner", async () => {
-          let trx = await poolToken.lockAddLiquidity({ from: owner });
-          await expectEvent(trx, "AddLiquidityLocked");
+          poolToken.connect(owner);
+          await expect(poolToken.lockAddLiquidity()).to.emit(
+            poolToken,
+            "AddLiquidityLocked"
+          );
 
-          trx = await poolToken.unlockAddLiquidity({ from: owner });
-          await expectEvent(trx, "AddLiquidityUnlocked");
+          await expect(poolToken.unlockAddLiquidity()).to.emit(
+            poolToken,
+            "AddLiquidityUnlocked"
+          );
         });
 
         it("Test addLiquidity pass", async () => {
