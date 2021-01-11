@@ -1,22 +1,18 @@
 const { assert } = require("chai");
-const { artifacts, contract, ethers } = require("hardhat");
+const { contract, ethers } = require("hardhat");
 const {
   BN,
   expectEvent, // Assertions for emitted events
   expectRevert, // Assertions for transactions that should fail
-  constants,
+  // constants,
 } = require("@openzeppelin/test-helpers");
-const { ZERO_ADDRESS, MAX_UINT256 } = constants;
+// const { ZERO_ADDRESS, MAX_UINT256 } = constants;
+const { AddressZero: ZERO_ADDRESS, MaxUint256: MAX_UINT256 } = ethers.constants;
 const { STABLECOIN_POOLS } = require("../utils/constants");
 const {
   acquireToken: ethersAcquireToken,
   console,
 } = require("../utils/helpers");
-const ProxyAdmin = artifacts.require("ProxyAdmin");
-const APYPoolTokenProxy = artifacts.require("APYPoolTokenProxy");
-const APYPoolToken = artifacts.require("APYPoolToken");
-const AGG = artifacts.require("AggregatorV3Interface.sol");
-const IDetailedERC20 = artifacts.require("IDetailedERC20");
 
 /* ************************ */
 /* set DEBUG log level here */
@@ -43,6 +39,12 @@ async function acquireToken(fundAccount, receiver, token, amount) {
 
 contract("APYPoolToken", async (accounts) => {
   const [owner, instanceAdmin, randomUser] = accounts;
+
+  const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+  const APYPoolTokenProxy = await ethers.getContractFactory(
+    "APYPoolTokenProxy"
+  );
+  const APYPoolToken = await ethers.getContractFactory("APYPoolToken");
 
   const tokenParams = [
     {
@@ -79,21 +81,21 @@ contract("APYPoolToken", async (accounts) => {
       let underlyerBalanceBefore;
 
       before("Setup", async () => {
-        underlyer = await IDetailedERC20.at(tokenAddress);
-        agg = await AGG.at(aggAddress);
+        underlyer = await ethers.getContractAt("IDetailedERC20", tokenAddress);
+        agg = await ethers.getContractAt("AggregatorV3Interface", aggAddress);
 
-        proxyAdmin = await ProxyAdmin.new({ from: owner });
-        logic = await APYPoolToken.new({ from: owner });
-        proxy = await APYPoolTokenProxy.new(
+        proxyAdmin = await ProxyAdmin.deploy();
+        await proxyAdmin.deployed();
+        logic = await APYPoolToken.deploy();
+        await logic.deployed();
+        proxy = await APYPoolTokenProxy.deploy(
           logic.address,
           proxyAdmin.address,
           underlyer.address,
-          agg.address,
-          {
-            from: owner,
-          }
+          agg.address
         );
-        poolToken = await APYPoolToken.at(proxy.address);
+        await proxy.deployed();
+        poolToken = await APYPoolToken.attach(proxy.address);
 
         await acquireToken(
           STABLECOIN_POOLS[symbol],
