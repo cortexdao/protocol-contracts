@@ -3,7 +3,11 @@ const { ethers } = require("hardhat");
 const { AddressZero: ZERO_ADDRESS, MaxUint256: MAX_UINT256 } = ethers.constants;
 const timeMachine = require("ganache-time-traveler");
 const { STABLECOIN_POOLS } = require("../utils/constants");
-const { acquireToken, console } = require("../utils/helpers");
+const {
+  acquireToken,
+  console,
+  tokenAmountToBigNumber,
+} = require("../utils/helpers");
 
 /* ************************ */
 /* set DEBUG log level here */
@@ -176,7 +180,10 @@ describe("Contract: APYPoolToken", () => {
             `\tUSDC Balance Before Mint: ${underlyerBalanceBefore.toString()}`
           );
 
-          const amount = await formattedAmount(underlyer, 1000);
+          const amount = tokenAmountToBigNumber(
+            1000,
+            await underlyer.decimals()
+          );
           const trx = await poolToken.connect(owner).addLiquidity(amount);
 
           let bal = await underlyer.balanceOf(owner.address);
@@ -202,7 +209,7 @@ describe("Contract: APYPoolToken", () => {
           await expectEvent.inTransaction(trx.tx, underlyer, "Transfer", {
             from: owner,
             to: poolToken.address,
-            value: new BN(amount),
+            value: amount,
           });
           // this is the mint transfer
           await expectEvent(trx, "Transfer", {
@@ -212,7 +219,7 @@ describe("Contract: APYPoolToken", () => {
           });
           await expectEvent(trx, "DepositedAPT", {
             sender: owner,
-            tokenAmount: new BN(amount),
+            tokenAmount: amount,
             aptMintAmount: aptMinted,
             tokenEthValue: tokenEthVal,
             totalEthValueLocked: tokenEthVal,
@@ -224,7 +231,7 @@ describe("Contract: APYPoolToken", () => {
         it("Test getPoolTotalEthValue returns value", async () => {
           const val = await poolToken.getPoolTotalEthValue.call();
           console.log(`\tPool Total Eth Value ${val.toString()}`);
-          assert(val.toString(), aptMinted.div(new BN(1000)).toString());
+          assert(val.toString(), aptMinted.div("1000").toString());
         });
       });
 
@@ -232,14 +239,14 @@ describe("Contract: APYPoolToken", () => {
         it("Test getAPTEthValue returns value", async () => {
           const val = await poolToken.getAPTEthValue(aptMinted);
           console.log(`\tAPT Eth Value: ${val.toString()}`);
-          assert(val.toString(), aptMinted.div(new BN(1000)).toString());
+          assert(val.toString(), aptMinted.div("1000").toString());
         });
       });
 
       describe("Test getTokenAmountFromEthValue", async () => {
         it("Test getTokenAmountFromEthValue returns expected amount", async () => {
           const tokenAmount = await poolToken.getTokenAmountFromEthValue.call(
-            new BN(500)
+            "500"
           );
           console.log(
             `\tToken Amount from Eth Value: ${tokenAmount.toString()}`
@@ -250,9 +257,7 @@ describe("Contract: APYPoolToken", () => {
 
       describe("Test getEthValueFromTokenAmount", async () => {
         it("Test getEthValueFromTokenAmount returns value", async () => {
-          const val = await poolToken.getEthValueFromTokenAmount.call(
-            new BN(5000)
-          );
+          const val = await poolToken.getEthValueFromTokenAmount("5000");
           console.log(`\tEth Value from Token Amount ${val.toString()}`);
           assert(val.gt(0));
         });
@@ -268,8 +273,8 @@ describe("Contract: APYPoolToken", () => {
 
       describe("Test getUnderlyerAmount", async () => {
         it("Test getUnderlyerAmount returns value", async () => {
-          const underlyerAmount = await poolToken.getUnderlyerAmount.call(
-            new BN("2605000000000000000000")
+          const underlyerAmount = await poolToken.getUnderlyerAmount(
+            "2605000000000000000000"
           );
           console.log(`\tUnderlyer Amount: ${underlyerAmount.toString()}`);
           assert(underlyerAmount.gt(0));
@@ -358,7 +363,7 @@ describe("Contract: APYPoolToken", () => {
             token: underlyer.address,
             redeemedTokenAmount: usdcBalAfter.sub(usdcBal),
             tokenEthValue: tokenEthVal,
-            totalEthValueLocked: new BN(0),
+            totalEthValueLocked: "0",
           });
         });
       });
