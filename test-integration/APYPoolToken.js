@@ -1,39 +1,15 @@
 const { assert, expect } = require("chai");
 const { ethers } = require("hardhat");
-const {
-  BN,
-  expectEvent, // Assertions for emitted events
-  expectRevert, // Assertions for transactions that should fail
-} = require("@openzeppelin/test-helpers");
 const { AddressZero: ZERO_ADDRESS, MaxUint256: MAX_UINT256 } = ethers.constants;
+const timeMachine = require("ganache-time-traveler");
 const { STABLECOIN_POOLS } = require("../utils/constants");
-const {
-  acquireToken: ethersAcquireToken,
-  console,
-} = require("../utils/helpers");
+const { acquireToken, console } = require("../utils/helpers");
 
 /* ************************ */
 /* set DEBUG log level here */
 /* ************************ */
 console.debugging = false;
 /* ************************ */
-
-async function formattedAmount(token, value) {
-  const decimals = await token.decimals.call();
-  return new BN("10").pow(decimals).mul(new BN(value)).toString();
-}
-
-async function acquireToken(fundAccount, receiver, token, amount) {
-  /* This function is deprecated by the new ethers-based `acquireToken` which
-  leverages several features, including hardhat impersonation and forcibly
-  sending ETH to a liquidity pool address.  
-
-  We keep it here since more work will be required to transition these tests
-  to ethers.  Instead, we simply wrap the new function in the old, converting
-  the truffle contract to an ethers one. */
-  token = await ethers.getContractAt("IDetailedERC20", token.address);
-  await ethersAcquireToken(fundAccount, receiver, token, amount, receiver);
-}
 
 describe("Contract: APYPoolToken", () => {
   let owner;
@@ -70,6 +46,18 @@ describe("Contract: APYPoolToken", () => {
     },
   ];
 
+  // use EVM snapshots for test isolation
+  let snapshotId;
+
+  beforeEach(async () => {
+    let snapshot = await timeMachine.takeSnapshot();
+    snapshotId = snapshot["result"];
+  });
+
+  afterEach(async () => {
+    await timeMachine.revertToSnapshot(snapshotId);
+  });
+
   tokenParams.forEach(function (params) {
     const { symbol, tokenAddress, aggAddress } = params;
 
@@ -103,11 +91,13 @@ describe("Contract: APYPoolToken", () => {
         await proxy.deployed();
         poolToken = await APYPoolToken.attach(proxy.address);
 
+        const ownerAddress = await owner.getAddress();
         await acquireToken(
           STABLECOIN_POOLS[symbol],
-          owner,
+          ownerAddress,
           underlyer,
-          "1000000"
+          "1000000",
+          ownerAddress
         );
 
         //handle allownaces
@@ -120,7 +110,7 @@ describe("Contract: APYPoolToken", () => {
 
       describe("Test Defaults", async () => {
         it("Test Owner", async () => {
-          assert.equal(await poolToken.owner.call(), owner);
+          assert.equal(await poolToken.owner.call(), owner.address);
         });
 
         it("Test DEFAULT_APT_TO_UNDERLYER_FACTOR", async () => {
@@ -152,8 +142,8 @@ describe("Contract: APYPoolToken", () => {
 
       describe("Test setAdminAdddress", async () => {
         it("Test setAdminAddress pass", async () => {
-          await poolToken.setAdminAddress(admin, { from: owner });
-          assert.equal(await poolToken.proxyAdmin.call(), admin);
+          await poolToken.connect(owner).setAdminAddress(admin.address);
+          assert.equal(await poolToken.proxyAdmin.call(), admin.address);
         });
       });
 
@@ -169,41 +159,38 @@ describe("Contract: APYPoolToken", () => {
 
       describe("Test addLiquidity", async () => {
         it("Test locking/unlocking addLiquidity by owner", async () => {
-          poolToken.connect(owner);
-          await expect(poolToken.lockAddLiquidity()).to.emit(
+          await expect(poolToken.connect(owner).lockAddLiquidity()).to.emit(
             poolToken,
             "AddLiquidityLocked"
           );
 
-          await expect(poolToken.unlockAddLiquidity()).to.emit(
+          await expect(poolToken.connect(owner).unlockAddLiquidity()).to.emit(
             poolToken,
             "AddLiquidityUnlocked"
           );
         });
 
         it("Test addLiquidity pass", async () => {
-          underlyerBalanceBefore = await underlyer.balanceOf(owner);
+          underlyerBalanceBefore = await underlyer.balanceOf(owner.address);
           console.log(
             `\tUSDC Balance Before Mint: ${underlyerBalanceBefore.toString()}`
           );
 
           const amount = await formattedAmount(underlyer, 1000);
-          const trx = await poolToken.addLiquidity(amount, {
-            from: owner,
-          });
+          const trx = await poolToken.connect(owner).addLiquidity(amount);
 
-          let bal = await underlyer.balanceOf(owner);
+          let bal = await underlyer.balanceOf(owner.address);
           console.log(`\tUSDC Balance After Mint: ${bal.toString()}`);
 
           // assert balances
           assert(await underlyer.balanceOf(poolToken.address), amount);
           assert(
-            await underlyer.balanceOf(owner),
+            await underlyer.balanceOf(owner.address),
             underlyerBalanceBefore - amount
           );
 
           // comupting the exact amount is unreliable due to variance in USDC/ETH
-          aptMinted = await poolToken.balanceOf(owner);
+          aptMinted = await poolToken.balanceOf(owner.address);
           console.log(`\tAPT Balance: ${aptMinted.toString()}`);
           assert(aptMinted.toString(), expectedAptMinted.toString());
 
@@ -291,36 +278,41 @@ describe("Contract: APYPoolToken", () => {
 
       describe("Test redeem", async () => {
         it("Test locking/unlocking redeem by owner", async () => {
-          let trx = await poolToken.lockRedeem({ from: owner });
-          expectEvent(trx, "RedeemLocked");
-
-          await expectRevert(
-            poolToken.redeem(50, { from: randomUser }),
-            "LOCKED"
+          await expect(poolToken.connect(owner).lockRedeem()).to.emit(
+            poolToken,
+            "RedeemLocked"
           );
 
-          trx = await poolToken.unlockRedeem({ from: owner });
-          expectEvent(trx, "RedeemUnlocked");
+          await expect(
+            poolToken.connect(randomUser).redeem(50)
+          ).to.be.revertedWith("LOCKED");
+
+          await expect(poolToken.connect(owner).unlockRedeem()).to.emit(
+            poolToken,
+            "RedeemUnlocked"
+          );
         });
 
         it("Test locking/unlocking contract by not owner", async () => {
-          let trx = await poolToken.lock({ from: owner });
-          expectEvent(trx, "Paused");
-
-          await expectRevert(
-            poolToken.redeem(50, { from: randomUser }),
-            "Pausable: paused"
+          await expect(poolToken.connect(owner).lock()).to.emit(
+            poolToken,
+            "Paused"
           );
 
-          trx = await poolToken.unlock({ from: owner });
-          expectEvent(trx, "Unpaused");
+          await expect(
+            poolToken.connect(randomUser).redeem(50)
+          ).to.be.revertedWith("Pausable: paused");
+
+          await expect(poolToken.connect(owner).unlock()).to.emit(
+            poolToken,
+            "Unpaused"
+          );
         });
 
         it("Test redeem insufficient balance", async () => {
-          await expectRevert(
-            poolToken.redeem(2, { from: randomUser }),
-            "BALANCE_INSUFFICIENT"
-          );
+          await expect(
+            poolToken.connect(randomUser).redeem(2)
+          ).to.be.revertedWith("BALANCE_INSUFFICIENT");
         });
 
         it("Test redeem pass", async () => {
