@@ -8,6 +8,8 @@ const {
   console,
   tokenAmountToBigNumber,
 } = require("../utils/helpers");
+const expectEvent = require("@openzeppelin/test-helpers/src/expectEvent");
+const { BigNumber } = require("ethers");
 
 /* ************************ */
 /* set DEBUG log level here */
@@ -15,8 +17,29 @@ const {
 console.debugging = false;
 /* ************************ */
 
+async function expectEventInTransaction(
+  txHash,
+  emitter,
+  eventName,
+  eventArgs = {}
+) {
+  /*
+  Ethers-wrapper for OpenZeppelin's test helper.
+
+  Their test helper still works as long as BigNumber is passed-in as strings and
+  the emitter has a Truffle-like interface, i.e. has properties `abi` and `address`.
+  */
+  const abi = JSON.parse(emitter.interface.format("json"));
+  const address = emitter.address;
+  const _emitter = { abi, address };
+  const _eventArgs = Object.fromEntries(
+    Object.entries(eventArgs).map(([k, v]) => [k, v.toString()])
+  );
+  await expectEvent.inTransaction(txHash, _emitter, eventName, _eventArgs);
+}
+
 describe("Contract: APYPoolToken", () => {
-  let owner;
+  let deployer;
   let admin;
   let randomUser;
 
@@ -25,11 +48,11 @@ describe("Contract: APYPoolToken", () => {
   let APYPoolToken;
 
   before(async () => {
-    [owner, admin, randomUser] = await ethers.getSigners();
+    [deployer, admin, randomUser] = await ethers.getSigners();
 
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     APYPoolTokenProxy = await ethers.getContractFactory("APYPoolTokenProxy");
-    APYPoolToken = await ethers.getContractFactory("APYPoolToken");
+    APYPoolToken = await ethers.getContractFactory("TestAPYPoolToken");
   });
 
   const tokenParams = [
@@ -65,7 +88,7 @@ describe("Contract: APYPoolToken", () => {
   tokenParams.forEach(function (params) {
     const { symbol, tokenAddress, aggAddress } = params;
 
-    describe(`\n    **** ${symbol} as underlyer ****\n`, async () => {
+    describe(`\n    **** ${symbol} as underlyer ****\n`, () => {
       let agg;
       let underlyer;
 
@@ -95,13 +118,12 @@ describe("Contract: APYPoolToken", () => {
         await proxy.deployed();
         poolToken = await APYPoolToken.attach(proxy.address);
 
-        const ownerAddress = await owner.getAddress();
         await acquireToken(
           STABLECOIN_POOLS[symbol],
-          ownerAddress,
+          deployer.address,
           underlyer,
           "1000000",
-          ownerAddress
+          deployer.address
         );
 
         //handle allownaces
@@ -112,31 +134,28 @@ describe("Contract: APYPoolToken", () => {
         console.debug(`Proxy: ${proxy.address}`);
       });
 
-      describe("Test Defaults", async () => {
-        it("Test Owner", async () => {
-          assert.equal(await poolToken.owner.call(), owner.address);
+      describe("Test Defaults", () => {
+        it("Owner is set to deployer", async () => {
+          assert.equal(await poolToken.owner(), deployer.address);
         });
 
-        it("Test DEFAULT_APT_TO_UNDERLYER_FACTOR", async () => {
-          assert.equal(
-            await poolToken.DEFAULT_APT_TO_UNDERLYER_FACTOR.call(),
-            1000
-          );
+        it("DEFAULT_APT_TO_UNDERLYER_FACTOR has correct value", async () => {
+          assert.equal(await poolToken.DEFAULT_APT_TO_UNDERLYER_FACTOR(), 1000);
         });
 
-        it("Test Pool Token Name", async () => {
-          assert.equal(await poolToken.name.call(), "APY Pool Token");
+        it("Name has correct value", async () => {
+          assert.equal(await poolToken.name(), "APY Pool Token");
         });
 
-        it("Test Pool Symbol", async () => {
+        it("Symbol has correct value", async () => {
           assert.equal(await poolToken.symbol.call(), "APT");
         });
 
-        it("Test Pool Decimals", async () => {
+        it("Decimals has correct value", async () => {
           assert.equal(await poolToken.decimals.call(), 18);
         });
 
-        it("Test sending Ether", async () => {
+        it("Blocks ether transfer", async () => {
           const signer = (await ethers.getSigners())[0];
           await expect(
             signer.sendTransaction({ to: poolToken.address, value: "10" })
@@ -144,38 +163,39 @@ describe("Contract: APYPoolToken", () => {
         });
       });
 
-      describe("Test setAdminAdddress", async () => {
-        it("Test setAdminAddress pass", async () => {
-          await poolToken.connect(owner).setAdminAddress(admin.address);
-          assert.equal(await poolToken.proxyAdmin.call(), admin.address);
+      describe("Test setAdminAdddress", () => {
+        it("Owner can set admin address", async () => {
+          await poolToken.connect(deployer).setAdminAddress(admin.address);
+          assert.equal(await poolToken.proxyAdmin(), admin.address);
         });
       });
 
-      describe("Test calculateMintAmount", async () => {
-        it("Test calculateMintAmount returns expeted amount when total supply > 0", async () => {
+      describe("Test calculateMintAmount", () => {
+        it("Check calculateMintAmount returns value greater than 0", async () => {
           expectedAptMinted = await poolToken.calculateMintAmount(1000000000, {
             from: randomUser,
           });
-          console.log(`\tExpected APT Minted: ${expectedAptMinted.toString()}`);
+          console.debug(
+            `\tExpected APT Minted: ${expectedAptMinted.toString()}`
+          );
           assert(expectedAptMinted.gt(0));
         });
       });
 
-      describe("Test addLiquidity", async () => {
+      describe("Test addLiquidity", () => {
         it("Test locking/unlocking addLiquidity by owner", async () => {
-          await expect(poolToken.connect(owner).lockAddLiquidity()).to.emit(
+          await expect(poolToken.connect(deployer).lockAddLiquidity()).to.emit(
             poolToken,
             "AddLiquidityLocked"
           );
 
-          await expect(poolToken.connect(owner).unlockAddLiquidity()).to.emit(
-            poolToken,
-            "AddLiquidityUnlocked"
-          );
+          await expect(
+            poolToken.connect(deployer).unlockAddLiquidity()
+          ).to.emit(poolToken, "AddLiquidityUnlocked");
         });
 
         it("Test addLiquidity pass", async () => {
-          underlyerBalanceBefore = await underlyer.balanceOf(owner.address);
+          underlyerBalanceBefore = await underlyer.balanceOf(deployer.address);
           console.log(
             `\tUSDC Balance Before Mint: ${underlyerBalanceBefore.toString()}`
           );
@@ -184,50 +204,46 @@ describe("Contract: APYPoolToken", () => {
             1000,
             await underlyer.decimals()
           );
-          const trx = await poolToken.connect(owner).addLiquidity(amount);
+          const addLiquidityPromise = await poolToken
+            .connect(deployer)
+            .addLiquidity(amount);
+          const trx = await addLiquidityPromise;
+          await trx.wait();
 
-          let bal = await underlyer.balanceOf(owner.address);
-          console.log(`\tUSDC Balance After Mint: ${bal.toString()}`);
+          let bal = await underlyer.balanceOf(deployer.address);
+          console.debug(`\tUSDC Balance After Mint: ${bal.toString()}`);
 
-          // assert balances
-          assert(await underlyer.balanceOf(poolToken.address), amount);
-          assert(
-            await underlyer.balanceOf(owner.address),
+          assert.equal(await underlyer.balanceOf(poolToken.address), amount);
+          assert.equal(
+            await underlyer.balanceOf(deployer.address),
             underlyerBalanceBefore - amount
           );
 
-          // comupting the exact amount is unreliable due to variance in USDC/ETH
-          aptMinted = await poolToken.balanceOf(owner.address);
-          console.log(`\tAPT Balance: ${aptMinted.toString()}`);
-          assert(aptMinted.toString(), expectedAptMinted.toString());
+          aptMinted = await poolToken.balanceOf(deployer.address);
+          console.debug(`\tAPT Balance: ${aptMinted.toString()}`);
+          assert.equal(aptMinted.toString(), expectedAptMinted.toString());
 
           const tokenEthVal = await poolToken.getEthValueFromTokenAmount(
             amount
           );
 
           // this is the token transfer
-          await expectEvent.inTransaction(trx.tx, underlyer, "Transfer", {
-            from: owner,
+          await expectEventInTransaction(trx.hash, underlyer, "Transfer", {
+            from: deployer.address,
             to: poolToken.address,
             value: amount,
           });
           // this is the mint transfer
-          await expectEvent(trx, "Transfer", {
-            from: ZERO_ADDRESS,
-            to: owner,
-            value: aptMinted,
-          });
-          await expectEvent(trx, "DepositedAPT", {
-            sender: owner,
-            tokenAmount: amount,
-            aptMintAmount: aptMinted,
-            tokenEthValue: tokenEthVal,
-            totalEthValueLocked: tokenEthVal,
-          });
+          await expect(addLiquidityPromise)
+            .to.emit(poolToken, "Transfer")
+            .withArgs(ZERO_ADDRESS, deployer, aptMinted);
+          await expect(addLiquidityPromise)
+            .to.emit(poolToken, "DepositedAPT")
+            .withArgs(deployer, amount, aptMinted, tokenEthVal, tokenEthVal);
         });
       });
 
-      describe("Test getPoolTotalEthValue", async () => {
+      describe("Test getPoolTotalEthValue", () => {
         it("Test getPoolTotalEthValue returns value", async () => {
           const val = await poolToken.getPoolTotalEthValue.call();
           console.log(`\tPool Total Eth Value ${val.toString()}`);
@@ -235,7 +251,7 @@ describe("Contract: APYPoolToken", () => {
         });
       });
 
-      describe("Test getAPTEthValue", async () => {
+      describe("Test getAPTEthValue", () => {
         it("Test getAPTEthValue returns value", async () => {
           const val = await poolToken.getAPTEthValue(aptMinted);
           console.log(`\tAPT Eth Value: ${val.toString()}`);
@@ -243,7 +259,7 @@ describe("Contract: APYPoolToken", () => {
         });
       });
 
-      describe("Test getTokenAmountFromEthValue", async () => {
+      describe("Test getTokenAmountFromEthValue", () => {
         it("Test getTokenAmountFromEthValue returns expected amount", async () => {
           const tokenAmount = await poolToken.getTokenAmountFromEthValue.call(
             "500"
@@ -255,7 +271,7 @@ describe("Contract: APYPoolToken", () => {
         });
       });
 
-      describe("Test getEthValueFromTokenAmount", async () => {
+      describe("Test getEthValueFromTokenAmount", () => {
         it("Test getEthValueFromTokenAmount returns value", async () => {
           const val = await poolToken.getEthValueFromTokenAmount("5000");
           console.log(`\tEth Value from Token Amount ${val.toString()}`);
@@ -263,7 +279,7 @@ describe("Contract: APYPoolToken", () => {
         });
       });
 
-      describe("Test getTokenEthPrice", async () => {
+      describe("Test getTokenEthPrice", () => {
         it("Test getTokenEthPrice returns value", async () => {
           const price = await poolToken.getTokenEthPrice.call();
           console.log(`\tToken Eth Price: ${price.toString()}`);
@@ -271,7 +287,7 @@ describe("Contract: APYPoolToken", () => {
         });
       });
 
-      describe("Test getUnderlyerAmount", async () => {
+      describe("Test getUnderlyerAmount", () => {
         it("Test getUnderlyerAmount returns value", async () => {
           const underlyerAmount = await poolToken.getUnderlyerAmount(
             "2605000000000000000000"
@@ -281,9 +297,9 @@ describe("Contract: APYPoolToken", () => {
         });
       });
 
-      describe("Test redeem", async () => {
+      describe("Test redeem", () => {
         it("Test locking/unlocking redeem by owner", async () => {
-          await expect(poolToken.connect(owner).lockRedeem()).to.emit(
+          await expect(poolToken.connect(deployer).lockRedeem()).to.emit(
             poolToken,
             "RedeemLocked"
           );
@@ -292,14 +308,14 @@ describe("Contract: APYPoolToken", () => {
             poolToken.connect(randomUser).redeem(50)
           ).to.be.revertedWith("LOCKED");
 
-          await expect(poolToken.connect(owner).unlockRedeem()).to.emit(
+          await expect(poolToken.connect(deployer).unlockRedeem()).to.emit(
             poolToken,
             "RedeemUnlocked"
           );
         });
 
         it("Test locking/unlocking contract by not owner", async () => {
-          await expect(poolToken.connect(owner).lock()).to.emit(
+          await expect(poolToken.connect(deployer).lock()).to.emit(
             poolToken,
             "Paused"
           );
@@ -308,7 +324,7 @@ describe("Contract: APYPoolToken", () => {
             poolToken.connect(randomUser).redeem(50)
           ).to.be.revertedWith("Pausable: paused");
 
-          await expect(poolToken.connect(owner).unlock()).to.emit(
+          await expect(poolToken.connect(deployer).unlock()).to.emit(
             poolToken,
             "Unpaused"
           );
@@ -321,14 +337,17 @@ describe("Contract: APYPoolToken", () => {
         });
 
         it("Test redeem pass", async () => {
-          let usdcBal = await underlyer.balanceOf(owner);
+          aptMinted = BigNumber.from("100");
+          await (await poolToken.mint(deployer.address, aptMinted)).wait();
+
+          let usdcBal = await underlyer.balanceOf(deployer.address);
           console.log(`\tUSDC Balance Before Redeem: ${usdcBal.toString()}`);
 
-          const trx = await poolToken.redeem(aptMinted, {
-            from: owner,
-          });
+          const redeemPromise = poolToken.connect(deployer).redeem(aptMinted);
+          const trx = await redeemPromise;
+          await trx.wait();
 
-          let usdcBalAfter = await underlyer.balanceOf(owner);
+          let usdcBalAfter = await underlyer.balanceOf(deployer.address);
           console.log(
             `\tUSDC Balance After Redeem: ${usdcBalAfter.toString()}`
           );
@@ -340,7 +359,7 @@ describe("Contract: APYPoolToken", () => {
           );
           assert.equal(await underlyer.balanceOf(poolToken.address), 0);
 
-          const bal = await poolToken.balanceOf(owner);
+          const bal = await poolToken.balanceOf(deployer.address);
           console.log(`\tAPT Balance: ${bal.toString()}`);
           assert.equal(bal.toString(), "0");
 
@@ -348,23 +367,24 @@ describe("Contract: APYPoolToken", () => {
             usdcBalAfter.sub(usdcBal)
           );
 
-          await expectEvent.inTransaction(trx.tx, underlyer, "Transfer", {
+          await expectEventInTransaction(trx.hash, underlyer, "Transfer", {
             from: poolToken.address,
-            to: owner,
+            to: deployer.address,
             value: usdcBalAfter.sub(usdcBal),
           });
-          await expectEvent(trx, "Transfer", {
-            from: owner,
-            to: ZERO_ADDRESS,
-            value: aptMinted,
-          });
-          await expectEvent(trx, "RedeemedAPT", {
-            sender: owner,
-            token: underlyer.address,
-            redeemedTokenAmount: usdcBalAfter.sub(usdcBal),
-            tokenEthValue: tokenEthVal,
-            totalEthValueLocked: "0",
-          });
+          await expect(redeemPromise)
+            .to.emit(poolToken, "Transfer")
+            .withArgs(deployer.address, ZERO_ADDRESS, aptMinted);
+          await expect(redeemPromise)
+            .to.emit(poolToken, "RedeemedAPT")
+            .withArgs(
+              deployer.address,
+              underlyer.address,
+              usdcBalAfter.sub(usdcBal),
+              aptMinted,
+              tokenEthVal,
+              tokenEthVal
+            );
         });
       });
     });
