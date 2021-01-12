@@ -172,9 +172,7 @@ describe("Contract: APYPoolToken", () => {
 
       describe("Test calculateMintAmount", () => {
         it("Check calculateMintAmount returns value greater than 0", async () => {
-          expectedAptMinted = await poolToken.calculateMintAmount(1000000000, {
-            from: randomUser,
-          });
+          expectedAptMinted = await poolToken.calculateMintAmount(1000000000);
           console.debug(
             `\tExpected APT Minted: ${expectedAptMinted.toString()}`
           );
@@ -204,7 +202,7 @@ describe("Contract: APYPoolToken", () => {
             1000,
             await underlyer.decimals()
           );
-          const addLiquidityPromise = await poolToken
+          const addLiquidityPromise = poolToken
             .connect(deployer)
             .addLiquidity(amount);
           const trx = await addLiquidityPromise;
@@ -213,15 +211,14 @@ describe("Contract: APYPoolToken", () => {
           let bal = await underlyer.balanceOf(deployer.address);
           console.debug(`\tUSDC Balance After Mint: ${bal.toString()}`);
 
-          assert.equal(await underlyer.balanceOf(poolToken.address), amount);
-          assert.equal(
-            await underlyer.balanceOf(deployer.address),
-            underlyerBalanceBefore - amount
+          expect(await underlyer.balanceOf(poolToken.address)).to.equal(amount);
+          expect(await underlyer.balanceOf(deployer.address)).to.equal(
+            underlyerBalanceBefore.sub(amount)
           );
 
           aptMinted = await poolToken.balanceOf(deployer.address);
           console.debug(`\tAPT Balance: ${aptMinted.toString()}`);
-          assert.equal(aptMinted.toString(), expectedAptMinted.toString());
+          expect(aptMinted).to.equal(expectedAptMinted);
 
           const tokenEthVal = await poolToken.getEthValueFromTokenAmount(
             amount
@@ -236,10 +233,17 @@ describe("Contract: APYPoolToken", () => {
           // this is the mint transfer
           await expect(addLiquidityPromise)
             .to.emit(poolToken, "Transfer")
-            .withArgs(ZERO_ADDRESS, deployer, aptMinted);
+            .withArgs(ZERO_ADDRESS, deployer.address, aptMinted);
           await expect(addLiquidityPromise)
             .to.emit(poolToken, "DepositedAPT")
-            .withArgs(deployer, amount, aptMinted, tokenEthVal, tokenEthVal);
+            .withArgs(
+              deployer.address,
+              underlyer.address,
+              amount,
+              aptMinted,
+              tokenEthVal,
+              tokenEthVal
+            );
         });
       });
 
