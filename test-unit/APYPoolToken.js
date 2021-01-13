@@ -1,5 +1,5 @@
 const { assert } = require("chai");
-const { ethers, artifacts, contract } = require("hardhat");
+const { ethers, artifacts } = require("hardhat");
 const { defaultAbiCoder: abiCoder } = ethers.utils;
 const {
   BN,
@@ -10,10 +10,6 @@ const {
 const { expect } = require("chai");
 const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
-const MockContract = artifacts.require("MockContract");
-const ProxyAdmin = artifacts.require("ProxyAdmin");
-const APYPoolTokenProxy = artifacts.require("APYPoolTokenProxy");
-const APYPoolToken = artifacts.require("TestAPYPoolToken");
 const IERC20 = new ethers.utils.Interface(
   artifacts.require(
     "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol:IERC20"
@@ -25,16 +21,23 @@ const ERC20 = new ethers.utils.Interface(
   ).abi
 );
 
-contract("APYPoolToken Unit Test", async (accounts) => {
-  const [owner, instanceAdmin, randomUser, randomAddress] = accounts;
+describe("Contract: APYPoolToken", () => {
+  let owner;
+  let instanceAdmin;
+  let randomUser;
+  let randomAddress;
 
+  let MockContract;
+  let ProxyAdmin;
+  let APYPoolTokenProxy;
+  let APYPoolToken;
+
+  let mockToken;
+  let mockPriceAgg;
   let proxyAdmin;
   let logic;
   let proxy;
   let instance;
-
-  let mockToken;
-  let mockPriceAgg;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -49,6 +52,18 @@ contract("APYPoolToken Unit Test", async (accounts) => {
   });
 
   before(async () => {
+    [
+      owner,
+      instanceAdmin,
+      randomUser,
+      randomAddress,
+    ] = await ethers.getSigners();
+
+    MockContract = await ethers.getContractFactory("MockContract");
+    ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+    APYPoolTokenProxy = await ethers.getContractFactory("APYPoolTokenProxy");
+    APYPoolToken = await ethers.getContractFactory("TestAPYPoolToken");
+
     mockToken = await MockContract.new();
     mockPriceAgg = await MockContract.new();
     proxyAdmin = await ProxyAdmin.new({ from: owner });
