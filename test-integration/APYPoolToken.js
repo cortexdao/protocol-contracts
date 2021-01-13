@@ -13,7 +13,7 @@ const expectEvent = require("@openzeppelin/test-helpers/src/expectEvent");
 /* ************************ */
 /* set DEBUG log level here */
 /* ************************ */
-console.debugging = true;
+console.debugging = false;
 /* ************************ */
 
 async function expectEventInTransaction(
@@ -170,13 +170,14 @@ describe("Contract: APYPoolToken", () => {
           /* these get rollbacked after each test due to snapshotting */
           const aptAmount = tokenAmountToBigNumber("1000000000", "18");
           await poolToken.mint(deployer.address, aptAmount);
-          const underlyerAmount = tokenAmountToBigNumber(
-            "1000",
-            await underlyer.decimals()
+          const symbol = await underlyer.symbol();
+          await acquireToken(
+            STABLECOIN_POOLS[symbol],
+            poolToken.address,
+            underlyer,
+            "10000",
+            deployer.address
           );
-          await underlyer
-            .connect(deployer)
-            .transfer(poolToken.address, underlyerAmount);
         });
 
         it("calculateMintAmount returns value", async () => {
@@ -188,6 +189,7 @@ describe("Contract: APYPoolToken", () => {
           );
           assert(expectedAptMinted.gt(0));
         });
+
         it("getPoolTotalEthValue returns value", async () => {
           const val = await poolToken.getPoolTotalEthValue();
           console.debug(`\tPool Total Eth Value ${val.toString()}`);
@@ -195,13 +197,17 @@ describe("Contract: APYPoolToken", () => {
         });
 
         it("getAPTEthValue returns value", async () => {
-          const val = await poolToken.getAPTEthValue(100);
+          const aptAmount = tokenAmountToBigNumber("100", "18");
+          const val = await poolToken.getAPTEthValue(aptAmount);
           console.debug(`\tAPT Eth Value: ${val.toString()}`);
           assert(val.gt(0));
         });
 
         it("getTokenAmountFromEthValue returns value", async () => {
-          const tokenAmount = await poolToken.getTokenAmountFromEthValue("500");
+          const ethAmount = tokenAmountToBigNumber("500", "18");
+          const tokenAmount = await poolToken.getTokenAmountFromEthValue(
+            ethAmount
+          );
           console.debug(
             `\tToken Amount from Eth Value: ${tokenAmount.toString()}`
           );
@@ -221,7 +227,8 @@ describe("Contract: APYPoolToken", () => {
         });
 
         it("getUnderlyerAmount returns value", async () => {
-          const underlyerAmount = await poolToken.getUnderlyerAmount("1000000");
+          const aptAmount = tokenAmountToBigNumber("100", "18");
+          const underlyerAmount = await poolToken.getUnderlyerAmount(aptAmount);
           console.debug(`\tUnderlyer Amount: ${underlyerAmount.toString()}`);
           assert(underlyerAmount.gt(0));
         });
