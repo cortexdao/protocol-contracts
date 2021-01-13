@@ -14,7 +14,7 @@ const { BigNumber } = require("ethers");
 /* ************************ */
 /* set DEBUG log level here */
 /* ************************ */
-console.debugging = false;
+console.debugging = true;
 /* ************************ */
 
 async function expectEventInTransaction(
@@ -130,7 +130,7 @@ describe("Contract: APYPoolToken", () => {
         console.debug(`Proxy: ${proxy.address}`);
       });
 
-      describe("Test Defaults", () => {
+      describe("Defaults", () => {
         it("Owner is set to deployer", async () => {
           assert.equal(await poolToken.owner(), deployer.address);
         });
@@ -144,11 +144,11 @@ describe("Contract: APYPoolToken", () => {
         });
 
         it("Symbol has correct value", async () => {
-          assert.equal(await poolToken.symbol.call(), "APT");
+          assert.equal(await poolToken.symbol(), "APT");
         });
 
         it("Decimals has correct value", async () => {
-          assert.equal(await poolToken.decimals.call(), 18);
+          assert.equal(await poolToken.decimals(), 18);
         });
 
         it("Blocks ether transfer", async () => {
@@ -159,14 +159,12 @@ describe("Contract: APYPoolToken", () => {
         });
       });
 
-      describe("Test setAdminAdddress", () => {
-        it("Owner can set admin address", async () => {
-          await poolToken.connect(deployer).setAdminAddress(admin.address);
-          assert.equal(await poolToken.proxyAdmin(), admin.address);
-        });
+      it("Owner can set admin address", async () => {
+        await poolToken.connect(deployer).setAdminAddress(admin.address);
+        assert.equal(await poolToken.proxyAdmin(), admin.address);
       });
 
-      describe("Test calculateMintAmount", () => {
+      describe("Underlyer integration with calculations", () => {
         it("calculateMintAmount returns value", async () => {
           const expectedAptMinted = await poolToken.calculateMintAmount(
             1000000000
@@ -176,62 +174,48 @@ describe("Contract: APYPoolToken", () => {
           );
           assert(expectedAptMinted.gt(0));
         });
-      });
-      describe("Test getPoolTotalEthValue", () => {
         it("getPoolTotalEthValue returns value", async () => {
-          const val = await poolToken.getPoolTotalEthValue.call();
+          const val = await poolToken.getPoolTotalEthValue();
           console.debug(`\tPool Total Eth Value ${val.toString()}`);
           assert(val.gt(0));
         });
-      });
 
-      describe("Test getAPTEthValue", () => {
         it("getAPTEthValue returns value", async () => {
           const val = await poolToken.getAPTEthValue(100);
           console.debug(`\tAPT Eth Value: ${val.toString()}`);
           assert(val.gt(0));
         });
-      });
 
-      describe("Test getTokenAmountFromEthValue", () => {
         it("getTokenAmountFromEthValue returns value", async () => {
-          const tokenAmount = await poolToken.getTokenAmountFromEthValue.call(
-            "500"
-          );
+          const tokenAmount = await poolToken.getTokenAmountFromEthValue("500");
           console.debug(
             `\tToken Amount from Eth Value: ${tokenAmount.toString()}`
           );
           assert(tokenAmount.gt(0));
         });
-      });
 
-      describe("Test getEthValueFromTokenAmount", () => {
         it("getEthValueFromTokenAmount returns value", async () => {
           const val = await poolToken.getEthValueFromTokenAmount("5000");
           console.debug(`\tEth Value from Token Amount ${val.toString()}`);
           assert(val.gt(0));
         });
-      });
 
-      describe("Test getTokenEthPrice", () => {
         it("getTokenEthPrice returns value", async () => {
-          const price = await poolToken.getTokenEthPrice.call();
+          const price = await poolToken.getTokenEthPrice();
           console.debug(`\tToken Eth Price: ${price.toString()}`);
           assert(price.gt(0));
         });
-      });
 
-      describe("Test getUnderlyerAmount", () => {
         it("getUnderlyerAmount returns value", async () => {
           const underlyerAmount = await poolToken.getUnderlyerAmount(
             "2605000000000000000000"
           );
-          console.log(`\tUnderlyer Amount: ${underlyerAmount.toString()}`);
+          console.debug(`\tUnderlyer Amount: ${underlyerAmount.toString()}`);
           assert(underlyerAmount.gt(0));
         });
       });
 
-      describe("Test addLiquidity", () => {
+      describe("Add liquidity", () => {
         it("Test locking/unlocking addLiquidity by owner", async () => {
           await expect(poolToken.connect(deployer).lockAddLiquidity()).to.emit(
             poolToken,
@@ -299,7 +283,7 @@ describe("Contract: APYPoolToken", () => {
         });
       });
 
-      describe("Test redeem", () => {
+      describe("Redeem", () => {
         it("Test locking/unlocking redeem by owner", async () => {
           await expect(poolToken.connect(deployer).lockRedeem()).to.emit(
             poolToken,
