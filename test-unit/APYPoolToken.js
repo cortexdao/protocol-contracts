@@ -1,15 +1,13 @@
-const { assert } = require("chai");
+const { assert, expect } = require("chai");
 const { ethers, artifacts } = require("hardhat");
 const { defaultAbiCoder: abiCoder } = ethers.utils;
-const {
-  BN,
-  constants,
-  expectEvent, // Assertions for emitted events
-  expectRevert, // Assertions for transactions that should fail
-} = require("@openzeppelin/test-helpers");
-const { expect } = require("chai");
 const timeMachine = require("ganache-time-traveler");
-const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
+const {
+  ZERO_ADDRESS,
+  FAKE_ADDRESS,
+  ANOTHER_FAKE_ADDRESS,
+} = require("../utils/helpers");
+
 const IERC20 = new ethers.utils.Interface(
   artifacts.require(
     "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol:IERC20"
@@ -21,11 +19,10 @@ const ERC20 = new ethers.utils.Interface(
   ).abi
 );
 
-describe("Contract: APYPoolToken", () => {
-  let owner;
-  let instanceAdmin;
+describe.only("Contract: APYPoolToken", () => {
+  let deployer;
+  let admin;
   let randomUser;
-  let randomAddress;
 
   let MockContract;
   let ProxyAdmin;
@@ -37,7 +34,7 @@ describe("Contract: APYPoolToken", () => {
   let proxyAdmin;
   let logic;
   let proxy;
-  let instance;
+  let poolToken;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -52,119 +49,109 @@ describe("Contract: APYPoolToken", () => {
   });
 
   before(async () => {
-    [
-      owner,
-      instanceAdmin,
-      randomUser,
-      randomAddress,
-    ] = await ethers.getSigners();
+    [deployer, admin, randomUser] = await ethers.getSigners();
 
     MockContract = await ethers.getContractFactory("MockContract");
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     APYPoolTokenProxy = await ethers.getContractFactory("APYPoolTokenProxy");
     APYPoolToken = await ethers.getContractFactory("TestAPYPoolToken");
 
-    mockToken = await MockContract.new();
-    mockPriceAgg = await MockContract.new();
-    proxyAdmin = await ProxyAdmin.new({ from: owner });
-    logic = await APYPoolToken.new({ from: owner });
-    proxy = await APYPoolTokenProxy.new(
+    mockToken = await MockContract.deploy();
+    await mockToken.deployed();
+    mockPriceAgg = await MockContract.deploy();
+    await mockPriceAgg.deployed();
+    proxyAdmin = await ProxyAdmin.deploy();
+    await proxyAdmin.deployed();
+    logic = await APYPoolToken.deploy();
+    await logic.deployed();
+    proxy = await APYPoolTokenProxy.deploy(
       logic.address,
       proxyAdmin.address,
       mockToken.address,
-      mockPriceAgg.address,
-      {
-        from: owner,
-      }
+      mockPriceAgg.address
     );
-    instance = await APYPoolToken.at(proxy.address);
+    await proxy.deployed();
+    poolToken = await APYPoolToken.attach(proxy.address);
   });
 
   describe("Test Constructor", async () => {
     it("Test params invalid admin", async () => {
-      await expectRevert.unspecified(
-        APYPoolTokenProxy.new(
+      await expect(
+        APYPoolTokenProxy.deploy(
           logic.address,
           ZERO_ADDRESS,
           mockToken.address,
-          mockPriceAgg.address,
-          {
-            from: owner,
-          }
+          mockPriceAgg.address
         )
-      );
+      ).to.be.reverted;
     });
 
     it("Test params invalid token", async () => {
-      await expectRevert.unspecified(
-        APYPoolTokenProxy.new(
+      await expect(
+        APYPoolTokenProxy.deploy(
           logic.address,
           proxyAdmin.address,
           ZERO_ADDRESS,
-          mockPriceAgg.address,
-          {
-            from: owner,
-          }
+          mockPriceAgg.address
         )
-      );
+      ).to.be.reverted;
     });
 
     it("Test params invalid agg", async () => {
-      await expectRevert.unspecified(
-        APYPoolTokenProxy.new(
+      await expect(
+        APYPoolTokenProxy.deploy(
           logic.address,
           proxyAdmin.address,
           mockToken.address,
-          ZERO_ADDRESS,
-          {
-            from: owner,
-          }
+          ZERO_ADDRESS
         )
-      );
+      ).to.be.reverted;
     });
   });
 
-  describe("Test Defaults", async () => {
-    it("Test Owner", async () => {
-      assert.equal(await instance.owner.call(), owner);
+  describe("Defaults", async () => {
+    it("Owner set to deployer", async () => {
+      assert.equal(await poolToken.owner(), deployer.address);
     });
 
-    it("Test DEFAULT_APT_TO_UNDERLYER_FACTOR", async () => {
-      assert.equal(await instance.DEFAULT_APT_TO_UNDERLYER_FACTOR.call(), 1000);
+    it("DEFAULT_APT_TO_UNDERLYER_FACTOR set to correct value", async () => {
+      assert.equal(await poolToken.DEFAULT_APT_TO_UNDERLYER_FACTOR(), 1000);
     });
 
-    it("Test Pool Token Name", async () => {
-      assert.equal(await instance.name.call(), "APY Pool Token");
+    it("Name set to correct value", async () => {
+      assert.equal(await poolToken.name(), "APY Pool Token");
     });
 
-    it("Test Pool Symbol", async () => {
-      assert.equal(await instance.symbol.call(), "APT");
+    it("Symbol set to correct value", async () => {
+      assert.equal(await poolToken.symbol(), "APT");
     });
 
-    it("Test Pool Decimals", async () => {
-      assert.equal(await instance.decimals.call(), 18);
+    it("Decimals set to correct value", async () => {
+      assert.equal(await poolToken.decimals(), 18);
     });
 
-    it("Test sending Ether", async () => {
-      await expectRevert(instance.send(10), "DONT_SEND_ETHER");
+    it("Block ether transfer", async () => {
+      await expect(
+        deployer.sendTransaction({ to: poolToken.address, value: "10" })
+      ).to.be.revertedWith("DONT_SEND_ETHER");
     });
   });
 
   describe("Test setAdminAdddress", async () => {
     it("Test setAdminAddress pass", async () => {
-      await instance.setAdminAddress(instanceAdmin, { from: owner });
-      assert.equal(await instance.proxyAdmin.call(), instanceAdmin);
+      await poolToken.setAdminAddress(admin, { from: deployer });
+      assert.equal(await poolToken.proxyAdmin.call(), admin);
     });
 
     it("Test setAdminAddress invalid admin", async () => {
       await expectRevert.unspecified(
-        instance.setAdminAddress(ZERO_ADDRESS, { from: owner })
+        poolToken.setAdminAddress(ZERO_ADDRESS, { from: deployer })
       );
     });
 
     it("Test setAdminAddress fail", async () => {
       await expectRevert.unspecified(
-        instance.setAdminAddress(instanceAdmin, { from: randomUser })
+        poolToken.setAdminAddress(admin, { from: randomUser })
       );
     });
   });
@@ -172,15 +159,15 @@ describe("Contract: APYPoolToken", () => {
   describe("Test setPriceAggregator", async () => {
     it("Test addSupportedTokens with invalid agg", async () => {
       await expectRevert(
-        instance.setPriceAggregator(constants.ZERO_ADDRESS),
+        poolToken.setPriceAggregator(ZERO_ADDRESS),
         "INVALID_AGG"
       );
     });
 
     it("Test setPriceAggregator when not owner", async () => {
       await expectRevert(
-        instance.setPriceAggregator(randomAddress, {
-          from: randomAddress,
+        poolToken.setPriceAggregator(FAKE_ADDRESS, {
+          from: ANOTHER_FAKE_ADDRESS,
         }),
         "Ownable: caller is not the owner"
       );
@@ -188,9 +175,9 @@ describe("Contract: APYPoolToken", () => {
 
     it("Test setPriceAggregator pass", async () => {
       const newPriceAgg = await MockContract.new();
-      const trx = await instance.setPriceAggregator(newPriceAgg.address);
+      const trx = await poolToken.setPriceAggregator(newPriceAgg.address);
 
-      const priceAgg = await instance.priceAgg.call();
+      const priceAgg = await poolToken.priceAgg.call();
 
       assert.equal(priceAgg, newPriceAgg.address);
       await expectEvent(trx, "PriceAggregatorChanged", {
@@ -201,31 +188,31 @@ describe("Contract: APYPoolToken", () => {
 
   describe("Test addLiquidity", async () => {
     it("Test addLiquidity insufficient amount", async () => {
-      await expectRevert(instance.addLiquidity(0), "AMOUNT_INSUFFICIENT");
+      await expectRevert(poolToken.addLiquidity(0), "AMOUNT_INSUFFICIENT");
     });
 
     it("Test addLiquidity insufficient allowance", async () => {
       const allowance = IERC20.encodeFunctionData("allowance", [
-        owner,
-        instance.address,
+        deployer,
+        poolToken.address,
       ]);
       const mockAgg = await MockContract.new();
-      await instance.setPriceAggregator(mockAgg.address);
+      await poolToken.setPriceAggregator(mockAgg.address);
       await mockToken.givenMethodReturnUint(allowance, 0);
-      await expectRevert(instance.addLiquidity(1), "ALLOWANCE_INSUFFICIENT");
+      await expectRevert(poolToken.addLiquidity(1), "ALLOWANCE_INSUFFICIENT");
     });
 
     it("Test addLiquidity pass", async () => {
       const allowance = IERC20.encodeFunctionData("allowance", [
         randomUser,
-        instance.address,
+        poolToken.address,
       ]);
       const balanceOf = IERC20.encodeFunctionData("balanceOf", [
-        instance.address,
+        poolToken.address,
       ]);
       const transferFrom = IERC20.encodeFunctionData("transferFrom", [
         randomUser,
-        instance.address,
+        poolToken.address,
         1,
       ]);
       await mockToken.givenMethodReturnUint(allowance, 1);
@@ -239,13 +226,13 @@ describe("Contract: APYPoolToken", () => {
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
 
-      await instance.setPriceAggregator(mockAgg.address);
+      await poolToken.setPriceAggregator(mockAgg.address);
 
-      const trx = await instance.addLiquidity(1, {
+      const trx = await poolToken.addLiquidity(1, {
         from: randomUser,
       });
 
-      const balance = await instance.balanceOf(randomUser);
+      const balance = await poolToken.balanceOf(randomUser);
       assert.equal(balance.toNumber(), 1000);
       // this is the mint transfer
       await expectEvent(trx, "Transfer", {
@@ -268,14 +255,14 @@ describe("Contract: APYPoolToken", () => {
     it("Test locking/unlocking addLiquidity by owner", async () => {
       const allowance = IERC20.encodeFunctionData("allowance", [
         randomUser,
-        instance.address,
+        poolToken.address,
       ]);
       const balanceOf = IERC20.encodeFunctionData("balanceOf", [
-        instance.address,
+        poolToken.address,
       ]);
       const transferFrom = IERC20.encodeFunctionData("transferFrom", [
         randomUser,
-        instance.address,
+        poolToken.address,
         1,
       ]);
       await mockToken.givenMethodReturnUint(allowance, 1);
@@ -289,29 +276,29 @@ describe("Contract: APYPoolToken", () => {
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
 
-      await instance.setPriceAggregator(mockAgg.address);
+      await poolToken.setPriceAggregator(mockAgg.address);
 
-      let trx = await instance.lockAddLiquidity({ from: owner });
+      let trx = await poolToken.lockAddLiquidity({ from: deployer });
       await expectEvent(trx, "AddLiquidityLocked");
 
       await expectRevert(
-        instance.addLiquidity(1, { from: randomUser }),
+        poolToken.addLiquidity(1, { from: randomUser }),
         "LOCKED"
       );
 
-      trx = await instance.unlockAddLiquidity({ from: owner });
+      trx = await poolToken.unlockAddLiquidity({ from: deployer });
       await expectEvent(trx, "AddLiquidityUnlocked");
 
-      await instance.addLiquidity(1, { from: randomUser });
+      await poolToken.addLiquidity(1, { from: randomUser });
     });
 
     it("Test locking/unlocking addLiquidity by not owner", async () => {
       await expectRevert(
-        instance.lockAddLiquidity({ from: randomUser }),
+        poolToken.lockAddLiquidity({ from: randomUser }),
         "Ownable: caller is not the owner"
       );
       await expectRevert(
-        instance.unlockAddLiquidity({ from: randomUser }),
+        poolToken.unlockAddLiquidity({ from: randomUser }),
         "Ownable: caller is not the owner"
       );
     });
@@ -320,7 +307,7 @@ describe("Contract: APYPoolToken", () => {
   describe("Test getPoolTotalEthValue", async () => {
     it("Test getPoolTotalEthValue returns expected", async () => {
       const balanceOf = IERC20.encodeFunctionData("balanceOf", [
-        instance.address,
+        poolToken.address,
       ]);
 
       mockToken.givenMethodReturnUint(balanceOf, 1);
@@ -332,9 +319,9 @@ describe("Contract: APYPoolToken", () => {
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
 
-      await instance.setPriceAggregator(mockAgg.address);
+      await poolToken.setPriceAggregator(mockAgg.address);
 
-      const val = await instance.getPoolTotalEthValue.call();
+      const val = await poolToken.getPoolTotalEthValue.call();
       assert.equal(val.toNumber(), 100);
     });
   });
@@ -342,16 +329,16 @@ describe("Contract: APYPoolToken", () => {
   describe("Test getAPTEthValue", async () => {
     it("Test getAPTEthValue when insufficient total supply", async () => {
       await expectRevert(
-        instance.getAPTEthValue(10),
+        poolToken.getAPTEthValue(10),
         "INSUFFICIENT_TOTAL_SUPPLY"
       );
     });
 
     it("Test getAPTEthValue returns expected", async () => {
-      await instance.mint(randomUser, 100);
+      await poolToken.mint(randomUser, 100);
 
       const balanceOf = IERC20.encodeFunctionData("balanceOf", [
-        instance.address,
+        poolToken.address,
       ]);
 
       mockToken.givenMethodReturnUint(balanceOf, 1);
@@ -363,9 +350,9 @@ describe("Contract: APYPoolToken", () => {
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
 
-      await instance.setPriceAggregator(mockAgg.address);
+      await poolToken.setPriceAggregator(mockAgg.address);
 
-      const val = await instance.getAPTEthValue(10);
+      const val = await poolToken.getAPTEthValue(10);
       assert.equal(val.toNumber(), 10);
     });
   });
@@ -378,16 +365,16 @@ describe("Contract: APYPoolToken", () => {
       );
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
-      await instance.setPriceAggregator(mockAgg.address);
+      await poolToken.setPriceAggregator(mockAgg.address);
       // ((10 ^ 0) * 100) / 100
-      const tokenAmount = await instance.getTokenAmountFromEthValue(100);
+      const tokenAmount = await poolToken.getTokenAmountFromEthValue(100);
       assert.equal(tokenAmount.toNumber(), 1);
     });
   });
 
   describe("Test getEthValueFromTokenAmount", async () => {
     it("Test getEthValueFromTokenAmount returns 0 with 0 amount", async () => {
-      const val = await instance.getEthValueFromTokenAmount(0);
+      const val = await poolToken.getEthValueFromTokenAmount(0);
       assert.equal(val.toNumber(), 0);
     });
 
@@ -398,9 +385,9 @@ describe("Contract: APYPoolToken", () => {
       );
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
-      await instance.setPriceAggregator(mockAgg.address);
+      await poolToken.setPriceAggregator(mockAgg.address);
 
-      const val = await instance.getEthValueFromTokenAmount(1);
+      const val = await poolToken.getEthValueFromTokenAmount(1);
       assert.equal(val.toNumber(), 100);
     });
   });
@@ -414,9 +401,9 @@ describe("Contract: APYPoolToken", () => {
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
 
-      await instance.setPriceAggregator(mockAgg.address);
+      await poolToken.setPriceAggregator(mockAgg.address);
       await expectRevert(
-        instance.getTokenEthPrice.call(),
+        poolToken.getTokenEthPrice.call(),
         "UNABLE_TO_RETRIEVE_ETH_PRICE"
       );
     });
@@ -429,34 +416,34 @@ describe("Contract: APYPoolToken", () => {
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
 
-      await instance.setPriceAggregator(mockAgg.address);
-      const price = await instance.getTokenEthPrice.call();
+      await poolToken.setPriceAggregator(mockAgg.address);
+      const price = await poolToken.getTokenEthPrice.call();
       assert.equal(price, 100);
     });
   });
 
   describe("Test redeem", async () => {
     it("Test redeem insufficient amount", async () => {
-      await expectRevert(instance.redeem(0), "AMOUNT_INSUFFICIENT");
+      await expectRevert(poolToken.redeem(0), "AMOUNT_INSUFFICIENT");
     });
 
     it("Test redeem insufficient balance", async () => {
-      await instance.mint(randomUser, 1);
+      await poolToken.mint(randomUser, 1);
       await expectRevert(
-        instance.redeem(2, { from: randomUser }),
+        poolToken.redeem(2, { from: randomUser }),
         "BALANCE_INSUFFICIENT"
       );
     });
 
     it("Test redeem pass", async () => {
-      await instance.mint(randomUser, 1000);
+      await poolToken.mint(randomUser, 1000);
 
       const allowance = IERC20.encodeFunctionData("allowance", [
         randomUser,
-        instance.address,
+        poolToken.address,
       ]);
       const balanceOf = IERC20.encodeFunctionData("balanceOf", [
-        instance.address,
+        poolToken.address,
       ]);
       const transfer = IERC20.encodeFunctionData("transfer", [randomUser, 1]);
       await mockToken.givenMethodReturnUint(allowance, 1);
@@ -470,13 +457,13 @@ describe("Contract: APYPoolToken", () => {
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
 
-      await instance.setPriceAggregator(mockAgg.address);
+      await poolToken.setPriceAggregator(mockAgg.address);
 
-      const trx = await instance.redeem(1000, {
+      const trx = await poolToken.redeem(1000, {
         from: randomUser,
       });
 
-      const bal = await instance.balanceOf(randomUser);
+      const bal = await poolToken.balanceOf(randomUser);
       assert.equal(bal.toNumber(), 0);
       await expectEvent(trx, "Transfer", {
         from: randomUser,
@@ -495,43 +482,43 @@ describe("Contract: APYPoolToken", () => {
     });
 
     it("Test locking/unlocking redeem by owner", async () => {
-      await instance.mint(randomUser, 100);
+      await poolToken.mint(randomUser, 100);
       const mockAgg = await MockContract.new();
-      await instance.setPriceAggregator(mockAgg.address);
+      await poolToken.setPriceAggregator(mockAgg.address);
 
-      let trx = await instance.lockRedeem({ from: owner });
+      let trx = await poolToken.lockRedeem({ from: deployer });
       expectEvent(trx, "RedeemLocked");
 
-      await expectRevert(instance.redeem(50, { from: randomUser }), "LOCKED");
+      await expectRevert(poolToken.redeem(50, { from: randomUser }), "LOCKED");
 
-      trx = await instance.unlockRedeem({ from: owner });
+      trx = await poolToken.unlockRedeem({ from: deployer });
       expectEvent(trx, "RedeemUnlocked");
     });
 
     it("Test locking/unlocking contract by not owner", async () => {
-      await instance.mint(randomUser, 100);
+      await poolToken.mint(randomUser, 100);
       const mockAgg = await MockContract.new();
-      await instance.setPriceAggregator(mockAgg.address);
+      await poolToken.setPriceAggregator(mockAgg.address);
 
-      let trx = await instance.lock({ from: owner });
+      let trx = await poolToken.lock({ from: deployer });
       expectEvent(trx, "Paused");
 
       await expectRevert(
-        instance.redeem(50, { from: randomUser }),
+        poolToken.redeem(50, { from: randomUser }),
         "Pausable: paused"
       );
 
-      trx = await instance.unlock({ from: owner });
+      trx = await poolToken.unlock({ from: deployer });
       expectEvent(trx, "Unpaused");
     });
 
     it("Test locking/unlocking redeem by not owner", async () => {
       await expectRevert(
-        instance.lockRedeem({ from: randomUser }),
+        poolToken.lockRedeem({ from: randomUser }),
         "Ownable: caller is not the owner"
       );
       await expectRevert(
-        instance.unlockRedeem({ from: randomUser }),
+        poolToken.unlockRedeem({ from: randomUser }),
         "Ownable: caller is not the owner"
       );
     });
@@ -542,7 +529,7 @@ describe("Contract: APYPoolToken", () => {
       // total supply is 0
 
       const balanceOf = IERC20.encodeFunctionData("balanceOf", [
-        instance.address,
+        poolToken.address,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, 0);
 
@@ -553,9 +540,9 @@ describe("Contract: APYPoolToken", () => {
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
 
-      await instance.setPriceAggregator(mockAgg.address);
+      await poolToken.setPriceAggregator(mockAgg.address);
 
-      const mintAmount = await instance.calculateMintAmount(1000);
+      const mintAmount = await poolToken.calculateMintAmount(1000);
       assert.equal(mintAmount.toNumber(), 1000000);
     });
 
@@ -563,7 +550,7 @@ describe("Contract: APYPoolToken", () => {
       // total supply is 0
 
       const balanceOf = IERC20.encodeFunctionData("balanceOf", [
-        instance.address,
+        poolToken.address,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, 9999);
       const returnData = abiCoder.encode(
@@ -572,15 +559,15 @@ describe("Contract: APYPoolToken", () => {
       );
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
-      await instance.setPriceAggregator(mockAgg.address);
+      await poolToken.setPriceAggregator(mockAgg.address);
 
-      const mintAmount = await instance.calculateMintAmount(1000);
+      const mintAmount = await poolToken.calculateMintAmount(1000);
       assert.equal(mintAmount.toNumber(), 1000000);
     });
 
     it("Test calculateMintAmount returns expeted amount when total supply > 0", async () => {
       const balanceOf = IERC20.encodeFunctionData("balanceOf", [
-        instance.address,
+        poolToken.address,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, 9999);
       const returnData = abiCoder.encode(
@@ -589,11 +576,11 @@ describe("Contract: APYPoolToken", () => {
       );
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
-      await instance.setPriceAggregator(mockAgg.address);
+      await poolToken.setPriceAggregator(mockAgg.address);
 
-      await instance.mint(randomUser, 900);
+      await poolToken.mint(randomUser, 900);
       // (1000/9999) * 900 = 90.0090009001 ~= 90
-      const mintAmount = await instance.calculateMintAmount(1000, {
+      const mintAmount = await poolToken.calculateMintAmount(1000, {
         from: randomUser,
       });
       assert.equal(mintAmount.toNumber(), 90);
@@ -601,7 +588,7 @@ describe("Contract: APYPoolToken", () => {
 
     it("Test calculateMintAmount returns expeted amount when total supply is 0", async () => {
       const balanceOf = IERC20.encodeFunctionData("balanceOf", [
-        instance.address,
+        poolToken.address,
       ]);
       await mockToken.givenMethodReturnUint(balanceOf, 9999);
       const returnData = abiCoder.encode(
@@ -610,10 +597,10 @@ describe("Contract: APYPoolToken", () => {
       );
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
-      await instance.setPriceAggregator(mockAgg.address);
+      await poolToken.setPriceAggregator(mockAgg.address);
 
       // 90 * 1000 = 90000
-      const mintAmount = await instance.calculateMintAmount(90, {
+      const mintAmount = await poolToken.calculateMintAmount(90, {
         from: randomUser,
       });
       assert.equal(mintAmount.toNumber(), 90000);
@@ -623,7 +610,7 @@ describe("Contract: APYPoolToken", () => {
   describe("Test getUnderlyerAmount", async () => {
     it("Test getUnderlyerAmount when divide by zero", async () => {
       await expectRevert(
-        instance.getUnderlyerAmount.call(100),
+        poolToken.getUnderlyerAmount.call(100),
         "INSUFFICIENT_TOTAL_SUPPLY"
       );
     });
@@ -640,9 +627,9 @@ describe("Contract: APYPoolToken", () => {
       const mockAgg = await MockContract.new();
       await mockAgg.givenAnyReturn(returnData);
 
-      await instance.setPriceAggregator(mockAgg.address);
-      await instance.mint(randomUser, 1);
-      const underlyerAmount = await instance.getUnderlyerAmount.call("1");
+      await poolToken.setPriceAggregator(mockAgg.address);
+      await poolToken.mint(randomUser, 1);
+      const underlyerAmount = await poolToken.getUnderlyerAmount.call("1");
       expect(underlyerAmount).to.bignumber.equal("1");
     });
   });
