@@ -97,10 +97,6 @@ describe("Contract: APYPoolToken", () => {
       let proxy;
       let poolToken;
 
-      let expectedAptMinted;
-      let aptMinted;
-      let underlyerBalanceBefore;
-
       before("Setup", async () => {
         underlyer = await ethers.getContractAt("IDetailedERC20", tokenAddress);
         agg = await ethers.getContractAt("AggregatorV3Interface", aggAddress);
@@ -171,12 +167,67 @@ describe("Contract: APYPoolToken", () => {
       });
 
       describe("Test calculateMintAmount", () => {
-        it("Check calculateMintAmount returns value greater than 0", async () => {
-          expectedAptMinted = await poolToken.calculateMintAmount(1000000000);
+        it("calculateMintAmount returns value", async () => {
+          const expectedAptMinted = await poolToken.calculateMintAmount(
+            1000000000
+          );
           console.debug(
             `\tExpected APT Minted: ${expectedAptMinted.toString()}`
           );
           assert(expectedAptMinted.gt(0));
+        });
+      });
+      describe("Test getPoolTotalEthValue", () => {
+        it("getPoolTotalEthValue returns value", async () => {
+          const val = await poolToken.getPoolTotalEthValue.call();
+          console.debug(`\tPool Total Eth Value ${val.toString()}`);
+          assert(val.gt(0));
+        });
+      });
+
+      describe("Test getAPTEthValue", () => {
+        it("getAPTEthValue returns value", async () => {
+          const val = await poolToken.getAPTEthValue(100);
+          console.debug(`\tAPT Eth Value: ${val.toString()}`);
+          assert(val.gt(0));
+        });
+      });
+
+      describe("Test getTokenAmountFromEthValue", () => {
+        it("getTokenAmountFromEthValue returns value", async () => {
+          const tokenAmount = await poolToken.getTokenAmountFromEthValue.call(
+            "500"
+          );
+          console.debug(
+            `\tToken Amount from Eth Value: ${tokenAmount.toString()}`
+          );
+          assert(tokenAmount.gt(0));
+        });
+      });
+
+      describe("Test getEthValueFromTokenAmount", () => {
+        it("getEthValueFromTokenAmount returns value", async () => {
+          const val = await poolToken.getEthValueFromTokenAmount("5000");
+          console.debug(`\tEth Value from Token Amount ${val.toString()}`);
+          assert(val.gt(0));
+        });
+      });
+
+      describe("Test getTokenEthPrice", () => {
+        it("getTokenEthPrice returns value", async () => {
+          const price = await poolToken.getTokenEthPrice.call();
+          console.debug(`\tToken Eth Price: ${price.toString()}`);
+          assert(price.gt(0));
+        });
+      });
+
+      describe("Test getUnderlyerAmount", () => {
+        it("getUnderlyerAmount returns value", async () => {
+          const underlyerAmount = await poolToken.getUnderlyerAmount(
+            "2605000000000000000000"
+          );
+          console.log(`\tUnderlyer Amount: ${underlyerAmount.toString()}`);
+          assert(underlyerAmount.gt(0));
         });
       });
 
@@ -193,8 +244,10 @@ describe("Contract: APYPoolToken", () => {
         });
 
         it("Test addLiquidity pass", async () => {
-          underlyerBalanceBefore = await underlyer.balanceOf(deployer.address);
-          console.log(
+          const underlyerBalanceBefore = await underlyer.balanceOf(
+            deployer.address
+          );
+          console.debug(
             `\tUSDC Balance Before Mint: ${underlyerBalanceBefore.toString()}`
           );
 
@@ -216,9 +269,8 @@ describe("Contract: APYPoolToken", () => {
             underlyerBalanceBefore.sub(amount)
           );
 
-          aptMinted = await poolToken.balanceOf(deployer.address);
+          const aptMinted = await poolToken.balanceOf(deployer.address);
           console.debug(`\tAPT Balance: ${aptMinted.toString()}`);
-          expect(aptMinted).to.equal(expectedAptMinted);
 
           const tokenEthVal = await poolToken.getEthValueFromTokenAmount(
             amount
@@ -244,60 +296,6 @@ describe("Contract: APYPoolToken", () => {
               tokenEthVal,
               tokenEthVal
             );
-        });
-      });
-
-      describe("Test getPoolTotalEthValue", () => {
-        it("Test getPoolTotalEthValue returns value", async () => {
-          const val = await poolToken.getPoolTotalEthValue.call();
-          console.log(`\tPool Total Eth Value ${val.toString()}`);
-          assert(val.toString(), aptMinted.div("1000").toString());
-        });
-      });
-
-      describe("Test getAPTEthValue", () => {
-        it("Test getAPTEthValue returns value", async () => {
-          const val = await poolToken.getAPTEthValue(aptMinted);
-          console.log(`\tAPT Eth Value: ${val.toString()}`);
-          assert(val.toString(), aptMinted.div("1000").toString());
-        });
-      });
-
-      describe("Test getTokenAmountFromEthValue", () => {
-        it("Test getTokenAmountFromEthValue returns expected amount", async () => {
-          const tokenAmount = await poolToken.getTokenAmountFromEthValue.call(
-            "500"
-          );
-          console.log(
-            `\tToken Amount from Eth Value: ${tokenAmount.toString()}`
-          );
-          assert(tokenAmount.gt(0));
-        });
-      });
-
-      describe("Test getEthValueFromTokenAmount", () => {
-        it("Test getEthValueFromTokenAmount returns value", async () => {
-          const val = await poolToken.getEthValueFromTokenAmount("5000");
-          console.log(`\tEth Value from Token Amount ${val.toString()}`);
-          assert(val.gt(0));
-        });
-      });
-
-      describe("Test getTokenEthPrice", () => {
-        it("Test getTokenEthPrice returns value", async () => {
-          const price = await poolToken.getTokenEthPrice.call();
-          console.log(`\tToken Eth Price: ${price.toString()}`);
-          assert(price.gt(0));
-        });
-      });
-
-      describe("Test getUnderlyerAmount", () => {
-        it("Test getUnderlyerAmount returns value", async () => {
-          const underlyerAmount = await poolToken.getUnderlyerAmount(
-            "2605000000000000000000"
-          );
-          console.log(`\tUnderlyer Amount: ${underlyerAmount.toString()}`);
-          assert(underlyerAmount.gt(0));
         });
       });
 
@@ -341,30 +339,25 @@ describe("Contract: APYPoolToken", () => {
         });
 
         it("Test redeem pass", async () => {
-          aptMinted = BigNumber.from("100");
+          const aptMinted = BigNumber.from("100");
           await (await poolToken.mint(deployer.address, aptMinted)).wait();
 
           let usdcBal = await underlyer.balanceOf(deployer.address);
-          console.log(`\tUSDC Balance Before Redeem: ${usdcBal.toString()}`);
+          console.debug(`\tUSDC Balance Before Redeem: ${usdcBal.toString()}`);
 
           const redeemPromise = poolToken.connect(deployer).redeem(aptMinted);
           const trx = await redeemPromise;
           await trx.wait();
 
           let usdcBalAfter = await underlyer.balanceOf(deployer.address);
-          console.log(
+          console.debug(
             `\tUSDC Balance After Redeem: ${usdcBalAfter.toString()}`
           );
 
-          // assert balances
-          assert.equal(
-            usdcBalAfter.toString(),
-            underlyerBalanceBefore.toString()
-          );
           assert.equal(await underlyer.balanceOf(poolToken.address), 0);
 
           const bal = await poolToken.balanceOf(deployer.address);
-          console.log(`\tAPT Balance: ${bal.toString()}`);
+          console.debug(`\tAPT Balance: ${bal.toString()}`);
           assert.equal(bal.toString(), "0");
 
           const tokenEthVal = await poolToken.getEthValueFromTokenAmount(
