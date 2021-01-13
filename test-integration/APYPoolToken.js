@@ -9,7 +9,6 @@ const {
   tokenAmountToBigNumber,
 } = require("../utils/helpers");
 const expectEvent = require("@openzeppelin/test-helpers/src/expectEvent");
-const { BigNumber } = require("ethers");
 
 /* ************************ */
 /* set DEBUG log level here */
@@ -116,14 +115,16 @@ describe("Contract: APYPoolToken", () => {
 
         await acquireToken(
           STABLECOIN_POOLS[symbol],
-          deployer.address,
+          randomUser.address,
           underlyer,
           "1000000",
-          deployer.address
+          randomUser.address
         );
 
         //handle allownaces
-        await underlyer.approve(poolToken.address, MAX_UINT256);
+        await underlyer
+          .connect(randomUser)
+          .approve(poolToken.address, MAX_UINT256);
 
         console.debug(`Proxy Admin: ${proxyAdmin.address}`);
         console.debug(`Logic: ${logic.address}`);
@@ -165,6 +166,19 @@ describe("Contract: APYPoolToken", () => {
       });
 
       describe("Underlyer integration with calculations", () => {
+        beforeEach(async () => {
+          /* these get rollbacked after each test due to snapshotting */
+          const aptAmount = tokenAmountToBigNumber("1000000000", "18");
+          await poolToken.mint(deployer.address, aptAmount);
+          const underlyerAmount = tokenAmountToBigNumber(
+            "1000",
+            await underlyer.decimals()
+          );
+          await underlyer
+            .connect(deployer)
+            .transfer(poolToken.address, underlyerAmount);
+        });
+
         it("calculateMintAmount returns value", async () => {
           const expectedAptMinted = await poolToken.calculateMintAmount(
             1000000000
@@ -207,9 +221,7 @@ describe("Contract: APYPoolToken", () => {
         });
 
         it("getUnderlyerAmount returns value", async () => {
-          const underlyerAmount = await poolToken.getUnderlyerAmount(
-            "2605000000000000000000"
-          );
+          const underlyerAmount = await poolToken.getUnderlyerAmount("1000000");
           console.debug(`\tUnderlyer Amount: ${underlyerAmount.toString()}`);
           assert(underlyerAmount.gt(0));
         });
@@ -229,7 +241,7 @@ describe("Contract: APYPoolToken", () => {
 
         it("Test addLiquidity pass", async () => {
           const underlyerBalanceBefore = await underlyer.balanceOf(
-            deployer.address
+            randomUser.address
           );
           console.debug(
             `\tUSDC Balance Before Mint: ${underlyerBalanceBefore.toString()}`
@@ -240,20 +252,20 @@ describe("Contract: APYPoolToken", () => {
             await underlyer.decimals()
           );
           const addLiquidityPromise = poolToken
-            .connect(deployer)
+            .connect(randomUser)
             .addLiquidity(amount);
           const trx = await addLiquidityPromise;
           await trx.wait();
 
-          let bal = await underlyer.balanceOf(deployer.address);
+          let bal = await underlyer.balanceOf(randomUser.address);
           console.debug(`\tUSDC Balance After Mint: ${bal.toString()}`);
 
           expect(await underlyer.balanceOf(poolToken.address)).to.equal(amount);
-          expect(await underlyer.balanceOf(deployer.address)).to.equal(
+          expect(await underlyer.balanceOf(randomUser.address)).to.equal(
             underlyerBalanceBefore.sub(amount)
           );
 
-          const aptMinted = await poolToken.balanceOf(deployer.address);
+          const aptMinted = await poolToken.balanceOf(randomUser.address);
           console.debug(`\tAPT Balance: ${aptMinted.toString()}`);
 
           const tokenEthVal = await poolToken.getEthValueFromTokenAmount(
@@ -262,18 +274,18 @@ describe("Contract: APYPoolToken", () => {
 
           // this is the token transfer
           await expectEventInTransaction(trx.hash, underlyer, "Transfer", {
-            from: deployer.address,
+            from: randomUser.address,
             to: poolToken.address,
             value: amount,
           });
           // this is the mint transfer
           await expect(addLiquidityPromise)
             .to.emit(poolToken, "Transfer")
-            .withArgs(ZERO_ADDRESS, deployer.address, aptMinted);
+            .withArgs(ZERO_ADDRESS, randomUser.address, aptMinted);
           await expect(addLiquidityPromise)
             .to.emit(poolToken, "DepositedAPT")
             .withArgs(
-              deployer.address,
+              randomUser.address,
               underlyer.address,
               amount,
               aptMinted,
@@ -323,24 +335,24 @@ describe("Contract: APYPoolToken", () => {
         });
 
         it("Test redeem pass", async () => {
-          const aptMinted = BigNumber.from("100");
-          await (await poolToken.mint(deployer.address, aptMinted)).wait();
+          const aptMinted = tokenAmountToBigNumber("100", "18");
+          await (await poolToken.mint(randomUser.address, aptMinted)).wait();
 
-          let usdcBal = await underlyer.balanceOf(deployer.address);
+          let usdcBal = await underlyer.balanceOf(randomUser.address);
           console.debug(`\tUSDC Balance Before Redeem: ${usdcBal.toString()}`);
 
-          const redeemPromise = poolToken.connect(deployer).redeem(aptMinted);
+          const redeemPromise = poolToken.connect(randomUser).redeem(aptMinted);
           const trx = await redeemPromise;
           await trx.wait();
 
-          let usdcBalAfter = await underlyer.balanceOf(deployer.address);
+          let usdcBalAfter = await underlyer.balanceOf(randomUser.address);
           console.debug(
             `\tUSDC Balance After Redeem: ${usdcBalAfter.toString()}`
           );
 
           assert.equal(await underlyer.balanceOf(poolToken.address), 0);
 
-          const bal = await poolToken.balanceOf(deployer.address);
+          const bal = await poolToken.balanceOf(randomUser.address);
           console.debug(`\tAPT Balance: ${bal.toString()}`);
           assert.equal(bal.toString(), "0");
 
@@ -350,16 +362,16 @@ describe("Contract: APYPoolToken", () => {
 
           await expectEventInTransaction(trx.hash, underlyer, "Transfer", {
             from: poolToken.address,
-            to: deployer.address,
+            to: randomUser.address,
             value: usdcBalAfter.sub(usdcBal),
           });
           await expect(redeemPromise)
             .to.emit(poolToken, "Transfer")
-            .withArgs(deployer.address, ZERO_ADDRESS, aptMinted);
+            .withArgs(randomUser.address, ZERO_ADDRESS, aptMinted);
           await expect(redeemPromise)
             .to.emit(poolToken, "RedeemedAPT")
             .withArgs(
-              deployer.address,
+              randomUser.address,
               underlyer.address,
               usdcBalAfter.sub(usdcBal),
               aptMinted,
