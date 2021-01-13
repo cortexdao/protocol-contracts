@@ -2,11 +2,7 @@ const { assert, expect } = require("chai");
 const { ethers, artifacts } = require("hardhat");
 const { defaultAbiCoder: abiCoder } = ethers.utils;
 const timeMachine = require("ganache-time-traveler");
-const {
-  ZERO_ADDRESS,
-  FAKE_ADDRESS,
-  ANOTHER_FAKE_ADDRESS,
-} = require("../utils/helpers");
+const { ZERO_ADDRESS, FAKE_ADDRESS } = require("../utils/helpers");
 
 const IERC20 = new ethers.utils.Interface(
   artifacts.require(
@@ -137,58 +133,55 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("Test setAdminAdddress", async () => {
-    it("Test setAdminAddress pass", async () => {
-      await poolToken.setAdminAddress(admin, { from: deployer });
-      assert.equal(await poolToken.proxyAdmin.call(), admin);
+  describe("Admin address", async () => {
+    it("Owner can set admin address", async () => {
+      await poolToken.connect(deployer).setAdminAddress(admin.address);
+      assert.equal(await poolToken.proxyAdmin(), admin.address);
     });
 
-    it("Test setAdminAddress invalid admin", async () => {
-      await expectRevert.unspecified(
-        poolToken.setAdminAddress(ZERO_ADDRESS, { from: deployer })
-      );
+    it("Revert on setting to zero address", async () => {
+      await expect(poolToken.connect(deployer).setAdminAddress(ZERO_ADDRESS)).to
+        .be.reverted;
     });
 
-    it("Test setAdminAddress fail", async () => {
-      await expectRevert.unspecified(
-        poolToken.setAdminAddress(admin, { from: randomUser })
-      );
+    it("Revert when non-owner attempts to set address", async () => {
+      await expect(poolToken.connect(randomUser).setAdminAddress(admin.address))
+        .to.be.reverted;
     });
   });
 
   describe("Test setPriceAggregator", async () => {
     it("Test addSupportedTokens with invalid agg", async () => {
-      await expectRevert(
-        poolToken.setPriceAggregator(ZERO_ADDRESS),
-        "INVALID_AGG"
-      );
+      await expect(
+        poolToken.setPriceAggregator(ZERO_ADDRESS)
+      ).to.be.revertedWith("INVALID_AGG");
     });
 
     it("Test setPriceAggregator when not owner", async () => {
-      await expectRevert(
-        poolToken.setPriceAggregator(FAKE_ADDRESS, {
-          from: ANOTHER_FAKE_ADDRESS,
-        }),
-        "Ownable: caller is not the owner"
-      );
+      await expect(
+        poolToken.connect(randomUser).setPriceAggregator(FAKE_ADDRESS)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
     it("Test setPriceAggregator pass", async () => {
       const newPriceAgg = await MockContract.new();
       const trx = await poolToken.setPriceAggregator(newPriceAgg.address);
+      await trx.wait();
 
-      const priceAgg = await poolToken.priceAgg.call();
+      const priceAgg = await poolToken.priceAgg();
 
       assert.equal(priceAgg, newPriceAgg.address);
-      await expectEvent(trx, "PriceAggregatorChanged", {
-        agg: newPriceAgg.address,
-      });
+      await expect(trx)
+        .to.emit(poolToken, "PriceAggregatorChanged")
+        .withArgs(newPriceAgg.address);
     });
   });
 
   describe("Test addLiquidity", async () => {
     it("Test addLiquidity insufficient amount", async () => {
-      await expectRevert(poolToken.addLiquidity(0), "AMOUNT_INSUFFICIENT");
+      await expect(poolToken.addLiquidity(0)).to.be.revertedWith(
+        "AMOUNT_INSUFFICIENT"
+      );
     });
 
     it("Test addLiquidity insufficient allowance", async () => {
@@ -199,7 +192,9 @@ describe.only("Contract: APYPoolToken", () => {
       const mockAgg = await MockContract.new();
       await poolToken.setPriceAggregator(mockAgg.address);
       await mockToken.givenMethodReturnUint(allowance, 0);
-      await expectRevert(poolToken.addLiquidity(1), "ALLOWANCE_INSUFFICIENT");
+      await expect(poolToken.addLiquidity(1)).to.be.revertedWith(
+        "ALLOWANCE_INSUFFICIENT"
+      );
     });
 
     it("Test addLiquidity pass", async () => {
