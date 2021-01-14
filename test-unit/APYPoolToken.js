@@ -197,21 +197,21 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("Test addLiquidity", async () => {
-    it("Test addLiquidity insufficient amount", async () => {
+  describe("addLiquidity", async () => {
+    it("Revert if deposit is zero", async () => {
       await expect(poolToken.addLiquidity(0)).to.be.revertedWith(
         "AMOUNT_INSUFFICIENT"
       );
     });
 
-    it("Test addLiquidity insufficient allowance", async () => {
+    it("Revert if allowance is less than deposit", async () => {
       await underlyerMock.mock.allowance.returns(0);
       await expect(poolToken.addLiquidity(1)).to.be.revertedWith(
         "ALLOWANCE_INSUFFICIENT"
       );
     });
 
-    it("Test addLiquidity pass", async () => {
+    it("User can deposit with correct results", async () => {
       await underlyerMock.mock.decimals.returns(0);
       await underlyerMock.mock.allowance.returns(1);
       await underlyerMock.mock.balanceOf.returns(1);
@@ -251,7 +251,7 @@ describe.only("Contract: APYPoolToken", () => {
       //   .withArgs(randomUser.address, poolToken.address, BigNumber.from(1000));
     });
 
-    it("Test locking/unlocking addLiquidity by owner", async () => {
+    it("Owner can lock and unlock addLiquidity", async () => {
       await underlyerMock.mock.decimals.returns(0);
       await underlyerMock.mock.allowance.returns(1);
       await underlyerMock.mock.balanceOf.returns(1);
@@ -282,7 +282,7 @@ describe.only("Contract: APYPoolToken", () => {
       await poolToken.connect(randomUser).addLiquidity(1);
     });
 
-    it("Test locking/unlocking addLiquidity by not owner", async () => {
+    it("Revert if non-owner attempts to lock or unlock", async () => {
       await expect(
         poolToken.connect(randomUser).lockAddLiquidity()
       ).to.be.revertedWith("Ownable: caller is not the owner");
@@ -292,7 +292,7 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("Test getPoolTotalEthValue", async () => {
+  describe("getPoolTotalEthValue", async () => {
     it("Test getPoolTotalEthValue returns expected", async () => {
       await underlyerMock.mock.decimals.returns(0);
       await underlyerMock.mock.balanceOf.returns(100);
@@ -310,14 +310,14 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("Test getAPTEthValue", async () => {
+  describe("getAPTEthValue", async () => {
     it("Test getAPTEthValue when insufficient total supply", async () => {
       await expect(poolToken.getAPTEthValue(10)).to.be.revertedWith(
         "INSUFFICIENT_TOTAL_SUPPLY"
       );
     });
 
-    it("Test getAPTEthValue returns expected", async () => {
+    it("getAPTEthValue returns expected", async () => {
       await poolToken.mint(randomUser.address, 100);
       await underlyerMock.mock.decimals.returns(0);
       await underlyerMock.mock.balanceOf.returns(100);
@@ -335,7 +335,7 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("Test getTokenAmountFromEthValue", async () => {
+  describe("getTokenAmountFromEthValue", async () => {
     it("Test getEthValueFromTokenAmount returns expected amount", async () => {
       await underlyerMock.mock.decimals.returns(0);
       const mockAgg = await deployMockContract(
@@ -350,13 +350,13 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("Test getEthValueFromTokenAmount", async () => {
+  describe("getEthValueFromTokenAmount", async () => {
     it("Test getEthValueFromTokenAmount returns 0 with 0 amount", async () => {
       const val = await poolToken.getEthValueFromTokenAmount(0);
       assert.equal(val.toNumber(), 0);
     });
 
-    it("Test getEthValueFromTokenAmount returns expected amount", async () => {
+    it("getEthValueFromTokenAmount returns expected amount", async () => {
       await underlyerMock.mock.decimals.returns(1);
       const mockAgg = await deployMockContract(
         deployer,
@@ -371,7 +371,7 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("Test getTokenEthPrice", async () => {
+  describe("getTokenEthPrice", async () => {
     it("Test getTokenEthPrice returns unexpected", async () => {
       const mockAgg = await deployMockContract(
         deployer,
@@ -398,7 +398,7 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("Test redeem", async () => {
+  describe("redeem", async () => {
     it("Test redeem insufficient amount", async () => {
       await expect(poolToken.redeem(0)).to.be.revertedWith(
         "AMOUNT_INSUFFICIENT"
@@ -498,7 +498,7 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("Test calculateMintAmount", async () => {
+  describe("calculateMintAmount", async () => {
     it("Test calculateMintAmount when token is 0 and total supply is 0", async () => {
       // total supply is 0
       await underlyerMock.mock.decimals.returns("0");
@@ -516,7 +516,7 @@ describe.only("Contract: APYPoolToken", () => {
       assert.equal(mintAmount.toNumber(), 1000000);
     });
 
-    it("Test calculateMintAmount when balanceOf > 0 and total supply is 0", async () => {
+    it("calculateMintAmount when balanceOf > 0 and total supply is 0", async () => {
       // total supply is 0
       await underlyerMock.mock.decimals.returns("0");
       await underlyerMock.mock.balanceOf.returns(9999);
@@ -563,7 +563,7 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("Test getUnderlyerAmount", async () => {
+  describe("getUnderlyerAmount", async () => {
     it("Test getUnderlyerAmount when divide by zero", async () => {
       await expect(poolToken.getUnderlyerAmount(100)).to.be.revertedWith(
         "INSUFFICIENT_TOTAL_SUPPLY"
