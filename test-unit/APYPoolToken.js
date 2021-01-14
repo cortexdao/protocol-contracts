@@ -271,12 +271,12 @@ describe.only("Contract: APYPoolToken", () => {
       await mAptMock.mock.balanceOf.withArgs(poolToken.address).returns(10);
       await mAptMock.mock.getTVL.returns(12345);
 
-      const mockAgg = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      await mockAgg.mock.latestRoundData.returns(0, 1, 0, 0, 0);
-      await poolToken.setPriceAggregator(mockAgg.address);
+      // const mockAgg = await deployMockContract(
+      //   deployer,
+      //   AggregatorV3Interface.abi
+      // );
+      // await mockAgg.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+      // await poolToken.setPriceAggregator(mockAgg.address);
 
       // 12345 * 10 / 100
       expect(await poolToken.getDeployedEthValue()).to.equal(1234);
@@ -284,20 +284,33 @@ describe.only("Contract: APYPoolToken", () => {
   });
 
   describe("getPoolTotalEthValue", async () => {
-    it("Test getPoolTotalEthValue returns expected", async () => {
-      await underlyerMock.mock.decimals.returns(0);
-      await underlyerMock.mock.balanceOf.returns(100);
+    let mAptMock;
+
+    beforeEach(async () => {
+      const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
+      mAptMock = await deployMockContract(deployer, APYMetaPoolToken.abi);
+      await poolToken.connect(deployer).setMetaPoolToken(mAptMock.address);
+    });
+
+    it("Returns correct value", async () => {
+      await underlyerMock.mock.decimals.returns(1);
+      await underlyerMock.mock.balanceOf.returns(75);
+
+      await mAptMock.mock.totalSupply.returns(100);
+      await mAptMock.mock.balanceOf.withArgs(poolToken.address).returns(10);
+      await mAptMock.mock.getTVL.returns(12345);
 
       const mockAgg = await deployMockContract(
         deployer,
         AggregatorV3Interface.abi
       );
-      await mockAgg.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+      await mockAgg.mock.latestRoundData.returns(0, 2, 0, 0, 0);
 
       await poolToken.setPriceAggregator(mockAgg.address);
 
-      const val = await poolToken.getPoolTotalEthValue.call();
-      assert.equal(val.toNumber(), 100);
+      // Underlyer ETH value: 75 * 2 / 10^1 = 15
+      // Deployed ETH value: 12345 * 10 / 100 = 1234
+      expect(await poolToken.getPoolTotalEthValue()).to.equal(1249);
     });
   });
 
