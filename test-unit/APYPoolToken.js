@@ -198,6 +198,14 @@ describe.only("Contract: APYPoolToken", () => {
   });
 
   describe("addLiquidity", async () => {
+    let mAptMock;
+
+    before(async () => {
+      const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
+      mAptMock = await deployMockContract(deployer, APYMetaPoolToken.abi);
+      await poolToken.connect(deployer).setMetaPoolToken(mAptMock.address);
+    });
+
     it("Revert if deposit is zero", async () => {
       await expect(poolToken.addLiquidity(0)).to.be.revertedWith(
         "AMOUNT_INSUFFICIENT"

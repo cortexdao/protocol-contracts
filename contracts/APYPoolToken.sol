@@ -143,7 +143,17 @@ contract APYPoolToken is
     function getPoolTotalEthValue() public view returns (uint256) {
         // TODO: update to yield the pool's total asset value:
         //          underlyer value + mAPT value
-        return getEthValueFromTokenAmount(underlyer.balanceOf(address(this)));
+        // return getEthValueFromTokenAmount(underlyer.balanceOf(address(this)));
+        uint256 underlyerValue =
+            getEthValueFromTokenAmount(underlyer.balanceOf(address(this)));
+        uint256 mAptValue = getDeployedValue();
+        return underlyerValue.add(mAptValue);
+    }
+
+    function getDeployedValue() public view returns (uint256) {
+        uint256 mAptBalance = mApt.balanceOf(address(this));
+        uint256 mAptTotalSupply = mApt.totalSupply();
+        return mApt.getTVL().mul(mAptBalance).div(mAptTotalSupply);
     }
 
     function getAPTEthValue(uint256 amount) public view returns (uint256) {
