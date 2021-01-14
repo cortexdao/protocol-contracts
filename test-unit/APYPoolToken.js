@@ -283,111 +283,6 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("addLiquidity", async () => {
-    let mAptMock;
-
-    beforeEach(async () => {
-      const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
-      mAptMock = await deployMockContract(deployer, APYMetaPoolToken.abi);
-      await poolToken.connect(deployer).setMetaPoolToken(mAptMock.address);
-      await mAptMock.mock.balanceOf.returns(0);
-      await mAptMock.mock.totalSupply.returns(0);
-    });
-
-    it("Revert if deposit is zero", async () => {
-      await expect(poolToken.addLiquidity(0)).to.be.revertedWith(
-        "AMOUNT_INSUFFICIENT"
-      );
-    });
-
-    it("Revert if allowance is less than deposit", async () => {
-      await underlyerMock.mock.allowance.returns(0);
-      await expect(poolToken.addLiquidity(1)).to.be.revertedWith(
-        "ALLOWANCE_INSUFFICIENT"
-      );
-    });
-
-    it("User can deposit with correct results", async () => {
-      await underlyerMock.mock.decimals.returns(0);
-      await underlyerMock.mock.allowance.returns(1);
-      await underlyerMock.mock.balanceOf.returns(1);
-      await underlyerMock.mock.transferFrom.returns(true);
-      const mockAgg = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      await mockAgg.mock.latestRoundData.returns(0, 1, 0, 0, 0);
-
-      await poolToken.setPriceAggregator(mockAgg.address);
-
-      const addLiquidityPromise = poolToken.connect(randomUser).addLiquidity(1);
-      const trx = await addLiquidityPromise;
-      await trx.wait();
-
-      const balance = await poolToken.balanceOf(randomUser.address);
-      assert.equal(balance.toNumber(), 1000);
-      // this is the mint transfer
-      await expect(addLiquidityPromise)
-        .to.emit(poolToken, "Transfer")
-        .withArgs(ZERO_ADDRESS, randomUser.address, BigNumber.from(1000));
-      await expect(addLiquidityPromise)
-        .to.emit(poolToken, "DepositedAPT")
-        .withArgs(
-          randomUser.address,
-          underlyerMock.address,
-          BigNumber.from(1),
-          BigNumber.from(1000),
-          BigNumber.from(1),
-          BigNumber.from(1)
-        );
-
-      // https://github.com/nomiclabs/hardhat/issues/1135
-      // expect("safeTransferFrom")
-      //   .to.be.calledOnContract(underlyerMock)
-      //   .withArgs(randomUser.address, poolToken.address, BigNumber.from(1000));
-    });
-
-    it("Owner can lock and unlock addLiquidity", async () => {
-      await underlyerMock.mock.decimals.returns(0);
-      await underlyerMock.mock.allowance.returns(1);
-      await underlyerMock.mock.balanceOf.returns(1);
-      await underlyerMock.mock.transferFrom.returns(true);
-
-      const mockAgg = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      await mockAgg.mock.latestRoundData.returns(0, 1, 0, 0, 0);
-
-      await poolToken.setPriceAggregator(mockAgg.address);
-
-      await expect(poolToken.connect(deployer).lockAddLiquidity()).to.emit(
-        poolToken,
-        "AddLiquidityLocked"
-      );
-
-      await expect(
-        poolToken.connect(randomUser).addLiquidity(1)
-      ).to.be.revertedWith("LOCKED");
-
-      await expect(poolToken.connect(deployer).unlockAddLiquidity()).to.emit(
-        poolToken,
-        "AddLiquidityUnlocked"
-      );
-
-      await poolToken.connect(randomUser).addLiquidity(1);
-    });
-
-    it("Revert if non-owner attempts to lock or unlock", async () => {
-      await expect(
-        poolToken.connect(randomUser).lockAddLiquidity()
-      ).to.be.revertedWith("Ownable: caller is not the owner");
-      await expect(
-        poolToken.connect(randomUser).unlockAddLiquidity()
-      ).to.be.revertedWith("Ownable: caller is not the owner");
-    });
-  });
-
   describe("getPoolTotalEthValue", async () => {
     it("Test getPoolTotalEthValue returns expected", async () => {
       await underlyerMock.mock.decimals.returns(0);
@@ -494,6 +389,198 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
+  describe("calculateMintAmount", async () => {
+    it("Test calculateMintAmount when token is 0 and total supply is 0", async () => {
+      // total supply is 0
+      await underlyerMock.mock.decimals.returns("0");
+      await underlyerMock.mock.balanceOf.withArgs(poolToken.address).returns(0);
+
+      const mockAgg = await deployMockContract(
+        deployer,
+        AggregatorV3Interface.abi
+      );
+      await mockAgg.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+
+      await poolToken.setPriceAggregator(mockAgg.address);
+
+      const mintAmount = await poolToken.calculateMintAmount(1000);
+      assert.equal(mintAmount.toNumber(), 1000000);
+    });
+
+    it("calculateMintAmount when balanceOf > 0 and total supply is 0", async () => {
+      // total supply is 0
+      await underlyerMock.mock.decimals.returns("0");
+      await underlyerMock.mock.balanceOf.returns(9999);
+      const mockAgg = await deployMockContract(
+        deployer,
+        AggregatorV3Interface.abi
+      );
+      await mockAgg.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+      await poolToken.setPriceAggregator(mockAgg.address);
+
+      const mintAmount = await poolToken.calculateMintAmount(1000);
+      assert.equal(mintAmount.toNumber(), 1000000);
+    });
+
+    it("Test calculateMintAmount returns expected amount when total supply > 0", async () => {
+      await underlyerMock.mock.decimals.returns("0");
+      await underlyerMock.mock.balanceOf.returns(9999);
+      const mockAgg = await deployMockContract(
+        deployer,
+        AggregatorV3Interface.abi
+      );
+      await mockAgg.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+      await poolToken.setPriceAggregator(mockAgg.address);
+
+      await poolToken.mint(randomUser.address, 900);
+      // (1000/9999) * 900 = 90.0090009001 ~= 90
+      const mintAmount = await poolToken.calculateMintAmount(1000);
+      assert.equal(mintAmount.toNumber(), 90);
+    });
+
+    it("Test calculateMintAmount returns expected amount when total supply is 0", async () => {
+      await underlyerMock.mock.decimals.returns("0");
+      await underlyerMock.mock.balanceOf.returns("9999");
+      const mockAgg = await deployMockContract(
+        deployer,
+        AggregatorV3Interface.abi
+      );
+      await mockAgg.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+      await poolToken.setPriceAggregator(mockAgg.address);
+
+      // 90 * 1000 = 90000
+      const mintAmount = await poolToken.calculateMintAmount(90);
+      assert.equal(mintAmount.toNumber(), 90000);
+    });
+  });
+
+  describe("getUnderlyerAmount", async () => {
+    it("Test getUnderlyerAmount when divide by zero", async () => {
+      await expect(poolToken.getUnderlyerAmount(100)).to.be.revertedWith(
+        "INSUFFICIENT_TOTAL_SUPPLY"
+      );
+    });
+
+    it("Test getUnderlyerAmount returns expected amount", async () => {
+      await underlyerMock.mock.balanceOf.returns("1");
+      await underlyerMock.mock.decimals.returns("1");
+      const mockAgg = await deployMockContract(
+        deployer,
+        AggregatorV3Interface.abi
+      );
+      await mockAgg.mock.latestRoundData.returns(0, 10, 0, 0, 0);
+
+      await poolToken.setPriceAggregator(mockAgg.address);
+      await poolToken.mint(randomUser.address, 1);
+      const underlyerAmount = await poolToken.getUnderlyerAmount("1");
+      expect(underlyerAmount).to.equal("1");
+    });
+  });
+  describe("addLiquidity", async () => {
+    let mAptMock;
+
+    beforeEach(async () => {
+      const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
+      mAptMock = await deployMockContract(deployer, APYMetaPoolToken.abi);
+      await poolToken.connect(deployer).setMetaPoolToken(mAptMock.address);
+      await mAptMock.mock.balanceOf.returns(0);
+      await mAptMock.mock.totalSupply.returns(0);
+    });
+
+    it("Revert if deposit is zero", async () => {
+      await expect(poolToken.addLiquidity(0)).to.be.revertedWith(
+        "AMOUNT_INSUFFICIENT"
+      );
+    });
+
+    it("Revert if allowance is less than deposit", async () => {
+      await underlyerMock.mock.allowance.returns(0);
+      await expect(poolToken.addLiquidity(1)).to.be.revertedWith(
+        "ALLOWANCE_INSUFFICIENT"
+      );
+    });
+
+    it("User can deposit with correct results", async () => {
+      await underlyerMock.mock.decimals.returns(0);
+      await underlyerMock.mock.allowance.returns(1);
+      await underlyerMock.mock.balanceOf.returns(1);
+      await underlyerMock.mock.transferFrom.returns(true);
+      const mockAgg = await deployMockContract(
+        deployer,
+        AggregatorV3Interface.abi
+      );
+      await mockAgg.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+
+      await poolToken.setPriceAggregator(mockAgg.address);
+
+      const addLiquidityPromise = poolToken.connect(randomUser).addLiquidity(1);
+      const trx = await addLiquidityPromise;
+      await trx.wait();
+
+      const balance = await poolToken.balanceOf(randomUser.address);
+      assert.equal(balance.toNumber(), 1000);
+      // this is the mint transfer
+      await expect(addLiquidityPromise)
+        .to.emit(poolToken, "Transfer")
+        .withArgs(ZERO_ADDRESS, randomUser.address, BigNumber.from(1000));
+      await expect(addLiquidityPromise)
+        .to.emit(poolToken, "DepositedAPT")
+        .withArgs(
+          randomUser.address,
+          underlyerMock.address,
+          BigNumber.from(1),
+          BigNumber.from(1000),
+          BigNumber.from(1),
+          BigNumber.from(1)
+        );
+
+      // https://github.com/nomiclabs/hardhat/issues/1135
+      // expect("safeTransferFrom")
+      //   .to.be.calledOnContract(underlyerMock)
+      //   .withArgs(randomUser.address, poolToken.address, BigNumber.from(1000));
+    });
+
+    it("Owner can lock and unlock addLiquidity", async () => {
+      await underlyerMock.mock.decimals.returns(0);
+      await underlyerMock.mock.allowance.returns(1);
+      await underlyerMock.mock.balanceOf.returns(1);
+      await underlyerMock.mock.transferFrom.returns(true);
+
+      const mockAgg = await deployMockContract(
+        deployer,
+        AggregatorV3Interface.abi
+      );
+      await mockAgg.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+
+      await poolToken.setPriceAggregator(mockAgg.address);
+
+      await expect(poolToken.connect(deployer).lockAddLiquidity()).to.emit(
+        poolToken,
+        "AddLiquidityLocked"
+      );
+
+      await expect(
+        poolToken.connect(randomUser).addLiquidity(1)
+      ).to.be.revertedWith("LOCKED");
+
+      await expect(poolToken.connect(deployer).unlockAddLiquidity()).to.emit(
+        poolToken,
+        "AddLiquidityUnlocked"
+      );
+
+      await poolToken.connect(randomUser).addLiquidity(1);
+    });
+
+    it("Revert if non-owner attempts to lock or unlock", async () => {
+      await expect(
+        poolToken.connect(randomUser).lockAddLiquidity()
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+      await expect(
+        poolToken.connect(randomUser).unlockAddLiquidity()
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
+
   describe("redeem", async () => {
     it("Test redeem insufficient amount", async () => {
       await expect(poolToken.redeem(0)).to.be.revertedWith(
@@ -591,94 +678,6 @@ describe.only("Contract: APYPoolToken", () => {
       await expect(
         poolToken.connect(randomUser).unlockRedeem()
       ).to.be.revertedWith("Ownable: caller is not the owner");
-    });
-  });
-
-  describe("calculateMintAmount", async () => {
-    it("Test calculateMintAmount when token is 0 and total supply is 0", async () => {
-      // total supply is 0
-      await underlyerMock.mock.decimals.returns("0");
-      await underlyerMock.mock.balanceOf.withArgs(poolToken.address).returns(0);
-
-      const mockAgg = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      await mockAgg.mock.latestRoundData.returns(0, 1, 0, 0, 0);
-
-      await poolToken.setPriceAggregator(mockAgg.address);
-
-      const mintAmount = await poolToken.calculateMintAmount(1000);
-      assert.equal(mintAmount.toNumber(), 1000000);
-    });
-
-    it("calculateMintAmount when balanceOf > 0 and total supply is 0", async () => {
-      // total supply is 0
-      await underlyerMock.mock.decimals.returns("0");
-      await underlyerMock.mock.balanceOf.returns(9999);
-      const mockAgg = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      await mockAgg.mock.latestRoundData.returns(0, 1, 0, 0, 0);
-      await poolToken.setPriceAggregator(mockAgg.address);
-
-      const mintAmount = await poolToken.calculateMintAmount(1000);
-      assert.equal(mintAmount.toNumber(), 1000000);
-    });
-
-    it("Test calculateMintAmount returns expected amount when total supply > 0", async () => {
-      await underlyerMock.mock.decimals.returns("0");
-      await underlyerMock.mock.balanceOf.returns(9999);
-      const mockAgg = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      await mockAgg.mock.latestRoundData.returns(0, 1, 0, 0, 0);
-      await poolToken.setPriceAggregator(mockAgg.address);
-
-      await poolToken.mint(randomUser.address, 900);
-      // (1000/9999) * 900 = 90.0090009001 ~= 90
-      const mintAmount = await poolToken.calculateMintAmount(1000);
-      assert.equal(mintAmount.toNumber(), 90);
-    });
-
-    it("Test calculateMintAmount returns expected amount when total supply is 0", async () => {
-      await underlyerMock.mock.decimals.returns("0");
-      await underlyerMock.mock.balanceOf.returns("9999");
-      const mockAgg = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      await mockAgg.mock.latestRoundData.returns(0, 1, 0, 0, 0);
-      await poolToken.setPriceAggregator(mockAgg.address);
-
-      // 90 * 1000 = 90000
-      const mintAmount = await poolToken.calculateMintAmount(90);
-      assert.equal(mintAmount.toNumber(), 90000);
-    });
-  });
-
-  describe("getUnderlyerAmount", async () => {
-    it("Test getUnderlyerAmount when divide by zero", async () => {
-      await expect(poolToken.getUnderlyerAmount(100)).to.be.revertedWith(
-        "INSUFFICIENT_TOTAL_SUPPLY"
-      );
-    });
-
-    it("Test getUnderlyerAmount returns expected amount", async () => {
-      await underlyerMock.mock.balanceOf.returns("1");
-      await underlyerMock.mock.decimals.returns("1");
-      const mockAgg = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      await mockAgg.mock.latestRoundData.returns(0, 10, 0, 0, 0);
-
-      await poolToken.setPriceAggregator(mockAgg.address);
-      await poolToken.mint(randomUser.address, 1);
-      const underlyerAmount = await poolToken.getUnderlyerAmount("1");
-      expect(underlyerAmount).to.equal("1");
     });
   });
 });
