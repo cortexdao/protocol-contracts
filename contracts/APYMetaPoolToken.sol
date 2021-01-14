@@ -105,6 +105,9 @@ contract APYMetaPoolToken is
         _;
     }
 
+    /** @dev Chainlink's aggregator will return USD value but for convenience
+             we should return the value in ETH value.
+    */
     function getTVL() public view virtual returns (uint256) {
         revert("TVL aggregator not ready yet.");
         return 0;

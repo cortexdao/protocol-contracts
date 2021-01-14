@@ -197,6 +197,28 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
+  describe("getDeployedValue", async () => {
+    let mAptMock;
+
+    before(async () => {
+      const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
+      mAptMock = await deployMockContract(deployer, APYMetaPoolToken.abi);
+      await poolToken.connect(deployer).setMetaPoolToken(mAptMock.address);
+    });
+
+    it("Return 0 if zero mAPT supply", async () => {
+      await mAptMock.mock.totalSupply.returns(0);
+      await mAptMock.mock.balanceOf.withArgs(poolToken.address).returns(0);
+      expect(await poolToken.getDeployedValue()).to.equal(0);
+    });
+
+    it("Return 0 if zero mAPT balance", async () => {
+      await mAptMock.mock.totalSupply.returns(1000);
+      await mAptMock.mock.balanceOf.withArgs(poolToken.address).returns(0);
+      expect(await poolToken.getDeployedValue()).to.equal(0);
+    });
+  });
+
   describe("addLiquidity", async () => {
     let mAptMock;
 
@@ -204,6 +226,8 @@ describe.only("Contract: APYPoolToken", () => {
       const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
       mAptMock = await deployMockContract(deployer, APYMetaPoolToken.abi);
       await poolToken.connect(deployer).setMetaPoolToken(mAptMock.address);
+      await mAptMock.mock.balanceOf.returns(0);
+      await mAptMock.mock.totalSupply.returns(0);
     });
 
     it("Revert if deposit is zero", async () => {
