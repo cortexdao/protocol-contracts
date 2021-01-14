@@ -338,8 +338,7 @@ describe.only("Contract: APYPoolToken", () => {
 
       await poolToken.setPriceAggregator(mockAgg.address);
 
-      const val = await poolToken.getAPTEthValue(10);
-      assert.equal(val.toNumber(), 10);
+      expect(await poolToken.getAPTEthValue(10)).to.equal(10);
     });
   });
 
@@ -353,15 +352,13 @@ describe.only("Contract: APYPoolToken", () => {
       await mockAgg.mock.latestRoundData.returns(0, 25, 0, 0, 0);
       await poolToken.setPriceAggregator(mockAgg.address);
       // ((10 ^ 0) * 100) / 25
-      const tokenAmount = await poolToken.getTokenAmountFromEthValue(100);
-      assert.equal(tokenAmount.toNumber(), 4);
+      expect(await poolToken.getTokenAmountFromEthValue(100)).to.equal(4);
     });
   });
 
   describe("getEthValueFromTokenAmount", async () => {
     it("Test getEthValueFromTokenAmount returns 0 with 0 amount", async () => {
-      const val = await poolToken.getEthValueFromTokenAmount(0);
-      assert.equal(val.toNumber(), 0);
+      expect(await poolToken.getEthValueFromTokenAmount(0)).to.equal(0);
     });
 
     it("getEthValueFromTokenAmount returns expected amount", async () => {
@@ -374,8 +371,7 @@ describe.only("Contract: APYPoolToken", () => {
       await poolToken.setPriceAggregator(mockAgg.address);
 
       // 50 * (2 / 10 ^ 1)
-      const val = await poolToken.getEthValueFromTokenAmount(50);
-      assert.equal(val.toNumber(), 10);
+      expect(await poolToken.getEthValueFromTokenAmount(50)).to.equal(10);
     });
   });
 
@@ -401,8 +397,7 @@ describe.only("Contract: APYPoolToken", () => {
       await mockAgg.mock.latestRoundData.returns(0, 100, 0, 0, 0);
 
       await poolToken.setPriceAggregator(mockAgg.address);
-      const price = await poolToken.getTokenEthPrice();
-      assert.equal(price, 100);
+      expect(await poolToken.getTokenEthPrice()).to.equal(100);
     });
   });
 
@@ -430,8 +425,7 @@ describe.only("Contract: APYPoolToken", () => {
 
       await poolToken.setPriceAggregator(mockAgg.address);
 
-      const mintAmount = await poolToken.calculateMintAmount(1000);
-      assert.equal(mintAmount.toNumber(), 1000000);
+      expect(await poolToken.calculateMintAmount(1000)).to.equal(1000000);
     });
 
     it("calculateMintAmount when balanceOf > 0 and total supply is 0", async () => {
@@ -445,8 +439,7 @@ describe.only("Contract: APYPoolToken", () => {
       await mockAgg.mock.latestRoundData.returns(0, 1, 0, 0, 0);
       await poolToken.setPriceAggregator(mockAgg.address);
 
-      const mintAmount = await poolToken.calculateMintAmount(1000);
-      assert.equal(mintAmount.toNumber(), 1000000);
+      expect(await poolToken.calculateMintAmount(1000)).to.equal(1000000);
     });
 
     it("Test calculateMintAmount returns expected amount when total supply > 0", async () => {
@@ -461,8 +454,7 @@ describe.only("Contract: APYPoolToken", () => {
 
       await poolToken.mint(randomUser.address, 900);
       // (1000/9999) * 900 = 90.0090009001 ~= 90
-      const mintAmount = await poolToken.calculateMintAmount(1000);
-      assert.equal(mintAmount.toNumber(), 90);
+      expect(await poolToken.calculateMintAmount(1000)).to.equal(90);
     });
 
     it("Test calculateMintAmount returns expected amount when total supply is 0", async () => {
@@ -476,8 +468,7 @@ describe.only("Contract: APYPoolToken", () => {
       await poolToken.setPriceAggregator(mockAgg.address);
 
       // 90 * 1000 = 90000
-      const mintAmount = await poolToken.calculateMintAmount(90);
-      assert.equal(mintAmount.toNumber(), 90000);
+      expect(await poolToken.calculateMintAmount(90)).to.equal(90000);
     });
   });
 
