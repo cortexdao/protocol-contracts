@@ -1,7 +1,8 @@
 const hre = require("hardhat");
-const { artifacts, ethers } = hre;
+const { artifacts, ethers, web3 } = hre;
 const { BigNumber } = ethers;
 const { ether, BN, send } = require("@openzeppelin/test-helpers");
+const { AddressZero: ZERO_ADDRESS, MaxUint256: MAX_UINT256 } = ethers.constants;
 const {
   CHAIN_IDS,
   DEPLOYS_JSON,
@@ -182,7 +183,7 @@ async function acquireToken(sender, recipient, token, amount, ethFunder) {
   await trx.wait();
   const balance = (await token.balanceOf(recipient)).toString();
   const symbol = await token.symbol();
-  console.log(`${symbol} balance: ${balance / 10 ** decimals}`);
+  console.debug(`${symbol} balance: ${balance / 10 ** decimals}`);
 }
 
 async function prepareTokenSender(sender, ethAmount, ethFunder) {
@@ -217,6 +218,13 @@ async function forciblySendEth(recipient, amount, ethFunder) {
   await ethSender.send(recipient);
 }
 
+const FAKE_ADDRESS = web3.utils.toChecksumAddress(
+  "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+);
+const ANOTHER_FAKE_ADDRESS = web3.utils.toChecksumAddress(
+  "0xBAADC0FFEEBAADC0FFEEBAADC0FFEEBAADC0FFEE"
+);
+
 module.exports = {
   bytes32,
   dai,
@@ -232,4 +240,8 @@ module.exports = {
   tokenAmountToBigNumber,
   getGasPrice,
   acquireToken,
+  ZERO_ADDRESS,
+  MAX_UINT256,
+  FAKE_ADDRESS,
+  ANOTHER_FAKE_ADDRESS,
 };
