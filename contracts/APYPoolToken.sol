@@ -12,6 +12,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/ILiquidityPool.sol";
 import "./interfaces/IDetailedERC20.sol";
+import "./APYMetaPoolToken.sol";
 
 contract APYPoolToken is
     ILiquidityPool,
@@ -33,6 +34,7 @@ contract APYPoolToken is
     bool public redeemLock;
     IDetailedERC20 public underlyer;
     AggregatorV3Interface public priceAgg;
+    APYMetaPoolToken public mApt;
 
     /* ------------------------------- */
 
@@ -76,6 +78,10 @@ contract APYPoolToken is
         require(address(_priceAgg) != address(0), "INVALID_AGG");
         priceAgg = _priceAgg;
         emit PriceAggregatorChanged(address(_priceAgg));
+    }
+
+    function setMetaPoolToken(address payable _mApt) public onlyOwner {
+        mApt = APYMetaPoolToken(_mApt);
     }
 
     modifier onlyAdmin() {
@@ -133,6 +139,8 @@ contract APYPoolToken is
     }
 
     function getPoolTotalEthValue() public view returns (uint256) {
+        // TODO: update to yield the pool's total asset value:
+        //          underlyer value + mAPT value
         return getEthValueFromTokenAmount(underlyer.balanceOf(address(this)));
     }
 
