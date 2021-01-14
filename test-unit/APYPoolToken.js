@@ -271,13 +271,6 @@ describe.only("Contract: APYPoolToken", () => {
       await mAptMock.mock.balanceOf.withArgs(poolToken.address).returns(10);
       await mAptMock.mock.getTVL.returns(12345);
 
-      // const mockAgg = await deployMockContract(
-      //   deployer,
-      //   AggregatorV3Interface.abi
-      // );
-      // await mockAgg.mock.latestRoundData.returns(0, 1, 0, 0, 0);
-      // await poolToken.setPriceAggregator(mockAgg.address);
-
       // 12345 * 10 / 100
       expect(await poolToken.getDeployedEthValue()).to.equal(1234);
     });
@@ -315,6 +308,14 @@ describe.only("Contract: APYPoolToken", () => {
   });
 
   describe("getAPTEthValue", async () => {
+    let mAptMock;
+
+    beforeEach(async () => {
+      const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
+      mAptMock = await deployMockContract(deployer, APYMetaPoolToken.abi);
+      await poolToken.connect(deployer).setMetaPoolToken(mAptMock.address);
+    });
+
     it("Test getAPTEthValue when insufficient total supply", async () => {
       await expect(poolToken.getAPTEthValue(10)).to.be.revertedWith(
         "INSUFFICIENT_TOTAL_SUPPLY"
@@ -325,6 +326,9 @@ describe.only("Contract: APYPoolToken", () => {
       await poolToken.mint(randomUser.address, 100);
       await underlyerMock.mock.decimals.returns(0);
       await underlyerMock.mock.balanceOf.returns(100);
+
+      await mAptMock.mock.balanceOf.returns(0);
+      await mAptMock.mock.totalSupply.returns(0);
 
       const mockAgg = await deployMockContract(
         deployer,
@@ -403,6 +407,16 @@ describe.only("Contract: APYPoolToken", () => {
   });
 
   describe("calculateMintAmount", async () => {
+    let mAptMock;
+
+    beforeEach(async () => {
+      const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
+      mAptMock = await deployMockContract(deployer, APYMetaPoolToken.abi);
+      await poolToken.connect(deployer).setMetaPoolToken(mAptMock.address);
+      await mAptMock.mock.balanceOf.returns(0);
+      await mAptMock.mock.totalSupply.returns(0);
+    });
+
     it("Test calculateMintAmount when token is 0 and total supply is 0", async () => {
       // total supply is 0
       await underlyerMock.mock.decimals.returns("0");
@@ -468,6 +482,16 @@ describe.only("Contract: APYPoolToken", () => {
   });
 
   describe("getUnderlyerAmount", async () => {
+    let mAptMock;
+
+    beforeEach(async () => {
+      const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
+      mAptMock = await deployMockContract(deployer, APYMetaPoolToken.abi);
+      await poolToken.connect(deployer).setMetaPoolToken(mAptMock.address);
+      await mAptMock.mock.balanceOf.returns(0);
+      await mAptMock.mock.totalSupply.returns(0);
+    });
+
     it("Test getUnderlyerAmount when divide by zero", async () => {
       await expect(poolToken.getUnderlyerAmount(100)).to.be.revertedWith(
         "INSUFFICIENT_TOTAL_SUPPLY"
@@ -595,6 +619,16 @@ describe.only("Contract: APYPoolToken", () => {
   });
 
   describe("redeem", async () => {
+    let mAptMock;
+
+    beforeEach(async () => {
+      const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
+      mAptMock = await deployMockContract(deployer, APYMetaPoolToken.abi);
+      await poolToken.connect(deployer).setMetaPoolToken(mAptMock.address);
+      await mAptMock.mock.balanceOf.returns(0);
+      await mAptMock.mock.totalSupply.returns(0);
+    });
+
     it("Test redeem insufficient amount", async () => {
       await expect(poolToken.redeem(0)).to.be.revertedWith(
         "AMOUNT_INSUFFICIENT"
