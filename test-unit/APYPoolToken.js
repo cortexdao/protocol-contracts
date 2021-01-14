@@ -265,6 +265,22 @@ describe.only("Contract: APYPoolToken", () => {
       await mAptMock.mock.balanceOf.withArgs(poolToken.address).returns(0);
       expect(await poolToken.getDeployedEthValue()).to.equal(0);
     });
+
+    it("Returns correct value with non-zero deployed value", async () => {
+      await mAptMock.mock.totalSupply.returns(100);
+      await mAptMock.mock.balanceOf.withArgs(poolToken.address).returns(10);
+      await mAptMock.mock.getTVL.returns(12345);
+
+      const mockAgg = await deployMockContract(
+        deployer,
+        AggregatorV3Interface.abi
+      );
+      await mockAgg.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+      await poolToken.setPriceAggregator(mockAgg.address);
+
+      // 12345 * 10 / 100
+      expect(await poolToken.getDeployedEthValue()).to.equal(1234);
+    });
   });
 
   describe("addLiquidity", async () => {
