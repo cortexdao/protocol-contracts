@@ -12,7 +12,7 @@ const { BigNumber } = require("ethers");
 const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
 
-describe("Contract: APYPoolToken", () => {
+describe.only("Contract: APYPoolToken", () => {
   let deployer;
   let admin;
   let randomUser;
@@ -131,8 +131,8 @@ describe("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("Admin address setting", async () => {
-    it("Owner can set admin address", async () => {
+  describe("Admin setting", async () => {
+    it("Owner can set admin", async () => {
       await poolToken.connect(deployer).setAdminAddress(admin.address);
       assert.equal(await poolToken.proxyAdmin(), admin.address);
     });
@@ -174,6 +174,26 @@ describe("Contract: APYPoolToken", () => {
       await expect(setPromise)
         .to.emit(poolToken, "PriceAggregatorChanged")
         .withArgs(FAKE_ADDRESS);
+    });
+  });
+
+  describe("mAPT setting", async () => {
+    it("Owner can set admin address", async () => {
+      const mockContract = await deployMockContract(deployer, []);
+      const mockContractAddress = mockContract.address;
+      await poolToken.connect(deployer).setMetaPoolToken(mockContractAddress);
+      assert.equal(await poolToken.mApt(), mockContractAddress);
+    });
+
+    it("Revert on setting to non-contract address", async () => {
+      await expect(poolToken.connect(deployer).setMetaPoolToken(FAKE_ADDRESS))
+        .to.be.reverted;
+    });
+
+    it("Revert when non-owner attempts to set address", async () => {
+      await expect(
+        poolToken.connect(randomUser).setMetaPoolToken(admin.address)
+      ).to.be.reverted;
     });
   });
 

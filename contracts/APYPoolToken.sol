@@ -9,6 +9,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/ILiquidityPool.sol";
 import "./interfaces/IDetailedERC20.sol";
@@ -81,6 +82,7 @@ contract APYPoolToken is
     }
 
     function setMetaPoolToken(address payable _mApt) public onlyOwner {
+        require(Address.isContract(_mApt), "INVALID_ADDRESS");
         mApt = APYMetaPoolToken(_mApt);
     }
 
