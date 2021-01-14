@@ -1,6 +1,5 @@
 const { assert, expect } = require("chai");
 const { ethers, artifacts } = require("hardhat");
-const { defaultAbiCoder: abiCoder } = ethers.utils;
 const timeMachine = require("ganache-time-traveler");
 const {
   ZERO_ADDRESS,
@@ -13,7 +12,7 @@ const { BigNumber } = require("ethers");
 const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
 
-describe.only("Contract: APYPoolToken", () => {
+describe("Contract: APYPoolToken", () => {
   let deployer;
   let admin;
   let randomUser;
@@ -354,12 +353,11 @@ describe.only("Contract: APYPoolToken", () => {
 
   describe("Test getTokenEthPrice", async () => {
     it("Test getTokenEthPrice returns unexpected", async () => {
-      const returnData = abiCoder.encode(
-        ["uint80", "int256", "uint256", "uint256", "uint80"],
-        [0, 0, 0, 0, 0]
+      const mockAgg = await deployMockContract(
+        deployer,
+        AggregatorV3Interface.abi
       );
-      const mockAgg = await MockContract.deploy();
-      await mockAgg.givenAnyReturn(returnData);
+      await mockAgg.mock.latestRoundData.returns(0, 0, 0, 0, 0);
 
       await poolToken.setPriceAggregator(mockAgg.address);
       await expect(poolToken.getTokenEthPrice.call()).to.be.revertedWith(
@@ -368,15 +366,14 @@ describe.only("Contract: APYPoolToken", () => {
     });
 
     it("Test getTokenEthPrice returns expected", async () => {
-      const returnData = abiCoder.encode(
-        ["uint80", "int256", "uint256", "uint256", "uint80"],
-        [0, 100, 0, 0, 0]
+      const mockAgg = await deployMockContract(
+        deployer,
+        AggregatorV3Interface.abi
       );
-      const mockAgg = await MockContract.deploy();
-      await mockAgg.givenAnyReturn(returnData);
+      await mockAgg.mock.latestRoundData.returns(0, 100, 0, 0, 0);
 
       await poolToken.setPriceAggregator(mockAgg.address);
-      const price = await poolToken.getTokenEthPrice.call();
+      const price = await poolToken.getTokenEthPrice();
       assert.equal(price, 100);
     });
   });
@@ -389,7 +386,7 @@ describe.only("Contract: APYPoolToken", () => {
     });
 
     it("Test redeem insufficient balance", async () => {
-      await poolToken.mint(randomUser, 1);
+      await poolToken.mint(randomUser.address, 1);
       await expect(poolToken.connect(randomUser).redeem(2)).to.be.revertedWith(
         "BALANCE_INSUFFICIENT"
       );
@@ -399,33 +396,32 @@ describe.only("Contract: APYPoolToken", () => {
       const aptAmount = tokenAmountToBigNumber("1000");
       await poolToken.mint(randomUser.address, aptAmount);
 
+      await underlyerMock.mock.decimals.returns(0);
       await underlyerMock.mock.allowance.returns(1);
       await underlyerMock.mock.balanceOf.returns(1);
       await underlyerMock.mock.transfer.returns(true);
 
-      const returnData = abiCoder.encode(
-        ["uint80", "int256", "uint256", "uint256", "uint80"],
-        [0, 1, 0, 0, 0]
+      const mockAgg = await deployMockContract(
+        deployer,
+        AggregatorV3Interface.abi
       );
-      const mockAgg = await MockContract.deploy();
-      await mockAgg.givenAnyReturn(returnData);
+      await mockAgg.mock.latestRoundData.returns(0, 1, 0, 0, 0);
 
       await poolToken.setPriceAggregator(mockAgg.address);
 
-      const trx = await poolToken.redeem(1000, {
-        from: randomUser,
-      });
+      const redeemPromise = poolToken.connect(randomUser).redeem(aptAmount);
+      await (await redeemPromise).wait();
 
-      const bal = await poolToken.balanceOf(randomUser);
-      assert.equal(bal.toNumber(), 0);
-      await expect(trx)
+      const bal = await poolToken.balanceOf(randomUser.address);
+      expect(bal).to.equal("0");
+      await expect(redeemPromise)
         .to.emit(poolToken, "Transfer")
-        .withArgs(randomUser, ZERO_ADDRESS, aptAmount);
-      await expect(trx).to.emit(poolToken, "RedeemedAPT").withArgs(
-        randomUser,
+        .withArgs(randomUser.address, ZERO_ADDRESS, aptAmount);
+      await expect(redeemPromise).to.emit(poolToken, "RedeemedAPT").withArgs(
+        randomUser.address,
         underlyerMock.address,
         BigNumber.from(1),
-        BigNumber.from(1000),
+        aptAmount,
         BigNumber.from(1),
         BigNumber.from(1)
         //this value is a lie, but it's due to token.balance() = 1 and mockAgg.getLastRound() = 1
@@ -485,9 +481,8 @@ describe.only("Contract: APYPoolToken", () => {
   describe("Test calculateMintAmount", async () => {
     it("Test calculateMintAmount when token is 0 and total supply is 0", async () => {
       // total supply is 0
-      const mockToken = await deployMockContract(deployer, IDetailedERC20.abi);
       await underlyerMock.mock.decimals.returns("0");
-      await mockToken.mock.balanceOf.withArgs(poolToken.address).returns(0);
+      await underlyerMock.mock.balanceOf.withArgs(poolToken.address).returns(0);
 
       const mockAgg = await deployMockContract(
         deployer,
