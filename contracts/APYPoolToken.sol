@@ -120,10 +120,10 @@ contract APYPoolToken is
             "ALLOWANCE_INSUFFICIENT"
         );
 
-        // NOTE: calculateMintAmount() is not used to save gas
+        // calculateMintAmount() is not used because deposit value
+        // is needed for the event
         uint256 depositEthValue = getEthValueFromTokenAmount(tokenAmt);
         uint256 poolTotalEthValue = getPoolTotalEthValue();
-
         uint256 mintAmount =
             _calculateMintAmount(depositEthValue, poolTotalEthValue);
 
@@ -172,7 +172,6 @@ contract APYPoolToken is
             return 0;
         }
         uint256 decimals = underlyer.decimals();
-        // ethValue = (tokenEthPrice * amount) / decimals
         return ((getTokenEthPrice()).mul(amount)).div(10**decimals);
     }
 
@@ -183,8 +182,7 @@ contract APYPoolToken is
     {
         uint256 tokenEthPrice = getTokenEthPrice();
         uint256 decimals = underlyer.decimals();
-        // amount = (ethValue * decimals) / tokenEthPrice
-        return ((10**decimals).mul(ethValue)).div(tokenEthPrice); //tokenAmount
+        return ((10**decimals).mul(ethValue)).div(tokenEthPrice);
     }
 
     function getTokenEthPrice() public view returns (uint256) {
@@ -271,9 +269,6 @@ contract APYPoolToken is
         uint256 depositEthAmount,
         uint256 totalEthAmount
     ) internal view returns (uint256) {
-        // NOTE: When totalSupply > 0 && totalEthAmount == 0
-        // others can lay claim to other users deposits
-
         uint256 totalSupply = totalSupply();
 
         if (totalEthAmount == 0 || totalSupply == 0) {
