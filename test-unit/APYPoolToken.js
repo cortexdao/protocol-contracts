@@ -467,6 +467,39 @@ describe.only("Contract: APYPoolToken", () => {
         expectedMintAmount
       );
     });
+
+    it("Returns calculated value with non-zero total supply and deployed value", async () => {
+      const decimals = "0";
+
+      const aptTotalSupply = tokenAmountToBigNumber("900", "18");
+      const depositAmount = tokenAmountToBigNumber("1000", decimals);
+      const poolUnderlyerBalance = tokenAmountToBigNumber("9999", decimals);
+
+      const aggMock = await deployMockContract(
+        deployer,
+        AggregatorV3Interface.abi
+      );
+      const price = 1;
+      await aggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
+      await poolToken.setPriceAggregator(aggMock.address);
+      await underlyerMock.mock.balanceOf.returns(poolUnderlyerBalance);
+      await underlyerMock.mock.decimals.returns(decimals);
+
+      await mAptMock.mock.balanceOf.returns(tokenAmountToBigNumber(10));
+      await mAptMock.mock.totalSupply.returns(tokenAmountToBigNumber(1000));
+      await mAptMock.mock.getTVL.returns(tokenAmountToBigNumber(271828));
+
+      await poolToken.mint(poolToken.address, aptTotalSupply);
+
+      const depositValue = depositAmount.mul(price).div(10 ** decimals);
+      const poolTotalValue = await poolToken.getPoolTotalEthValue();
+      const expectedMintAmount = aptTotalSupply
+        .mul(depositValue)
+        .div(poolTotalValue);
+      expect(await poolToken.calculateMintAmount(depositAmount)).to.equal(
+        expectedMintAmount
+      );
+    });
   });
 
   describe("getUnderlyerAmount", async () => {
