@@ -236,134 +236,6 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("getPoolUnderlyerEthValue", async () => {
-    it("Returns correct value regardless of deployed value", async () => {
-      const decimals = 1;
-      await underlyerMock.mock.decimals.returns(decimals);
-      const balance = tokenAmountToBigNumber("7.5", decimals);
-      await underlyerMock.mock.balanceOf.returns(balance);
-
-      const aggMock = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      const price = 2;
-      await aggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
-      await poolToken.setPriceAggregator(aggMock.address);
-
-      // 75 * 2 / 10^1
-      const expectedEthValue = balance.mul(price).div(10 ** decimals);
-
-      await mAptMock.mock.totalSupply.returns(100);
-
-      // force zero deployed value by setting mAPT balance to zero
-      await mAptMock.mock.balanceOf.withArgs(poolToken.address).returns(0);
-      expect(await poolToken.getDeployedEthValue()).to.equal(0);
-      expect(await poolToken.getPoolUnderlyerEthValue()).to.equal(
-        expectedEthValue
-      );
-
-      // force non-zero deployed value
-      await mAptMock.mock.balanceOf.withArgs(poolToken.address).returns(10);
-      await mAptMock.mock.getTVL.returns(12345);
-      expect(await poolToken.getDeployedEthValue()).to.be.gt(0);
-      expect(await poolToken.getPoolUnderlyerEthValue()).to.equal(
-        expectedEthValue
-      );
-    });
-  });
-
-  describe("getDeployedEthValue", async () => {
-    it("Return 0 if zero mAPT supply", async () => {
-      await mAptMock.mock.totalSupply.returns(0);
-      await mAptMock.mock.balanceOf.withArgs(poolToken.address).returns(0);
-      expect(await poolToken.getDeployedEthValue()).to.equal(0);
-    });
-
-    it("Return 0 if zero mAPT balance", async () => {
-      await mAptMock.mock.totalSupply.returns(1000);
-      await mAptMock.mock.balanceOf.withArgs(poolToken.address).returns(0);
-      expect(await poolToken.getDeployedEthValue()).to.equal(0);
-    });
-
-    it("Returns correct value with non-zero deployed value", async () => {
-      const totalSupply = tokenAmountToBigNumber(100);
-      await mAptMock.mock.totalSupply.returns(totalSupply);
-      const poolBalance = tokenAmountToBigNumber(10);
-      await mAptMock.mock.balanceOf
-        .withArgs(poolToken.address)
-        .returns(poolBalance);
-      const deployedValue = tokenAmountToBigNumber(12345);
-      await mAptMock.mock.getTVL.returns(deployedValue);
-
-      // 12345 * 10 / 100
-      const expectedEthValue = deployedValue.mul(poolBalance).div(totalSupply);
-      expect(await poolToken.getDeployedEthValue()).to.equal(expectedEthValue);
-    });
-  });
-
-  describe("getPoolTotalEthValue", async () => {
-    it("Returns correct value", async () => {
-      const decimals = 1;
-      await underlyerMock.mock.decimals.returns(decimals);
-      const underlyerBalance = tokenAmountToBigNumber("7.5", decimals);
-      await underlyerMock.mock.balanceOf.returns(underlyerBalance);
-
-      const mAptSupply = tokenAmountToBigNumber(100);
-      await mAptMock.mock.totalSupply.returns(mAptSupply);
-      const mAptBalance = tokenAmountToBigNumber(10);
-      await mAptMock.mock.balanceOf
-        .withArgs(poolToken.address)
-        .returns(mAptBalance);
-      const totalDeployedValue = tokenAmountToBigNumber(12345);
-      await mAptMock.mock.getTVL.returns(totalDeployedValue);
-
-      const aggMock = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      const price = 2;
-      await aggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
-
-      await poolToken.setPriceAggregator(aggMock.address);
-
-      // Underlyer ETH value: 75 * 2 / 10^1 = 15
-      const underlyerValue = underlyerBalance.mul(price).div(10 ** decimals);
-      // Deployed ETH value: 12345 * 10 / 100 = 1234
-      const deployedValue = totalDeployedValue.mul(mAptBalance).div(mAptSupply);
-      const expectedEthValue = underlyerValue.add(deployedValue);
-      expect(await poolToken.getPoolTotalEthValue()).to.equal(expectedEthValue);
-    });
-  });
-
-  describe("getAPTEthValue", async () => {
-    it("Revert when zero APT supply", async () => {
-      expect(await poolToken.totalSupply()).to.equal(0);
-      await expect(poolToken.getAPTEthValue(10)).to.be.revertedWith(
-        "INSUFFICIENT_TOTAL_SUPPLY"
-      );
-    });
-
-    it("Returns correct value", async () => {
-      await poolToken.mint(randomUser.address, 100);
-      await underlyerMock.mock.decimals.returns(0);
-      await underlyerMock.mock.balanceOf.returns(100);
-
-      await mAptMock.mock.balanceOf.returns(0);
-      await mAptMock.mock.totalSupply.returns(0);
-
-      const aggMock = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      await aggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
-
-      await poolToken.setPriceAggregator(aggMock.address);
-
-      expect(await poolToken.getAPTEthValue(10)).to.equal(10);
-    });
-  });
-
   describe("getTokenAmountFromEthValue", async () => {
     it("Returns correct value", async () => {
       const decimals = 0;
@@ -411,10 +283,135 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
+  describe("getPoolUnderlyerEthValue", async () => {
+    it("Returns correct value regardless of deployed value", async () => {
+      const decimals = 1;
+      await underlyerMock.mock.decimals.returns(decimals);
+      const balance = tokenAmountToBigNumber("7.5", decimals);
+      await underlyerMock.mock.balanceOf.returns(balance);
+
+      const aggMock = await deployMockContract(
+        deployer,
+        AggregatorV3Interface.abi
+      );
+      const price = 2;
+      await aggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
+      await poolToken.setPriceAggregator(aggMock.address);
+
+      // 75 * 2 / 10^1
+      const expectedEthValue = balance.mul(price).div(10 ** decimals);
+
+      // force zero deployed value
+      await mAptMock.mock.getDeployedEthValue.returns(0);
+      expect(await poolToken.getDeployedEthValue()).to.equal(0);
+      expect(await poolToken.getPoolUnderlyerEthValue()).to.equal(
+        expectedEthValue
+      );
+
+      // force non-zero deployed value
+      await mAptMock.mock.getDeployedEthValue.returns(1234);
+      expect(await poolToken.getDeployedEthValue()).to.be.gt(0);
+      expect(await poolToken.getPoolUnderlyerEthValue()).to.equal(
+        expectedEthValue
+      );
+    });
+  });
+
+  describe("getDeployedEthValue", async () => {
+    // it("Return 0 if zero mAPT supply", async () => {
+    //   await mAptMock.mock.totalSupply.returns(0);
+    //   await mAptMock.mock.balanceOf.withArgs(poolToken.address).returns(0);
+    //   expect(await poolToken.getDeployedEthValue()).to.equal(0);
+    // });
+
+    // it("Return 0 if zero mAPT balance", async () => {
+    //   await mAptMock.mock.totalSupply.returns(1000);
+    //   await mAptMock.mock.balanceOf.withArgs(poolToken.address).returns(0);
+    //   expect(await poolToken.getDeployedEthValue()).to.equal(0);
+    // });
+
+    it("Delegates properly to mAPT contract", async () => {
+      await mAptMock.mock.getDeployedEthValue.returns(0);
+      expect(await poolToken.getDeployedEthValue()).to.equal(0);
+
+      const deployedValue = tokenAmountToBigNumber(12345);
+      await mAptMock.mock.getDeployedEthValue.returns(deployedValue);
+      expect(await poolToken.getDeployedEthValue()).to.equal(deployedValue);
+    });
+  });
+
+  describe("getPoolTotalEthValue", async () => {
+    it("Returns correct value", async () => {
+      const decimals = 1;
+      await underlyerMock.mock.decimals.returns(decimals);
+      const underlyerBalance = tokenAmountToBigNumber("7.5", decimals);
+      await underlyerMock.mock.balanceOf.returns(underlyerBalance);
+
+      const deployedValue = tokenAmountToBigNumber(1234);
+      await mAptMock.mock.getDeployedEthValue.returns(deployedValue);
+
+      const aggMock = await deployMockContract(
+        deployer,
+        AggregatorV3Interface.abi
+      );
+      const price = 2;
+      await aggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
+
+      await poolToken.setPriceAggregator(aggMock.address);
+
+      // Underlyer ETH value: 75 * 2 / 10^1 = 15
+      const underlyerValue = underlyerBalance.mul(price).div(10 ** decimals);
+      const expectedEthValue = underlyerValue.add(deployedValue);
+      expect(await poolToken.getPoolTotalEthValue()).to.equal(expectedEthValue);
+    });
+  });
+
+  describe("getAPTEthValue", async () => {
+    it("Revert when zero APT supply", async () => {
+      expect(await poolToken.totalSupply()).to.equal(0);
+      await expect(poolToken.getAPTEthValue(10)).to.be.revertedWith(
+        "INSUFFICIENT_TOTAL_SUPPLY"
+      );
+    });
+
+    it("Returns correct value", async () => {
+      await poolToken.mint(randomUser.address, 100);
+      await underlyerMock.mock.decimals.returns(0);
+      await underlyerMock.mock.balanceOf.returns(100);
+
+      const aggMock = await deployMockContract(
+        deployer,
+        AggregatorV3Interface.abi
+      );
+      const price = 2;
+      await aggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
+      await poolToken.setPriceAggregator(aggMock.address);
+
+      const aptSupply = await poolToken.totalSupply();
+      const aptAmount = tokenAmountToBigNumber(10);
+
+      // zero deployed value
+      await mAptMock.mock.getDeployedEthValue.returns(0);
+      let poolTotalValue = await poolToken.getPoolTotalEthValue();
+      let expectedEthValue = poolTotalValue.mul(aptAmount).div(aptSupply);
+      expect(await poolToken.getAPTEthValue(aptAmount)).to.equal(
+        expectedEthValue
+      );
+
+      // non-zero deployed value
+      const deployedValue = tokenAmountToBigNumber(1234);
+      await mAptMock.mock.getDeployedEthValue.returns(deployedValue);
+      poolTotalValue = await poolToken.getPoolTotalEthValue();
+      expectedEthValue = poolTotalValue.mul(aptAmount).div(aptSupply);
+      expect(await poolToken.getAPTEthValue(aptAmount)).to.equal(
+        expectedEthValue
+      );
+    });
+  });
+
   describe("calculateMintAmount", async () => {
     beforeEach(async () => {
-      await mAptMock.mock.balanceOf.returns(0);
-      await mAptMock.mock.totalSupply.returns(0);
+      await mAptMock.mock.getDeployedEthValue.returns(0);
     });
 
     it("Uses fixed ratio with zero total supply", async () => {
@@ -504,8 +501,7 @@ describe.only("Contract: APYPoolToken", () => {
 
   describe("getUnderlyerAmount", async () => {
     beforeEach(async () => {
-      await mAptMock.mock.balanceOf.returns(0);
-      await mAptMock.mock.totalSupply.returns(0);
+      await mAptMock.mock.getDeployedEthValue.returns(0);
     });
 
     it("Test getUnderlyerAmount when divide by zero", async () => {
@@ -535,8 +531,7 @@ describe.only("Contract: APYPoolToken", () => {
       // Test the old code paths without mAPT:
       // forces `getDeployedEthValue` to return 0, meaning the pool's
       // total ETH value comes purely from its underlyer holdings
-      await mAptMock.mock.balanceOf.returns(0);
-      await mAptMock.mock.totalSupply.returns(0);
+      await mAptMock.mock.getDeployedEthValue.returns(0);
     });
 
     it("Revert if deposit is zero", async () => {
@@ -638,8 +633,7 @@ describe.only("Contract: APYPoolToken", () => {
       // Test the old code paths without mAPT:
       // forces `getDeployedEthValue` to return 0, meaning the pool's
       // total ETH value comes purely from its underlyer holdings
-      await mAptMock.mock.balanceOf.returns(0);
-      await mAptMock.mock.totalSupply.returns(0);
+      await mAptMock.mock.getDeployedEthValue.returns(0);
     });
 
     it("Test redeem insufficient amount", async () => {
