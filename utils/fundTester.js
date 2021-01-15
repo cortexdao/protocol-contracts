@@ -2,7 +2,9 @@ const hre = require("hardhat");
 const { ethers, network } = hre;
 const { argv } = require("yargs");
 const { STABLECOIN_POOLS } = require("./constants.js");
-const { getStablecoinAddress, acquireToken } = require("./helpers.js");
+const { getStablecoinAddress, acquireToken, console } = require("./helpers.js");
+
+console.debugging = true;
 
 const AMOUNTS = {
   // in token units, not wei
