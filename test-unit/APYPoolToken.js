@@ -237,42 +237,39 @@ describe.only("Contract: APYPoolToken", () => {
   });
 
   describe("getPoolUnderlyerEthValue", async () => {
-    it("Returns correct value with zero deployed value", async () => {
-      await underlyerMock.mock.decimals.returns(1);
-      await underlyerMock.mock.balanceOf.returns(75);
-
-      await mAptMock.mock.totalSupply.returns(100);
-      await mAptMock.mock.balanceOf.withArgs(poolToken.address).returns(0);
+    it("Returns correct value regardless of deployed value", async () => {
+      const decimals = 1;
+      await underlyerMock.mock.decimals.returns(decimals);
+      const balance = tokenAmountToBigNumber("7.5", decimals);
+      await underlyerMock.mock.balanceOf.returns(balance);
 
       const aggMock = await deployMockContract(
         deployer,
         AggregatorV3Interface.abi
       );
-      await aggMock.mock.latestRoundData.returns(0, 2, 0, 0, 0);
+      const price = 2;
+      await aggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
       await poolToken.setPriceAggregator(aggMock.address);
 
       // 75 * 2 / 10^1
-      expect(await poolToken.getPoolUnderlyerEthValue()).to.equal(15);
-    });
-
-    it("Returns correct value with non-zero deployed value", async () => {
-      await underlyerMock.mock.decimals.returns(1);
-      await underlyerMock.mock.balanceOf.returns(75);
+      const expectedEthValue = balance.mul(price).div(10 ** decimals);
 
       await mAptMock.mock.totalSupply.returns(100);
+
+      // force zero deployed value by setting mAPT balance to zero
+      await mAptMock.mock.balanceOf.withArgs(poolToken.address).returns(0);
+      expect(await poolToken.getDeployedEthValue()).to.equal(0);
+      expect(await poolToken.getPoolUnderlyerEthValue()).to.equal(
+        expectedEthValue
+      );
+
+      // force non-zero deployed value
       await mAptMock.mock.balanceOf.withArgs(poolToken.address).returns(10);
       await mAptMock.mock.getTVL.returns(12345);
-
-      const aggMock = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      await aggMock.mock.latestRoundData.returns(0, 2, 0, 0, 0);
-      await poolToken.setPriceAggregator(aggMock.address);
-
-      // 75 * 2 / 10^1
-      expect(await poolToken.getPoolUnderlyerEthValue()).to.equal(15);
       expect(await poolToken.getDeployedEthValue()).to.be.gt(0);
+      expect(await poolToken.getPoolUnderlyerEthValue()).to.equal(
+        expectedEthValue
+      );
     });
   });
 
@@ -290,35 +287,52 @@ describe.only("Contract: APYPoolToken", () => {
     });
 
     it("Returns correct value with non-zero deployed value", async () => {
-      await mAptMock.mock.totalSupply.returns(100);
-      await mAptMock.mock.balanceOf.withArgs(poolToken.address).returns(10);
-      await mAptMock.mock.getTVL.returns(12345);
+      const totalSupply = tokenAmountToBigNumber(100);
+      await mAptMock.mock.totalSupply.returns(totalSupply);
+      const poolBalance = tokenAmountToBigNumber(10);
+      await mAptMock.mock.balanceOf
+        .withArgs(poolToken.address)
+        .returns(poolBalance);
+      const deployedValue = tokenAmountToBigNumber(12345);
+      await mAptMock.mock.getTVL.returns(deployedValue);
 
       // 12345 * 10 / 100
-      expect(await poolToken.getDeployedEthValue()).to.equal(1234);
+      const expectedEthValue = deployedValue.mul(poolBalance).div(totalSupply);
+      expect(await poolToken.getDeployedEthValue()).to.equal(expectedEthValue);
     });
   });
 
   describe("getPoolTotalEthValue", async () => {
     it("Returns correct value", async () => {
-      await underlyerMock.mock.decimals.returns(1);
-      await underlyerMock.mock.balanceOf.returns(75);
+      const decimals = 1;
+      await underlyerMock.mock.decimals.returns(decimals);
+      const underlyerBalance = tokenAmountToBigNumber("7.5", decimals);
+      await underlyerMock.mock.balanceOf.returns(underlyerBalance);
 
-      await mAptMock.mock.totalSupply.returns(100);
-      await mAptMock.mock.balanceOf.withArgs(poolToken.address).returns(10);
-      await mAptMock.mock.getTVL.returns(12345);
+      const mAptSupply = tokenAmountToBigNumber(100);
+      await mAptMock.mock.totalSupply.returns(mAptSupply);
+      const mAptBalance = tokenAmountToBigNumber(10);
+      await mAptMock.mock.balanceOf
+        .withArgs(poolToken.address)
+        .returns(mAptBalance);
+      const totalDeployedValue = tokenAmountToBigNumber(12345);
+      await mAptMock.mock.getTVL.returns(totalDeployedValue);
 
       const aggMock = await deployMockContract(
         deployer,
         AggregatorV3Interface.abi
       );
-      await aggMock.mock.latestRoundData.returns(0, 2, 0, 0, 0);
+      const price = 2;
+      await aggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
 
       await poolToken.setPriceAggregator(aggMock.address);
 
       // Underlyer ETH value: 75 * 2 / 10^1 = 15
+      const underlyerValue = underlyerBalance.mul(price).div(10 ** decimals);
       // Deployed ETH value: 12345 * 10 / 100 = 1234
-      expect(await poolToken.getPoolTotalEthValue()).to.equal(1249);
+      const deployedValue = totalDeployedValue.mul(mAptBalance).div(mAptSupply);
+      const expectedEthValue = underlyerValue.add(deployedValue);
+      expect(await poolToken.getPoolTotalEthValue()).to.equal(expectedEthValue);
     });
   });
 
@@ -352,15 +366,23 @@ describe.only("Contract: APYPoolToken", () => {
 
   describe("getTokenAmountFromEthValue", async () => {
     it("Returns correct value", async () => {
-      await underlyerMock.mock.decimals.returns(0);
+      const decimals = 0;
+      await underlyerMock.mock.decimals.returns(decimals);
       const aggMock = await deployMockContract(
         deployer,
         AggregatorV3Interface.abi
       );
-      await aggMock.mock.latestRoundData.returns(0, 25, 0, 0, 0);
+      const price = 25;
+      await aggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
       await poolToken.setPriceAggregator(aggMock.address);
+      const ethValue = 100;
       // ((10 ^ 0) * 100) / 25
-      expect(await poolToken.getTokenAmountFromEthValue(100)).to.equal(4);
+      const expectedUnderlyerAmount = BigNumber.from(10 ** decimals)
+        .mul(ethValue)
+        .div(price);
+      expect(await poolToken.getTokenAmountFromEthValue(ethValue)).to.equal(
+        expectedUnderlyerAmount
+      );
     });
   });
 
@@ -370,16 +392,22 @@ describe.only("Contract: APYPoolToken", () => {
     });
 
     it("Returns correct value", async () => {
-      await underlyerMock.mock.decimals.returns(1);
+      const decimals = 1;
+      await underlyerMock.mock.decimals.returns(decimals);
       const aggMock = await deployMockContract(
         deployer,
         AggregatorV3Interface.abi
       );
-      await aggMock.mock.latestRoundData.returns(0, 2, 0, 0, 0);
+      const price = 2;
+      await aggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
       await poolToken.setPriceAggregator(aggMock.address);
 
-      // 50 * (2 / 10 ^ 1)
-      expect(await poolToken.getEthValueFromTokenAmount(50)).to.equal(10);
+      const underlyerAmount = tokenAmountToBigNumber(5, decimals);
+      // 50 * 2 / 10 ^ 1
+      const expectedEthValue = underlyerAmount.mul(price).div(10 ** decimals);
+      expect(
+        await poolToken.getEthValueFromTokenAmount(underlyerAmount)
+      ).to.equal(expectedEthValue);
     });
   });
 
@@ -415,19 +443,29 @@ describe.only("Contract: APYPoolToken", () => {
       );
     });
 
-    it("Test calculateMintAmount returns expected amount when total supply > 0", async () => {
-      await underlyerMock.mock.decimals.returns("0");
-      await underlyerMock.mock.balanceOf.returns(9999);
+    it("Returns calculated value with non-zero total supply", async () => {
+      const decimals = "0";
+
+      const aptTotalSupply = tokenAmountToBigNumber("900", "18");
+      const depositAmount = tokenAmountToBigNumber("1000", decimals);
+      const poolBalance = tokenAmountToBigNumber("9999", decimals);
+
       const aggMock = await deployMockContract(
         deployer,
         AggregatorV3Interface.abi
       );
       await aggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
       await poolToken.setPriceAggregator(aggMock.address);
+      await underlyerMock.mock.balanceOf.returns(poolBalance);
+      await underlyerMock.mock.decimals.returns(decimals);
 
-      await poolToken.mint(randomUser.address, 900);
-      // (1000/9999) * 900 = 90.0090009001 ~= 90
-      expect(await poolToken.calculateMintAmount(1000)).to.equal(90);
+      await poolToken.mint(poolToken.address, aptTotalSupply);
+      const expectedMintAmount = aptTotalSupply
+        .mul(depositAmount)
+        .div(poolBalance);
+      expect(await poolToken.calculateMintAmount(depositAmount)).to.equal(
+        expectedMintAmount
+      );
     });
   });
 
