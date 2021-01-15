@@ -11,19 +11,26 @@ const { BigNumber } = require("ethers");
 
 const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
+const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
 
 describe.only("Contract: APYPoolToken", () => {
+  // signers
   let deployer;
   let admin;
   let randomUser;
 
+  // contract factories
   let MockContract;
   let ProxyAdmin;
   let APYPoolTokenProxy;
   let APYPoolToken;
 
+  // mocks
   let underlyerMock;
   let priceAggMock;
+  let mAptMock;
+
+  // pool
   let proxyAdmin;
   let logic;
   let proxy;
@@ -66,6 +73,9 @@ describe.only("Contract: APYPoolToken", () => {
     );
     await proxy.deployed();
     poolToken = await APYPoolToken.attach(proxy.address);
+
+    mAptMock = await deployMockContract(deployer, APYMetaPoolToken.abi);
+    await poolToken.setMetaPoolToken(mAptMock.address);
   });
 
   describe("Constructor", async () => {
@@ -198,14 +208,6 @@ describe.only("Contract: APYPoolToken", () => {
   });
 
   describe("getPoolUnderlyerEthValue", async () => {
-    let mAptMock;
-
-    beforeEach(async () => {
-      const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
-      mAptMock = await deployMockContract(deployer, APYMetaPoolToken.abi);
-      await poolToken.connect(deployer).setMetaPoolToken(mAptMock.address);
-    });
-
     it("Returns correct value with zero deployed value", async () => {
       await underlyerMock.mock.decimals.returns(1);
       await underlyerMock.mock.balanceOf.returns(75);
@@ -246,14 +248,6 @@ describe.only("Contract: APYPoolToken", () => {
   });
 
   describe("getDeployedEthValue", async () => {
-    let mAptMock;
-
-    beforeEach(async () => {
-      const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
-      mAptMock = await deployMockContract(deployer, APYMetaPoolToken.abi);
-      await poolToken.connect(deployer).setMetaPoolToken(mAptMock.address);
-    });
-
     it("Return 0 if zero mAPT supply", async () => {
       await mAptMock.mock.totalSupply.returns(0);
       await mAptMock.mock.balanceOf.withArgs(poolToken.address).returns(0);
@@ -277,14 +271,6 @@ describe.only("Contract: APYPoolToken", () => {
   });
 
   describe("getPoolTotalEthValue", async () => {
-    let mAptMock;
-
-    beforeEach(async () => {
-      const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
-      mAptMock = await deployMockContract(deployer, APYMetaPoolToken.abi);
-      await poolToken.connect(deployer).setMetaPoolToken(mAptMock.address);
-    });
-
     it("Returns correct value", async () => {
       await underlyerMock.mock.decimals.returns(1);
       await underlyerMock.mock.balanceOf.returns(75);
@@ -308,14 +294,6 @@ describe.only("Contract: APYPoolToken", () => {
   });
 
   describe("getAPTEthValue", async () => {
-    let mAptMock;
-
-    beforeEach(async () => {
-      const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
-      mAptMock = await deployMockContract(deployer, APYMetaPoolToken.abi);
-      await poolToken.connect(deployer).setMetaPoolToken(mAptMock.address);
-    });
-
     it("Test getAPTEthValue when insufficient total supply", async () => {
       await expect(poolToken.getAPTEthValue(10)).to.be.revertedWith(
         "INSUFFICIENT_TOTAL_SUPPLY"
@@ -402,12 +380,7 @@ describe.only("Contract: APYPoolToken", () => {
   });
 
   describe("calculateMintAmount", async () => {
-    let mAptMock;
-
     beforeEach(async () => {
-      const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
-      mAptMock = await deployMockContract(deployer, APYMetaPoolToken.abi);
-      await poolToken.connect(deployer).setMetaPoolToken(mAptMock.address);
       await mAptMock.mock.balanceOf.returns(0);
       await mAptMock.mock.totalSupply.returns(0);
     });
@@ -473,12 +446,7 @@ describe.only("Contract: APYPoolToken", () => {
   });
 
   describe("getUnderlyerAmount", async () => {
-    let mAptMock;
-
     beforeEach(async () => {
-      const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
-      mAptMock = await deployMockContract(deployer, APYMetaPoolToken.abi);
-      await poolToken.connect(deployer).setMetaPoolToken(mAptMock.address);
       await mAptMock.mock.balanceOf.returns(0);
       await mAptMock.mock.totalSupply.returns(0);
     });
@@ -504,13 +472,12 @@ describe.only("Contract: APYPoolToken", () => {
       expect(underlyerAmount).to.equal("1");
     });
   });
-  describe("addLiquidity", async () => {
-    let mAptMock;
 
-    beforeEach(async () => {
-      const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
-      mAptMock = await deployMockContract(deployer, APYMetaPoolToken.abi);
-      await poolToken.connect(deployer).setMetaPoolToken(mAptMock.address);
+  describe("addLiquidity", async () => {
+    before(async () => {
+      // Test the old code paths without mAPT:
+      // forces `getDeployedEthValue` to return 0, meaning the pool's
+      // total ETH value comes purely from its underlyer holdings
       await mAptMock.mock.balanceOf.returns(0);
       await mAptMock.mock.totalSupply.returns(0);
     });
@@ -610,12 +577,10 @@ describe.only("Contract: APYPoolToken", () => {
   });
 
   describe("redeem", async () => {
-    let mAptMock;
-
-    beforeEach(async () => {
-      const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
-      mAptMock = await deployMockContract(deployer, APYMetaPoolToken.abi);
-      await poolToken.connect(deployer).setMetaPoolToken(mAptMock.address);
+    before(async () => {
+      // Test the old code paths without mAPT:
+      // forces `getDeployedEthValue` to return 0, meaning the pool's
+      // total ETH value comes purely from its underlyer holdings
       await mAptMock.mock.balanceOf.returns(0);
       await mAptMock.mock.totalSupply.returns(0);
     });
