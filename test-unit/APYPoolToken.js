@@ -324,6 +324,7 @@ describe.only("Contract: APYPoolToken", () => {
 
   describe("getAPTEthValue", async () => {
     it("Revert when zero APT supply", async () => {
+      expect(await poolToken.totalSupply()).to.equal(0);
       await expect(poolToken.getAPTEthValue(10)).to.be.revertedWith(
         "INSUFFICIENT_TOTAL_SUPPLY"
       );
@@ -388,34 +389,30 @@ describe.only("Contract: APYPoolToken", () => {
       await mAptMock.mock.totalSupply.returns(0);
     });
 
-    it("Test calculateMintAmount when token is 0 and total supply is 0", async () => {
-      // total supply is 0
-      await underlyerMock.mock.decimals.returns("0");
-      await underlyerMock.mock.balanceOf.withArgs(poolToken.address).returns(0);
+    it("Uses fixed ratio with zero total supply", async () => {
+      expect(await poolToken.totalSupply()).to.equal(0);
 
+      await underlyerMock.mock.decimals.returns("0");
       const aggMock = await deployMockContract(
         deployer,
         AggregatorV3Interface.abi
       );
       await aggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
-
       await poolToken.setPriceAggregator(aggMock.address);
 
-      expect(await poolToken.calculateMintAmount(1000)).to.equal(1000000);
-    });
+      const DEPOSIT_FACTOR = await poolToken.DEFAULT_APT_TO_UNDERLYER_FACTOR();
+      const depositAmount = tokenAmountToBigNumber("123");
 
-    it("calculateMintAmount when balanceOf > 0 and total supply is 0", async () => {
-      // total supply is 0
-      await underlyerMock.mock.decimals.returns("0");
       await underlyerMock.mock.balanceOf.returns(9999);
-      const aggMock = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
+      expect(await poolToken.calculateMintAmount(depositAmount)).to.equal(
+        depositAmount.mul(DEPOSIT_FACTOR)
       );
-      await aggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
-      await poolToken.setPriceAggregator(aggMock.address);
 
-      expect(await poolToken.calculateMintAmount(1000)).to.equal(1000000);
+      // result doesn't depend on pool's underlyer balance
+      await underlyerMock.mock.balanceOf.withArgs(poolToken.address).returns(0);
+      expect(await poolToken.calculateMintAmount(depositAmount)).to.equal(
+        depositAmount.mul(DEPOSIT_FACTOR)
+      );
     });
 
     it("Test calculateMintAmount returns expected amount when total supply > 0", async () => {
@@ -431,20 +428,6 @@ describe.only("Contract: APYPoolToken", () => {
       await poolToken.mint(randomUser.address, 900);
       // (1000/9999) * 900 = 90.0090009001 ~= 90
       expect(await poolToken.calculateMintAmount(1000)).to.equal(90);
-    });
-
-    it("Test calculateMintAmount returns expected amount when total supply is 0", async () => {
-      await underlyerMock.mock.decimals.returns("0");
-      await underlyerMock.mock.balanceOf.returns("9999");
-      const aggMock = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      await aggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
-      await poolToken.setPriceAggregator(aggMock.address);
-
-      // 90 * 1000 = 90000
-      expect(await poolToken.calculateMintAmount(90)).to.equal(90000);
     });
   });
 
