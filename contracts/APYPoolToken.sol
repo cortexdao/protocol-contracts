@@ -151,11 +151,7 @@ contract APYPoolToken is
     }
 
     function getDeployedEthValue() public view returns (uint256) {
-        uint256 mAptTotalSupply = mApt.totalSupply();
-        uint256 mAptBalance = mApt.balanceOf(address(this));
-        if (mAptTotalSupply == 0 || mAptBalance == 0) return 0;
-
-        return mApt.getTVL().mul(mAptBalance).div(mAptTotalSupply);
+        return mApt.getDeployedEthValue(address(this));
     }
 
     function getAPTEthValue(uint256 amount) public view returns (uint256) {

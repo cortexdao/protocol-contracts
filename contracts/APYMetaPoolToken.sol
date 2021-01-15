@@ -177,4 +177,12 @@ contract APYMetaPoolToken is
             (poolEthValue.mul(10**decimals)).div(tokenEthPrice);
         return poolAmount;
     }
+
+    function getDeployedEthValue(address pool) public view returns (uint256) {
+        uint256 balance = balanceOf(pool);
+        uint256 totalSupply = totalSupply();
+        if (totalSupply == 0 || balance == 0) return 0;
+
+        return getTVL().mul(balance).div(totalSupply);
+    }
 }
