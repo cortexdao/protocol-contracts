@@ -294,13 +294,13 @@ describe.only("Contract: APYPoolToken", () => {
   });
 
   describe("getAPTEthValue", async () => {
-    it("Test getAPTEthValue when insufficient total supply", async () => {
+    it("Revert when zero APT supply", async () => {
       await expect(poolToken.getAPTEthValue(10)).to.be.revertedWith(
         "INSUFFICIENT_TOTAL_SUPPLY"
       );
     });
 
-    it("getAPTEthValue returns expected", async () => {
+    it("Returns correct value", async () => {
       await poolToken.mint(randomUser.address, 100);
       await underlyerMock.mock.decimals.returns(0);
       await underlyerMock.mock.balanceOf.returns(100);
@@ -321,7 +321,7 @@ describe.only("Contract: APYPoolToken", () => {
   });
 
   describe("getTokenAmountFromEthValue", async () => {
-    it("Test getEthValueFromTokenAmount returns expected amount", async () => {
+    it("Returns correct value", async () => {
       await underlyerMock.mock.decimals.returns(0);
       const mockAgg = await deployMockContract(
         deployer,
@@ -335,11 +335,11 @@ describe.only("Contract: APYPoolToken", () => {
   });
 
   describe("getEthValueFromTokenAmount", async () => {
-    it("Test getEthValueFromTokenAmount returns 0 with 0 amount", async () => {
+    it("Return 0 for zero amount", async () => {
       expect(await poolToken.getEthValueFromTokenAmount(0)).to.equal(0);
     });
 
-    it("getEthValueFromTokenAmount returns expected amount", async () => {
+    it("Returns correct value", async () => {
       await underlyerMock.mock.decimals.returns(1);
       const mockAgg = await deployMockContract(
         deployer,
@@ -354,7 +354,7 @@ describe.only("Contract: APYPoolToken", () => {
   });
 
   describe("getTokenEthPrice", async () => {
-    it("Test getTokenEthPrice returns unexpected", async () => {
+    it("Revert when price agg returns non-positive price", async () => {
       const mockAgg = await deployMockContract(
         deployer,
         AggregatorV3Interface.abi
@@ -367,7 +367,7 @@ describe.only("Contract: APYPoolToken", () => {
       );
     });
 
-    it("Test getTokenEthPrice returns expected", async () => {
+    it("Returns value when price agg returns positive price", async () => {
       const mockAgg = await deployMockContract(
         deployer,
         AggregatorV3Interface.abi
