@@ -1,13 +1,16 @@
 const { assert, expect } = require("chai");
-const { ethers, artifacts } = require("hardhat");
+const hre = require("hardhat");
+const { artifacts, ethers, waffle } = hre;
+const { deployMockContract } = waffle;
+const { BigNumber } = ethers;
+
 const timeMachine = require("ganache-time-traveler");
+
 const {
   ZERO_ADDRESS,
   FAKE_ADDRESS,
   tokenAmountToBigNumber,
 } = require("../utils/helpers");
-const { deployMockContract } = require("ethereum-waffle");
-const { BigNumber } = require("ethers");
 
 const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
