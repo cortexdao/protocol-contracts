@@ -207,6 +207,32 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
+  describe("getTokenEthPrice", async () => {
+    it("Revert when price agg returns non-positive price", async () => {
+      const mockAgg = await deployMockContract(
+        deployer,
+        AggregatorV3Interface.abi
+      );
+      await mockAgg.mock.latestRoundData.returns(0, 0, 0, 0, 0);
+
+      await poolToken.setPriceAggregator(mockAgg.address);
+      await expect(poolToken.getTokenEthPrice.call()).to.be.revertedWith(
+        "UNABLE_TO_RETRIEVE_ETH_PRICE"
+      );
+    });
+
+    it("Returns value when price agg returns positive price", async () => {
+      const mockAgg = await deployMockContract(
+        deployer,
+        AggregatorV3Interface.abi
+      );
+      await mockAgg.mock.latestRoundData.returns(0, 100, 0, 0, 0);
+
+      await poolToken.setPriceAggregator(mockAgg.address);
+      expect(await poolToken.getTokenEthPrice()).to.equal(100);
+    });
+  });
+
   describe("getPoolUnderlyerEthValue", async () => {
     it("Returns correct value with zero deployed value", async () => {
       await underlyerMock.mock.decimals.returns(1);
@@ -350,32 +376,6 @@ describe.only("Contract: APYPoolToken", () => {
 
       // 50 * (2 / 10 ^ 1)
       expect(await poolToken.getEthValueFromTokenAmount(50)).to.equal(10);
-    });
-  });
-
-  describe("getTokenEthPrice", async () => {
-    it("Revert when price agg returns non-positive price", async () => {
-      const mockAgg = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      await mockAgg.mock.latestRoundData.returns(0, 0, 0, 0, 0);
-
-      await poolToken.setPriceAggregator(mockAgg.address);
-      await expect(poolToken.getTokenEthPrice.call()).to.be.revertedWith(
-        "UNABLE_TO_RETRIEVE_ETH_PRICE"
-      );
-    });
-
-    it("Returns value when price agg returns positive price", async () => {
-      const mockAgg = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      await mockAgg.mock.latestRoundData.returns(0, 100, 0, 0, 0);
-
-      await poolToken.setPriceAggregator(mockAgg.address);
-      expect(await poolToken.getTokenEthPrice()).to.equal(100);
     });
   });
 
