@@ -23,7 +23,6 @@ describe.only("Contract: APYPoolToken", () => {
   let randomUser;
 
   // contract factories
-  let MockContract;
   let ProxyAdmin;
   let APYPoolTokenProxy;
   let APYPoolToken;
@@ -54,7 +53,6 @@ describe.only("Contract: APYPoolToken", () => {
   before(async () => {
     [deployer, admin, randomUser] = await ethers.getSigners();
 
-    MockContract = await ethers.getContractFactory("MockContract");
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     APYPoolTokenProxy = await ethers.getContractFactory("APYPoolTokenProxy");
     APYPoolToken = await ethers.getContractFactory("TestAPYPoolToken");
@@ -680,41 +678,93 @@ describe.only("Contract: APYPoolToken", () => {
     });
 
     describe("Deployed value is zero", () => {
+      const decimals = 0;
+      const poolBalance = tokenAmountToBigNumber(1000, decimals);
+
+      const aptAmount = tokenAmountToBigNumber("1000");
+
       before(async () => {
         // Test the old code paths without mAPT:
         // forces `getDeployedEthValue` to return 0, meaning the pool's
         // total ETH value comes purely from its underlyer holdings
         await mAptMock.mock.getDeployedEthValue.returns(0);
+
+        const price = 1;
+        await priceAggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
+
+        await underlyerMock.mock.decimals.returns(decimals);
+        await underlyerMock.mock.allowance.returns(poolBalance);
+        await underlyerMock.mock.balanceOf
+          .withArgs(poolToken.address)
+          .returns(poolBalance);
+        await underlyerMock.mock.transfer.returns(true);
       });
 
-      it("Test redeem pass", async () => {
-        const aptAmount = tokenAmountToBigNumber("1000");
+      it("Decrease APT balance by redeem amount", async () => {
+        await poolToken.mint(randomUser.address, aptAmount.mul(3));
+        await expect(() =>
+          poolToken.connect(randomUser).redeem(aptAmount)
+        ).to.changeTokenBalance(poolToken, randomUser, aptAmount.mul(-1));
+      });
+
+      it.only("Emit correct APT events", async () => {
         await poolToken.mint(randomUser.address, aptAmount);
+        const underlyerAmount = await poolToken.getUnderlyerAmount(aptAmount);
+        const depositEthValue = await poolToken.getEthValueFromTokenAmount(
+          underlyerAmount
+        );
+        console.log(aptAmount.toString());
+        console.log(underlyerAmount.toString());
+        console.log(depositEthValue.toString());
 
-        await underlyerMock.mock.decimals.returns(0);
-        await underlyerMock.mock.allowance.returns(1);
-        await underlyerMock.mock.balanceOf.returns(1);
-        await underlyerMock.mock.transfer.returns(true);
-
-        await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+        // mock the underlyer transfer from the pool, so we can
+        // check redeem event has the post-redeem pool ETH value
+        await underlyerMock.mock.balanceOf
+          .withArgs(poolToken.address)
+          .returns(poolBalance.sub(underlyerAmount));
+        const poolEthValue = await poolToken.getPoolTotalEthValue();
 
         const redeemPromise = poolToken.connect(randomUser).redeem(aptAmount);
         await (await redeemPromise).wait();
 
         const bal = await poolToken.balanceOf(randomUser.address);
         expect(bal).to.equal("0");
+
         await expect(redeemPromise)
           .to.emit(poolToken, "Transfer")
           .withArgs(randomUser.address, ZERO_ADDRESS, aptAmount);
-        await expect(redeemPromise).to.emit(poolToken, "RedeemedAPT").withArgs(
-          randomUser.address,
-          underlyerMock.address,
-          BigNumber.from(1),
-          aptAmount,
-          BigNumber.from(1),
-          BigNumber.from(1)
-          //this value is a lie, but it's due to token.balance() = 1 and aggMock.getLastRound() = 1
-        );
+
+        await expect(redeemPromise)
+          .to.emit(poolToken, "RedeemedAPT")
+          .withArgs(
+            randomUser.address,
+            underlyerMock.address,
+            underlyerAmount,
+            aptAmount,
+            depositEthValue,
+            poolEthValue
+          );
+      });
+
+      it("transfer called on underlyer", async () => {
+        /* https://github.com/nomiclabs/hardhat/issues/1135
+         * Due to the above issue, we can't simply do:
+         *
+         *  expect("transfer")
+         *    .to.be.calledOnContract(underlyerMock)
+         *    .withArgs(randomUser.address, underlyerAmount);
+         *
+         *  Instead, we have to do some hacky revert-check logic.
+         */
+        const underlyerAmount = await poolToken.getUnderlyerAmount(aptAmount);
+        await underlyerMock.mock.transfer.reverts();
+        await expect(poolToken.connect(randomUser).redeem(aptAmount)).to.be
+          .reverted;
+        await underlyerMock.mock.transfer
+          .withArgs(randomUser.address, underlyerAmount)
+          .returns(true);
+        await expect(poolToken.connect(randomUser).redeem(aptAmount)).to.not.be
+          .reverted;
       });
     });
 
