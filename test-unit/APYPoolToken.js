@@ -212,26 +212,14 @@ describe.only("Contract: APYPoolToken", () => {
 
   describe("getTokenEthPrice", async () => {
     it("Revert when price agg returns non-positive price", async () => {
-      const aggMock = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      await aggMock.mock.latestRoundData.returns(0, 0, 0, 0, 0);
-
-      await poolToken.setPriceAggregator(aggMock.address);
+      await priceAggMock.mock.latestRoundData.returns(0, 0, 0, 0, 0);
       await expect(poolToken.getTokenEthPrice.call()).to.be.revertedWith(
         "UNABLE_TO_RETRIEVE_ETH_PRICE"
       );
     });
 
     it("Returns value when price agg returns positive price", async () => {
-      const aggMock = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      await aggMock.mock.latestRoundData.returns(0, 100, 0, 0, 0);
-
-      await poolToken.setPriceAggregator(aggMock.address);
+      await priceAggMock.mock.latestRoundData.returns(0, 100, 0, 0, 0);
       expect(await poolToken.getTokenEthPrice()).to.equal(100);
     });
   });
@@ -240,13 +228,8 @@ describe.only("Contract: APYPoolToken", () => {
     it("Returns correct value", async () => {
       const decimals = 0;
       await underlyerMock.mock.decimals.returns(decimals);
-      const aggMock = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
       const price = 25;
-      await aggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
-      await poolToken.setPriceAggregator(aggMock.address);
+      await priceAggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
       const ethValue = 100;
       // ((10 ^ 0) * 100) / 25
       const expectedUnderlyerAmount = BigNumber.from(10 ** decimals)
@@ -266,13 +249,8 @@ describe.only("Contract: APYPoolToken", () => {
     it("Returns correct value", async () => {
       const decimals = 1;
       await underlyerMock.mock.decimals.returns(decimals);
-      const aggMock = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
       const price = 2;
-      await aggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
-      await poolToken.setPriceAggregator(aggMock.address);
+      await priceAggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
 
       const underlyerAmount = tokenAmountToBigNumber(5, decimals);
       // 50 * 2 / 10 ^ 1
@@ -290,13 +268,8 @@ describe.only("Contract: APYPoolToken", () => {
       const balance = tokenAmountToBigNumber("7.5", decimals);
       await underlyerMock.mock.balanceOf.returns(balance);
 
-      const aggMock = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
       const price = 2;
-      await aggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
-      await poolToken.setPriceAggregator(aggMock.address);
+      await priceAggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
 
       // 75 * 2 / 10^1
       const expectedEthValue = balance.mul(price).div(10 ** decimals);
@@ -350,14 +323,8 @@ describe.only("Contract: APYPoolToken", () => {
       const deployedValue = tokenAmountToBigNumber(1234);
       await mAptMock.mock.getDeployedEthValue.returns(deployedValue);
 
-      const aggMock = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
       const price = 2;
-      await aggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
-
-      await poolToken.setPriceAggregator(aggMock.address);
+      await priceAggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
 
       // Underlyer ETH value: 75 * 2 / 10^1 = 15
       const underlyerValue = underlyerBalance.mul(price).div(10 ** decimals);
@@ -379,13 +346,8 @@ describe.only("Contract: APYPoolToken", () => {
       await underlyerMock.mock.decimals.returns(0);
       await underlyerMock.mock.balanceOf.returns(100);
 
-      const aggMock = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
       const price = 2;
-      await aggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
-      await poolToken.setPriceAggregator(aggMock.address);
+      await priceAggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
 
       const aptSupply = await poolToken.totalSupply();
       const aptAmount = tokenAmountToBigNumber(10);
@@ -418,12 +380,7 @@ describe.only("Contract: APYPoolToken", () => {
       expect(await poolToken.totalSupply()).to.equal(0);
 
       await underlyerMock.mock.decimals.returns("0");
-      const aggMock = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      await aggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
-      await poolToken.setPriceAggregator(aggMock.address);
+      await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
 
       const DEPOSIT_FACTOR = await poolToken.DEFAULT_APT_TO_UNDERLYER_FACTOR();
       const depositAmount = tokenAmountToBigNumber("123");
@@ -453,12 +410,7 @@ describe.only("Contract: APYPoolToken", () => {
       const depositAmount = tokenAmountToBigNumber("1000", decimals);
       const poolBalance = tokenAmountToBigNumber("9999", decimals);
 
-      const aggMock = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      await aggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
-      await poolToken.setPriceAggregator(aggMock.address);
+      await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
       await underlyerMock.mock.balanceOf.returns(poolBalance);
       await underlyerMock.mock.decimals.returns(decimals);
 
@@ -519,13 +471,8 @@ describe.only("Contract: APYPoolToken", () => {
     it("Test getUnderlyerAmount returns expected amount", async () => {
       await underlyerMock.mock.balanceOf.returns("1");
       await underlyerMock.mock.decimals.returns("1");
-      const aggMock = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      await aggMock.mock.latestRoundData.returns(0, 10, 0, 0, 0);
+      await priceAggMock.mock.latestRoundData.returns(0, 10, 0, 0, 0);
 
-      await poolToken.setPriceAggregator(aggMock.address);
       await poolToken.mint(randomUser.address, 1);
       const underlyerAmount = await poolToken.getUnderlyerAmount("1");
       expect(underlyerAmount).to.equal("1");
@@ -552,29 +499,25 @@ describe.only("Contract: APYPoolToken", () => {
         // forces `getDeployedEthValue` to return 0, meaning the pool's
         // total ETH value comes purely from its underlyer holdings
         await mAptMock.mock.getDeployedEthValue.returns(0);
-      });
 
-      it("User can deposit with correct results", async () => {
+        const price = 1;
+        await priceAggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
+
         await underlyerMock.mock.decimals.returns(0);
         await underlyerMock.mock.allowance.returns(1);
         await underlyerMock.mock.balanceOf.returns(1);
         await underlyerMock.mock.transferFrom.returns(true);
-        const aggMock = await deployMockContract(
-          deployer,
-          AggregatorV3Interface.abi
-        );
-        await aggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+      });
 
-        await poolToken.setPriceAggregator(aggMock.address);
-
+      it("User can deposit with correct results", async () => {
         const addLiquidityPromise = poolToken
           .connect(randomUser)
           .addLiquidity(1);
         const trx = await addLiquidityPromise;
         await trx.wait();
 
-        const balance = await poolToken.balanceOf(randomUser.address);
-        assert.equal(balance.toNumber(), 1000);
+        expect(await poolToken.balanceOf(randomUser.address)).to.equal(1000);
+
         // this is the mint transfer
         await expect(addLiquidityPromise)
           .to.emit(poolToken, "Transfer")
@@ -597,19 +540,6 @@ describe.only("Contract: APYPoolToken", () => {
       });
 
       it("Owner can lock and unlock addLiquidity", async () => {
-        await underlyerMock.mock.decimals.returns(0);
-        await underlyerMock.mock.allowance.returns(1);
-        await underlyerMock.mock.balanceOf.returns(1);
-        await underlyerMock.mock.transferFrom.returns(true);
-
-        const aggMock = await deployMockContract(
-          deployer,
-          AggregatorV3Interface.abi
-        );
-        await aggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
-
-        await poolToken.setPriceAggregator(aggMock.address);
-
         await expect(poolToken.connect(deployer).lockAddLiquidity()).to.emit(
           poolToken,
           "AddLiquidityLocked"
@@ -669,13 +599,7 @@ describe.only("Contract: APYPoolToken", () => {
         await underlyerMock.mock.balanceOf.returns(1);
         await underlyerMock.mock.transfer.returns(true);
 
-        const aggMock = await deployMockContract(
-          deployer,
-          AggregatorV3Interface.abi
-        );
-        await aggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
-
-        await poolToken.setPriceAggregator(aggMock.address);
+        await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
 
         const redeemPromise = poolToken.connect(randomUser).redeem(aptAmount);
         await (await redeemPromise).wait();
