@@ -562,21 +562,24 @@ describe.only("Contract: APYPoolToken", () => {
           );
       });
 
-      it("safeTransferFrom called on underlyer", async () => {
-        const trx = await poolToken
-          .connect(randomUser)
-          .addLiquidity(depositAmount);
-        await trx.wait();
-
+      it("transferFrom called on underlyer", async () => {
         /* https://github.com/nomiclabs/hardhat/issues/1135
          * Due to the above issue, we can't simply do:
          *
-         *  expect("safeTransferFrom")
+         *  expect("transferFrom")
          *    .to.be.calledOnContract(underlyerMock)
-         *    .withArgs(randomUser.address, poolToken.address, BigNumber.from(1000));
+         *    .withArgs(randomUser.address, poolToken.address, depositAmount);
          *
          *  Instead, we have to do some hacky revert-check logic.
          */
+        await underlyerMock.mock.transferFrom.reverts();
+        await expect(poolToken.connect(randomUser).addLiquidity(depositAmount))
+          .to.be.reverted;
+        await underlyerMock.mock.transferFrom
+          .withArgs(randomUser.address, poolToken.address, depositAmount)
+          .returns(true);
+        await expect(poolToken.connect(randomUser).addLiquidity(depositAmount))
+          .to.not.be.reverted;
       });
     });
 
