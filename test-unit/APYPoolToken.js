@@ -533,13 +533,6 @@ describe.only("Contract: APYPoolToken", () => {
   });
 
   describe("addLiquidity", async () => {
-    before(async () => {
-      // Test the old code paths without mAPT:
-      // forces `getDeployedEthValue` to return 0, meaning the pool's
-      // total ETH value comes purely from its underlyer holdings
-      await mAptMock.mock.getDeployedEthValue.returns(0);
-    });
-
     it("Revert if deposit is zero", async () => {
       await expect(poolToken.addLiquidity(0)).to.be.revertedWith(
         "AMOUNT_INSUFFICIENT"
@@ -553,95 +546,99 @@ describe.only("Contract: APYPoolToken", () => {
       );
     });
 
-    it("User can deposit with correct results", async () => {
-      await underlyerMock.mock.decimals.returns(0);
-      await underlyerMock.mock.allowance.returns(1);
-      await underlyerMock.mock.balanceOf.returns(1);
-      await underlyerMock.mock.transferFrom.returns(true);
-      const aggMock = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      await aggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+    describe("Deployed value is zero", () => {
+      before(async () => {
+        // Test the old code paths without mAPT:
+        // forces `getDeployedEthValue` to return 0, meaning the pool's
+        // total ETH value comes purely from its underlyer holdings
+        await mAptMock.mock.getDeployedEthValue.returns(0);
+      });
 
-      await poolToken.setPriceAggregator(aggMock.address);
+      it("User can deposit with correct results", async () => {
+        await underlyerMock.mock.decimals.returns(0);
+        await underlyerMock.mock.allowance.returns(1);
+        await underlyerMock.mock.balanceOf.returns(1);
+        await underlyerMock.mock.transferFrom.returns(true);
+        const aggMock = await deployMockContract(
+          deployer,
+          AggregatorV3Interface.abi
+        );
+        await aggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
 
-      const addLiquidityPromise = poolToken.connect(randomUser).addLiquidity(1);
-      const trx = await addLiquidityPromise;
-      await trx.wait();
+        await poolToken.setPriceAggregator(aggMock.address);
 
-      const balance = await poolToken.balanceOf(randomUser.address);
-      assert.equal(balance.toNumber(), 1000);
-      // this is the mint transfer
-      await expect(addLiquidityPromise)
-        .to.emit(poolToken, "Transfer")
-        .withArgs(ZERO_ADDRESS, randomUser.address, BigNumber.from(1000));
-      await expect(addLiquidityPromise)
-        .to.emit(poolToken, "DepositedAPT")
-        .withArgs(
-          randomUser.address,
-          underlyerMock.address,
-          BigNumber.from(1),
-          BigNumber.from(1000),
-          BigNumber.from(1),
-          BigNumber.from(1)
+        const addLiquidityPromise = poolToken
+          .connect(randomUser)
+          .addLiquidity(1);
+        const trx = await addLiquidityPromise;
+        await trx.wait();
+
+        const balance = await poolToken.balanceOf(randomUser.address);
+        assert.equal(balance.toNumber(), 1000);
+        // this is the mint transfer
+        await expect(addLiquidityPromise)
+          .to.emit(poolToken, "Transfer")
+          .withArgs(ZERO_ADDRESS, randomUser.address, BigNumber.from(1000));
+        await expect(addLiquidityPromise)
+          .to.emit(poolToken, "DepositedAPT")
+          .withArgs(
+            randomUser.address,
+            underlyerMock.address,
+            BigNumber.from(1),
+            BigNumber.from(1000),
+            BigNumber.from(1),
+            BigNumber.from(1)
+          );
+
+        // https://github.com/nomiclabs/hardhat/issues/1135
+        // expect("safeTransferFrom")
+        //   .to.be.calledOnContract(underlyerMock)
+        //   .withArgs(randomUser.address, poolToken.address, BigNumber.from(1000));
+      });
+
+      it("Owner can lock and unlock addLiquidity", async () => {
+        await underlyerMock.mock.decimals.returns(0);
+        await underlyerMock.mock.allowance.returns(1);
+        await underlyerMock.mock.balanceOf.returns(1);
+        await underlyerMock.mock.transferFrom.returns(true);
+
+        const aggMock = await deployMockContract(
+          deployer,
+          AggregatorV3Interface.abi
+        );
+        await aggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+
+        await poolToken.setPriceAggregator(aggMock.address);
+
+        await expect(poolToken.connect(deployer).lockAddLiquidity()).to.emit(
+          poolToken,
+          "AddLiquidityLocked"
         );
 
-      // https://github.com/nomiclabs/hardhat/issues/1135
-      // expect("safeTransferFrom")
-      //   .to.be.calledOnContract(underlyerMock)
-      //   .withArgs(randomUser.address, poolToken.address, BigNumber.from(1000));
-    });
+        await expect(
+          poolToken.connect(randomUser).addLiquidity(1)
+        ).to.be.revertedWith("LOCKED");
 
-    it("Owner can lock and unlock addLiquidity", async () => {
-      await underlyerMock.mock.decimals.returns(0);
-      await underlyerMock.mock.allowance.returns(1);
-      await underlyerMock.mock.balanceOf.returns(1);
-      await underlyerMock.mock.transferFrom.returns(true);
+        await expect(poolToken.connect(deployer).unlockAddLiquidity()).to.emit(
+          poolToken,
+          "AddLiquidityUnlocked"
+        );
 
-      const aggMock = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      await aggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+        await poolToken.connect(randomUser).addLiquidity(1);
+      });
 
-      await poolToken.setPriceAggregator(aggMock.address);
-
-      await expect(poolToken.connect(deployer).lockAddLiquidity()).to.emit(
-        poolToken,
-        "AddLiquidityLocked"
-      );
-
-      await expect(
-        poolToken.connect(randomUser).addLiquidity(1)
-      ).to.be.revertedWith("LOCKED");
-
-      await expect(poolToken.connect(deployer).unlockAddLiquidity()).to.emit(
-        poolToken,
-        "AddLiquidityUnlocked"
-      );
-
-      await poolToken.connect(randomUser).addLiquidity(1);
-    });
-
-    it("Revert if non-owner attempts to lock or unlock", async () => {
-      await expect(
-        poolToken.connect(randomUser).lockAddLiquidity()
-      ).to.be.revertedWith("Ownable: caller is not the owner");
-      await expect(
-        poolToken.connect(randomUser).unlockAddLiquidity()
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      it("Revert if non-owner attempts to lock or unlock", async () => {
+        await expect(
+          poolToken.connect(randomUser).lockAddLiquidity()
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+        await expect(
+          poolToken.connect(randomUser).unlockAddLiquidity()
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
     });
   });
 
   describe("redeem", async () => {
-    before(async () => {
-      // Test the old code paths without mAPT:
-      // forces `getDeployedEthValue` to return 0, meaning the pool's
-      // total ETH value comes purely from its underlyer holdings
-      await mAptMock.mock.getDeployedEthValue.returns(0);
-    });
-
     it("Test redeem insufficient amount", async () => {
       await expect(poolToken.redeem(0)).to.be.revertedWith(
         "AMOUNT_INSUFFICIENT"
@@ -655,89 +652,98 @@ describe.only("Contract: APYPoolToken", () => {
       );
     });
 
-    it("Test redeem pass", async () => {
-      const aptAmount = tokenAmountToBigNumber("1000");
-      await poolToken.mint(randomUser.address, aptAmount);
+    describe("Deployed value is zero", () => {
+      before(async () => {
+        // Test the old code paths without mAPT:
+        // forces `getDeployedEthValue` to return 0, meaning the pool's
+        // total ETH value comes purely from its underlyer holdings
+        await mAptMock.mock.getDeployedEthValue.returns(0);
+      });
 
-      await underlyerMock.mock.decimals.returns(0);
-      await underlyerMock.mock.allowance.returns(1);
-      await underlyerMock.mock.balanceOf.returns(1);
-      await underlyerMock.mock.transfer.returns(true);
+      it("Test redeem pass", async () => {
+        const aptAmount = tokenAmountToBigNumber("1000");
+        await poolToken.mint(randomUser.address, aptAmount);
 
-      const aggMock = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      await aggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+        await underlyerMock.mock.decimals.returns(0);
+        await underlyerMock.mock.allowance.returns(1);
+        await underlyerMock.mock.balanceOf.returns(1);
+        await underlyerMock.mock.transfer.returns(true);
 
-      await poolToken.setPriceAggregator(aggMock.address);
+        const aggMock = await deployMockContract(
+          deployer,
+          AggregatorV3Interface.abi
+        );
+        await aggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
 
-      const redeemPromise = poolToken.connect(randomUser).redeem(aptAmount);
-      await (await redeemPromise).wait();
+        await poolToken.setPriceAggregator(aggMock.address);
 
-      const bal = await poolToken.balanceOf(randomUser.address);
-      expect(bal).to.equal("0");
-      await expect(redeemPromise)
-        .to.emit(poolToken, "Transfer")
-        .withArgs(randomUser.address, ZERO_ADDRESS, aptAmount);
-      await expect(redeemPromise).to.emit(poolToken, "RedeemedAPT").withArgs(
-        randomUser.address,
-        underlyerMock.address,
-        BigNumber.from(1),
-        aptAmount,
-        BigNumber.from(1),
-        BigNumber.from(1)
-        //this value is a lie, but it's due to token.balance() = 1 and aggMock.getLastRound() = 1
-      );
-    });
+        const redeemPromise = poolToken.connect(randomUser).redeem(aptAmount);
+        await (await redeemPromise).wait();
 
-    it("Test locking/unlocking redeem by owner", async () => {
-      await poolToken.mint(randomUser.address, 100);
-      const aggMock = await MockContract.deploy();
-      await poolToken.setPriceAggregator(aggMock.address);
+        const bal = await poolToken.balanceOf(randomUser.address);
+        expect(bal).to.equal("0");
+        await expect(redeemPromise)
+          .to.emit(poolToken, "Transfer")
+          .withArgs(randomUser.address, ZERO_ADDRESS, aptAmount);
+        await expect(redeemPromise).to.emit(poolToken, "RedeemedAPT").withArgs(
+          randomUser.address,
+          underlyerMock.address,
+          BigNumber.from(1),
+          aptAmount,
+          BigNumber.from(1),
+          BigNumber.from(1)
+          //this value is a lie, but it's due to token.balance() = 1 and aggMock.getLastRound() = 1
+        );
+      });
 
-      await expect(poolToken.connect(deployer).lockRedeem()).to.emit(
-        poolToken,
-        "RedeemLocked"
-      );
+      it("Test locking/unlocking redeem by owner", async () => {
+        await poolToken.mint(randomUser.address, 100);
+        const aggMock = await MockContract.deploy();
+        await poolToken.setPriceAggregator(aggMock.address);
 
-      await expect(poolToken.connect(randomUser).redeem(50)).to.be.revertedWith(
-        "LOCKED"
-      );
+        await expect(poolToken.connect(deployer).lockRedeem()).to.emit(
+          poolToken,
+          "RedeemLocked"
+        );
 
-      await expect(poolToken.connect(deployer).unlockRedeem()).to.emit(
-        poolToken,
-        "RedeemUnlocked"
-      );
-    });
+        await expect(
+          poolToken.connect(randomUser).redeem(50)
+        ).to.be.revertedWith("LOCKED");
 
-    it("Test locking/unlocking contract by not owner", async () => {
-      await poolToken.mint(randomUser.address, 100);
-      const aggMock = await MockContract.deploy();
-      await poolToken.setPriceAggregator(aggMock.address);
+        await expect(poolToken.connect(deployer).unlockRedeem()).to.emit(
+          poolToken,
+          "RedeemUnlocked"
+        );
+      });
 
-      await expect(poolToken.connect(deployer).lock()).to.emit(
-        poolToken,
-        "Paused"
-      );
+      it("Test locking/unlocking contract by not owner", async () => {
+        await poolToken.mint(randomUser.address, 100);
+        const aggMock = await MockContract.deploy();
+        await poolToken.setPriceAggregator(aggMock.address);
 
-      await expect(poolToken.connect(randomUser).redeem(50)).to.revertedWith(
-        "Pausable: paused"
-      );
+        await expect(poolToken.connect(deployer).lock()).to.emit(
+          poolToken,
+          "Paused"
+        );
 
-      await expect(poolToken.connect(deployer).unlock()).to.emit(
-        poolToken,
-        "Unpaused"
-      );
-    });
+        await expect(poolToken.connect(randomUser).redeem(50)).to.revertedWith(
+          "Pausable: paused"
+        );
 
-    it("Test locking/unlocking redeem by not owner", async () => {
-      await expect(
-        poolToken.connect(randomUser).lockRedeem()
-      ).to.be.revertedWith("Ownable: caller is not the owner");
-      await expect(
-        poolToken.connect(randomUser).unlockRedeem()
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+        await expect(poolToken.connect(deployer).unlock()).to.emit(
+          poolToken,
+          "Unpaused"
+        );
+      });
+
+      it("Test locking/unlocking redeem by not owner", async () => {
+        await expect(
+          poolToken.connect(randomUser).lockRedeem()
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+        await expect(
+          poolToken.connect(randomUser).unlockRedeem()
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
     });
   });
 });
