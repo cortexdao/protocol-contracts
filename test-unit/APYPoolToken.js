@@ -496,6 +496,7 @@ describe.only("Contract: APYPoolToken", () => {
     describe("Deployed value is zero", () => {
       const decimals = 0;
       const depositAmount = tokenAmountToBigNumber(1, decimals);
+      const poolBalance = tokenAmountToBigNumber(1000, decimals);
 
       before(async () => {
         // Test the old code paths without mAPT:
@@ -508,7 +509,9 @@ describe.only("Contract: APYPoolToken", () => {
 
         await underlyerMock.mock.decimals.returns(decimals);
         await underlyerMock.mock.allowance.returns(depositAmount);
-        await underlyerMock.mock.balanceOf.returns(depositAmount);
+        await underlyerMock.mock.balanceOf
+          .withArgs(poolToken.address)
+          .returns(poolBalance);
         await underlyerMock.mock.transferFrom.returns(true);
       });
 
@@ -523,6 +526,20 @@ describe.only("Contract: APYPoolToken", () => {
       });
 
       it("Emit correct APT events", async () => {
+        const expectedMintAmount = await poolToken.calculateMintAmount(
+          depositAmount
+        );
+        const depositEthValue = await poolToken.getEthValueFromTokenAmount(
+          depositAmount
+        );
+
+        // mock the underlyer transfer to the pool, so we can
+        // check deposit event has the post-deposit pool ETH value
+        await underlyerMock.mock.balanceOf
+          .withArgs(poolToken.address)
+          .returns(poolBalance.add(depositAmount));
+        const poolEthValue = await poolToken.getPoolTotalEthValue();
+
         const addLiquidityPromise = poolToken
           .connect(randomUser)
           .addLiquidity(depositAmount);
@@ -531,17 +548,17 @@ describe.only("Contract: APYPoolToken", () => {
 
         await expect(addLiquidityPromise)
           .to.emit(poolToken, "Transfer")
-          .withArgs(ZERO_ADDRESS, randomUser.address, depositAmount);
+          .withArgs(ZERO_ADDRESS, randomUser.address, expectedMintAmount);
 
         await expect(addLiquidityPromise)
           .to.emit(poolToken, "DepositedAPT")
           .withArgs(
             randomUser.address,
             underlyerMock.address,
-            BigNumber.from(1),
             depositAmount,
-            BigNumber.from(1),
-            BigNumber.from(1)
+            expectedMintAmount,
+            depositEthValue,
+            poolEthValue
           );
       });
 
@@ -561,32 +578,49 @@ describe.only("Contract: APYPoolToken", () => {
          *  Instead, we have to do some hacky revert-check logic.
          */
       });
+    });
 
-      it("Owner can lock and unlock addLiquidity", async () => {
+    describe("Locking", () => {
+      it("Owner can lock", async () => {
         await expect(poolToken.connect(deployer).lockAddLiquidity()).to.emit(
           poolToken,
           "AddLiquidityLocked"
         );
+      });
 
-        await expect(
-          poolToken.connect(randomUser).addLiquidity(1)
-        ).to.be.revertedWith("LOCKED");
-
+      it("Owner can unlock", async () => {
         await expect(poolToken.connect(deployer).unlockAddLiquidity()).to.emit(
           poolToken,
           "AddLiquidityUnlocked"
         );
-
-        await poolToken.connect(randomUser).addLiquidity(1);
       });
 
-      it("Revert if non-owner attempts to lock or unlock", async () => {
+      it("Revert if non-owner attempts to lock", async () => {
         await expect(
           poolToken.connect(randomUser).lockAddLiquidity()
         ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+
+      it("Revert if non-owner attempts to unlock", async () => {
         await expect(
           poolToken.connect(randomUser).unlockAddLiquidity()
         ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+
+      it("Revert deposit when pool is locked", async () => {
+        await poolToken.connect(deployer).lockAddLiquidity();
+
+        await expect(
+          poolToken.connect(randomUser).addLiquidity(1)
+        ).to.be.revertedWith("LOCKED");
+      });
+
+      it("Deposit should work after unlock", async () => {
+        await poolToken.connect(deployer).lockAddLiquidity();
+        await poolToken.connect(deployer).unlockAddLiquidity();
+
+        await expect(poolToken.connect(randomUser).addLiquidity(1)).to.not.be
+          .reverted;
       });
     });
   });
