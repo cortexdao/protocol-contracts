@@ -438,6 +438,12 @@ describe.only("Contract: APYPoolToken", () => {
       expect(await poolToken.calculateMintAmount(depositAmount)).to.equal(
         depositAmount.mul(DEPOSIT_FACTOR)
       );
+
+      // result doesn't depend on pool's deployed value
+      await mAptMock.mock.getDeployedEthValue.returns(10000000);
+      expect(await poolToken.calculateMintAmount(depositAmount)).to.equal(
+        depositAmount.mul(DEPOSIT_FACTOR)
+      );
     });
 
     it("Returns calculated value with non-zero total supply", async () => {
