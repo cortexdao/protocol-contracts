@@ -494,6 +494,9 @@ describe.only("Contract: APYPoolToken", () => {
     });
 
     describe("Deployed value is zero", () => {
+      const decimals = 0;
+      const depositAmount = tokenAmountToBigNumber(1, decimals);
+
       before(async () => {
         // Test the old code paths without mAPT:
         // forces `getDeployedEthValue` to return 0, meaning the pool's
@@ -503,40 +506,60 @@ describe.only("Contract: APYPoolToken", () => {
         const price = 1;
         await priceAggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
 
-        await underlyerMock.mock.decimals.returns(0);
-        await underlyerMock.mock.allowance.returns(1);
-        await underlyerMock.mock.balanceOf.returns(1);
+        await underlyerMock.mock.decimals.returns(decimals);
+        await underlyerMock.mock.allowance.returns(depositAmount);
+        await underlyerMock.mock.balanceOf.returns(depositAmount);
         await underlyerMock.mock.transferFrom.returns(true);
       });
 
-      it("User can deposit with correct results", async () => {
+      it("Increase APT balance by calculated amount", async () => {
+        const expectedMintAmount = await poolToken.calculateMintAmount(
+          depositAmount
+        );
+
+        await expect(() =>
+          poolToken.connect(randomUser).addLiquidity(depositAmount)
+        ).to.changeTokenBalance(poolToken, randomUser, expectedMintAmount);
+      });
+
+      it("Emit correct APT events", async () => {
         const addLiquidityPromise = poolToken
           .connect(randomUser)
-          .addLiquidity(1);
+          .addLiquidity(depositAmount);
         const trx = await addLiquidityPromise;
         await trx.wait();
 
-        expect(await poolToken.balanceOf(randomUser.address)).to.equal(1000);
-
-        // this is the mint transfer
         await expect(addLiquidityPromise)
           .to.emit(poolToken, "Transfer")
-          .withArgs(ZERO_ADDRESS, randomUser.address, BigNumber.from(1000));
+          .withArgs(ZERO_ADDRESS, randomUser.address, depositAmount);
+
         await expect(addLiquidityPromise)
           .to.emit(poolToken, "DepositedAPT")
           .withArgs(
             randomUser.address,
             underlyerMock.address,
             BigNumber.from(1),
-            BigNumber.from(1000),
+            depositAmount,
             BigNumber.from(1),
             BigNumber.from(1)
           );
+      });
 
-        // https://github.com/nomiclabs/hardhat/issues/1135
-        // expect("safeTransferFrom")
-        //   .to.be.calledOnContract(underlyerMock)
-        //   .withArgs(randomUser.address, poolToken.address, BigNumber.from(1000));
+      it("safeTransferFrom called on underlyer", async () => {
+        const trx = await poolToken
+          .connect(randomUser)
+          .addLiquidity(depositAmount);
+        await trx.wait();
+
+        /* https://github.com/nomiclabs/hardhat/issues/1135
+         * Due to the above issue, we can't simply do:
+         *
+         *  expect("safeTransferFrom")
+         *    .to.be.calledOnContract(underlyerMock)
+         *    .withArgs(randomUser.address, poolToken.address, BigNumber.from(1000));
+         *
+         *  Instead, we have to do some hacky revert-check logic.
+         */
       });
 
       it("Owner can lock and unlock addLiquidity", async () => {
