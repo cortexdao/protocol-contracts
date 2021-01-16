@@ -224,6 +224,43 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
+  describe("Locking", () => {
+    it("Owner can lock and unlock pool", async () => {
+      await expect(poolToken.connect(deployer).lock()).to.emit(
+        poolToken,
+        "Paused"
+      );
+      await expect(poolToken.connect(deployer).unlock()).to.emit(
+        poolToken,
+        "Unpaused"
+      );
+    });
+
+    it("Revert when non-owner attemps to lock", async () => {
+      await expect(poolToken.connect(randomUser).lock()).to.be.revertedWith(
+        "Ownable: caller is not the owner"
+      );
+    });
+
+    it("Revert when non-owner attemps to unlock", async () => {
+      await expect(poolToken.connect(randomUser).unlock()).to.be.revertedWith(
+        "Ownable: caller is not the owner"
+      );
+    });
+
+    it("Revert when calling addLiquidity/redeem on locked pool", async () => {
+      await poolToken.connect(deployer).lock();
+
+      await expect(
+        poolToken.connect(randomUser).addLiquidity(50)
+      ).to.revertedWith("Pausable: paused");
+
+      await expect(poolToken.connect(randomUser).redeem(50)).to.revertedWith(
+        "Pausable: paused"
+      );
+    });
+  });
+
   describe("getTokenAmountFromEthValue", async () => {
     it("Returns correct value", async () => {
       const decimals = 0;
@@ -679,54 +716,50 @@ describe.only("Contract: APYPoolToken", () => {
           //this value is a lie, but it's due to token.balance() = 1 and aggMock.getLastRound() = 1
         );
       });
+    });
 
-      it("Test locking/unlocking redeem by owner", async () => {
-        await poolToken.mint(randomUser.address, 100);
-        const aggMock = await MockContract.deploy();
-        await poolToken.setPriceAggregator(aggMock.address);
-
+    describe("Locking", () => {
+      it("Owner can lock", async () => {
         await expect(poolToken.connect(deployer).lockRedeem()).to.emit(
           poolToken,
           "RedeemLocked"
         );
+      });
 
-        await expect(
-          poolToken.connect(randomUser).redeem(50)
-        ).to.be.revertedWith("LOCKED");
-
+      it("Owner can unlock", async () => {
         await expect(poolToken.connect(deployer).unlockRedeem()).to.emit(
           poolToken,
           "RedeemUnlocked"
         );
       });
 
-      it("Test locking/unlocking contract by not owner", async () => {
-        await poolToken.mint(randomUser.address, 100);
-        const aggMock = await MockContract.deploy();
-        await poolToken.setPriceAggregator(aggMock.address);
-
-        await expect(poolToken.connect(deployer).lock()).to.emit(
-          poolToken,
-          "Paused"
-        );
-
-        await expect(poolToken.connect(randomUser).redeem(50)).to.revertedWith(
-          "Pausable: paused"
-        );
-
-        await expect(poolToken.connect(deployer).unlock()).to.emit(
-          poolToken,
-          "Unpaused"
-        );
-      });
-
-      it("Test locking/unlocking redeem by not owner", async () => {
+      it("Revert if non-owner attempts to lock", async () => {
         await expect(
           poolToken.connect(randomUser).lockRedeem()
         ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+
+      it("Revert if non-owner attempts to unlock", async () => {
         await expect(
           poolToken.connect(randomUser).unlockRedeem()
         ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+
+      it("Revert redeem when pool is locked", async () => {
+        await poolToken.connect(deployer).lockRedeem();
+
+        await expect(
+          poolToken.connect(randomUser).redeem(1)
+        ).to.be.revertedWith("LOCKED");
+      });
+
+      it("Redeem should work after unlock", async () => {
+        await poolToken.connect(deployer).lockRedeem();
+        await poolToken.connect(deployer).unlockRedeem();
+
+        await poolToken.mint(randomUser.address, 1);
+        await expect(poolToken.connect(randomUser).redeem(1)).to.not.be
+          .reverted;
       });
     });
   });
