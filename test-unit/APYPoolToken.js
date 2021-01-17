@@ -717,13 +717,13 @@ describe("Contract: APYPoolToken", () => {
   });
 
   describe("redeem", () => {
-    it("Test redeem insufficient amount", async () => {
+    it("Revert if withdraw is zero", async () => {
       await expect(poolToken.redeem(0)).to.be.revertedWith(
         "AMOUNT_INSUFFICIENT"
       );
     });
 
-    it("Test redeem insufficient balance", async () => {
+    it("Revert if APT balance is less than withdraw", async () => {
       await poolToken.mint(randomUser.address, 1);
       await expect(poolToken.connect(randomUser).redeem(2)).to.be.revertedWith(
         "BALANCE_INSUFFICIENT"
