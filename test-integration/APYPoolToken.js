@@ -46,12 +46,16 @@ describe("Contract: APYPoolToken", () => {
   let APYPoolTokenProxy;
   let APYPoolToken;
 
+  let APYMetaPoolToken;
+
   before(async () => {
     [deployer, admin, randomUser] = await ethers.getSigners();
 
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     APYPoolTokenProxy = await ethers.getContractFactory("APYPoolTokenProxy");
     APYPoolToken = await ethers.getContractFactory("TestAPYPoolToken");
+
+    APYMetaPoolToken = await ethers.getContractFactory("APYMetaPoolToken");
   });
 
   const tokenParams = [
@@ -90,6 +94,7 @@ describe("Contract: APYPoolToken", () => {
     describe(`\n    **** ${symbol} as underlyer ****\n`, () => {
       let agg;
       let underlyer;
+      let mApt;
 
       let proxyAdmin;
       let logic;
@@ -97,8 +102,10 @@ describe("Contract: APYPoolToken", () => {
       let poolToken;
 
       before("Setup", async () => {
-        underlyer = await ethers.getContractAt("IDetailedERC20", tokenAddress);
         agg = await ethers.getContractAt("AggregatorV3Interface", aggAddress);
+        underlyer = await ethers.getContractAt("IDetailedERC20", tokenAddress);
+        mApt = await APYMetaPoolToken.deploy();
+        await mApt.deployed();
 
         proxyAdmin = await ProxyAdmin.deploy();
         await proxyAdmin.deployed();
@@ -112,6 +119,8 @@ describe("Contract: APYPoolToken", () => {
         );
         await proxy.deployed();
         poolToken = await APYPoolToken.attach(proxy.address);
+
+        await poolToken.setMetaPoolToken(mApt.address);
 
         await acquireToken(
           STABLECOIN_POOLS[symbol],
