@@ -16,7 +16,7 @@ const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
 const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
 
-describe.only("Contract: APYPoolToken", () => {
+describe("Contract: APYPoolToken", () => {
   // signers
   let deployer;
   let admin;
@@ -142,7 +142,7 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("Admin setting", async () => {
+  describe("Set admin address", async () => {
     it("Owner can set admin", async () => {
       await poolToken.connect(deployer).setAdminAddress(admin.address);
       assert.equal(await poolToken.proxyAdmin(), admin.address);
@@ -159,7 +159,7 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("Price aggregator setting", async () => {
+  describe("Set price aggregator address", async () => {
     it("Revert when agg address is zero", async () => {
       await expect(
         poolToken.setPriceAggregator(ZERO_ADDRESS)
@@ -188,7 +188,7 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("mAPT setting", async () => {
+  describe("Set mAPT address", async () => {
     it("Owner can set admin address", async () => {
       const mockContract = await deployMockContract(deployer, []);
       const mockContractAddress = mockContract.address;
@@ -222,7 +222,7 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("Locking", () => {
+  describe("Lock pool", () => {
     it("Owner can lock and unlock pool", async () => {
       await expect(poolToken.connect(deployer).lock()).to.emit(
         poolToken,
@@ -234,13 +234,13 @@ describe.only("Contract: APYPoolToken", () => {
       );
     });
 
-    it("Revert when non-owner attemps to lock", async () => {
+    it("Revert when non-owner attempts to lock", async () => {
       await expect(poolToken.connect(randomUser).lock()).to.be.revertedWith(
         "Ownable: caller is not the owner"
       );
     });
 
-    it("Revert when non-owner attemps to unlock", async () => {
+    it("Revert when non-owner attempts to unlock", async () => {
       await expect(poolToken.connect(randomUser).unlock()).to.be.revertedWith(
         "Ownable: caller is not the owner"
       );
@@ -257,9 +257,53 @@ describe.only("Contract: APYPoolToken", () => {
         "Pausable: paused"
       );
     });
+
+    it("Revert when calling infiniteApprove on locked pool", async () => {
+      await poolToken.connect(deployer).lock();
+
+      await expect(
+        poolToken.connect(deployer).infiniteApprove(FAKE_ADDRESS)
+      ).to.revertedWith("Pausable: paused");
+    });
+
+    it("Allow calling revokeApprove on locked pool", async () => {
+      await underlyerMock.mock.approve.returns(true);
+
+      await poolToken.connect(deployer).lock();
+
+      await expect(poolToken.connect(deployer).revokeApprove(FAKE_ADDRESS)).to
+        .not.be.reverted;
+    });
   });
 
-  describe("getTokenAmountFromEthValue", async () => {
+  describe("Approvals", () => {
+    beforeEach(async () => {
+      await underlyerMock.mock.allowance.returns(0); // needed for `safeApprove`
+      await underlyerMock.mock.approve.returns(true);
+    });
+
+    it("Owner can call infiniteApprove", async () => {
+      await expect(poolToken.connect(deployer).infiniteApprove(FAKE_ADDRESS)).to
+        .not.be.reverted;
+    });
+
+    it("Revert when non-owner calls infiniteApprove", async () => {
+      await expect(poolToken.connect(randomUser).infiniteApprove(FAKE_ADDRESS))
+        .to.be.reverted;
+    });
+
+    it("Owner can call revokeApprove", async () => {
+      await expect(poolToken.connect(deployer).revokeApprove(FAKE_ADDRESS)).to
+        .not.be.reverted;
+    });
+
+    it("Revert when non-owner calls revokeApprove", async () => {
+      await expect(poolToken.connect(randomUser).revokeApprove(FAKE_ADDRESS)).to
+        .be.reverted;
+    });
+  });
+
+  describe("getTokenAmountFromEthValue", () => {
     it("Returns correct value", async () => {
       const decimals = 0;
       await underlyerMock.mock.decimals.returns(decimals);
@@ -276,7 +320,7 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("getEthValueFromTokenAmount", async () => {
+  describe("getEthValueFromTokenAmount", () => {
     it("Return 0 for zero amount", async () => {
       expect(await poolToken.getEthValueFromTokenAmount(0)).to.equal(0);
     });
@@ -296,7 +340,7 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("getPoolUnderlyerEthValue", async () => {
+  describe("getPoolUnderlyerEthValue", () => {
     it("Returns correct value regardless of deployed value", async () => {
       const decimals = 1;
       await underlyerMock.mock.decimals.returns(decimals);
@@ -325,7 +369,7 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("getDeployedEthValue", async () => {
+  describe("getDeployedEthValue", () => {
     // it("Return 0 if zero mAPT supply", async () => {
     //   await mAptMock.mock.totalSupply.returns(0);
     //   await mAptMock.mock.balanceOf.withArgs(poolToken.address).returns(0);
@@ -348,7 +392,7 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("getPoolTotalEthValue", async () => {
+  describe("getPoolTotalEthValue", () => {
     it("Returns correct value", async () => {
       const decimals = 1;
       await underlyerMock.mock.decimals.returns(decimals);
@@ -368,7 +412,7 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("getAPTEthValue", async () => {
+  describe("getAPTEthValue", () => {
     it("Revert when zero APT supply", async () => {
       expect(await poolToken.totalSupply()).to.equal(0);
       await expect(poolToken.getAPTEthValue(10)).to.be.revertedWith(
@@ -406,7 +450,7 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("calculateMintAmount", async () => {
+  describe("calculateMintAmount", () => {
     beforeEach(async () => {
       await mAptMock.mock.getDeployedEthValue.returns(0);
     });
@@ -492,7 +536,7 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("getUnderlyerAmount", async () => {
+  describe("getUnderlyerAmount", () => {
     beforeEach(async () => {
       await mAptMock.mock.getDeployedEthValue.returns(0);
     });
@@ -514,7 +558,7 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("addLiquidity", async () => {
+  describe("addLiquidity", () => {
     it("Revert if deposit is zero", async () => {
       await expect(poolToken.addLiquidity(0)).to.be.revertedWith(
         "AMOUNT_INSUFFICIENT"
@@ -672,7 +716,7 @@ describe.only("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("redeem", async () => {
+  describe("redeem", () => {
     it("Test redeem insufficient amount", async () => {
       await expect(poolToken.redeem(0)).to.be.revertedWith(
         "AMOUNT_INSUFFICIENT"
