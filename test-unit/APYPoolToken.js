@@ -572,7 +572,7 @@ describe("Contract: APYPoolToken", () => {
       tokenAmountToBigNumber(187892873),
     ];
     deployedValues.forEach(function (deployedValue) {
-      describe(`\n    **** deployed value: ${deployedValue} ****\n`, () => {
+      describe(`  deployed value: ${deployedValue}`, () => {
         const decimals = 6;
         const depositAmount = tokenAmountToBigNumber(1, decimals);
         const poolBalance = tokenAmountToBigNumber(1000, decimals);
@@ -742,7 +742,7 @@ describe("Contract: APYPoolToken", () => {
       tokenAmountToBigNumber(187892873),
     ];
     deployedValues.forEach(function (deployedValue) {
-      describe(`\n    **** deployed value: ${deployedValue} ****\n`, () => {
+      describe(`  deployed value: ${deployedValue}`, () => {
         const decimals = 6;
         const poolBalance = tokenAmountToBigNumber(1000, decimals);
 
