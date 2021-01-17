@@ -370,18 +370,6 @@ describe("Contract: APYPoolToken", () => {
   });
 
   describe("getDeployedEthValue", () => {
-    // it("Return 0 if zero mAPT supply", async () => {
-    //   await mAptMock.mock.totalSupply.returns(0);
-    //   await mAptMock.mock.balanceOf.withArgs(poolToken.address).returns(0);
-    //   expect(await poolToken.getDeployedEthValue()).to.equal(0);
-    // });
-
-    // it("Return 0 if zero mAPT balance", async () => {
-    //   await mAptMock.mock.totalSupply.returns(1000);
-    //   await mAptMock.mock.balanceOf.withArgs(poolToken.address).returns(0);
-    //   expect(await poolToken.getDeployedEthValue()).to.equal(0);
-    // });
-
     it("Delegates properly to mAPT contract", async () => {
       await mAptMock.mock.getDeployedEthValue.returns(0);
       expect(await poolToken.getDeployedEthValue()).to.equal(0);
