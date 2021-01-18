@@ -503,56 +503,64 @@ describe("Contract: APYPoolToken", () => {
                 randomUser.address
               );
               console.debug(
-                `\tUSDC Balance Before Mint: ${underlyerBalanceBefore.toString()}`
+                `\tUnderlyer Balance Before Mint: ${underlyerBalanceBefore.toString()}`
               );
 
-              const amount = tokenAmountToBigNumber(
+              const depositAmount = tokenAmountToBigNumber(
                 1000,
                 await underlyer.decimals()
               );
+              const mintAmount = await poolToken.calculateMintAmount(
+                depositAmount
+              );
+
               const addLiquidityPromise = poolToken
                 .connect(randomUser)
-                .addLiquidity(amount);
+                .addLiquidity(depositAmount);
               const trx = await addLiquidityPromise;
               await trx.wait();
 
-              let bal = await underlyer.balanceOf(randomUser.address);
-              console.debug(`\tUSDC Balance After Mint: ${bal.toString()}`);
+              let underlyerBalanceAfter = await underlyer.balanceOf(
+                randomUser.address
+              );
+              console.debug(
+                `\tUnderlyer Balance After Mint: ${underlyerBalanceAfter.toString()}`
+              );
 
               expect(await underlyer.balanceOf(poolToken.address)).to.equal(
-                amount
+                depositAmount
               );
               expect(await underlyer.balanceOf(randomUser.address)).to.equal(
-                underlyerBalanceBefore.sub(amount)
+                underlyerBalanceBefore.sub(depositAmount)
               );
-
-              const aptMinted = await poolToken.balanceOf(randomUser.address);
-              console.debug(`\tAPT Balance: ${aptMinted.toString()}`);
+              expect(await poolToken.balanceOf(randomUser.address)).to.equal(
+                mintAmount
+              );
 
               // APT transfer event
               await expectEventInTransaction(trx.hash, underlyer, "Transfer", {
                 from: randomUser.address,
                 to: poolToken.address,
-                value: amount,
+                value: depositAmount,
               });
 
               // APT transfer event
               await expect(addLiquidityPromise)
                 .to.emit(poolToken, "Transfer")
-                .withArgs(ZERO_ADDRESS, randomUser.address, aptMinted);
+                .withArgs(ZERO_ADDRESS, randomUser.address, mintAmount);
 
               // DepositedAPT event:
               // check the values reflect post-interaction state
               const tokenEthVal = await poolToken.getEthValueFromTokenAmount(
-                amount
+                depositAmount
               );
               await expect(addLiquidityPromise)
                 .to.emit(poolToken, "DepositedAPT")
                 .withArgs(
                   randomUser.address,
                   underlyer.address,
-                  amount,
-                  aptMinted,
+                  depositAmount,
+                  mintAmount,
                   tokenEthVal,
                   tokenEthVal
                 );
@@ -574,60 +582,119 @@ describe("Contract: APYPoolToken", () => {
             });
 
             it("Test redeem pass", async () => {
-              const aptMinted = tokenAmountToBigNumber("100", "18");
+              const aptAmount = tokenAmountToBigNumber("100", "18");
               await (
-                await poolToken.mint(randomUser.address, aptMinted)
+                await poolToken.mint(randomUser.address, aptAmount)
               ).wait();
+              const underlyerAmount = await poolToken.getUnderlyerAmount(
+                aptAmount
+              );
 
-              let usdcBal = await underlyer.balanceOf(randomUser.address);
+              let underlyerBalanceBefore = await underlyer.balanceOf(
+                randomUser.address
+              );
               console.debug(
-                `\tUSDC Balance Before Redeem: ${usdcBal.toString()}`
+                `\tUnderlyer Balance Before Redeem: ${underlyerBalanceBefore.toString()}`
               );
 
               const redeemPromise = poolToken
                 .connect(randomUser)
-                .redeem(aptMinted);
+                .redeem(aptAmount);
               const trx = await redeemPromise;
               await trx.wait();
 
-              let usdcBalAfter = await underlyer.balanceOf(randomUser.address);
+              let underlyerBalanceAfter = await underlyer.balanceOf(
+                randomUser.address
+              );
               console.debug(
-                `\tUSDC Balance After Redeem: ${usdcBalAfter.toString()}`
+                `\tUnderlyer Balance After Redeem: ${underlyerBalanceAfter.toString()}`
+              );
+              const underlyerTransferAmount = underlyerBalanceAfter.sub(
+                underlyerBalanceBefore
               );
 
-              assert.equal(await underlyer.balanceOf(poolToken.address), 0);
+              expect(await underlyer.balanceOf(poolToken.address)).to.equal(0);
+              expect(underlyerTransferAmount).to.equal(underlyerAmount);
 
-              const bal = await poolToken.balanceOf(randomUser.address);
-              console.debug(`\tAPT Balance: ${bal.toString()}`);
-              assert.equal(bal.toString(), "0");
+              const aptBalance = await poolToken.balanceOf(randomUser.address);
+              console.debug(`\tAPT Balance: ${aptBalance.toString()}`);
+              expect(aptBalance).to.equal(0);
 
               // underlyer transfer event
               await expectEventInTransaction(trx.hash, underlyer, "Transfer", {
                 from: poolToken.address,
                 to: randomUser.address,
-                value: usdcBalAfter.sub(usdcBal),
+                value: underlyerTransferAmount,
               });
 
               // APT transfer event
               await expect(redeemPromise)
                 .to.emit(poolToken, "Transfer")
-                .withArgs(randomUser.address, ZERO_ADDRESS, aptMinted);
+                .withArgs(randomUser.address, ZERO_ADDRESS, aptAmount);
 
               // RedeemedAPT event:
               // check the values reflect post-interaction state
               const tokenEthVal = await poolToken.getEthValueFromTokenAmount(
-                usdcBalAfter.sub(usdcBal)
+                underlyerTransferAmount
               );
               await expect(redeemPromise)
                 .to.emit(poolToken, "RedeemedAPT")
                 .withArgs(
                   randomUser.address,
                   underlyer.address,
-                  usdcBalAfter.sub(usdcBal),
-                  aptMinted,
+                  underlyerTransferAmount,
+                  aptAmount,
                   tokenEthVal,
                   tokenEthVal
                 );
+            });
+          });
+
+          describe("addLiquidity + redeem", () => {
+            it("redeem after addLiquidity leaves little dust", async () => {
+              await poolToken.mint(
+                deployer.address,
+                tokenAmountToBigNumber(100000)
+              );
+              await poolToken.mint(
+                randomUser.address,
+                tokenAmountToBigNumber(123)
+              );
+
+              const underlyerBalance = await underlyer.balanceOf(
+                randomUser.address
+              );
+              const aptBalance = await poolToken.balanceOf(randomUser.address);
+
+              const depositAmount = tokenAmountToBigNumber(
+                1000,
+                await underlyer.decimals()
+              );
+              const mintAmount = await poolToken.calculateMintAmount(
+                depositAmount
+              );
+              let trx = await poolToken
+                .connect(randomUser)
+                .addLiquidity(depositAmount);
+              await trx.wait();
+              expect(await poolToken.balanceOf(randomUser.address)).to.equal(
+                aptBalance.add(mintAmount)
+              );
+
+              trx = await poolToken.connect(randomUser).redeem(mintAmount);
+              await trx.wait();
+
+              expect(await poolToken.balanceOf(randomUser.address)).to.equal(
+                aptBalance
+              );
+              const resultUnderlyerBalance = await underlyer.balanceOf(
+                randomUser.address
+              );
+              expect(resultUnderlyerBalance).to.not.equal(underlyerBalance);
+              const percentageDeviation =
+                resultUnderlyerBalance.sub(underlyerBalance).toString() /
+                underlyerBalance.toString();
+              expect(Math.abs(percentageDeviation)).to.be.lt(0.001);
             });
           });
         });
