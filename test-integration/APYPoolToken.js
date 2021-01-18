@@ -488,7 +488,7 @@ describe("Contract: APYPoolToken", () => {
             });
           });
 
-          describe("Add liquidity", () => {
+          describe("addLiquidity", () => {
             it("Revert if deposit is zero", async () => {
               await expect(poolToken.addLiquidity(0)).to.be.revertedWith(
                 "AMOUNT_INSUFFICIENT"
@@ -532,20 +532,23 @@ describe("Contract: APYPoolToken", () => {
               const aptMinted = await poolToken.balanceOf(randomUser.address);
               console.debug(`\tAPT Balance: ${aptMinted.toString()}`);
 
-              const tokenEthVal = await poolToken.getEthValueFromTokenAmount(
-                amount
-              );
-
-              // this is the token transfer
+              // APT transfer event
               await expectEventInTransaction(trx.hash, underlyer, "Transfer", {
                 from: randomUser.address,
                 to: poolToken.address,
                 value: amount,
               });
-              // this is the mint transfer
+
+              // APT transfer event
               await expect(addLiquidityPromise)
                 .to.emit(poolToken, "Transfer")
                 .withArgs(ZERO_ADDRESS, randomUser.address, aptMinted);
+
+              // DepositedAPT event:
+              // check the values reflect post-interaction state
+              const tokenEthVal = await poolToken.getEthValueFromTokenAmount(
+                amount
+              );
               await expect(addLiquidityPromise)
                 .to.emit(poolToken, "DepositedAPT")
                 .withArgs(
@@ -559,7 +562,7 @@ describe("Contract: APYPoolToken", () => {
             });
           });
 
-          describe("Redeem", () => {
+          describe("redeem", () => {
             it("Revert if withdraw is zero", async () => {
               await expect(poolToken.redeem(0)).to.be.revertedWith(
                 "AMOUNT_INSUFFICIENT"
@@ -601,18 +604,23 @@ describe("Contract: APYPoolToken", () => {
               console.debug(`\tAPT Balance: ${bal.toString()}`);
               assert.equal(bal.toString(), "0");
 
-              const tokenEthVal = await poolToken.getEthValueFromTokenAmount(
-                usdcBalAfter.sub(usdcBal)
-              );
-
+              // underlyer transfer event
               await expectEventInTransaction(trx.hash, underlyer, "Transfer", {
                 from: poolToken.address,
                 to: randomUser.address,
                 value: usdcBalAfter.sub(usdcBal),
               });
+
+              // APT transfer event
               await expect(redeemPromise)
                 .to.emit(poolToken, "Transfer")
                 .withArgs(randomUser.address, ZERO_ADDRESS, aptMinted);
+
+              // RedeemedAPT event:
+              // check the values reflect post-interaction state
+              const tokenEthVal = await poolToken.getEthValueFromTokenAmount(
+                usdcBalAfter.sub(usdcBal)
+              );
               await expect(redeemPromise)
                 .to.emit(poolToken, "RedeemedAPT")
                 .withArgs(
