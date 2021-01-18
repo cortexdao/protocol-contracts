@@ -189,7 +189,7 @@ describe("Contract: APYPoolToken", () => {
   });
 
   describe("Set mAPT address", async () => {
-    it("Owner can set admin address", async () => {
+    it("Owner can set mAPT address", async () => {
       const mockContract = await deployMockContract(deployer, []);
       const mockContractAddress = mockContract.address;
       await poolToken.connect(deployer).setMetaPoolToken(mockContractAddress);

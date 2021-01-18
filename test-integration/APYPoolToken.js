@@ -1,5 +1,5 @@
 const { assert, expect } = require("chai");
-const { ethers, waffle } = require("hardhat");
+const { ethers } = require("hardhat");
 const { AddressZero: ZERO_ADDRESS, MaxUint256: MAX_UINT256 } = ethers.constants;
 const timeMachine = require("ganache-time-traveler");
 const { STABLECOIN_POOLS } = require("../utils/constants");
@@ -10,7 +10,6 @@ const {
   FAKE_ADDRESS,
 } = require("../utils/helpers");
 const expectEvent = require("@openzeppelin/test-helpers/src/expectEvent");
-const { deployMockContract } = waffle;
 
 /* ************************ */
 /* set DEBUG log level here */
@@ -221,13 +220,11 @@ describe("Contract: APYPoolToken", () => {
       });
 
       describe("Set mAPT address", async () => {
-        it("Owner can set admin address", async () => {
-          const mockContract = await deployMockContract(deployer, []);
-          const mockContractAddress = mockContract.address;
-          await poolToken
-            .connect(deployer)
-            .setMetaPoolToken(mockContractAddress);
-          assert.equal(await poolToken.mApt(), mockContractAddress);
+        it("Owner can set mAPT address", async () => {
+          const newMApt = await APYMetaPoolToken.deploy();
+          await newMApt.deployed();
+          await poolToken.connect(deployer).setMetaPoolToken(newMApt.address);
+          assert.equal(await poolToken.mApt(), newMApt.address);
         });
 
         it("Revert on setting to non-contract address", async () => {
