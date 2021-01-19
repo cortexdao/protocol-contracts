@@ -42,6 +42,7 @@ describe("Contract: APYPoolToken", () => {
   let deployer;
   let admin;
   let randomUser;
+  let anotherUser;
 
   let ProxyAdmin;
   let APYPoolTokenProxy;
@@ -50,7 +51,7 @@ describe("Contract: APYPoolToken", () => {
   let APYMetaPoolToken;
 
   before(async () => {
-    [deployer, admin, randomUser] = await ethers.getSigners();
+    [deployer, admin, randomUser, anotherUser] = await ethers.getSigners();
 
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     APYPoolTokenProxy = await ethers.getContractFactory("APYPoolTokenProxy");
@@ -134,6 +135,9 @@ describe("Contract: APYPoolToken", () => {
         //handle allownaces
         await underlyer
           .connect(randomUser)
+          .approve(poolToken.address, MAX_UINT256);
+        await underlyer
+          .connect(anotherUser)
           .approve(poolToken.address, MAX_UINT256);
 
         console.debug(`Proxy Admin: ${proxyAdmin.address}`);
@@ -582,6 +586,7 @@ describe("Contract: APYPoolToken", () => {
             });
 
             it("Test redeem pass", async () => {
+              // setup APT redeem amount and corresponding underlyer amount
               const aptAmount = tokenAmountToBigNumber("100", "18");
               await (
                 await poolToken.mint(randomUser.address, aptAmount)
@@ -597,12 +602,14 @@ describe("Contract: APYPoolToken", () => {
                 `\tUnderlyer Balance Before Redeem: ${underlyerBalanceBefore.toString()}`
               );
 
+              // execute the redeem
               const redeemPromise = poolToken
                 .connect(randomUser)
                 .redeem(aptAmount);
               const trx = await redeemPromise;
               await trx.wait();
 
+              // start the asserts
               let underlyerBalanceAfter = await underlyer.balanceOf(
                 randomUser.address
               );
@@ -612,8 +619,6 @@ describe("Contract: APYPoolToken", () => {
               const underlyerTransferAmount = underlyerBalanceAfter.sub(
                 underlyerBalanceBefore
               );
-
-              expect(await underlyer.balanceOf(poolToken.address)).to.equal(0);
               expect(underlyerTransferAmount).to.equal(underlyerAmount);
 
               const aptBalance = await poolToken.balanceOf(randomUser.address);
@@ -634,9 +639,10 @@ describe("Contract: APYPoolToken", () => {
 
               // RedeemedAPT event:
               // check the values reflect post-interaction state
-              const tokenEthVal = await poolToken.getEthValueFromTokenAmount(
+              const tokenEthValue = await poolToken.getEthValueFromTokenAmount(
                 underlyerTransferAmount
               );
+              const poolEthValue = await poolToken.getPoolTotalEthValue();
               await expect(redeemPromise)
                 .to.emit(poolToken, "RedeemedAPT")
                 .withArgs(
@@ -644,30 +650,30 @@ describe("Contract: APYPoolToken", () => {
                   underlyer.address,
                   underlyerTransferAmount,
                   aptAmount,
-                  tokenEthVal,
-                  tokenEthVal
+                  tokenEthValue,
+                  poolEthValue
                 );
             });
           });
 
-          describe("addLiquidity + redeem", () => {
-            it("redeem after addLiquidity leaves little dust", async () => {
+          describe("Test for dust", () => {
+            it("getUnderlyerAmount after calculateMintAmount results in small dust", async () => {
+              // increase APT total supply
               await poolToken.mint(
                 deployer.address,
-                tokenAmountToBigNumber(100000)
+                tokenAmountToBigNumber("100000")
               );
-              await poolToken.mint(
-                randomUser.address,
-                tokenAmountToBigNumber(123)
+              // seed pool with stablecoin
+              await acquireToken(
+                STABLECOIN_POOLS[symbol],
+                poolToken.address,
+                underlyer,
+                "12000000", // 12 MM
+                deployer.address
               );
-
-              const underlyerBalance = await underlyer.balanceOf(
-                randomUser.address
-              );
-              const aptBalance = await poolToken.balanceOf(randomUser.address);
 
               const depositAmount = tokenAmountToBigNumber(
-                1000,
+                "1",
                 await underlyer.decimals()
               );
               const mintAmount = await poolToken.calculateMintAmount(
@@ -677,24 +683,15 @@ describe("Contract: APYPoolToken", () => {
                 .connect(randomUser)
                 .addLiquidity(depositAmount);
               await trx.wait();
-              expect(await poolToken.balanceOf(randomUser.address)).to.equal(
-                aptBalance.add(mintAmount)
+              const underlyerAmount = await poolToken.getUnderlyerAmount(
+                mintAmount
               );
-
-              trx = await poolToken.connect(randomUser).redeem(mintAmount);
-              await trx.wait();
-
-              expect(await poolToken.balanceOf(randomUser.address)).to.equal(
-                aptBalance
+              expect(underlyerAmount).to.not.equal(depositAmount);
+              const tolerance = Math.floor((await underlyer.decimals()) / 4);
+              const allowedDeviation = tokenAmountToBigNumber(1, tolerance);
+              expect(Math.abs(underlyerAmount.sub(depositAmount))).to.be.lt(
+                allowedDeviation
               );
-              const resultUnderlyerBalance = await underlyer.balanceOf(
-                randomUser.address
-              );
-              expect(resultUnderlyerBalance).to.not.equal(underlyerBalance);
-              const percentageDeviation =
-                resultUnderlyerBalance.sub(underlyerBalance).toString() /
-                underlyerBalance.toString();
-              expect(Math.abs(percentageDeviation)).to.be.lt(0.001);
             });
           });
         });
