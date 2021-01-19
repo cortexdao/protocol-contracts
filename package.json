@@ -69,7 +69,7 @@
     "ethers": "^5.0.24",
     "ganache-cli": "^6.10.2",
     "ganache-time-traveler": "^1.0.15",
-    "hardhat": "^2.0.6",
+    "hardhat": "^2.0.8",
     "husky": "4.0.10",
     "lint-staged": "^10.2.11",
     "prettier": "2.1.2",
@@ -81,7 +81,7 @@
     "@compound-finance/compound-js": "^0.1.0",
     "@openzeppelin/contracts": "^3.2.0",
     "@openzeppelin/contracts-ethereum-package": "^3.0.0",
-    "abdk-libraries-solidity": "^2.3.0",
+    "abdk-libraries-solidity": "^2.4.0",
     "chalk": "^4.1.0",
     "commander": "^6.2.0",
     "yargs": "^16.1.1"
