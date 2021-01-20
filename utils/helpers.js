@@ -18,10 +18,11 @@ const dai = ether;
 
 const erc20 = (amount, decimals) => {
   amount = amount.toString();
-  decimals = (decimals || "18").toString();
+  if (decimals == undefined) decimals = "18";
+  decimals = decimals.toString();
   let [wholePart, fracPart] = amount.split(".");
   fracPart = fracPart || "0";
-  if (fracPart.length > decimals) {
+  if (fracPart != "0" && fracPart.length > decimals) {
     throw new Error(
       "Cannot convert ERC20 token amount to bits: decimal part is too long."
     );

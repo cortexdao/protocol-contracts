@@ -105,6 +105,9 @@ contract APYMetaPoolToken is
         _;
     }
 
+    /** @dev Chainlink's aggregator will return USD value but for convenience
+             we should return the value in ETH value.
+    */
     function getTVL() public view virtual returns (uint256) {
         revert("TVL aggregator not ready yet.");
         return 0;
@@ -173,5 +176,13 @@ contract APYMetaPoolToken is
         uint256 poolAmount =
             (poolEthValue.mul(10**decimals)).div(tokenEthPrice);
         return poolAmount;
+    }
+
+    function getDeployedEthValue(address pool) public view returns (uint256) {
+        uint256 balance = balanceOf(pool);
+        uint256 totalSupply = totalSupply();
+        if (totalSupply == 0 || balance == 0) return 0;
+
+        return getTVL().mul(balance).div(totalSupply);
     }
 }

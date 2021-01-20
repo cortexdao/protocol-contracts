@@ -9,9 +9,11 @@ import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/ILiquidityPool.sol";
 import "./interfaces/IDetailedERC20.sol";
+import "./APYMetaPoolToken.sol";
 
 contract APYPoolToken is
     ILiquidityPool,
@@ -33,6 +35,7 @@ contract APYPoolToken is
     bool public redeemLock;
     IDetailedERC20 public underlyer;
     AggregatorV3Interface public priceAgg;
+    APYMetaPoolToken public mApt;
 
     /* ------------------------------- */
 
@@ -78,6 +81,11 @@ contract APYPoolToken is
         emit PriceAggregatorChanged(address(_priceAgg));
     }
 
+    function setMetaPoolToken(address payable _mApt) public onlyOwner {
+        require(Address.isContract(_mApt), "INVALID_ADDRESS");
+        mApt = APYMetaPoolToken(_mApt);
+    }
+
     modifier onlyAdmin() {
         require(msg.sender == proxyAdmin, "ADMIN_ONLY");
         _;
@@ -112,10 +120,10 @@ contract APYPoolToken is
             "ALLOWANCE_INSUFFICIENT"
         );
 
-        // NOTE: calculateMintAmount() is not used to save gas
+        // calculateMintAmount() is not used because deposit value
+        // is needed for the event
         uint256 depositEthValue = getEthValueFromTokenAmount(tokenAmt);
         uint256 poolTotalEthValue = getPoolTotalEthValue();
-
         uint256 mintAmount =
             _calculateMintAmount(depositEthValue, poolTotalEthValue);
 
@@ -133,7 +141,17 @@ contract APYPoolToken is
     }
 
     function getPoolTotalEthValue() public view returns (uint256) {
+        uint256 underlyerValue = getPoolUnderlyerEthValue();
+        uint256 mAptValue = getDeployedEthValue();
+        return underlyerValue.add(mAptValue);
+    }
+
+    function getPoolUnderlyerEthValue() public view returns (uint256) {
         return getEthValueFromTokenAmount(underlyer.balanceOf(address(this)));
+    }
+
+    function getDeployedEthValue() public view returns (uint256) {
+        return mApt.getDeployedEthValue(address(this));
     }
 
     function getAPTEthValue(uint256 amount) public view returns (uint256) {
@@ -150,7 +168,6 @@ contract APYPoolToken is
             return 0;
         }
         uint256 decimals = underlyer.decimals();
-        // ethValue = (tokenEthPrice * amount) / decimals
         return ((getTokenEthPrice()).mul(amount)).div(10**decimals);
     }
 
@@ -161,8 +178,7 @@ contract APYPoolToken is
     {
         uint256 tokenEthPrice = getTokenEthPrice();
         uint256 decimals = underlyer.decimals();
-        // amount = (ethValue * decimals) / tokenEthPrice
-        return ((10**decimals).mul(ethValue)).div(tokenEthPrice); //tokenAmount
+        return ((10**decimals).mul(ethValue)).div(tokenEthPrice);
     }
 
     function getTokenEthPrice() public view returns (uint256) {
@@ -249,9 +265,6 @@ contract APYPoolToken is
         uint256 depositEthAmount,
         uint256 totalEthAmount
     ) internal view returns (uint256) {
-        // NOTE: When totalSupply > 0 && totalEthAmount == 0
-        // others can lay claim to other users deposits
-
         uint256 totalSupply = totalSupply();
 
         if (totalEthAmount == 0 || totalSupply == 0) {

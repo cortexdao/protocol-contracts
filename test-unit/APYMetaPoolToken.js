@@ -1,9 +1,13 @@
 const { assert, expect } = require("chai");
 const { artifacts, contract, web3 } = require("hardhat");
-const { expectRevert, BN } = require("@openzeppelin/test-helpers");
+const { expectRevert, BN, ether } = require("@openzeppelin/test-helpers");
 const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
-const { erc20 } = require("../utils/helpers");
+const {
+  erc20,
+  FAKE_ADDRESS,
+  ANOTHER_FAKE_ADDRESS,
+} = require("../utils/helpers");
 
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const APYMetaPoolTokenProxy = artifacts.require("APYMetaPoolTokenProxy");
@@ -184,6 +188,38 @@ contract("APYMetaPoolToken", async (accounts) => {
       await expectRevert(
         mApt.mint(anotherUser, new BN("1"), { from: deployer }),
         "MANAGER_ONLY"
+      );
+    });
+  });
+
+  describe("getDeployedEthValue", async () => {
+    it("Return 0 if zero mAPT supply", async () => {
+      expect(await mApt.totalSupply()).to.bignumber.equal("0");
+      expect(await mApt.getDeployedEthValue(FAKE_ADDRESS)).to.bignumber.equal(
+        "0"
+      );
+    });
+
+    it("Return 0 if zero mAPT balance", async () => {
+      await mApt.testMint(FAKE_ADDRESS, erc20(1000));
+      expect(
+        await mApt.getDeployedEthValue(ANOTHER_FAKE_ADDRESS)
+      ).to.bignumber.equal("0");
+    });
+
+    it("Returns calculated value for non-zero mAPT balance", async () => {
+      const tvl = ether("502300");
+      const balance = erc20("1000");
+      const anotherBalance = erc20("12345");
+      const totalSupply = balance.add(anotherBalance);
+
+      await mApt.setTVL(tvl);
+      await mApt.testMint(FAKE_ADDRESS, balance);
+      await mApt.testMint(ANOTHER_FAKE_ADDRESS, anotherBalance);
+
+      const expectedEthValue = tvl.mul(balance).div(totalSupply);
+      expect(await mApt.getDeployedEthValue(FAKE_ADDRESS)).to.bignumber.equal(
+        expectedEthValue
       );
     });
   });
