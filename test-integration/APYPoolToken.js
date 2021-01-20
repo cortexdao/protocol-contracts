@@ -409,6 +409,26 @@ describe("Contract: APYPoolToken", () => {
         });
       });
 
+      describe("Block inter-user APT transfers", () => {
+        it("Revert APT transfer", async () => {
+          const decimals = await poolToken.decimals();
+          const amount = tokenAmountToBigNumber("1", decimals);
+          await expect(
+            poolToken.connect(randomUser).transfer(anotherUser.address, amount)
+          ).to.be.revertedWith("INVALID_TRANSFER");
+        });
+
+        it("Revert APT transferFrom", async () => {
+          const decimals = await poolToken.decimals();
+          const amount = tokenAmountToBigNumber("1", decimals);
+          await expect(
+            poolToken
+              .connect(deployer)
+              .transferFrom(randomUser.address, anotherUser.address, amount)
+          ).to.be.revertedWith("INVALID_TRANSFER");
+        });
+      });
+
       const deployedValues = [
         tokenAmountToBigNumber(0),
         tokenAmountToBigNumber(83729),
