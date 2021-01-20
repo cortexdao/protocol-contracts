@@ -900,7 +900,13 @@ describe("Contract: APYPoolToken", () => {
     });
 
     it("Revert APT transferFrom", async () => {
-      assert.fail("write the test");
+      const decimals = await poolToken.decimals();
+      const amount = tokenAmountToBigNumber("1", decimals);
+      await expect(
+        poolToken
+          .connect(deployer)
+          .transferFrom(randomUser.address, anotherUser.address, amount)
+      ).to.be.revertedWith("INVALID_TRANSFER");
     });
   });
 });
