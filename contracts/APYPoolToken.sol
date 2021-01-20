@@ -299,4 +299,16 @@ contract APYPoolToken is
     function revokeApprove(address delegate) external nonReentrant onlyOwner {
         underlyer.safeApprove(delegate, 0);
     }
+
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal virtual override {
+        super._beforeTokenTransfer(from, to, amount);
+        // allow minting and burning
+        if (from == address(0) || to == address(0)) return;
+        // block transfer between users
+        revert("INVALID_TRANSFER");
+    }
 }
