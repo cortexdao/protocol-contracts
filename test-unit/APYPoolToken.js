@@ -21,6 +21,7 @@ describe("Contract: APYPoolToken", () => {
   let deployer;
   let admin;
   let randomUser;
+  let anotherUser;
 
   // contract factories
   let ProxyAdmin;
@@ -51,7 +52,7 @@ describe("Contract: APYPoolToken", () => {
   });
 
   before(async () => {
-    [deployer, admin, randomUser] = await ethers.getSigners();
+    [deployer, admin, randomUser, anotherUser] = await ethers.getSigners();
 
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     APYPoolTokenProxy = await ethers.getContractFactory("APYPoolTokenProxy");
@@ -886,6 +887,20 @@ describe("Contract: APYPoolToken", () => {
         await expect(poolToken.connect(randomUser).redeem(1)).to.not.be
           .reverted;
       });
+    });
+  });
+
+  describe("Block inter-user APT transfers", () => {
+    it("Revert APT transfer", async () => {
+      const decimals = await poolToken.decimals();
+      const amount = tokenAmountToBigNumber("1", decimals);
+      await expect(
+        poolToken.connect(randomUser).transfer(anotherUser.address, amount)
+      ).to.be.revertedWith("INVALID_TRANSFER");
+    });
+
+    it("Revert APT transferFrom", async () => {
+      assert.fail("write the test");
     });
   });
 });
