@@ -635,9 +635,10 @@ describe("Contract: APYPoolToken", () => {
 
               // DepositedAPT event:
               // check the values reflect post-interaction state
-              const tokenEthVal = await poolToken.getEthValueFromTokenAmount(
+              const depositEthValue = await poolToken.getEthValueFromTokenAmount(
                 depositAmount
               );
+              const poolEthValue = await poolToken.getPoolTotalEthValue();
               await expect(addLiquidityPromise)
                 .to.emit(poolToken, "DepositedAPT")
                 .withArgs(
@@ -645,8 +646,8 @@ describe("Contract: APYPoolToken", () => {
                   underlyer.address,
                   depositAmount,
                   mintAmount,
-                  tokenEthVal,
-                  tokenEthVal
+                  depositEthValue,
+                  poolEthValue
                 );
             });
           });
