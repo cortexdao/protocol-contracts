@@ -758,6 +758,7 @@ describe("Contract: APYPoolToken", () => {
         const decimals = 6;
         const poolBalance = tokenAmountToBigNumber(1000, decimals);
         const aptSupply = tokenAmountToBigNumber(1000000);
+        let reserveAptAmount;
         let aptAmount;
 
         // use EVM snapshots for test isolation
@@ -779,10 +780,11 @@ describe("Contract: APYPoolToken", () => {
             .returns(poolBalance);
           await underlyerMock.mock.transfer.returns(true);
 
+          // Mint APT supply to go along with pool's total ETH value.
           await poolToken.mint(deployer.address, aptSupply);
-          const reserveAptAmount = await poolToken.calculateMintAmount(
-            poolBalance
-          );
+          // Transfer reserve APT amount to user; must do a burn and mint
+          // since inter-user transfer is blocked.
+          reserveAptAmount = await poolToken.calculateMintAmount(poolBalance);
           await poolToken.burn(deployer.address, reserveAptAmount);
           await poolToken.mint(randomUser.address, reserveAptAmount);
           aptAmount = reserveAptAmount;
@@ -874,6 +876,23 @@ describe("Contract: APYPoolToken", () => {
 
           await expect(poolToken.connect(randomUser).redeem(aptAmount)).to.not
             .be.reverted;
+        });
+
+        it("Revert when underlyer amount exceeds reserve", async () => {
+          // when zero deployed value, APT share gives ownership of only
+          // underlyer amount, and this amount must be fully in the reserve.
+          if (deployedValue == 0) return;
+          // this "transfer" pushes the user's corresponding underlyer amount
+          // for his APT higher than the reserve balance.
+          const smallAptAmount = 10;
+          await poolToken.burn(deployer.address, smallAptAmount);
+          await poolToken.mint(randomUser.address, smallAptAmount);
+
+          await expect(
+            poolToken
+              .connect(randomUser)
+              .redeem(reserveAptAmount.add(smallAptAmount))
+          ).to.be.revertedWith("RESERVE_INSUFFICIENT");
         });
       });
     });
