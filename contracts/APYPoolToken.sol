@@ -214,6 +214,10 @@ contract APYPoolToken is
         require(aptAmount <= balanceOf(msg.sender), "BALANCE_INSUFFICIENT");
 
         uint256 redeemTokenAmt = getUnderlyerAmount(aptAmount);
+        require(
+            redeemTokenAmt <= underlyer.balanceOf(address(this)),
+            "RESERVE_INSUFFICIENT"
+        );
 
         _burn(msg.sender, aptAmount);
         underlyer.safeTransfer(msg.sender, redeemTokenAmt);

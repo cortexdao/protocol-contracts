@@ -43,7 +43,7 @@ describe("Contract: APYPoolToken", () => {
   let snapshotId;
 
   beforeEach(async () => {
-    let snapshot = await timeMachine.takeSnapshot();
+    const snapshot = await timeMachine.takeSnapshot();
     snapshotId = snapshot["result"];
   });
 
@@ -177,8 +177,6 @@ describe("Contract: APYPoolToken", () => {
       const setPromise = poolToken
         .connect(deployer)
         .setPriceAggregator(FAKE_ADDRESS);
-      const trx = await setPromise;
-      await trx.wait();
 
       const priceAgg = await poolToken.priceAgg();
 
@@ -578,7 +576,13 @@ describe("Contract: APYPoolToken", () => {
         const depositAmount = tokenAmountToBigNumber(1, decimals);
         const poolBalance = tokenAmountToBigNumber(1000, decimals);
 
+        // use EVM snapshots for test isolation
+        let snapshotId;
+
         before(async () => {
+          const snapshot = await timeMachine.takeSnapshot();
+          snapshotId = snapshot["result"];
+
           await mAptMock.mock.getDeployedEthValue.returns(deployedValue);
 
           const price = 1;
@@ -590,6 +594,10 @@ describe("Contract: APYPoolToken", () => {
             .withArgs(poolToken.address)
             .returns(poolBalance);
           await underlyerMock.mock.transferFrom.returns(true);
+        });
+
+        after(async () => {
+          await timeMachine.revertToSnapshot(snapshotId);
         });
 
         it("Increase APT balance by calculated amount", async () => {
@@ -629,8 +637,6 @@ describe("Contract: APYPoolToken", () => {
           const addLiquidityPromise = poolToken
             .connect(randomUser)
             .addLiquidity(depositAmount);
-          const trx = await addLiquidityPromise;
-          await trx.wait();
 
           await expect(addLiquidityPromise)
             .to.emit(poolToken, "Transfer")
@@ -665,6 +671,15 @@ describe("Contract: APYPoolToken", () => {
           await underlyerMock.mock.transferFrom
             .withArgs(randomUser.address, poolToken.address, depositAmount)
             .returns(true);
+          await expect(
+            poolToken.connect(randomUser).addLiquidity(depositAmount)
+          ).to.not.be.reverted;
+        });
+
+        it("Deposit should work after unlock", async () => {
+          await poolToken.connect(deployer).lockAddLiquidity();
+          await poolToken.connect(deployer).unlockAddLiquidity();
+
           await expect(
             poolToken.connect(randomUser).addLiquidity(depositAmount)
           ).to.not.be.reverted;
@@ -706,14 +721,6 @@ describe("Contract: APYPoolToken", () => {
           poolToken.connect(randomUser).addLiquidity(1)
         ).to.be.revertedWith("LOCKED");
       });
-
-      it("Deposit should work after unlock", async () => {
-        await poolToken.connect(deployer).lockAddLiquidity();
-        await poolToken.connect(deployer).unlockAddLiquidity();
-
-        await expect(poolToken.connect(randomUser).addLiquidity(1)).to.not.be
-          .reverted;
-      });
     });
   });
 
@@ -746,10 +753,17 @@ describe("Contract: APYPoolToken", () => {
       describe(`  deployed value: ${deployedValue}`, () => {
         const decimals = 6;
         const poolBalance = tokenAmountToBigNumber(1000, decimals);
+        const aptSupply = tokenAmountToBigNumber(1000000);
+        let reserveAptAmount;
+        let aptAmount;
 
-        const aptAmount = tokenAmountToBigNumber("1000");
+        // use EVM snapshots for test isolation
+        let snapshotId;
 
         before(async () => {
+          const snapshot = await timeMachine.takeSnapshot();
+          snapshotId = snapshot["result"];
+
           await mAptMock.mock.getDeployedEthValue.returns(deployedValue);
 
           const price = 1;
@@ -761,17 +775,28 @@ describe("Contract: APYPoolToken", () => {
             .withArgs(poolToken.address)
             .returns(poolBalance);
           await underlyerMock.mock.transfer.returns(true);
+
+          // Mint APT supply to go along with pool's total ETH value.
+          await poolToken.mint(deployer.address, aptSupply);
+          // Transfer reserve APT amount to user; must do a burn and mint
+          // since inter-user transfer is blocked.
+          reserveAptAmount = await poolToken.calculateMintAmount(poolBalance);
+          await poolToken.burn(deployer.address, reserveAptAmount);
+          await poolToken.mint(randomUser.address, reserveAptAmount);
+          aptAmount = reserveAptAmount;
+        });
+
+        after(async () => {
+          await timeMachine.revertToSnapshot(snapshotId);
         });
 
         it("Decrease APT balance by redeem amount", async () => {
-          await poolToken.mint(randomUser.address, aptAmount.mul(3));
           await expect(() =>
             poolToken.connect(randomUser).redeem(aptAmount)
           ).to.changeTokenBalance(poolToken, randomUser, aptAmount.mul(-1));
         });
 
         it("Emit correct APT events", async () => {
-          await poolToken.mint(randomUser.address, aptAmount);
           const underlyerAmount = await poolToken.getUnderlyerAmount(aptAmount);
           const depositEthValue = await poolToken.getEthValueFromTokenAmount(
             underlyerAmount
@@ -801,8 +826,6 @@ describe("Contract: APYPoolToken", () => {
           // in the integration tests.
 
           const redeemPromise = poolToken.connect(randomUser).redeem(aptAmount);
-          const trx = await redeemPromise;
-          await trx.wait();
 
           await expect(redeemPromise)
             .to.emit(poolToken, "Transfer")
@@ -830,7 +853,6 @@ describe("Contract: APYPoolToken", () => {
            *
            *  Instead, we have to do some hacky revert-check logic.
            */
-          await poolToken.mint(randomUser.address, aptAmount);
           const underlyerAmount = await poolToken.getUnderlyerAmount(aptAmount);
           await underlyerMock.mock.transfer.reverts();
           await expect(poolToken.connect(randomUser).redeem(aptAmount)).to.be
@@ -840,6 +862,32 @@ describe("Contract: APYPoolToken", () => {
             .returns(true);
           await expect(poolToken.connect(randomUser).redeem(aptAmount)).to.not
             .be.reverted;
+        });
+
+        it("Redeem should work after unlock", async () => {
+          await poolToken.connect(deployer).lockRedeem();
+          await poolToken.connect(deployer).unlockRedeem();
+
+          await expect(poolToken.connect(randomUser).redeem(aptAmount)).to.not
+            .be.reverted;
+        });
+
+        it("Revert when underlyer amount exceeds reserve", async () => {
+          // when zero deployed value, APT share gives ownership of only
+          // underlyer amount, and this amount will be fully in the reserve
+          // so there is nothing to test.
+          if (deployedValue == 0) return;
+          // this "transfer" pushes the user's corresponding underlyer amount
+          // for his APT higher than the reserve balance.
+          const smallAptAmount = 10;
+          await poolToken.burn(deployer.address, smallAptAmount);
+          await poolToken.mint(randomUser.address, smallAptAmount);
+
+          await expect(
+            poolToken
+              .connect(randomUser)
+              .redeem(reserveAptAmount.add(smallAptAmount))
+          ).to.be.revertedWith("RESERVE_INSUFFICIENT");
         });
       });
     });
@@ -877,15 +925,6 @@ describe("Contract: APYPoolToken", () => {
         await expect(
           poolToken.connect(randomUser).redeem(1)
         ).to.be.revertedWith("LOCKED");
-      });
-
-      it("Redeem should work after unlock", async () => {
-        await poolToken.connect(deployer).lockRedeem();
-        await poolToken.connect(deployer).unlockRedeem();
-
-        await poolToken.mint(randomUser.address, 1);
-        await expect(poolToken.connect(randomUser).redeem(1)).to.not.be
-          .reverted;
       });
     });
   });
