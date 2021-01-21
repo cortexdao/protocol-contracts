@@ -687,26 +687,6 @@ describe("Contract: APYPoolToken", () => {
               const reserveAptAmountPlusExtra = await poolToken.calculateMintAmount(
                 reserveBalance.add(extraAmount)
               );
-              console.log(
-                "Reserve APT plus extra:",
-                reserveAptAmountPlusExtra.toString()
-              );
-              console.log(
-                "Pool Total ETH value:",
-                (await poolToken.getPoolTotalEthValue()).toString()
-              );
-              console.log(
-                "Pool underlyer ETH value:",
-                (await poolToken.getPoolUnderlyerEthValue()).toString()
-              );
-              console.log(
-                "Deposit ETH value:",
-                (
-                  await poolToken.getEthValueFromTokenAmount(
-                    reserveBalance.add(1)
-                  )
-                ).toString()
-              );
 
               // "transfer" slightly more than reserve's APT amount to the user
               // (direct transfer between users is blocked)
@@ -722,41 +702,63 @@ describe("Contract: APYPoolToken", () => {
             });
 
             it("Test redeem pass", async () => {
-              // setup APT redeem amount and corresponding underlyer amount
-              const aptAmount = tokenAmountToBigNumber("100", "18");
-              await poolToken.mint(randomUser.address, aptAmount);
-              const underlyerAmount = await poolToken.getUnderlyerAmount(
-                aptAmount
-              );
+              // mint APT supply
+              const aptSupply = tokenAmountToBigNumber("10000");
+              await poolToken.mint(deployer.address, aptSupply);
 
-              let underlyerBalanceBefore = await underlyer.balanceOf(
-                randomUser.address
+              /* Setup pool and user APT amounts:
+                 1) give pool an underlyer reserve balance
+                 2) calculate the reserve's APT amount
+                 3) transfer APT amount less than that to the user
+              */
+              await underlyer
+                .connect(randomUser)
+                .transfer(
+                  poolToken.address,
+                  tokenAmountToBigNumber("1000", await underlyer.decimals())
+                );
+              const reserveBalance = await underlyer.balanceOf(
+                poolToken.address
               );
-              console.debug(
-                `\tUnderlyer Balance Before Redeem: ${underlyerBalanceBefore.toString()}`
+              const reserveAptAmount = await poolToken.calculateMintAmount(
+                reserveBalance
+              );
+              const redeemAptAmount = reserveAptAmount.div(2);
+              const underlyerAmount = await poolToken.getUnderlyerAmount(
+                redeemAptAmount
+              );
+              await poolToken.mint(randomUser.address, redeemAptAmount);
+              await poolToken.burn(deployer.address, redeemAptAmount);
+
+              let underlyerBalance = await underlyer.balanceOf(
+                randomUser.address
               );
 
               // execute the redeem
               const redeemPromise = poolToken
                 .connect(randomUser)
-                .redeem(aptAmount);
+                .redeem(redeemAptAmount);
               const trx = await redeemPromise;
 
-              // start the asserts
+              /* ------ START THE ASSERTS -------------- */
+
+              // underlyer balances
               let underlyerBalanceAfter = await underlyer.balanceOf(
                 randomUser.address
               );
-              console.debug(
-                `\tUnderlyer Balance After Redeem: ${underlyerBalanceAfter.toString()}`
-              );
               const underlyerTransferAmount = underlyerBalanceAfter.sub(
-                underlyerBalanceBefore
+                underlyerBalance
               );
               expect(underlyerTransferAmount).to.equal(underlyerAmount);
+              expect(await underlyer.balanceOf(poolToken.address)).to.equal(
+                reserveBalance.sub(underlyerAmount)
+              );
 
-              const aptBalance = await poolToken.balanceOf(randomUser.address);
-              console.debug(`\tAPT Balance: ${aptBalance.toString()}`);
-              expect(aptBalance).to.equal(0);
+              // APT balances
+              expect(await poolToken.balanceOf(randomUser.address)).to.equal(0);
+              expect(await poolToken.totalSupply()).to.equal(
+                aptSupply.sub(redeemAptAmount)
+              );
 
               // underlyer transfer event
               await expectEventInTransaction(trx.hash, underlyer, "Transfer", {
@@ -768,7 +770,7 @@ describe("Contract: APYPoolToken", () => {
               // APT transfer event
               await expect(redeemPromise)
                 .to.emit(poolToken, "Transfer")
-                .withArgs(randomUser.address, ZERO_ADDRESS, aptAmount);
+                .withArgs(randomUser.address, ZERO_ADDRESS, redeemAptAmount);
 
               // RedeemedAPT event:
               // check the values reflect post-interaction state
@@ -782,7 +784,7 @@ describe("Contract: APYPoolToken", () => {
                   randomUser.address,
                   underlyer.address,
                   underlyerTransferAmount,
-                  aptAmount,
+                  redeemAptAmount,
                   tokenEthValue,
                   poolEthValue
                 );
