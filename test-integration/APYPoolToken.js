@@ -672,22 +672,22 @@ describe("Contract: APYPoolToken", () => {
               // so there is nothing to test.
               if (deployedValue == 0) return;
 
+              const decimals = await underlyer.decimals();
+
               // mint the APT supply
               const aptSupply = tokenAmountToBigNumber("100000");
               await poolToken.mint(deployer.address, aptSupply);
 
               // seed the pool with underlyer
-              const reserveBalance = tokenAmountToBigNumber(
-                "1500",
-                await underlyer.decimals()
-              );
+              const reserveBalance = tokenAmountToBigNumber("150000", decimals);
               await underlyer
                 .connect(randomUser)
                 .transfer(poolToken.address, reserveBalance);
 
               // calculate slightly more than APT amount corresponding to the reserve
+              const extraAmount = tokenAmountToBigNumber("1", decimals);
               const reserveAptAmountPlusExtra = await poolToken.calculateMintAmount(
-                reserveBalance.add(1)
+                reserveBalance.add(extraAmount)
               );
               console.log(
                 "Reserve APT plus extra:",
