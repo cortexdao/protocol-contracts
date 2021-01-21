@@ -177,8 +177,6 @@ describe("Contract: APYPoolToken", () => {
       const setPromise = poolToken
         .connect(deployer)
         .setPriceAggregator(FAKE_ADDRESS);
-      const trx = await setPromise;
-      await trx.wait();
 
       const priceAgg = await poolToken.priceAgg();
 
@@ -639,8 +637,6 @@ describe("Contract: APYPoolToken", () => {
           const addLiquidityPromise = poolToken
             .connect(randomUser)
             .addLiquidity(depositAmount);
-          const trx = await addLiquidityPromise;
-          await trx.wait();
 
           await expect(addLiquidityPromise)
             .to.emit(poolToken, "Transfer")
@@ -830,8 +826,6 @@ describe("Contract: APYPoolToken", () => {
           // in the integration tests.
 
           const redeemPromise = poolToken.connect(randomUser).redeem(aptAmount);
-          const trx = await redeemPromise;
-          await trx.wait();
 
           await expect(redeemPromise)
             .to.emit(poolToken, "Transfer")
