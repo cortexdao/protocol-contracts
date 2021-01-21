@@ -874,7 +874,8 @@ describe("Contract: APYPoolToken", () => {
 
         it("Revert when underlyer amount exceeds reserve", async () => {
           // when zero deployed value, APT share gives ownership of only
-          // underlyer amount, and this amount must be fully in the reserve.
+          // underlyer amount, and this amount will be fully in the reserve
+          // so there is nothing to test.
           if (deployedValue == 0) return;
           // this "transfer" pushes the user's corresponding underlyer amount
           // for his APT higher than the reserve balance.
