@@ -825,8 +825,8 @@ describe("Contract: APYPoolToken", () => {
                 mintAmount
               );
               expect(underlyerAmount).to.not.equal(depositAmount);
-              const tolerance = Math.floor((await underlyer.decimals()) / 4);
-              const allowedDeviation = tokenAmountToBigNumber(1, tolerance);
+              const tolerance = Math.ceil((await underlyer.decimals()) / 4);
+              const allowedDeviation = tokenAmountToBigNumber(5, tolerance);
               expect(Math.abs(underlyerAmount.sub(depositAmount))).to.be.lt(
                 allowedDeviation
               );
