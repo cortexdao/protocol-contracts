@@ -448,7 +448,7 @@ describe("Contract: APYPoolToken", () => {
             await mApt.testBurn(poolToken.address, mAptSupply);
           });
 
-          describe("Underlyer integration with calculations", () => {
+          describe("Underlyer and mAPT integration with calculations", () => {
             beforeEach(async () => {
               /* these get rollbacked after each test due to snapshotting */
               const aptAmount = tokenAmountToBigNumber("1000000000", "18");
@@ -518,6 +518,54 @@ describe("Contract: APYPoolToken", () => {
                 `\tUnderlyer Amount: ${underlyerAmount.toString()}`
               );
               assert(underlyerAmount.gt(0));
+            });
+
+            it("getUnderlyerEthValue returns correct value", async () => {
+              let underlyerBalance = await underlyer.balanceOf(
+                poolToken.address
+              );
+              let expectedUnderlyerEthValue = await poolToken.getEthValueFromTokenAmount(
+                underlyerBalance
+              );
+              expect(await poolToken.getPoolUnderlyerEthValue()).to.equal(
+                expectedUnderlyerEthValue
+              );
+
+              const underlyerAmount = tokenAmountToBigNumber(
+                "1553",
+                await underlyer.decimals()
+              );
+              await underlyer
+                .connect(randomUser)
+                .transfer(poolToken.address, underlyerAmount);
+
+              underlyerBalance = await underlyer.balanceOf(poolToken.address);
+              expectedUnderlyerEthValue = await poolToken.getEthValueFromTokenAmount(
+                underlyerBalance
+              );
+              expect(await poolToken.getPoolUnderlyerEthValue()).to.equal(
+                expectedUnderlyerEthValue
+              );
+            });
+
+            it("getDeployedValue returns correct value", async () => {
+              expect(await poolToken.getDeployedEthValue()).to.equal(
+                deployedValue
+              );
+
+              // transfer quarter of mAPT to another pool
+              await mApt.testMint(FAKE_ADDRESS, mAptSupply.div(4));
+              await mApt.testBurn(poolToken.address, mAptSupply.div(4));
+              expect(await poolToken.getDeployedEthValue()).to.equal(
+                deployedValue.mul(3).div(4)
+              );
+
+              // transfer same amount again
+              await mApt.testMint(FAKE_ADDRESS, mAptSupply.div(4));
+              await mApt.testBurn(poolToken.address, mAptSupply.div(4));
+              expect(await poolToken.getDeployedEthValue()).to.equal(
+                deployedValue.div(2)
+              );
             });
           });
 
