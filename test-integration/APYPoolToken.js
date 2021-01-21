@@ -436,6 +436,18 @@ describe("Contract: APYPoolToken", () => {
       ];
       deployedValues.forEach(function (deployedValue) {
         describe(`deployed value: ${deployedValue}`, () => {
+          const mAptSupply = tokenAmountToBigNumber("100");
+
+          before(async () => {
+            await mApt.setTVL(deployedValue);
+            await mApt.testMint(poolToken.address, mAptSupply);
+          });
+
+          after(async () => {
+            await mApt.setTVL(0);
+            await mApt.testBurn(poolToken.address, mAptSupply);
+          });
+
           describe("Underlyer integration with calculations", () => {
             beforeEach(async () => {
               /* these get rollbacked after each test due to snapshotting */
@@ -603,6 +615,63 @@ describe("Contract: APYPoolToken", () => {
               await expect(
                 poolToken.connect(randomUser).redeem(2)
               ).to.be.revertedWith("BALANCE_INSUFFICIENT");
+            });
+
+            it("Revert when underlyer amount is greater than reserve", async () => {
+              // When zero deployed value, APT share gives ownership of only
+              // underlyer amount, and this amount will be fully in the reserve
+              // so there is nothing to test.
+              if (deployedValue == 0) return;
+
+              // mint the APT supply
+              const aptSupply = tokenAmountToBigNumber("100000");
+              await poolToken.mint(deployer.address, aptSupply);
+
+              // seed the pool with underlyer
+              const reserveBalance = tokenAmountToBigNumber(
+                "1500",
+                await underlyer.decimals()
+              );
+              await underlyer
+                .connect(randomUser)
+                .transfer(poolToken.address, reserveBalance);
+
+              // calculate slightly more than APT amount corresponding to the reserve
+              const reserveAptAmountPlusExtra = await poolToken.calculateMintAmount(
+                reserveBalance.add(1)
+              );
+              console.log(
+                "Reserve APT plus extra:",
+                reserveAptAmountPlusExtra.toString()
+              );
+              console.log(
+                "Pool Total ETH value:",
+                (await poolToken.getPoolTotalEthValue()).toString()
+              );
+              console.log(
+                "Pool underlyer ETH value:",
+                (await poolToken.getPoolUnderlyerEthValue()).toString()
+              );
+              console.log(
+                "Deposit ETH value:",
+                (
+                  await poolToken.getEthValueFromTokenAmount(
+                    reserveBalance.add(1)
+                  )
+                ).toString()
+              );
+
+              // "transfer" slightly more than reserve's APT amount to the user
+              // (direct transfer between users is blocked)
+              await poolToken.burn(deployer.address, reserveAptAmountPlusExtra);
+              await poolToken.mint(
+                randomUser.address,
+                reserveAptAmountPlusExtra
+              );
+
+              await expect(
+                poolToken.connect(randomUser).redeem(reserveAptAmountPlusExtra)
+              ).to.be.revertedWith("RESERVE_INSUFFICIENT");
             });
 
             it("Test redeem pass", async () => {
