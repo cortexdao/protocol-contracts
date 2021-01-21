@@ -210,11 +210,9 @@ describe("Contract: APYPoolToken", () => {
           const setPromise = poolToken
             .connect(deployer)
             .setPriceAggregator(FAKE_ADDRESS);
-          const trx = await setPromise;
-          await trx.wait();
+          await setPromise;
 
           const priceAgg = await poolToken.priceAgg();
-
           assert.equal(priceAgg, FAKE_ADDRESS);
 
           await expect(setPromise)
@@ -439,6 +437,7 @@ describe("Contract: APYPoolToken", () => {
           const mAptSupply = tokenAmountToBigNumber("100");
 
           before(async () => {
+            // default to giving entire deployed value to the pool
             await mApt.setTVL(deployedValue);
             await mApt.testMint(poolToken.address, mAptSupply);
           });
@@ -602,7 +601,6 @@ describe("Contract: APYPoolToken", () => {
                 .connect(randomUser)
                 .addLiquidity(depositAmount);
               const trx = await addLiquidityPromise;
-              await trx.wait();
 
               let underlyerBalanceAfter = await underlyer.balanceOf(
                 randomUser.address
@@ -726,9 +724,7 @@ describe("Contract: APYPoolToken", () => {
             it("Test redeem pass", async () => {
               // setup APT redeem amount and corresponding underlyer amount
               const aptAmount = tokenAmountToBigNumber("100", "18");
-              await (
-                await poolToken.mint(randomUser.address, aptAmount)
-              ).wait();
+              await poolToken.mint(randomUser.address, aptAmount);
               const underlyerAmount = await poolToken.getUnderlyerAmount(
                 aptAmount
               );
@@ -745,7 +741,6 @@ describe("Contract: APYPoolToken", () => {
                 .connect(randomUser)
                 .redeem(aptAmount);
               const trx = await redeemPromise;
-              await trx.wait();
 
               // start the asserts
               let underlyerBalanceAfter = await underlyer.balanceOf(
@@ -817,10 +812,7 @@ describe("Contract: APYPoolToken", () => {
               const mintAmount = await poolToken.calculateMintAmount(
                 depositAmount
               );
-              let trx = await poolToken
-                .connect(randomUser)
-                .addLiquidity(depositAmount);
-              await trx.wait();
+              await poolToken.connect(randomUser).addLiquidity(depositAmount);
               const underlyerAmount = await poolToken.getUnderlyerAmount(
                 mintAmount
               );
