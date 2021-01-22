@@ -27,6 +27,7 @@ describe("Contract: APYPoolToken", () => {
   let ProxyAdmin;
   let APYPoolTokenProxy;
   let APYPoolToken;
+  let APYPoolTokenV2;
 
   // mocks
   let underlyerMock;
@@ -35,8 +36,6 @@ describe("Contract: APYPoolToken", () => {
 
   // pool
   let proxyAdmin;
-  let logic;
-  let proxy;
   let poolToken;
 
   // use EVM snapshots for test isolation
@@ -57,6 +56,7 @@ describe("Contract: APYPoolToken", () => {
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     APYPoolTokenProxy = await ethers.getContractFactory("APYPoolTokenProxy");
     APYPoolToken = await ethers.getContractFactory("TestAPYPoolToken");
+    APYPoolTokenV2 = await ethers.getContractFactory("TestAPYPoolTokenV2");
 
     underlyerMock = await deployMockContract(deployer, IDetailedERC20.abi);
     priceAggMock = await deployMockContract(
@@ -65,26 +65,36 @@ describe("Contract: APYPoolToken", () => {
     );
     proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
-    logic = await APYPoolToken.deploy();
+    const logic = await APYPoolToken.deploy();
     await logic.deployed();
-    proxy = await APYPoolTokenProxy.deploy(
+    const proxy = await APYPoolTokenProxy.deploy(
       logic.address,
       proxyAdmin.address,
       underlyerMock.address,
       priceAggMock.address
     );
     await proxy.deployed();
-    poolToken = await APYPoolToken.attach(proxy.address);
+
+    const logicV2 = await APYPoolTokenV2.deploy();
+    await logicV2.deployed();
 
     mAptMock = await deployMockContract(deployer, APYMetaPoolToken.abi);
-    await poolToken.setMetaPoolToken(mAptMock.address);
+    const initData = APYPoolTokenV2.interface.encodeFunctionData(
+      "initializeUpgrade(address)",
+      [mAptMock.address]
+    );
+    await proxyAdmin
+      .connect(deployer)
+      .upgradeAndCall(proxy.address, logicV2.address, initData);
+    poolToken = await APYPoolTokenV2.attach(proxy.address);
   });
 
   describe("Constructor", async () => {
     it("Revert when admin address is zero ", async () => {
+      const logicMock = await deployMockContract(deployer, IDetailedERC20.abi);
       await expect(
         APYPoolTokenProxy.deploy(
-          logic.address,
+          logicMock.address,
           ZERO_ADDRESS,
           underlyerMock.address,
           priceAggMock.address
@@ -93,9 +103,10 @@ describe("Contract: APYPoolToken", () => {
     });
 
     it("Revert when token address is zero", async () => {
+      const logicMock = await deployMockContract(deployer, IDetailedERC20.abi);
       await expect(
         APYPoolTokenProxy.deploy(
-          logic.address,
+          logicMock.address,
           proxyAdmin.address,
           ZERO_ADDRESS,
           priceAggMock.address
@@ -104,9 +115,10 @@ describe("Contract: APYPoolToken", () => {
     });
 
     it("Revert when agg address is zero", async () => {
+      const logicMock = await deployMockContract(deployer, IDetailedERC20.abi);
       await expect(
         APYPoolTokenProxy.deploy(
-          logic.address,
+          logicMock.address,
           proxyAdmin.address,
           underlyerMock.address,
           ZERO_ADDRESS
