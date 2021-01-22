@@ -154,6 +154,10 @@ describe("Contract: APYPoolToken", () => {
       ).to.be.revertedWith("DONT_SEND_ETHER");
     });
 
+    it("mAPT set correctly", async () => {
+      expect(await poolToken.mApt()).to.equal(mAptMock.address);
+    });
+
     it("feePeriod set to correct value", async () => {
       expect(await poolToken.feePeriod()).to.equal(24 * 60 * 60);
     });
