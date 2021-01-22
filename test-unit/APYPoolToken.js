@@ -127,7 +127,7 @@ describe("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("Defaults", async () => {
+  describe.only("Defaults", async () => {
     it("Owner set to deployer", async () => {
       assert.equal(await poolToken.owner(), deployer.address);
     });
@@ -152,6 +152,14 @@ describe("Contract: APYPoolToken", () => {
       await expect(
         deployer.sendTransaction({ to: poolToken.address, value: "10" })
       ).to.be.revertedWith("DONT_SEND_ETHER");
+    });
+
+    it("feePeriod set to correct value", async () => {
+      expect(await poolToken.feePeriod()).to.equal(24 * 60 * 60);
+    });
+
+    it("feePercentage set to correct value", async () => {
+      expect(await poolToken.feePercentage()).to.equal(5);
     });
   });
 
