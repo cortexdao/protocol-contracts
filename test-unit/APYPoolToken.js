@@ -610,6 +610,22 @@ describe("Contract: APYPoolToken", () => {
       );
     });
 
+    it("Save deposit time for user", async () => {
+      await mAptMock.mock.getDeployedEthValue.returns(0);
+      await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+      await underlyerMock.mock.decimals.returns(6);
+      await underlyerMock.mock.allowance.returns(1);
+      await underlyerMock.mock.balanceOf.returns(1);
+      await underlyerMock.mock.transferFrom.returns(true);
+
+      await poolToken.connect(randomUser).addLiquidity(1);
+
+      const blockTimestamp = (await ethers.provider.getBlock()).timestamp;
+      expect(await poolToken.lastDepositTime(randomUser.address)).to.equal(
+        blockTimestamp
+      );
+    });
+
     /* 
       Test with range of deployed TVL values.  Using 0 as
       deployed value forces old code paths without mAPT since

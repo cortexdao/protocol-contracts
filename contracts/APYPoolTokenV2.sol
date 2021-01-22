@@ -18,6 +18,7 @@ contract APYPoolTokenV2 is APYPoolToken {
     APYMetaPoolToken public mApt;
     uint256 public feePeriod;
     uint256 public feePercentage;
+    mapping(address => uint256) public lastDepositTime;
 
     /* ------------------------------- */
 
@@ -62,6 +63,46 @@ contract APYPoolTokenV2 is APYPoolToken {
 
     function getDeployedEthValue() public view virtual returns (uint256) {
         return mApt.getDeployedEthValue(address(this));
+    }
+
+    /**
+     * @notice Mint corresponding amount of APT tokens for sent token amount.
+     * @dev If no APT tokens have been minted yet, fallback to a fixed ratio.
+     */
+    function addLiquidity(uint256 tokenAmt)
+        external
+        virtual
+        override
+        nonReentrant
+        whenNotPaused
+    {
+        require(!addLiquidityLock, "LOCKED");
+        require(tokenAmt > 0, "AMOUNT_INSUFFICIENT");
+        require(
+            underlyer.allowance(msg.sender, address(this)) >= tokenAmt,
+            "ALLOWANCE_INSUFFICIENT"
+        );
+        // solhint-disable-next-line not-rely-on-time
+        lastDepositTime[msg.sender] = block.timestamp;
+
+        // calculateMintAmount() is not used because deposit value
+        // is needed for the event
+        uint256 depositEthValue = getEthValueFromTokenAmount(tokenAmt);
+        uint256 poolTotalEthValue = getPoolTotalEthValue();
+        uint256 mintAmount =
+            _calculateMintAmount(depositEthValue, poolTotalEthValue);
+
+        _mint(msg.sender, mintAmount);
+        underlyer.safeTransferFrom(msg.sender, address(this), tokenAmt);
+
+        emit DepositedAPT(
+            msg.sender,
+            underlyer,
+            tokenAmt,
+            mintAmount,
+            depositEthValue,
+            getPoolTotalEthValue()
+        );
     }
 
     /**
