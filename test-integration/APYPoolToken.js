@@ -47,6 +47,7 @@ describe("Contract: APYPoolToken", () => {
   let ProxyAdmin;
   let APYPoolTokenProxy;
   let APYPoolToken;
+  let APYPoolTokenV2;
 
   let APYMetaPoolToken;
 
@@ -56,6 +57,7 @@ describe("Contract: APYPoolToken", () => {
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     APYPoolTokenProxy = await ethers.getContractFactory("APYPoolTokenProxy");
     APYPoolToken = await ethers.getContractFactory("TestAPYPoolToken");
+    APYPoolTokenV2 = await ethers.getContractFactory("TestAPYPoolTokenV2");
 
     APYMetaPoolToken = await ethers.getContractFactory("TestAPYMetaPoolToken");
   });
@@ -120,9 +122,19 @@ describe("Contract: APYPoolToken", () => {
           agg.address
         );
         await proxy.deployed();
-        poolToken = await APYPoolToken.attach(proxy.address);
 
-        await poolToken.setMetaPoolToken(mApt.address);
+        const logicV2 = await APYPoolTokenV2.deploy();
+        await logicV2.deployed();
+
+        const initData = APYPoolTokenV2.interface.encodeFunctionData(
+          "initializeUpgrade(address)",
+          [mApt.address]
+        );
+        await proxyAdmin
+          .connect(deployer)
+          .upgradeAndCall(proxy.address, logicV2.address, initData);
+
+        poolToken = await APYPoolTokenV2.attach(proxy.address);
 
         await acquireToken(
           STABLECOIN_POOLS[symbol],
