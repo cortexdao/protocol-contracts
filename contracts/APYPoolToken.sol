@@ -9,11 +9,9 @@ import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/ILiquidityPool.sol";
 import "./interfaces/IDetailedERC20.sol";
-import "./APYMetaPoolToken.sol";
 
 contract APYPoolToken is
     ILiquidityPool,
@@ -35,7 +33,6 @@ contract APYPoolToken is
     bool public redeemLock;
     IDetailedERC20 public underlyer;
     AggregatorV3Interface public priceAgg;
-    APYMetaPoolToken public mApt;
 
     /* ------------------------------- */
 
@@ -81,11 +78,6 @@ contract APYPoolToken is
         emit PriceAggregatorChanged(address(_priceAgg));
     }
 
-    function setMetaPoolToken(address payable _mApt) public onlyOwner {
-        require(Address.isContract(_mApt), "INVALID_ADDRESS");
-        mApt = APYMetaPoolToken(_mApt);
-    }
-
     modifier onlyAdmin() {
         require(msg.sender == proxyAdmin, "ADMIN_ONLY");
         _;
@@ -109,6 +101,7 @@ contract APYPoolToken is
      */
     function addLiquidity(uint256 tokenAmt)
         external
+        virtual
         override
         nonReentrant
         whenNotPaused
@@ -140,18 +133,8 @@ contract APYPoolToken is
         );
     }
 
-    function getPoolTotalEthValue() public view returns (uint256) {
-        uint256 underlyerValue = getPoolUnderlyerEthValue();
-        uint256 mAptValue = getDeployedEthValue();
-        return underlyerValue.add(mAptValue);
-    }
-
-    function getPoolUnderlyerEthValue() public view returns (uint256) {
+    function getPoolTotalEthValue() public view virtual returns (uint256) {
         return getEthValueFromTokenAmount(underlyer.balanceOf(address(this)));
-    }
-
-    function getDeployedEthValue() public view returns (uint256) {
-        return mApt.getDeployedEthValue(address(this));
     }
 
     function getAPTEthValue(uint256 amount) public view returns (uint256) {
@@ -205,6 +188,7 @@ contract APYPoolToken is
      */
     function redeem(uint256 aptAmount)
         external
+        virtual
         override
         nonReentrant
         whenNotPaused
@@ -214,10 +198,6 @@ contract APYPoolToken is
         require(aptAmount <= balanceOf(msg.sender), "BALANCE_INSUFFICIENT");
 
         uint256 redeemTokenAmt = getUnderlyerAmount(aptAmount);
-        require(
-            redeemTokenAmt <= underlyer.balanceOf(address(this)),
-            "RESERVE_INSUFFICIENT"
-        );
 
         _burn(msg.sender, aptAmount);
         underlyer.safeTransfer(msg.sender, redeemTokenAmt);
@@ -289,30 +269,5 @@ contract APYPoolToken is
         returns (uint256)
     {
         return getTokenAmountFromEthValue(getAPTEthValue(aptAmount));
-    }
-
-    function infiniteApprove(address delegate)
-        external
-        nonReentrant
-        whenNotPaused
-        onlyOwner
-    {
-        underlyer.safeApprove(delegate, type(uint256).max);
-    }
-
-    function revokeApprove(address delegate) external nonReentrant onlyOwner {
-        underlyer.safeApprove(delegate, 0);
-    }
-
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal virtual override {
-        super._beforeTokenTransfer(from, to, amount);
-        // allow minting and burning
-        if (from == address(0) || to == address(0)) return;
-        // block transfer between users
-        revert("INVALID_TRANSFER");
     }
 }
