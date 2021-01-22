@@ -127,7 +127,7 @@ describe("Contract: APYPoolToken", () => {
     });
   });
 
-  describe.only("Defaults", async () => {
+  describe("Defaults", async () => {
     it("Owner set to deployer", async () => {
       assert.equal(await poolToken.owner(), deployer.address);
     });
@@ -323,6 +323,33 @@ describe("Contract: APYPoolToken", () => {
     it("Revert when non-owner calls revokeApprove", async () => {
       await expect(poolToken.connect(randomUser).revokeApprove(FAKE_ADDRESS)).to
         .be.reverted;
+    });
+  });
+
+  describe("Set feePeriod", async () => {
+    it("Owner can set", async () => {
+      const newFeePeriod = 12 * 60 * 60;
+      await expect(poolToken.connect(deployer).setFeePeriod(newFeePeriod)).to
+        .not.be.reverted;
+      expect(await poolToken.feePeriod()).to.equal(newFeePeriod);
+    });
+    it("Revert if non-owner attempts to set", async () => {
+      await expect(poolToken.connect(randomUser).setFeePeriod(12 * 60 * 60)).to
+        .be.reverted;
+    });
+  });
+
+  describe("Set feePercentage", async () => {
+    it("Owner can set", async () => {
+      const newFeePercentage = 12;
+      await expect(
+        poolToken.connect(deployer).setFeePercentage(newFeePercentage)
+      ).to.not.be.reverted;
+      expect(await poolToken.feePercentage()).to.equal(newFeePercentage);
+    });
+    it("Revert if non-owner attempts to set", async () => {
+      await expect(poolToken.connect(randomUser).setFeePercentage(12)).to.be
+        .reverted;
     });
   });
 

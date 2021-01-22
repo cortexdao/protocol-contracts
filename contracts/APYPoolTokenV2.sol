@@ -36,6 +36,14 @@ contract APYPoolTokenV2 is APYPoolToken {
         mApt = APYMetaPoolToken(_mApt);
     }
 
+    function setFeePeriod(uint256 _feePeriod) public onlyOwner {
+        feePeriod = _feePeriod;
+    }
+
+    function setFeePercentage(uint256 _feePercentage) public onlyOwner {
+        feePercentage = _feePercentage;
+    }
+
     function getPoolTotalEthValue()
         public
         view
