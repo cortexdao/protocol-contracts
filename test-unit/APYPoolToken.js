@@ -610,20 +610,43 @@ describe("Contract: APYPoolToken", () => {
       );
     });
 
-    it("Save deposit time for user", async () => {
-      await mAptMock.mock.getDeployedEthValue.returns(0);
-      await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
-      await underlyerMock.mock.decimals.returns(6);
-      await underlyerMock.mock.allowance.returns(1);
-      await underlyerMock.mock.balanceOf.returns(1);
-      await underlyerMock.mock.transferFrom.returns(true);
+    describe.only("Last deposit time", () => {
+      beforeEach(async () => {
+        // These get rollbacked due to snapshotting.
+        // Just enough mocking to get `addLiquidity` to not revert.
+        await mAptMock.mock.getDeployedEthValue.returns(0);
+        await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+        await underlyerMock.mock.decimals.returns(6);
+        await underlyerMock.mock.allowance.returns(1);
+        await underlyerMock.mock.balanceOf.returns(1);
+        await underlyerMock.mock.transferFrom.returns(true);
+      });
 
-      await poolToken.connect(randomUser).addLiquidity(1);
+      it("Save deposit time for user", async () => {
+        await poolToken.connect(randomUser).addLiquidity(1);
 
-      const blockTimestamp = (await ethers.provider.getBlock()).timestamp;
-      expect(await poolToken.lastDepositTime(randomUser.address)).to.equal(
-        blockTimestamp
-      );
+        const blockTimestamp = (await ethers.provider.getBlock()).timestamp;
+        expect(await poolToken.lastDepositTime(randomUser.address)).to.equal(
+          blockTimestamp
+        );
+      });
+
+      it("isEarlyRedeem is false before first deposit", async () => {
+        // functional test to make sure first deposit will not be penalized
+        expect(await poolToken.lastDepositTime(randomUser.address)).to.equal(0);
+        expect(await poolToken.connect(randomUser).isEarlyRedeem()).to.be.false;
+      });
+
+      it("isEarlyRedeem returns correctly when called after deposit", async () => {
+        await poolToken.connect(randomUser).addLiquidity(1);
+
+        expect(await poolToken.connect(randomUser).isEarlyRedeem()).to.be.true;
+
+        const feePeriod = await poolToken.feePeriod();
+        await ethers.provider.send("evm_increaseTime", [feePeriod.toNumber()]); // add feePeriod seconds
+        await ethers.provider.send("evm_mine"); // mine the next block
+        expect(await poolToken.connect(randomUser).isEarlyRedeem()).to.be.false;
+      });
     });
 
     /* 
