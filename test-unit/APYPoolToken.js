@@ -610,7 +610,7 @@ describe("Contract: APYPoolToken", () => {
       );
     });
 
-    describe.only("Last deposit time", () => {
+    describe("Last deposit time", () => {
       beforeEach(async () => {
         // These get rollbacked due to snapshotting.
         // Just enough mocking to get `addLiquidity` to not revert.
@@ -646,6 +646,46 @@ describe("Contract: APYPoolToken", () => {
         await ethers.provider.send("evm_increaseTime", [feePeriod.toNumber()]); // add feePeriod seconds
         await ethers.provider.send("evm_mine"); // mine the next block
         expect(await poolToken.connect(randomUser).isEarlyRedeem()).to.be.false;
+      });
+
+      it("getUnderlyerAmountWithFee returns expected amount", async () => {
+        const decimals = 1;
+        await underlyerMock.mock.decimals.returns(decimals);
+        const depositAmount = tokenAmountToBigNumber("1", decimals);
+        await underlyerMock.mock.allowance.returns(depositAmount);
+        await underlyerMock.mock.balanceOf.returns(depositAmount);
+        await poolToken.testMint(
+          deployer.address,
+          tokenAmountToBigNumber("1000")
+        );
+
+        // make a desposit to update saved time
+        await poolToken.connect(randomUser).addLiquidity(depositAmount);
+
+        // calculate expected underlyer amount and fee
+        const aptAmount = tokenAmountToBigNumber(1);
+        const underlyerAmount = await poolToken.getUnderlyerAmount(aptAmount);
+        const feePercentage = await poolToken.feePercentage();
+        const fee = underlyerAmount.mul(feePercentage).div(100);
+
+        // advance time not quite enough, so there is a fee
+        const feePeriod = await poolToken.feePeriod();
+        await ethers.provider.send("evm_increaseTime", [
+          feePeriod.div(2).toNumber(),
+        ]); // add feePeriod seconds
+        await ethers.provider.send("evm_mine"); // mine the next block
+        expect(await poolToken.getUnderlyerAmountWithFee(aptAmount)).to.equal(
+          underlyerAmount.sub(fee)
+        );
+
+        // advance by just enough time; now there is no fee
+        await ethers.provider.send("evm_increaseTime", [
+          feePeriod.div(2).toNumber(),
+        ]); // add feePeriod seconds
+        await ethers.provider.send("evm_mine"); // mine the next block
+        expect(await poolToken.getUnderlyerAmountWithFee(aptAmount)).to.equal(
+          underlyerAmount
+        );
       });
     });
 
