@@ -120,7 +120,7 @@ contract APYPoolTokenV2 is APYPoolToken {
         require(aptAmount > 0, "AMOUNT_INSUFFICIENT");
         require(aptAmount <= balanceOf(msg.sender), "BALANCE_INSUFFICIENT");
 
-        uint256 redeemTokenAmt = getUnderlyerAmount(aptAmount);
+        uint256 redeemTokenAmt = getUnderlyerAmountWithFee(aptAmount);
         require(
             redeemTokenAmt <= underlyer.balanceOf(address(this)),
             "RESERVE_INSUFFICIENT"
@@ -137,6 +137,24 @@ contract APYPoolTokenV2 is APYPoolToken {
             getEthValueFromTokenAmount(redeemTokenAmt),
             getPoolTotalEthValue()
         );
+    }
+
+    function getUnderlyerAmountWithFee(uint256 aptAmount)
+        public
+        view
+        returns (uint256)
+    {
+        uint256 redeemTokenAmt = getUnderlyerAmount(aptAmount);
+        if (isEarlyRedeem()) {
+            uint256 fee = redeemTokenAmt.mul(feePercentage).div(100);
+            redeemTokenAmt = redeemTokenAmt.sub(fee);
+        }
+        return redeemTokenAmt;
+    }
+
+    function isEarlyRedeem() public view returns (bool) {
+        // solhint-disable-next-line not-rely-on-time
+        return block.timestamp - lastDepositTime[msg.sender] < feePeriod;
     }
 
     function infiniteApprove(address delegate)
