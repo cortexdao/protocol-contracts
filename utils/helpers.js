@@ -1,15 +1,18 @@
 const hre = require("hardhat");
 const { artifacts, ethers, web3 } = hre;
 const { BigNumber } = ethers;
-const { ether, BN, send } = require("@openzeppelin/test-helpers");
 const { AddressZero: ZERO_ADDRESS, MaxUint256: MAX_UINT256 } = ethers.constants;
+
+const fs = require("fs");
+const axios = require("axios");
+const { ether, BN, send, expectEvent } = require("@openzeppelin/test-helpers");
+
 const {
   CHAIN_IDS,
   DEPLOYS_JSON,
   TOKEN_AGG_MAP,
 } = require("../utils/constants.js");
-const fs = require("fs");
-const axios = require("axios");
+
 const IMintableERC20 = artifacts.require("IMintableERC20");
 
 const bytes32 = ethers.utils.formatBytes32String;
@@ -226,6 +229,27 @@ const ANOTHER_FAKE_ADDRESS = web3.utils.toChecksumAddress(
   "0xBAADC0FFEEBAADC0FFEEBAADC0FFEEBAADC0FFEE"
 );
 
+async function expectEventInTransaction(
+  txHash,
+  emitter,
+  eventName,
+  eventArgs = {}
+) {
+  /*
+  Ethers-wrapper for OpenZeppelin's test helper.
+
+  Their test helper still works as long as BigNumber is passed-in as strings and
+  the emitter has a Truffle-like interface, i.e. has properties `abi` and `address`.
+  */
+  const abi = JSON.parse(emitter.interface.format("json"));
+  const address = emitter.address;
+  const _emitter = { abi, address };
+  const _eventArgs = Object.fromEntries(
+    Object.entries(eventArgs).map(([k, v]) => [k, v.toString()])
+  );
+  await expectEvent.inTransaction(txHash, _emitter, eventName, _eventArgs);
+}
+
 module.exports = {
   bytes32,
   dai,
@@ -241,6 +265,7 @@ module.exports = {
   tokenAmountToBigNumber,
   getGasPrice,
   acquireToken,
+  expectEventInTransaction,
   ZERO_ADDRESS,
   MAX_UINT256,
   FAKE_ADDRESS,
