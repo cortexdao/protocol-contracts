@@ -91,7 +91,7 @@ describe("Contract: APYPoolToken", () => {
 
   describe("Constructor", async () => {
     it("Revert when admin address is zero ", async () => {
-      const logicMock = await deployMockContract(deployer, IDetailedERC20.abi);
+      const logicMock = await deployMockContract(deployer, []);
       await expect(
         APYPoolTokenProxy.deploy(
           logicMock.address,
@@ -103,7 +103,7 @@ describe("Contract: APYPoolToken", () => {
     });
 
     it("Revert when token address is zero", async () => {
-      const logicMock = await deployMockContract(deployer, IDetailedERC20.abi);
+      const logicMock = await deployMockContract(deployer, []);
       await expect(
         APYPoolTokenProxy.deploy(
           logicMock.address,
@@ -115,7 +115,7 @@ describe("Contract: APYPoolToken", () => {
     });
 
     it("Revert when agg address is zero", async () => {
-      const logicMock = await deployMockContract(deployer, IDetailedERC20.abi);
+      const logicMock = await deployMockContract(deployer, []);
       await expect(
         APYPoolTokenProxy.deploy(
           logicMock.address,
