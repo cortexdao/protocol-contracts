@@ -838,6 +838,80 @@ describe("Contract: APYPoolToken", () => {
               );
             });
           });
+
+          describe("Test early withdrawal fee", () => {
+            let underlyerAmount;
+            let aptAmount;
+
+            beforeEach(async () => {
+              // increase APT total supply
+              await poolToken.mint(
+                deployer.address,
+                tokenAmountToBigNumber("100000")
+              );
+              // seed pool with stablecoin
+              await acquireToken(
+                STABLECOIN_POOLS[symbol],
+                poolToken.address,
+                underlyer,
+                "12000000", // 12 MM
+                deployer.address
+              );
+
+              underlyerAmount = tokenAmountToBigNumber(
+                "1",
+                await underlyer.decimals()
+              );
+              aptAmount = await poolToken.calculateMintAmount(underlyerAmount);
+              await poolToken.connect(randomUser).addLiquidity(underlyerAmount);
+            });
+
+            it("Deduct fee if redeem is during fee period", async () => {
+              const fee = underlyerAmount
+                .mul(await poolToken.feePercentage())
+                .div(100);
+              const underlyerAmountMinusFee = underlyerAmount.sub(fee);
+
+              const beforeBalance = await underlyer.balanceOf(
+                randomUser.address
+              );
+              await poolToken.connect(randomUser).redeem(aptAmount);
+              const afterBalance = await underlyer.balanceOf(
+                randomUser.address
+              );
+              const transferAmount = afterBalance.sub(beforeBalance);
+
+              const tolerance = Math.ceil((await underlyer.decimals()) / 4);
+              const allowedDeviation = tokenAmountToBigNumber(5, tolerance);
+              expect(
+                Math.abs(underlyerAmountMinusFee.sub(transferAmount))
+              ).to.be.lt(allowedDeviation);
+            });
+
+            it("No fee if redeem is after fee period", async () => {
+              const feePeriod = await poolToken.feePeriod();
+              // advance time by feePeriod seconds and mine next block
+              await ethers.provider.send("evm_increaseTime", [
+                feePeriod.toNumber(),
+              ]);
+              await ethers.provider.send("evm_mine");
+
+              const beforeBalance = await underlyer.balanceOf(
+                randomUser.address
+              );
+              await poolToken.connect(randomUser).redeem(aptAmount);
+              const afterBalance = await underlyer.balanceOf(
+                randomUser.address
+              );
+              const transferAmount = afterBalance.sub(beforeBalance);
+
+              const tolerance = Math.ceil((await underlyer.decimals()) / 4);
+              const allowedDeviation = tokenAmountToBigNumber(5, tolerance);
+              expect(Math.abs(underlyerAmount.sub(transferAmount))).to.be.lt(
+                allowedDeviation
+              );
+            });
+          });
         });
       });
     });
