@@ -154,7 +154,7 @@ contract APYPoolTokenV2 is APYPoolToken {
 
     function isEarlyRedeem() public view returns (bool) {
         // solhint-disable-next-line not-rely-on-time
-        return block.timestamp - lastDepositTime[msg.sender] < feePeriod;
+        return block.timestamp.sub(lastDepositTime[msg.sender]) < feePeriod;
     }
 
     function infiniteApprove(address delegate)
