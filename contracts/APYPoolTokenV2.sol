@@ -259,6 +259,13 @@ contract APYPoolTokenV2 is
         return (depositEthAmount.mul(totalSupply)).div(totalEthAmount);
     }
 
+    /**
+     * @notice Get the underlying amount represented by APT amount,
+     *         deducting early withdraw fee, if applicable.
+     * @dev To check if fee will be applied, use `isEarlyRedeem`.
+     * @param aptAmount The amount of APT tokens
+     * @return uint256 The underlyer value of the APT tokens
+     */
     function getUnderlyerAmountWithFee(uint256 aptAmount)
         public
         view
@@ -285,21 +292,43 @@ contract APYPoolTokenV2 is
         return getTokenAmountFromEthValue(getAPTEthValue(aptAmount));
     }
 
+    /**
+     * @notice Checks if caller will be charged early withdrawal fee.
+     * @dev `lastDepositTime` is stored each time user makes a deposit, so
+     *      the waiting period is restarted on each deposit.
+     * @return bool "true" means the fee will apply, "false" means it won't.
+     */
     function isEarlyRedeem() public view returns (bool) {
         // solhint-disable-next-line not-rely-on-time
         return block.timestamp.sub(lastDepositTime[msg.sender]) < feePeriod;
     }
 
+    /**
+     * @notice Get the total ETH-denominated value (in wei) of the pool's assets,
+     *         including not only its underlyer balance, but any part of deployed
+     *         capital that is owed to it.
+     * @return uint256
+     */
     function getPoolTotalEthValue() public view virtual returns (uint256) {
         uint256 underlyerValue = getPoolUnderlyerEthValue();
         uint256 mAptValue = getDeployedEthValue();
         return underlyerValue.add(mAptValue);
     }
 
+    /**
+     * @notice Get the ETH-denominated value (in wei) of the pool's
+     *         underlyer balance.
+     * @return uint256
+     */
     function getPoolUnderlyerEthValue() public view virtual returns (uint256) {
         return getEthValueFromTokenAmount(underlyer.balanceOf(address(this)));
     }
 
+    /**
+     * @notice Get the Eth-denominated value (in wei) of the pool's share
+     *         of the deployed capital, as tracked by the mAPT token.
+     * @return uint256
+     */
     function getDeployedEthValue() public view virtual returns (uint256) {
         return mApt.getDeployedEthValue(address(this));
     }
@@ -337,6 +366,10 @@ contract APYPoolTokenV2 is
         return uint256(price);
     }
 
+    /** @notice Allow `delegate` to withdraw any amount from the pool.
+     *  @dev Will fail if called twice, due to usage of `safeApprove`.
+     *  @param delegate Address to give infinite allowance to
+     */
     function infiniteApprove(address delegate)
         external
         nonReentrant
@@ -346,10 +379,19 @@ contract APYPoolTokenV2 is
         underlyer.safeApprove(delegate, type(uint256).max);
     }
 
+    /** @notice Revoke given allowance from `delegate`.
+     *  @dev Can be called even when the pool is locked.
+     *  @param delegate Address to remove allowance from
+     */
     function revokeApprove(address delegate) external nonReentrant onlyOwner {
         underlyer.safeApprove(delegate, 0);
     }
 
+    /**
+     * @dev This hook is in-place to block inter-user APT transfers, as it
+     *      is one avenue that can be used by arbitrageurs to drain the
+     *      reserves.
+     */
     function _beforeTokenTransfer(
         address from,
         address to,
