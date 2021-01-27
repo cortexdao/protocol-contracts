@@ -347,8 +347,24 @@ describe("Contract: APYPoolToken", () => {
       ).to.not.be.reverted;
       expect(await poolToken.feePercentage()).to.equal(newFeePercentage);
     });
+
     it("Revert if non-owner attempts to set", async () => {
       await expect(poolToken.connect(randomUser).setFeePercentage(12)).to.be
+        .reverted;
+    });
+  });
+
+  describe("Set reservePercentage", async () => {
+    it("Owner can set", async () => {
+      const newPercentage = 10;
+      await expect(
+        poolToken.connect(deployer).setReservePercentage(newPercentage)
+      ).to.not.be.reverted;
+      expect(await poolToken.reservePercentage()).to.equal(newPercentage);
+    });
+
+    it("Revert if non-owner attempts to set", async () => {
+      await expect(poolToken.connect(randomUser).setReservePercentage(10)).to.be
         .reverted;
     });
   });

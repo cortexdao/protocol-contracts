@@ -42,6 +42,7 @@ contract APYPoolTokenV2 is
     uint256 public feePeriod;
     uint256 public feePercentage;
     mapping(address => uint256) public lastDepositTime;
+    uint256 public reservePercentage;
 
     /* ------------------------------- */
 
@@ -108,6 +109,10 @@ contract APYPoolTokenV2 is
 
     function setFeePercentage(uint256 _feePercentage) public onlyOwner {
         feePercentage = _feePercentage;
+    }
+
+    function setReservePercentage(uint256 _reservePercentage) public onlyOwner {
+        reservePercentage = _reservePercentage;
     }
 
     modifier onlyAdmin() {
