@@ -504,6 +504,21 @@ describe("Contract: APYPoolToken", () => {
     });
   });
 
+  describe.only("getReserveTopUpAmount", () => {
+    it("Returns 0 when there are no funds", async () => {
+      await mAptMock.mock.getDeployedEthValue.returns(0);
+      await underlyerMock.mock.balanceOf.returns(0);
+
+      expect(await poolToken.getReserveTopUpAmount()).to.equal(0);
+
+      const poolBalance = tokenAmountToBigNumber(1000);
+      await underlyerMock.mock.balanceOf.returns(poolBalance);
+      expect(await poolToken.getReserveTopUpAmount()).to.equal(
+        poolBalance.mul(-1)
+      );
+    });
+  });
+
   describe("calculateMintAmount", () => {
     beforeEach(async () => {
       await mAptMock.mock.getDeployedEthValue.returns(0);

@@ -9,6 +9,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/math/SignedSafeMath.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/ILiquidityPool.sol";
 import "./interfaces/IDetailedERC20.sol";
@@ -23,6 +24,7 @@ contract APYPoolTokenV2 is
     ERC20UpgradeSafe
 {
     using SafeMath for uint256;
+    using SignedSafeMath for int256;
     using SafeERC20 for IDetailedERC20;
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
 
@@ -369,6 +371,15 @@ contract APYPoolTokenV2 is
         (, int256 price, , , ) = priceAgg.latestRoundData();
         require(price > 0, "UNABLE_TO_RETRIEVE_ETH_PRICE");
         return uint256(price);
+    }
+
+    function getReserveTopUpAmount() public view returns (int256) {
+        require(
+            underlyer.balanceOf(address(this)) <= 2**255 - 1,
+            "POOL_BALANCE_OVERFLOW"
+        );
+        int256 poolBalance = int256(underlyer.balanceOf(address(this)));
+        return int256(0).sub(poolBalance);
     }
 
     /** @notice Allow `delegate` to withdraw any amount from the pool.
