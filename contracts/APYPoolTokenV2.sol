@@ -12,8 +12,9 @@ import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/ILiquidityPool.sol";
 import "./interfaces/IDetailedERC20.sol";
+import "./APYMetaPoolToken.sol";
 
-contract APYPoolToken is
+contract APYPoolTokenV2 is
     ILiquidityPool,
     Initializable,
     OwnableUpgradeSafe,
@@ -28,11 +29,19 @@ contract APYPoolToken is
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
+
+    // V1
     address public proxyAdmin;
     bool public addLiquidityLock;
     bool public redeemLock;
     IDetailedERC20 public underlyer;
     AggregatorV3Interface public priceAgg;
+
+    // V2
+    APYMetaPoolToken public mApt;
+    uint256 public feePeriod;
+    uint256 public feePercentage;
+    mapping(address => uint256) public lastDepositTime;
 
     /* ------------------------------- */
 
@@ -63,6 +72,16 @@ contract APYPoolToken is
     // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual onlyAdmin {}
 
+    function initializeUpgrade(address payable _mApt)
+        external
+        virtual
+        onlyAdmin
+    {
+        mApt = APYMetaPoolToken(_mApt);
+        feePeriod = 1 days;
+        feePercentage = 5;
+    }
+
     function setAdminAddress(address adminAddress) public onlyOwner {
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
@@ -76,6 +95,19 @@ contract APYPoolToken is
         require(address(_priceAgg) != address(0), "INVALID_AGG");
         priceAgg = _priceAgg;
         emit PriceAggregatorChanged(address(_priceAgg));
+    }
+
+    function setMetaPoolToken(address payable _mApt) public onlyOwner {
+        require(Address.isContract(_mApt), "INVALID_ADDRESS");
+        mApt = APYMetaPoolToken(_mApt);
+    }
+
+    function setFeePeriod(uint256 _feePeriod) public onlyOwner {
+        feePeriod = _feePeriod;
+    }
+
+    function setFeePercentage(uint256 _feePercentage) public onlyOwner {
+        feePercentage = _feePercentage;
     }
 
     modifier onlyAdmin() {
@@ -112,6 +144,8 @@ contract APYPoolToken is
             underlyer.allowance(msg.sender, address(this)) >= tokenAmt,
             "ALLOWANCE_INSUFFICIENT"
         );
+        // solhint-disable-next-line not-rely-on-time
+        lastDepositTime[msg.sender] = block.timestamp;
 
         // calculateMintAmount() is not used because deposit value
         // is needed for the event
@@ -131,43 +165,6 @@ contract APYPoolToken is
             depositEthValue,
             getPoolTotalEthValue()
         );
-    }
-
-    function getPoolTotalEthValue() public view virtual returns (uint256) {
-        return getEthValueFromTokenAmount(underlyer.balanceOf(address(this)));
-    }
-
-    function getAPTEthValue(uint256 amount) public view returns (uint256) {
-        require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        return (amount.mul(getPoolTotalEthValue())).div(totalSupply());
-    }
-
-    function getEthValueFromTokenAmount(uint256 amount)
-        public
-        view
-        returns (uint256)
-    {
-        if (amount == 0) {
-            return 0;
-        }
-        uint256 decimals = underlyer.decimals();
-        return ((getTokenEthPrice()).mul(amount)).div(10**decimals);
-    }
-
-    function getTokenAmountFromEthValue(uint256 ethValue)
-        public
-        view
-        returns (uint256)
-    {
-        uint256 tokenEthPrice = getTokenEthPrice();
-        uint256 decimals = underlyer.decimals();
-        return ((10**decimals).mul(ethValue)).div(tokenEthPrice);
-    }
-
-    function getTokenEthPrice() public view returns (uint256) {
-        (, int256 price, , , ) = priceAgg.latestRoundData();
-        require(price > 0, "UNABLE_TO_RETRIEVE_ETH_PRICE");
-        return uint256(price);
     }
 
     /** @notice Disable deposits. */
@@ -197,7 +194,11 @@ contract APYPoolToken is
         require(aptAmount > 0, "AMOUNT_INSUFFICIENT");
         require(aptAmount <= balanceOf(msg.sender), "BALANCE_INSUFFICIENT");
 
-        uint256 redeemTokenAmt = getUnderlyerAmount(aptAmount);
+        uint256 redeemTokenAmt = getUnderlyerAmountWithFee(aptAmount);
+        require(
+            redeemTokenAmt <= underlyer.balanceOf(address(this)),
+            "RESERVE_INSUFFICIENT"
+        );
 
         _burn(msg.sender, aptAmount);
         underlyer.safeTransfer(msg.sender, redeemTokenAmt);
@@ -259,6 +260,26 @@ contract APYPoolToken is
     }
 
     /**
+     * @notice Get the underlying amount represented by APT amount,
+     *         deducting early withdraw fee, if applicable.
+     * @dev To check if fee will be applied, use `isEarlyRedeem`.
+     * @param aptAmount The amount of APT tokens
+     * @return uint256 The underlyer value of the APT tokens
+     */
+    function getUnderlyerAmountWithFee(uint256 aptAmount)
+        public
+        view
+        returns (uint256)
+    {
+        uint256 redeemTokenAmt = getUnderlyerAmount(aptAmount);
+        if (isEarlyRedeem()) {
+            uint256 fee = redeemTokenAmt.mul(feePercentage).div(100);
+            redeemTokenAmt = redeemTokenAmt.sub(fee);
+        }
+        return redeemTokenAmt;
+    }
+
+    /**
      * @notice Get the underlying amount represented by APT amount.
      * @param aptAmount The amount of APT tokens
      * @return uint256 The underlying value of the APT tokens
@@ -269,5 +290,117 @@ contract APYPoolToken is
         returns (uint256)
     {
         return getTokenAmountFromEthValue(getAPTEthValue(aptAmount));
+    }
+
+    /**
+     * @notice Checks if caller will be charged early withdrawal fee.
+     * @dev `lastDepositTime` is stored each time user makes a deposit, so
+     *      the waiting period is restarted on each deposit.
+     * @return bool "true" means the fee will apply, "false" means it won't.
+     */
+    function isEarlyRedeem() public view returns (bool) {
+        // solhint-disable-next-line not-rely-on-time
+        return block.timestamp.sub(lastDepositTime[msg.sender]) < feePeriod;
+    }
+
+    /**
+     * @notice Get the total ETH-denominated value (in wei) of the pool's assets,
+     *         including not only its underlyer balance, but any part of deployed
+     *         capital that is owed to it.
+     * @return uint256
+     */
+    function getPoolTotalEthValue() public view virtual returns (uint256) {
+        uint256 underlyerValue = getPoolUnderlyerEthValue();
+        uint256 mAptValue = getDeployedEthValue();
+        return underlyerValue.add(mAptValue);
+    }
+
+    /**
+     * @notice Get the ETH-denominated value (in wei) of the pool's
+     *         underlyer balance.
+     * @return uint256
+     */
+    function getPoolUnderlyerEthValue() public view virtual returns (uint256) {
+        return getEthValueFromTokenAmount(underlyer.balanceOf(address(this)));
+    }
+
+    /**
+     * @notice Get the Eth-denominated value (in wei) of the pool's share
+     *         of the deployed capital, as tracked by the mAPT token.
+     * @return uint256
+     */
+    function getDeployedEthValue() public view virtual returns (uint256) {
+        return mApt.getDeployedEthValue(address(this));
+    }
+
+    function getAPTEthValue(uint256 amount) public view returns (uint256) {
+        require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
+        return (amount.mul(getPoolTotalEthValue())).div(totalSupply());
+    }
+
+    function getEthValueFromTokenAmount(uint256 amount)
+        public
+        view
+        returns (uint256)
+    {
+        if (amount == 0) {
+            return 0;
+        }
+        uint256 decimals = underlyer.decimals();
+        return ((getTokenEthPrice()).mul(amount)).div(10**decimals);
+    }
+
+    function getTokenAmountFromEthValue(uint256 ethValue)
+        public
+        view
+        returns (uint256)
+    {
+        uint256 tokenEthPrice = getTokenEthPrice();
+        uint256 decimals = underlyer.decimals();
+        return ((10**decimals).mul(ethValue)).div(tokenEthPrice);
+    }
+
+    function getTokenEthPrice() public view returns (uint256) {
+        (, int256 price, , , ) = priceAgg.latestRoundData();
+        require(price > 0, "UNABLE_TO_RETRIEVE_ETH_PRICE");
+        return uint256(price);
+    }
+
+    /** @notice Allow `delegate` to withdraw any amount from the pool.
+     *  @dev Will fail if called twice, due to usage of `safeApprove`.
+     *  @param delegate Address to give infinite allowance to
+     */
+    function infiniteApprove(address delegate)
+        external
+        nonReentrant
+        whenNotPaused
+        onlyOwner
+    {
+        underlyer.safeApprove(delegate, type(uint256).max);
+    }
+
+    /** @notice Revoke given allowance from `delegate`.
+     *  @dev Can be called even when the pool is locked.
+     *  @param delegate Address to remove allowance from
+     */
+    function revokeApprove(address delegate) external nonReentrant onlyOwner {
+        underlyer.safeApprove(delegate, 0);
+    }
+
+    /**
+     * @dev This hook is in-place to block inter-user APT transfers, as it
+     *      is one avenue that can be used by arbitrageurs to drain the
+     *      reserves.
+     */
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal virtual override {
+        super._beforeTokenTransfer(from, to, amount);
+        // allow minting and burning
+        if (from == address(0) || to == address(0)) return;
+        // block transfer between users
+        revert("INVALID_TRANSFER");
     }
 }

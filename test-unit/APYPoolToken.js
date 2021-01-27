@@ -27,6 +27,7 @@ describe("Contract: APYPoolToken", () => {
   let ProxyAdmin;
   let APYPoolTokenProxy;
   let APYPoolToken;
+  let APYPoolTokenV2;
 
   // mocks
   let underlyerMock;
@@ -35,8 +36,6 @@ describe("Contract: APYPoolToken", () => {
 
   // pool
   let proxyAdmin;
-  let logic;
-  let proxy;
   let poolToken;
 
   // use EVM snapshots for test isolation
@@ -57,6 +56,7 @@ describe("Contract: APYPoolToken", () => {
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     APYPoolTokenProxy = await ethers.getContractFactory("APYPoolTokenProxy");
     APYPoolToken = await ethers.getContractFactory("TestAPYPoolToken");
+    APYPoolTokenV2 = await ethers.getContractFactory("TestAPYPoolTokenV2");
 
     underlyerMock = await deployMockContract(deployer, IDetailedERC20.abi);
     priceAggMock = await deployMockContract(
@@ -65,26 +65,36 @@ describe("Contract: APYPoolToken", () => {
     );
     proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
-    logic = await APYPoolToken.deploy();
+    const logic = await APYPoolToken.deploy();
     await logic.deployed();
-    proxy = await APYPoolTokenProxy.deploy(
+    const proxy = await APYPoolTokenProxy.deploy(
       logic.address,
       proxyAdmin.address,
       underlyerMock.address,
       priceAggMock.address
     );
     await proxy.deployed();
-    poolToken = await APYPoolToken.attach(proxy.address);
+
+    const logicV2 = await APYPoolTokenV2.deploy();
+    await logicV2.deployed();
 
     mAptMock = await deployMockContract(deployer, APYMetaPoolToken.abi);
-    await poolToken.setMetaPoolToken(mAptMock.address);
+    const initData = APYPoolTokenV2.interface.encodeFunctionData(
+      "initializeUpgrade(address)",
+      [mAptMock.address]
+    );
+    await proxyAdmin
+      .connect(deployer)
+      .upgradeAndCall(proxy.address, logicV2.address, initData);
+    poolToken = await APYPoolTokenV2.attach(proxy.address);
   });
 
   describe("Constructor", async () => {
     it("Revert when admin address is zero ", async () => {
+      const logicMock = await deployMockContract(deployer, []);
       await expect(
         APYPoolTokenProxy.deploy(
-          logic.address,
+          logicMock.address,
           ZERO_ADDRESS,
           underlyerMock.address,
           priceAggMock.address
@@ -93,9 +103,10 @@ describe("Contract: APYPoolToken", () => {
     });
 
     it("Revert when token address is zero", async () => {
+      const logicMock = await deployMockContract(deployer, []);
       await expect(
         APYPoolTokenProxy.deploy(
-          logic.address,
+          logicMock.address,
           proxyAdmin.address,
           ZERO_ADDRESS,
           priceAggMock.address
@@ -104,9 +115,10 @@ describe("Contract: APYPoolToken", () => {
     });
 
     it("Revert when agg address is zero", async () => {
+      const logicMock = await deployMockContract(deployer, []);
       await expect(
         APYPoolTokenProxy.deploy(
-          logic.address,
+          logicMock.address,
           proxyAdmin.address,
           underlyerMock.address,
           ZERO_ADDRESS
@@ -140,6 +152,18 @@ describe("Contract: APYPoolToken", () => {
       await expect(
         deployer.sendTransaction({ to: poolToken.address, value: "10" })
       ).to.be.revertedWith("DONT_SEND_ETHER");
+    });
+
+    it("mAPT set correctly", async () => {
+      expect(await poolToken.mApt()).to.equal(mAptMock.address);
+    });
+
+    it("feePeriod set to correct value", async () => {
+      expect(await poolToken.feePeriod()).to.equal(24 * 60 * 60);
+    });
+
+    it("feePercentage set to correct value", async () => {
+      expect(await poolToken.feePercentage()).to.equal(5);
     });
   });
 
@@ -299,6 +323,33 @@ describe("Contract: APYPoolToken", () => {
     it("Revert when non-owner calls revokeApprove", async () => {
       await expect(poolToken.connect(randomUser).revokeApprove(FAKE_ADDRESS)).to
         .be.reverted;
+    });
+  });
+
+  describe("Set feePeriod", async () => {
+    it("Owner can set", async () => {
+      const newFeePeriod = 12 * 60 * 60;
+      await expect(poolToken.connect(deployer).setFeePeriod(newFeePeriod)).to
+        .not.be.reverted;
+      expect(await poolToken.feePeriod()).to.equal(newFeePeriod);
+    });
+    it("Revert if non-owner attempts to set", async () => {
+      await expect(poolToken.connect(randomUser).setFeePeriod(12 * 60 * 60)).to
+        .be.reverted;
+    });
+  });
+
+  describe("Set feePercentage", async () => {
+    it("Owner can set", async () => {
+      const newFeePercentage = 12;
+      await expect(
+        poolToken.connect(deployer).setFeePercentage(newFeePercentage)
+      ).to.not.be.reverted;
+      expect(await poolToken.feePercentage()).to.equal(newFeePercentage);
+    });
+    it("Revert if non-owner attempts to set", async () => {
+      await expect(poolToken.connect(randomUser).setFeePercentage(12)).to.be
+        .reverted;
     });
   });
 
@@ -557,6 +608,85 @@ describe("Contract: APYPoolToken", () => {
       await expect(poolToken.addLiquidity(1)).to.be.revertedWith(
         "ALLOWANCE_INSUFFICIENT"
       );
+    });
+
+    describe("Last deposit time", () => {
+      beforeEach(async () => {
+        // These get rollbacked due to snapshotting.
+        // Just enough mocking to get `addLiquidity` to not revert.
+        await mAptMock.mock.getDeployedEthValue.returns(0);
+        await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+        await underlyerMock.mock.decimals.returns(6);
+        await underlyerMock.mock.allowance.returns(1);
+        await underlyerMock.mock.balanceOf.returns(1);
+        await underlyerMock.mock.transferFrom.returns(true);
+      });
+
+      it("Save deposit time for user", async () => {
+        await poolToken.connect(randomUser).addLiquidity(1);
+
+        const blockTimestamp = (await ethers.provider.getBlock()).timestamp;
+        expect(await poolToken.lastDepositTime(randomUser.address)).to.equal(
+          blockTimestamp
+        );
+      });
+
+      it("isEarlyRedeem is false before first deposit", async () => {
+        // functional test to make sure first deposit will not be penalized
+        expect(await poolToken.lastDepositTime(randomUser.address)).to.equal(0);
+        expect(await poolToken.connect(randomUser).isEarlyRedeem()).to.be.false;
+      });
+
+      it("isEarlyRedeem returns correctly when called after deposit", async () => {
+        await poolToken.connect(randomUser).addLiquidity(1);
+
+        expect(await poolToken.connect(randomUser).isEarlyRedeem()).to.be.true;
+
+        const feePeriod = await poolToken.feePeriod();
+        await ethers.provider.send("evm_increaseTime", [feePeriod.toNumber()]); // add feePeriod seconds
+        await ethers.provider.send("evm_mine"); // mine the next block
+        expect(await poolToken.connect(randomUser).isEarlyRedeem()).to.be.false;
+      });
+
+      it("getUnderlyerAmountWithFee returns expected amount", async () => {
+        const decimals = 1;
+        await underlyerMock.mock.decimals.returns(decimals);
+        const depositAmount = tokenAmountToBigNumber("1", decimals);
+        await underlyerMock.mock.allowance.returns(depositAmount);
+        await underlyerMock.mock.balanceOf.returns(depositAmount);
+        await poolToken.testMint(
+          deployer.address,
+          tokenAmountToBigNumber("1000")
+        );
+
+        // make a desposit to update saved time
+        await poolToken.connect(randomUser).addLiquidity(depositAmount);
+
+        // calculate expected underlyer amount and fee
+        const aptAmount = tokenAmountToBigNumber(1);
+        const underlyerAmount = await poolToken.getUnderlyerAmount(aptAmount);
+        const feePercentage = await poolToken.feePercentage();
+        const fee = underlyerAmount.mul(feePercentage).div(100);
+
+        // advance time not quite enough, so there is a fee
+        const feePeriod = await poolToken.feePeriod();
+        await ethers.provider.send("evm_increaseTime", [
+          feePeriod.div(2).toNumber(),
+        ]); // add feePeriod seconds
+        await ethers.provider.send("evm_mine"); // mine the next block
+        expect(await poolToken.getUnderlyerAmountWithFee(aptAmount)).to.equal(
+          underlyerAmount.sub(fee)
+        );
+
+        // advance by just enough time; now there is no fee
+        await ethers.provider.send("evm_increaseTime", [
+          feePeriod.div(2).toNumber(),
+        ]); // add feePeriod seconds
+        await ethers.provider.send("evm_mine"); // mine the next block
+        expect(await poolToken.getUnderlyerAmountWithFee(aptAmount)).to.equal(
+          underlyerAmount
+        );
+      });
     });
 
     /* 

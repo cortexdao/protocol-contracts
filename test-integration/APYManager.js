@@ -25,6 +25,7 @@ const MockContract = artifacts.require("MockContract");
 const { STABLECOIN_POOLS } = require("../utils/constants");
 const APYPoolTokenProxy = artifacts.require("APYPoolTokenProxy");
 const APYPoolToken = artifacts.require("APYPoolToken");
+const APYPoolTokenV2 = artifacts.require("APYPoolTokenV2");
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
 const APYMetaPoolTokenProxy = artifacts.require("APYMetaPoolTokenProxy");
 const APYMetaPoolToken = artifacts.require("TestAPYMetaPoolToken");
@@ -88,30 +89,6 @@ contract("APYManager", async (accounts) => {
     );
     manager = await APYManager.at(managerProxy.address);
 
-    usdcToken = await IDetailedERC20.at(USDC_TOKEN);
-
-    const aptLogic = await APYPoolToken.new({ from: deployer });
-    const aptProxy = await APYPoolTokenProxy.new(
-      aptLogic.address,
-      proxyAdmin.address,
-      usdcToken.address,
-      USDC_PRICE_AGG,
-      {
-        from: deployer,
-      }
-    );
-    usdcPool = await APYPoolToken.at(aptProxy.address);
-
-    await acquireToken(
-      STABLECOIN_POOLS["USDC"],
-      deployer,
-      usdcToken,
-      "1000000"
-    );
-
-    //handle allownaces
-    await usdcToken.approve(usdcPool.address, MAX_UINT256, { from: deployer });
-
     // deploy mAPT token
     const mAptLogic = await APYMetaPoolToken.new({ from: deployer });
     const mockTvlAgg = await MockContract.new();
@@ -127,6 +104,43 @@ contract("APYManager", async (accounts) => {
 
     await mApt.setManagerAddress(manager.address);
     await manager.setMetaPoolToken(mApt.address);
+
+    usdcToken = await IDetailedERC20.at(USDC_TOKEN);
+
+    const aptLogic = await APYPoolToken.new({ from: deployer });
+    const aptProxy = await APYPoolTokenProxy.new(
+      aptLogic.address,
+      proxyAdmin.address,
+      usdcToken.address,
+      USDC_PRICE_AGG,
+      {
+        from: deployer,
+      }
+    );
+    const logicV2 = await APYPoolTokenV2.new({ from: deployer });
+    const iImplementation = new ethers.utils.Interface(APYPoolTokenV2.abi);
+    const initData = iImplementation.encodeFunctionData(
+      "initializeUpgrade(address)",
+      [mApt.address]
+    );
+    await proxyAdmin.upgradeAndCall(
+      aptProxy.address,
+      logicV2.address,
+      initData,
+      { from: deployer }
+    );
+
+    usdcPool = await APYPoolTokenV2.at(aptProxy.address);
+
+    await acquireToken(
+      STABLECOIN_POOLS["USDC"],
+      deployer,
+      usdcToken,
+      "1000000"
+    );
+
+    //handle allownaces
+    await usdcToken.approve(usdcPool.address, MAX_UINT256, { from: deployer });
 
     // workaround until real TVL aggregator is ready;
     // see NatSpec for `setApt` in `TestAPYMetaPoolToken`.

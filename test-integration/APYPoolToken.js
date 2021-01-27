@@ -8,35 +8,14 @@ const {
   console,
   tokenAmountToBigNumber,
   FAKE_ADDRESS,
+  expectEventInTransaction,
 } = require("../utils/helpers");
-const expectEvent = require("@openzeppelin/test-helpers/src/expectEvent");
 
 /* ************************ */
 /* set DEBUG log level here */
 /* ************************ */
 console.debugging = false;
 /* ************************ */
-
-async function expectEventInTransaction(
-  txHash,
-  emitter,
-  eventName,
-  eventArgs = {}
-) {
-  /*
-  Ethers-wrapper for OpenZeppelin's test helper.
-
-  Their test helper still works as long as BigNumber is passed-in as strings and
-  the emitter has a Truffle-like interface, i.e. has properties `abi` and `address`.
-  */
-  const abi = JSON.parse(emitter.interface.format("json"));
-  const address = emitter.address;
-  const _emitter = { abi, address };
-  const _eventArgs = Object.fromEntries(
-    Object.entries(eventArgs).map(([k, v]) => [k, v.toString()])
-  );
-  await expectEvent.inTransaction(txHash, _emitter, eventName, _eventArgs);
-}
 
 describe("Contract: APYPoolToken", () => {
   let deployer;
@@ -47,6 +26,7 @@ describe("Contract: APYPoolToken", () => {
   let ProxyAdmin;
   let APYPoolTokenProxy;
   let APYPoolToken;
+  let APYPoolTokenV2;
 
   let APYMetaPoolToken;
 
@@ -56,6 +36,7 @@ describe("Contract: APYPoolToken", () => {
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     APYPoolTokenProxy = await ethers.getContractFactory("APYPoolTokenProxy");
     APYPoolToken = await ethers.getContractFactory("TestAPYPoolToken");
+    APYPoolTokenV2 = await ethers.getContractFactory("TestAPYPoolTokenV2");
 
     APYMetaPoolToken = await ethers.getContractFactory("TestAPYMetaPoolToken");
   });
@@ -120,9 +101,19 @@ describe("Contract: APYPoolToken", () => {
           agg.address
         );
         await proxy.deployed();
-        poolToken = await APYPoolToken.attach(proxy.address);
 
-        await poolToken.setMetaPoolToken(mApt.address);
+        const logicV2 = await APYPoolTokenV2.deploy();
+        await logicV2.deployed();
+
+        const initData = APYPoolTokenV2.interface.encodeFunctionData(
+          "initializeUpgrade(address)",
+          [mApt.address]
+        );
+        await proxyAdmin
+          .connect(deployer)
+          .upgradeAndCall(proxy.address, logicV2.address, initData);
+
+        poolToken = await APYPoolTokenV2.attach(proxy.address);
 
         await acquireToken(
           STABLECOIN_POOLS[symbol],
@@ -822,6 +813,80 @@ describe("Contract: APYPoolToken", () => {
               const tolerance = Math.ceil((await underlyer.decimals()) / 4);
               const allowedDeviation = tokenAmountToBigNumber(5, tolerance);
               expect(Math.abs(underlyerAmount.sub(depositAmount))).to.be.lt(
+                allowedDeviation
+              );
+            });
+          });
+
+          describe("Test early withdrawal fee", () => {
+            let underlyerAmount;
+            let aptAmount;
+
+            beforeEach(async () => {
+              // increase APT total supply
+              await poolToken.mint(
+                deployer.address,
+                tokenAmountToBigNumber("100000")
+              );
+              // seed pool with stablecoin
+              await acquireToken(
+                STABLECOIN_POOLS[symbol],
+                poolToken.address,
+                underlyer,
+                "12000000", // 12 MM
+                deployer.address
+              );
+
+              underlyerAmount = tokenAmountToBigNumber(
+                "1",
+                await underlyer.decimals()
+              );
+              aptAmount = await poolToken.calculateMintAmount(underlyerAmount);
+              await poolToken.connect(randomUser).addLiquidity(underlyerAmount);
+            });
+
+            it("Deduct fee if redeem is during fee period", async () => {
+              const fee = underlyerAmount
+                .mul(await poolToken.feePercentage())
+                .div(100);
+              const underlyerAmountMinusFee = underlyerAmount.sub(fee);
+
+              const beforeBalance = await underlyer.balanceOf(
+                randomUser.address
+              );
+              await poolToken.connect(randomUser).redeem(aptAmount);
+              const afterBalance = await underlyer.balanceOf(
+                randomUser.address
+              );
+              const transferAmount = afterBalance.sub(beforeBalance);
+
+              const tolerance = Math.ceil((await underlyer.decimals()) / 4);
+              const allowedDeviation = tokenAmountToBigNumber(5, tolerance);
+              expect(
+                Math.abs(underlyerAmountMinusFee.sub(transferAmount))
+              ).to.be.lt(allowedDeviation);
+            });
+
+            it("No fee if redeem is after fee period", async () => {
+              const feePeriod = await poolToken.feePeriod();
+              // advance time by feePeriod seconds and mine next block
+              await ethers.provider.send("evm_increaseTime", [
+                feePeriod.toNumber(),
+              ]);
+              await ethers.provider.send("evm_mine");
+
+              const beforeBalance = await underlyer.balanceOf(
+                randomUser.address
+              );
+              await poolToken.connect(randomUser).redeem(aptAmount);
+              const afterBalance = await underlyer.balanceOf(
+                randomUser.address
+              );
+              const transferAmount = afterBalance.sub(beforeBalance);
+
+              const tolerance = Math.ceil((await underlyer.decimals()) / 4);
+              const allowedDeviation = tokenAmountToBigNumber(5, tolerance);
+              expect(Math.abs(underlyerAmount.sub(transferAmount))).to.be.lt(
                 allowedDeviation
               );
             });
