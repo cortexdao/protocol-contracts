@@ -504,18 +504,63 @@ describe("Contract: APYPoolToken", () => {
     });
   });
 
-  describe.only("getReserveTopUpAmount", () => {
-    it("Returns 0 when there are no funds", async () => {
+  describe("getReserveTopUpAmount", () => {
+    it("Returns 0 when pool has zero total value", async () => {
+      // set pool total ETH value to 0
       await mAptMock.mock.getDeployedEthValue.returns(0);
       await underlyerMock.mock.balanceOf.returns(0);
 
       expect(await poolToken.getReserveTopUpAmount()).to.equal(0);
+    });
 
-      const poolBalance = tokenAmountToBigNumber(1000);
+    it("Returns negative pool balance when zero deployed value", async () => {
+      // increase pool underlyer ETH value, which should result
+      // in negative reserve top-up
+      await mAptMock.mock.getDeployedEthValue.returns(0);
+      const decimals = await poolToken.decimals();
+      const poolBalance = tokenAmountToBigNumber(1000, decimals);
       await underlyerMock.mock.balanceOf.returns(poolBalance);
+
       expect(await poolToken.getReserveTopUpAmount()).to.equal(
         poolBalance.mul(-1)
       );
+    });
+
+    it("Returns reservePercentage of deployed value when zero balance", async () => {
+      await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+      await underlyerMock.mock.balanceOf.returns(0);
+      await underlyerMock.mock.decimals.returns(0);
+
+      const aptSupply = tokenAmountToBigNumber(10000);
+      await poolToken.testMint(deployer.address, aptSupply);
+
+      const deployedValue = tokenAmountToBigNumber(1000);
+      await mAptMock.mock.getDeployedEthValue.returns(deployedValue);
+
+      const reservePercentage = await poolToken.reservePercentage();
+      const targetValue = deployedValue.mul(reservePercentage).div(100);
+      const targetAmount = await poolToken.getUnderlyerAmount(targetValue);
+      expect(await poolToken.getReserveTopUpAmount()).to.equal(targetAmount);
+    });
+
+    it("Returns correctly calculated value in generic case", async () => {
+      await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+      const decimals = 6;
+      const poolBalance = tokenAmountToBigNumber(1000, decimals);
+      await underlyerMock.mock.balanceOf.returns(poolBalance);
+      await underlyerMock.mock.decimals.returns(decimals);
+
+      const aptSupply = tokenAmountToBigNumber(10000);
+      await poolToken.testMint(deployer.address, aptSupply);
+
+      const deployedValue = tokenAmountToBigNumber(1234);
+      await mAptMock.mock.getDeployedEthValue.returns(deployedValue);
+
+      const reservePercentage = await poolToken.reservePercentage();
+      const targetValue = deployedValue.mul(reservePercentage).div(100);
+      const targetAmount = await poolToken.getUnderlyerAmount(targetValue);
+      const topUpAmount = targetAmount.sub(poolBalance);
+      expect(await poolToken.getReserveTopUpAmount()).to.equal(topUpAmount);
     });
   });
 

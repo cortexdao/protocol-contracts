@@ -27,6 +27,7 @@ contract APYPoolTokenV2 is
     using SignedSafeMath for int256;
     using SafeERC20 for IDetailedERC20;
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
+    uint256 internal constant _MAX_INT256 = 2**255 - 1;
 
     /* ------------------------------- */
     /* impl-specific storage variables */
@@ -83,6 +84,7 @@ contract APYPoolTokenV2 is
         mApt = APYMetaPoolToken(_mApt);
         feePeriod = 1 days;
         feePercentage = 5;
+        reservePercentage = 5;
     }
 
     function setAdminAddress(address adminAddress) public onlyOwner {
@@ -296,6 +298,9 @@ contract APYPoolTokenV2 is
         view
         returns (uint256)
     {
+        if (aptAmount == 0) {
+            return 0;
+        }
         return getTokenAmountFromEthValue(getAPTEthValue(aptAmount));
     }
 
@@ -375,11 +380,17 @@ contract APYPoolTokenV2 is
 
     function getReserveTopUpAmount() public view returns (int256) {
         require(
-            underlyer.balanceOf(address(this)) <= 2**255 - 1,
-            "POOL_BALANCE_OVERFLOW"
+            underlyer.balanceOf(address(this)) <= _MAX_INT256,
+            "SIGNED_INT_OVERFLOW"
         );
         int256 poolBalance = int256(underlyer.balanceOf(address(this)));
-        return int256(0).sub(poolBalance);
+
+        uint256 targetValue =
+            getDeployedEthValue().mul(reservePercentage).div(100);
+        uint256 targetAmount = getUnderlyerAmount(targetValue);
+        require(targetAmount <= _MAX_INT256, "SIGNED_INT_OVERFLOW");
+
+        return int256(targetAmount).sub(poolBalance);
     }
 
     /** @notice Allow `delegate` to withdraw any amount from the pool.
