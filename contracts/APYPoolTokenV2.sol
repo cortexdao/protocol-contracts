@@ -234,9 +234,10 @@ contract APYPoolTokenV2 is
         emit RedeemUnlocked();
     }
 
-    /** @notice Calculate APT amount to be minted from deposit amount.
-     *  @param tokenAmt The deposit amount of stablecoin
-     *  @return The mint amount
+    /**
+     * @notice Calculate APT amount to be minted from deposit amount.
+     * @param tokenAmt The deposit amount of stablecoin
+     * @return The mint amount
      */
     function calculateMintAmount(uint256 tokenAmt)
         public
@@ -378,6 +379,43 @@ contract APYPoolTokenV2 is
         return uint256(price);
     }
 
+    /**
+     * @notice Get the underlyer amount needed to meet the reserve percentage
+     *         of the pool's deployed value.
+     *
+     *         This "top-up" amount should satisfy:
+     *
+     *         top-up ETH value + pool underlyer ETH value
+     *            = (reserve %) * pool deployed value (after unwinding)
+     *
+     * @dev Taking the percentage of the pool's current deployed value
+     *      is not sufficient, because the requirement is to have the
+     *      resulting values after unwinding capital satisfy the
+     *      above equation.
+     *
+     *      More precisely:
+     *
+     *      R_pre = pool underlyer ETH value before pushing unwound
+     *              capital to the pool
+     *      R_post = pool underlyer ETH value after pushing
+     *      DV_pre = pool's deployed ETH value before unwinding
+     *      DV_post = pool's deployed ETH value after unwinding
+     *      rPerc = the reserve percentage as a whole number
+     *                          out of 100
+     *
+     *      We want:
+     *
+     *      rPerc / 100 = R_post / DV_post          (equation 1)
+     *
+     *      where R_post = R_pre + top-up value
+     *            DV_post = DV_pre - top-up value
+     *
+     *      Making the latter substitutions in equation 1, gives:
+     *
+     *      top-up value = (rPerc * DV_pre - 100 * R_pre) / (100 + rPerc)
+     *
+     * @return uint256 The underlyer amount to top-up the pool's reserve
+     */
     function getReserveTopUpAmount() public view returns (int256) {
         require(
             underlyer.balanceOf(address(this)) <= _MAX_INT256,
@@ -393,9 +431,10 @@ contract APYPoolTokenV2 is
         return int256(targetAmount).sub(poolBalance);
     }
 
-    /** @notice Allow `delegate` to withdraw any amount from the pool.
-     *  @dev Will fail if called twice, due to usage of `safeApprove`.
-     *  @param delegate Address to give infinite allowance to
+    /**
+     * @notice Allow `delegate` to withdraw any amount from the pool.
+     * @dev Will fail if called twice, due to usage of `safeApprove`.
+     * @param delegate Address to give infinite allowance to
      */
     function infiniteApprove(address delegate)
         external
@@ -406,9 +445,10 @@ contract APYPoolTokenV2 is
         underlyer.safeApprove(delegate, type(uint256).max);
     }
 
-    /** @notice Revoke given allowance from `delegate`.
-     *  @dev Can be called even when the pool is locked.
-     *  @param delegate Address to remove allowance from
+    /**
+     * @notice Revoke given allowance from `delegate`.
+     * @dev Can be called even when the pool is locked.
+     * @param delegate Address to remove allowance from
      */
     function revokeApprove(address delegate) external nonReentrant onlyOwner {
         underlyer.safeApprove(delegate, 0);
