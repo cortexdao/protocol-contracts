@@ -417,18 +417,28 @@ contract APYPoolTokenV2 is
      * @return uint256 The underlyer amount to top-up the pool's reserve
      */
     function getReserveTopUpAmount() public view returns (int256) {
-        require(
-            underlyer.balanceOf(address(this)) <= _MAX_INT256,
-            "SIGNED_INT_OVERFLOW"
-        );
-        int256 poolBalance = int256(underlyer.balanceOf(address(this)));
+        uint256 unnormalizedTargetValue =
+            getDeployedEthValue().mul(reservePercentage);
+        uint256 unnormalizedUnderlyerValue =
+            getPoolUnderlyerEthValue().mul(100);
 
-        uint256 targetValue =
-            getDeployedEthValue().mul(reservePercentage).div(100);
-        uint256 targetAmount = getUnderlyerAmount(targetValue);
-        require(targetAmount <= _MAX_INT256, "SIGNED_INT_OVERFLOW");
+        int256 sign;
+        uint256 topUpValue;
+        if (unnormalizedTargetValue >= unnormalizedUnderlyerValue) {
+            sign = 1;
+            topUpValue = unnormalizedTargetValue
+                .sub(unnormalizedUnderlyerValue)
+                .div(reservePercentage.add(100));
+        } else {
+            sign = -1;
+            topUpValue = unnormalizedUnderlyerValue
+                .sub(unnormalizedTargetValue)
+                .div(reservePercentage.add(100));
+        }
 
-        return int256(targetAmount).sub(poolBalance);
+        uint256 topUpAmount = getTokenAmountFromEthValue(topUpValue);
+        require(topUpAmount <= _MAX_INT256, "SIGNED_INT_OVERFLOW");
+        return int256(topUpAmount).mul(sign);
     }
 
     /**
