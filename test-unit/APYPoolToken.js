@@ -577,7 +577,7 @@ describe("Contract: APYPoolToken", () => {
 
       // assuming we unwind the top-up value from the pool's deployed
       // capital, the reserve percentage of resulting deployed value
-      // is what we are targetting
+      // is what we are targeting
       const reservePercentage = await poolToken.reservePercentage();
       const targetValue = deployedValue
         .sub(topUpValue)
@@ -605,7 +605,7 @@ describe("Contract: APYPoolToken", () => {
 
       // assuming we unwind the top-up value from the pool's deployed
       // capital, the reserve percentage of resulting deployed value
-      // is what we are targetting
+      // is what we are targeting
       const reservePercentage = await poolToken.reservePercentage();
       const targetValue = deployedValue
         .sub(topUpValue)
