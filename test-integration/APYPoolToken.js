@@ -570,23 +570,19 @@ describe("Contract: APYPoolToken", () => {
               }
 
               const poolUnderlyerValue = await poolToken.getPoolUnderlyerEthValue();
-              if (deployedValue == 0) {
-                expect(topUpValue).to.equal(poolUnderlyerValue.mul(-1));
-              } else {
-                // assuming we unwind the top-up value from the pool's deployed
-                // capital, the reserve percentage of resulting deployed value
-                // is what we are targeting
-                const reservePercentage = await poolToken.reservePercentage();
-                const targetValue = deployedValue
-                  .sub(topUpValue)
-                  .mul(reservePercentage)
-                  .div(100);
-                const tolerance = Math.ceil((await underlyer.decimals()) / 4);
-                const allowedDeviation = tokenAmountToBigNumber(5, tolerance);
-                expect(
-                  poolUnderlyerValue.add(topUpValue).sub(targetValue)
-                ).to.be.lt(allowedDeviation);
-              }
+              // assuming we unwind the top-up value from the pool's deployed
+              // capital, the reserve percentage of resulting deployed value
+              // is what we are targeting
+              const reservePercentage = await poolToken.reservePercentage();
+              const targetValue = deployedValue
+                .sub(topUpValue)
+                .mul(reservePercentage)
+                .div(100);
+              const tolerance = Math.ceil((await underlyer.decimals()) / 4);
+              const allowedDeviation = tokenAmountToBigNumber(5, tolerance);
+              expect(
+                poolUnderlyerValue.add(topUpValue).sub(targetValue)
+              ).to.be.lt(allowedDeviation);
             });
           });
 
