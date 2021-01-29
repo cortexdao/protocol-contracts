@@ -510,17 +510,17 @@ describe("Contract: APYPoolToken", () => {
       await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
       await mAptMock.mock.getDeployedEthValue.returns(0);
       await underlyerMock.mock.balanceOf.returns(0);
-      await underlyerMock.mock.decimals.returns(0);
+      await underlyerMock.mock.decimals.returns(6);
 
-      expect(await poolToken.getReserveTopUpAmount()).to.equal(0);
+      expect(await poolToken.getReserveTopUpValue()).to.equal(0);
     });
 
-    it("Returns negative pool balance when zero deployed value", async () => {
+    it("Returns negative pool underlyer value when zero deployed value", async () => {
       await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
       await mAptMock.mock.getDeployedEthValue.returns(0);
       // set positive pool underlyer ETH value,
       // which should result in negative reserve top-up
-      const decimals = 0;
+      const decimals = 6;
       await underlyerMock.mock.decimals.returns(decimals);
       const poolBalance = tokenAmountToBigNumber(1000, decimals);
       await underlyerMock.mock.balanceOf.returns(poolBalance);
@@ -528,8 +528,8 @@ describe("Contract: APYPoolToken", () => {
       const aptSupply = tokenAmountToBigNumber(10000);
       await poolToken.testMint(deployer.address, aptSupply);
 
-      expect(await poolToken.getReserveTopUpAmount()).to.equal(
-        poolBalance.mul(-1)
+      expect(await poolToken.getReserveTopUpValue()).to.equal(
+        (await poolToken.getPoolUnderlyerEthValue()).mul(-1)
       );
     });
 
@@ -545,10 +545,8 @@ describe("Contract: APYPoolToken", () => {
       const deployedValue = tokenAmountToBigNumber(1000);
       await mAptMock.mock.getDeployedEthValue.returns(deployedValue);
 
-      const topUpAmount = await poolToken.getReserveTopUpAmount();
-      const topUpValue = await poolToken.getEthValueFromTokenAmount(
-        topUpAmount
-      );
+      const topUpValue = await poolToken.getReserveTopUpValue();
+
       // assuming we unwind the top-up value from the pool's deployed
       // capital, the reserve percentage of resulting deployed value
       // is what we are targetting
@@ -573,19 +571,18 @@ describe("Contract: APYPoolToken", () => {
       const deployedValue = tokenAmountToBigNumber(1234);
       await mAptMock.mock.getDeployedEthValue.returns(deployedValue);
 
-      const topUpAmount = await poolToken.getReserveTopUpAmount();
-      const topUpValue = await poolToken.getEthValueFromTokenAmount(
-        topUpAmount
-      );
+      const poolUnderlyerValue = await poolToken.getPoolUnderlyerEthValue();
+      const topUpValue = await poolToken.getReserveTopUpValue();
+
+      // assuming we unwind the top-up value from the pool's deployed
+      // capital, the reserve percentage of resulting deployed value
+      // is what we are targetting
       const reservePercentage = await poolToken.reservePercentage();
       const targetValue = deployedValue
         .sub(topUpValue)
         .mul(reservePercentage)
         .div(100);
-      const targetAmount = await poolToken.getTokenAmountFromEthValue(
-        targetValue
-      );
-      expect(poolBalance.add(topUpAmount)).to.equal(targetAmount);
+      expect(poolUnderlyerValue.add(topUpValue)).to.equal(targetValue);
     });
   });
 

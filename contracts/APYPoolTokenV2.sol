@@ -380,10 +380,10 @@ contract APYPoolTokenV2 is
     }
 
     /**
-     * @notice Get the underlyer amount needed to meet the reserve percentage
+     * @notice Get the ETH value needed to meet the reserve percentage
      *         of the pool's deployed value.
      *
-     *         This "top-up" amount should satisfy:
+     *         This "top-up" value should satisfy:
      *
      *         top-up ETH value + pool underlyer ETH value
      *            = (reserve %) * pool deployed value (after unwinding)
@@ -417,9 +417,9 @@ contract APYPoolTokenV2 is
      *      NOTE: for the edge-case when DV_pre = 0,
      *            top-up value = -1 * R_pre
      *
-     * @return uint256 The underlyer amount to top-up the pool's reserve
+     * @return int256 The underlyer value to top-up the pool's reserve
      */
-    function getReserveTopUpAmount() public view returns (int256) {
+    function getReserveTopUpValue() public view returns (int256) {
         uint256 unnormalizedTargetValue =
             getDeployedEthValue().mul(reservePercentage);
         uint256 unnormalizedUnderlyerValue =
@@ -429,23 +429,16 @@ contract APYPoolTokenV2 is
             return int256(unnormalizedUnderlyerValue).mul(-1).div(100);
         }
 
-        int256 sign;
-        uint256 topUpValue;
-        if (unnormalizedTargetValue >= unnormalizedUnderlyerValue) {
-            sign = 1;
-            topUpValue = unnormalizedTargetValue
-                .sub(unnormalizedUnderlyerValue)
-                .div(reservePercentage.add(100));
-        } else {
-            sign = -1;
-            topUpValue = unnormalizedUnderlyerValue
-                .sub(unnormalizedTargetValue)
-                .div(reservePercentage.add(100));
-        }
-
-        uint256 topUpAmount = getTokenAmountFromEthValue(topUpValue);
-        require(topUpAmount <= _MAX_INT256, "SIGNED_INT_OVERFLOW");
-        return int256(topUpAmount).mul(sign);
+        require(unnormalizedTargetValue <= _MAX_INT256, "SIGNED_INT_OVERFLOW");
+        require(
+            unnormalizedUnderlyerValue <= _MAX_INT256,
+            "SIGNED_INT_OVERFLOW"
+        );
+        int256 topUpValue =
+            int256(unnormalizedTargetValue)
+                .sub(int256(unnormalizedUnderlyerValue))
+                .div(int256(reservePercentage).add(100));
+        return topUpValue;
     }
 
     /**
