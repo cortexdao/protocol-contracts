@@ -9,6 +9,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/math/SignedSafeMath.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/ILiquidityPool.sol";
 import "./interfaces/IDetailedERC20.sol";
@@ -23,8 +24,10 @@ contract APYPoolTokenV2 is
     ERC20UpgradeSafe
 {
     using SafeMath for uint256;
+    using SignedSafeMath for int256;
     using SafeERC20 for IDetailedERC20;
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
+    uint256 internal constant _MAX_INT256 = 2**255 - 1;
 
     /* ------------------------------- */
     /* impl-specific storage variables */
@@ -42,6 +45,7 @@ contract APYPoolTokenV2 is
     uint256 public feePeriod;
     uint256 public feePercentage;
     mapping(address => uint256) public lastDepositTime;
+    uint256 public reservePercentage;
 
     /* ------------------------------- */
 
@@ -80,6 +84,7 @@ contract APYPoolTokenV2 is
         mApt = APYMetaPoolToken(_mApt);
         feePeriod = 1 days;
         feePercentage = 5;
+        reservePercentage = 5;
     }
 
     function setAdminAddress(address adminAddress) public onlyOwner {
@@ -108,6 +113,10 @@ contract APYPoolTokenV2 is
 
     function setFeePercentage(uint256 _feePercentage) public onlyOwner {
         feePercentage = _feePercentage;
+    }
+
+    function setReservePercentage(uint256 _reservePercentage) public onlyOwner {
+        reservePercentage = _reservePercentage;
     }
 
     modifier onlyAdmin() {
@@ -225,9 +234,10 @@ contract APYPoolTokenV2 is
         emit RedeemUnlocked();
     }
 
-    /** @notice Calculate APT amount to be minted from deposit amount.
-     *  @param tokenAmt The deposit amount of stablecoin
-     *  @return The mint amount
+    /**
+     * @notice Calculate APT amount to be minted from deposit amount.
+     * @param tokenAmt The deposit amount of stablecoin
+     * @return The mint amount
      */
     function calculateMintAmount(uint256 tokenAmt)
         public
@@ -289,6 +299,9 @@ contract APYPoolTokenV2 is
         view
         returns (uint256)
     {
+        if (aptAmount == 0) {
+            return 0;
+        }
         return getTokenAmountFromEthValue(getAPTEthValue(aptAmount));
     }
 
@@ -366,9 +379,65 @@ contract APYPoolTokenV2 is
         return uint256(price);
     }
 
-    /** @notice Allow `delegate` to withdraw any amount from the pool.
-     *  @dev Will fail if called twice, due to usage of `safeApprove`.
-     *  @param delegate Address to give infinite allowance to
+    /**
+     * @notice Get the ETH value needed to meet the reserve percentage
+     *         of the pool's deployed value.
+     *
+     *         This "top-up" value should satisfy:
+     *
+     *         top-up ETH value + pool underlyer ETH value
+     *            = (reserve %) * pool deployed value (after unwinding)
+     *
+     * @dev Taking the percentage of the pool's current deployed value
+     *      is not sufficient, because the requirement is to have the
+     *      resulting values after unwinding capital satisfy the
+     *      above equation.
+     *
+     *      More precisely:
+     *
+     *      R_pre = pool underlyer ETH value before pushing unwound
+     *              capital to the pool
+     *      R_post = pool underlyer ETH value after pushing
+     *      DV_pre = pool's deployed ETH value before unwinding
+     *      DV_post = pool's deployed ETH value after unwinding
+     *      rPerc = the reserve percentage as a whole number
+     *                          out of 100
+     *
+     *      We want:
+     *
+     *          R_post = (rPerc / 100) * DV_post          (equation 1)
+     *
+     *          where R_post = R_pre + top-up value
+     *                DV_post = DV_pre - top-up value
+     *
+     *      Making the latter substitutions in equation 1, gives:
+     *
+     *      top-up value = (rPerc * DV_pre - 100 * R_pre) / (100 + rPerc)
+     *
+     * @return int256 The underlyer value to top-up the pool's reserve
+     */
+    function getReserveTopUpValue() public view returns (int256) {
+        uint256 unnormalizedTargetValue =
+            getDeployedEthValue().mul(reservePercentage);
+        uint256 unnormalizedUnderlyerValue =
+            getPoolUnderlyerEthValue().mul(100);
+
+        require(unnormalizedTargetValue <= _MAX_INT256, "SIGNED_INT_OVERFLOW");
+        require(
+            unnormalizedUnderlyerValue <= _MAX_INT256,
+            "SIGNED_INT_OVERFLOW"
+        );
+        int256 topUpValue =
+            int256(unnormalizedTargetValue)
+                .sub(int256(unnormalizedUnderlyerValue))
+                .div(int256(reservePercentage).add(100));
+        return topUpValue;
+    }
+
+    /**
+     * @notice Allow `delegate` to withdraw any amount from the pool.
+     * @dev Will fail if called twice, due to usage of `safeApprove`.
+     * @param delegate Address to give infinite allowance to
      */
     function infiniteApprove(address delegate)
         external
@@ -379,9 +448,10 @@ contract APYPoolTokenV2 is
         underlyer.safeApprove(delegate, type(uint256).max);
     }
 
-    /** @notice Revoke given allowance from `delegate`.
-     *  @dev Can be called even when the pool is locked.
-     *  @param delegate Address to remove allowance from
+    /**
+     * @notice Revoke given allowance from `delegate`.
+     * @dev Can be called even when the pool is locked.
+     * @param delegate Address to remove allowance from
      */
     function revokeApprove(address delegate) external nonReentrant onlyOwner {
         underlyer.safeApprove(delegate, 0);

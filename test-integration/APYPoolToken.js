@@ -557,6 +557,33 @@ describe("Contract: APYPoolToken", () => {
                 deployedValue.div(2)
               );
             });
+
+            it("getReserveTopUpValue returns correct value", async () => {
+              const topUpValue = await poolToken.getReserveTopUpValue();
+              if (deployedValue == 0) {
+                expect(topUpValue).to.be.lt(0);
+              } else {
+                // it's possible to be negative, but not for the current
+                // values we picked where underlyer amount is very small
+                // compared to the deployed values
+                expect(topUpValue).to.be.gt(0);
+              }
+
+              const poolUnderlyerValue = await poolToken.getPoolUnderlyerEthValue();
+              // assuming we unwind the top-up value from the pool's deployed
+              // capital, the reserve percentage of resulting deployed value
+              // is what we are targeting
+              const reservePercentage = await poolToken.reservePercentage();
+              const targetValue = deployedValue
+                .sub(topUpValue)
+                .mul(reservePercentage)
+                .div(100);
+              const tolerance = Math.ceil((await underlyer.decimals()) / 4);
+              const allowedDeviation = tokenAmountToBigNumber(5, tolerance);
+              expect(
+                poolUnderlyerValue.add(topUpValue).sub(targetValue)
+              ).to.be.lt(allowedDeviation);
+            });
           });
 
           describe("addLiquidity", () => {
