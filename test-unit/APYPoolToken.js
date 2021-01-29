@@ -504,11 +504,13 @@ describe("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("getReserveTopUpAmount", () => {
+  describe.only("getReserveTopUpAmount", () => {
     it("Returns 0 when pool has zero total value", async () => {
       // set pool total ETH value to 0
+      await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
       await mAptMock.mock.getDeployedEthValue.returns(0);
       await underlyerMock.mock.balanceOf.returns(0);
+      await underlyerMock.mock.decimals.returns(0);
 
       expect(await poolToken.getReserveTopUpAmount()).to.equal(0);
     });
@@ -516,10 +518,15 @@ describe("Contract: APYPoolToken", () => {
     it("Returns negative pool balance when zero deployed value", async () => {
       // increase pool underlyer ETH value, which should result
       // in negative reserve top-up
+      await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
       await mAptMock.mock.getDeployedEthValue.returns(0);
       const decimals = await poolToken.decimals();
       const poolBalance = tokenAmountToBigNumber(1000, decimals);
       await underlyerMock.mock.balanceOf.returns(poolBalance);
+      await underlyerMock.mock.decimals.returns(0);
+
+      const aptSupply = tokenAmountToBigNumber(10000);
+      await poolToken.testMint(deployer.address, aptSupply);
 
       expect(await poolToken.getReserveTopUpAmount()).to.equal(
         poolBalance.mul(-1)

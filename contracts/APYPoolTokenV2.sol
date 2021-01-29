@@ -405,14 +405,17 @@ contract APYPoolTokenV2 is
      *
      *      We want:
      *
-     *      rPerc / 100 = R_post / DV_post          (equation 1)
+     *          R_post = (rPerc / 100) * DV_post          (equation 1)
      *
-     *      where R_post = R_pre + top-up value
-     *            DV_post = DV_pre - top-up value
+     *          where R_post = R_pre + top-up value
+     *                DV_post = DV_pre - top-up value     (see note)
      *
      *      Making the latter substitutions in equation 1, gives:
      *
      *      top-up value = (rPerc * DV_pre - 100 * R_pre) / (100 + rPerc)
+     *
+     *      NOTE: for the edge-case when DV_pre = 0,
+     *            top-up value = -1 * R_pre
      *
      * @return uint256 The underlyer amount to top-up the pool's reserve
      */
@@ -421,6 +424,10 @@ contract APYPoolTokenV2 is
             getDeployedEthValue().mul(reservePercentage);
         uint256 unnormalizedUnderlyerValue =
             getPoolUnderlyerEthValue().mul(100);
+
+        if (unnormalizedTargetValue == 0) {
+            return int256(unnormalizedUnderlyerValue).mul(-1).div(100);
+        }
 
         int256 sign;
         uint256 topUpValue;
