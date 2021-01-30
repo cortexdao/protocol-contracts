@@ -12,13 +12,9 @@ function updateDeployJsons(network, deploy_data) {
     }
     address_json[CHAIN_IDS[network]] = deploy_data[contract_name];
     const address_json_string = JSON.stringify(address_json, null, "  ");
-    fs.writeFileSync(
-      __dirname + "/" + file_path,
-      address_json_string,
-      (err) => {
-        if (err) throw err;
-      }
-    );
+    fs.writeFileSync(file_path, address_json_string, (err) => {
+      if (err) throw err;
+    });
   }
 }
 

@@ -6,8 +6,8 @@ const { argv } = require("yargs");
 const {
   updateDeployJsons,
   getDeployedAddress,
-} = require("../utils/helpers.js");
-const { TOKEN_AGG_MAP } = require("../utils/constants.js");
+} = require("../../utils/helpers");
+const { TOKEN_AGG_MAP } = require("../../utils/constants.js");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
