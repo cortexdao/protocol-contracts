@@ -43,7 +43,7 @@ async function main(argv) {
   const pools = {};
   const stablecoins = {};
   const APYPoolToken = (
-    await ethers.getContractFactory("APYPoolToken")
+    await ethers.getContractFactory("APYPoolTokenV2")
   ).connect(poolSigner);
   for (const symbol of ["DAI", "USDC", "USDT"]) {
     const poolProxyAddress = getDeployedAddress(

@@ -38,7 +38,7 @@ async function main(argv) {
     chalk.green(await poolSigner.getAddress())
   );
   const APYPoolToken = (
-    await ethers.getContractFactory("APYPoolToken")
+    await ethers.getContractFactory("APYPoolTokenV2")
   ).connect(poolSigner);
   /* For testing only */
   if (NETWORK_NAME === "LOCALHOST") {
