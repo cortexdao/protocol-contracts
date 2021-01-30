@@ -1,7 +1,7 @@
 require("dotenv").config();
 const { ethers, network } = require("hardhat");
 const { generateSignature } = require("./generate_signature");
-const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants.js");
+const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants");
 const APY_GOV_PROXY = require(DEPLOYS_JSON["APYGovernanceTokenProxy"]);
 const APY_DISTRIBUTOR_ADDR = require(DEPLOYS_JSON["APYRewardDistributor"]);
 

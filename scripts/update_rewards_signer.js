@@ -3,7 +3,7 @@ const assert = require("assert");
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants.js");
+const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants");
 
 const DISTRIBUTOR_ADDRESS = require(DEPLOYS_JSON["APYRewardDistributor"]);
 

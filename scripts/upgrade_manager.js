@@ -5,10 +5,7 @@ const {
   ethers,
   network,
 } = hre;
-const {
-  updateDeployJsons,
-  getDeployedAddress,
-} = require("../utils/helpers.js");
+const { updateDeployJsons, getDeployedAddress } = require("../utils/helpers");
 
 // const ContractData = artifacts.require("APYManager");
 

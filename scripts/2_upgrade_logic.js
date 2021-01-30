@@ -4,8 +4,8 @@ const {
   CHAIN_IDS,
   DEPLOYS_JSON,
   TOKEN_AGG_MAP,
-} = require("../utils/constants.js");
-const { updateDeployJsons } = require("../utils/helpers.js");
+} = require("../utils/constants");
+const { updateDeployJsons } = require("../utils/helpers");
 
 const PROXY_ADMIN_ADDRESSES = require(DEPLOYS_JSON["APYPoolTokenProxyAdmin"]);
 

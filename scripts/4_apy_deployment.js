@@ -1,6 +1,6 @@
 require("dotenv").config();
-const { ethers, network } = require("@nomiclabs/buidler");
-const { updateDeployJsons, erc20 } = require("../utils/helpers.js");
+const { ethers, network } = require("hardhat");
+const { updateDeployJsons, erc20 } = require("../utils/helpers");
 
 const totalSupply = erc20("100000000", "18"); // 100MM
 

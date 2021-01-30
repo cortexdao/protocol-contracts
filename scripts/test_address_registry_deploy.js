@@ -11,7 +11,7 @@ require("dotenv").config();
 const { ethers, network } = require("hardhat");
 const { argv } = require("yargs");
 const { assert, expect } = require("chai");
-const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants.js");
+const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants");
 
 const PROXY_ADMIN_ADDRESSES = require(DEPLOYS_JSON[
   "APYAddressRegistryProxyAdmin"

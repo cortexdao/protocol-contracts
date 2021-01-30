@@ -11,8 +11,8 @@ require("dotenv").config();
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants.js");
-const { updateDeployJsons, bytes32 } = require("../utils/helpers.js");
+const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants");
+const { updateDeployJsons, bytes32 } = require("../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {

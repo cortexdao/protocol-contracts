@@ -1,10 +1,10 @@
 require("dotenv").config();
-const { BigNumber } = require("ethers");
+const { ethers, network } = require("hardhat");
 const {
   CHAIN_IDS,
   DEPLOYS_JSON,
   TOKEN_AGG_MAP,
-} = require("../utils/constants.js");
+} = require("../utils/constants");
 
 async function main() {
   const NETWORK_NAME = network.name.toUpperCase();
@@ -16,7 +16,7 @@ async function main() {
   const signers = await ethers.getSigners();
   const user = signers[2]; // Account 3 in MetaMask; has necessary tokens
 
-  for ({ symbol, token } of TOKEN_AGG_MAP[NETWORK_NAME]) {
+  for (const { symbol, token } of TOKEN_AGG_MAP[NETWORK_NAME]) {
     const APY_LIQUIDITY_POOL_PROXY_ADDRESSES = require(DEPLOYS_JSON[
       symbol + "_APYPoolTokenProxy"
     ]);

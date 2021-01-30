@@ -1,4 +1,5 @@
 require("dotenv").config();
+const { ethers, network } = require("hardhat");
 const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants.js");
 
 async function main() {
@@ -21,7 +22,7 @@ async function main() {
     const instance = await APYPoolToken.attach(proxy.address);
 
     if (await instance.paused()) {
-      await instance.unlock()
+      await instance.unlock();
     }
   }
 }

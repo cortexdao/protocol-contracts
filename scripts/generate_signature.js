@@ -1,6 +1,6 @@
 require("dotenv").config();
 const { program } = require("commander");
-const { ethers } = require("@nomiclabs/buidler");
+const { ethers } = require("hardhat");
 
 async function generateSignature(
   key,
@@ -66,13 +66,17 @@ async function main() {
   console.log(sig);
 }
 
-module.exports = {
-  generateSignature: generateSignature
+if (!module.parent) {
+  main()
+    .then(() => {
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error(error);
+      process.exit(1);
+    });
+} else {
+  module.exports = {
+    generateSignature,
+  };
 }
-
-// main()
-//   .then(() => process.exit(0))
-//   .catch((error) => {
-//     console.error(error);
-//     process.exit(1);
-//   });

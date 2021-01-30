@@ -1,7 +1,7 @@
 require("dotenv").config();
-const { ethers, network } = require("@nomiclabs/buidler");
-const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants.js");
-const { updateDeployJsons } = require("../utils/helpers.js");
+const { ethers, network } = require("hardhat");
+const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants");
+const { updateDeployJsons } = require("../utils/helpers");
 
 const TOKEN_ADDRESS = require(DEPLOYS_JSON["APYGovernanceTokenProxy"]);
 

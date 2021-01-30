@@ -11,8 +11,8 @@ require("dotenv").config();
 const { ethers, network } = require("hardhat");
 const { argv } = require("yargs");
 const { assert, expect } = require("chai");
-const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants.js");
-const { bytes32 } = require("../utils/helpers.js");
+const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants");
+const { bytes32 } = require("../utils/helpers");
 
 const PROXY_ADMIN_ADDRESSES = require(DEPLOYS_JSON["APYManagerProxyAdmin"]);
 const PROXY_ADDRESSES = require(DEPLOYS_JSON["APYManagerProxy"]);

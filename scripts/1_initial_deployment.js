@@ -1,8 +1,8 @@
 require("dotenv").config();
 const hre = require("hardhat");
 const { ethers, network } = hre;
-const { TOKEN_AGG_MAP } = require("../utils/constants.js");
-const { updateDeployJsons } = require("../utils/helpers.js");
+const { TOKEN_AGG_MAP } = require("../utils/constants");
+const { updateDeployJsons } = require("../utils/helpers");
 
 async function main() {
   await hre.run("compile");
