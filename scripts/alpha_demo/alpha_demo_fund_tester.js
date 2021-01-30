@@ -2,9 +2,9 @@ require("dotenv").config();
 const hre = require("hardhat");
 const { ethers, network } = hre;
 const { argv } = require("yargs");
-const { erc20, getStablecoinAddress } = require("../../utils/helpers.js");
+const { erc20, getStablecoinAddress } = require("../../utils/helpers");
 const { ether, send } = require("@openzeppelin/test-helpers");
-const { WHALE_ADDRESSES } = require("../../utils/constants.js");
+const { WHALE_ADDRESSES } = require("../../utils/constants");
 
 async function acquireToken(fundAccount, receiver, token, amount) {
   /* NOTE: Ganache is setup to control "whale" addresses. This method moves

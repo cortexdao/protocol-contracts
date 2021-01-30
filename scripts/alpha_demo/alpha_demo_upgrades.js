@@ -7,7 +7,7 @@ const {
   updateDeployJsons,
   getDeployedAddress,
 } = require("../../utils/helpers");
-const { TOKEN_AGG_MAP } = require("../../utils/constants.js");
+const { TOKEN_AGG_MAP } = require("../../utils/constants");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {

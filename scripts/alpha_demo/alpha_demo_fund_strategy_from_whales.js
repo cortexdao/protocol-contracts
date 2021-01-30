@@ -7,9 +7,9 @@ const {
   erc20,
   bytes32,
   getStablecoinAddress,
-} = require("../../utils/helpers.js");
+} = require("../../utils/helpers");
 const { ether, send } = require("@openzeppelin/test-helpers");
-const { WHALE_ADDRESSES } = require("../../utils/constants.js");
+const { WHALE_ADDRESSES } = require("../../utils/constants");
 
 async function acquireToken(fundAccount, receiver, token, amount) {
   /* NOTE: Ganache is setup to control "whale" addresses. This method moves

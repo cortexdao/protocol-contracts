@@ -7,7 +7,7 @@ const {
   getDeployedAddress,
   bytes32,
   getStablecoinAddress,
-} = require("../utils/helpers.js");
+} = require("../../utils/helpers");
 const legos = require("@apy-finance/defi-legos");
 
 // eslint-disable-next-line no-unused-vars

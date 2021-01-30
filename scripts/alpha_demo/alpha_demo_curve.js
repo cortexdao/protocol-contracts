@@ -7,7 +7,7 @@ const {
   getDeployedAddress,
   bytes32,
   getStablecoinAddress,
-} = require("../../utils/helpers.js");
+} = require("../../utils/helpers");
 const { expectEvent } = require("@openzeppelin/test-helpers");
 const legos = require("@apy-finance/defi-legos");
 

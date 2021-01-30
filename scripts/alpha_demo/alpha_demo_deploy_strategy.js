@@ -3,7 +3,7 @@ const chalk = require("chalk");
 const hre = require("hardhat");
 const { ethers, network, web3 } = hre;
 const { argv } = require("yargs");
-const { getDeployedAddress, bytes32 } = require("../utils/helpers.js");
+const { getDeployedAddress, bytes32 } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
