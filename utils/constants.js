@@ -85,27 +85,26 @@ const TOKEN_AGG_MAP = {
     },
   ],
 };
+
 const DEPLOYS_JSON = {
-  APYGovernanceTokenProxyAdmin:
-    "../deployed_addresses/APYGovernanceTokenProxyAdmin.json",
-  APYGovernanceToken: "../deployed_addresses/APYGovernanceToken.json",
-  APYGovernanceTokenProxy: "../deployed_addresses/APYGovernanceTokenProxy.json",
-  APYPoolTokenProxyAdmin: "../deployed_addresses/APYPoolTokenProxyAdmin.json",
-  DAI_APYPoolToken: "../deployed_addresses/DAI_APYPoolToken.json",
-  DAI_APYPoolTokenProxy: "../deployed_addresses/DAI_APYPoolTokenProxy.json",
-  USDC_APYPoolToken: "../deployed_addresses/USDC_APYPoolToken.json",
-  USDC_APYPoolTokenProxy: "../deployed_addresses/USDC_APYPoolTokenProxy.json",
-  USDT_APYPoolToken: "../deployed_addresses/USDT_APYPoolToken.json",
-  USDT_APYPoolTokenProxy: "../deployed_addresses/USDT_APYPoolTokenProxy.json",
-  APYRewardDistributor: "../deployed_addresses/APYRewardDistributor.json",
-  APYAddressRegistryProxyAdmin:
-    "../deployed_addresses/APYAddressRegistryProxyAdmin.json",
-  APYAddressRegistry: "../deployed_addresses/APYAddressRegistry.json",
-  APYAddressRegistryProxy: "../deployed_addresses/APYAddressRegistryProxy.json",
-  APYManagerProxyAdmin: "../deployed_addresses/APYManagerProxyAdmin.json",
-  APYManager: "../deployed_addresses/APYManager.json",
-  APYManagerProxy: "../deployed_addresses/APYManagerProxy.json",
-  ProxyConstructorArg: "../deployed_addresses/ProxyConstructorArg.json",
+  APYGovernanceTokenProxyAdmin: `${__dirname}/../deployed_addresses/APYGovernanceTokenProxyAdmin.json`,
+  APYGovernanceToken: `${__dirname}/../deployed_addresses/APYGovernanceToken.json`,
+  APYGovernanceTokenProxy: `${__dirname}/../deployed_addresses/APYGovernanceTokenProxy.json`,
+  APYPoolTokenProxyAdmin: `${__dirname}/../deployed_addresses/APYPoolTokenProxyAdmin.json`,
+  DAI_APYPoolToken: `${__dirname}/../deployed_addresses/DAI_APYPoolToken.json`,
+  DAI_APYPoolTokenProxy: `${__dirname}/../deployed_addresses/DAI_APYPoolTokenProxy.json`,
+  USDC_APYPoolToken: `${__dirname}/../deployed_addresses/USDC_APYPoolToken.json`,
+  USDC_APYPoolTokenProxy: `${__dirname}/../deployed_addresses/USDC_APYPoolTokenProxy.json`,
+  USDT_APYPoolToken: `${__dirname}/../deployed_addresses/USDT_APYPoolToken.json`,
+  USDT_APYPoolTokenProxy: `${__dirname}/../deployed_addresses/USDT_APYPoolTokenProxy.json`,
+  APYRewardDistributor: `${__dirname}/../deployed_addresses/APYRewardDistributor.json`,
+  APYAddressRegistryProxyAdmin: `${__dirname}/../deployed_addresses/APYAddressRegistryProxyAdmin.json`,
+  APYAddressRegistry: `${__dirname}/../deployed_addresses/APYAddressRegistry.json`,
+  APYAddressRegistryProxy: `${__dirname}/../deployed_addresses/APYAddressRegistryProxy.json`,
+  APYManagerProxyAdmin: `${__dirname}/../deployed_addresses/APYManagerProxyAdmin.json`,
+  APYManager: `${__dirname}/../deployed_addresses/APYManager.json`,
+  APYManagerProxy: `${__dirname}/../deployed_addresses/APYManagerProxy.json`,
+  ProxyConstructorArg: `${__dirname}/../deployed_addresses/ProxyConstructorArg.json`,
 };
 
 module.exports = {
