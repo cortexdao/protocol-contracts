@@ -21,7 +21,7 @@ const {
   tokenAmountToBigNumber,
   getDeployedAddress,
   getGasPrice,
-} = require("../utils/helpers.js");
+} = require("../utils/helpers");
 
 // deployments were done through Remix
 const BALANCERPOOL_ABI = require("./abi/balancerpool.json");
