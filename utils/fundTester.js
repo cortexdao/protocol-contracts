@@ -1,8 +1,8 @@
 const hre = require("hardhat");
 const { ethers, network } = hre;
 const { argv } = require("yargs");
-const { STABLECOIN_POOLS } = require("./constants.js");
-const { getStablecoinAddress, acquireToken, console } = require("./helpers.js");
+const { STABLECOIN_POOLS } = require("./constants");
+const { getStablecoinAddress, acquireToken, console } = require("./helpers");
 
 console.debugging = true;
 
