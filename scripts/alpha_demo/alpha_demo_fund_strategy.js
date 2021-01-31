@@ -53,7 +53,7 @@ async function main(argv) {
 
   const manager = APYManager.attach(managerProxyAddress).connect(managerSigner);
   const strategyAddress = await manager.getStrategy(bytes32("curve_y"));
-  console.log("Strategy address:", strategyAddress);
+  console.log(`Strategy address: ${chalk.green(strategyAddress)}`);
   console.log("");
 
   console.log("Transferring funds to strategy ...");
