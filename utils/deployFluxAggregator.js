@@ -37,16 +37,26 @@ async function main(argv) {
 
   const aggregator = await FluxAggregator.deploy(
     LINK_ADDRESS,
-    0,
-    100000,
-    ZERO_ADDRESS,
-    0,
-    1e12,
-    0,
-    "TVL aggregator"
+    0, // payment amount (price paid for each oracle submission, in wei)
+    100000, // timeout before allowing oracle to skip round
+    ZERO_ADDRESS, // validator address
+    0, // min submission value
+    1e12, // max submission value
+    0, // decimal offset for answer
+    "TVL aggregator" // description
   );
   await aggregator.deployed();
   console.log(`FluxAggregator: ${aggregator.address}`);
+
+  const trx = await aggregator.changeOracles(
+    [],
+    ["0x32408C95F7115A8f5D68E096F8B42cebf16eE12d"],
+    [deployer],
+    1,
+    1,
+    0
+  );
+  await trx.wait();
 }
 
 if (!module.parent) {
