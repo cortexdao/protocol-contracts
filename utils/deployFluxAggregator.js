@@ -11,9 +11,10 @@ require("dotenv").config();
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const { ZERO_ADDRESS } = require("./helpers");
+const { ZERO_ADDRESS, tokenAmountToBigNumber } = require("./helpers");
 
 const LINK_ADDRESS = "0x514910771AF9Ca656af840dff83E8264EcF986CA";
+const NODE_ADDRESS = "0xAD702b65733aC8BcBA2be6d9Da94d5b7CE25C0bb";
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -24,8 +25,8 @@ async function main(argv) {
   console.log("");
 
   const signers = await ethers.getSigners();
-  const deployer = await signers[0].getAddress();
-  console.log("Deployer address:", deployer);
+  const deployer = signers[0];
+  console.log("Deployer address:", deployer.address);
   console.log("");
 
   /* Deploy address registry with proxy and admin */
@@ -48,14 +49,20 @@ async function main(argv) {
   await aggregator.deployed();
   console.log(`FluxAggregator: ${aggregator.address}`);
 
-  const trx = await aggregator.changeOracles(
+  let trx = await aggregator.changeOracles(
     [],
-    ["0x32408C95F7115A8f5D68E096F8B42cebf16eE12d"],
-    [deployer],
+    [NODE_ADDRESS],
+    [deployer.address], // owner of node address
     1,
     1,
     0
   );
+  await trx.wait();
+
+  trx = await deployer.sendTransaction({
+    to: NODE_ADDRESS,
+    value: tokenAmountToBigNumber("100", "18"),
+  });
   await trx.wait();
 }
 
