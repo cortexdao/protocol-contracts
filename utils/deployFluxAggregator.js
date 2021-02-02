@@ -11,12 +11,18 @@ require("dotenv").config();
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const { ZERO_ADDRESS, tokenAmountToBigNumber } = require("./helpers");
+const {
+  ZERO_ADDRESS,
+  tokenAmountToBigNumber,
+  acquireToken,
+} = require("./helpers");
 
-const LINK_ADDRESS = "0x514910771AF9Ca656af840dff83E8264EcF986CA";
 const NODE_ADDRESS = "0xAD702b65733aC8BcBA2be6d9Da94d5b7CE25C0bb";
+const LINK_ADDRESS = "0x514910771AF9Ca656af840dff83E8264EcF986CA";
+// Aave lending pool
+// https://etherscan.io/address/0x3dfd23a6c5e8bbcfc9581d2e864a68feb6a076d3
+const WHALE_ADDRESS = "0x3dfd23A6c5E8BbcFc9581d2E864a68feb6a076d3";
 
-// eslint-disable-next-line no-unused-vars
 async function main(argv) {
   await hre.run("compile");
   const NETWORK_NAME = network.name.toUpperCase();
@@ -27,18 +33,19 @@ async function main(argv) {
   const signers = await ethers.getSigners();
   const deployer = signers[0];
   console.log("Deployer address:", deployer.address);
+  const nonce = await ethers.provider.getTransactionCount(deployer.address);
+  console.log("Deployer nonce:", nonce);
   console.log("");
 
-  /* Deploy address registry with proxy and admin */
-  console.log("");
   console.log("Deploying ...");
-  console.log("");
 
   const FluxAggregator = await ethers.getContractFactory("FluxAggregator");
 
+  const paymentAmount = tokenAmountToBigNumber("1", "18");
+
   const aggregator = await FluxAggregator.deploy(
     LINK_ADDRESS,
-    0, // payment amount (price paid for each oracle submission, in wei)
+    paymentAmount, // payment amount (price paid for each oracle submission, in wei)
     100000, // timeout before allowing oracle to skip round
     ZERO_ADDRESS, // validator address
     0, // min submission value
@@ -47,9 +54,30 @@ async function main(argv) {
     "TVL aggregator" // description
   );
   await aggregator.deployed();
-  console.log(`FluxAggregator: ${aggregator.address}`);
+  console.log("... done.");
+  console.log("");
 
-  let trx = await aggregator.changeOracles(
+  console.log(`Chainlink node: ${NODE_ADDRESS}`);
+  console.log(`LINK token: ${LINK_ADDRESS}`);
+  console.log(`FluxAggregator: ${aggregator.address}`);
+  console.log("");
+
+  console.log("Funding aggregator with LINK ...");
+  const token = await ethers.getContractAt("IDetailedERC20", LINK_ADDRESS);
+  const linkAmount = argv.linkAmount || "100000";
+  await acquireToken(
+    WHALE_ADDRESS,
+    aggregator.address,
+    token,
+    linkAmount,
+    deployer.address
+  );
+  let trx = await aggregator.updateAvailableFunds();
+  await trx.wait();
+  console.log("... done.");
+
+  console.log("Registering oracle node ...");
+  trx = await aggregator.changeOracles(
     [],
     [NODE_ADDRESS],
     [deployer.address], // owner of node address
@@ -58,12 +86,16 @@ async function main(argv) {
     0
   );
   await trx.wait();
+  console.log("... done.");
 
+  console.log("Funding oracle node with ETH ...");
+  const ethAmount = tokenAmountToBigNumber(argv.ethAmount || "100");
   trx = await deployer.sendTransaction({
     to: NODE_ADDRESS,
-    value: tokenAmountToBigNumber("100", "18"),
+    value: ethAmount,
   });
   await trx.wait();
+  console.log("... done.");
 }
 
 if (!module.parent) {

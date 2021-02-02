@@ -78,10 +78,18 @@ async function prepareTokenSender(sender, ethAmount, ethFunder) {
   ethAmount = tokenAmountToBigNumber(ethAmount, "18");
   await forciblySendEth(sender, ethAmount, ethFunder);
 
-  await hre.network.provider.request({
-    method: "hardhat_impersonateAccount",
-    params: [sender],
-  });
+  try {
+    await hre.network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [sender],
+    });
+  } catch {
+    // fallback to ganache method
+    await hre.network.provider.request({
+      method: "evm_unlockUnknownAccount",
+      params: [sender],
+    });
+  }
 }
 
 async function forciblySendEth(recipient, amount, ethFunder) {
