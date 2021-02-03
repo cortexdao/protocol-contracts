@@ -21,11 +21,11 @@ const {
   tokenAmountToBigNumber,
   getDeployedAddress,
   getGasPrice,
-} = require("../utils/helpers");
+} = require("../../utils/helpers");
 
 // deployments were done through Remix
-const BALANCERPOOL_ABI = require("./abi/balancerpool.json");
-const UNIPOOL_ABI = require("./abi/unipool.json");
+const BALANCERPOOL_ABI = require("../abi/balancerpool.json");
+const UNIPOOL_ABI = require("../abi/unipool.json");
 const BALANCER_STAKING_ADDRESS = "0xFe82ea0Ef14DfdAcd5dB1D49F563497A1a751bA1";
 const UNISWAP_STAKING_ADDRESS = "0x0310DEE97b42063BbB46d02a674727C13eb79cFD";
 
