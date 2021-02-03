@@ -1,9 +1,3 @@
-# ANSI escape codes
-BOLD := \033[1m
-RESET := \033[0m
-REVERSE := \033[7m
-RED := \033[0;31m
-
 .DEFAULT_GOAL := help
 
 SHELL := bash
@@ -100,13 +94,12 @@ clean:
 	docker images -q -f dangling=true | xargs docker rmi
 	@echo "All clean 🛀"
 
-
 .PHONY: nuke_chainlink
 nuke_chainlink:
 	@read -r -p "WARNING: this will delete all chainlink data (ctrl-c to exit / any other key to continue)." input
 	@make down
 	@docker-compose rm --force --stop -v node
-	@docker volume rm external-adapters-js_chainlink-data
+	@docker volume rm external-adapters-js_node-data
 	@echo "Chainlink volume deleted 💣"
 
 .PHONY: nuke_db
@@ -114,7 +107,7 @@ nuke_db:
 	@read -r -p "WARNING: this will delete all data from Postgres (ctrl-c to exit / any other key to continue)." input
 	@make down
 	@docker-compose rm --force --stop -v db
-	@docker volume rm external_adapters-js_db-data
+	@docker volume rm external-adapters-js_db-data
 	@echo "Postgres data deleted 💣"
 
 # https://stackoverflow.com/a/51866793/1175053
@@ -128,9 +121,10 @@ ps:
 
 .PHONY: create_job
 create_job:
-	bash ./create_job.sh
-
-.PHONY: start_node
-start_node:
-	make up
-	make create_job
+	@docker-compose exec node bash -c "\
+		chainlink admin login -f /docker/api && \
+		if !(chainlink jobs list | grep -q fluxmonitor); then \
+			chainlink bridges create /docker/bridge.json; \
+			chainlink jobs create /docker/tvlAgg-spec.json; \
+		fi \
+	"
