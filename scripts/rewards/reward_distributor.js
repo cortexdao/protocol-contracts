@@ -20,7 +20,7 @@ const {
   tokenAmountToBigNumber,
   getDeployedAddress,
   getGasPrice,
-} = require("../utils/helpers");
+} = require("../../utils/helpers");
 
 async function main(argv) {
   await hre.run("compile");
