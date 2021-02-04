@@ -15,7 +15,7 @@ const {
   getDeployedAddress,
   tokenAmountToBigNumber,
   MAX_UINT256,
-} = require("./helpers");
+} = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {

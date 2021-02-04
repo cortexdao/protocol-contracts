@@ -15,7 +15,7 @@ const {
   ZERO_ADDRESS,
   tokenAmountToBigNumber,
   acquireToken,
-} = require("./helpers");
+} = require("../../utils/helpers");
 
 const NODE_ADDRESS = "0xAD702b65733aC8BcBA2be6d9Da94d5b7CE25C0bb";
 const LINK_ADDRESS = "0x514910771AF9Ca656af840dff83E8264EcF986CA";
