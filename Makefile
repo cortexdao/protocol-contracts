@@ -131,3 +131,7 @@ create_job:
 			chainlink jobs create /docker/tvlAgg-spec.json; \
 		fi \
 	"
+
+.PHONY: clone_chainlink_repo
+clone_chainlink_repo:
+	git clone git@github.com:smartcontractkit/external-adapters-js.git

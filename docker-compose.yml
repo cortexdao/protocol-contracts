@@ -32,7 +32,7 @@ services:
 
   adapter:
     build:
-      context: .
+      context: ./external-adapters-js/
       args:
         - name=apy-finance
         - adapter=composite/apy-finance
