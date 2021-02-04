@@ -64,6 +64,8 @@ async function main(argv) {
 
   console.log("Funding aggregator with LINK ...");
   const token = await ethers.getContractAt("IDetailedERC20", LINK_ADDRESS);
+  // aggregator must hold enough LINK for two rounds of submissions, i.e.
+  // LINK reserve >= 2 * number of oracles * payment amount
   const linkAmount = argv.linkAmount || "100000";
   await acquireToken(
     WHALE_ADDRESS,
@@ -78,12 +80,12 @@ async function main(argv) {
 
   console.log("Registering oracle node ...");
   trx = await aggregator.changeOracles(
-    [],
-    [NODE_ADDRESS],
-    [deployer.address], // owner of node address
-    1,
-    1,
-    0
+    [], // oracles being removed
+    [NODE_ADDRESS], // oracles being added
+    [deployer.address], // owners of oracles being added
+    1, // min number of submissions for a round
+    1, // max number of submissions for a round
+    0 // number of rounds to wait before oracle can initiate round
   );
   await trx.wait();
   console.log("... done.");
