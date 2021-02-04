@@ -23,9 +23,6 @@
     "coverage": "hardhat coverage --network coverage --testfiles \"test-unit/*.js\"",
     "ganache": "ganache-cli",
     "fork:mainnet": "./scripts/fork_mainnet.sh",
-    "deploy:kovan": "yarn hardhat --network kovan run",
-    "deploy:mainnet": "yarn hardhat --network mainnet run",
-    "sign": "node scripts/generate_signature.js",
     "emergency:withdraw": "yarn hardhat --network localhost run scripts/EmergencyAPYWithdraw.js"
   },
   "husky": {
