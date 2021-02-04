@@ -37,7 +37,7 @@
     chalk "^2.0.0"
     js-tokens "^4.0.0"
 
-"@chainlink/contracts@^0.0.9":
+"@chainlink/contracts@0.0.9":
   version "0.0.9"
   resolved "https://registry.yarnpkg.com/@chainlink/contracts/-/contracts-0.0.9.tgz#d2ddc033c67686e2952c965e4084ca29d3461e90"
   integrity sha512-bI97GItkgoViPNhJT9EDf/i33gMwpQj4MywV6IqMStKCoPrUkrTpx6Tt0Knhf73U8zh4qcY2+hoQ9Yqr8gLUqg==
@@ -1046,7 +1046,7 @@ abbrev@1.0.x:
   resolved "https://registry.yarnpkg.com/abbrev/-/abbrev-1.0.9.tgz#91b4792588a7738c25f35dd6f63752a2f8776135"
   integrity sha1-kbR5JYinc4wl813W9jdSovh3YTU=
 
-abdk-libraries-solidity@^2.4.0:
+abdk-libraries-solidity@2.4.0:
   version "2.4.0"
   resolved "https://registry.yarnpkg.com/abdk-libraries-solidity/-/abdk-libraries-solidity-2.4.0.tgz#4a9ed6baa2017c0a18118c804e8c9258017d4a35"
   integrity sha512-C6RpN6hdi5sHNIKt5SGt8pGQAmmGdPIe3Cf95JBiZ+iTO5wushwkDC0r+38fSjsC/uA9rhpl/THyyZuvZv8c6g==
