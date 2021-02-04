@@ -9,15 +9,10 @@ help:
 	@echo ""
 	@echo "OPERATE:"
 	@echo "build                    Build images"
-	@echo "up                       Start all containers"
-	@echo "down                     Stop all containers"
-	@echo "restart                  Stop then start containers"
-	@echo "rebuild                  Stop, build, then start containers"
-	@echo ""
-	@echo "DATA:"
-	@echo "create_job               Create job spec in Postgres"
-	@echo "nuke_db                  Delete Postgres data"
-	@echo "nuke_chainlink           Delete Chainlink info"
+	@echo "up                       Create and start all containers"
+	@echo "down                     Remove all containers and volumes"
+	@echo "restart                  Remove, re-create, and start containers"
+	@echo "rebuild                  Remove, build, then start containers"
 	@echo ""
 	@echo "DEBUGGING:"
 	@echo "logs                     Re-attach to running container logs"
@@ -38,11 +33,12 @@ build:
 .PHONY: up
 up:
 	DOCKERHOST=$(DOCKERHOST) docker-compose up -d
+	@make create_job
 	@make logs
 
 .PHONY: down
 down:
-	docker-compose stop
+	docker-compose down --volumes
 
 .PHONY: restart
 restart:
@@ -97,22 +93,6 @@ clean:
 	docker images -q -f dangling=true | xargs docker rmi
 	@echo "All clean 🛀"
 
-.PHONY: nuke_chainlink
-nuke_chainlink:
-	@read -r -p "WARNING: this will delete all chainlink data (ctrl-c to exit / any other key to continue)." input
-	@make down
-	@docker-compose rm --force --stop -v node
-	@docker volume rm external-adapters-js_node-data
-	@echo "Chainlink volume deleted 💣"
-
-.PHONY: nuke_db
-nuke_db:
-	@read -r -p "WARNING: this will delete all data from Postgres (ctrl-c to exit / any other key to continue)." input
-	@make down
-	@docker-compose rm --force --stop -v db
-	@docker volume rm external-adapters-js_db-data
-	@echo "Postgres data deleted 💣"
-
 # https://stackoverflow.com/a/51866793/1175053
 .PHONY: clear_logs
 clear_logs:
@@ -125,6 +105,7 @@ ps:
 .PHONY: create_job
 create_job:
 	@docker-compose exec node bash -c "\
+		while !</dev/tcp/node/6688; do sleep 5; done; \
 		chainlink admin login -f /docker/api && \
 		if !(chainlink jobs list | grep -q fluxmonitor); then \
 			chainlink bridges create /docker/bridge.json; \
