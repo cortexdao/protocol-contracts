@@ -101,15 +101,12 @@ contract APYManager is
         return tokenToStrategies[token].length > 0;
     }
 
-    function transferAndExecute(
+    function fundAndExecute(
         address strategy,
+        StrategyAssetAllocation memory allocation,
         APYGenericExecutor.Data[] memory steps
     ) external override onlyOwner {
-        for (uint256 i = 0; i < _poolIds.length; i++) {
-            bytes32 poolId = _poolIds[i];
-            address poolAddress = addressRegistry.getAddress(poolId);
-            transferFunds(payable(poolAddress), strategy);
-        }
+        fundStrategy(strategy, allocation);
         execute(strategy, steps);
     }
 
@@ -246,26 +243,27 @@ contract APYManager is
      * @notice Mint corresponding amount of mAPT tokens for pulled amount.
      * @dev Pool must approve manager to transfer its underlyer token.
      */
-    function transferFunds(address payable poolAddress, address strategyAddress)
-        public
-        onlyOwner
-    {
-        require(
-            isStrategyDeployed[strategyAddress] == true,
-            "Invalid strategy address"
-        );
+    function fundStrategy(
+        address strategyAddress,
+        StrategyAssetAllocation memory allocation
+    ) public onlyOwner {
+        for (uint256 i = 0; i < allocation.pools.length; i++) {
+            APYPoolToken pool = APYPoolToken(allocation.pools[i]);
+            IDetailedERC20 underlyer = pool.underlyer();
+            uint256 poolAmount = underlyer.balanceOf(address(pool));
+            uint256 poolValue = pool.getEthValueFromTokenAmount(poolAmount);
 
-        APYPoolToken pool = APYPoolToken(poolAddress);
-        IDetailedERC20 underlyer = pool.underlyer();
-        uint256 poolAmount = underlyer.balanceOf(poolAddress);
-        uint256 poolValue = pool.getEthValueFromTokenAmount(poolAmount);
+            uint256 tokenEthPrice = pool.getTokenEthPrice();
+            uint8 decimals = underlyer.decimals();
+            // uint256 mintAmount =
+            //     mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
 
-        uint256 tokenEthPrice = pool.getTokenEthPrice();
-        uint8 decimals = underlyer.decimals();
-        // uint256 mintAmount =
-        //     mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
-
-        // mApt.mint(poolAddress, mintAmount);
-        underlyer.safeTransferFrom(poolAddress, strategyAddress, poolAmount);
+            // mApt.mint(poolAddress, mintAmount);
+            underlyer.safeTransferFrom(
+                address(pool),
+                strategyAddress,
+                poolAmount
+            );
+        }
     }
 }
