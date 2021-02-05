@@ -4,6 +4,7 @@ const hre = require("hardhat");
 const { ethers, network, web3 } = hre;
 const { argv } = require("yargs");
 const { getDeployedAddress, bytes32 } = require("../../utils/helpers");
+const legos = require("@apy-finance/defi-legos");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -57,25 +58,50 @@ async function main(argv) {
   console.log("");
 
   console.log("Transferring funds to strategy ...");
-  const stablecoinBalances = {};
-  for (const [symbol, pool] of Object.entries(pools)) {
-    console.log("\tpool:", chalk.yellow(symbol));
-    console.log(
-      "\t\tbefore:",
-      chalk.yellow(
-        (await stablecoins[symbol].balanceOf(strategyAddress)).toString()
-      )
-    );
-    const trx = await manager.transferFunds(pool.address, strategyAddress);
-    await trx.wait();
-    const balance = (
-      await stablecoins[symbol].balanceOf(strategyAddress)
-    ).toString();
-    console.log("\t\tafter:", chalk.yellow(balance));
-    stablecoinBalances[symbol] = balance;
-  }
+  const DAI = await ethers.getContractAt(legos.maker.abis.DAI, legos.maker.addresses.DAI)
+  const USDC = await ethers.getContractAt(legos.centre.abis.USDC_Logic, legos.centre.addresses.USDC)
+  const USDT = await ethers.getContractAt(legos.tether.abis.USDT, legos.tether.addresses.USDT)
 
-  return stablecoinBalances;
+  const DAI_BAL = await DAI.balanceOf(legos.apy.addresses.APY_DAI_POOL)
+  const USDC_BAL = await USDC.balanceOf(legos.apy.addresses.APY_USDC_POOL)
+  const USDT_BAL = await USDT.balanceOf(legos.apy.addresses.APY_USDT_POOL)
+
+  const strat_DAI_before = await DAI.balanceOf(strategyAddress)
+  const strat_USDC_before = await USDC.balanceOf(strategyAddress)
+  const strat_USDT_before = await USDT.balanceOf(strategyAddress)
+
+  console.log(`Strat DAI Balance before: ${chalk.yellow(strat_DAI_before.toString())}`)
+  console.log(`Strat USDC Balance before: ${chalk.yellow(strat_USDC_before.toString())}`)
+  console.log(`Strat USDC Balance before: ${chalk.yellow(strat_USDT_before.toString())}`)
+
+  await manager.fundStrategy(strategyAddress,
+    [
+      [
+        legos.apy.addresses.APY_DAI_POOL,
+        legos.apy.addresses.APY_USDC_POOL,
+        legos.apy.addresses.APY_USDT_POOL
+      ],
+      [
+        DAI_BAL,
+        USDC_BAL,
+        USDT_BAL
+      ]
+    ]
+  )
+
+  const strat_DAI_after = await DAI.balanceOf(strategyAddress)
+  const strat_USDC_after = await USDC.balanceOf(strategyAddress)
+  const strat_USDT_after = await USDT.balanceOf(strategyAddress)
+
+  console.log(`Strat DAI Balance after: ${chalk.yellow(strat_DAI_after.toString())}`)
+  console.log(`Strat USDC Balance after: ${chalk.yellow(strat_USDC_after.toString())}`)
+  console.log(`Strat USDC Balance after: ${chalk.yellow(strat_USDT_after.toString())}`)
+
+  return {
+    DAI: strat_DAI_after.toString(),
+    USDC: strat_DAI_after.toString(),
+    USDT: strat_DAI_after.toString(),
+  }
 }
 
 if (!module.parent) {

@@ -247,6 +247,10 @@ contract APYManager is
         address strategyAddress,
         StrategyAssetAllocation memory allocation
     ) public onlyOwner {
+        require(
+            allocation.pools.length == allocation.amounts.length,
+            "allocation lenght mismatch"
+        );
         for (uint256 i = 0; i < allocation.pools.length; i++) {
             APYPoolToken pool = APYPoolToken(allocation.pools[i]);
             IDetailedERC20 underlyer = pool.underlyer();
