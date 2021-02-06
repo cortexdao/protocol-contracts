@@ -10,28 +10,21 @@ async function main() {
   const deployer = await signers[0].getAddress();
   console.log(`Deployer: ${chalk.green(deployer)}`);
 
-  const newManagerLogic = await ethers.getContractFactory("APYManager");
-  const newManagerLogicContract = await newManagerLogic.deploy();
+  const MANAGER_CONTRACT = await ethers.getContractAt(
+    legos.apy.abis.APY_MANAGER_Logic,
+    legos.apy.adresses.APY_MANAGER
+  );
+  const newStrategyAddress = await MANAGER_CONTRACT.callStatic.deploy(
+    legos.apy.addresses.APY_GENERIC_EXECUTOR
+  );
+  await MANAGER_CONTRACT.deploy(legos.apy.addresses.APY_GENERIC_EXECUTOR);
 
   console.log(
-    `New Implementation Logic for Manager: ${chalk.green(
-      newManagerLogicContract.address
-    )}`
-  );
-
-  const ManagerAdmin = await ethers.getContractAt(
-    legos.apy.abis.APY_MANAGER_Admin,
-    legos.apy.addresses.APY_MANAGER_Admin
-  );
-
-  await ManagerAdmin.upgrade(
-    legos.apy.addresses.APY_MANAGER,
-    newManagerLogicContract.address
-  );
-  console.log(
-    `${chalk.yellow("Manager")}: ${chalk.green(
+    `Manager: ${chalk.green(
       legos.apy.addresses.APY_MANAGER
-    )}, Logic: ${chalk.green(newManagerLogicContract.address)}`
+    )} deployed a new Strategy: ${newStrategyAddress} pointing to ${
+      legos.apy.addresses.APY_GENERIC_EXECUTOR
+    }`
   );
 }
 
