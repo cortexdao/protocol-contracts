@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 import "../APYGenericExecutor.sol";
 
 interface IStrategyFactory {
-    struct StrategyAssetAllocation {
+    struct StrategyAllocation {
         address payable[] pools;
         uint256[] amounts;
     }
@@ -17,7 +17,7 @@ interface IStrategyFactory {
 
     function fundAndExecute(
         address strategy,
-        StrategyAssetAllocation calldata allocation,
+        StrategyAllocation calldata allocation,
         APYGenericExecutor.Data[] calldata steps
     ) external;
 

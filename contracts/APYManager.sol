@@ -103,7 +103,7 @@ contract APYManager is
 
     function fundAndExecute(
         address strategy,
-        StrategyAssetAllocation memory allocation,
+        StrategyAllocation memory allocation,
         APYGenericExecutor.Data[] memory steps
     ) external override onlyOwner {
         fundStrategy(strategy, allocation);
@@ -245,7 +245,7 @@ contract APYManager is
      */
     function fundStrategy(
         address strategyAddress,
-        StrategyAssetAllocation memory allocation
+        StrategyAllocation memory allocation
     ) public onlyOwner {
         require(
             allocation.pools.length == allocation.amounts.length,
