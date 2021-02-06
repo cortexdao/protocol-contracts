@@ -16,9 +16,13 @@ const legos = require("@apy-finance/defi-legos");
 async function main() {
   const NETWORK_NAME = network.name.toUpperCase();
   console.log(`${NETWORK_NAME} selected`);
+  const signers = await ethers.getSigners();
+  const deployer = await signers[0].getAddress();
+  console.log(`Selected Deployer: ${deployer}`)
 
   const newPoolLogic = await ethers.getContractFactory("APYPoolTokenV2");
   const newPoolLogicContract = await newPoolLogic.deploy()
+
   console.log(`New Implementation Logic for Pools: ${chalk.green(newPoolLogicContract.address)}`)
 
   const PoolAdmin = await ethers.getContractAt(legos.apy.abis.APY_POOL_Admin, legos.apy.addresses.APY_POOL_Admin)
@@ -27,7 +31,8 @@ async function main() {
   console.log(legos.apy.addresses.APY_DAI_POOL)
   console.log(newPoolLogicContract.address)
 
-  await PoolAdmin.upgrade(legos.apy.addresses.APY_DAI_POOL, newPoolLogicContract.address)
+  const trx = await PoolAdmin.upgrade(legos.apy.addresses.APY_DAI_POOL, newPoolLogicContract.address)
+  console.log(trx)
   // console.log(`DAI Pool: ${chalk.green(legos.apy.addrsses.APY_DAI_POOL)}, Logic: ${chalk.green(newPoolLogic.addresses)}`)
   // await PoolAdmin.upgrade(legos.apy.addresses.APY_USDC_POOL, newPoolLogicContract.address)
   // console.log(`USDC Pool: ${chalk.green(legos.apy.addrsses.APY_DAI_POOL)}, Logic: ${chalk.green(newPoolLogic.addresses)}`)
