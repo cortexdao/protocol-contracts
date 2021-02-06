@@ -19,17 +19,20 @@ async function main() {
 
   const newPoolLogic = await ethers.getContractFactory("APYPoolTokenV2");
   const newPoolLogicContract = await newPoolLogic.deploy()
-  await newPoolLogicContract.deployed()
   console.log(`New Implementation Logic for Pools: ${chalk.green(newPoolLogicContract.address)}`)
 
   const PoolAdmin = await ethers.getContractAt(legos.apy.abis.APY_POOL_Admin, legos.apy.addresses.APY_POOL_Admin)
+  console.log(Object.keys(PoolAdmin.functions))
+
+  console.log(legos.apy.addresses.APY_DAI_POOL)
+  console.log(newPoolLogicContract.address)
 
   await PoolAdmin.upgrade(legos.apy.addresses.APY_DAI_POOL, newPoolLogicContract.address)
-  console.log(`DAI Pool: ${chalk.green(legos.apy.addrsses.APY_DAI_POOL)}, Logic: ${chalk.green(newPoolLogic.addresses)}`)
-  await PoolAdmin.upgrade(legos.apy.addresses.APY_USDC_POOL, newPoolLogicContract.address)
-  console.log(`USDC Pool: ${chalk.green(legos.apy.addrsses.APY_DAI_POOL)}, Logic: ${chalk.green(newPoolLogic.addresses)}`)
-  await PoolAdmin.upgrade(legos.apy.addresses.APY_USDT_POOL, newPoolLogicContract.address)
-  console.log(`USDT Pool: ${chalk.green(legos.apy.addrsses.APY_DAI_POOL)}, Logic: ${chalk.green(newPoolLogic.addresses)}`)
+  // console.log(`DAI Pool: ${chalk.green(legos.apy.addrsses.APY_DAI_POOL)}, Logic: ${chalk.green(newPoolLogic.addresses)}`)
+  // await PoolAdmin.upgrade(legos.apy.addresses.APY_USDC_POOL, newPoolLogicContract.address)
+  // console.log(`USDC Pool: ${chalk.green(legos.apy.addrsses.APY_DAI_POOL)}, Logic: ${chalk.green(newPoolLogic.addresses)}`)
+  // await PoolAdmin.upgrade(legos.apy.addresses.APY_USDT_POOL, newPoolLogicContract.address)
+  // console.log(`USDT Pool: ${chalk.green(legos.apy.addrsses.APY_DAI_POOL)}, Logic: ${chalk.green(newPoolLogic.addresses)}`)
 
   // process.exit(0)
 
