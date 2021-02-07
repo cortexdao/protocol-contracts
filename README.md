@@ -23,20 +23,12 @@ TODOs:
 
 ### Integration tests
 
-In one console:
-
-`yarn fork:mainnet`
-
-and in another console:
-
-`yarn test:integration --network localhost`
+`yarn test:integration`
 
 Comments:
 
-- Forked mainnet uses `ganache-cli` with variables read from `.env` file.
-  Get the `.env` values from a teammate.
-- the timeout for tests may need to be adjusted; the `timeout`
-  variable is near the top of the `integration/*.js` files.
+- Hardhat node is used with mainnet forking which requires `INFURA_API_KEY` to be set in a `.env` file
+- the timeout for tests may need to be adjusted; the mocha `timeout` variable is set in `hardhat.config.js`
 
 ## Generating mnemonics
 
