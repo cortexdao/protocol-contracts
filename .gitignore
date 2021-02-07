@@ -5,9 +5,6 @@ node_modules/
 cache/
 artifacts/*
 
-# Deployment
-deployments/localhost/
-
 # Solidity coverage files
 coverage.json
 coverage/
@@ -37,3 +34,5 @@ subgraph/build
 # vim
 *.swp
 
+# cloned chainlink repo
+/external-adapters-js
