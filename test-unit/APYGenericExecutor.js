@@ -17,7 +17,7 @@ contract("Test GenericExecutor", async (accounts) => {
     // NOTE: I use real ERC20 contract here and not the MockContract such that real events are emitted
     CatERC20 = await ERC20.new("CatContract", "CAT");
     DogERC20 = await ERC20.new("DogContract", "DOG");
-    executor = await GenericExecutor.new("KittenContract", "KAT");
+    executor = await GenericExecutor.new();
   });
 
   it("Test Executor Ownership", async () => {
