@@ -3,12 +3,11 @@ const { ethers, artifacts, contract } = require("hardhat");
 const { expectEvent, expectRevert } = require("@openzeppelin/test-helpers");
 const GenericExecutor = artifacts.require("APYGenericExecutor");
 const ERC20 = artifacts.require("ERC20");
-const ERC20_json = require("../artifacts/@openzeppelin/contracts/token/ERC20/ERC20.sol/ERC20.json");
 
 contract("Test GenericExecutor", async (accounts) => {
   const [deployer, account1] = accounts;
 
-  const erc20Interface = new ethers.utils.Interface(ERC20_json.abi);
+  const erc20Interface = new ethers.utils.Interface(ERC20.abi);
   let CatERC20;
   let DogERC20;
   let executor;
