@@ -65,4 +65,25 @@ contract("Test GenericExecutor", async (accounts) => {
       value: "100",
     });
   });
+
+  it("Test calling execute with failed internal trx", async () => {
+    const encodedApprove = erc20Interface.encodeFunctionData(
+      "approve(address,uint256)",
+      [account1, 100]
+    );
+    const encodedTransfer = erc20Interface.encodeFunctionData(
+      "transfer(address,uint256)",
+      [account1, 100]
+    );
+    await expectRevert(
+      executor.execute(
+        [
+          [CatERC20.address, encodedApprove],
+          [CatERC20.address, encodedTransfer],
+        ],
+        { from: deployer }
+      ),
+      "revert ERC20: transfer amount exceeds balance"
+    );
+  });
 });
