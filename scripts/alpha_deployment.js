@@ -6,10 +6,10 @@ const deployGenericExecutor = require("./deploy_generic_executor");
 const deployNewStrategy = require("./deploy_new_strategy");
 
 const steps = [
-  upgradePoolsLogic,
+  upgradePoolsLogic, // after update defi-legos
   poolsApprovals,
-  upgradeManagerLogic,
-  deployGenericExecutor,
+  upgradeManagerLogic, // after update defi-legos
+  deployGenericExecutor, // after update defi-legos
   deployNewStrategy,
 ];
 
