@@ -9,15 +9,16 @@ require("@nomiclabs/hardhat-etherscan");
 module.exports = {
   networks: {
     hardhat: {
-      // Default mnemonic:
-      // "test test test test test test test test test test test junk"
-      accounts: {
-        mnemonic: process.env.MNEMONIC || "",
-      },
       chainId: 1,
       forking: {
         url: "https://mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
         enabled: process.env.ENABLE_FORKING ? true : false,
+      },
+      accounts: {
+        // default, include for explicitness
+        mnemonic: "test test test test test test test test test test test junk",
+        // default: 20
+        count: 10,
       },
       // default 9.5e6
       gasLimit: 12.5e6,
@@ -25,8 +26,6 @@ module.exports = {
       blockGasLimit: 12.5e6,
       // default: 8 gwei
       gasPrice: 40e9,
-      // default: 20
-      count: 10,
     },
     localhost: {
       url: "http://127.0.0.1:8545",

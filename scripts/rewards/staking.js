@@ -11,6 +11,14 @@ const { argv } = require("yargs")
     type: "boolean",
     description: "Simulates transactions to estimate ETH cost",
   })
+  .option("fund", {
+    type: "boolean",
+    description: "fund staking contracts with APY",
+  })
+  .option("update", {
+    type: "boolean",
+    description: "update rewards rate on staking contracts",
+  })
   .option("gasPrice", {
     type: "number",
     description: "Gas price in gwei; omitting uses EthGasStation value",
@@ -50,8 +58,11 @@ async function main(argv) {
   console.log("Staking deployer:", stakingDeployer.address);
   console.log("");
 
-  let gasPrice = await getGasPrice(argv.gasPrice);
-  console.log("");
+  if (!argv.dryRun && !argv.fund && !argv.update) {
+    console.error("--dry-run or --fund or --update must be selected.");
+    console.log("");
+    process.exit(1);
+  }
 
   const amount = tokenAmountToBigNumber(argv.amount, "18");
 
@@ -65,6 +76,9 @@ async function main(argv) {
   const token = await APYGovernanceToken.attach(apyTokenAddress).connect(
     apyTokenDeployer
   );
+
+  let gasPrice = await getGasPrice(argv.gasPrice);
+  console.log("");
 
   if (argv.dryRun) {
     console.log("");
@@ -93,7 +107,7 @@ async function main(argv) {
       1e18;
     console.log("Current ETH balance for token deployer:", balance.toString());
     console.log("");
-  } else {
+  } else if (argv.fund) {
     const bTx = await token.transfer(BALANCER_STAKING_ADDRESS, amount, {
       gasPrice: gasPrice,
     });
@@ -149,7 +163,7 @@ async function main(argv) {
     const uniFinishDate = new Date(uniPeriodFinish * 1000);
     console.log("Uniswap period finish:", uniFinishDate.toUTCString());
     console.log("Uniswap period finish:", uniFinishDate.toLocaleString());
-  } else {
+  } else if (argv.update) {
     const bNotifyTx = await balancerpool.notifyRewardAmount(amount, {
       gasPrice: gasPrice,
     });
@@ -170,7 +184,15 @@ if (!module.parent) {
   main(argv)
     .then(() => {
       console.log("");
-      console.log("Staking contracts updated succesfully.");
+      if (argv.dryRun) {
+        console.log("Finished dry-run.");
+      } else {
+        if (argv.fund) {
+          console.log("Staking contracts funded with APY.");
+        } else if (argv.update) {
+          console.log("Staking rewards rate updated.");
+        }
+      }
       console.log("");
       process.exit(0);
     })
