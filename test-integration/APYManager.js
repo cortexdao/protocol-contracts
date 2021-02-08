@@ -20,7 +20,7 @@ const TransparentUpgradeableProxy = artifacts.require(
   "TransparentUpgradeableProxy"
 );
 const ProxyConstructorArg = artifacts.require("ProxyConstructorArg");
-const APYManager = artifacts.require("APYManager");
+const APYManager = artifacts.require("APYManagerV2");
 const MockContract = artifacts.require("MockContract");
 const { STABLECOIN_POOLS } = require("../utils/constants");
 const APYPoolTokenProxy = artifacts.require("APYPoolTokenProxy");
