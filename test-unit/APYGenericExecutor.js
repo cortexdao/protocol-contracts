@@ -8,14 +8,14 @@ contract("Test GenericExecutor", async (accounts) => {
   const [deployer, account1] = accounts;
 
   const erc20Interface = new ethers.utils.Interface(ERC20.abi);
-  let CatERC20;
-  let DogERC20;
+  let TokenA;
+  let TokenB;
   let executor;
 
   before(async () => {
-    // NOTE: I use real ERC20 contract here and not the MockContract such that real events are emitted
-    CatERC20 = await ERC20.new("CatContract", "CAT");
-    DogERC20 = await ERC20.new("DogContract", "DOG");
+    // NOTE: I use a real ERC20 contract here since MockContract cannot emit events
+    TokenA = await ERC20.new("TokenA", "A");
+    TokenB = await ERC20.new("TokenB", "B");
     executor = await GenericExecutor.new();
   });
 
@@ -32,8 +32,8 @@ contract("Test GenericExecutor", async (accounts) => {
     await expectRevert(
       executor.execute(
         [
-          [CatERC20.address, encodedApprove],
-          [DogERC20.address, encodedApprove],
+          [TokenA.address, encodedApprove],
+          [TokenB.address, encodedApprove],
         ],
         { from: account1 }
       ),
@@ -48,17 +48,17 @@ contract("Test GenericExecutor", async (accounts) => {
     );
     const trx = await executor.execute(
       [
-        [CatERC20.address, encodedApprove],
-        [DogERC20.address, encodedApprove],
+        [TokenA.address, encodedApprove],
+        [TokenB.address, encodedApprove],
       ],
       { from: deployer }
     );
-    expectEvent.inTransaction(trx.tx, CatERC20, "Approval", {
+    expectEvent.inTransaction(trx.tx, TokenA, "Approval", {
       owner: executor.address,
       spender: account1,
       value: "100",
     });
-    expectEvent.inTransaction(trx.tx, DogERC20, "Approval", {
+    expectEvent.inTransaction(trx.tx, TokenB, "Approval", {
       owner: executor.address,
       spender: account1,
       value: "100",
@@ -77,8 +77,8 @@ contract("Test GenericExecutor", async (accounts) => {
     await expectRevert(
       executor.execute(
         [
-          [CatERC20.address, encodedApprove],
-          [CatERC20.address, encodedTransfer],
+          [TokenA.address, encodedApprove],
+          [TokenA.address, encodedTransfer],
         ],
         { from: deployer }
       ),

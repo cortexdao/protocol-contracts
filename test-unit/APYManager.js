@@ -178,12 +178,13 @@ contract("APYManager", async (accounts) => {
     );
     let genericExecutor;
     let strategy;
-    let CatERC20;
-    let DogERC20;
+    let TokenA;
+    let TokenB;
 
     before("Deploy strategy", async () => {
-      CatERC20 = await ERC20.new("CatContract", "CAT");
-      DogERC20 = await ERC20.new("DogContract", "DOG");
+      // NOTE: I use a real ERC20 contract here since MockContract cannot emit events
+      TokenA = await ERC20.new("TokenA", "A");
+      TokenB = await ERC20.new("TokenB", "B");
 
       genericExecutor = await APYGenericExecutor.new({ from: deployer });
       const strategyAddress = await manager.deploy.call(
@@ -207,18 +208,18 @@ contract("APYManager", async (accounts) => {
       const trx = await manager.execute(
         strategy.address,
         [
-          [CatERC20.address, encodedApprove],
-          [DogERC20.address, encodedApprove],
+          [TokenA.address, encodedApprove],
+          [TokenB.address, encodedApprove],
         ],
         { from: deployer }
       );
 
-      expectEvent.inTransaction(trx.tx, CatERC20, "Approval", {
+      expectEvent.inTransaction(trx.tx, TokenA, "Approval", {
         owner: strategy.address,
         spender: account1,
         value: "100",
       });
-      expectEvent.inTransaction(trx.tx, DogERC20, "Approval", {
+      expectEvent.inTransaction(trx.tx, TokenB, "Approval", {
         owner: strategy.address,
         spender: account1,
         value: "100",
@@ -230,8 +231,8 @@ contract("APYManager", async (accounts) => {
         manager.execute(
           strategy.address,
           [
-            [CatERC20.address, encodedApprove],
-            [DogERC20.address, encodedApprove],
+            [TokenA.address, encodedApprove],
+            [TokenB.address, encodedApprove],
           ],
           { from: randomUser }
         ),
@@ -244,7 +245,7 @@ contract("APYManager", async (accounts) => {
         manager.fundStrategy(
           strategy.address,
           [
-            [CatERC20.address, DogERC20.address],
+            [TokenA.address, TokenB.address],
             [0, 0],
           ],
           { from: randomUser }
@@ -262,12 +263,12 @@ contract("APYManager", async (accounts) => {
         manager.fundAndExecute(
           strategy.address,
           [
-            [CatERC20.address, DogERC20.address],
+            [TokenA.address, TokenB.address],
             [0, 0],
           ],
           [
-            [CatERC20.address, encodedApprove],
-            [DogERC20.address, encodedApprove],
+            [TokenA.address, encodedApprove],
+            [TokenB.address, encodedApprove],
           ],
           { from: randomUser }
         ),
