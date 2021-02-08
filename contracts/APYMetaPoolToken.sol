@@ -6,13 +6,10 @@ import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import "./APYPoolToken.sol";
+import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/IMintable.sol";
-import "./interfaces/IDetailedERC20.sol";
 
 contract APYMetaPoolToken is
     Initializable,
@@ -23,15 +20,15 @@ contract APYMetaPoolToken is
     IMintable
 {
     using SafeMath for uint256;
-    using SafeERC20 for IERC20;
     uint256 public constant DEFAULT_MAPT_TO_UNDERLYER_FACTOR = 1000;
 
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
     address public proxyAdmin;
-    address public tvlAgg;
     address public manager;
+    AggregatorV3Interface public tvlAgg;
+    AggregatorV3Interface public usdEthAgg;
 
     /* ------------------------------- */
 
@@ -46,7 +43,7 @@ contract APYMetaPoolToken is
         initializer
     {
         require(adminAddress != address(0), "INVALID_ADMIN");
-        require(address(_tvlAgg) != address(0), "INVALID_AGG");
+        require(_tvlAgg != address(0), "INVALID_AGG");
 
         // initialize ancestor storage
         __Context_init_unchained();
@@ -71,8 +68,8 @@ contract APYMetaPoolToken is
 
     function setTvlAggregator(address _tvlAgg) public onlyOwner {
         require(address(_tvlAgg) != address(0), "INVALID_AGG");
-        tvlAgg = _tvlAgg;
-        emit TvlAggregatorChanged(address(_tvlAgg));
+        tvlAgg = AggregatorV3Interface(_tvlAgg);
+        emit TvlAggregatorChanged(_tvlAgg);
     }
 
     modifier onlyAdmin() {
@@ -109,8 +106,38 @@ contract APYMetaPoolToken is
              we should return the value in ETH value.
     */
     function getTVL() public view virtual returns (uint256) {
-        revert("TVL aggregator not ready yet.");
-        return 0;
+        // revert("TVL aggregator not ready yet.");
+        (, int256 usdTvl, , , ) = getTvlData();
+        uint256 usdEthPrice = getUsdEthPrice();
+        return uint256(usdTvl).mul(usdEthPrice);
+    }
+
+    function getTvlData()
+        public
+        view
+        returns (
+            uint80 roundId,
+            int256 answer,
+            uint256 startedAt,
+            uint256 updatedAt,
+            uint80 answeredInRound
+        )
+    {
+        (roundId, answer, startedAt, updatedAt, answeredInRound) = tvlAgg
+            .latestRoundData();
+        require(answer >= 0, "TVL error");
+    }
+
+    function getUsdEthPrice() public view returns (uint256) {
+        (
+            uint80 roundId,
+            int256 answer,
+            uint256 startedAt,
+            uint256 updatedAt,
+            uint80 answeredInRound
+        ) = usdEthAgg.latestRoundData();
+        require(answer >= 0, "Price error");
+        return uint256(answer);
     }
 
     /** @notice Calculate mAPT amount to be minted for given pool's underlyer amount.
