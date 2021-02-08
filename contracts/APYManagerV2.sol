@@ -245,7 +245,7 @@ contract APYManagerV2 is
     ) public onlyOwner {
         require(
             allocation.pools.length == allocation.amounts.length,
-            "allocation lenght mismatch"
+            "allocation length mismatch"
         );
         for (uint256 i = 0; i < allocation.pools.length; i++) {
             APYPoolToken pool = APYPoolToken(allocation.pools[i]);
