@@ -3,20 +3,7 @@ const { artifacts, ethers } = hre;
 const { send } = require("@openzeppelin/test-helpers");
 const { tokenAmountToBigNumber } = require("./unit");
 
-const IMintableERC20 = artifacts.require("IMintableERC20");
-
-const mintERC20Tokens = async (
-  tokenAddress,
-  receiverAddress,
-  ownerAddress,
-  amount
-) => {
-  const token = await IMintableERC20.at(tokenAddress);
-  await token.mint(receiverAddress, amount, {
-    from: ownerAddress,
-    gasPrice: 0,
-  });
-};
+const ERC20 = artifacts.require("ERC20");
 
 const transferERC20Tokens = async (
   tokenAddress,
@@ -24,7 +11,7 @@ const transferERC20Tokens = async (
   ownerAddress,
   amount
 ) => {
-  const token = await IMintableERC20.at(tokenAddress);
+  const token = await ERC20.at(tokenAddress);
   await token.transfer(receiverAddress, amount, {
     from: ownerAddress,
     gasPrice: 0,
@@ -32,7 +19,7 @@ const transferERC20Tokens = async (
 };
 
 const getERC20Balance = async (contractAddress, accountAddress) => {
-  const token = await IMintableERC20.at(contractAddress);
+  const token = await ERC20.at(contractAddress);
   const balance = await token.balanceOf(accountAddress);
   const symbol = await token.symbol();
   const decimals = await token.decimals();
@@ -106,7 +93,6 @@ async function forciblySendEth(recipient, amount, ethFunder) {
 }
 
 module.exports = {
-  mintERC20Tokens,
   transferERC20Tokens,
   getERC20Balance,
   console,

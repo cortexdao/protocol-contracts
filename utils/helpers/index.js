@@ -10,7 +10,6 @@ const { expectEventInTransaction } = require("./event");
 const { getGasPrice } = require("./gas");
 const {
   acquireToken,
-  mintERC20Tokens,
   transferERC20Tokens,
   getERC20Balance,
 } = require("./token");
@@ -40,7 +39,6 @@ module.exports = {
   bytes32,
   dai,
   erc20,
-  mintERC20Tokens,
   transferERC20Tokens,
   getERC20Balance,
   undoErc20,
