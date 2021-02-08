@@ -21,6 +21,7 @@ contract APYMetaPoolToken is
 {
     using SafeMath for uint256;
     uint256 public constant DEFAULT_MAPT_TO_UNDERLYER_FACTOR = 1000;
+    uint256 public constant CHAINLINK_STALENESS_DURATION = 120;
 
     /* ------------------------------- */
     /* impl-specific storage variables */
@@ -28,7 +29,7 @@ contract APYMetaPoolToken is
     address public proxyAdmin;
     address public manager;
     AggregatorV3Interface public tvlAgg;
-    AggregatorV3Interface public usdEthAgg;
+    AggregatorV3Interface public ethUsdAgg;
 
     /* ------------------------------- */
 
@@ -108,8 +109,8 @@ contract APYMetaPoolToken is
     function getTVL() public view virtual returns (uint256) {
         // revert("TVL aggregator not ready yet.");
         (, int256 usdTvl, , , ) = getTvlData();
-        uint256 usdEthPrice = getUsdEthPrice();
-        return uint256(usdTvl).mul(usdEthPrice);
+        uint256 ethUsdPrice = getEthUsdPrice();
+        return uint256(usdTvl).div(ethUsdPrice);
     }
 
     function getTvlData()
@@ -125,18 +126,24 @@ contract APYMetaPoolToken is
     {
         (roundId, answer, startedAt, updatedAt, answeredInRound) = tvlAgg
             .latestRoundData();
-        require(answer >= 0, "TVL error");
+        require(answer >= 0, "CHAINLINK_ERROR");
+        require(updatedAt > 0, "CHAINLINK_ROUND_INCOMPLETE");
+        require(
+            block.timestamp.sub(updatedAt) < CHAINLINK_STALENESS_DURATION,
+            "CHAINLINK_STALE_DATA"
+        );
     }
 
-    function getUsdEthPrice() public view returns (uint256) {
+    function getEthUsdPrice() public view returns (uint256) {
         (
             uint80 roundId,
             int256 answer,
             uint256 startedAt,
             uint256 updatedAt,
             uint80 answeredInRound
-        ) = usdEthAgg.latestRoundData();
-        require(answer >= 0, "Price error");
+        ) = ethUsdAgg.latestRoundData();
+        require(answer >= 0, "CHAINLINK_ERROR");
+        require(updatedAt > 0, "CHAINLINK_ROUND_INCOMPLETE");
         return uint256(answer);
     }
 
