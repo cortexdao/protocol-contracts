@@ -11,9 +11,6 @@ module.exports = {
     hardhat: {
       // Default mnemonic:
       // "test test test test test test test test test test test junk"
-      accounts: {
-        mnemonic: process.env.MNEMONIC || "",
-      },
       chainId: 1,
       forking: {
         url: "https://mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
