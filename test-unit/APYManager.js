@@ -171,7 +171,7 @@ contract("APYManager", async (accounts) => {
     });
   });
 
-  describe.only("Strategy factory", async () => {
+  describe("Strategy factory", async () => {
     const encodedApprove = erc20Interface.encodeFunctionData(
       "approve(address,uint256)",
       [account1, 100]
