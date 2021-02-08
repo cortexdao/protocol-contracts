@@ -88,10 +88,8 @@ contract("APYManager", async (accounts) => {
     });
   });
 
-  describe("Test setting pool ids", async () => {
-    it("Test setting pool ids by not owner", async () => {
-      await manager.setPoolIds("");
-    });
+  describe.skip("Test setting pool ids", async () => {
+    it("Test setting pool ids by not owner", async () => {});
     it("Test setting pool ids successfully", async () => {});
   });
 
@@ -173,7 +171,11 @@ contract("APYManager", async (accounts) => {
     });
   });
 
-  describe("Strategy factory", async () => {
+  describe.only("Strategy factory", async () => {
+    const encodedApprove = erc20Interface.encodeFunctionData(
+      "approve(address,uint256)",
+      [account1, 100]
+    );
     let genericExecutor;
     let strategy;
     let CatERC20;
@@ -224,10 +226,6 @@ contract("APYManager", async (accounts) => {
     });
 
     it("Revert when non-owner calls execute", async () => {
-      const encodedApprove = erc20Interface.encodeFunctionData(
-        "approve(address,uint256)",
-        [account1, 100]
-      );
       await expectRevert(
         manager.execute(
           strategy.address,
@@ -241,12 +239,44 @@ contract("APYManager", async (accounts) => {
       );
     });
 
-    it("Fund strategy as not owner", async () => {});
+    it("Fund strategy as not owner", async () => {
+      await expectRevert(
+        manager.fundStrategy(
+          strategy.address,
+          [
+            [CatERC20.address, DogERC20.address],
+            [0, 0],
+          ],
+          { from: randomUser }
+        ),
+        "revert Ownable: caller is not the owner"
+      );
+    });
 
-    it("Fund strategy as owner", async () => {});
+    it("Fund strategy as owner", async () => {
+      // TESTED IN INTEGRATION TESTS
+    });
 
-    it("Fund and Execute as not owner", async () => {});
+    it("Fund and Execute as not owner", async () => {
+      await expectRevert(
+        manager.fundAndExecute(
+          strategy.address,
+          [
+            [CatERC20.address, DogERC20.address],
+            [0, 0],
+          ],
+          [
+            [CatERC20.address, encodedApprove],
+            [DogERC20.address, encodedApprove],
+          ],
+          { from: randomUser }
+        ),
+        "revert Ownable: caller is not the owner"
+      );
+    });
 
-    it("Fund and Execute as owner", async () => {});
+    it("Fund and Execute as owner", async () => {
+      // TESTED IN INTEGRATION TESTS
+    });
   });
 });
