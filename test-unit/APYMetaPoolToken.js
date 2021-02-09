@@ -187,6 +187,27 @@ contract("APYMetaPoolToken", async (accounts) => {
     });
   });
 
+  describe("Set ETH-USD aggregator address", async () => {
+    it("Owner can set to valid address", async () => {
+      await mApt.setEthUsdAggregator(DUMMY_ADDRESS, { from: deployer });
+      assert.equal(await mApt.ethUsdAgg(), DUMMY_ADDRESS);
+    });
+
+    it("Revert when non-owner attempts to set", async () => {
+      await expectRevert(
+        mApt.setEthUsdAggregator(DUMMY_ADDRESS, { from: randomUser }),
+        "Ownable: caller is not the owner"
+      );
+    });
+
+    it("Cannot set to zero address", async () => {
+      await expectRevert(
+        mApt.setEthUsdAggregator(ZERO_ADDRESS, { from: deployer }),
+        "INVALID_AGG"
+      );
+    });
+  });
+
   describe("Minting and burning", async () => {
     before(async () => {
       await mApt.setManagerAddress(manager, { from: deployer });
