@@ -21,7 +21,6 @@ contract APYMetaPoolToken is
 {
     using SafeMath for uint256;
     uint256 public constant DEFAULT_MAPT_TO_UNDERLYER_FACTOR = 1000;
-    uint256 public constant CHAINLINK_STALENESS_DURATION = 120;
 
     /* ------------------------------- */
     /* impl-specific storage variables */
@@ -30,6 +29,7 @@ contract APYMetaPoolToken is
     address public manager;
     AggregatorV3Interface public tvlAgg;
     AggregatorV3Interface public ethUsdAgg;
+    uint256 public aggStalePeriod;
 
     /* ------------------------------- */
 
@@ -39,10 +39,11 @@ contract APYMetaPoolToken is
     event ManagerChanged(address);
     event TvlAggregatorChanged(address agg);
 
-    function initialize(address adminAddress, address payable _tvlAgg)
-        external
-        initializer
-    {
+    function initialize(
+        address adminAddress,
+        address payable _tvlAgg,
+        uint256 _aggStalePeriod
+    ) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");
         require(_tvlAgg != address(0), "INVALID_AGG");
 
@@ -56,6 +57,7 @@ contract APYMetaPoolToken is
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
         setTvlAggregator(_tvlAgg);
+        setAggStalePeriod(_aggStalePeriod);
     }
 
     // solhint-disable-next-line no-empty-blocks
@@ -71,6 +73,10 @@ contract APYMetaPoolToken is
         require(address(_tvlAgg) != address(0), "INVALID_AGG");
         tvlAgg = AggregatorV3Interface(_tvlAgg);
         emit TvlAggregatorChanged(_tvlAgg);
+    }
+
+    function setAggStalePeriod(address _aggStalePeriod) public onlyOwner {
+        aggStalePeriod = _aggStalePeriod;
     }
 
     modifier onlyAdmin() {
@@ -124,27 +130,28 @@ contract APYMetaPoolToken is
             uint80 answeredInRound
         )
     {
+        // possible revert with "No data present" but this can
+        // only happen if there has never been a successful round.
         (roundId, answer, startedAt, updatedAt, answeredInRound) = tvlAgg
             .latestRoundData();
-        require(answer >= 0, "CHAINLINK_ERROR");
-        require(updatedAt > 0, "CHAINLINK_ROUND_INCOMPLETE");
-        require(
-            block.timestamp.sub(updatedAt) < CHAINLINK_STALENESS_DURATION,
-            "CHAINLINK_STALE_DATA"
-        );
+        validateAggValue(answer, updatedAt);
     }
 
-    function getEthUsdPrice() public view returns (uint256) {
-        (
-            uint80 roundId,
-            int256 answer,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 answeredInRound
-        ) = ethUsdAgg.latestRoundData();
-        require(answer >= 0, "CHAINLINK_ERROR");
-        require(updatedAt > 0, "CHAINLINK_ROUND_INCOMPLETE");
+    function getEthUsdPrice() public view returns (uint256 price) {
+        // possible revert with "No data present" but this can
+        // only happen if there has never been a successful round.
+        (, int256 answer, , uint256 updatedAt, ) = ethUsdAgg.latestRoundData();
+        validateAggValue(answer, updatedAt);
         return uint256(answer);
+    }
+
+    function validateAggValue(int256 answer, uint256 updatedAt) private {
+        require(answer > 0, "CHAINLINK_ERROR");
+        // require(updatedAt > 0, "CHAINLINK_ROUND_INCOMPLETE");
+        require(
+            block.timestamp.sub(updatedAt) < aggStalePeriod, // solhint-disable-line not-rely-on-time
+            "CHAINLINK_STALE_DATA"
+        );
     }
 
     /** @notice Calculate mAPT amount to be minted for given pool's underlyer amount.
