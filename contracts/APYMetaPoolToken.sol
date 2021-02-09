@@ -86,6 +86,7 @@ contract APYMetaPoolToken is
     }
 
     function setAggStalePeriod(uint256 _aggStalePeriod) public onlyOwner {
+        require(_aggStalePeriod > 0, "INVALID_STALE_PERIOD");
         aggStalePeriod = _aggStalePeriod;
     }
 

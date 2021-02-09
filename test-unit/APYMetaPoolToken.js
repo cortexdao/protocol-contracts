@@ -118,6 +118,21 @@ contract("APYMetaPoolToken", async (accounts) => {
         )
       );
     });
+
+    it("Revert when aggStalePeriod is zero", async () => {
+      await expectRevert.unspecified(
+        APYMetaPoolTokenProxy.new(
+          logic.address,
+          DUMMY_ADDRESS,
+          DUMMY_ADDRESS,
+          DUMMY_ADDRESS,
+          0,
+          {
+            from: deployer,
+          }
+        )
+      );
+    });
   });
 
   describe("Defaults", async () => {
