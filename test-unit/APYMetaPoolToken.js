@@ -47,8 +47,8 @@ contract("APYMetaPoolToken", async (accounts) => {
     proxy = await APYMetaPoolTokenProxy.new(
       logic.address,
       proxyAdmin.address,
-      DUMMY_ADDRESS, // don't need a mock, since test contract can set TVL explicitly
-      DUMMY_ADDRESS, // don't need a mock, since test contract can set ETH-USD price explicitly
+      DUMMY_ADDRESS, // don't need a mock; test contract can set TVL explicitly
+      DUMMY_ADDRESS, // don't need a mock; test contract can set ETH-USD price explicitly
       aggStalePeriod,
       {
         from: deployer,
@@ -204,6 +204,29 @@ contract("APYMetaPoolToken", async (accounts) => {
       await expectRevert(
         mApt.setEthUsdAggregator(ZERO_ADDRESS, { from: deployer }),
         "INVALID_AGG"
+      );
+    });
+  });
+
+  describe("Set aggregator staleness period", async () => {
+    it("Owner can set to valid value", async () => {
+      const newPeriod = "360";
+      expect(await mApt.aggStalePeriod()).to.not.bignumber.equal(newPeriod);
+      await mApt.setAggStalePeriod(newPeriod, { from: deployer });
+      expect(await mApt.aggStalePeriod()).to.bignumber.equal(newPeriod);
+    });
+
+    it("Revert when non-owner attempts to set", async () => {
+      await expectRevert(
+        mApt.setAggStalePeriod(60, { from: randomUser }),
+        "Ownable: caller is not the owner"
+      );
+    });
+
+    it("Cannot set to zero", async () => {
+      await expectRevert(
+        mApt.setAggStalePeriod(0, { from: deployer }),
+        "INVALID_STALE_PERIOD"
       );
     });
   });
