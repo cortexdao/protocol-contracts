@@ -75,7 +75,7 @@ contract APYMetaPoolToken is
         emit TvlAggregatorChanged(_tvlAgg);
     }
 
-    function setAggStalePeriod(address _aggStalePeriod) public onlyOwner {
+    function setAggStalePeriod(uint256 _aggStalePeriod) public onlyOwner {
         aggStalePeriod = _aggStalePeriod;
     }
 
@@ -145,7 +145,7 @@ contract APYMetaPoolToken is
         return uint256(answer);
     }
 
-    function validateAggValue(int256 answer, uint256 updatedAt) private {
+    function validateAggValue(int256 answer, uint256 updatedAt) private view {
         require(answer > 0, "CHAINLINK_ERROR");
         // require(updatedAt > 0, "CHAINLINK_ROUND_INCOMPLETE");
         require(
