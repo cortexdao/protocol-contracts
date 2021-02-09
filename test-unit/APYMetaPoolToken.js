@@ -43,10 +43,13 @@ contract("APYMetaPoolToken", async (accounts) => {
   before(async () => {
     proxyAdmin = await ProxyAdmin.new({ from: deployer });
     logic = await APYMetaPoolToken.new({ from: deployer });
+    const aggStalePeriod = 120;
     proxy = await APYMetaPoolTokenProxy.new(
       logic.address,
       proxyAdmin.address,
       DUMMY_ADDRESS, // don't need a mock, since test contract can set TVL explicitly
+      DUMMY_ADDRESS, // don't need a mock, since test contract can set ETH-USD price explicitly
+      aggStalePeriod,
       {
         from: deployer,
       }
@@ -61,6 +64,8 @@ contract("APYMetaPoolToken", async (accounts) => {
           DUMMY_ADDRESS,
           proxyAdmin.address,
           DUMMY_ADDRESS,
+          DUMMY_ADDRESS,
+          120,
           {
             from: deployer,
           }
@@ -71,17 +76,31 @@ contract("APYMetaPoolToken", async (accounts) => {
 
     it("Revert when proxy admin is zero address", async () => {
       await expectRevert.unspecified(
-        APYMetaPoolTokenProxy.new(logic.address, ZERO_ADDRESS, DUMMY_ADDRESS, {
-          from: deployer,
-        })
+        APYMetaPoolTokenProxy.new(
+          logic.address,
+          ZERO_ADDRESS,
+          DUMMY_ADDRESS,
+          DUMMY_ADDRESS,
+          120,
+          {
+            from: deployer,
+          }
+        )
       );
     });
 
     it("Revert when TVL aggregator is zero address", async () => {
       await expectRevert.unspecified(
-        APYMetaPoolTokenProxy.new(logic.address, DUMMY_ADDRESS, ZERO_ADDRESS, {
-          from: deployer,
-        })
+        APYMetaPoolTokenProxy.new(
+          logic.address,
+          DUMMY_ADDRESS,
+          ZERO_ADDRESS,
+          DUMMY_ADDRESS,
+          120,
+          {
+            from: deployer,
+          }
+        )
       );
     });
   });

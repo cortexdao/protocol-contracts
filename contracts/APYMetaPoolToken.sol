@@ -38,14 +38,17 @@ contract APYMetaPoolToken is
     event AdminChanged(address);
     event ManagerChanged(address);
     event TvlAggregatorChanged(address agg);
+    event EthUsdAggregatorChanged(address agg);
 
     function initialize(
         address adminAddress,
-        address payable _tvlAgg,
+        address _tvlAgg,
+        address _ethUsdAgg,
         uint256 _aggStalePeriod
     ) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");
         require(_tvlAgg != address(0), "INVALID_AGG");
+        require(_ethUsdAgg != address(0), "INVALID_AGG");
 
         // initialize ancestor storage
         __Context_init_unchained();
@@ -57,6 +60,7 @@ contract APYMetaPoolToken is
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
         setTvlAggregator(_tvlAgg);
+        setEthUsdAggregator(_ethUsdAgg);
         setAggStalePeriod(_aggStalePeriod);
     }
 
@@ -70,9 +74,15 @@ contract APYMetaPoolToken is
     }
 
     function setTvlAggregator(address _tvlAgg) public onlyOwner {
-        require(address(_tvlAgg) != address(0), "INVALID_AGG");
+        require(_tvlAgg != address(0), "INVALID_AGG");
         tvlAgg = AggregatorV3Interface(_tvlAgg);
         emit TvlAggregatorChanged(_tvlAgg);
+    }
+
+    function setEthUsdAggregator(address _ethUsdAgg) public onlyOwner {
+        require(_ethUsdAgg != address(0), "INVALID_AGG");
+        ethUsdAgg = AggregatorV3Interface(_ethUsdAgg);
+        emit EthUsdAggregatorChanged(_ethUsdAgg);
     }
 
     function setAggStalePeriod(uint256 _aggStalePeriod) public onlyOwner {
