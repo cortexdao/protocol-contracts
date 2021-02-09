@@ -103,6 +103,21 @@ contract("APYMetaPoolToken", async (accounts) => {
         )
       );
     });
+
+    it("Revert when ETH-USD aggregator is zero address", async () => {
+      await expectRevert.unspecified(
+        APYMetaPoolTokenProxy.new(
+          logic.address,
+          DUMMY_ADDRESS,
+          DUMMY_ADDRESS,
+          ZERO_ADDRESS,
+          120,
+          {
+            from: deployer,
+          }
+        )
+      );
+    });
   });
 
   describe("Defaults", async () => {
