@@ -1,5 +1,5 @@
 const { expect, assert } = require("chai");
-const { ethers, web3 } = require("hardhat");
+const { ethers, web3, artifacts, waffle } = require("hardhat");
 const timeMachine = require("ganache-time-traveler");
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
 const {
@@ -7,6 +7,8 @@ const {
   ANOTHER_FAKE_ADDRESS,
   tokenAmountToBigNumber,
 } = require("../utils/helpers");
+const { deployMockContract } = waffle;
+const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
 
 const DUMMY_ADDRESS = web3.utils.toChecksumAddress(
   "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
@@ -19,12 +21,12 @@ const ether = (amount) => tokenAmountToBigNumber(amount, "18");
 describe.only("Contract: APYMetaPoolToken", () => {
   // signers
   let deployer;
-  let admin;
   let manager;
   let randomUser;
   let anotherUser;
 
   // contract factories
+  // have to be set async in "before"
   let ProxyAdmin;
   let APYMetaPoolTokenProxy;
   let APYMetaPoolToken;
@@ -34,6 +36,12 @@ describe.only("Contract: APYMetaPoolToken", () => {
   let logic;
   let proxy;
   let mApt;
+
+  // default settings
+  // mocks have to be done async in "before"
+  let tvlAggMock;
+  let ethUsdAggMock;
+  const aggStalePeriod = 14400;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -48,13 +56,7 @@ describe.only("Contract: APYMetaPoolToken", () => {
   });
 
   before(async () => {
-    [
-      deployer,
-      admin,
-      manager,
-      randomUser,
-      anotherUser,
-    ] = await ethers.getSigners();
+    [deployer, manager, randomUser, anotherUser] = await ethers.getSigners();
 
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     APYMetaPoolTokenProxy = await ethers.getContractFactory(
@@ -62,16 +64,21 @@ describe.only("Contract: APYMetaPoolToken", () => {
     );
     APYMetaPoolToken = await ethers.getContractFactory("TestAPYMetaPoolToken");
 
+    tvlAggMock = await deployMockContract(deployer, AggregatorV3Interface.abi);
+    ethUsdAggMock = await deployMockContract(
+      deployer,
+      AggregatorV3Interface.abi
+    );
+
     proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
     logic = await APYMetaPoolToken.deploy();
     await logic.deployed();
-    const aggStalePeriod = 120;
     proxy = await APYMetaPoolTokenProxy.deploy(
       logic.address,
       proxyAdmin.address,
-      DUMMY_ADDRESS, // don't need a mock; test contract can set TVL explicitly
-      DUMMY_ADDRESS, // don't need a mock; test contract can set ETH-USD price explicitly
+      tvlAggMock.address,
+      ethUsdAggMock.address,
       aggStalePeriod
     );
     await proxy.deployed();
@@ -153,10 +160,32 @@ describe.only("Contract: APYMetaPoolToken", () => {
       ).to.be.revertedWith("DONT_SEND_ETHER");
     });
 
-    it("more defaults", async () => {
-      // TODO:
-      // add more tests here to check defaults, such as agg addresses and stale period
-      assert.fail("Write the tests");
+    it("Name set to correct value", async () => {
+      expect(await mApt.name()).to.equal("APY MetaPool Token");
+    });
+
+    it("Symbol set to correct value", async () => {
+      expect(await mApt.symbol()).to.equal("mAPT");
+    });
+
+    it("Decimals set to correct value", async () => {
+      expect(await mApt.decimals()).to.equal(18);
+    });
+
+    it("Admin set correctly", async () => {
+      expect(await mApt.proxyAdmin()).to.equal(proxyAdmin.address);
+    });
+
+    it("TVL agg set correctly", async () => {
+      expect(await mApt.tvlAgg()).to.equal(tvlAggMock.address);
+    });
+
+    it("ETH-USD agg set correctly", async () => {
+      expect(await mApt.ethUsdAgg()).to.equal(ethUsdAggMock.address);
+    });
+
+    it("aggStalePeriod set to correct value", async () => {
+      expect(await mApt.aggStalePeriod()).to.equal(aggStalePeriod);
     });
   });
 
@@ -168,7 +197,7 @@ describe.only("Contract: APYMetaPoolToken", () => {
 
     it("Revert when non-owner attempts to set", async () => {
       await expect(
-        mApt.connect(randomUser).setAdminAddress(admin.address)
+        mApt.connect(randomUser).setAdminAddress(FAKE_ADDRESS)
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
