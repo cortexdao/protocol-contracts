@@ -58,7 +58,7 @@ contract APYManagerV2 is
     // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual onlyAdmin {}
 
-    function deploy(address generalExecutor)
+    function deployStrategy(address generalExecutor)
         external
         override
         onlyOwner

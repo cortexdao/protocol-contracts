@@ -1,10 +1,9 @@
 require("dotenv").config();
 const {
-  //assert,
-  expect,
+  assert,
 } = require("chai");
 const { artifacts, contract, ethers, network, web3 } = require("hardhat");
-const { constants } = require("@openzeppelin/test-helpers");
+const { constants, expectRevert, expectEvent } = require("@openzeppelin/test-helpers");
 const { MAX_UINT256, ZERO_ADDRESS } = constants;
 const {
   console,
@@ -14,6 +13,8 @@ const legos = require("@apy-finance/defi-legos");
 
 const APYManagerV2 = artifacts.require("APYManagerV2");
 const APYPoolTokenV2 = artifacts.require("APYPoolTokenV2");
+const Strategy = artifacts.require("Strategy");
+
 
 const POOL_DEPLOYER = '0x6EAF0ab3455787bA10089800dB91F11fDf6370BE'
 const MANAGER_DEPLOYER = '0x0f7B66a4a3f7CfeAc2517c2fb9F0518D48457d41'
@@ -25,24 +26,26 @@ console.debugging = false;
 /* ************************ */
 
 contract("APYManager", async (accounts) => {
-  const [deployer] = accounts;
+  const [_, account1, account2] = accounts;
 
-  let manager;
-  let usdcPool;
-  let usdcToken;
+  let APY_DAI_POOL;
+  let APY_USDC_POOL;
+  let APY_USDT_POOL;
+  let Manager;
+  let executor;
   let mApt;
   let signer
 
   before(async () => {
     // Fund Deployers
     await web3.eth.sendTransaction({
-      from: deployer,
+      from: _,
       to: POOL_DEPLOYER,
       value: 10e18,
     })
 
     await web3.eth.sendTransaction({
-      from: deployer,
+      from: _,
       to: MANAGER_DEPLOYER,
       value: 10e18,
     })
@@ -97,17 +100,17 @@ contract("APYManager", async (accounts) => {
 
     //Handle approvals
     signer = await ethers.provider.getSigner(POOL_DEPLOYER)
-    const APY_DAI_POOL = await ethers.getContractAt(
+    APY_DAI_POOL = await ethers.getContractAt(
       APYPoolTokenV2.abi,
       legos.apy.addresses.APY_DAI_POOL,
       signer
     );
-    const APY_USDC_POOL = await ethers.getContractAt(
+    APY_USDC_POOL = await ethers.getContractAt(
       APYPoolTokenV2.abi,
       legos.apy.addresses.APY_USDC_POOL,
       signer
     );
-    const APY_USDT_POOL = await ethers.getContractAt(
+    APY_USDT_POOL = await ethers.getContractAt(
       APYPoolTokenV2.abi,
       legos.apy.addresses.APY_USDT_POOL,
       signer
@@ -122,11 +125,35 @@ contract("APYManager", async (accounts) => {
     APY_USDT_POOL.infiniteApprove(
       legos.apy.addresses.APY_MANAGER
     );
+
+    // Create Generic Executor
+    const ExecutorFactory = await ethers.getContractFactory("APYGenericExecutor")
+    executor = await ExecutorFactory.deploy()
+
+    // Set variables
+    signer = await ethers.provider.getSigner(MANAGER_DEPLOYER)
+    Manager = await ethers.getContractAt(APYManagerV2.abi, legos.apy.addresses.APY_MANAGER, signer)
   });
+
+  describe.only("Deploy Strategy", async () => {
+    it("Test Deploying strategy by non owner", async () => {
+      const bad_signer = await ethers.provider.getSigner(_)
+      const bad_MANAGER = await ethers.getContractAt(APYManagerV2.abi, legos.apy.addresses.APY_MANAGER, bad_signer)
+      await expectRevert(bad_MANAGER.deployStrategy(executor.address), "revert Ownable: caller is not the owner")
+    })
+
+    it("Test Deploying strategy by owner", async () => {
+      const stratAddress = await Manager.callStatic.deployStrategy(executor.address)
+      await Manager.deployStrategy(executor.address)
+      // ethers has trouble detecting the events, so I'm checking that the contract exists by checking the owner
+      const strat = await ethers.getContractAt(Strategy.abi, stratAddress)
+      const stratOwner = await strat.owner()
+      assert.equal(stratOwner, Manager.address)
+    })
+  })
 
   describe.only("Execute", async () => {
     it("Test Execute by non owner", async () => {
-      console.log("test")
     })
 
     it("Test Execute by owner", async () => {
