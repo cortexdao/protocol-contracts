@@ -26,6 +26,10 @@ console.debugging = false;
 /* ************************ */
 
 contract("APYManager", async (accounts) => {
+  // I use hardhat to be able switch between accounts with impersonateAcccount functionality
+  // ENABLE_FORKING=true yarn hardhat node
+  // yarn test:integration --network localhost
+
   const [_, account1, account2] = accounts;
 
   let APY_DAI_POOL;
