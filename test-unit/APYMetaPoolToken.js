@@ -18,7 +18,7 @@ const usdc = (amount) => tokenAmountToBigNumber(amount, "6");
 const dai = (amount) => tokenAmountToBigNumber(amount, "18");
 const ether = (amount) => tokenAmountToBigNumber(amount, "18");
 
-describe.only("Contract: APYMetaPoolToken", () => {
+describe("Contract: APYMetaPoolToken", () => {
   // signers
   let deployer;
   let manager;
@@ -473,15 +473,105 @@ describe.only("Contract: APYMetaPoolToken", () => {
     });
   });
 
-  describe("getTVL", () => {
+  describe("getTVL and auxiliary functions", () => {
+    const ethUsdPrice = tokenAmountToBigNumber("176767026385");
+    const usdTvl = tokenAmountToBigNumber("2510012387654321");
+    const usdDecimals = 8;
+
     before(async () => {
-      // deploy mock aggs
-      // setup mock aggs
-      const ethUsdPrice = tokenAmountToBigNumber("176767026385");
-      const decimals = 8;
+      /* for these tests, we want to test the actual implementation
+         of `getTVL`, rather than mocking it out, so we need
+         to deploy the real contract, not the test version. */
+
+      // Note our local declarations shadow some existing globals
+      // but their scope is limited to this `before`.
+      const APYMetaPoolToken = await ethers.getContractFactory(
+        "APYMetaPoolToken" // the *real* contract
+      );
+      const logic = await APYMetaPoolToken.deploy();
+      await logic.deployed();
+      const proxy = await APYMetaPoolTokenProxy.deploy(
+        logic.address,
+        proxyAdmin.address,
+        tvlAggMock.address,
+        ethUsdAggMock.address,
+        aggStalePeriod
+      );
+      await proxy.deployed();
+      // Set the `mAPT` global to point to a deployed proxy with
+      // the real logic, not the test one.
+      mApt = await APYMetaPoolToken.attach(proxy.address);
     });
 
-    it("getEthUsdPrice", async () => {});
+    after(async () => {
+      // re-attach to test contract for other tests
+      // Note: here the variables all refer to the global scope
+      mApt = await APYMetaPoolToken.attach(proxy.address);
+    });
+
+    it.only("getEthUsdPrice reverts when stale", async () => {
+      const updatedAt = (await ethers.provider.getBlock()).timestamp;
+      // setting the mock mines a block and advances time by 1 sec
+      await ethUsdAggMock.mock.latestRoundData.returns(
+        0,
+        ethUsdPrice,
+        0,
+        updatedAt,
+        0
+      );
+      // await ethUsdAggMock.mock.decimals.returns(usdDecimals);
+      await ethers.provider.send("evm_increaseTime", [aggStalePeriod / 2]);
+      await ethers.provider.send("evm_mine");
+      await expect(mApt.getEthUsdPrice()).to.not.be.reverted;
+
+      await ethers.provider.send("evm_increaseTime", [aggStalePeriod / 2]);
+      await ethers.provider.send("evm_mine");
+      await expect(mApt.getEthUsdPrice()).to.be.revertedWith(
+        "CHAINLINK_STALE_DATA"
+      );
+    });
+
+    it.only("getTvlData reverts when stale", async () => {
+      const updatedAt = (await ethers.provider.getBlock()).timestamp;
+      // setting the mock mines a block and advances time by 1 sec
+      await tvlAggMock.mock.latestRoundData.returns(
+        0,
+        ethUsdPrice,
+        0,
+        updatedAt,
+        0
+      );
+      // await ethUsdAggMock.mock.decimals.returns(usdDecimals);
+      await ethers.provider.send("evm_increaseTime", [aggStalePeriod / 2]);
+      await ethers.provider.send("evm_mine");
+      await expect(mApt.getTvlData()).to.not.be.reverted;
+
+      await ethers.provider.send("evm_increaseTime", [aggStalePeriod / 2]);
+      await ethers.provider.send("evm_mine");
+      await expect(mApt.getTvlData()).to.be.revertedWith(
+        "CHAINLINK_STALE_DATA"
+      );
+    });
+
+    it.only("getEthUsdPrice", async () => {
+      const timestamp = (await ethers.provider.getBlock()).timestamp;
+      const updatedAt = timestamp - aggStalePeriod / 2;
+      await ethUsdAggMock.mock.latestRoundData.returns(
+        0,
+        ethUsdPrice,
+        0,
+        updatedAt,
+        0
+      );
+      await ethUsdAggMock.mock.decimals.returns(usdDecimals);
+
+      await tvlAggMock.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
+      await tvlAggMock.mock.decimals.returns(usdDecimals);
+
+      const tvl = await mApt.getTVL();
+      const expectedTvl = usdTvl.div(ethUsdPrice);
+      expect(tvl).to.equal(expectedTvl);
+    });
 
     it("getTvlData", async () => {});
 
