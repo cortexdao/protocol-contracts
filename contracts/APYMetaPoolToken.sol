@@ -148,7 +148,7 @@ contract APYMetaPoolToken is
         validateAggValue(answer, updatedAt);
     }
 
-    function getEthUsdPrice() public view returns (uint256 price) {
+    function getEthUsdPrice() public view returns (uint256) {
         // possible revert with "No data present" but this can
         // only happen if there has never been a successful round.
         (, int256 answer, , uint256 updatedAt, ) = ethUsdAgg.latestRoundData();
@@ -158,7 +158,6 @@ contract APYMetaPoolToken is
 
     function validateAggValue(int256 answer, uint256 updatedAt) private view {
         require(answer > 0, "CHAINLINK_ERROR");
-        // require(updatedAt > 0, "CHAINLINK_ROUND_INCOMPLETE");
         require(
             block.timestamp.sub(updatedAt) < aggStalePeriod, // solhint-disable-line not-rely-on-time
             "CHAINLINK_STALE_DATA"

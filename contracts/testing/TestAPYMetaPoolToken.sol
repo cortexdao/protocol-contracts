@@ -21,7 +21,6 @@ import "../interfaces/IDetailedERC20.sol";
 contract TestAPYMetaPoolToken is APYMetaPoolToken {
     APYPoolToken public apt;
     uint256 internal _tvl;
-    uint256 internal _ethUsdPrice;
 
     /** @dev Used for manipulating supply for testing.
      *  Regular `mint` is only usable by account set as manager.
@@ -40,11 +39,6 @@ contract TestAPYMetaPoolToken is APYMetaPoolToken {
     /** @dev Used for mocking in unit tests. */
     function setTVL(uint256 tvl) public {
         _tvl = tvl;
-    }
-
-    /** @dev Used for mocking in unit tests. */
-    function setEthUsdPrice(uint256 ethUsdPrice) public {
-        _ethUsdPrice = ethUsdPrice;
     }
 
     /** @dev set the APT token needed for testing with single pool */

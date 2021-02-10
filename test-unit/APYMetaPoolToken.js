@@ -441,9 +441,20 @@ contract("APYMetaPoolToken", async (accounts) => {
       );
       expect(poolAmount).to.be.bignumber.equal(expectedPoolAmount);
     });
+  });
 
-    it("Convert TVL agg from USD to ETH", async () => {
-      //
+  describe("getTVL", () => {
+    before(async () => {
+      // deploy mock aggs
+      // setup mock aggs
+      const ethUsdPrice = new BN("176767026385");
+      const decimals = 8;
     });
+
+    it("getEthUsdPrice", async () => {});
+
+    it("getTvlData", async () => {});
+
+    it("Convert TVL from USD to ETH", async () => {});
   });
 });
