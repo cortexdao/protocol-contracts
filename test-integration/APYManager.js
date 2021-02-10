@@ -15,8 +15,8 @@ const legos = require("@apy-finance/defi-legos");
 const APYManagerV2 = artifacts.require("APYManagerV2");
 const APYPoolTokenV2 = artifacts.require("APYPoolTokenV2");
 
-const POOL_MNEMONIC = process.env.POOL_MNEMONIC
-const MANAGER_MNEMONIC = process.env.MANAGER_MNEMONIC
+const POOL_DEPLOYER = '0x6EAF0ab3455787bA10089800dB91F11fDf6370BE'
+const MANAGER_DEPLOYER = '0x0f7B66a4a3f7CfeAc2517c2fb9F0518D48457d41'
 
 /* ************************ */
 /* set DEBUG log level here */
@@ -31,94 +31,102 @@ contract("APYManager", async (accounts) => {
   let usdcPool;
   let usdcToken;
   let mApt;
+  let signer
 
   before(async () => {
-    const provider = new ethers.providers.InfuraProvider(1, process.env.INFURA_API_KEY)
-    let pool_wallet = new ethers.Wallet.fromMnemonic(POOL_MNEMONIC)
-    let manager_wallet = new ethers.Wallet.fromMnemonic(MANAGER_MNEMONIC)
-
-    pool_wallet = pool_wallet.connect(provider)
-    manager_wallet = manager_wallet.connect(provider)
-
+    // Fund Deployers
     await web3.eth.sendTransaction({
       from: deployer,
-      to: pool_wallet.address,
+      to: POOL_DEPLOYER,
       value: 10e18,
     })
 
     await web3.eth.sendTransaction({
       from: deployer,
-      to: manager_wallet.address,
+      to: MANAGER_DEPLOYER,
       value: 10e18,
     })
 
+    // Impersonate
+    await network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [POOL_DEPLOYER],
+    });
 
-    console.log(provider)
-    console.log(pool_wallet.address)
-    console.log(manager_wallet.address)
+    await network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [MANAGER_DEPLOYER],
+    });
 
-    // upgrade pools
+    // Upgrade pools
+    signer = await ethers.provider.getSigner(POOL_DEPLOYER)
     const newPoolLogic = await ethers.getContractFactory("APYPoolTokenV2");
     const newPoolLogicContract = await newPoolLogic.deploy();
     const PoolAdmin = await ethers.getContractAt(
       legos.apy.abis.APY_POOL_Admin,
       legos.apy.addresses.APY_POOL_Admin,
-      pool_wallet
+      signer
     );
+
     await PoolAdmin.upgrade(
       legos.apy.addresses.APY_DAI_POOL,
       newPoolLogicContract.address,
     );
-
-    process.exit(0)
-
     await PoolAdmin.upgrade(
       legos.apy.addresses.APY_USDC_POOL,
       newPoolLogicContract.address,
-      { from: pool_wallet }
     );
     await PoolAdmin.upgrade(
       legos.apy.addresses.APY_USDT_POOL,
       newPoolLogicContract.address,
-      { from: pool_wallet }
     );
 
-    // upgrade manager
+    // Upgrade manager
+    signer = await ethers.provider.getSigner(MANAGER_DEPLOYER)
     const newManagerLogic = await ethers.getContractFactory("APYManagerV2")
     const newManagerLogicContract = await newManagerLogic.deploy()
-    const ManagerAdmin = await ethers.getContractAt(APYManagerV2.abi, legos.apy.addresses.APY_MANAGER_Admin)
-    ManagerAdmin.upgrade(legos.apy.addresses.APY_MANAGER, newManagerLogicContract.address, { from: MANAGER_DEPLOYER })
+    const ManagerAdmin = await ethers.getContractAt(
+      legos.apy.abis.APY_MANAGER_Admin,
+      legos.apy.addresses.APY_MANAGER_Admin,
+      signer
+    )
+    ManagerAdmin.upgrade(
+      legos.apy.addresses.APY_MANAGER,
+      newManagerLogicContract.address
+    )
 
-    //handle approvals
+    //Handle approvals
+    signer = await ethers.provider.getSigner(POOL_DEPLOYER)
     const APY_DAI_POOL = await ethers.getContractAt(
       APYPoolTokenV2.abi,
-      legos.apy.addresses.APY_DAI_POOL
+      legos.apy.addresses.APY_DAI_POOL,
+      signer
     );
     const APY_USDC_POOL = await ethers.getContractAt(
       APYPoolTokenV2.abi,
-      legos.apy.addresses.APY_USDC_POOL
+      legos.apy.addresses.APY_USDC_POOL,
+      signer
     );
     const APY_USDT_POOL = await ethers.getContractAt(
       APYPoolTokenV2.abi,
-      legos.apy.addresses.APY_USDT_POOL
+      legos.apy.addresses.APY_USDT_POOL,
+      signer
     );
 
     APY_DAI_POOL.infiniteApprove(
-      legos.apy.addresses.APY_MANAGER,
-      { from: MANAGER_DEPLOYER }
+      legos.apy.addresses.APY_MANAGER
     )
     APY_USDC_POOL.infiniteApprove(
-      legos.apy.addresses.APY_MANAGER,
-      { from: MANAGER_DEPLOYER }
+      legos.apy.addresses.APY_MANAGER
     )
     APY_USDT_POOL.infiniteApprove(
-      legos.apy.addresses.APY_MANAGER,
-      { from: MANAGER_DEPLOYER }
+      legos.apy.addresses.APY_MANAGER
     );
   });
 
   describe.only("Execute", async () => {
     it("Test Execute by non owner", async () => {
+      console.log("test")
     })
 
     it("Test Execute by owner", async () => {
