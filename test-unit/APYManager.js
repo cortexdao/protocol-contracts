@@ -187,11 +187,11 @@ contract("APYManager", async (accounts) => {
       TokenB = await ERC20.new("TokenB", "B");
 
       genericExecutor = await APYGenericExecutor.new({ from: deployer });
-      const strategyAddress = await manager.deploy.call(
+      const strategyAddress = await manager.deployStrategy.call(
         genericExecutor.address,
         { from: deployer }
       );
-      await manager.deploy(genericExecutor.address, { from: deployer });
+      await manager.deployStrategy(genericExecutor.address, { from: deployer });
       strategy = await Strategy.at(strategyAddress);
     });
 

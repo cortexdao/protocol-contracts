@@ -10,7 +10,7 @@ interface IStrategyFactory {
         uint256[] amounts;
     }
 
-    function deploy(address generalExecutor) external returns (address);
+    function deployStrategy(address generalExecutor) external returns (address);
 
     function registerTokens(address strategy, address[] calldata tokens)
         external;
