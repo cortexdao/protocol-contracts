@@ -569,7 +569,7 @@ describe("Contract: APYMetaPoolToken", () => {
       await tvlAggMock.mock.decimals.returns(usdDecimals);
 
       const tvl = await mApt.getTVL();
-      const expectedTvl = usdTvl.div(ethUsdPrice);
+      const expectedTvl = usdTvl.mul(ether(1)).div(ethUsdPrice);
       expect(tvl).to.equal(expectedTvl);
     });
 

@@ -127,7 +127,7 @@ contract APYMetaPoolToken is
         // revert("TVL aggregator not ready yet.");
         (, int256 usdTvl, , , ) = getTvlData();
         uint256 ethUsdPrice = getEthUsdPrice();
-        return uint256(usdTvl).div(ethUsdPrice);
+        return uint256(usdTvl).mul(10**18).div(ethUsdPrice);
     }
 
     function getTvlData()
