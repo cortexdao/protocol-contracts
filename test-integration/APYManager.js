@@ -3,7 +3,7 @@ const {
   assert,
 } = require("chai");
 const { artifacts, contract, ethers, network, web3 } = require("hardhat");
-const { constants, expectRevert, expectEvent } = require("@openzeppelin/test-helpers");
+const { constants, expectRevert } = require("@openzeppelin/test-helpers");
 const { MAX_UINT256, ZERO_ADDRESS } = constants;
 const {
   console,
@@ -97,7 +97,7 @@ contract("APYManager", async (accounts) => {
       legos.apy.addresses.APY_MANAGER_Admin,
       signer
     )
-    ManagerAdmin.upgrade(
+    await ManagerAdmin.upgrade(
       legos.apy.addresses.APY_MANAGER,
       newManagerLogicContract.address
     )
@@ -120,13 +120,13 @@ contract("APYManager", async (accounts) => {
       signer
     );
 
-    APY_DAI_POOL.infiniteApprove(
+    await APY_DAI_POOL.infiniteApprove(
       legos.apy.addresses.APY_MANAGER
     )
-    APY_USDC_POOL.infiniteApprove(
+    await APY_USDC_POOL.infiniteApprove(
       legos.apy.addresses.APY_MANAGER
     )
-    APY_USDT_POOL.infiniteApprove(
+    await APY_USDT_POOL.infiniteApprove(
       legos.apy.addresses.APY_MANAGER
     );
 
@@ -148,8 +148,11 @@ contract("APYManager", async (accounts) => {
 
     it("Test Deploying strategy by owner", async () => {
       const stratAddress = await Manager.callStatic.deployStrategy(executor.address)
+      Manager.once(Manager.filters.StrategyDeployed(), (strategy, genericExecutor) => {
+        assert.equal(strategy, stratAddress)
+        assert.equal(genericExecutor, executor.address)
+      })
       await Manager.deployStrategy(executor.address)
-      // ethers has trouble detecting the events, so I'm checking that the contract exists by checking the owner
       const strat = await ethers.getContractAt(Strategy.abi, stratAddress)
       const stratOwner = await strat.owner()
       assert.equal(stratOwner, Manager.address)
