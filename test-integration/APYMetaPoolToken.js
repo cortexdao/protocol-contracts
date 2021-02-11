@@ -1,21 +1,24 @@
-const { assert, expect } = require("chai");
-const { web3 } = require("hardhat");
-const { expectRevert, BN, ether } = require("@openzeppelin/test-helpers");
+const { expect } = require("chai");
+const { ethers } = require("hardhat");
+const { AddressZero: ZERO_ADDRESS } = ethers.constants;
 const timeMachine = require("ganache-time-traveler");
-const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const {
-  erc20,
+  tokenAmountToBigNumber,
   FAKE_ADDRESS,
   ANOTHER_FAKE_ADDRESS,
+  acquireToken,
 } = require("../utils/helpers");
-const { ethers } = require("ethers");
+const { BigNumber } = require("ethers");
 
-const DUMMY_ADDRESS = web3.utils.toChecksumAddress(
-  "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
-);
+const LINK_ADDRESS = "0x514910771AF9Ca656af840dff83E8264EcF986CA";
+// Aave lending pool
+// https://etherscan.io/address/0x3dfd23a6c5e8bbcfc9581d2e864a68feb6a076d3
+const WHALE_ADDRESS = "0x3dfd23A6c5E8BbcFc9581d2E864a68feb6a076d3";
 
-const usdc = (amount) => erc20(amount, "6");
-const dai = (amount) => erc20(amount, "18");
+const ether = (amount) => tokenAmountToBigNumber(amount, "18");
+const dai = (amount) => tokenAmountToBigNumber(amount, "18");
+const link = (amount) => tokenAmountToBigNumber(amount, "18");
+const usdc = (amount) => tokenAmountToBigNumber(amount, "6");
 
 /* ************************ */
 /* set DEBUG log level here */
@@ -26,10 +29,10 @@ console.debugging = false;
 describe.only("Contract: APYMetaPoolToken", () => {
   // accounts
   let deployer;
-  let admin;
   let manager;
   let randomUser;
   let anotherUser;
+  let oracle;
 
   // contract factories
   let ProxyAdmin;
@@ -42,39 +45,12 @@ describe.only("Contract: APYMetaPoolToken", () => {
   let proxy;
   let mApt;
 
+  let tvlAgg;
+  let ethUsdAgg;
+  let aggStalePeriod = 10400;
+
   // use EVM snapshots for test isolation
   let snapshotId;
-
-  before(async () => {
-    [
-      deployer,
-      admin,
-      manager,
-      randomUser,
-      anotherUser,
-    ] = await ethers.getSigners();
-
-    ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    APYMetaPoolTokenProxy = await ethers.getContractFactory(
-      "APYMetaPoolTokenProxy"
-    );
-    APYMetaPoolToken = await ethers.getContractFactory("TestAPYMetaPoolToken");
-
-    proxyAdmin = await ProxyAdmin.deploy({ from: deployer });
-    await proxyAdmin.deployed();
-    logic = await APYMetaPoolToken.deploy({ from: deployer });
-    await logic.deployed();
-    proxy = await APYMetaPoolTokenProxy.deploy(
-      logic.address,
-      proxyAdmin.address,
-      DUMMY_ADDRESS, // don't need a mock, since test contract can set TVL explicitly
-      {
-        from: deployer,
-      }
-    );
-    await proxy.deployed();
-    mApt = await APYMetaPoolToken.attach(proxy.address);
-  });
 
   beforeEach(async () => {
     const snapshot = await timeMachine.takeSnapshot();
@@ -85,181 +61,185 @@ describe.only("Contract: APYMetaPoolToken", () => {
     await timeMachine.revertToSnapshot(snapshotId);
   });
 
-  describe("Constructor", async () => {
-    it("Revert when logic is not a contract address", async () => {
-      await expectRevert(
-        APYMetaPoolTokenProxy.deploy(
-          DUMMY_ADDRESS,
-          proxyAdmin.address,
-          DUMMY_ADDRESS,
-          {
-            from: deployer,
-          }
-        ),
-        "UpgradeableProxy: new implementation is not a contract"
-      );
-    });
+  before(async () => {
+    [
+      deployer,
+      manager,
+      randomUser,
+      anotherUser,
+      oracle,
+    ] = await ethers.getSigners();
 
-    it("Revert when proxy admin is zero address", async () => {
-      await expectRevert.unspecified(
-        APYMetaPoolTokenProxy.deploy(
-          logic.address,
-          ZERO_ADDRESS,
-          DUMMY_ADDRESS,
-          {
-            from: deployer,
-          }
-        )
-      );
-    });
+    const paymentAmount = link("1");
+    const FluxAggregator = await ethers.getContractFactory("FluxAggregator");
+    tvlAgg = await FluxAggregator.deploy(
+      LINK_ADDRESS,
+      paymentAmount, // payment amount (price paid for each oracle submission, in wei)
+      100000, // timeout before allowing oracle to skip round
+      ZERO_ADDRESS, // validator address
+      0, // min submission value
+      tokenAmountToBigNumber("1", "20"), // max submission value
+      8, // decimal offset for answer
+      "TVL aggregator" // description
+    );
+    await tvlAgg.deployed();
+    ethUsdAgg = await FluxAggregator.deploy(
+      LINK_ADDRESS,
+      paymentAmount, // payment amount (price paid for each oracle submission, in wei)
+      100000, // timeout before allowing oracle to skip round
+      ZERO_ADDRESS, // validator address
+      0, // min submission value
+      tokenAmountToBigNumber("1", "20"), // max submission value
+      8, // decimal offset for answer
+      "ETH-USD aggregator" // description
+    );
+    await ethUsdAgg.deployed();
 
-    it("Revert when TVL aggregator is zero address", async () => {
-      await expectRevert.unspecified(
-        APYMetaPoolTokenProxy.deploy(
-          logic.address,
-          DUMMY_ADDRESS,
-          ZERO_ADDRESS,
-          {
-            from: deployer,
-          }
-        )
-      );
-    });
-  });
+    // fund aggs with LINK
+    const linkToken = await ethers.getContractAt(
+      "IDetailedERC20",
+      LINK_ADDRESS
+    );
+    // aggregator must hold enough LINK for two rounds of submissions, i.e.
+    // LINK reserve >= 2 * number of oracles * payment amount
+    const linkAmount = "100000";
+    await acquireToken(
+      WHALE_ADDRESS,
+      tvlAgg.address,
+      linkToken,
+      linkAmount,
+      deployer.address
+    );
+    let trx = await tvlAgg.updateAvailableFunds();
+    await trx.wait();
+    await acquireToken(
+      WHALE_ADDRESS,
+      ethUsdAgg.address,
+      linkToken,
+      linkAmount,
+      deployer.address
+    );
+    trx = await ethUsdAgg.updateAvailableFunds();
+    await trx.wait();
 
-  describe("Defaults", async () => {
-    it("Owner is set to deployer", async () => {
-      assert.equal(await mApt.owner(), deployer);
-    });
+    // register oracle "node" with aggs
+    trx = await tvlAgg.changeOracles(
+      [], // oracles being removed
+      [oracle.address], // oracles being added
+      [deployer.address], // owners of oracles being added
+      1, // min number of submissions for a round
+      1, // max number of submissions for a round
+      0 // number of rounds to wait before oracle can initiate round
+    );
+    await trx.wait();
+    trx = await ethUsdAgg.changeOracles(
+      [], // oracles being removed
+      [oracle.address], // oracles being added
+      [deployer.address], // owners of oracles being added
+      1, // min number of submissions for a round
+      1, // max number of submissions for a round
+      0 // number of rounds to wait before oracle can initiate round
+    );
+    await trx.wait();
 
-    it("Revert when ETH is sent", async () => {
-      await expectRevert(mApt.send(10), "DONT_SEND_ETHER");
-    });
-  });
+    ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+    APYMetaPoolTokenProxy = await ethers.getContractFactory(
+      "APYMetaPoolTokenProxy"
+    );
+    APYMetaPoolToken = await ethers.getContractFactory("APYMetaPoolToken");
 
-  describe("Set admin address", async () => {
-    it("Owner can set to valid address", async () => {
-      await mApt.setAdminAddress(randomUser, { from: deployer });
-      assert.equal(await mApt.proxyAdmin(), randomUser);
-    });
+    proxyAdmin = await ProxyAdmin.deploy();
+    await proxyAdmin.deployed();
+    logic = await APYMetaPoolToken.deploy();
+    await logic.deployed();
+    proxy = await APYMetaPoolTokenProxy.deploy(
+      logic.address,
+      proxyAdmin.address,
+      tvlAgg.address,
+      ethUsdAgg.address,
+      aggStalePeriod
+    );
+    await proxy.deployed();
+    mApt = await APYMetaPoolToken.attach(proxy.address);
 
-    it("Revert when non-owner attempts to set", async () => {
-      await expectRevert(
-        mApt.setAdminAddress(admin, { from: randomUser }),
-        "Ownable: caller is not the owner"
-      );
-    });
-
-    it("Cannot set to zero address", async () => {
-      await expectRevert(
-        mApt.setAdminAddress(ZERO_ADDRESS, { from: deployer }),
-        "INVALID_ADMIN"
-      );
-    });
-  });
-
-  describe("Set TVL aggregator address", async () => {
-    it("Owner can set to valid address", async () => {
-      await mApt.setTvlAggregator(DUMMY_ADDRESS, { from: deployer });
-      assert.equal(await mApt.tvlAgg(), DUMMY_ADDRESS);
-    });
-
-    it("Revert when non-owner attempts to set", async () => {
-      await expectRevert(
-        mApt.setTvlAggregator(DUMMY_ADDRESS, { from: randomUser }),
-        "Ownable: caller is not the owner"
-      );
-    });
-
-    it("Cannot set to zero address", async () => {
-      await expectRevert(
-        mApt.setTvlAggregator(ZERO_ADDRESS, { from: deployer }),
-        "INVALID_AGG"
-      );
-    });
+    await mApt.connect(deployer).setManagerAddress(manager.address);
   });
 
   describe("Minting and burning", async () => {
-    before(async () => {
-      await mApt.setManagerAddress(manager, { from: deployer });
-    });
-
     it("Manager can mint", async () => {
-      const mintAmount = new BN("100");
-      try {
-        await mApt.mint(randomUser, mintAmount, { from: manager });
-      } catch {
-        assert.fail("Manager could not mint.");
-      }
-
-      expect(await mApt.balanceOf(randomUser)).to.bignumber.equal(mintAmount);
+      const mintAmount = tokenAmountToBigNumber("100");
+      await expect(mApt.connect(manager).mint(randomUser.address, mintAmount))
+        .to.not.be.reverted;
+      expect(await mApt.balanceOf(randomUser.address)).to.equal(mintAmount);
     });
 
     it("Manager can burn", async () => {
-      const mintAmount = new BN("100");
-      const burnAmount = new BN("90");
-      await mApt.mint(randomUser, mintAmount, { from: manager });
-      try {
-        await mApt.burn(randomUser, burnAmount, { from: manager });
-      } catch {
-        assert.fail("Manager could not burn.");
-      }
+      const mintAmount = tokenAmountToBigNumber("100");
+      const burnAmount = tokenAmountToBigNumber("90");
+      await mApt.connect(manager).mint(randomUser.address, mintAmount);
 
-      expect(await mApt.balanceOf(randomUser)).to.bignumber.equal(
+      await expect(mApt.connect(manager).burn(randomUser.address, burnAmount))
+        .to.not.be.reverted;
+      expect(await mApt.balanceOf(randomUser.address)).to.equal(
         mintAmount.sub(burnAmount)
       );
     });
 
     it("Revert when non-manager attempts to mint", async () => {
-      await expectRevert(
-        mApt.mint(anotherUser, new BN("1"), { from: randomUser }),
-        "MANAGER_ONLY"
-      );
-      await expectRevert(
-        mApt.mint(anotherUser, new BN("1"), { from: deployer }),
-        "MANAGER_ONLY"
-      );
+      await expect(
+        mApt
+          .connect(randomUser)
+          .mint(anotherUser.address, tokenAmountToBigNumber("1"))
+      ).to.be.revertedWith("MANAGER_ONLY");
+      await expect(
+        mApt
+          .connect(deployer)
+          .mint(anotherUser.address, tokenAmountToBigNumber("1"))
+      ).to.be.revertedWith("MANAGER_ONLY");
     });
 
     it("Revert when non-manager attempts to burn", async () => {
-      await expectRevert(
-        mApt.burn(anotherUser, new BN("1"), { from: randomUser }),
-        "MANAGER_ONLY"
-      );
-      await expectRevert(
-        mApt.mint(anotherUser, new BN("1"), { from: deployer }),
-        "MANAGER_ONLY"
-      );
+      await expect(
+        mApt
+          .connect(randomUser)
+          .burn(anotherUser.address, tokenAmountToBigNumber("1"))
+      ).to.be.revertedWith("MANAGER_ONLY");
+      await expect(
+        mApt
+          .connect(deployer)
+          .mint(anotherUser.address, tokenAmountToBigNumber("1"))
+      ).to.be.revertedWith("MANAGER_ONLY");
     });
   });
 
   describe("getDeployedEthValue", async () => {
     it("Return 0 if zero mAPT supply", async () => {
-      expect(await mApt.totalSupply()).to.bignumber.equal("0");
-      expect(await mApt.getDeployedEthValue(FAKE_ADDRESS)).to.bignumber.equal(
+      expect(await mApt.totalSupply()).to.equal("0");
+      expect(await mApt.getDeployedEthValue(FAKE_ADDRESS)).to.equal("0");
+    });
+
+    it("Return 0 if zero mAPT balance", async () => {
+      await mApt
+        .connect(manager)
+        .mint(FAKE_ADDRESS, tokenAmountToBigNumber(1000));
+      expect(await mApt.getDeployedEthValue(ANOTHER_FAKE_ADDRESS)).to.equal(
         "0"
       );
     });
 
-    it("Return 0 if zero mAPT balance", async () => {
-      await mApt.testMint(FAKE_ADDRESS, erc20(1000));
-      expect(
-        await mApt.getDeployedEthValue(ANOTHER_FAKE_ADDRESS)
-      ).to.bignumber.equal("0");
-    });
-
     it("Returns calculated value for non-zero mAPT balance", async () => {
-      const tvl = ether("502300");
-      const balance = erc20("1000");
-      const anotherBalance = erc20("12345");
+      const tvl = tokenAmountToBigNumber("502300000", "8");
+      const balance = tokenAmountToBigNumber("1000");
+      const anotherBalance = tokenAmountToBigNumber("12345");
       const totalSupply = balance.add(anotherBalance);
 
-      await mApt.setTVL(tvl);
-      await mApt.testMint(FAKE_ADDRESS, balance);
-      await mApt.testMint(ANOTHER_FAKE_ADDRESS, anotherBalance);
+      await tvlAgg.connect(oracle).submit(1, tvl);
+      await ethUsdAgg.connect(oracle).submit(1, 1);
+      await mApt.connect(manager).mint(FAKE_ADDRESS, balance);
+      await mApt.connect(manager).mint(ANOTHER_FAKE_ADDRESS, anotherBalance);
 
-      const expectedEthValue = tvl.mul(balance).div(totalSupply);
-      expect(await mApt.getDeployedEthValue(FAKE_ADDRESS)).to.bignumber.equal(
+      const expectedEthValue = tvl.mul(ether(1)).mul(balance).div(totalSupply);
+      expect(await mApt.getDeployedEthValue(FAKE_ADDRESS)).to.equal(
         expectedEthValue
       );
     });
@@ -267,11 +247,16 @@ describe.only("Contract: APYMetaPoolToken", () => {
 
   describe("Calculations", async () => {
     it("Calculate mint amount with zero deployed TVL", async () => {
-      const usdcEthPrice = new BN("1602950450000000");
+      await tvlAgg.connect(oracle).submit(1, 0);
+      await ethUsdAgg.connect(oracle).submit(1, 1);
+
+      const usdcEthPrice = BigNumber.from("1602950450000000");
       let usdcAmount = usdc(107);
       let usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
 
-      await mApt.testMint(anotherUser, erc20(100));
+      await mApt
+        .connect(manager)
+        .mint(anotherUser.address, tokenAmountToBigNumber(100));
 
       const mintAmount = await mApt.calculateMintAmount(
         usdcAmount,
@@ -281,14 +266,16 @@ describe.only("Contract: APYMetaPoolToken", () => {
       const expectedMintAmount = usdcValue.mul(
         await mApt.DEFAULT_MAPT_TO_UNDERLYER_FACTOR()
       );
-      expect(mintAmount).to.be.bignumber.equal(expectedMintAmount);
+      expect(mintAmount).to.be.equal(expectedMintAmount);
     });
 
     it("Calculate mint amount with zero total supply", async () => {
-      const usdcEthPrice = new BN("1602950450000000");
+      const usdcEthPrice = BigNumber.from("1602950450000000");
       let usdcAmount = usdc(107);
       let usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
-      await mApt.setTVL(1);
+      // await mApt.setTVL(1);
+      await tvlAgg.connect(oracle).submit(1, 1);
+      await ethUsdAgg.connect(oracle).submit(1, 1);
 
       const mintAmount = await mApt.calculateMintAmount(
         usdcAmount,
@@ -298,53 +285,59 @@ describe.only("Contract: APYMetaPoolToken", () => {
       const expectedMintAmount = usdcValue.mul(
         await mApt.DEFAULT_MAPT_TO_UNDERLYER_FACTOR()
       );
-      expect(mintAmount).to.be.bignumber.equal(expectedMintAmount);
+      expect(mintAmount).to.be.equal(expectedMintAmount);
     });
 
     it("Calculate mint amount with non-zero total supply", async () => {
-      const usdcEthPrice = new BN("1602950450000000");
+      const usdcEthPrice = BigNumber.from("1602950450000000");
       let usdcAmount = usdc(107);
       let tvl = usdcEthPrice.mul(usdcAmount).div(usdc(1));
-      await mApt.setTVL(tvl);
+      // await mApt.setTVL(tvl);
+      await tvlAgg.connect(oracle).submit(1, tvl);
+      await ethUsdAgg.connect(oracle).submit(1, 1);
 
-      const totalSupply = erc20(21);
-      await mApt.testMint(anotherUser, totalSupply);
+      const totalSupply = tokenAmountToBigNumber(21);
+      await mApt.connect(manager).mint(anotherUser.address, totalSupply);
 
       let mintAmount = await mApt.calculateMintAmount(
         usdcAmount,
         usdcEthPrice,
         "6"
       );
-      expect(mintAmount).to.be.bignumber.equal(totalSupply);
+      expect(mintAmount).to.be.equal(totalSupply);
 
       tvl = usdcEthPrice.mul(usdcAmount.muln(2)).div(usdc(1));
-      await mApt.setTVL(tvl);
+      // await mApt.setTVL(tvl);
+      await tvlAgg.connect(oracle).submit(1, tvl);
+      await ethUsdAgg.connect(oracle).submit(1, 1);
       const expectedMintAmount = totalSupply.divn(2);
       mintAmount = await mApt.calculateMintAmount(
         usdcAmount,
         usdcEthPrice,
         "6"
       );
-      expect(mintAmount).to.be.bignumber.equal(expectedMintAmount);
+      expect(mintAmount).to.be.equal(expectedMintAmount);
     });
 
     it("Calculate pool amount with 1 pool", async () => {
-      const usdcEthPrice = new BN("1602950450000000");
+      const usdcEthPrice = BigNumber.from("1602950450000000");
       const usdcAmount = usdc(107);
       const tvl = usdcEthPrice.mul(usdcAmount).div(usdc(1));
-      await mApt.setTVL(tvl);
+      // await mApt.setTVL(tvl);
+      await tvlAgg.connect(oracle).submit(1, tvl);
+      await ethUsdAgg.connect(oracle).submit(1, 1);
 
-      const totalSupply = erc20(21);
-      await mApt.testMint(anotherUser, totalSupply);
+      const totalSupply = tokenAmountToBigNumber(21);
+      await mApt.connect(manager).mint(anotherUser.address, totalSupply);
 
       let poolAmount = await mApt.calculatePoolAmount(
         totalSupply,
         usdcEthPrice,
         "6"
       );
-      expect(poolAmount).to.be.bignumber.equal(usdcAmount);
+      expect(poolAmount).to.be.equal(usdcAmount);
 
-      const mAptAmount = erc20(5);
+      const mAptAmount = tokenAmountToBigNumber(5);
       const expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
       const expectedPoolAmount = expectedPoolValue
         .mul(usdc(1))
@@ -354,30 +347,32 @@ describe.only("Contract: APYMetaPoolToken", () => {
         usdcEthPrice,
         "6"
       );
-      expect(poolAmount).to.be.bignumber.equal(expectedPoolAmount);
+      expect(poolAmount).to.be.equal(expectedPoolAmount);
     });
 
     it("Calculate pool amount with 2 pools", async () => {
-      const usdcEthPrice = new BN("1602950450000000");
-      const daiEthPrice = new BN("1603100000000000");
+      const usdcEthPrice = BigNumber.from("1602950450000000");
+      const daiEthPrice = BigNumber.from("1603100000000000");
       const usdcAmount = usdc(107);
       const daiAmount = dai(10);
       const usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
       const daiValue = daiEthPrice.mul(daiAmount).div(dai(1));
       const tvl = usdcValue.add(daiValue);
-      await mApt.setTVL(tvl);
+      // await mApt.setTVL(tvl);
+      await tvlAgg.connect(oracle).submit(1, tvl);
+      await ethUsdAgg.connect(oracle).submit(1, 1);
 
-      const totalSupply = erc20(21);
-      let mAptAmount = erc20(10);
+      const totalSupply = tokenAmountToBigNumber(21);
+      let mAptAmount = tokenAmountToBigNumber(10);
       let expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
       let expectedPoolAmount = expectedPoolValue.mul(usdc(1)).div(usdcEthPrice);
-      await mApt.testMint(anotherUser, totalSupply);
+      await mApt.connect(manager).mint(anotherUser.address, totalSupply);
       let poolAmount = await mApt.calculatePoolAmount(
         mAptAmount,
         usdcEthPrice,
         "6"
       );
-      expect(poolAmount).to.be.bignumber.equal(expectedPoolAmount);
+      expect(poolAmount).to.be.equal(expectedPoolAmount);
 
       mAptAmount = totalSupply.sub(mAptAmount);
       expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
@@ -387,7 +382,7 @@ describe.only("Contract: APYMetaPoolToken", () => {
         daiEthPrice,
         "18"
       );
-      expect(poolAmount).to.be.bignumber.equal(expectedPoolAmount);
+      expect(poolAmount).to.be.equal(expectedPoolAmount);
     });
   });
 });
