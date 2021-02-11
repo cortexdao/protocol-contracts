@@ -509,7 +509,37 @@ describe("Contract: APYMetaPoolToken", () => {
       mApt = await APYMetaPoolToken.attach(proxy.address);
     });
 
-    it.only("getEthUsdPrice reverts when stale", async () => {
+    it("getEthUsdPrice reverts on non-positive answer", async () => {
+      const updatedAt = (await ethers.provider.getBlock()).timestamp;
+      const invalidPrice = 0;
+      // setting the mock mines a block and advances time by 1 sec
+      await ethUsdAggMock.mock.latestRoundData.returns(
+        0,
+        invalidPrice,
+        0,
+        updatedAt,
+        0
+      );
+
+      await expect(mApt.getEthUsdPrice()).to.be.revertedWith("CHAINLINK_ERROR");
+    });
+
+    it("getTvlData reverts on non-positive answer", async () => {
+      const updatedAt = (await ethers.provider.getBlock()).timestamp;
+      const invalidPrice = 0;
+      // setting the mock mines a block and advances time by 1 sec
+      await tvlAggMock.mock.latestRoundData.returns(
+        0,
+        invalidPrice,
+        0,
+        updatedAt,
+        0
+      );
+
+      await expect(mApt.getTvlData()).to.be.revertedWith("CHAINLINK_ERROR");
+    });
+
+    it("getEthUsdPrice reverts when stale", async () => {
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
       // setting the mock mines a block and advances time by 1 sec
       await ethUsdAggMock.mock.latestRoundData.returns(
@@ -519,7 +549,6 @@ describe("Contract: APYMetaPoolToken", () => {
         updatedAt,
         0
       );
-      // await ethUsdAggMock.mock.decimals.returns(usdDecimals);
       await ethers.provider.send("evm_increaseTime", [aggStalePeriod / 2]);
       await ethers.provider.send("evm_mine");
       await expect(mApt.getEthUsdPrice()).to.not.be.reverted;
@@ -531,7 +560,7 @@ describe("Contract: APYMetaPoolToken", () => {
       );
     });
 
-    it.only("getTvlData reverts when stale", async () => {
+    it("getTvlData reverts when stale", async () => {
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
       // setting the mock mines a block and advances time by 1 sec
       await tvlAggMock.mock.latestRoundData.returns(
@@ -541,7 +570,6 @@ describe("Contract: APYMetaPoolToken", () => {
         updatedAt,
         0
       );
-      // await ethUsdAggMock.mock.decimals.returns(usdDecimals);
       await ethers.provider.send("evm_increaseTime", [aggStalePeriod / 2]);
       await ethers.provider.send("evm_mine");
       await expect(mApt.getTvlData()).to.not.be.reverted;
@@ -554,8 +582,7 @@ describe("Contract: APYMetaPoolToken", () => {
     });
 
     it.only("getEthUsdPrice", async () => {
-      const timestamp = (await ethers.provider.getBlock()).timestamp;
-      const updatedAt = timestamp - aggStalePeriod / 2;
+      const updatedAt = (await ethers.provider.getBlock()).timestamp;
       await ethUsdAggMock.mock.latestRoundData.returns(
         0,
         ethUsdPrice,
@@ -563,7 +590,7 @@ describe("Contract: APYMetaPoolToken", () => {
         updatedAt,
         0
       );
-      await ethUsdAggMock.mock.decimals.returns(usdDecimals);
+      // await ethUsdAggMock.mock.decimals.returns(usdDecimals);
 
       await tvlAggMock.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
       await tvlAggMock.mock.decimals.returns(usdDecimals);
