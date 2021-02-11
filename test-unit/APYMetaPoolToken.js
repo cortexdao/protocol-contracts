@@ -476,7 +476,6 @@ describe("Contract: APYMetaPoolToken", () => {
   describe("getTVL and auxiliary functions", () => {
     const ethUsdPrice = tokenAmountToBigNumber("176767026385");
     const usdTvl = tokenAmountToBigNumber("2510012387654321");
-    const usdDecimals = 8;
 
     before(async () => {
       /* for these tests, we want to test the actual implementation
@@ -585,7 +584,7 @@ describe("Contract: APYMetaPoolToken", () => {
       );
     });
 
-    it.only("getEthUsdPrice", async () => {
+    it("Converts TVL from USD to ETH", async () => {
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
       await ethUsdAggMock.mock.latestRoundData.returns(
         0,
@@ -594,18 +593,11 @@ describe("Contract: APYMetaPoolToken", () => {
         updatedAt,
         0
       );
-      // await ethUsdAggMock.mock.decimals.returns(usdDecimals);
-
       await tvlAggMock.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
-      await tvlAggMock.mock.decimals.returns(usdDecimals);
 
       const tvl = await mApt.getTVL();
       const expectedTvl = usdTvl.mul(ether(1)).div(ethUsdPrice);
       expect(tvl).to.equal(expectedTvl);
     });
-
-    it("getTvlData", async () => {});
-
-    it("Convert TVL from USD to ETH", async () => {});
   });
 });
