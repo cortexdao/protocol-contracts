@@ -521,7 +521,9 @@ describe("Contract: APYMetaPoolToken", () => {
         0
       );
 
-      await expect(mApt.getEthUsdPrice()).to.be.revertedWith("CHAINLINK_ERROR");
+      await expect(mApt.getEthUsdPrice()).to.be.revertedWith(
+        "CHAINLINK_INVALID_ANSWER"
+      );
     });
 
     it("getTvlData reverts on non-positive answer", async () => {
@@ -536,7 +538,9 @@ describe("Contract: APYMetaPoolToken", () => {
         0
       );
 
-      await expect(mApt.getTvlData()).to.be.revertedWith("CHAINLINK_ERROR");
+      await expect(mApt.getTvlData()).to.be.revertedWith(
+        "CHAINLINK_INVALID_ANSWER"
+      );
     });
 
     it("getEthUsdPrice reverts when stale", async () => {

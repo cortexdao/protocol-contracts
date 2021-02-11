@@ -157,7 +157,7 @@ contract APYMetaPoolToken is
     }
 
     function validateAggValue(int256 answer, uint256 updatedAt) private view {
-        require(answer > 0, "CHAINLINK_ERROR");
+        require(answer > 0, "CHAINLINK_INVALID_ANSWER");
         require(
             block.timestamp.sub(updatedAt) < aggStalePeriod, // solhint-disable-line not-rely-on-time
             "CHAINLINK_STALE_DATA"
