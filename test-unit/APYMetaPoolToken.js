@@ -525,9 +525,9 @@ describe("Contract: APYMetaPoolToken", () => {
       );
     });
 
-    it("getTvlData reverts on non-positive answer", async () => {
+    it("getTvlData reverts on negative answer", async () => {
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
-      const invalidPrice = 0;
+      const invalidPrice = -1;
       // setting the mock mines a block and advances time by 1 sec
       await tvlAggMock.mock.latestRoundData.returns(
         0,

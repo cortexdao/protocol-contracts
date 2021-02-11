@@ -145,19 +145,20 @@ contract APYMetaPoolToken is
         // only happen if there has never been a successful round.
         (roundId, answer, startedAt, updatedAt, answeredInRound) = tvlAgg
             .latestRoundData();
-        validateAggValue(answer, updatedAt);
+        require(answer >= 0, "CHAINLINK_INVALID_ANSWER");
+        validateNotStale(updatedAt);
     }
 
     function getEthUsdPrice() public view returns (uint256) {
         // possible revert with "No data present" but this can
         // only happen if there has never been a successful round.
         (, int256 answer, , uint256 updatedAt, ) = ethUsdAgg.latestRoundData();
-        validateAggValue(answer, updatedAt);
+        require(answer > 0, "CHAINLINK_INVALID_ANSWER");
+        validateNotStale(updatedAt);
         return uint256(answer);
     }
 
-    function validateAggValue(int256 answer, uint256 updatedAt) private view {
-        require(answer > 0, "CHAINLINK_INVALID_ANSWER");
+    function validateNotStale(uint256 updatedAt) private view {
         require(
             block.timestamp.sub(updatedAt) < aggStalePeriod, // solhint-disable-line not-rely-on-time
             "CHAINLINK_STALE_DATA"
