@@ -37,6 +37,7 @@ contract("APYManager", async (accounts) => {
   let APY_USDT_POOL;
   let Manager;
   let executor;
+  let strategy;
   let mApt;
   let signer
 
@@ -153,9 +154,25 @@ contract("APYManager", async (accounts) => {
         assert.equal(genericExecutor, executor.address)
       })
       await Manager.deployStrategy(executor.address)
-      const strat = await ethers.getContractAt(Strategy.abi, stratAddress)
-      const stratOwner = await strat.owner()
+      strategy = await ethers.getContractAt(Strategy.abi, stratAddress)
+      const stratOwner = await strategy.owner()
       assert.equal(stratOwner, Manager.address)
+    })
+  })
+
+  describe.only("Fund Strategy", async () => {
+    it("Test funding strategy by non owner", async () => {
+      const bad_signer = await ethers.provider.getSigner(_)
+      const bad_MANAGER = await ethers.getContractAt(APYManagerV2.abi, legos.apy.addresses.APY_MANAGER, bad_signer)
+      await expectRevert(bad_MANAGER.fundStrategy(strategy.address,
+        [
+          [legos.maker.addresses.DAI, legos.centre.addresses.USDC, legos.tether.addresses.USDT],
+          ['10', '10', '10']
+        ]
+      ), "revert Ownable: caller is not the owner")
+    })
+
+    it("Test funding strategy by owner", async () => {
     })
   })
 
