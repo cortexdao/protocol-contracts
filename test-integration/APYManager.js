@@ -8,6 +8,7 @@ const { MAX_UINT256, ZERO_ADDRESS } = constants;
 const {
   console,
   erc20,
+  dai,
 } = require("../utils/helpers");
 const legos = require("@apy-finance/defi-legos");
 
@@ -173,14 +174,73 @@ contract("APYManager", async (accounts) => {
     })
 
     it("Test funding strategy by owner", async () => {
+      const DAI_Contract = await ethers.getContractAt(legos.maker.abis.DAI, legos.maker.addresses.DAI)
+      const USDC_Contract = await ethers.getContractAt(legos.centre.abis.USDC_Logic, legos.centre.addresses.USDC)
+      const USDT_Contract = await ethers.getContractAt(legos.tether.abis.USDT, legos.tether.addresses.USDT)
+
+      // ETHERS contract.on() event listener doesnt seems to be working for some reason.
+      // It might be because the event is not at the top most level
+
+      await Manager.fundStrategy(strategy.address,
+        [
+          [legos.apy.addresses.APY_DAI_POOL, legos.apy.addresses.APY_USDC_POOL, legos.apy.addresses.APY_USDT_POOL],
+          ['10', '10', '10']
+        ]
+      )
+
+      const stratDaiBal = await DAI_Contract.balanceOf(strategy.address)
+      const stratUsdcBal = await USDC_Contract.balanceOf(strategy.address)
+      const stratUsdtBal = await USDT_Contract.balanceOf(strategy.address)
+
+      assert.equal(stratDaiBal.toString(), "10")
+      assert.equal(stratUsdcBal.toString(), "10")
+      assert.equal(stratUsdtBal.toString(), "10")
     })
   })
 
   describe.only("Execute", async () => {
     it("Test Execute by non owner", async () => {
+      const bad_signer = await ethers.provider.getSigner(_)
+      const bad_MANAGER = await ethers.getContractAt(APYManagerV2.abi, legos.apy.addresses.APY_MANAGER, bad_signer)
+
+      // sequence is to give approval to DAI and cDAI @ 100 each
+      await expectRevert(bad_MANAGER.execute(strategy.address,
+        [
+          [
+            '0x6B175474E89094C44Da98b954EedeAC495271d0F',
+            '0x095ea7b30000000000000000000000006b175474e89094c44da98b954eedeac495271d0f0000000000000000000000000000000000000000000000000000000000000064'
+          ],
+          [
+            '0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
+            '0x095ea7b30000000000000000000000005d3a536e4d6dbd6114cc1ead35777bab948e36430000000000000000000000000000000000000000000000000000000000000064'
+          ]
+        ]
+      ), "revert Ownable: caller is not the owner")
     })
 
     it("Test Execute by owner", async () => {
+      const DAI_Contract = await ethers.getContractAt(legos.maker.abis.DAI, legos.maker.addresses.DAI)
+      const cDAI_Contract = await ethers.getContractAt(legos.compound.abis.cDAI, legos.compound.addresses.cDAI)
+
+      // sequence is to give approval to DAI and cDAI @ 100 each
+      await Manager.execute(strategy.address,
+        [
+          [
+            '0x6B175474E89094C44Da98b954EedeAC495271d0F',
+            '0x095ea7b30000000000000000000000006b175474e89094c44da98b954eedeac495271d0f0000000000000000000000000000000000000000000000000000000000000064'
+          ],
+          [
+            '0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
+            '0x095ea7b30000000000000000000000005d3a536e4d6dbd6114cc1ead35777bab948e36430000000000000000000000000000000000000000000000000000000000000064'
+          ]
+        ]
+      )
+
+      const daiAllowance = await DAI_Contract.allowance(strategy.address, DAI_Contract.address)
+      const cDaiAllowance = await cDAI_Contract.allowance(strategy.address, cDAI_Contract.address)
+
+      assert.equal(daiAllowance.toString(), "100")
+      assert.equal(cDaiAllowance.toString(), "100")
     })
   })
 
