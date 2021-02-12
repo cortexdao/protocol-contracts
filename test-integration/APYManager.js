@@ -92,10 +92,13 @@ contract("APYManager", async (accounts) => {
     // deploy mAPT token
     const mAptLogic = await APYMetaPoolToken.new({ from: deployer });
     const mockTvlAgg = await MockContract.new();
+    const mockEthUsdAgg = await MockContract.new();
     const mAptProxy = await APYMetaPoolTokenProxy.new(
       mAptLogic.address,
       proxyAdmin.address,
       mockTvlAgg.address,
+      mockEthUsdAgg.address,
+      14400,
       {
         from: deployer,
       }

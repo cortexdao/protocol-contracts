@@ -8,16 +8,20 @@ contract APYMetaPoolTokenProxy is TransparentUpgradeableProxy {
     constructor(
         address _logic,
         address _proxyAdmin,
-        address _priceAgg
+        address _tvlAgg,
+        address _ethUsdAgg,
+        uint256 _aggStalePeriod
     )
         public
         TransparentUpgradeableProxy(
             _logic,
             _proxyAdmin,
             abi.encodeWithSignature(
-                "initialize(address,address)",
+                "initialize(address,address,address,uint256)",
                 _proxyAdmin,
-                _priceAgg
+                _tvlAgg,
+                _ethUsdAgg,
+                _aggStalePeriod
             )
         )
     {} // solhint-disable no-empty-blocks

@@ -16,7 +16,11 @@ module.exports = {
       },
       accounts: {
         // default, include for explicitness
-        mnemonic: "test test test test test test test test test test test junk",
+        // mnemonic: "test test test test test test test test test test test junk",
+        // Due to this bug, need to use our own test mnemonic:
+        // https://github.com/nomiclabs/hardhat/issues/1231
+        mnemonic:
+          "today column drill funny reduce toilet strategy jump assault arctic boss umbrella",
         // default: 20
         count: 10,
       },

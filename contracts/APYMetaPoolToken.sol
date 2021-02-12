@@ -6,13 +6,10 @@ import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import "./APYPoolToken.sol";
+import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/IMintable.sol";
-import "./interfaces/IDetailedERC20.sol";
 
 contract APYMetaPoolToken is
     Initializable,
@@ -23,15 +20,16 @@ contract APYMetaPoolToken is
     IMintable
 {
     using SafeMath for uint256;
-    using SafeERC20 for IERC20;
     uint256 public constant DEFAULT_MAPT_TO_UNDERLYER_FACTOR = 1000;
 
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
     address public proxyAdmin;
-    address public tvlAgg;
     address public manager;
+    AggregatorV3Interface public tvlAgg;
+    AggregatorV3Interface public ethUsdAgg;
+    uint256 public aggStalePeriod;
 
     /* ------------------------------- */
 
@@ -40,13 +38,17 @@ contract APYMetaPoolToken is
     event AdminChanged(address);
     event ManagerChanged(address);
     event TvlAggregatorChanged(address agg);
+    event EthUsdAggregatorChanged(address agg);
 
-    function initialize(address adminAddress, address payable _tvlAgg)
-        external
-        initializer
-    {
+    function initialize(
+        address adminAddress,
+        address _tvlAgg,
+        address _ethUsdAgg,
+        uint256 _aggStalePeriod
+    ) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");
-        require(address(_tvlAgg) != address(0), "INVALID_AGG");
+        require(_tvlAgg != address(0), "INVALID_AGG");
+        require(_ethUsdAgg != address(0), "INVALID_AGG");
 
         // initialize ancestor storage
         __Context_init_unchained();
@@ -58,6 +60,8 @@ contract APYMetaPoolToken is
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
         setTvlAggregator(_tvlAgg);
+        setEthUsdAggregator(_ethUsdAgg);
+        setAggStalePeriod(_aggStalePeriod);
     }
 
     // solhint-disable-next-line no-empty-blocks
@@ -70,9 +74,20 @@ contract APYMetaPoolToken is
     }
 
     function setTvlAggregator(address _tvlAgg) public onlyOwner {
-        require(address(_tvlAgg) != address(0), "INVALID_AGG");
-        tvlAgg = _tvlAgg;
-        emit TvlAggregatorChanged(address(_tvlAgg));
+        require(_tvlAgg != address(0), "INVALID_AGG");
+        tvlAgg = AggregatorV3Interface(_tvlAgg);
+        emit TvlAggregatorChanged(_tvlAgg);
+    }
+
+    function setEthUsdAggregator(address _ethUsdAgg) public onlyOwner {
+        require(_ethUsdAgg != address(0), "INVALID_AGG");
+        ethUsdAgg = AggregatorV3Interface(_ethUsdAgg);
+        emit EthUsdAggregatorChanged(_ethUsdAgg);
+    }
+
+    function setAggStalePeriod(uint256 _aggStalePeriod) public onlyOwner {
+        require(_aggStalePeriod > 0, "INVALID_STALE_PERIOD");
+        aggStalePeriod = _aggStalePeriod;
     }
 
     modifier onlyAdmin() {
@@ -105,12 +120,53 @@ contract APYMetaPoolToken is
         _;
     }
 
-    /** @dev Chainlink's aggregator will return USD value but for convenience
-             we should return the value in ETH value.
-    */
+    /**
+     * @notice Get the ETH value of all assets being managed by the APYManager,
+     *         i.e. the "deployed capital".  This is the same as the total value
+     *         represented by the total mAPT supply.
+     * @return uint256 the ETH value of the deployed capital
+     * @dev Chainlink's aggregator will return USD value but for compatibility
+     *      with the stablecoin pools, we return the value in ETH value.
+     */
     function getTVL() public view virtual returns (uint256) {
-        revert("TVL aggregator not ready yet.");
-        return 0;
+        uint256 usdTvl = getUsdTvl();
+        uint256 ethUsdPrice = getEthUsdPrice();
+        return uint256(usdTvl).mul(10**18).div(ethUsdPrice);
+    }
+
+    /**
+     * @notice Get the latest TVL in USD from the Chainlink adapter.
+     * @dev USD prices have 8 decimals.
+     * @return uint256 deployed TVL value in USD
+     */
+    function getUsdTvl() public view returns (uint256) {
+        // possible revert with "No data present" but this can
+        // only happen if there has never been a successful round.
+        (, int256 answer, , uint256 updatedAt, ) = tvlAgg.latestRoundData();
+        require(answer >= 0, "CHAINLINK_INVALID_ANSWER");
+        validateNotStale(updatedAt);
+        return uint256(answer);
+    }
+
+    /**
+     * @notice Get the price for 1 ETH in USD from the Chainlink adapter.
+     * @dev USD prices have 8 decimals.
+     * @return uint256 ETH price in USD
+     */
+    function getEthUsdPrice() public view returns (uint256) {
+        // possible revert with "No data present" but this can
+        // only happen if there has never been a successful round.
+        (, int256 answer, , uint256 updatedAt, ) = ethUsdAgg.latestRoundData();
+        require(answer > 0, "CHAINLINK_INVALID_ANSWER");
+        validateNotStale(updatedAt);
+        return uint256(answer);
+    }
+
+    function validateNotStale(uint256 updatedAt) private view {
+        require(
+            block.timestamp.sub(updatedAt) < aggStalePeriod, // solhint-disable-line not-rely-on-time
+            "CHAINLINK_STALE_DATA"
+        );
     }
 
     /** @notice Calculate mAPT amount to be minted for given pool's underlyer amount.
@@ -178,6 +234,11 @@ contract APYMetaPoolToken is
         return poolAmount;
     }
 
+    /**
+     * @notice Get the ETH-denominated value (in wei) of the pool's share
+     *         of the deployed capital, as tracked by the mAPT token.
+     * @return uint256
+     */
     function getDeployedEthValue(address pool) public view returns (uint256) {
         uint256 balance = balanceOf(pool);
         uint256 totalSupply = totalSupply();
