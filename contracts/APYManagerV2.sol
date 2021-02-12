@@ -251,7 +251,6 @@ contract APYManagerV2 is
             APYPoolToken pool = APYPoolToken(allocation.pools[i]);
             IDetailedERC20 underlyer = pool.underlyer();
             uint256 poolAmount = allocation.amounts[i];
-            // uint256 poolAmount = underlyer.balanceOf(address(pool));
             uint256 poolValue = pool.getEthValueFromTokenAmount(poolAmount);
 
             uint256 tokenEthPrice = pool.getTokenEthPrice();
