@@ -7,6 +7,7 @@ const {
   FAKE_ADDRESS,
   ANOTHER_FAKE_ADDRESS,
   acquireToken,
+  console,
 } = require("../utils/helpers");
 const { BigNumber } = require("ethers");
 
@@ -65,82 +66,39 @@ describe("Contract: APYMetaPoolToken", () => {
     [
       deployer,
       manager,
+      oracle,
       randomUser,
       anotherUser,
-      oracle,
     ] = await ethers.getSigners();
 
     const paymentAmount = link("1");
-    const FluxAggregator = await ethers.getContractFactory("FluxAggregator");
-    tvlAgg = await FluxAggregator.deploy(
-      LINK_ADDRESS,
+    const maxSubmissionValue = tokenAmountToBigNumber("1", "20");
+    const tvlAggConfig = {
       paymentAmount, // payment amount (price paid for each oracle submission, in wei)
-      100000, // timeout before allowing oracle to skip round
-      ZERO_ADDRESS, // validator address
-      0, // min submission value
-      tokenAmountToBigNumber("1", "20"), // max submission value
-      8, // decimal offset for answer
-      "TVL aggregator" // description
-    );
-    await tvlAgg.deployed();
-    ethUsdAgg = await FluxAggregator.deploy(
-      LINK_ADDRESS,
+      minSubmissionValue: 0,
+      maxSubmissionValue,
+      decimals: 8, // decimal offset for answer
+      description: "TVL aggregator",
+    };
+    const ethUsdAggConfig = {
       paymentAmount, // payment amount (price paid for each oracle submission, in wei)
-      100000, // timeout before allowing oracle to skip round
-      ZERO_ADDRESS, // validator address
-      0, // min submission value
-      tokenAmountToBigNumber("1", "20"), // max submission value
-      8, // decimal offset for answer
-      "ETH-USD aggregator" // description
+      minSubmissionValue: 0,
+      maxSubmissionValue,
+      decimals: 8, // decimal offset for answer
+      description: "ETH-USD aggregator",
+    };
+    tvlAgg = await deployAggregator(
+      tvlAggConfig,
+      oracle.address,
+      deployer.address, // oracle owner
+      deployer.address // ETH funder
     );
-    await ethUsdAgg.deployed();
-
-    // fund aggs with LINK
-    const linkToken = await ethers.getContractAt(
-      "IDetailedERC20",
-      LINK_ADDRESS
+    ethUsdAgg = await deployAggregator(
+      ethUsdAggConfig,
+      oracle.address,
+      deployer.address, // oracle owner
+      deployer.address // ETH funder
     );
-    // aggregator must hold enough LINK for two rounds of submissions, i.e.
-    // LINK reserve >= 2 * number of oracles * payment amount
-    const linkAmount = "100000";
-    await acquireToken(
-      WHALE_ADDRESS,
-      tvlAgg.address,
-      linkToken,
-      linkAmount,
-      deployer.address
-    );
-    let trx = await tvlAgg.updateAvailableFunds();
-    await trx.wait();
-    await acquireToken(
-      WHALE_ADDRESS,
-      ethUsdAgg.address,
-      linkToken,
-      linkAmount,
-      deployer.address
-    );
-    trx = await ethUsdAgg.updateAvailableFunds();
-    await trx.wait();
-
-    // register oracle "node" with aggs
-    trx = await tvlAgg.changeOracles(
-      [], // oracles being removed
-      [oracle.address], // oracles being added
-      [deployer.address], // owners of oracles being added
-      1, // min number of submissions for a round
-      1, // max number of submissions for a round
-      0 // number of rounds to wait before oracle can initiate round
-    );
-    await trx.wait();
-    trx = await ethUsdAgg.changeOracles(
-      [], // oracles being removed
-      [oracle.address], // oracles being added
-      [deployer.address], // owners of oracles being added
-      1, // min number of submissions for a round
-      1, // max number of submissions for a round
-      0 // number of rounds to wait before oracle can initiate round
-    );
-    await trx.wait();
 
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     APYMetaPoolTokenProxy = await ethers.getContractFactory(
@@ -382,3 +340,51 @@ describe("Contract: APYMetaPoolToken", () => {
     });
   });
 });
+
+async function deployAggregator(
+  aggConfig,
+  oracleAddress,
+  oracleOwnerAddress,
+  ethFunderAddress
+) {
+  const FluxAggregator = await ethers.getContractFactory("FluxAggregator");
+  const agg = await FluxAggregator.deploy(
+    LINK_ADDRESS,
+    aggConfig.paymentAmount, // payment amount (price paid for each oracle submission, in wei)
+    100000, // timeout before allowing oracle to skip round
+    ZERO_ADDRESS, // validator address
+    aggConfig.minSubmissionValue,
+    aggConfig.maxSubmissionValue,
+    aggConfig.decimals,
+    aggConfig.description
+  );
+  await agg.deployed();
+
+  // fund agg with LINK
+  // aggregator must hold enough LINK for two rounds of submissions, i.e.
+  // LINK reserve >= 2 * number of oracles * payment amount
+  const linkToken = await ethers.getContractAt("IDetailedERC20", LINK_ADDRESS);
+  const linkAmount = "100000";
+  await acquireToken(
+    WHALE_ADDRESS,
+    agg.address,
+    linkToken,
+    linkAmount,
+    ethFunderAddress
+  );
+  let trx = await agg.updateAvailableFunds();
+  await trx.wait();
+
+  // register oracle "node" with aggs
+  trx = await agg.changeOracles(
+    [], // oracles being removed
+    [oracleAddress], // oracles being added
+    [oracleOwnerAddress], // owners of oracles being added
+    1, // min number of submissions for a round
+    1, // max number of submissions for a round
+    0 // number of rounds to wait before oracle can initiate round
+  );
+  await trx.wait();
+
+  return agg;
+}
