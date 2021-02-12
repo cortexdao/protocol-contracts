@@ -6,6 +6,7 @@ const {
   getStablecoinAddress,
   updateDeployJsons,
 } = require("./address");
+const { deployAggregator } = require("./aggregator");
 const { expectEventInTransaction } = require("./event");
 const { getGasPrice } = require("./gas");
 const {
@@ -49,6 +50,7 @@ module.exports = {
   tokenAmountToBigNumber,
   getGasPrice,
   acquireToken,
+  deployAggregator,
   expectEventInTransaction,
   ZERO_ADDRESS,
   MAX_UINT256,
