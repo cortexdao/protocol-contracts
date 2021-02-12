@@ -120,35 +120,39 @@ contract APYMetaPoolToken is
         _;
     }
 
-    /** @dev Chainlink's aggregator will return USD value but for convenience
-             we should return the value in ETH value.
-    */
+    /**
+     * @notice Get the ETH value of all assets being managed by the APYManager,
+     *         i.e. the "deployed capital".  This is the same as the total value
+     *         represented by the total mAPT supply.
+     * @return uint256 the ETH value of the deployed capital
+     * @dev Chainlink's aggregator will return USD value but for compatibility
+     *      with the stablecoin pools, we return the value in ETH value.
+     */
     function getTVL() public view virtual returns (uint256) {
-        // revert("TVL aggregator not ready yet.");
-        (, int256 usdTvl, , , ) = getTvlData();
+        uint256 usdTvl = getUsdTvl();
         uint256 ethUsdPrice = getEthUsdPrice();
         return uint256(usdTvl).mul(10**18).div(ethUsdPrice);
     }
 
-    function getTvlData()
-        public
-        view
-        returns (
-            uint80 roundId,
-            int256 answer,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 answeredInRound
-        )
-    {
+    /**
+     * @notice Get the latest TVL in USD from the Chainlink adapter.
+     * @dev USD prices have 8 decimals.
+     * @return uint256 deployed TVL value in USD
+     */
+    function getUsdTvl() public view returns (uint256) {
         // possible revert with "No data present" but this can
         // only happen if there has never been a successful round.
-        (roundId, answer, startedAt, updatedAt, answeredInRound) = tvlAgg
-            .latestRoundData();
+        (, int256 answer, , uint256 updatedAt, ) = tvlAgg.latestRoundData();
         require(answer >= 0, "CHAINLINK_INVALID_ANSWER");
         validateNotStale(updatedAt);
+        return uint256(answer);
     }
 
+    /**
+     * @notice Get the price for 1 ETH in USD from the Chainlink adapter.
+     * @dev USD prices have 8 decimals.
+     * @return uint256 ETH price in USD
+     */
     function getEthUsdPrice() public view returns (uint256) {
         // possible revert with "No data present" but this can
         // only happen if there has never been a successful round.
@@ -230,6 +234,11 @@ contract APYMetaPoolToken is
         return poolAmount;
     }
 
+    /**
+     * @notice Get the ETH-denominated value (in wei) of the pool's share
+     *         of the deployed capital, as tracked by the mAPT token.
+     * @return uint256
+     */
     function getDeployedEthValue(address pool) public view returns (uint256) {
         uint256 balance = balanceOf(pool);
         uint256 totalSupply = totalSupply();

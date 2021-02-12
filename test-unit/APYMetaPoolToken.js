@@ -525,7 +525,7 @@ describe("Contract: APYMetaPoolToken", () => {
       );
     });
 
-    it("getTvlData reverts on negative answer", async () => {
+    it("getUsdTvl reverts on negative answer", async () => {
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
       const invalidPrice = -1;
       // setting the mock mines a block and advances time by 1 sec
@@ -537,7 +537,7 @@ describe("Contract: APYMetaPoolToken", () => {
         0
       );
 
-      await expect(mApt.getTvlData()).to.be.revertedWith(
+      await expect(mApt.getUsdTvl()).to.be.revertedWith(
         "CHAINLINK_INVALID_ANSWER"
       );
     });
@@ -563,7 +563,7 @@ describe("Contract: APYMetaPoolToken", () => {
       );
     });
 
-    it("getTvlData reverts when stale", async () => {
+    it("getUsdTvl reverts when stale", async () => {
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
       // setting the mock mines a block and advances time by 1 sec
       await tvlAggMock.mock.latestRoundData.returns(
@@ -575,13 +575,11 @@ describe("Contract: APYMetaPoolToken", () => {
       );
       await ethers.provider.send("evm_increaseTime", [aggStalePeriod / 2]);
       await ethers.provider.send("evm_mine");
-      await expect(mApt.getTvlData()).to.not.be.reverted;
+      await expect(mApt.getUsdTvl()).to.not.be.reverted;
 
       await ethers.provider.send("evm_increaseTime", [aggStalePeriod / 2]);
       await ethers.provider.send("evm_mine");
-      await expect(mApt.getTvlData()).to.be.revertedWith(
-        "CHAINLINK_STALE_DATA"
-      );
+      await expect(mApt.getUsdTvl()).to.be.revertedWith("CHAINLINK_STALE_DATA");
     });
 
     it("Converts TVL from USD to ETH", async () => {
