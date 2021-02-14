@@ -2,7 +2,7 @@ const hre = require("hardhat");
 const { ethers } = hre;
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
 
-const { acquireToken } = require(".");
+const { acquireToken } = require("./token");
 
 const LINK_ADDRESS = "0x514910771AF9Ca656af840dff83E8264EcF986CA";
 // Aave lending pool
