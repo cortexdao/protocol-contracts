@@ -19,7 +19,6 @@ const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
 describe("Contract: APYPoolToken", () => {
   // signers
   let deployer;
-  let admin;
   let randomUser;
   let anotherUser;
 
@@ -51,7 +50,7 @@ describe("Contract: APYPoolToken", () => {
   });
 
   before(async () => {
-    [deployer, admin, randomUser, anotherUser] = await ethers.getSigners();
+    [deployer, randomUser, anotherUser] = await ethers.getSigners();
 
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     APYPoolTokenProxy = await ethers.getContractFactory("APYPoolTokenProxy");
@@ -169,8 +168,8 @@ describe("Contract: APYPoolToken", () => {
 
   describe("Set admin address", async () => {
     it("Owner can set admin", async () => {
-      await poolToken.connect(deployer).setAdminAddress(admin.address);
-      assert.equal(await poolToken.proxyAdmin(), admin.address);
+      await poolToken.connect(deployer).setAdminAddress(FAKE_ADDRESS);
+      assert.equal(await poolToken.proxyAdmin(), FAKE_ADDRESS);
     });
 
     it("Revert on setting to zero address", async () => {
@@ -179,8 +178,9 @@ describe("Contract: APYPoolToken", () => {
     });
 
     it("Revert when non-owner attempts to set address", async () => {
-      await expect(poolToken.connect(randomUser).setAdminAddress(admin.address))
-        .to.be.reverted;
+      await expect(
+        poolToken.connect(randomUser).setAdminAddress(FAKE_ADDRESS)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
 
@@ -225,9 +225,11 @@ describe("Contract: APYPoolToken", () => {
     });
 
     it("Revert when non-owner attempts to set address", async () => {
+      const mockContract = await deployMockContract(deployer, []);
+      const mockContractAddress = mockContract.address;
       await expect(
-        poolToken.connect(randomUser).setMetaPoolToken(admin.address)
-      ).to.be.reverted;
+        poolToken.connect(randomUser).setMetaPoolToken(mockContractAddress)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
 
