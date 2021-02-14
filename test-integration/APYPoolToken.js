@@ -9,7 +9,11 @@ const {
   tokenAmountToBigNumber,
   FAKE_ADDRESS,
   expectEventInTransaction,
+  deployAggregator,
 } = require("../utils/helpers");
+
+const link = (amount) => tokenAmountToBigNumber(amount, "18");
+const ether = (amount) => tokenAmountToBigNumber(amount, "18");
 
 /* ************************ */
 /* set DEBUG log level here */
@@ -19,7 +23,8 @@ console.debugging = false;
 
 describe("Contract: APYPoolToken", () => {
   let deployer;
-  let admin;
+  let manager;
+  let oracle;
   let randomUser;
   let anotherUser;
 
@@ -29,16 +34,23 @@ describe("Contract: APYPoolToken", () => {
   let APYPoolTokenV2;
 
   let APYMetaPoolToken;
+  let APYMetaPoolTokenProxy;
 
   before(async () => {
-    [deployer, admin, randomUser, anotherUser] = await ethers.getSigners();
+    [
+      deployer,
+      manager,
+      oracle,
+      randomUser,
+      anotherUser,
+    ] = await ethers.getSigners();
 
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     APYPoolTokenProxy = await ethers.getContractFactory("APYPoolTokenProxy");
     APYPoolToken = await ethers.getContractFactory("TestAPYPoolToken");
     APYPoolTokenV2 = await ethers.getContractFactory("TestAPYPoolTokenV2");
 
-    APYMetaPoolToken = await ethers.getContractFactory("TestAPYMetaPoolToken");
+    APYMetaPoolToken = await ethers.getContractFactory("APYMetaPoolToken");
   });
 
   const tokenParams = [
@@ -76,6 +88,8 @@ describe("Contract: APYPoolToken", () => {
 
     describe(`\n    **** ${symbol} as underlyer ****\n`, () => {
       let agg;
+      let tvlAgg;
+      let ethUsdAgg;
       let underlyer;
       let mApt;
 
@@ -89,9 +103,57 @@ describe("Contract: APYPoolToken", () => {
         underlyer = await ethers.getContractAt("IDetailedERC20", tokenAddress);
         mApt = await APYMetaPoolToken.deploy();
         await mApt.deployed();
+        const paymentAmount = link("1");
+        const maxSubmissionValue = tokenAmountToBigNumber("1", "20");
+        const tvlAggConfig = {
+          paymentAmount, // payment amount (price paid for each oracle submission, in wei)
+          minSubmissionValue: 0,
+          maxSubmissionValue,
+          decimals: 8, // decimal offset for answer
+          description: "TVL aggregator",
+        };
+        const ethUsdAggConfig = {
+          paymentAmount, // payment amount (price paid for each oracle submission, in wei)
+          minSubmissionValue: 0,
+          maxSubmissionValue,
+          decimals: 8, // decimal offset for answer
+          description: "ETH-USD aggregator",
+        };
+        tvlAgg = await deployAggregator(
+          tvlAggConfig,
+          oracle.address,
+          deployer.address, // oracle owner
+          deployer.address // ETH funder
+        );
+        ethUsdAgg = await deployAggregator(
+          ethUsdAggConfig,
+          oracle.address,
+          deployer.address, // oracle owner
+          deployer.address // ETH funder
+        );
+
+        ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+        APYMetaPoolTokenProxy = await ethers.getContractFactory(
+          "APYMetaPoolTokenProxy"
+        );
+        APYMetaPoolToken = await ethers.getContractFactory("APYMetaPoolToken");
 
         proxyAdmin = await ProxyAdmin.deploy();
         await proxyAdmin.deployed();
+
+        logic = await APYMetaPoolToken.deploy();
+        await logic.deployed();
+        proxy = await APYMetaPoolTokenProxy.deploy(
+          logic.address,
+          proxyAdmin.address,
+          tvlAgg.address,
+          ethUsdAgg.address,
+          14400
+        );
+        await proxy.deployed();
+        mApt = await APYMetaPoolToken.attach(proxy.address);
+        await mApt.connect(deployer).setManagerAddress(manager.address);
+
         logic = await APYPoolToken.deploy();
         await logic.deployed();
         proxy = await APYPoolTokenProxy.deploy(
@@ -167,20 +229,20 @@ describe("Contract: APYPoolToken", () => {
 
       describe("Set admin address", async () => {
         it("Owner can set admin", async () => {
-          await poolToken.connect(deployer).setAdminAddress(admin.address);
-          assert.equal(await poolToken.proxyAdmin(), admin.address);
+          await poolToken.connect(deployer).setAdminAddress(FAKE_ADDRESS);
+          expect(await poolToken.proxyAdmin()).to.equal(FAKE_ADDRESS);
         });
 
         it("Revert on setting to zero address", async () => {
           await expect(
             poolToken.connect(deployer).setAdminAddress(ZERO_ADDRESS)
-          ).to.be.reverted;
+          ).to.be.revertedWith("INVALID_ADMIN");
         });
 
         it("Revert when non-owner attempts to set address", async () => {
           await expect(
-            poolToken.connect(randomUser).setAdminAddress(admin.address)
-          ).to.be.reverted;
+            poolToken.connect(randomUser).setAdminAddress(FAKE_ADDRESS)
+          ).to.be.revertedWith("Ownable: caller is not the owner");
         });
       });
 
@@ -228,8 +290,8 @@ describe("Contract: APYPoolToken", () => {
 
         it("Revert when non-owner attempts to set address", async () => {
           await expect(
-            poolToken.connect(randomUser).setMetaPoolToken(admin.address)
-          ).to.be.reverted;
+            poolToken.connect(randomUser).setMetaPoolToken(FAKE_ADDRESS)
+          ).to.be.revertedWith("Ownable: caller is not the owner");
         });
       });
 
@@ -423,19 +485,28 @@ describe("Contract: APYPoolToken", () => {
         tokenAmountToBigNumber(83729),
         tokenAmountToBigNumber(32283729),
       ];
+      let roundId = 0;
       deployedValues.forEach(function (deployedValue) {
         describe(`deployed value: ${deployedValue}`, () => {
           const mAptSupply = tokenAmountToBigNumber("100");
 
           before(async () => {
             // default to giving entire deployed value to the pool
-            await mApt.setTVL(deployedValue);
-            await mApt.testMint(poolToken.address, mAptSupply);
+            roundId += 1;
+            const ethUsdPrice = tokenAmountToBigNumber(1800, "8");
+            const usdDeployedValue = deployedValue
+              .mul(ethUsdPrice)
+              .div(ether(1));
+            await tvlAgg.connect(oracle).submit(roundId, usdDeployedValue);
+            await ethUsdAgg.connect(oracle).submit(roundId, ethUsdPrice);
+            await mApt.connect(manager).mint(poolToken.address, mAptSupply);
           });
 
           after(async () => {
-            await mApt.setTVL(0);
-            await mApt.testBurn(poolToken.address, mAptSupply);
+            roundId += 1;
+            await tvlAgg.connect(oracle).submit(roundId, 0);
+            await ethUsdAgg.connect(oracle).submit(roundId, ether(1));
+            await mApt.connect(manager).burn(poolToken.address, mAptSupply);
           });
 
           describe("Underlyer and mAPT integration with calculations", () => {
@@ -544,15 +615,19 @@ describe("Contract: APYPoolToken", () => {
               );
 
               // transfer quarter of mAPT to another pool
-              await mApt.testMint(FAKE_ADDRESS, mAptSupply.div(4));
-              await mApt.testBurn(poolToken.address, mAptSupply.div(4));
+              await mApt.connect(manager).mint(FAKE_ADDRESS, mAptSupply.div(4));
+              await mApt
+                .connect(manager)
+                .burn(poolToken.address, mAptSupply.div(4));
               expect(await poolToken.getDeployedEthValue()).to.equal(
                 deployedValue.mul(3).div(4)
               );
 
               // transfer same amount again
-              await mApt.testMint(FAKE_ADDRESS, mAptSupply.div(4));
-              await mApt.testBurn(poolToken.address, mAptSupply.div(4));
+              await mApt.connect(manager).mint(FAKE_ADDRESS, mAptSupply.div(4));
+              await mApt
+                .connect(manager)
+                .burn(poolToken.address, mAptSupply.div(4));
               expect(await poolToken.getDeployedEthValue()).to.equal(
                 deployedValue.div(2)
               );
@@ -901,6 +976,8 @@ describe("Contract: APYPoolToken", () => {
                 feePeriod.toNumber(),
               ]);
               await ethers.provider.send("evm_mine");
+              // effectively disable staleness check
+              await mApt.setAggStalePeriod(MAX_UINT256);
 
               const beforeBalance = await underlyer.balanceOf(
                 randomUser.address
