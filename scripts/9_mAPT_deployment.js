@@ -63,7 +63,7 @@ async function main(argv) {
   deploy_data["APYMetaPoolTokenProxy"] = proxy.address;
   console.log(`Proxy: ${proxy.address}`);
 
-  await updateDeployJsons(NETWORK_NAME, deploy_data);
+  updateDeployJsons(NETWORK_NAME, deploy_data);
 
   if (["KOVAN", "MAINNET"].includes(NETWORK_NAME)) {
     console.log("");
