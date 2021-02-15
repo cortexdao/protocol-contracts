@@ -11,7 +11,8 @@ require("dotenv").config();
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const { updateDeployJsons, FAKE_ADDRESS } = require("../utils/helpers");
+const { updateDeployJsons } = require("../utils/helpers");
+const { AGG_MAP } = require("../utils/constants");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -49,8 +50,8 @@ async function main(argv) {
   deploy_data["APYMetaPoolToken"] = logic.address;
   console.log(`Implementation Logic: ${logic.address}`);
 
-  const tvlAggAddress = FAKE_ADDRESS;
-  const ethUsdAggAddress = FAKE_ADDRESS;
+  const tvlAggAddress = AGG_MAP[NETWORK_NAME]["TVL"];
+  const ethUsdAggAddress = AGG_MAP[NETWORK_NAME]["ETH-USD"];
   const aggStalePeriod = 14400;
   const proxy = await APYMetaPoolTokenProxy.deploy(
     logic.address,
@@ -62,6 +63,13 @@ async function main(argv) {
   await proxy.deployed();
   deploy_data["APYMetaPoolTokenProxy"] = proxy.address;
   console.log(`Proxy: ${proxy.address}`);
+
+  console.log("");
+  console.log("ETH-USD Aggregator:", ethUsdAggAddress);
+  console.log("TVL Aggregator:", tvlAggAddress);
+  console.log("");
+  console.log("Aggregator stale period:", aggStalePeriod);
+  console.log("");
 
   updateDeployJsons(NETWORK_NAME, deploy_data);
 
