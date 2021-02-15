@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /*
  * Command to run script:
  *
@@ -7,12 +8,14 @@
  *
  * $ HARDHAT_NETWORK=<network name> node run scripts/<script filename> --arg1=val1 --arg2=val2
  */
-require("dotenv").config();
-const { argv } = require("yargs");
+const { argv } = require("yargs").option("gasPrice", {
+  type: "number",
+  description: "Gas price in gwei; omitting uses EthGasStation value",
+});
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const { updateDeployJsons } = require("../utils/helpers");
 const { AGG_MAP } = require("../utils/constants");
+const { getGasPrice, updateDeployJsons } = require("../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -27,7 +30,6 @@ async function main(argv) {
   console.log("Deployer address:", deployer);
   console.log("");
 
-  /* Deploy mAPT with proxy and admin */
   console.log("");
   console.log("Deploying ...");
   console.log("");
@@ -40,12 +42,14 @@ async function main(argv) {
 
   let deploy_data = {};
 
-  const proxyAdmin = await ProxyAdmin.deploy();
+  let gasPrice = await getGasPrice(argv.gasPrice);
+  const proxyAdmin = await ProxyAdmin.deploy({ gasPrice });
   await proxyAdmin.deployed();
   deploy_data["APYMetaPoolTokenProxyAdmin"] = proxyAdmin.address;
   console.log(`ProxyAdmin: ${proxyAdmin.address}`);
 
-  const logic = await APYMetaPoolToken.deploy();
+  gasPrice = await getGasPrice(argv.gasPrice);
+  const logic = await APYMetaPoolToken.deploy({ gasPrice });
   await logic.deployed();
   deploy_data["APYMetaPoolToken"] = logic.address;
   console.log(`Implementation Logic: ${logic.address}`);
@@ -53,12 +57,14 @@ async function main(argv) {
   const tvlAggAddress = AGG_MAP[NETWORK_NAME]["TVL"];
   const ethUsdAggAddress = AGG_MAP[NETWORK_NAME]["ETH-USD"];
   const aggStalePeriod = 14400;
+  gasPrice = await getGasPrice(argv.gasPrice);
   const proxy = await APYMetaPoolTokenProxy.deploy(
     logic.address,
     proxyAdmin.address,
     tvlAggAddress,
     ethUsdAggAddress,
-    aggStalePeriod
+    aggStalePeriod,
+    { gasPrice }
   );
   await proxy.deployed();
   deploy_data["APYMetaPoolTokenProxy"] = proxy.address;
