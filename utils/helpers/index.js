@@ -4,6 +4,7 @@ const { AddressZero: ZERO_ADDRESS, MaxUint256: MAX_UINT256 } = ethers.constants;
 const {
   getDeployedAddress,
   getStablecoinAddress,
+  getAggregatorAddress,
   updateDeployJsons,
 } = require("./address");
 const { deployAggregator } = require("./aggregator");
@@ -47,6 +48,7 @@ module.exports = {
   updateDeployJsons,
   getDeployedAddress,
   getStablecoinAddress,
+  getAggregatorAddress,
   tokenAmountToBigNumber,
   getGasPrice,
   acquireToken,

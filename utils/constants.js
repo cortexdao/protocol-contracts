@@ -32,6 +32,30 @@ const CHAIN_NAMES = {
   99: "LOCALHOST",
 };
 
+const AGG_MAP = {
+  MAINNET: {
+    TVL: "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE",
+    "ETH-USD": "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419",
+    "DAI-ETH": "0x773616E4d11A78F511299002da57A0a94577F1f4",
+    "USDC-ETH": "0x986b5E1e1755e3C2440e960477f25201B0a8bbD4",
+    "USDT-ETH": "0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46",
+  },
+  KOVAN: {
+    TVL: "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE",
+    "ETH-USD": "0x9326BFA02ADD2366b30bacB125260Af641031331",
+    "DAI-ETH": "0x22B58f1EbEDfCA50feF632bD73368b2FdA96D541",
+    "USDC-ETH": "0x64EaC61A2DFda2c3Fa04eED49AA33D021AeC8838",
+    "USDT-ETH": "0x0bF499444525a23E7Bb61997539725cA2e928138",
+  },
+  LOCALHOST: {
+    TVL: "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE",
+    "ETH-USD": "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419",
+    "DAI-ETH": "0x773616E4d11A78F511299002da57A0a94577F1f4",
+    "USDC-ETH": "0x986b5E1e1755e3C2440e960477f25201B0a8bbD4",
+    "USDT-ETH": "0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46",
+  },
+};
+
 const TOKEN_AGG_MAP = {
   MAINNET: [
     {
@@ -90,6 +114,9 @@ const DEPLOYS_JSON = {
   APYGovernanceTokenProxyAdmin: `${__dirname}/../deployed_addresses/APYGovernanceTokenProxyAdmin.json`,
   APYGovernanceToken: `${__dirname}/../deployed_addresses/APYGovernanceToken.json`,
   APYGovernanceTokenProxy: `${__dirname}/../deployed_addresses/APYGovernanceTokenProxy.json`,
+  APYMetaPoolTokenProxyAdmin: `${__dirname}/../deployed_addresses/APYMetaPoolTokenProxyAdmin.json`,
+  APYMetaPoolToken: `${__dirname}/../deployed_addresses/APYMetaPoolToken.json`,
+  APYMetaPoolTokenProxy: `${__dirname}/../deployed_addresses/APYMetaPoolTokenProxy.json`,
   APYPoolTokenProxyAdmin: `${__dirname}/../deployed_addresses/APYPoolTokenProxyAdmin.json`,
   DAI_APYPoolToken: `${__dirname}/../deployed_addresses/DAI_APYPoolToken.json`,
   DAI_APYPoolTokenProxy: `${__dirname}/../deployed_addresses/DAI_APYPoolTokenProxy.json`,
@@ -115,6 +142,7 @@ module.exports = {
   STABLECOIN_POOLS,
   CHAIN_IDS,
   CHAIN_NAMES,
+  AGG_MAP,
   TOKEN_AGG_MAP,
   DEPLOYS_JSON,
 };

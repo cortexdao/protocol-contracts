@@ -1,6 +1,11 @@
 const fs = require("fs");
 
-const { CHAIN_IDS, DEPLOYS_JSON, TOKEN_AGG_MAP } = require("../constants.js");
+const {
+  CHAIN_IDS,
+  DEPLOYS_JSON,
+  TOKEN_AGG_MAP,
+  AGG_MAP,
+} = require("../constants.js");
 
 function updateDeployJsons(network, deploy_data) {
   for (let [contract_name, file_path] of Object.entries(DEPLOYS_JSON)) {
@@ -34,8 +39,14 @@ function getStablecoinAddress(symbol, network) {
   throw new Error(`Could not find address for ${symbol}`);
 }
 
+function getAggregatorAddress(name, network) {
+  const aggAddress = AGG_MAP[network.toUpperCase()][name.toUpperCase()];
+  return aggAddress;
+}
+
 module.exports = {
   updateDeployJsons,
   getDeployedAddress,
   getStablecoinAddress,
+  getAggregatorAddress,
 };
