@@ -97,6 +97,30 @@ contract APYManagerV2 is
         return tokenToStrategies[token].length > 0;
     }
 
+    function fundStrategy(
+        address strategy,
+        StrategyAllocation memory allocation
+    ) public override onlyOwner {
+        require(
+            allocation.pools.length == allocation.amounts.length,
+            "allocation length mismatch"
+        );
+        for (uint256 i = 0; i < allocation.pools.length; i++) {
+            APYPoolToken pool = APYPoolToken(allocation.pools[i]);
+            IDetailedERC20 underlyer = pool.underlyer();
+            uint256 poolAmount = allocation.amounts[i];
+            uint256 poolValue = pool.getEthValueFromTokenAmount(poolAmount);
+
+            uint256 tokenEthPrice = pool.getTokenEthPrice();
+            uint8 decimals = underlyer.decimals();
+            // uint256 mintAmount =
+            //     mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
+
+            // mApt.mint(poolAddress, mintAmount);
+            underlyer.safeTransferFrom(address(pool), strategy, poolAmount);
+        }
+    }
+
     function fundAndExecute(
         address strategy,
         StrategyAllocation memory allocation,
@@ -112,6 +136,39 @@ contract APYManagerV2 is
         onlyOwner
     {
         IStrategy(strategy).execute(steps);
+    }
+
+    function executeAndWithdraw(
+        address strategy,
+        StrategyAllocation memory allocation,
+        APYGenericExecutor.Data[] memory steps
+    ) external override onlyOwner {
+        execute(strategy, steps);
+        withdrawFromStrategy(strategy, allocation);
+    }
+
+    function withdrawFromStrategy(
+        address strategy,
+        StrategyAllocation memory allocation
+    ) public override onlyOwner {
+        require(
+            allocation.pools.length == allocation.amounts.length,
+            "allocation length mismatch"
+        );
+        for (uint256 i = 0; i < allocation.pools.length; i++) {
+            APYPoolToken pool = APYPoolToken(allocation.pools[i]);
+            IDetailedERC20 underlyer = pool.underlyer();
+            uint256 amountToSend = allocation.amounts[i];
+            uint256 poolValue = pool.getEthValueFromTokenAmount(amountToSend);
+
+            uint256 tokenEthPrice = pool.getTokenEthPrice();
+            uint8 decimals = underlyer.decimals();
+            // uint256 mintAmount =
+            //     mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
+
+            // mApt.mint(poolAddress, mintAmount);
+            underlyer.safeTransferFrom(strategy, address(pool), amountToSend);
+        }
     }
 
     function setAdminAddress(address adminAddress) public onlyOwner {
@@ -233,37 +290,5 @@ contract APYManagerV2 is
 
         mApt.mint(poolAddress, mintAmount);
         underlyer.safeTransferFrom(poolAddress, address(this), poolAmount);
-    }
-
-    /**
-     * @notice Mint corresponding amount of mAPT tokens for pulled amount.
-     * @dev Pool must approve manager to transfer its underlyer token.
-     */
-    function fundStrategy(
-        address strategyAddress,
-        StrategyAllocation memory allocation
-    ) public onlyOwner {
-        require(
-            allocation.pools.length == allocation.amounts.length,
-            "allocation length mismatch"
-        );
-        for (uint256 i = 0; i < allocation.pools.length; i++) {
-            APYPoolToken pool = APYPoolToken(allocation.pools[i]);
-            IDetailedERC20 underlyer = pool.underlyer();
-            uint256 poolAmount = allocation.amounts[i];
-            uint256 poolValue = pool.getEthValueFromTokenAmount(poolAmount);
-
-            uint256 tokenEthPrice = pool.getTokenEthPrice();
-            uint8 decimals = underlyer.decimals();
-            // uint256 mintAmount =
-            //     mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
-
-            // mApt.mint(poolAddress, mintAmount);
-            underlyer.safeTransferFrom(
-                address(pool),
-                strategyAddress,
-                poolAmount
-            );
-        }
     }
 }

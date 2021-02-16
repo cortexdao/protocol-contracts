@@ -189,53 +189,7 @@ contract("APYManager", async (accounts) => {
     })
   })
 
-  describe.only("Execute", async () => {
-    it("Test Execute by non owner", async () => {
-      const bad_signer = await ethers.provider.getSigner(_)
-      const bad_MANAGER = await ethers.getContractAt(APYManagerV2.abi, legos.apy.addresses.APY_MANAGER, bad_signer)
-
-      // sequence is to give approval to DAI and cDAI @ 100 each
-      await expectRevert(bad_MANAGER.execute(strategy.address,
-        [
-          [
-            '0x6B175474E89094C44Da98b954EedeAC495271d0F',
-            '0x095ea7b30000000000000000000000006b175474e89094c44da98b954eedeac495271d0f0000000000000000000000000000000000000000000000000000000000000064'
-          ],
-          [
-            '0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
-            '0x095ea7b30000000000000000000000005d3a536e4d6dbd6114cc1ead35777bab948e36430000000000000000000000000000000000000000000000000000000000000064'
-          ]
-        ]
-      ), "revert Ownable: caller is not the owner")
-    })
-
-    it("Test Execute by owner", async () => {
-      const DAI_Contract = await ethers.getContractAt(legos.maker.abis.DAI, legos.maker.addresses.DAI)
-      const cDAI_Contract = await ethers.getContractAt(legos.compound.abis.cDAI, legos.compound.addresses.cDAI)
-
-      // sequence is to give approval to DAI and cDAI @ 100 each
-      await Manager.execute(strategy.address,
-        [
-          [
-            '0x6B175474E89094C44Da98b954EedeAC495271d0F',
-            '0x095ea7b30000000000000000000000006b175474e89094c44da98b954eedeac495271d0f0000000000000000000000000000000000000000000000000000000000000064'
-          ],
-          [
-            '0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
-            '0x095ea7b30000000000000000000000005d3a536e4d6dbd6114cc1ead35777bab948e36430000000000000000000000000000000000000000000000000000000000000064'
-          ]
-        ]
-      )
-
-      const daiAllowance = await DAI_Contract.allowance(strategy.address, DAI_Contract.address)
-      const cDaiAllowance = await cDAI_Contract.allowance(strategy.address, cDAI_Contract.address)
-
-      assert.equal(daiAllowance.toString(), "100")
-      assert.equal(cDaiAllowance.toString(), "100")
-    })
-  })
-
-  describe.only("fundAndExecute", async () => {
+  describe.only("Fund and Execute", async () => {
     it("Test fundAndExecute by non owner", async () => {
       const bad_signer = await ethers.provider.getSigner(_)
       const bad_MANAGER = await ethers.getContractAt(APYManagerV2.abi, legos.apy.addresses.APY_MANAGER, bad_signer)
@@ -289,9 +243,65 @@ contract("APYManager", async (accounts) => {
     })
   })
 
-  describe.only("strategy returns funds to pools", async () => {
-    it("call execute and return the funds to the pools", async () => {
-      console.log("TODO")
+  describe.only("Execute", async () => {
+    it("Test Execute by non owner", async () => {
+      const bad_signer = await ethers.provider.getSigner(_)
+      const bad_MANAGER = await ethers.getContractAt(APYManagerV2.abi, legos.apy.addresses.APY_MANAGER, bad_signer)
+
+      // sequence is to give approval to DAI and cDAI @ 100 each
+      await expectRevert(bad_MANAGER.execute(strategy.address,
+        [
+          [
+            '0x6B175474E89094C44Da98b954EedeAC495271d0F',
+            '0x095ea7b30000000000000000000000006b175474e89094c44da98b954eedeac495271d0f0000000000000000000000000000000000000000000000000000000000000064'
+          ],
+          [
+            '0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
+            '0x095ea7b30000000000000000000000005d3a536e4d6dbd6114cc1ead35777bab948e36430000000000000000000000000000000000000000000000000000000000000064'
+          ]
+        ]
+      ), "revert Ownable: caller is not the owner")
+    })
+
+    it("Test Execute by owner", async () => {
+      const DAI_Contract = await ethers.getContractAt(legos.maker.abis.DAI, legos.maker.addresses.DAI)
+      const cDAI_Contract = await ethers.getContractAt(legos.compound.abis.cDAI, legos.compound.addresses.cDAI)
+
+      // sequence is to give approval to DAI and cDAI @ 100 each
+      await Manager.execute(strategy.address,
+        [
+          [
+            '0x6B175474E89094C44Da98b954EedeAC495271d0F',
+            '0x095ea7b30000000000000000000000006b175474e89094c44da98b954eedeac495271d0f0000000000000000000000000000000000000000000000000000000000000064'
+          ],
+          [
+            '0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
+            '0x095ea7b30000000000000000000000005d3a536e4d6dbd6114cc1ead35777bab948e36430000000000000000000000000000000000000000000000000000000000000064'
+          ]
+        ]
+      )
+
+      const daiAllowance = await DAI_Contract.allowance(strategy.address, DAI_Contract.address)
+      const cDaiAllowance = await cDAI_Contract.allowance(strategy.address, cDAI_Contract.address)
+
+      assert.equal(daiAllowance.toString(), "100")
+      assert.equal(cDaiAllowance.toString(), "100")
+    })
+  })
+
+  describe.only("Execute and Withdraw", async () => {
+    it("Test executeAndWithdraw by non owner", async () => {
+    })
+
+    it("Test executeAndWithdraw by owner", async () => {
+    })
+  })
+
+  describe.only("Withdraw from Strategy", async () => {
+    it("Test withdrawing from strategy by non owner", async () => {
+    })
+
+    it("Test withdrawing from strategy by owner", async () => {
     })
   })
 });
