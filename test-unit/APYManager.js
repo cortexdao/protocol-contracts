@@ -200,7 +200,61 @@ contract("APYManager", async (accounts) => {
       assert.equal(strategyOwner, manager.address);
     });
 
-    it("Owner can call execute", async () => {
+    it("Fund strategy as not owner", async () => {
+      await expectRevert(
+        manager.fundStrategy(
+          strategy.address,
+          [
+            [TokenA.address, TokenB.address],
+            [0, 0],
+          ],
+          { from: randomUser }
+        ),
+        "revert Ownable: caller is not the owner"
+      );
+    });
+
+    it.skip("Fund strategy as owner", async () => {
+      // TESTED IN INTEGRATION TESTS
+    });
+
+    it("Fund and Execute as not owner", async () => {
+      await expectRevert(
+        manager.fundAndExecute(
+          strategy.address,
+          [
+            [TokenA.address, TokenB.address],
+            [0, 0],
+          ],
+          [
+            [TokenA.address, encodedApprove],
+            [TokenB.address, encodedApprove],
+          ],
+          { from: randomUser }
+        ),
+        "revert Ownable: caller is not the owner"
+      );
+    });
+
+    it.skip("Fund and Execute as owner", async () => {
+      // TESTED IN INTEGRATION TESTS
+    });
+
+    it("Execute as not owner", async () => {
+      await expectRevert(
+        manager.execute(
+          strategy.address,
+          [
+            [TokenA.address, encodedApprove],
+            [TokenB.address, encodedApprove],
+          ],
+          { from: randomUser }
+        ),
+        "revert Ownable: caller is not the owner"
+      );
+    });
+
+    it("Execute as owner", async () => {
       const encodedApprove = erc20Interface.encodeFunctionData(
         "approve(address,uint256)",
         [account1, 100]
@@ -226,10 +280,14 @@ contract("APYManager", async (accounts) => {
       });
     });
 
-    it("Revert when non-owner calls execute", async () => {
+    it("Execute and Withdraw as not owner", async () => {
       await expectRevert(
-        manager.execute(
+        manager.executeAndWithdraw(
           strategy.address,
+          [
+            [TokenA.address, TokenB.address],
+            [0, 0],
+          ],
           [
             [TokenA.address, encodedApprove],
             [TokenB.address, encodedApprove],
@@ -240,35 +298,17 @@ contract("APYManager", async (accounts) => {
       );
     });
 
-    it("Fund strategy as not owner", async () => {
-      await expectRevert(
-        manager.fundStrategy(
-          strategy.address,
-          [
-            [TokenA.address, TokenB.address],
-            [0, 0],
-          ],
-          { from: randomUser }
-        ),
-        "revert Ownable: caller is not the owner"
-      );
-    });
-
-    it("Fund strategy as owner", async () => {
+    it.skip("Execute Withdraw as owner", async () => {
       // TESTED IN INTEGRATION TESTS
     });
 
-    it("Fund and Execute as not owner", async () => {
+    it("Withdraw from strategy as not owner", async () => {
       await expectRevert(
-        manager.fundAndExecute(
+        manager.withdrawFromStrategy(
           strategy.address,
           [
             [TokenA.address, TokenB.address],
             [0, 0],
-          ],
-          [
-            [TokenA.address, encodedApprove],
-            [TokenB.address, encodedApprove],
           ],
           { from: randomUser }
         ),
@@ -276,7 +316,7 @@ contract("APYManager", async (accounts) => {
       );
     });
 
-    it("Fund and Execute as owner", async () => {
+    it.skip("Withdraw from strategy as owner", async () => {
       // TESTED IN INTEGRATION TESTS
     });
   });
