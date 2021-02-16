@@ -196,13 +196,13 @@ contract("APYManager", async (accounts) => {
 
       await expectRevert(bad_MANAGER.fundAndExecute(strategy.address,
         [
-          ['0x75CE0E501e2E6776FcAAa514f394a88a772A8970', '0xe18b0365D5D09F394f84eE56ed29DD2d8D6Fba5f'],
+          ['0x75CE0E501e2E6776FcAAa514f394a88a772A8970', '0xeA9c5a2717D5Ab75afaAC340151e73a7e37d99A7'],
           ['100', '140']
         ],
         [
           ['0x6B175474E89094C44Da98b954EedeAC495271d0F',
             '0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064'],
-          ['0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
+          ['0xdAC17F958D2ee523a2206206994597C13D831ec7',
             '0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064']
         ]
       ), "revert Ownable: caller is not the owner")
@@ -214,13 +214,13 @@ contract("APYManager", async (accounts) => {
       const USDT_Contract = await ethers.getContractAt(legos.tether.abis.USDT, legos.tether.addresses.USDT)
       await Manager.fundAndExecute(strategy.address,
         [
-          ['0x75CE0E501e2E6776FcAAa514f394a88a772A8970', '0xe18b0365D5D09F394f84eE56ed29DD2d8D6Fba5f'],
+          ['0x75CE0E501e2E6776FcAAa514f394a88a772A8970', '0xeA9c5a2717D5Ab75afaAC340151e73a7e37d99A7'],
           ['100', '140']
         ],
         [
           ['0x6B175474E89094C44Da98b954EedeAC495271d0F',
             '0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064'],
-          ['0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
+          ['0xdAC17F958D2ee523a2206206994597C13D831ec7',
             '0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064']
         ]
       )
@@ -230,8 +230,8 @@ contract("APYManager", async (accounts) => {
 
       // NOTE: DAI, USDC, and USDT funded to the account before with 10
       assert.equal(stratDaiBal.toString(), "110")
-      assert.equal(stratUsdcBal.toString(), "150")
-      assert.equal(stratUsdtBal.toString(), "10")
+      assert.equal(stratUsdcBal.toString(), "10")
+      assert.equal(stratUsdtBal.toString(), "150")
     })
   })
 
@@ -245,7 +245,7 @@ contract("APYManager", async (accounts) => {
         [
           ['0x6B175474E89094C44Da98b954EedeAC495271d0F',
             '0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064'],
-          ['0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
+          ['0xdAC17F958D2ee523a2206206994597C13D831ec7',
             '0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064']
         ]
       ), "revert Ownable: caller is not the owner")
@@ -253,20 +253,20 @@ contract("APYManager", async (accounts) => {
 
     it("Test Execute by owner", async () => {
       const DAI_Contract = await ethers.getContractAt(legos.maker.abis.DAI, legos.maker.addresses.DAI)
-      const cDAI_Contract = await ethers.getContractAt(legos.compound.abis.cDAI, legos.compound.addresses.cDAI)
+      const USDT_Contract = await ethers.getContractAt(legos.tether.abis.USDT, legos.tether.addresses.USDT)
 
       // sequence is to give approval to DAI and cDAI @ 100 each
       await Manager.execute(strategy.address,
         [
           ['0x6B175474E89094C44Da98b954EedeAC495271d0F',
             '0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064'],
-          ['0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
-            '0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064']
+          // ['0xdAC17F958D2ee523a2206206994597C13D831ec7',
+          //   '0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064']
         ]
       )
 
       const daiAllowance = await DAI_Contract.allowance(strategy.address, legos.apy.addresses.APY_MANAGER)
-      const cDaiAllowance = await cDAI_Contract.allowance(strategy.address, legos.apy.addresses.APY_MANAGER)
+      const cDaiAllowance = await USDT_Contract.allowance(strategy.address, legos.apy.addresses.APY_MANAGER)
 
       assert.equal(daiAllowance.toString(), "100")
       assert.equal(cDaiAllowance.toString(), "100")
@@ -280,35 +280,39 @@ contract("APYManager", async (accounts) => {
 
       await expectRevert(bad_MANAGER.executeAndWithdraw(strategy.address,
         [
-          ['0x75CE0E501e2E6776FcAAa514f394a88a772A8970', '0xe18b0365D5D09F394f84eE56ed29DD2d8D6Fba5f'],
+          ['0x75CE0E501e2E6776FcAAa514f394a88a772A8970', '0xeA9c5a2717D5Ab75afaAC340151e73a7e37d99A7'],
           ['100', '140']
         ],
         [
           ['0x6B175474E89094C44Da98b954EedeAC495271d0F',
             '0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064'],
-          ['0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
+          ['0xdAC17F958D2ee523a2206206994597C13D831ec7',
             '0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064']
         ]
       ), "revert Ownable: caller is not the owner")
     })
 
-    it.skip("Test executeAndWithdraw by owner", async () => {
+    it("Test executeAndWithdraw by owner", async () => {
       const DAI_Contract = await ethers.getContractAt(legos.maker.abis.DAI, legos.maker.addresses.DAI)
       const USDC_Contract = await ethers.getContractAt(legos.centre.abis.USDC_Logic, legos.centre.addresses.USDC)
       const USDT_Contract = await ethers.getContractAt(legos.tether.abis.USDT, legos.tether.addresses.USDT)
 
-      //TODO: need to give the manager access to move funds
-
       await Manager.executeAndWithdraw(strategy.address,
         [
-          ['0x75CE0E501e2E6776FcAAa514f394a88a772A8970', '0xe18b0365D5D09F394f84eE56ed29DD2d8D6Fba5f'],
-          ['10', '10']
+          [
+            '0x75CE0E501e2E6776FcAAa514f394a88a772A8970',
+            '0xeA9c5a2717D5Ab75afaAC340151e73a7e37d99A7'
+          ],
+          [
+            '10',
+            '10'
+          ]
         ],
         [
           ['0x6B175474E89094C44Da98b954EedeAC495271d0F',
             '0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064'],
-          ['0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
-            '0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064']
+          // ['0xdAC17F958D2ee523a2206206994597C13D831ec7',
+          //   '0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064']
         ]
       )
       const stratDaiBal = await DAI_Contract.balanceOf(strategy.address)
@@ -317,8 +321,8 @@ contract("APYManager", async (accounts) => {
 
       // NOTE: DAI, USDC, and USDT funded to the account before with 10
       assert.equal(stratDaiBal.toString(), "100")
-      assert.equal(stratUsdcBal.toString(), "140")
-      assert.equal(stratUsdtBal.toString(), "10")
+      assert.equal(stratUsdcBal.toString(), "10")
+      assert.equal(stratUsdtBal.toString(), "140")
     })
   })
 
@@ -334,7 +338,28 @@ contract("APYManager", async (accounts) => {
       ), "revert Ownable: caller is not the owner")
     })
 
-    it.skip("Test withdrawing from strategy by owner", async () => {
+    it("Test withdrawing from strategy by owner", async () => {
+      const DAI_Contract = await ethers.getContractAt(legos.maker.abis.DAI, legos.maker.addresses.DAI)
+      const USDC_Contract = await ethers.getContractAt(legos.centre.abis.USDC_Logic, legos.centre.addresses.USDC)
+      const USDT_Contract = await ethers.getContractAt(legos.tether.abis.USDT, legos.tether.addresses.USDT)
+
+      // ETHERS contract.on() event listener doesnt seems to be working for some reason.
+      // It might be because the event is not at the top most level
+
+      await Manager.withdrawFromStrategy(strategy.address,
+        [
+          [legos.apy.addresses.APY_DAI_POOL, legos.apy.addresses.APY_USDT_POOL],
+          ['10', '10']
+        ]
+      )
+
+      const stratDaiBal = await DAI_Contract.balanceOf(strategy.address)
+      const stratUsdcBal = await USDC_Contract.balanceOf(strategy.address)
+      const stratUsdtBal = await USDT_Contract.balanceOf(strategy.address)
+
+      assert.equal(stratDaiBal.toString(), "90")
+      assert.equal(stratUsdcBal.toString(), "10")
+      assert.equal(stratUsdtBal.toString(), "130")
     })
   })
 });
