@@ -14,8 +14,11 @@ const { argv } = require("yargs").option("gasPrice", {
 });
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const { AGG_MAP } = require("../utils/constants");
-const { getGasPrice, updateDeployJsons } = require("../utils/helpers");
+const {
+  getGasPrice,
+  updateDeployJsons,
+  getAggregatorAddress,
+} = require("../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -54,8 +57,8 @@ async function main(argv) {
   deploy_data["APYMetaPoolToken"] = logic.address;
   console.log(`Implementation Logic: ${logic.address}`);
 
-  const tvlAggAddress = AGG_MAP[NETWORK_NAME]["TVL"];
-  const ethUsdAggAddress = AGG_MAP[NETWORK_NAME]["ETH-USD"];
+  const tvlAggAddress = getAggregatorAddress("TVL", NETWORK_NAME);
+  const ethUsdAggAddress = getAggregatorAddress("ETH-USD", NETWORK_NAME);
   const aggStalePeriod = 14400;
   gasPrice = await getGasPrice(argv.gasPrice);
   const proxy = await APYMetaPoolTokenProxy.deploy(
