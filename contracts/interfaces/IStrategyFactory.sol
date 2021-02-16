@@ -10,10 +10,15 @@ interface IStrategyFactory {
         uint256[] amounts;
     }
 
-    function deploy(address generalExecutor) external returns (address);
+    function deployStrategy(address generalExecutor) external returns (address);
 
     function registerTokens(address strategy, address[] calldata tokens)
         external;
+
+    function fundStrategy(
+        address strategy,
+        StrategyAllocation calldata allocation
+    ) external;
 
     function fundAndExecute(
         address strategy,
@@ -23,4 +28,15 @@ interface IStrategyFactory {
 
     function execute(address strategy, APYGenericExecutor.Data[] memory steps)
         external;
+
+    function executeAndWithdraw(
+        address strategy,
+        StrategyAllocation calldata allocation,
+        APYGenericExecutor.Data[] calldata steps
+    ) external;
+
+    function withdrawFromStrategy(
+        address strategy,
+        StrategyAllocation calldata allocation
+    ) external;
 }

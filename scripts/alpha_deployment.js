@@ -5,6 +5,7 @@ const upgradeManagerLogic = require("./upgrade_manager");
 const deployGenericExecutor = require("./deploy_generic_executor");
 const deployNewStrategy = require("./deploy_new_strategy");
 
+// The following steps should be very similar to test-integration/APYPoolToken.js
 const steps = [
   upgradePoolsLogic, // after update defi-legos
   poolsApprovals,
