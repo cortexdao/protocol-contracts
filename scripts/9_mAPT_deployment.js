@@ -31,6 +31,10 @@ async function main(argv) {
   const signers = await ethers.getSigners();
   const deployer = await signers[0].getAddress();
   console.log("Deployer address:", deployer);
+
+  const balance =
+    (await ethers.provider.getBalance(deployer)).toString() / 1e18;
+  console.log("ETH balance:", balance.toString());
   console.log("");
 
   console.log("");
@@ -50,12 +54,22 @@ async function main(argv) {
   await proxyAdmin.deployed();
   deploy_data["APYMetaPoolTokenProxyAdmin"] = proxyAdmin.address;
   console.log(`ProxyAdmin: ${proxyAdmin.address}`);
+  console.log(
+    "Etherscan:",
+    `https://etherscan.io/tx/${proxyAdmin.deployTransaction.hash}`
+  );
+  console.log("");
 
   gasPrice = await getGasPrice(argv.gasPrice);
   const logic = await APYMetaPoolToken.deploy({ gasPrice });
   await logic.deployed();
   deploy_data["APYMetaPoolToken"] = logic.address;
   console.log(`Implementation Logic: ${logic.address}`);
+  console.log(
+    "Etherscan:",
+    `https://etherscan.io/tx/${logic.deployTransaction.hash}`
+  );
+  console.log("");
 
   const tvlAggAddress = getAggregatorAddress("TVL", NETWORK_NAME);
   const ethUsdAggAddress = getAggregatorAddress("ETH-USD", NETWORK_NAME);
@@ -72,6 +86,11 @@ async function main(argv) {
   await proxy.deployed();
   deploy_data["APYMetaPoolTokenProxy"] = proxy.address;
   console.log(`Proxy: ${proxy.address}`);
+  console.log(
+    "Etherscan:",
+    `https://etherscan.io/tx/${proxy.deployTransaction.hash}`
+  );
+  console.log("");
 
   console.log("");
   console.log("ETH-USD Aggregator:", ethUsdAggAddress);
