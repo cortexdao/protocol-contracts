@@ -53,6 +53,8 @@ jobs:
     - name: Install packages 
       run: yarn install
       if: steps.yarn-cache.outputs.cache-hit != 'true'
+    - name: Install defi-legos
+      run: yarn populate
     - name: Lint smart contracts
       run: yarn lint
     - name: Unit tests
