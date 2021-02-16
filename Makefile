@@ -113,6 +113,29 @@ create_job:
 		fi \
 	"
 
+# original name of repo is external-adapter-js
+CHAINLINK_REPO_FOLDER := "./chainlink-tvl-adapter"
+CHAINLINK_REPO_URL := git@github.com:smartcontractkit/external-adapters-js.git
+
 .PHONY: clone_chainlink_repo
 clone_chainlink_repo:
-	git clone git@github.com:smartcontractkit/external-adapters-js.git
+	@if [ ! -d "$(CHAINLINK_REPO_FOLDER)" ]; then \
+    	git clone "$(CHAINLINK_REPO_URL)" "$(CHAINLINK_REPO_FOLDER)"; \
+	else \
+    	cd "$(CHAINLINK_REPO_FOLDER)"; \
+    	git pull "$(CHAINLINK_REPO_URL)"; \
+		cd -;\
+	fi
+
+.PHONY: test_chainlink
+test_chainlink:
+	make 
+
+.PHONY: CI_tests
+CI_tests:
+	make clone_chainlink_repo
+	yarn test:unit
+	yarn test:integration
+	make up
+	make test_chainlink
+	make down
