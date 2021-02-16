@@ -2,13 +2,15 @@
 # yarn lockfile v1
 
 
-"@apy-finance/defi-legos@^1.0.12":
-  version "1.0.12"
-  resolved "https://npm.pkg.github.com/download/@apy-finance/defi-legos/1.0.12/53e656dfeb8f5b142bdc87dc99f2ddd544e94dea4ba0b6b305e4d165288d3384#35943cd9e8aaa525aeb7ac320c38f77a2ce08b81"
-  integrity sha512-6xFJ1jGWavUJU63dUyWtdz/qzHSnAHFbJsnILZwnxoM03/xHsOpIf6WqnNuMi5atqzzYzWT8krvq4tUSIQgVZA==
+"@apy-finance/defi-legos@^2.0.2":
+  version "2.0.2"
+  resolved "https://npm.pkg.github.com/download/@apy-finance/defi-legos/2.0.2/c36cc0c20ec2aeaceb0a1c4a36d31b582452613487cab3da7fc90ee568d682c8#4d683e3db87849dc0cfe2bf0e44497fffe1518c4"
+  integrity sha512-bVmZ/8qt+s/JGe4vZaeH1LoIf6JNMF0PXkPHKENn6hIVRGxE7cwyDwJCR242qz93+3XB9x8zgW3azR8/g7+Cng==
   dependencies:
     axios "^0.21.0"
+    axios-retry "^3.1.9"
     chalk "^4.1.0"
+    commander "^7.0.0"
     dotenv "^8.2.0"
     ethers "^5.0.24"
     fs-extra "^9.0.1"
@@ -1417,6 +1419,13 @@ aws4@^1.8.0:
   resolved "https://registry.yarnpkg.com/aws4/-/aws4-1.11.0.tgz#d61f46d83b2519250e2784daf5b09479a8b41c59"
   integrity sha512-xh1Rl34h6Fi1DC2WWKfxUTVqRsNnr6LsKz2+hfwDxQJWmrx8+c7ylaqBMcHfl1U1r2dsifOvKX3LQuLNZ+XSvA==
 
+axios-retry@^3.1.9:
+  version "3.1.9"
+  resolved "https://registry.yarnpkg.com/axios-retry/-/axios-retry-3.1.9.tgz#6c30fc9aeb4519aebaec758b90ef56fa03fe72e8"
+  integrity sha512-NFCoNIHq8lYkJa6ku4m+V1837TP6lCa7n79Iuf8/AqATAHYB0ISaAS1eyIenDOfHOLtym34W65Sjke2xjg2fsA==
+  dependencies:
+    is-retry-allowed "^1.1.0"
+
 axios@^0.21.0, axios@^0.21.1:
   version "0.21.1"
   resolved "https://registry.yarnpkg.com/axios/-/axios-0.21.1.tgz#22563481962f4d6bde9a76d516ef0e5d3c09b2b8"
@@ -2676,6 +2685,11 @@ commander@^6.2.0:
   version "6.2.1"
   resolved "https://registry.yarnpkg.com/commander/-/commander-6.2.1.tgz#0792eb682dfbc325999bb2b84fddddba110ac73c"
   integrity sha512-U7VdrJFnJgo4xjrHpTzu0yrHPGImdsmD95ZlgYSEajAn2JKzDhDTPG9kBTefmObL2w/ngeZnilk+OV9CG3d7UA==
+
+commander@^7.0.0:
+  version "7.1.0"
+  resolved "https://registry.yarnpkg.com/commander/-/commander-7.1.0.tgz#f2eaecf131f10e36e07d894698226e36ae0eb5ff"
+  integrity sha512-pRxBna3MJe6HKnBGsDyMv8ETbptw3axEdYHoqNh7gu5oDcew8fs0xnivZGm06Ogk8zGAJ9VX+OPEr2GXEQK4dg==
 
 component-emitter@^1.2.1:
   version "1.3.0"
@@ -5550,7 +5564,7 @@ is-regexp@^1.0.0:
   resolved "https://registry.yarnpkg.com/is-regexp/-/is-regexp-1.0.0.tgz#fd2d883545c46bac5a633e7b9a09e87fa2cb5069"
   integrity sha1-/S2INUXEa6xaYz57mgnof6LLUGk=
 
-is-retry-allowed@^1.0.0:
+is-retry-allowed@^1.0.0, is-retry-allowed@^1.1.0:
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/is-retry-allowed/-/is-retry-allowed-1.2.0.tgz#d778488bd0a4666a3be8a1482b9f2baafedea8b4"
   integrity sha512-RUbUeKwvm3XG2VYamhJL1xFktgjvPzL0Hq8C+6yrWIswDy3BIXGqCxhxkc30N9jqK311gVU137K8Ei55/zVJRg==
