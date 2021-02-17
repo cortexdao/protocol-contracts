@@ -55,6 +55,7 @@ jobs:
       if: steps.yarn-cache.outputs.cache-hit != 'true'
     - name: Populate defi-legos
       run: yarn populate -m apy,centre,maker,tether
+      if: steps.yarn-cache.outputs.cache-hit != 'true'
       env:
         ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
     - name: Lint smart contracts
