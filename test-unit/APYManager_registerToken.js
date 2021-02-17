@@ -1,10 +1,9 @@
-const { assert } = require("chai");
+const { expect } = require("chai");
 const hre = require("hardhat");
 const { artifacts, contract, ethers, waffle } = hre;
 const timeMachine = require("ganache-time-traveler");
 const { FAKE_ADDRESS } = require("../utils/helpers");
 // const ERC20 = artifacts.require("ERC20");
-// const APYGenericExecutor = artifacts.require("APYGenericExecutor");
 // const Strategy = artifacts.require("Strategy");
 const { deployMockContract } = waffle;
 
@@ -15,6 +14,7 @@ contract("APYManager: token registration", async (accounts) => {
 
   let deployer;
   let manager;
+  let executor;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -40,6 +40,12 @@ contract("APYManager: token registration", async (accounts) => {
     const TransparentUpgradeableProxy = await ethers.getContractFactory(
       "TransparentUpgradeableProxy"
     );
+    const APYGenericExecutor = await ethers.getContractFactory(
+      "APYGenericExecutor"
+    );
+    executor = await APYGenericExecutor.deploy();
+    await executor.deployed();
+
     const logic = await APYManager.deploy();
     await logic.deployed();
     const logicV2 = await APYManagerV2.deploy();
@@ -52,7 +58,7 @@ contract("APYManager: token registration", async (accounts) => {
     const encodedArg = await proxyConstructorArg.getEncodedArg(
       proxyAdmin.address
     );
-    const proxy = await TransparentUpgradeableProxy.new(
+    const proxy = await TransparentUpgradeableProxy.deploy(
       logic.address,
       proxyAdmin.address,
       encodedArg
@@ -64,10 +70,20 @@ contract("APYManager: token registration", async (accounts) => {
   });
 
   describe.only("registerTokens", async () => {
-    it("Test can register", async () => {
-      const strategy = FAKE_ADDRESS;
+    it("Can register for deployed strategy", async () => {
+      const strategy = await manager.callStatic.deployStrategy(
+        executor.address
+      );
+      await manager.deployStrategy(executor.address);
       const tokens = [];
-      await manager.registerTokens(strategy, tokens);
+      await expect(manager.registerTokens(strategy, tokens)).to.not.be.reverted;
+    });
+
+    it("Revert when registering for non-deployed address", async () => {
+      const tokens = [];
+      await expect(
+        manager.registerTokens(FAKE_ADDRESS, tokens)
+      ).to.be.revertedWith("Must be strategy address");
     });
   });
 });
