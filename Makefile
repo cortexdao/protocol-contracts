@@ -115,7 +115,7 @@ create_job:
 
 # original name of repo is external-adapter-js
 CHAINLINK_REPO_FOLDER := "./chainlink-tvl-adapter"
-CHAINLINK_REPO_URL := git@github.com:smartcontractkit/external-adapters-js.git
+CHAINLINK_REPO_URL := "git@github.com:smartcontractkit/external-adapters-js.git"
 
 .PHONY: clone_chainlink_repo
 clone_chainlink_repo:
@@ -129,13 +129,21 @@ clone_chainlink_repo:
 
 .PHONY: test_chainlink
 test_chainlink:
-	make 
+    # $(shell while netstat -lnt | awk '$$4 ~ /:8545$$/ {exit 1}'; do sleep 5; done)
+	while !</dev/tcp/localhost/8545; do sleep 5; done
+	# make up
+	DOCKERHOST=$(DOCKERHOST) docker-compose up -d
+	@make create_job
+	@echo "testing chainlink.... woohoo!"
+	make down
+
+.PHONY: fork_mainnet
+fork_mainnet:
+	yarn fork:mainnet > /dev/null &
 
 .PHONY: CI_tests
-CI_tests:
-	make clone_chainlink_repo
-	yarn test:unit
-	yarn test:integration
-	make up
-	make test_chainlink
-	make down
+CI_tests: fork_mainnet test_chainlink
+	# yarn test:unit
+	# yarn test:integration
+	# make clone_chainlink_repo
+    kill -9 $$(lsof -t -i :8545)
