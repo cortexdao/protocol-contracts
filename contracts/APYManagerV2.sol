@@ -74,22 +74,25 @@ contract APYManagerV2 is
         getStrategy[id] = strategy;
     }
 
+    /**
+     * @dev need this for as-yet-unknown tokens that may be air-dropped, etc.
+     */
     function registerTokens(address strategy, address[] calldata tokens)
         external
         override
         onlyOwner
     {
-        // need this for as-yet-unknown tokens that may be air-dropped, etc.
         // XXX: need to handle duplicates instead of nuking old tokens
         strategyToTokens[strategy] = tokens;
+
         for (uint256 i = 0; i < tokens.length; i++) {
             address token = tokens[i];
 
             if (!isTokenRegistered(token)) {
                 _tokenAddresses.push(token);
             }
-
-            tokenToStrategies[token].push(strategy); // FIXME: handle case when it's already in list
+            // FIXME: handle case when it's already in list
+            tokenToStrategies[token].push(strategy);
         }
     }
 
