@@ -2,12 +2,13 @@
 # yarn lockfile v1
 
 
-"@apy-finance/defi-legos@^2.1.1":
-  version "2.1.1"
-  resolved "https://npm.pkg.github.com/download/@apy-finance/defi-legos/2.1.1/9a8e0b40ccfe305be80b6a5b51ea316d226ee9f6bf7c8b93052a0dec0843b945#f0798c2eaedc9b2337390f9ee1fe7a0c82c2631a"
-  integrity sha512-wIk+vCfubxR88ChZVsPfYD5C2M7L7UYkhaYecBbzAybwpyiX7aNNWz7flNH5S34uAHY0+G9nkVpmV/rPf75LlA==
+"@apy-finance/defi-legos@^2.1.2":
+  version "2.1.2"
+  resolved "https://npm.pkg.github.com/download/@apy-finance/defi-legos/2.1.2/909052c7ff9a71f7eb57f77bb932db215fdcf63f4fd35d662ae5f01110410018#066106431eb58339d3ea089c9737a1a937955618"
+  integrity sha512-nDa4XJoVrl2hNgQCwHcQAafjBgsMo3sSer3pA4JzRWacmQVMupTFmE9uILJcMdF4AQOwdIIR8J64L5yDHThGoA==
   dependencies:
     axios "^0.21.0"
+    axios-rate-limit "^1.3.0"
     axios-retry "^3.1.9"
     chalk "^4.1.0"
     commander "^7.0.0"
@@ -1418,6 +1419,11 @@ aws4@^1.8.0:
   version "1.11.0"
   resolved "https://registry.yarnpkg.com/aws4/-/aws4-1.11.0.tgz#d61f46d83b2519250e2784daf5b09479a8b41c59"
   integrity sha512-xh1Rl34h6Fi1DC2WWKfxUTVqRsNnr6LsKz2+hfwDxQJWmrx8+c7ylaqBMcHfl1U1r2dsifOvKX3LQuLNZ+XSvA==
+
+axios-rate-limit@^1.3.0:
+  version "1.3.0"
+  resolved "https://registry.yarnpkg.com/axios-rate-limit/-/axios-rate-limit-1.3.0.tgz#03241d24c231c47432dab6e8234cfde819253c2e"
+  integrity sha512-cKR5wTbU/CeeyF1xVl5hl6FlYsmzDVqxlN4rGtfO5x7J83UxKDckudsW0yW21/ZJRcO0Qrfm3fUFbhEbWTLayw==
 
 axios-retry@^3.1.9:
   version "3.1.9"
