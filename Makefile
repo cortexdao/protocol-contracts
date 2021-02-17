@@ -4,6 +4,11 @@ SHELL := bash
 
 DOCKERHOST := $(shell ifconfig | grep -E "([0-9]{1,3}\.){3}[0-9]{1,3}" | grep -v 127.0.0.1 | awk '{ print $$2 }' | cut -f2 -d: | head -n1)
 
+# original name of repo is external-adapter-js
+CHAINLINK_REPO_FOLDER := "./chainlink-tvl-adapter"
+CHAINLINK_REPO_URL := "git@github.com:smartcontractkit/external-adapters-js.git"
+
+
 .PHONY: help
 help:
 	@echo ""
@@ -117,10 +122,6 @@ create_job:
 		fi \
 	"
 
-# original name of repo is external-adapter-js
-CHAINLINK_REPO_FOLDER := "./chainlink-tvl-adapter"
-CHAINLINK_REPO_URL := "git@github.com:smartcontractkit/external-adapters-js.git"
-
 .PHONY: clone_chainlink_repo
 clone_chainlink_repo:
 	@if [ ! -d "$(CHAINLINK_REPO_FOLDER)" ]; then \
@@ -131,23 +132,22 @@ clone_chainlink_repo:
 		cd -;\
 	fi
 
+
 .PHONY: test_chainlink
 test_chainlink:
-	@echo "testing chainlink.... woohoo!"
-
-.PHONY: fork_mainnet
-fork_mainnet:
-
-.PHONY: CI_tests
-CI_tests:
-	# yarn test:unit
-	# yarn test:integration
-	yarn fork:mainnet > /dev/null & echo $$! > ganache.PID
+	yarn fork:mainnet > /dev/null &
 	make clone_chainlink_repo
 	while !</dev/tcp/localhost/8545; do sleep 5; done
 	make up_detached
-	make test_chainlink
+	##################
+	# run tests here
+	##################
 	make down
-    # kill -9 $$(lsof -t -i :8545)
-	# kill -9 `cat ganache.PID`
-	pgrep -P `cat ganache.PID` | xargs kill -INT
+	(ps -ef | grep 'fork_mainnet' | grep -v grep | awk '{print $2}' | xargs kill -9) || true
+
+
+.PHONY: CI_tests
+CI_tests:
+	yarn test:unit
+	yarn test:integration
+	make test_chainlink
