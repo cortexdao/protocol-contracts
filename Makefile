@@ -32,9 +32,13 @@ build:
 
 .PHONY: up
 up:
+	@make up_detached
+	@make logs
+
+.PHONY: up_detached
+up_detached:
 	DOCKERHOST=$(DOCKERHOST) docker-compose up -d
 	@make create_job
-	@make logs
 
 .PHONY: down
 down:
@@ -129,21 +133,21 @@ clone_chainlink_repo:
 
 .PHONY: test_chainlink
 test_chainlink:
-    # $(shell while netstat -lnt | awk '$$4 ~ /:8545$$/ {exit 1}'; do sleep 5; done)
-	while !</dev/tcp/localhost/8545; do sleep 5; done
-	# make up
-	DOCKERHOST=$(DOCKERHOST) docker-compose up -d
-	@make create_job
 	@echo "testing chainlink.... woohoo!"
-	make down
 
 .PHONY: fork_mainnet
 fork_mainnet:
-	yarn fork:mainnet > /dev/null &
 
 .PHONY: CI_tests
-CI_tests: fork_mainnet test_chainlink
+CI_tests:
 	# yarn test:unit
 	# yarn test:integration
-	# make clone_chainlink_repo
-    kill -9 $$(lsof -t -i :8545)
+	yarn fork:mainnet > /dev/null & echo $$! > ganache.PID
+	make clone_chainlink_repo
+	while !</dev/tcp/localhost/8545; do sleep 5; done
+	make up_detached
+	make test_chainlink
+	make down
+    # kill -9 $$(lsof -t -i :8545)
+	# kill -9 `cat ganache.PID`
+	pgrep -P `cat ganache.PID` | xargs kill -INT
