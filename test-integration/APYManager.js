@@ -134,7 +134,7 @@ contract("APYManager", async (accounts) => {
     Manager = await ethers.getContractAt(APYManagerV2.abi, legos.apy.addresses.APY_MANAGER, signer)
   });
 
-  describe.only("Deploy Strategy", async () => {
+  describe("Deploy Strategy", async () => {
     it("Test Deploying strategy by non owner", async () => {
       const bad_signer = await ethers.provider.getSigner(_)
       const bad_MANAGER = await ethers.getContractAt(APYManagerV2.abi, legos.apy.addresses.APY_MANAGER, bad_signer)
@@ -154,7 +154,7 @@ contract("APYManager", async (accounts) => {
     })
   })
 
-  describe.only("Fund Strategy", async () => {
+  describe("Fund Strategy", async () => {
     it("Test funding strategy by non owner", async () => {
       const bad_signer = await ethers.provider.getSigner(_)
       const bad_MANAGER = await ethers.getContractAt(APYManagerV2.abi, legos.apy.addresses.APY_MANAGER, bad_signer)
@@ -191,7 +191,7 @@ contract("APYManager", async (accounts) => {
     })
   })
 
-  describe.only("Fund and Execute", async () => {
+  describe("Fund and Execute", async () => {
     it("Test fundAndExecute by non owner", async () => {
       const bad_signer = await ethers.provider.getSigner(_)
       const bad_MANAGER = await ethers.getContractAt(APYManagerV2.abi, legos.apy.addresses.APY_MANAGER, bad_signer)
@@ -231,7 +231,7 @@ contract("APYManager", async (accounts) => {
     })
   })
 
-  describe.only("Execute", async () => {
+  describe("Execute", async () => {
     it("Test Execute by non owner", async () => {
       const bad_signer = await ethers.provider.getSigner(_)
       const bad_MANAGER = await ethers.getContractAt(APYManagerV2.abi, legos.apy.addresses.APY_MANAGER, bad_signer)
@@ -262,7 +262,7 @@ contract("APYManager", async (accounts) => {
     })
   })
 
-  describe.only("Execute and Withdraw", async () => {
+  describe("Execute and Withdraw", async () => {
     it("Test executeAndWithdraw by non owner", async () => {
       const bad_signer = await ethers.provider.getSigner(_)
       const bad_MANAGER = await ethers.getContractAt(APYManagerV2.abi, legos.apy.addresses.APY_MANAGER, bad_signer)
@@ -297,7 +297,7 @@ contract("APYManager", async (accounts) => {
     })
   })
 
-  describe.only("Withdraw from Strategy", async () => {
+  describe("Withdraw from Strategy", async () => {
     it("Test withdrawing from strategy by non owner", async () => {
       const bad_signer = await ethers.provider.getSigner(_)
       const bad_MANAGER = await ethers.getContractAt(APYManagerV2.abi, legos.apy.addresses.APY_MANAGER, bad_signer)
