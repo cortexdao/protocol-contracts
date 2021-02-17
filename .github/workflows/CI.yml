@@ -54,7 +54,7 @@ jobs:
       run: yarn install
       if: steps.yarn-cache.outputs.cache-hit != 'true'
     - name: Install defi-legos
-      run: yarn populate -m apy,centre,tether
+      run: yarn populate -m apy,centre,maker,tether
       env:
         ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
     - name: Lint smart contracts
