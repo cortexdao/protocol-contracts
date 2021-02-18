@@ -1,25 +1,34 @@
 const { assert, expect } = require("chai");
 const hre = require("hardhat");
-const { artifacts, contract, ethers, web3 } = hre;
-const { expectRevert, expectEvent } = require("@openzeppelin/test-helpers");
+const { artifacts, ethers, web3 } = hre;
+const { AddressZero: ZERO_ADDRESS } = ethers.constants;
 const timeMachine = require("ganache-time-traveler");
-const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const ERC20 = artifacts.require("ERC20");
-const APYManager = artifacts.require("APYManagerV2");
-const APYGenericExecutor = artifacts.require("APYGenericExecutor");
-const Strategy = artifacts.require("Strategy");
 const IDetailedERC20 = new ethers.utils.Interface(
   artifacts.require("IDetailedERC20").abi
 );
+const erc20Interface = new ethers.utils.Interface(ERC20.abi);
 const MockContract = artifacts.require("MockContract");
 
 const bytes32 = ethers.utils.formatBytes32String;
 
-contract("APYManager", async (accounts) => {
-  const [deployer, admin, randomUser, account1] = accounts;
+describe("Contract: APYManager", async () => {
+  // signers
+  let deployer;
+  let admin;
+  let randomUser;
+  let account1;
 
-  const erc20Interface = new ethers.utils.Interface(ERC20.abi);
+  // contract factories
+  let APYManager;
+  let APYManagerV2;
+  let ProxyAdmin;
+  let APYGenericExecutor;
+  let Strategy;
+
+  // deployed contracts
   let manager;
+  let executor;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -34,8 +43,42 @@ contract("APYManager", async (accounts) => {
   });
 
   before(async () => {
-    manager = await APYManager.new({ from: deployer });
-    await manager.initialize(deployer);
+    [deployer, admin, randomUser, account1] = await ethers.getSigners();
+
+    APYManager = await ethers.getContractFactory("APYManager");
+    ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+    APYManagerV2 = await ethers.getContractFactory("APYManagerV2");
+    const ProxyConstructorArg = await ethers.getContractFactory(
+      "ProxyConstructorArg"
+    );
+    const TransparentUpgradeableProxy = await ethers.getContractFactory(
+      "TransparentUpgradeableProxy"
+    );
+    APYGenericExecutor = await ethers.getContractFactory("APYGenericExecutor");
+    executor = await APYGenericExecutor.deploy();
+    await executor.deployed();
+
+    const logic = await APYManager.deploy();
+    await logic.deployed();
+    const logicV2 = await APYManagerV2.deploy();
+    await logicV2.deployed();
+
+    const proxyAdmin = await ProxyAdmin.deploy();
+    await proxyAdmin.deployed();
+    const proxyConstructorArg = await ProxyConstructorArg.deploy();
+    await proxyConstructorArg.deployed();
+    const encodedArg = await proxyConstructorArg.getEncodedArg(
+      proxyAdmin.address
+    );
+    const proxy = await TransparentUpgradeableProxy.deploy(
+      logic.address,
+      proxyAdmin.address,
+      encodedArg
+    );
+    await proxy.deployed();
+
+    await proxyAdmin.upgrade(proxy.address, logicV2.address);
+    manager = await APYManagerV2.attach(proxy.address);
   });
 
   describe("Test initialization", async () => {
@@ -89,8 +132,8 @@ contract("APYManager", async (accounts) => {
   });
 
   describe.skip("Test setting pool ids", async () => {
-    it("Test setting pool ids by not owner", async () => { });
-    it("Test setting pool ids successfully", async () => { });
+    it("Test setting pool ids by not owner", async () => {});
+    it("Test setting pool ids successfully", async () => {});
   });
 
   describe("Setting admin address", async () => {
@@ -226,7 +269,7 @@ contract("APYManager", async (accounts) => {
         ),
         "Invalid Strategy"
       );
-    })
+    });
 
     it.skip("Fund strategy as owner", async () => {
       // TESTED IN INTEGRATION TESTS
@@ -382,6 +425,124 @@ contract("APYManager", async (accounts) => {
 
     it.skip("Withdraw from strategy as owner", async () => {
       // TESTED IN INTEGRATION TESTS
+    });
+  });
+
+  describe("Token registration", async () => {
+    let strategy;
+
+    before(async () => {
+      strategy = await manager.callStatic.deployStrategy(executor.address);
+      await manager.deployStrategy(executor.address);
+    });
+
+    describe("registerTokens", async () => {
+      it("Can register for deployed strategy", async () => {
+        const tokens = [];
+        await expect(manager.registerTokens(strategy, tokens)).to.not.be
+          .reverted;
+      });
+
+      it("Revert when registering for non-deployed address", async () => {
+        const tokens = [];
+        await expect(
+          manager.registerTokens(FAKE_ADDRESS, tokens)
+        ).to.be.revertedWith("INVALID_STRATEGY");
+      });
+    });
+
+    it("isTokenRegistered", async () => {
+      const tokenMock_1 = await deployMockContract(deployer, []);
+      const tokenMock_2 = await deployMockContract(deployer, []);
+      const tokenMock_3 = await deployMockContract(deployer, []);
+      const tokens = [tokenMock_1.address, tokenMock_2.address];
+      await manager.registerTokens(strategy, tokens);
+
+      expect(await manager.isTokenRegistered(tokenMock_1.address)).to.be.true;
+      expect(await manager.isTokenRegistered(tokenMock_2.address)).to.be.true;
+      expect(await manager.isTokenRegistered(tokenMock_3.address)).to.be.false;
+    });
+
+    describe("getTokenAddresses", async () => {
+      it("retrieves registered tokens", async () => {
+        const tokenMock_1 = await deployMockContract(deployer, []);
+        const tokenMock_2 = await deployMockContract(deployer, []);
+        const tokens = [tokenMock_1.address, tokenMock_2.address];
+        await manager.registerTokens(strategy, tokens);
+
+        expect(await manager.getTokenAddresses()).to.have.members(tokens);
+        expect(await manager.getTokenAddresses()).to.have.lengthOf(
+          tokens.length
+        );
+      });
+
+      it("Does not return duplicates", async () => {
+        const tokenMock_1 = await deployMockContract(deployer, []);
+        const tokenMock_2 = await deployMockContract(deployer, []);
+        const tokenMock_3 = await deployMockContract(deployer, []);
+        const tokenMock_4 = await deployMockContract(deployer, []);
+        const tokenMock_5 = await deployMockContract(deployer, []);
+
+        await manager.registerTokens(strategy, [
+          tokenMock_1.address,
+          tokenMock_2.address,
+        ]);
+        await manager.registerTokens(strategy, [tokenMock_3.address]);
+        await manager.registerTokens(strategy, [
+          tokenMock_2.address,
+          tokenMock_4.address,
+        ]);
+        await manager.registerTokens(strategy, [
+          tokenMock_1.address,
+          tokenMock_3.address,
+        ]);
+        await manager.registerTokens(strategy, [tokenMock_5.address]);
+
+        const expectedTokens = [
+          tokenMock_1.address,
+          tokenMock_2.address,
+          tokenMock_3.address,
+          tokenMock_4.address,
+          tokenMock_5.address,
+        ];
+        expect(await manager.getTokenAddresses()).to.have.members(
+          expectedTokens
+        );
+        expect(await manager.getTokenAddresses()).to.have.lengthOf(
+          expectedTokens.length
+        );
+      });
+
+      it("Returns tokens from multiple strategies", async () => {
+        // deploy another strategy
+        const strategy_2 = await manager.callStatic.deployStrategy(
+          executor.address
+        );
+        await manager.deployStrategy(executor.address);
+
+        // register with 1st strategy
+        const tokenMock_1 = await deployMockContract(deployer, []);
+        const tokenMock_2 = await deployMockContract(deployer, []);
+        const tokens = [tokenMock_1.address, tokenMock_2.address];
+        await manager.registerTokens(strategy, tokens);
+
+        // register with 2nd strategy
+        const tokenMock_3 = await deployMockContract(deployer, []);
+        const moreTokens = [tokenMock_2.address, tokenMock_3.address];
+        await manager.registerTokens(strategy_2, moreTokens);
+
+        const expectedTokens = [
+          tokenMock_1.address,
+          tokenMock_2.address,
+          tokenMock_3.address,
+        ];
+        expect(await manager.getTokenAddresses()).to.have.members(
+          expectedTokens
+        );
+        expect(await manager.getTokenAddresses()).to.have.lengthOf(
+          expectedTokens.length
+        );
+      });
     });
   });
 });
