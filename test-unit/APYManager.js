@@ -89,8 +89,8 @@ contract("APYManager", async (accounts) => {
   });
 
   describe.skip("Test setting pool ids", async () => {
-    it("Test setting pool ids by not owner", async () => {});
-    it("Test setting pool ids successfully", async () => {});
+    it("Test setting pool ids by not owner", async () => { });
+    it("Test setting pool ids successfully", async () => { });
   });
 
   describe("Setting admin address", async () => {
@@ -214,6 +214,20 @@ contract("APYManager", async (accounts) => {
       );
     });
 
+    it("Fund an invalid strategy", async () => {
+      await expectRevert(
+        manager.fundStrategy(
+          account1,
+          [
+            [TokenA.address, TokenB.address],
+            [0, 0],
+          ],
+          { from: deployer }
+        ),
+        "Invalid Strategy"
+      );
+    })
+
     it.skip("Fund strategy as owner", async () => {
       // TESTED IN INTEGRATION TESTS
     });
@@ -233,6 +247,24 @@ contract("APYManager", async (accounts) => {
           { from: randomUser }
         ),
         "revert Ownable: caller is not the owner"
+      );
+    });
+
+    it("Fund and Execute an invalid strategy", async () => {
+      await expectRevert(
+        manager.fundAndExecute(
+          account1,
+          [
+            [TokenA.address, TokenB.address],
+            [0, 0],
+          ],
+          [
+            [TokenA.address, encodedApprove],
+            [TokenB.address, encodedApprove],
+          ],
+          { from: deployer }
+        ),
+        "Invalid Strategy"
       );
     });
 
@@ -298,6 +330,24 @@ contract("APYManager", async (accounts) => {
       );
     });
 
+    it("Execute and Withdraw from an invalid strategy", async () => {
+      await expectRevert(
+        manager.executeAndWithdraw(
+          account1,
+          [
+            [TokenA.address, TokenB.address],
+            [0, 0],
+          ],
+          [
+            [TokenA.address, encodedApprove],
+            [TokenB.address, encodedApprove],
+          ],
+          { from: deployer }
+        ),
+        "Invalid Strategy"
+      );
+    });
+
     it.skip("Execute Withdraw as owner", async () => {
       // TESTED IN INTEGRATION TESTS
     });
@@ -313,6 +363,20 @@ contract("APYManager", async (accounts) => {
           { from: randomUser }
         ),
         "revert Ownable: caller is not the owner"
+      );
+    });
+
+    it("Withdraw from an invalid strategy", async () => {
+      await expectRevert(
+        manager.withdrawFromStrategy(
+          account1,
+          [
+            [TokenA.address, TokenB.address],
+            [0, 0],
+          ],
+          { from: deployer }
+        ),
+        "Invalid Strategy"
       );
     });
 
