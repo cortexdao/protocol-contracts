@@ -96,5 +96,13 @@ contract("APYManager: token registration", async (accounts) => {
 
       expect(await manager.isTokenRegistered(tokenMock.address)).to.be.true;
     });
+
+    it("getTokenAddresses", async () => {
+      const tokenMock = await deployMockContract(deployer, []);
+      const tokens = [tokenMock.address];
+      await manager.registerTokens(strategy, tokens);
+
+      expect(await manager.getTokenAddresses()).to.deep.equal(tokens);
+    });
   });
 });
