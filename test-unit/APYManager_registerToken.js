@@ -69,7 +69,7 @@ contract("APYManager: token registration", async (accounts) => {
     manager = await APYManagerV2.attach(proxy.address);
   });
 
-  describe.only("registerTokens", async () => {
+  describe("registerTokens", async () => {
     it("Can register for deployed strategy", async () => {
       const strategy = await manager.callStatic.deployStrategy(
         executor.address
