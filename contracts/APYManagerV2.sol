@@ -88,7 +88,7 @@ contract APYManagerV2 is
         override
         onlyOwner
     {
-        require(isStrategyDeployed[strategy], "Must be strategy address");
+        require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
         EnumerableSet.AddressSet storage strategyTokens =
             _strategyToTokens[strategy];
 

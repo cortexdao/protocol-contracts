@@ -65,7 +65,7 @@ contract("APYManager: token registration", async (accounts) => {
     manager = await APYManagerV2.attach(proxy.address);
   });
 
-  describe.only("Token registration", async () => {
+  describe("Token registration", async () => {
     let strategy;
 
     before(async () => {
@@ -84,7 +84,7 @@ contract("APYManager: token registration", async (accounts) => {
         const tokens = [];
         await expect(
           manager.registerTokens(FAKE_ADDRESS, tokens)
-        ).to.be.revertedWith("Must be strategy address");
+        ).to.be.revertedWith("INVALID_STRATEGY");
       });
     });
 
