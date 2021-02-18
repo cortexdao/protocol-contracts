@@ -108,7 +108,6 @@ contract APYManagerV2 is
     }
 
     function isTokenRegistered(address token) public view returns (bool) {
-        // return tokenToStrategies[token].length > 0;
         return _tokenAddresses.contains(token);
     }
 

@@ -69,12 +69,15 @@ contract("APYManager: token registration", async (accounts) => {
     manager = await APYManagerV2.attach(proxy.address);
   });
 
-  describe("registerTokens", async () => {
-    it("Can register for deployed strategy", async () => {
-      const strategy = await manager.callStatic.deployStrategy(
-        executor.address
-      );
+  describe.only("registerTokens", async () => {
+    let strategy;
+
+    before(async () => {
+      strategy = await manager.callStatic.deployStrategy(executor.address);
       await manager.deployStrategy(executor.address);
+    });
+
+    it("Can register for deployed strategy", async () => {
       const tokens = [];
       await expect(manager.registerTokens(strategy, tokens)).to.not.be.reverted;
     });
@@ -84,6 +87,14 @@ contract("APYManager: token registration", async (accounts) => {
       await expect(
         manager.registerTokens(FAKE_ADDRESS, tokens)
       ).to.be.revertedWith("Must be strategy address");
+    });
+
+    it("isTokenRegistered", async () => {
+      const tokenMock = await deployMockContract(deployer, []);
+      const tokens = [tokenMock.address];
+      await manager.registerTokens(strategy, tokens);
+
+      expect(await manager.isTokenRegistered(tokenMock.address)).to.be.true;
     });
   });
 });
