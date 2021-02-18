@@ -89,21 +89,23 @@ contract APYManagerV2 is
         onlyOwner
     {
         require(isStrategyDeployed[strategy], "Must be strategy address");
-        EnumerableSet.AddressSet storage strategyOldTokens =
+        EnumerableSet.AddressSet storage strategyTokens =
             _strategyToTokens[strategy];
 
         for (uint256 i = 0; i < tokens.length; i++) {
             address token = tokens[i];
+            EnumerableSet.AddressSet storage tokenStrategies =
+                _tokenToStrategies[token];
 
             if (!isTokenRegistered(token)) {
                 _tokenAddresses.add(token);
             }
-            if (!strategyOldTokens.contains(token)) {
-                strategyOldTokens.add(token);
+            if (!strategyTokens.contains(token)) {
+                strategyTokens.add(token);
             }
-            EnumerableSet.AddressSet storage strategies =
-                _tokenToStrategies[token];
-            if (!strategies.contains(strategy)) strategies.add(strategy);
+            if (!tokenStrategies.contains(strategy)) {
+                tokenStrategies.add(strategy);
+            }
         }
     }
 
@@ -124,10 +126,10 @@ contract APYManagerV2 is
             APYPoolToken pool = APYPoolToken(allocation.pools[i]);
             IDetailedERC20 underlyer = pool.underlyer();
             uint256 poolAmount = allocation.amounts[i];
-            uint256 poolValue = pool.getEthValueFromTokenAmount(poolAmount);
+            // uint256 poolValue = pool.getEthValueFromTokenAmount(poolAmount);
 
-            uint256 tokenEthPrice = pool.getTokenEthPrice();
-            uint8 decimals = underlyer.decimals();
+            // uint256 tokenEthPrice = pool.getTokenEthPrice();
+            // uint8 decimals = underlyer.decimals();
             // uint256 mintAmount =
             //     mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
 
@@ -176,10 +178,10 @@ contract APYManagerV2 is
             APYPoolToken pool = APYPoolToken(allocation.pools[i]);
             IDetailedERC20 underlyer = pool.underlyer();
             uint256 amountToSend = allocation.amounts[i];
-            uint256 poolValue = pool.getEthValueFromTokenAmount(amountToSend);
+            // uint256 poolValue = pool.getEthValueFromTokenAmount(amountToSend);
 
-            uint256 tokenEthPrice = pool.getTokenEthPrice();
-            uint8 decimals = underlyer.decimals();
+            // uint256 tokenEthPrice = pool.getTokenEthPrice();
+            // uint8 decimals = underlyer.decimals();
             // uint256 mintAmount =
             //     mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
 
