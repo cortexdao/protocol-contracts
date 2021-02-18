@@ -4,7 +4,11 @@ const { artifacts, ethers, waffle, web3 } = hre;
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
 const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
-const { FAKE_ADDRESS, expectEventInTransaction } = require("../utils/helpers");
+const {
+  FAKE_ADDRESS,
+  expectEventInTransaction,
+  ANOTHER_FAKE_ADDRESS,
+} = require("../utils/helpers");
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
 const erc20Interface = new ethers.utils.Interface(
   artifacts.require("ERC20").abi
@@ -12,11 +16,10 @@ const erc20Interface = new ethers.utils.Interface(
 
 const bytes32 = ethers.utils.formatBytes32String;
 
-describe.only("Contract: APYManager", () => {
+describe("Contract: APYManager", () => {
   // signers
   let deployer;
   let randomUser;
-  let account1;
 
   // contract factories
   let APYManager;
@@ -41,7 +44,7 @@ describe.only("Contract: APYManager", () => {
   });
 
   before(async () => {
-    [deployer, randomUser, account1] = await ethers.getSigners();
+    [deployer, randomUser] = await ethers.getSigners();
 
     APYManager = await ethers.getContractFactory("APYManager");
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
@@ -187,10 +190,7 @@ describe.only("Contract: APYManager", () => {
         await manager.setPoolIds([bytes32("pool 1"), bytes32("pool 2")]);
 
         const mockToken = await deployMockContract(deployer, []);
-        const balanceOf = IDetailedERC20.encodeFunctionData("balanceOf", [
-          ZERO_ADDRESS,
-        ]);
-        await mockToken.givenMethodReturnUint(balanceOf, 1);
+        await mockToken.mock.balanceOf.returns(1);
 
         const balance = await manager.balanceOf(mockToken.address);
         expect(balance).to.bignumber.equal("2");
@@ -205,31 +205,35 @@ describe.only("Contract: APYManager", () => {
   });
 
   describe("Strategy factory", () => {
-    let encodedApprove;
-    let genericExecutor;
     let strategy;
+
     let tokenA;
     let tokenB;
+    let poolA;
+    let poolB;
+
+    // test data
+    const spenderAddress = ANOTHER_FAKE_ADDRESS;
+    const approvalAmount = "100";
+    const encodedApprove = erc20Interface.encodeFunctionData(
+      "approve(address,uint256)",
+      [spenderAddress, approvalAmount]
+    );
 
     before("Deploy strategy", async () => {
-      encodedApprove = erc20Interface.encodeFunctionData(
-        "approve(address,uint256)",
-        [account1.address, 100]
-      );
-
       // NOTE: I use a real ERC20 contract here since MockContract cannot emit events
       const ERC20 = await ethers.getContractFactory("ERC20");
       tokenA = await ERC20.deploy("TokenA", "A");
       await tokenA.deployed();
       tokenB = await ERC20.deploy("TokenB", "B");
       await tokenB.deployed();
+      poolA = await deployMockContract(deployer, []);
+      poolB = await deployMockContract(deployer, []);
 
-      genericExecutor = await APYGenericExecutor.deploy();
-      await genericExecutor.deployed();
       const strategyAddress = await manager.callStatic.deployStrategy(
-        genericExecutor.address
+        executor.address
       );
-      await manager.deployStrategy(genericExecutor.address);
+      await manager.deployStrategy(executor.address);
 
       const Strategy = await ethers.getContractFactory("Strategy");
       strategy = await Strategy.attach(strategyAddress);
@@ -242,8 +246,8 @@ describe.only("Contract: APYManager", () => {
     describe("fundStrategy", () => {
       it("Non-owner cannot call", async () => {
         await expect(
-          manager.fundStrategy(strategy.address, [
-            [tokenA.address, tokenB.address],
+          manager.connect(randomUser).fundStrategy(strategy.address, [
+            [poolA.address, poolB.address],
             [0, 0],
           ])
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
@@ -251,8 +255,8 @@ describe.only("Contract: APYManager", () => {
 
       it("Revert on invalid strategy", async () => {
         await expect(
-          manager.fundStrategy(account1.address, [
-            [tokenA.address, tokenB.address],
+          manager.fundStrategy(FAKE_ADDRESS, [
+            [poolA.address, poolB.address],
             [0, 0],
           ])
         ).to.be.revertedWith("Invalid Strategy");
@@ -266,10 +270,10 @@ describe.only("Contract: APYManager", () => {
     describe("fundAndExecute", () => {
       it("Non-owner cannot call", async () => {
         await expect(
-          manager.fundAndExecute(
+          manager.connect(randomUser).fundAndExecute(
             strategy.address,
             [
-              [tokenA.address, tokenB.address],
+              [poolA.address, poolB.address],
               [0, 0],
             ],
             [
@@ -283,9 +287,9 @@ describe.only("Contract: APYManager", () => {
       it("Revert on invalid strategy", async () => {
         await expect(
           manager.fundAndExecute(
-            account1.address,
+            FAKE_ADDRESS,
             [
-              [tokenA.address, tokenB.address],
+              [poolA.address, poolB.address],
               [0, 0],
             ],
             [
@@ -304,19 +308,14 @@ describe.only("Contract: APYManager", () => {
     describe("execute", () => {
       it("Non-owner cannot call", async () => {
         await expect(
-          manager.execute(strategy.address, [
+          manager.connect(randomUser).execute(strategy.address, [
             [tokenA.address, encodedApprove],
             [tokenB.address, encodedApprove],
-          ]),
-          "revert Ownable: caller is not the owner"
-        );
+          ])
+        ).to.be.revertedWith("revert Ownable: caller is not the owner");
       });
 
       it("Owner can call", async () => {
-        const encodedApprove = erc20Interface.encodeFunctionData(
-          "approve(address,uint256)",
-          [account1.address, 100]
-        );
         const trx = await manager.execute(strategy.address, [
           [tokenA.address, encodedApprove],
           [tokenB.address, encodedApprove],
@@ -324,13 +323,13 @@ describe.only("Contract: APYManager", () => {
 
         await expectEventInTransaction(trx.hash, tokenA, "Approval", {
           owner: strategy.address,
-          spender: account1.address,
-          value: "100",
+          spender: spenderAddress,
+          value: approvalAmount,
         });
         await expectEventInTransaction(trx.hash, tokenB, "Approval", {
           owner: strategy.address,
-          spender: account1.address,
-          value: "100",
+          spender: spenderAddress,
+          value: approvalAmount,
         });
       });
     });
@@ -338,10 +337,10 @@ describe.only("Contract: APYManager", () => {
     describe("executeAndWithdraw", () => {
       it("Non-owner cannot call", async () => {
         await expect(
-          manager.executeAndWithdraw(
+          manager.connect(randomUser).executeAndWithdraw(
             strategy.address,
             [
-              [tokenA.address, tokenB.address],
+              [poolA.address, poolB.address],
               [0, 0],
             ],
             [
@@ -355,9 +354,9 @@ describe.only("Contract: APYManager", () => {
       it("Revert on invalid strategy", async () => {
         await expect(
           manager.executeAndWithdraw(
-            account1.address,
+            FAKE_ADDRESS,
             [
-              [tokenA.address, tokenB.address],
+              [poolA.address, poolB.address],
               [0, 0],
             ],
             [
@@ -376,8 +375,8 @@ describe.only("Contract: APYManager", () => {
     describe("withdrawFromStrategy", () => {
       it("Non-owner cannot call", async () => {
         await expect(
-          manager.withdrawFromStrategy(strategy.address, [
-            [tokenA.address, tokenB.address],
+          manager.connect(randomUser).withdrawFromStrategy(strategy.address, [
+            [poolA.address, poolB.address],
             [0, 0],
           ])
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
@@ -385,8 +384,8 @@ describe.only("Contract: APYManager", () => {
 
       it("Revert on invalid strategy", async () => {
         await expect(
-          manager.withdrawFromStrategy(account1.address, [
-            [tokenA.address, tokenB.address],
+          manager.withdrawFromStrategy(FAKE_ADDRESS, [
+            [poolA.address, poolB.address],
             [0, 0],
           ])
         ).to.be.revertedWith("Invalid Strategy");
