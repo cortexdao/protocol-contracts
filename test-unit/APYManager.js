@@ -8,13 +8,12 @@ const {
   FAKE_ADDRESS,
   expectEventInTransaction,
   ANOTHER_FAKE_ADDRESS,
+  tokenAmountToBigNumber,
 } = require("../utils/helpers");
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
 const erc20Interface = new ethers.utils.Interface(
   artifacts.require("ERC20").abi
 );
-
-const bytes32 = ethers.utils.formatBytes32String;
 
 describe("Contract: APYManager", () => {
   // signers
@@ -348,16 +347,100 @@ describe("Contract: APYManager", () => {
   });
 
   describe("Asset allocation", () => {
-    it("balanceOf", async () => {
-      const mockRegistry = await deployMockContract(deployer, []);
-      await manager.setAddressRegistry(mockRegistry.address);
-      await manager.setPoolIds([bytes32("pool 1"), bytes32("pool 2")]);
+    describe.only("balanceOf", async () => {
+      it("Single strategy and token", async () => {
+        const strategy = await manager.callStatic.deployStrategy(
+          executor.address
+        );
+        await manager.deployStrategy(executor.address);
 
-      const mockToken = await deployMockContract(deployer, IDetailedERC20.abi);
-      await mockToken.mock.balanceOf.returns(1);
+        const mockToken = await deployMockContract(
+          deployer,
+          IDetailedERC20.abi
+        );
+        const expectedBalance = "129387";
+        await mockToken.mock.balanceOf.returns(expectedBalance);
 
-      const balance = await manager.balanceOf(mockToken.address);
-      expect(balance).to.equal("2");
+        await manager.registerTokens(strategy, [mockToken.address]);
+
+        const balance = await manager.balanceOf(mockToken.address);
+        expect(balance).to.equal(expectedBalance);
+      });
+
+      it("Multiple strategies", async () => {
+        const strategy_1 = await manager.callStatic.deployStrategy(
+          executor.address
+        );
+        await manager.deployStrategy(executor.address);
+        const strategy_2 = await manager.callStatic.deployStrategy(
+          executor.address
+        );
+        await manager.deployStrategy(executor.address);
+
+        const mockToken = await deployMockContract(
+          deployer,
+          IDetailedERC20.abi
+        );
+        const balance_1 = tokenAmountToBigNumber("129382");
+        const balance_2 = tokenAmountToBigNumber("298");
+        await mockToken.mock.balanceOf.withArgs(strategy_1).returns(balance_1);
+        await mockToken.mock.balanceOf.withArgs(strategy_2).returns(balance_2);
+        const expectedBalance = balance_1.add(balance_2);
+
+        await manager.registerTokens(strategy_1, [mockToken.address]);
+        await manager.registerTokens(strategy_2, [mockToken.address]);
+
+        expect(await manager.balanceOf(mockToken.address)).to.equal(
+          expectedBalance
+        );
+      });
+
+      it("Multiple strategies and multiple tokens", async () => {
+        const strategy_1 = await manager.callStatic.deployStrategy(
+          executor.address
+        );
+        await manager.deployStrategy(executor.address);
+        const strategy_2 = await manager.callStatic.deployStrategy(
+          executor.address
+        );
+        await manager.deployStrategy(executor.address);
+
+        const token_a = await deployMockContract(deployer, IDetailedERC20.abi);
+        const balance_a_1 = tokenAmountToBigNumber("129382");
+        const balance_a_2 = tokenAmountToBigNumber("0");
+        await token_a.mock.balanceOf.withArgs(strategy_1).returns(balance_a_1);
+        await token_a.mock.balanceOf.withArgs(strategy_2).returns(balance_a_2);
+        const expectedBalance_a = balance_a_1.add(balance_a_2);
+
+        const token_b = await deployMockContract(deployer, IDetailedERC20.abi);
+        const balance_b_1 = tokenAmountToBigNumber("0");
+        const balance_b_2 = tokenAmountToBigNumber("9921");
+        await token_b.mock.balanceOf.withArgs(strategy_1).returns(balance_b_1);
+        await token_b.mock.balanceOf.withArgs(strategy_2).returns(balance_b_2);
+        const expectedBalance_b = balance_b_1.add(balance_b_2);
+
+        const token_c = await deployMockContract(deployer, IDetailedERC20.abi);
+        const balance_c_1 = tokenAmountToBigNumber("2812");
+        const balance_c_2 = tokenAmountToBigNumber("678123");
+        await token_c.mock.balanceOf.withArgs(strategy_1).returns(balance_c_1);
+        await token_c.mock.balanceOf.withArgs(strategy_2).returns(balance_c_2);
+        const expectedBalance_c = balance_c_1.add(balance_c_2);
+
+        const tokens = [token_a.address, token_b.address, token_c.address];
+
+        await manager.registerTokens(strategy_1, tokens);
+        await manager.registerTokens(strategy_2, tokens);
+
+        expect(await manager.balanceOf(token_a.address)).to.equal(
+          expectedBalance_a
+        );
+        expect(await manager.balanceOf(token_b.address)).to.equal(
+          expectedBalance_b
+        );
+        expect(await manager.balanceOf(token_c.address)).to.equal(
+          expectedBalance_c
+        );
+      });
     });
 
     it("symbolOf", async () => {
