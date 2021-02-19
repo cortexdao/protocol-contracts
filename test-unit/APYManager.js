@@ -347,7 +347,7 @@ describe("Contract: APYManager", () => {
   });
 
   describe("Asset allocation", () => {
-    describe.only("balanceOf", async () => {
+    describe("balanceOf", async () => {
       it("Single strategy and token", async () => {
         const strategy = await manager.callStatic.deployStrategy(
           executor.address
@@ -458,6 +458,14 @@ describe("Contract: APYManager", () => {
       });
 
       describe("registerTokens", async () => {
+        it("Non-owner cannot call", async () => {
+          expect.fail("Write the test!");
+        });
+
+        it("Owner can call", async () => {
+          expect.fail("Write the test!");
+        });
+
         it("Can register for deployed strategy", async () => {
           const tokens = [];
           await expect(manager.registerTokens(strategy, tokens)).to.not.be
@@ -469,6 +477,16 @@ describe("Contract: APYManager", () => {
           await expect(
             manager.registerTokens(FAKE_ADDRESS, tokens)
           ).to.be.revertedWith("INVALID_STRATEGY");
+        });
+      });
+
+      describe("deregisterTokens", async () => {
+        it("Non-owner cannot call", async () => {
+          expect.fail("Write the test!");
+        });
+
+        it("Owner can call", async () => {
+          expect.fail("Write the test!");
         });
       });
 
