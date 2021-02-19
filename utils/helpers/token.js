@@ -3,15 +3,14 @@ const { artifacts, ethers } = hre;
 const { send } = require("@openzeppelin/test-helpers");
 const { tokenAmountToBigNumber } = require("./unit");
 
-const ERC20 = artifacts.require("ERC20");
-
 const transferERC20Tokens = async (
   tokenAddress,
   receiverAddress,
   ownerAddress,
   amount
 ) => {
-  const token = await ERC20.at(tokenAddress);
+  const IDetailedERC20 = artifacts.require("IDetailedERC20");
+  const token = await IDetailedERC20.at(tokenAddress);
   await token.transfer(receiverAddress, amount, {
     from: ownerAddress,
     gasPrice: 0,
@@ -19,7 +18,8 @@ const transferERC20Tokens = async (
 };
 
 const getERC20Balance = async (contractAddress, accountAddress) => {
-  const token = await ERC20.at(contractAddress);
+  const IDetailedERC20 = artifacts.require("IDetailedERC20");
+  const token = await IDetailedERC20.at(contractAddress);
   const balance = await token.balanceOf(accountAddress);
   const symbol = await token.symbol();
   const decimals = await token.decimals();

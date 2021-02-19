@@ -5,6 +5,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/utils/EnumerableSet.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAddressRegistry.sol";
 import "./interfaces/IDetailedERC20.sol";
@@ -21,6 +22,7 @@ contract APYManagerV2 is
 {
     using SafeMath for uint256;
     using SafeERC20 for IDetailedERC20;
+    using EnumerableSet for EnumerableSet.AddressSet;
 
     /* ------------------------------- */
     /* impl-specific storage variables */
@@ -31,14 +33,18 @@ contract APYManagerV2 is
     APYMetaPoolToken public mApt;
 
     bytes32[] internal _poolIds;
-    address[] internal _tokenAddresses;
+    // Replacing this last V1 storage slot is ok:
+    // address[] internal _tokenAddresses;
+    // WARNING: to be safe, we should use `deleteTokenAddresses`
+    // before the V2 upgrade
+    EnumerableSet.AddressSet internal _tokenAddresses;
 
     // V2
     mapping(bytes32 => address) public getStrategy;
     mapping(address => bool) public isStrategyDeployed;
 
-    mapping(address => address[]) public strategyToTokens;
-    mapping(address => address[]) public tokenToStrategies;
+    mapping(address => EnumerableSet.AddressSet) internal _strategyToTokens;
+    mapping(address => EnumerableSet.AddressSet) internal _tokenToStrategies;
     /* ------------------------------- */
 
     event AdminChanged(address);
@@ -74,27 +80,37 @@ contract APYManagerV2 is
         getStrategy[id] = strategy;
     }
 
+    /**
+     * @dev need this for as-yet-unknown tokens that may be air-dropped, etc.
+     */
     function registerTokens(address strategy, address[] calldata tokens)
         external
         override
         onlyOwner
     {
-        // need this for as-yet-unknown tokens that may be air-dropped, etc.
-        // XXX: need to handle duplicates instead of nuking old tokens
-        strategyToTokens[strategy] = tokens;
+        require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
+        EnumerableSet.AddressSet storage strategyTokens =
+            _strategyToTokens[strategy];
+
         for (uint256 i = 0; i < tokens.length; i++) {
             address token = tokens[i];
+            EnumerableSet.AddressSet storage tokenStrategies =
+                _tokenToStrategies[token];
 
             if (!isTokenRegistered(token)) {
-                _tokenAddresses.push(token);
+                _tokenAddresses.add(token);
             }
-
-            tokenToStrategies[token].push(strategy); // FIXME: handle case when it's already in list
+            if (!strategyTokens.contains(token)) {
+                strategyTokens.add(token);
+            }
+            if (!tokenStrategies.contains(strategy)) {
+                tokenStrategies.add(strategy);
+            }
         }
     }
 
     function isTokenRegistered(address token) public view returns (bool) {
-        return tokenToStrategies[token].length > 0;
+        return _tokenAddresses.contains(token);
     }
 
     function fundStrategy(
@@ -105,14 +121,15 @@ contract APYManagerV2 is
             allocation.pools.length == allocation.amounts.length,
             "allocation length mismatch"
         );
+        require(isStrategyDeployed[strategy], "Invalid Strategy");
         for (uint256 i = 0; i < allocation.pools.length; i++) {
             APYPoolToken pool = APYPoolToken(allocation.pools[i]);
             IDetailedERC20 underlyer = pool.underlyer();
             uint256 poolAmount = allocation.amounts[i];
-            uint256 poolValue = pool.getEthValueFromTokenAmount(poolAmount);
+            // uint256 poolValue = pool.getEthValueFromTokenAmount(poolAmount);
 
-            uint256 tokenEthPrice = pool.getTokenEthPrice();
-            uint8 decimals = underlyer.decimals();
+            // uint256 tokenEthPrice = pool.getTokenEthPrice();
+            // uint8 decimals = underlyer.decimals();
             // uint256 mintAmount =
             //     mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
 
@@ -135,6 +152,7 @@ contract APYManagerV2 is
         override
         onlyOwner
     {
+        require(isStrategyDeployed[strategy], "Invalid Strategy");
         IStrategy(strategy).execute(steps);
     }
 
@@ -155,14 +173,15 @@ contract APYManagerV2 is
             allocation.pools.length == allocation.amounts.length,
             "allocation length mismatch"
         );
+        require(isStrategyDeployed[strategy], "Invalid Strategy");
         for (uint256 i = 0; i < allocation.pools.length; i++) {
             APYPoolToken pool = APYPoolToken(allocation.pools[i]);
             IDetailedERC20 underlyer = pool.underlyer();
             uint256 amountToSend = allocation.amounts[i];
-            uint256 poolValue = pool.getEthValueFromTokenAmount(amountToSend);
+            // uint256 poolValue = pool.getEthValueFromTokenAmount(amountToSend);
 
-            uint256 tokenEthPrice = pool.getTokenEthPrice();
-            uint8 decimals = underlyer.decimals();
+            // uint256 tokenEthPrice = pool.getTokenEthPrice();
+            // uint8 decimals = underlyer.decimals();
             // uint256 mintAmount =
             //     mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
 
@@ -212,7 +231,12 @@ contract APYManagerV2 is
         override
         returns (address[] memory)
     {
-        return _tokenAddresses;
+        uint256 length = _tokenAddresses.length();
+        address[] memory tokenAddresses = new address[](length);
+        for (uint256 i = 0; i < length; i++) {
+            tokenAddresses[i] = _tokenAddresses.at(i);
+        }
+        return tokenAddresses;
     }
 
     /// @dev part of temporary implementation for Chainlink integration;
@@ -233,10 +257,10 @@ contract APYManagerV2 is
      */
     function balanceOf(address token) external view override returns (uint256) {
         IDetailedERC20 erc20 = IDetailedERC20(token);
-        address[] storage strategies = tokenToStrategies[token];
+        EnumerableSet.AddressSet storage strategies = _tokenToStrategies[token];
         uint256 balance = 0;
-        for (uint256 i = 0; i < strategies.length; i++) {
-            address strategy = strategies[i];
+        for (uint256 i = 0; i < strategies.length(); i++) {
+            address strategy = strategies.at(i);
             uint256 strategyBalance = erc20.balanceOf(strategy);
             balance = balance.add(strategyBalance);
         }

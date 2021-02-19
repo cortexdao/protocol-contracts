@@ -1,25 +1,35 @@
 const { assert, expect } = require("chai");
 const hre = require("hardhat");
-const { artifacts, contract, ethers, web3 } = hre;
-const { expectRevert, expectEvent } = require("@openzeppelin/test-helpers");
+const { artifacts, ethers, waffle, web3 } = hre;
+const { AddressZero: ZERO_ADDRESS } = ethers.constants;
+const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
-const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
-const ERC20 = artifacts.require("ERC20");
-const APYManager = artifacts.require("APYManagerV2");
-const APYGenericExecutor = artifacts.require("APYGenericExecutor");
-const Strategy = artifacts.require("Strategy");
-const IDetailedERC20 = new ethers.utils.Interface(
-  artifacts.require("IDetailedERC20").abi
+const {
+  FAKE_ADDRESS,
+  expectEventInTransaction,
+  ANOTHER_FAKE_ADDRESS,
+} = require("../utils/helpers");
+const IDetailedERC20 = artifacts.require("IDetailedERC20");
+const erc20Interface = new ethers.utils.Interface(
+  artifacts.require("ERC20").abi
 );
-const MockContract = artifacts.require("MockContract");
 
 const bytes32 = ethers.utils.formatBytes32String;
 
-contract("APYManager", async (accounts) => {
-  const [deployer, admin, randomUser, account1] = accounts;
+describe("Contract: APYManager", () => {
+  // signers
+  let deployer;
+  let randomUser;
 
-  const erc20Interface = new ethers.utils.Interface(ERC20.abi);
+  // contract factories
+  let APYManager;
+  let APYManagerV2;
+  let ProxyAdmin;
+  let APYGenericExecutor;
+
+  // deployed contracts
   let manager;
+  let executor;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -34,88 +44,117 @@ contract("APYManager", async (accounts) => {
   });
 
   before(async () => {
-    manager = await APYManager.new({ from: deployer });
-    await manager.initialize(deployer);
+    [deployer, randomUser] = await ethers.getSigners();
+
+    APYManager = await ethers.getContractFactory("APYManager");
+    ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+    APYManagerV2 = await ethers.getContractFactory("APYManagerV2");
+    const ProxyConstructorArg = await ethers.getContractFactory(
+      "ProxyConstructorArg"
+    );
+    const TransparentUpgradeableProxy = await ethers.getContractFactory(
+      "TransparentUpgradeableProxy"
+    );
+    APYGenericExecutor = await ethers.getContractFactory("APYGenericExecutor");
+    executor = await APYGenericExecutor.deploy();
+    await executor.deployed();
+
+    const logic = await APYManager.deploy();
+    await logic.deployed();
+    const logicV2 = await APYManagerV2.deploy();
+    await logicV2.deployed();
+
+    const proxyAdmin = await ProxyAdmin.deploy();
+    await proxyAdmin.deployed();
+    const proxyConstructorArg = await ProxyConstructorArg.deploy();
+    await proxyConstructorArg.deployed();
+    const encodedArg = await proxyConstructorArg.getEncodedArg(
+      proxyAdmin.address
+    );
+    const proxy = await TransparentUpgradeableProxy.deploy(
+      logic.address,
+      proxyAdmin.address,
+      encodedArg
+    );
+    await proxy.deployed();
+
+    await proxyAdmin.upgrade(proxy.address, logicV2.address);
+    manager = await APYManagerV2.attach(proxy.address);
   });
 
-  describe("Test initialization", async () => {
-    it("Revert when admin is zero address", async () => {
-      let tempManager = await APYManager.new({ from: deployer });
-      await expectRevert(tempManager.initialize(ZERO_ADDRESS), "INVALID_ADMIN");
-    });
-  });
-
-  describe("Defaults", async () => {
-    it("Owner is set to deployer", async () => {
-      assert.equal(await manager.owner(), deployer);
-    });
-  });
-
-  describe("Set metapool token", async () => {
-    it("Test setting metapool token address as not owner", async () => {
-      await expectRevert(
-        manager.setMetaPoolToken(account1, { from: randomUser }),
-        "revert Ownable: caller is not the owner"
-      );
-    });
-
-    it("Test setting metapool token successfully", async () => {
-      await manager.setMetaPoolToken(account1, { from: deployer });
-      const mAptToken = await manager.mApt();
-      assert.equal(mAptToken, account1);
-    });
-  });
-
-  describe("Set address registry", async () => {
-    it("Test setting address registry as 0x0 address", async () => {
-      await expectRevert(
-        manager.setAddressRegistry(ZERO_ADDRESS, { from: deployer }),
-        "Invalid address"
-      );
-    });
-
-    it("Test setting address registry as not owner", async () => {
-      await expectRevert(
-        manager.setAddressRegistry(account1, { from: randomUser }),
-        "revert Ownable: caller is not the owner"
-      );
-    });
-
-    it("Test setting address registry successfully", async () => {
-      await manager.setAddressRegistry(account1, { from: deployer });
-      const registry = await manager.addressRegistry();
-      assert.equal(registry, account1);
-    });
-  });
-
-  describe.skip("Test setting pool ids", async () => {
-    it("Test setting pool ids by not owner", async () => {});
-    it("Test setting pool ids successfully", async () => {});
-  });
-
-  describe("Setting admin address", async () => {
-    it("Owner can set to valid address", async () => {
-      await manager.setAdminAddress(randomUser, { from: deployer });
-      const proxyAdmin = await manager.proxyAdmin();
-      assert.equal(proxyAdmin, randomUser);
-    });
-
-    it("Revert when non-owner attempts to set", async () => {
-      await expectRevert(
-        manager.setAdminAddress(admin, { from: randomUser }),
-        "revert Ownable: caller is not the owner"
-      );
-    });
-
-    it("Cannot set to zero address", async () => {
-      await expectRevert(
-        manager.setAdminAddress(ZERO_ADDRESS, { from: deployer }),
+  describe("Test initialization", () => {
+    it("Cannot initialize with zero address", async () => {
+      let tempManager = await APYManager.deploy();
+      await tempManager.deployed();
+      await expect(tempManager.initialize(ZERO_ADDRESS)).to.be.revertedWith(
         "INVALID_ADMIN"
       );
     });
   });
 
-  describe("Asset allocation", async () => {
+  describe("Defaults", () => {
+    it("Owner is set to deployer", async () => {
+      expect(await manager.owner()).to.equal(deployer.address);
+    });
+  });
+
+  describe("Set metapool token", () => {
+    it("Non-owner cannot set", async () => {
+      await expect(
+        manager.connect(randomUser).setMetaPoolToken(FAKE_ADDRESS)
+      ).to.be.revertedWith("revert Ownable: caller is not the owner");
+    });
+
+    it("Owner can set", async () => {
+      await manager.connect(deployer).setMetaPoolToken(FAKE_ADDRESS);
+      expect(await manager.mApt()).to.equal(FAKE_ADDRESS);
+    });
+  });
+
+  describe("Set address registry", () => {
+    it("Cannot set to zero address", async () => {
+      await expect(
+        manager.connect(deployer).setAddressRegistry(ZERO_ADDRESS)
+      ).to.be.revertedWith("Invalid address");
+    });
+
+    it("Non-owner cannot set", async () => {
+      await expect(
+        manager.connect(randomUser).setAddressRegistry(FAKE_ADDRESS)
+      ).to.be.revertedWith("revert Ownable: caller is not the owner");
+    });
+
+    it("Owner can set", async () => {
+      await manager.connect(deployer).setAddressRegistry(FAKE_ADDRESS);
+      expect(await manager.addressRegistry()).to.equal(FAKE_ADDRESS);
+    });
+  });
+
+  describe.skip("Test setting pool ids", () => {
+    it("Test setting pool ids by not owner", async () => {});
+    it("Test setting pool ids successfully", async () => {});
+  });
+
+  describe("Setting admin address", () => {
+    it("Owner can set to valid address", async () => {
+      await manager.connect(deployer).setAdminAddress(FAKE_ADDRESS);
+      expect(await manager.proxyAdmin()).to.equal(FAKE_ADDRESS);
+    });
+
+    it("Non-owner cannot set", async () => {
+      await expect(
+        manager.connect(randomUser).setAdminAddress(FAKE_ADDRESS)
+      ).to.be.revertedWith("revert Ownable: caller is not the owner");
+    });
+
+    it("Cannot set to zero address", async () => {
+      await expect(
+        manager.connect(deployer).setAdminAddress(ZERO_ADDRESS)
+      ).to.be.revertedWith("INVALID_ADMIN");
+    });
+  });
+
+  describe("Asset allocation", () => {
     describe.skip("Temporary implementation for Chainlink", async () => {
       it("Set and get token addresses", async () => {
         assert.isEmpty(await manager.getTokenAddresses());
@@ -146,15 +185,12 @@ contract("APYManager", async (accounts) => {
       });
 
       it("balanceOf", async () => {
-        const mockRegistry = await MockContract.new();
+        const mockRegistry = await deployMockContract(deployer, []);
         await manager.setAddressRegistry(mockRegistry.address);
         await manager.setPoolIds([bytes32("pool 1"), bytes32("pool 2")]);
 
-        const mockToken = await MockContract.new();
-        const balanceOf = IDetailedERC20.encodeFunctionData("balanceOf", [
-          ZERO_ADDRESS,
-        ]);
-        await mockToken.givenMethodReturnUint(balanceOf, 1);
+        const mockToken = await deployMockContract(deployer, []);
+        await mockToken.mock.balanceOf.returns(1);
 
         const balance = await manager.balanceOf(mockToken.address);
         expect(balance).to.bignumber.equal("2");
@@ -162,162 +198,320 @@ contract("APYManager", async (accounts) => {
     });
 
     it("symbolOf", async () => {
-      const mockToken = await MockContract.new();
-      const symbol = IDetailedERC20.encodeFunctionData("symbol", []);
-      const mockString = web3.eth.abi.encodeParameter("string", "MOCK");
-      await mockToken.givenMethodReturn(symbol, mockString);
-
-      assert.equal(await manager.symbolOf(mockToken.address), "MOCK");
+      const mockToken = await deployMockContract(deployer, IDetailedERC20.abi);
+      await mockToken.mock.symbol.returns("MOCK");
+      expect(await manager.symbolOf(mockToken.address)).to.equal("MOCK");
     });
   });
 
-  describe("Strategy factory", async () => {
+  describe("Strategy factory", () => {
+    let strategy;
+
+    let tokenA;
+    let tokenB;
+    let poolA;
+    let poolB;
+
+    // test data
+    const spenderAddress = ANOTHER_FAKE_ADDRESS;
+    const approvalAmount = "100";
     const encodedApprove = erc20Interface.encodeFunctionData(
       "approve(address,uint256)",
-      [account1, 100]
+      [spenderAddress, approvalAmount]
     );
-    let genericExecutor;
-    let strategy;
-    let TokenA;
-    let TokenB;
 
     before("Deploy strategy", async () => {
       // NOTE: I use a real ERC20 contract here since MockContract cannot emit events
-      TokenA = await ERC20.new("TokenA", "A");
-      TokenB = await ERC20.new("TokenB", "B");
+      const ERC20 = await ethers.getContractFactory("ERC20");
+      tokenA = await ERC20.deploy("TokenA", "A");
+      await tokenA.deployed();
+      tokenB = await ERC20.deploy("TokenB", "B");
+      await tokenB.deployed();
+      poolA = await deployMockContract(deployer, []);
+      poolB = await deployMockContract(deployer, []);
 
-      genericExecutor = await APYGenericExecutor.new({ from: deployer });
-      const strategyAddress = await manager.deployStrategy.call(
-        genericExecutor.address,
-        { from: deployer }
+      const strategyAddress = await manager.callStatic.deployStrategy(
+        executor.address
       );
-      await manager.deployStrategy(genericExecutor.address, { from: deployer });
-      strategy = await Strategy.at(strategyAddress);
+      await manager.deployStrategy(executor.address);
+
+      const Strategy = await ethers.getContractFactory("Strategy");
+      strategy = await Strategy.attach(strategyAddress);
     });
 
     it("Strategy owner is manager", async () => {
-      const strategyOwner = await strategy.owner();
-      assert.equal(strategyOwner, manager.address);
+      expect(await strategy.owner()).to.equal(manager.address);
     });
 
-    it("Fund strategy as not owner", async () => {
-      await expectRevert(
-        manager.fundStrategy(
-          strategy.address,
-          [
-            [TokenA.address, TokenB.address],
+    describe("fundStrategy", () => {
+      it("Non-owner cannot call", async () => {
+        await expect(
+          manager.connect(randomUser).fundStrategy(strategy.address, [
+            [poolA.address, poolB.address],
             [0, 0],
-          ],
-          { from: randomUser }
-        ),
-        "revert Ownable: caller is not the owner"
-      );
-    });
-
-    it.skip("Fund strategy as owner", async () => {
-      // TESTED IN INTEGRATION TESTS
-    });
-
-    it("Fund and Execute as not owner", async () => {
-      await expectRevert(
-        manager.fundAndExecute(
-          strategy.address,
-          [
-            [TokenA.address, TokenB.address],
-            [0, 0],
-          ],
-          [
-            [TokenA.address, encodedApprove],
-            [TokenB.address, encodedApprove],
-          ],
-          { from: randomUser }
-        ),
-        "revert Ownable: caller is not the owner"
-      );
-    });
-
-    it.skip("Fund and Execute as owner", async () => {
-      // TESTED IN INTEGRATION TESTS
-    });
-
-    it("Execute as not owner", async () => {
-      await expectRevert(
-        manager.execute(
-          strategy.address,
-          [
-            [TokenA.address, encodedApprove],
-            [TokenB.address, encodedApprove],
-          ],
-          { from: randomUser }
-        ),
-        "revert Ownable: caller is not the owner"
-      );
-    });
-
-    it("Execute as owner", async () => {
-      const encodedApprove = erc20Interface.encodeFunctionData(
-        "approve(address,uint256)",
-        [account1, 100]
-      );
-      const trx = await manager.execute(
-        strategy.address,
-        [
-          [TokenA.address, encodedApprove],
-          [TokenB.address, encodedApprove],
-        ],
-        { from: deployer }
-      );
-
-      expectEvent.inTransaction(trx.tx, TokenA, "Approval", {
-        owner: strategy.address,
-        spender: account1,
-        value: "100",
+          ])
+        ).to.be.revertedWith("revert Ownable: caller is not the owner");
       });
-      expectEvent.inTransaction(trx.tx, TokenB, "Approval", {
-        owner: strategy.address,
-        spender: account1,
-        value: "100",
+
+      it("Revert on invalid strategy", async () => {
+        await expect(
+          manager.fundStrategy(FAKE_ADDRESS, [
+            [poolA.address, poolB.address],
+            [0, 0],
+          ])
+        ).to.be.revertedWith("Invalid Strategy");
+      });
+
+      it.skip("Owner can call", async () => {
+        // TESTED IN INTEGRATION TESTS
       });
     });
 
-    it("Execute and Withdraw as not owner", async () => {
-      await expectRevert(
-        manager.executeAndWithdraw(
-          strategy.address,
-          [
-            [TokenA.address, TokenB.address],
+    describe("fundAndExecute", () => {
+      it("Non-owner cannot call", async () => {
+        await expect(
+          manager.connect(randomUser).fundAndExecute(
+            strategy.address,
+            [
+              [poolA.address, poolB.address],
+              [0, 0],
+            ],
+            [
+              [tokenA.address, encodedApprove],
+              [tokenB.address, encodedApprove],
+            ]
+          )
+        ).to.be.revertedWith("revert Ownable: caller is not the owner");
+      });
+
+      it("Revert on invalid strategy", async () => {
+        await expect(
+          manager.fundAndExecute(
+            FAKE_ADDRESS,
+            [
+              [poolA.address, poolB.address],
+              [0, 0],
+            ],
+            [
+              [tokenA.address, encodedApprove],
+              [tokenB.address, encodedApprove],
+            ]
+          )
+        ).to.be.revertedWith("Invalid Strategy");
+      });
+
+      it.skip("Owner can call", async () => {
+        // TESTED IN INTEGRATION TESTS
+      });
+    });
+
+    describe("execute", () => {
+      it("Non-owner cannot call", async () => {
+        await expect(
+          manager.connect(randomUser).execute(strategy.address, [
+            [tokenA.address, encodedApprove],
+            [tokenB.address, encodedApprove],
+          ])
+        ).to.be.revertedWith("revert Ownable: caller is not the owner");
+      });
+
+      it("Owner can call", async () => {
+        const trx = await manager.execute(strategy.address, [
+          [tokenA.address, encodedApprove],
+          [tokenB.address, encodedApprove],
+        ]);
+
+        await expectEventInTransaction(trx.hash, tokenA, "Approval", {
+          owner: strategy.address,
+          spender: spenderAddress,
+          value: approvalAmount,
+        });
+        await expectEventInTransaction(trx.hash, tokenB, "Approval", {
+          owner: strategy.address,
+          spender: spenderAddress,
+          value: approvalAmount,
+        });
+      });
+    });
+
+    describe("executeAndWithdraw", () => {
+      it("Non-owner cannot call", async () => {
+        await expect(
+          manager.connect(randomUser).executeAndWithdraw(
+            strategy.address,
+            [
+              [poolA.address, poolB.address],
+              [0, 0],
+            ],
+            [
+              [tokenA.address, encodedApprove],
+              [tokenB.address, encodedApprove],
+            ]
+          )
+        ).to.be.revertedWith("revert Ownable: caller is not the owner");
+      });
+
+      it("Revert on invalid strategy", async () => {
+        await expect(
+          manager.executeAndWithdraw(
+            FAKE_ADDRESS,
+            [
+              [poolA.address, poolB.address],
+              [0, 0],
+            ],
+            [
+              [tokenA.address, encodedApprove],
+              [tokenB.address, encodedApprove],
+            ]
+          )
+        ).to.be.revertedWith("Invalid Strategy");
+      });
+
+      it.skip("Owner can call", async () => {
+        // TESTED IN INTEGRATION TESTS
+      });
+    });
+
+    describe("withdrawFromStrategy", () => {
+      it("Non-owner cannot call", async () => {
+        await expect(
+          manager.connect(randomUser).withdrawFromStrategy(strategy.address, [
+            [poolA.address, poolB.address],
             [0, 0],
-          ],
-          [
-            [TokenA.address, encodedApprove],
-            [TokenB.address, encodedApprove],
-          ],
-          { from: randomUser }
-        ),
-        "revert Ownable: caller is not the owner"
-      );
-    });
+          ])
+        ).to.be.revertedWith("revert Ownable: caller is not the owner");
+      });
 
-    it.skip("Execute Withdraw as owner", async () => {
-      // TESTED IN INTEGRATION TESTS
-    });
-
-    it("Withdraw from strategy as not owner", async () => {
-      await expectRevert(
-        manager.withdrawFromStrategy(
-          strategy.address,
-          [
-            [TokenA.address, TokenB.address],
+      it("Revert on invalid strategy", async () => {
+        await expect(
+          manager.withdrawFromStrategy(FAKE_ADDRESS, [
+            [poolA.address, poolB.address],
             [0, 0],
-          ],
-          { from: randomUser }
-        ),
-        "revert Ownable: caller is not the owner"
-      );
+          ])
+        ).to.be.revertedWith("Invalid Strategy");
+      });
+
+      it.skip("Owner can call", async () => {
+        // TESTED IN INTEGRATION TESTS
+      });
+    });
+  });
+
+  describe("Token registration", () => {
+    let strategy;
+
+    before(async () => {
+      strategy = await manager.callStatic.deployStrategy(executor.address);
+      await manager.deployStrategy(executor.address);
     });
 
-    it.skip("Withdraw from strategy as owner", async () => {
-      // TESTED IN INTEGRATION TESTS
+    describe("registerTokens", async () => {
+      it("Can register for deployed strategy", async () => {
+        const tokens = [];
+        await expect(manager.registerTokens(strategy, tokens)).to.not.be
+          .reverted;
+      });
+
+      it("Revert when registering for non-deployed address", async () => {
+        const tokens = [];
+        await expect(
+          manager.registerTokens(FAKE_ADDRESS, tokens)
+        ).to.be.revertedWith("INVALID_STRATEGY");
+      });
+    });
+
+    it("isTokenRegistered", async () => {
+      const tokenMock_1 = await deployMockContract(deployer, []);
+      const tokenMock_2 = await deployMockContract(deployer, []);
+      const tokenMock_3 = await deployMockContract(deployer, []);
+      const tokens = [tokenMock_1.address, tokenMock_2.address];
+      await manager.registerTokens(strategy, tokens);
+
+      expect(await manager.isTokenRegistered(tokenMock_1.address)).to.be.true;
+      expect(await manager.isTokenRegistered(tokenMock_2.address)).to.be.true;
+      expect(await manager.isTokenRegistered(tokenMock_3.address)).to.be.false;
+    });
+
+    describe("getTokenAddresses", () => {
+      it("retrieves registered tokens", async () => {
+        const tokenMock_1 = await deployMockContract(deployer, []);
+        const tokenMock_2 = await deployMockContract(deployer, []);
+        const tokens = [tokenMock_1.address, tokenMock_2.address];
+        await manager.registerTokens(strategy, tokens);
+
+        expect(await manager.getTokenAddresses()).to.have.members(tokens);
+        expect(await manager.getTokenAddresses()).to.have.lengthOf(
+          tokens.length
+        );
+      });
+
+      it("Does not return duplicates", async () => {
+        const tokenMock_1 = await deployMockContract(deployer, []);
+        const tokenMock_2 = await deployMockContract(deployer, []);
+        const tokenMock_3 = await deployMockContract(deployer, []);
+        const tokenMock_4 = await deployMockContract(deployer, []);
+        const tokenMock_5 = await deployMockContract(deployer, []);
+
+        await manager.registerTokens(strategy, [
+          tokenMock_1.address,
+          tokenMock_2.address,
+        ]);
+        await manager.registerTokens(strategy, [tokenMock_3.address]);
+        await manager.registerTokens(strategy, [
+          tokenMock_2.address,
+          tokenMock_4.address,
+        ]);
+        await manager.registerTokens(strategy, [
+          tokenMock_1.address,
+          tokenMock_3.address,
+        ]);
+        await manager.registerTokens(strategy, [tokenMock_5.address]);
+
+        const expectedTokens = [
+          tokenMock_1.address,
+          tokenMock_2.address,
+          tokenMock_3.address,
+          tokenMock_4.address,
+          tokenMock_5.address,
+        ];
+        expect(await manager.getTokenAddresses()).to.have.members(
+          expectedTokens
+        );
+        expect(await manager.getTokenAddresses()).to.have.lengthOf(
+          expectedTokens.length
+        );
+      });
+
+      it("Returns tokens from multiple strategies", async () => {
+        // deploy another strategy
+        const strategy_2 = await manager.callStatic.deployStrategy(
+          executor.address
+        );
+        await manager.deployStrategy(executor.address);
+
+        // register with 1st strategy
+        const tokenMock_1 = await deployMockContract(deployer, []);
+        const tokenMock_2 = await deployMockContract(deployer, []);
+        const tokens = [tokenMock_1.address, tokenMock_2.address];
+        await manager.registerTokens(strategy, tokens);
+
+        // register with 2nd strategy
+        const tokenMock_3 = await deployMockContract(deployer, []);
+        const moreTokens = [tokenMock_2.address, tokenMock_3.address];
+        await manager.registerTokens(strategy_2, moreTokens);
+
+        const expectedTokens = [
+          tokenMock_1.address,
+          tokenMock_2.address,
+          tokenMock_3.address,
+        ];
+        expect(await manager.getTokenAddresses()).to.have.members(
+          expectedTokens
+        );
+        expect(await manager.getTokenAddresses()).to.have.lengthOf(
+          expectedTokens.length
+        );
+      });
     });
   });
 });
