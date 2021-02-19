@@ -89,24 +89,38 @@ contract APYManagerV2 is
         onlyOwner
     {
         require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
-        EnumerableSet.AddressSet storage strategyTokens =
-            _strategyToTokens[strategy];
-
         for (uint256 i = 0; i < tokens.length; i++) {
             address token = tokens[i];
-            EnumerableSet.AddressSet storage tokenStrategies =
-                _tokenToStrategies[token];
-
-            if (!isTokenRegistered(token)) {
-                _tokenAddresses.add(token);
-            }
-            if (!strategyTokens.contains(token)) {
-                strategyTokens.add(token);
-            }
-            if (!tokenStrategies.contains(strategy)) {
-                tokenStrategies.add(strategy);
-            }
+            registerToken(strategy, token);
         }
+    }
+
+    function registerToken(address strategy, address token) public onlyOwner {
+        require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
+        // `add` is safe to call multiple times, as it
+        // returns a boolean to indicate if element was added
+        _tokenAddresses.add(token);
+        _strategyToTokens[strategy].add(token);
+        _tokenToStrategies[token].add(strategy);
+    }
+
+    function deregisterTokens(address strategy, address[] calldata tokens)
+        external
+        onlyOwner
+    {
+        for (uint256 i = 0; i < tokens.length; i++) {
+            address token = tokens[i];
+            deregisterToken(strategy, token);
+        }
+    }
+
+    function deregisterToken(address strategy, address token) public onlyOwner {
+        require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
+        // `remove` is safe to call multiple times, as it
+        // returns a boolean to indicate if element was removed
+        _tokenAddresses.remove(token);
+        _tokenToStrategies[token].remove(strategy);
+        _strategyToTokens[strategy].remove(token);
     }
 
     function isTokenRegistered(address token) public view returns (bool) {
