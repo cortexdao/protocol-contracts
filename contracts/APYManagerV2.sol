@@ -88,14 +88,13 @@ contract APYManagerV2 is
         override
         onlyOwner
     {
-        require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
         for (uint256 i = 0; i < tokens.length; i++) {
             address token = tokens[i];
-            registerToken(strategy, token);
+            _registerToken(strategy, token);
         }
     }
 
-    function registerToken(address strategy, address token) public onlyOwner {
+    function _registerToken(address strategy, address token) internal {
         require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
         // `add` is safe to call multiple times, as it
         // returns a boolean to indicate if element was added
@@ -110,11 +109,11 @@ contract APYManagerV2 is
     {
         for (uint256 i = 0; i < tokens.length; i++) {
             address token = tokens[i];
-            deregisterToken(strategy, token);
+            _deregisterToken(strategy, token);
         }
     }
 
-    function deregisterToken(address strategy, address token) public onlyOwner {
+    function _deregisterToken(address strategy, address token) internal {
         require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
         // `remove` is safe to call multiple times, as it
         // returns a boolean to indicate if element was removed
