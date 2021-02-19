@@ -6,7 +6,7 @@ import "../APYGenericExecutor.sol";
 
 interface IStrategyFactory {
     struct StrategyAllocation {
-        address payable[] pools;
+        bytes32[] poolsIds;
         uint256[] amounts;
     }
 

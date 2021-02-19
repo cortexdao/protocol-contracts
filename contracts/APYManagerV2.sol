@@ -123,7 +123,8 @@ contract APYManagerV2 is
         );
         require(isStrategyDeployed[strategy], "Invalid Strategy");
         for (uint256 i = 0; i < allocation.pools.length; i++) {
-            APYPoolToken pool = APYPoolToken(allocation.pools[i]);
+            APYPoolToken pool =
+                APYPoolToken(addressRegistry.getAddress(allocation.poolIds[i]));
             IDetailedERC20 underlyer = pool.underlyer();
             uint256 poolAmount = allocation.amounts[i];
             // uint256 poolValue = pool.getEthValueFromTokenAmount(poolAmount);
@@ -175,7 +176,8 @@ contract APYManagerV2 is
         );
         require(isStrategyDeployed[strategy], "Invalid Strategy");
         for (uint256 i = 0; i < allocation.pools.length; i++) {
-            APYPoolToken pool = APYPoolToken(allocation.pools[i]);
+            APYPoolToken pool =
+                APYPoolToken(addressRegistry.getAddress(allocation.poolIds[i]));
             IDetailedERC20 underlyer = pool.underlyer();
             uint256 amountToSend = allocation.amounts[i];
             // uint256 poolValue = pool.getEthValueFromTokenAmount(amountToSend);
