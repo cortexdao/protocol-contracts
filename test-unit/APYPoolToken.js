@@ -150,7 +150,7 @@ describe("Contract: APYPoolToken", () => {
     it("Block ether transfer", async () => {
       await expect(
         deployer.sendTransaction({ to: poolToken.address, value: "10" })
-      ).to.be.revertedWith("DONT_SEND_ETHER");
+      ).to.be.reverted
     });
 
     it("mAPT set correctly", async () => {

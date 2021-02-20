@@ -4,6 +4,7 @@ const { artifacts, contract, ethers, network, web3 } = require("hardhat");
 const { expectRevert } = require("@openzeppelin/test-helpers");
 const legos = require("@apy-finance/defi-legos");
 
+const APYAddressRegistry = artifacts.require("APYAddressRegistry");
 const APYManagerV2 = artifacts.require("APYManagerV2");
 const APYPoolTokenV2 = artifacts.require("APYPoolTokenV2");
 const Strategy = artifacts.require("Strategy");
@@ -76,7 +77,6 @@ contract("APYManager", async (accounts) => {
       legos.apy.addresses.APY_USDC_POOL,
       newPoolLogicContract.address
     );
-
     await PoolAdmin.upgrade(
       legos.apy.addresses.APY_USDT_POOL,
       newPoolLogicContract.address
@@ -95,6 +95,7 @@ contract("APYManager", async (accounts) => {
       legos.apy.addresses.APY_MANAGER,
       newManagerLogicContract.address
     );
+
 
     //Handle approvals
     signer = await ethers.provider.getSigner(POOL_DEPLOYER);
@@ -131,9 +132,34 @@ contract("APYManager", async (accounts) => {
       legos.apy.addresses.APY_MANAGER,
       signer
     );
+
+    // Deploy Address Registry
+    const ProxyAdminFactory = await ethers.getContractFactory("ProxyAdmin", signer)
+    const APYAddressRegistryFactory = await ethers.getContractFactory("APYAddressRegistry", signer)
+    const TransparentUpgradeableProxyFactory = await ethers.getContractFactory("TransparentUpgradeableProxy", signer)
+    const registryProxyAdmin = await ProxyAdminFactory.deploy()
+    await registryProxyAdmin.deployed()
+    const registryLogic = await APYAddressRegistryFactory.deploy()
+    await registryLogic.deployed()
+    const encodedInitialize = APYAddressRegistryFactory.interface.encodeFunctionData("initialize(address)", [registryProxyAdmin.address])
+    const registryProxy = await TransparentUpgradeableProxyFactory.deploy(
+      registryLogic.address,
+      registryProxyAdmin.address,
+      encodedInitialize
+    )
+
+    const addressRegistry = await ethers.getContractAt(APYAddressRegistry.abi, registryProxy.address, signer)
+
+    // register pools to address registry
+    await addressRegistry.registerAddress(ethers.utils.formatBytes32String("daiPool"), legos.apy.addresses.APY_DAI_POOL)
+    await addressRegistry.registerAddress(ethers.utils.formatBytes32String("usdcPool"), legos.apy.addresses.APY_USDC_POOL)
+    await addressRegistry.registerAddress(ethers.utils.formatBytes32String("usdtPool"), legos.apy.addresses.APY_USDT_POOL)
+
+    // Set address registry for manager
+    await Manager.setAddressRegistry(addressRegistry.address)
   });
 
-  describe("Deploy Strategy", async () => {
+  describe.only("Deploy Strategy", async () => {
     it("Test Deploying strategy by non owner", async () => {
       const bad_signer = await ethers.provider.getSigner(_);
       const bad_MANAGER = await ethers.getContractAt(

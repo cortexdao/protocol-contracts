@@ -118,11 +118,11 @@ contract APYManagerV2 is
         StrategyAllocation memory allocation
     ) public override onlyOwner {
         require(
-            allocation.pools.length == allocation.amounts.length,
+            allocation.poolIds.length == allocation.amounts.length,
             "allocation length mismatch"
         );
         require(isStrategyDeployed[strategy], "Invalid Strategy");
-        for (uint256 i = 0; i < allocation.pools.length; i++) {
+        for (uint256 i = 0; i < allocation.poolIds.length; i++) {
             APYPoolToken pool =
                 APYPoolToken(addressRegistry.getAddress(allocation.poolIds[i]));
             IDetailedERC20 underlyer = pool.underlyer();
@@ -171,11 +171,11 @@ contract APYManagerV2 is
         StrategyAllocation memory allocation
     ) public override onlyOwner {
         require(
-            allocation.pools.length == allocation.amounts.length,
+            allocation.poolIds.length == allocation.amounts.length,
             "allocation length mismatch"
         );
         require(isStrategyDeployed[strategy], "Invalid Strategy");
-        for (uint256 i = 0; i < allocation.pools.length; i++) {
+        for (uint256 i = 0; i < allocation.poolIds.length; i++) {
             APYPoolToken pool =
                 APYPoolToken(addressRegistry.getAddress(allocation.poolIds[i]));
             IDetailedERC20 underlyer = pool.underlyer();

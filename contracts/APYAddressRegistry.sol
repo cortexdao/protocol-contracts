@@ -48,11 +48,7 @@ contract APYAddressRegistry is
         _;
     }
 
-    receive() external payable {
-        revert("DONT_SEND_ETHER");
-    }
-
-    function getIds() public override view returns (bytes32[] memory) {
+    function getIds() public view override returns (bytes32[] memory) {
         return _idList;
     }
 
@@ -78,7 +74,7 @@ contract APYAddressRegistry is
         }
     }
 
-    function getAddress(bytes32 id) public override view returns (address) {
+    function getAddress(bytes32 id) public view override returns (address) {
         address _address = _idToAddress[id];
         require(_address != address(0), "Missing address");
         return _address;
