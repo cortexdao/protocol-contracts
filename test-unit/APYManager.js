@@ -1,6 +1,6 @@
 const { assert, expect } = require("chai");
 const hre = require("hardhat");
-const { artifacts, ethers, waffle, web3 } = hre;
+const { artifacts, ethers, waffle, web3, contract } = hre;
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
 const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
@@ -16,7 +16,7 @@ const erc20Interface = new ethers.utils.Interface(
 
 const bytes32 = ethers.utils.formatBytes32String;
 
-describe("Contract: APYManager", () => {
+contract("Contract: APYManager", () => {
   // signers
   let deployer;
   let randomUser;
@@ -209,8 +209,6 @@ describe("Contract: APYManager", () => {
 
     let tokenA;
     let tokenB;
-    let poolA;
-    let poolB;
 
     // test data
     const spenderAddress = ANOTHER_FAKE_ADDRESS;
@@ -227,8 +225,6 @@ describe("Contract: APYManager", () => {
       await tokenA.deployed();
       tokenB = await ERC20.deploy("TokenB", "B");
       await tokenB.deployed();
-      poolA = await deployMockContract(deployer, []);
-      poolB = await deployMockContract(deployer, []);
 
       const strategyAddress = await manager.callStatic.deployStrategy(
         executor.address
@@ -247,7 +243,10 @@ describe("Contract: APYManager", () => {
       it("Non-owner cannot call", async () => {
         await expect(
           manager.connect(randomUser).fundStrategy(strategy.address, [
-            [poolA.address, poolB.address],
+            [
+              ethers.utils.formatBytes32String("daiPool"),
+              ethers.utils.formatBytes32String("usdcPool"),
+            ],
             [0, 0],
           ])
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
@@ -256,7 +255,10 @@ describe("Contract: APYManager", () => {
       it("Revert on invalid strategy", async () => {
         await expect(
           manager.fundStrategy(FAKE_ADDRESS, [
-            [poolA.address, poolB.address],
+            [
+              ethers.utils.formatBytes32String("daiPool"),
+              ethers.utils.formatBytes32String("usdcPool"),
+            ],
             [0, 0],
           ])
         ).to.be.revertedWith("Invalid Strategy");
@@ -273,7 +275,10 @@ describe("Contract: APYManager", () => {
           manager.connect(randomUser).fundAndExecute(
             strategy.address,
             [
-              [poolA.address, poolB.address],
+              [
+                ethers.utils.formatBytes32String("daiPool"),
+                ethers.utils.formatBytes32String("usdcPool"),
+              ],
               [0, 0],
             ],
             [
@@ -289,7 +294,10 @@ describe("Contract: APYManager", () => {
           manager.fundAndExecute(
             FAKE_ADDRESS,
             [
-              [poolA.address, poolB.address],
+              [
+                ethers.utils.formatBytes32String("daiPool"),
+                ethers.utils.formatBytes32String("usdcPool"),
+              ],
               [0, 0],
             ],
             [
@@ -340,7 +348,10 @@ describe("Contract: APYManager", () => {
           manager.connect(randomUser).executeAndWithdraw(
             strategy.address,
             [
-              [poolA.address, poolB.address],
+              [
+                ethers.utils.formatBytes32String("daiPool"),
+                ethers.utils.formatBytes32String("usdcPool"),
+              ],
               [0, 0],
             ],
             [
@@ -356,7 +367,10 @@ describe("Contract: APYManager", () => {
           manager.executeAndWithdraw(
             FAKE_ADDRESS,
             [
-              [poolA.address, poolB.address],
+              [
+                ethers.utils.formatBytes32String("daiPool"),
+                ethers.utils.formatBytes32String("usdcPool"),
+              ],
               [0, 0],
             ],
             [
@@ -376,7 +390,10 @@ describe("Contract: APYManager", () => {
       it("Non-owner cannot call", async () => {
         await expect(
           manager.connect(randomUser).withdrawFromStrategy(strategy.address, [
-            [poolA.address, poolB.address],
+            [
+              ethers.utils.formatBytes32String("daiPool"),
+              ethers.utils.formatBytes32String("usdcPool"),
+            ],
             [0, 0],
           ])
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
@@ -385,7 +402,10 @@ describe("Contract: APYManager", () => {
       it("Revert on invalid strategy", async () => {
         await expect(
           manager.withdrawFromStrategy(FAKE_ADDRESS, [
-            [poolA.address, poolB.address],
+            [
+              ethers.utils.formatBytes32String("daiPool"),
+              ethers.utils.formatBytes32String("usdcPool"),
+            ],
             [0, 0],
           ])
         ).to.be.revertedWith("Invalid Strategy");
