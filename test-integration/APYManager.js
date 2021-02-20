@@ -181,7 +181,7 @@ contract("APYManager", async (accounts) => {
     await Manager.setAddressRegistry(addressRegistry.address);
   });
 
-  describe.only("Deploy Strategy", async () => {
+  describe("Deploy Strategy", async () => {
     it("Non-owner cannot call", async () => {
       const bad_signer = await ethers.provider.getSigner(_);
       const bad_MANAGER = await ethers.getContractAt(
@@ -212,7 +212,7 @@ contract("APYManager", async (accounts) => {
     });
   });
 
-  describe.only("Fund Strategy", async () => {
+  describe("Fund Strategy", async () => {
     it("Non-owner cannot call", async () => {
       const bad_signer = await ethers.provider.getSigner(_);
       const bad_MANAGER = await ethers.getContractAt(
@@ -281,7 +281,7 @@ contract("APYManager", async (accounts) => {
     });
   });
 
-  describe.only("Fund and Execute", async () => {
+  describe("Fund and Execute", async () => {
     it("Non-owner cannot call", async () => {
       const bad_signer = await ethers.provider.getSigner(_);
       const bad_MANAGER = await ethers.getContractAt(
@@ -396,7 +396,7 @@ contract("APYManager", async (accounts) => {
     });
   });
 
-  describe.only("Execute and Withdraw", async () => {
+  describe("Execute and Withdraw", async () => {
     it("Non-owner cannot call", async () => {
       const bad_signer = await ethers.provider.getSigner(_);
       const bad_MANAGER = await ethers.getContractAt(
@@ -457,7 +457,7 @@ contract("APYManager", async (accounts) => {
     });
   });
 
-  describe.only("Withdraw from Strategy", async () => {
+  describe("Withdraw from Strategy", async () => {
     it("Non-owner cannot call", async () => {
       const bad_signer = await ethers.provider.getSigner(_);
       const bad_MANAGER = await ethers.getContractAt(
