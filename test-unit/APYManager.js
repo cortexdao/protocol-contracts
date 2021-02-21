@@ -346,7 +346,7 @@ describe("Contract: APYManager", () => {
     });
   });
 
-  describe("Asset allocation", () => {
+  describe.only("Asset allocation", () => {
     describe("balanceOf", async () => {
       it("Single strategy and token", async () => {
         const strategy = await manager.callStatic.deployStrategy(
@@ -459,11 +459,17 @@ describe("Contract: APYManager", () => {
 
       describe("registerTokens", async () => {
         it("Non-owner cannot call", async () => {
-          expect.fail("Write the test!");
+          const tokens = [];
+          await expect(
+            manager.connect(randomUser).registerTokens(strategy, tokens)
+          ).to.be.revertedWith("revert Ownable: caller is not the owner");
         });
 
         it("Owner can call", async () => {
-          expect.fail("Write the test!");
+          const tokens = [];
+          await expect(
+            manager.connect(deployer).registerTokens(strategy, tokens)
+          ).to.not.be.reverted;
         });
 
         it("Can register for deployed strategy", async () => {
@@ -482,11 +488,17 @@ describe("Contract: APYManager", () => {
 
       describe("deregisterTokens", async () => {
         it("Non-owner cannot call", async () => {
-          expect.fail("Write the test!");
+          const tokens = [];
+          await expect(
+            manager.connect(randomUser).deregisterTokens(strategy, tokens)
+          ).to.be.revertedWith("revert Ownable: caller is not the owner");
         });
 
         it("Owner can call", async () => {
-          expect.fail("Write the test!");
+          const tokens = [];
+          await expect(
+            manager.connect(deployer).deregisterTokens(strategy, tokens)
+          ).to.not.be.reverted;
         });
       });
 

@@ -88,6 +88,7 @@ contract APYManagerV2 is
         override
         onlyOwner
     {
+        require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
         for (uint256 i = 0; i < tokens.length; i++) {
             address token = tokens[i];
             _registerToken(strategy, token);
@@ -107,6 +108,7 @@ contract APYManagerV2 is
         external
         onlyOwner
     {
+        require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
         for (uint256 i = 0; i < tokens.length; i++) {
             address token = tokens[i];
             _deregisterToken(strategy, token);
