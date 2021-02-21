@@ -99,9 +99,9 @@ contract APYManagerV2 is
         require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
         // `add` is safe to call multiple times, as it
         // returns a boolean to indicate if element was added
-        _tokenAddresses.add(token);
-        _strategyToTokens[strategy].add(token);
         _tokenToStrategies[token].add(strategy);
+        _strategyToTokens[strategy].add(token);
+        _tokenAddresses.add(token);
     }
 
     function deregisterTokens(address strategy, address[] calldata tokens)
@@ -119,9 +119,11 @@ contract APYManagerV2 is
         require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
         // `remove` is safe to call multiple times, as it
         // returns a boolean to indicate if element was removed
-        _tokenAddresses.remove(token);
         _tokenToStrategies[token].remove(strategy);
         _strategyToTokens[strategy].remove(token);
+        if (_tokenToStrategies[token].length() == 0) {
+            _tokenAddresses.remove(token);
+        }
     }
 
     function isTokenRegistered(address token) public view returns (bool) {

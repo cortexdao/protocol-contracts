@@ -500,6 +500,19 @@ describe("Contract: APYManager", () => {
             manager.connect(deployer).deregisterTokens(strategy, tokens)
           ).to.not.be.reverted;
         });
+
+        it("Can deregister for deployed strategy", async () => {
+          const tokens = [];
+          await expect(manager.deregisterTokens(strategy, tokens)).to.not.be
+            .reverted;
+        });
+
+        it("Revert when deregistering for non-deployed address", async () => {
+          const tokens = [];
+          await expect(
+            manager.deregisterTokens(FAKE_ADDRESS, tokens)
+          ).to.be.revertedWith("INVALID_STRATEGY");
+        });
       });
 
       it("isTokenRegistered", async () => {
@@ -516,7 +529,7 @@ describe("Contract: APYManager", () => {
       });
 
       describe("getTokenAddresses", () => {
-        it("retrieves registered tokens", async () => {
+        it("Retrieves tokens registered with 1 strategy", async () => {
           const tokenMock_1 = await deployMockContract(deployer, []);
           const tokenMock_2 = await deployMockContract(deployer, []);
           const tokens = [tokenMock_1.address, tokenMock_2.address];
@@ -565,7 +578,7 @@ describe("Contract: APYManager", () => {
           );
         });
 
-        it("Returns tokens from multiple strategies", async () => {
+        it("Returns tokens registered with multiple strategies", async () => {
           // deploy another strategy
           const strategy_2 = await manager.callStatic.deployStrategy(
             executor.address
@@ -580,7 +593,7 @@ describe("Contract: APYManager", () => {
 
           // register with 2nd strategy
           const tokenMock_3 = await deployMockContract(deployer, []);
-          const moreTokens = [tokenMock_2.address, tokenMock_3.address];
+          const moreTokens = [tokenMock_2.address, tokenMock_3.address]; // note duplicate
           await manager.registerTokens(strategy_2, moreTokens);
 
           const expectedTokens = [
@@ -594,6 +607,63 @@ describe("Contract: APYManager", () => {
           expect(await manager.getTokenAddresses()).to.have.lengthOf(
             expectedTokens.length
           );
+        });
+
+        it("Does not retrieve deregistered tokens", async () => {
+          const tokenMock_1 = await deployMockContract(deployer, []);
+          const tokenMock_2 = await deployMockContract(deployer, []);
+          const tokenMock_3 = await deployMockContract(deployer, []);
+
+          const deregisteredTokens = [tokenMock_1.address];
+          const leftoverTokens = [tokenMock_2.address, tokenMock_3.address];
+          const tokens = deregisteredTokens.concat(leftoverTokens);
+
+          await manager.registerTokens(strategy, tokens);
+          await manager.deregisterTokens(strategy, deregisteredTokens);
+
+          expect(await manager.getTokenAddresses()).to.have.members(
+            leftoverTokens
+          );
+          expect(await manager.getTokenAddresses()).to.have.lengthOf(
+            leftoverTokens.length
+          );
+        });
+
+        it("Returns tokens still registered after deregistration", async () => {
+          // deploy another strategy
+          const strategy_2 = await manager.callStatic.deployStrategy(
+            executor.address
+          );
+          await manager.deployStrategy(executor.address);
+
+          const tokenMock_1 = await deployMockContract(deployer, []);
+          const tokenMock_2 = await deployMockContract(deployer, []);
+          const tokenMock_3 = await deployMockContract(deployer, []);
+
+          await manager.registerTokens(strategy, [
+            tokenMock_1.address,
+            tokenMock_2.address,
+            tokenMock_3.address,
+          ]);
+          await manager.registerTokens(strategy_2, [
+            tokenMock_1.address,
+            tokenMock_2.address,
+            tokenMock_3.address,
+          ]);
+
+          await manager.deregisterTokens(strategy, [tokenMock_3.address]);
+          expect(await manager.getTokenAddresses()).to.not.include(
+            tokenMock_3.address
+          );
+          expect(await manager.getTokenAddresses()).to.have.lengthOf(2);
+          console.log(await manager.getTokenAddresses());
+
+          // await manager.deregisterTokens(strategy, [tokenMock_1.address]);
+          // await manager.deregisterTokens(strategy_2, [tokenMock_1.address]);
+          // expect(await manager.getTokenAddresses()).to.not.have.members([
+          //   tokenMock_3.address,
+          // ]);
+          // expect(await manager.getTokenAddresses()).to.have.lengthOf(2);
         });
       });
     });
