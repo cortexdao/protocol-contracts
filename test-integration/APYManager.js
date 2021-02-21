@@ -205,7 +205,7 @@ contract("APYManager", async (accounts) => {
           assert.equal(genericExecutor, executor.address);
         }
       );
-      await Manager.deployStrategy(executor.address);
+      await expect(Manager.deployStrategy(executor.address)).to.not.be.reverted;
       strategy = await ethers.getContractAt(Strategy.abi, stratAddress);
       const stratOwner = await strategy.owner();
       assert.equal(stratOwner, Manager.address);
