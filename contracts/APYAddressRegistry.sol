@@ -52,6 +52,10 @@ contract APYAddressRegistry is
         return _idList;
     }
 
+    receive() external payable {
+        revert("DONT_SEND_ETHER");
+    }
+
     function registerAddress(bytes32 id, address _address) public onlyOwner {
         require(_address != address(0), "Invalid address");
         if (_idToAddress[id] == address(0)) {
