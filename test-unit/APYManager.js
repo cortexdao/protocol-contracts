@@ -648,7 +648,6 @@ describe("Contract: APYManager", () => {
           await manager.registerTokens(strategy_2, [
             tokenMock_1.address,
             tokenMock_2.address,
-            tokenMock_3.address,
           ]);
 
           await manager.deregisterTokens(strategy, [tokenMock_3.address]);
@@ -656,7 +655,6 @@ describe("Contract: APYManager", () => {
             tokenMock_3.address
           );
           expect(await manager.getTokenAddresses()).to.have.lengthOf(2);
-          console.log(await manager.getTokenAddresses());
 
           // await manager.deregisterTokens(strategy, [tokenMock_1.address]);
           // await manager.deregisterTokens(strategy_2, [tokenMock_1.address]);
