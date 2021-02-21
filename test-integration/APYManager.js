@@ -22,7 +22,7 @@ contract("APYManager", async (accounts) => {
   // ENABLE_FORKING=true yarn hardhat node
   // yarn test:integration --network localhost
 
-  const [funder] = accounts;
+  const [funder, randomAccount] = accounts;
 
   let APY_DAI_POOL;
   let APY_USDC_POOL;
@@ -183,7 +183,7 @@ contract("APYManager", async (accounts) => {
 
   describe("Deploy Strategy", async () => {
     it("Non-owner cannot call", async () => {
-      const bad_signer = await ethers.provider.getSigner(funder);
+      const bad_signer = await ethers.provider.getSigner(randomAccount);
       const bad_MANAGER = await ethers.getContractAt(
         APYManagerV2.abi,
         legos.apy.addresses.APY_MANAGER,
@@ -214,7 +214,7 @@ contract("APYManager", async (accounts) => {
 
   describe("Fund Strategy", async () => {
     it("Non-owner cannot call", async () => {
-      const bad_signer = await ethers.provider.getSigner(funder);
+      const bad_signer = await ethers.provider.getSigner(randomAccount);
       const bad_MANAGER = await ethers.getContractAt(
         APYManagerV2.abi,
         legos.apy.addresses.APY_MANAGER,
@@ -283,7 +283,7 @@ contract("APYManager", async (accounts) => {
 
   describe("Fund and Execute", async () => {
     it("Non-owner cannot call", async () => {
-      const bad_signer = await ethers.provider.getSigner(funder);
+      const bad_signer = await ethers.provider.getSigner(randomAccount);
       const bad_MANAGER = await ethers.getContractAt(
         APYManagerV2.abi,
         legos.apy.addresses.APY_MANAGER,
@@ -355,7 +355,7 @@ contract("APYManager", async (accounts) => {
 
   describe("Execute", async () => {
     it("Non-owner cannot call", async () => {
-      const bad_signer = await ethers.provider.getSigner(funder);
+      const bad_signer = await ethers.provider.getSigner(randomAccount);
       const bad_MANAGER = await ethers.getContractAt(
         APYManagerV2.abi,
         legos.apy.addresses.APY_MANAGER,
@@ -398,7 +398,7 @@ contract("APYManager", async (accounts) => {
 
   describe("Execute and Withdraw", async () => {
     it("Non-owner cannot call", async () => {
-      const bad_signer = await ethers.provider.getSigner(funder);
+      const bad_signer = await ethers.provider.getSigner(randomAccount);
       const bad_MANAGER = await ethers.getContractAt(
         APYManagerV2.abi,
         legos.apy.addresses.APY_MANAGER,
@@ -459,7 +459,7 @@ contract("APYManager", async (accounts) => {
 
   describe("Withdraw from Strategy", async () => {
     it("Non-owner cannot call", async () => {
-      const bad_signer = await ethers.provider.getSigner(funder);
+      const bad_signer = await ethers.provider.getSigner(randomAccount);
       const bad_MANAGER = await ethers.getContractAt(
         APYManagerV2.abi,
         legos.apy.addresses.APY_MANAGER,
