@@ -346,7 +346,7 @@ describe("Contract: APYManager", () => {
     });
   });
 
-  describe.only("Asset allocation", () => {
+  describe("Asset allocation", () => {
     describe("balanceOf", async () => {
       it("Single strategy and token", async () => {
         const strategy = await manager.callStatic.deployStrategy(
@@ -656,12 +656,12 @@ describe("Contract: APYManager", () => {
           );
           expect(await manager.getTokenAddresses()).to.have.lengthOf(2);
 
-          // await manager.deregisterTokens(strategy, [tokenMock_1.address]);
-          // await manager.deregisterTokens(strategy_2, [tokenMock_1.address]);
-          // expect(await manager.getTokenAddresses()).to.not.have.members([
-          //   tokenMock_3.address,
-          // ]);
-          // expect(await manager.getTokenAddresses()).to.have.lengthOf(2);
+          await manager.deregisterTokens(strategy, [tokenMock_1.address]);
+          await manager.deregisterTokens(strategy_2, [tokenMock_1.address]);
+          expect(await manager.getTokenAddresses()).to.have.lengthOf(1);
+          expect(await manager.getTokenAddresses()).to.have.members([
+            tokenMock_2.address,
+          ]);
         });
       });
     });
