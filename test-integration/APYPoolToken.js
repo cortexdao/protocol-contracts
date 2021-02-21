@@ -218,13 +218,6 @@ describe("Contract: APYPoolToken", () => {
         it("Decimals has correct value", async () => {
           assert.equal(await poolToken.decimals(), 18);
         });
-
-        it("Blocks ether transfer", async () => {
-          const signer = (await ethers.getSigners())[0];
-          await expect(
-            signer.sendTransaction({ to: poolToken.address, value: "10" })
-          ).to.be.revertedWith("DONT_SEND_ETHER");
-        });
       });
 
       describe("Set admin address", async () => {
