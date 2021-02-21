@@ -290,7 +290,7 @@ contract APYManagerV2 is
     function pushFunds(address payable poolAddress) external onlyOwner {
         uint256 mAptAmount = mApt.balanceOf(poolAddress);
 
-        APYPoolToken pool = APYPoolToken(poolAddress);
+        APYPoolTokenV2 pool = APYPoolTokenV2(poolAddress);
         uint256 tokenEthPrice = pool.getTokenEthPrice();
         IDetailedERC20 underlyer = pool.underlyer();
         uint8 decimals = underlyer.decimals();
@@ -308,7 +308,7 @@ contract APYManagerV2 is
      * @dev Pool must approve manager to transfer its underlyer token.
      */
     function pullFunds(address payable poolAddress) external onlyOwner {
-        APYPoolToken pool = APYPoolToken(poolAddress);
+        APYPoolTokenV2 pool = APYPoolTokenV2(poolAddress);
         IDetailedERC20 underlyer = pool.underlyer();
         uint256 poolAmount = underlyer.balanceOf(poolAddress);
         uint256 poolValue = pool.getEthValueFromTokenAmount(poolAmount);
