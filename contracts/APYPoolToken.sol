@@ -91,6 +91,10 @@ contract APYPoolToken is
         _unpause();
     }
 
+    receive() external payable {
+        revert("DONT_SEND_ETHER");
+    }
+
     /**
      * @notice Mint corresponding amount of APT tokens for sent token amount.
      * @dev If no APT tokens have been minted yet, fallback to a fixed ratio.
