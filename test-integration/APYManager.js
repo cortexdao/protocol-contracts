@@ -1,6 +1,6 @@
 require("dotenv").config();
 const { assert, expect } = require("chai");
-const { artifacts, contract, ethers, network, web3 } = require("hardhat");
+const { artifacts, ethers, network } = require("hardhat");
 const legos = require("@apy-finance/defi-legos");
 
 const APYAddressRegistry = artifacts.require("APYAddressRegistry");
@@ -17,12 +17,10 @@ const MANAGER_DEPLOYER = "0x0f7B66a4a3f7CfeAc2517c2fb9F0518D48457d41";
 console.debugging = false;
 /* ************************ */
 
-contract("APYManager", async (accounts) => {
+describe("APYManager", () => {
   // I use hardhat to be able switch between accounts with impersonateAcccount functionality
   // ENABLE_FORKING=true yarn hardhat node
   // yarn test:integration --network localhost
-
-  const [funder, randomAccount] = accounts;
 
   let APY_DAI_POOL;
   let APY_USDC_POOL;
@@ -31,19 +29,20 @@ contract("APYManager", async (accounts) => {
   let executor;
   let strategy;
   let signer;
+  let funder;
+  let randomAccount;
 
   before(async () => {
-    // Fund Deployers
-    await web3.eth.sendTransaction({
-      from: funder,
+    [funder, randomAccount] = await ethers.getSigners();
+
+    await funder.sendTransaction({
       to: POOL_DEPLOYER,
-      value: 10e18,
+      value: ethers.utils.parseEther("10").toHexString(),
     });
 
-    await web3.eth.sendTransaction({
-      from: funder,
+    await funder.sendTransaction({
       to: MANAGER_DEPLOYER,
-      value: 10e18,
+      value: ethers.utils.parseEther("10").toHexString(),
     });
 
     // Impersonate
@@ -183,7 +182,7 @@ contract("APYManager", async (accounts) => {
 
   describe("Deploy Strategy", async () => {
     it("Non-owner cannot call", async () => {
-      const bad_signer = await ethers.provider.getSigner(randomAccount);
+      const bad_signer = await ethers.provider.getSigner(randomAccount.address);
       const bad_MANAGER = await ethers.getContractAt(
         APYManagerV2.abi,
         legos.apy.addresses.APY_MANAGER,
@@ -214,7 +213,7 @@ contract("APYManager", async (accounts) => {
 
   describe("Fund Strategy", async () => {
     it("Non-owner cannot call", async () => {
-      const bad_signer = await ethers.provider.getSigner(randomAccount);
+      const bad_signer = await ethers.provider.getSigner(randomAccount.address);
       const bad_MANAGER = await ethers.getContractAt(
         APYManagerV2.abi,
         legos.apy.addresses.APY_MANAGER,
@@ -283,7 +282,7 @@ contract("APYManager", async (accounts) => {
 
   describe("Fund and Execute", async () => {
     it("Non-owner cannot call", async () => {
-      const bad_signer = await ethers.provider.getSigner(randomAccount);
+      const bad_signer = await ethers.provider.getSigner(randomAccount.address);
       const bad_MANAGER = await ethers.getContractAt(
         APYManagerV2.abi,
         legos.apy.addresses.APY_MANAGER,
@@ -355,7 +354,7 @@ contract("APYManager", async (accounts) => {
 
   describe("Execute", async () => {
     it("Non-owner cannot call", async () => {
-      const bad_signer = await ethers.provider.getSigner(randomAccount);
+      const bad_signer = await ethers.provider.getSigner(randomAccount.address);
       const bad_MANAGER = await ethers.getContractAt(
         APYManagerV2.abi,
         legos.apy.addresses.APY_MANAGER,
@@ -398,7 +397,7 @@ contract("APYManager", async (accounts) => {
 
   describe("Execute and Withdraw", async () => {
     it("Non-owner cannot call", async () => {
-      const bad_signer = await ethers.provider.getSigner(randomAccount);
+      const bad_signer = await ethers.provider.getSigner(randomAccount.address);
       const bad_MANAGER = await ethers.getContractAt(
         APYManagerV2.abi,
         legos.apy.addresses.APY_MANAGER,
@@ -459,7 +458,7 @@ contract("APYManager", async (accounts) => {
 
   describe("Withdraw from Strategy", async () => {
     it("Non-owner cannot call", async () => {
-      const bad_signer = await ethers.provider.getSigner(randomAccount);
+      const bad_signer = await ethers.provider.getSigner(randomAccount.address);
       const bad_MANAGER = await ethers.getContractAt(
         APYManagerV2.abi,
         legos.apy.addresses.APY_MANAGER,
