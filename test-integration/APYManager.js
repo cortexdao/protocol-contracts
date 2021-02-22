@@ -12,6 +12,7 @@ const APYAddressRegistry = artifacts.require("APYAddressRegistry");
 const APYManagerV2 = artifacts.require("APYManagerV2");
 const APYPoolTokenV2 = artifacts.require("APYPoolTokenV2");
 const Strategy = artifacts.require("Strategy");
+const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
 
 const POOL_DEPLOYER = "0x6EAF0ab3455787bA10089800dB91F11fDf6370BE";
 const MANAGER_DEPLOYER = "0x0f7B66a4a3f7CfeAc2517c2fb9F0518D48457d41";
@@ -216,10 +217,28 @@ describe("APYManager", () => {
     //   deployer.address, // oracle owner
     //   deployer.address // ETH funder
     // );
-    const FluxAggregator = await ethers.getContractFactory("FluxAggregator");
-    const FluxAggregatorAbi = FluxAggregator.interface.format("json");
-    const tvlAgg = await deployMockContract(deployer, FluxAggregatorAbi);
-    const ethUsdAgg = await deployMockContract(deployer, FluxAggregatorAbi);
+    const tvlAgg = await deployMockContract(
+      deployer,
+      AggregatorV3Interface.abi
+    );
+    const ethUsdAgg = await deployMockContract(
+      deployer,
+      AggregatorV3Interface.abi
+    );
+
+    const ethUsdPrice = tokenAmountToBigNumber("176767026385");
+    const usdTvl = tokenAmountToBigNumber("2510012387654321");
+    const updatedAt = (await ethers.provider.getBlock()).timestamp;
+    const invalidPrice = 0;
+    // setting the mock mines a block and advances time by 1 sec
+    await tvlAgg.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
+    await ethUsdAgg.mock.latestRoundData.returns(
+      0,
+      ethUsdPrice,
+      0,
+      updatedAt,
+      0
+    );
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     const APYMetaPoolTokenProxy = await ethers.getContractFactory(
