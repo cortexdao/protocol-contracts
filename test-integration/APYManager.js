@@ -2,6 +2,11 @@ require("dotenv").config();
 const { assert, expect } = require("chai");
 const { artifacts, ethers, network } = require("hardhat");
 const legos = require("@apy-finance/defi-legos");
+const {
+  tokenAmountToBigNumber,
+  deployAggregator,
+} = require("../utils/helpers");
+const { deployMockContract } = require("ethereum-waffle");
 
 const APYAddressRegistry = artifacts.require("APYAddressRegistry");
 const APYManagerV2 = artifacts.require("APYManagerV2");
@@ -25,15 +30,19 @@ describe("APYManager", () => {
   let APY_DAI_POOL;
   let APY_USDC_POOL;
   let APY_USDT_POOL;
+
   let Manager;
+  let mApt;
   let executor;
   let strategy;
+
   let signer;
+  let deployer;
   let funder;
   let randomAccount;
 
   before(async () => {
-    [funder, randomAccount] = await ethers.getSigners();
+    [deployer, funder, randomAccount] = await ethers.getSigners();
 
     await funder.sendTransaction({
       to: POOL_DEPLOYER,
@@ -178,10 +187,70 @@ describe("APYManager", () => {
 
     // Set address registry for manager
     await Manager.setAddressRegistry(addressRegistry.address);
+
+    // const paymentAmount = tokenAmountToBigNumber("1", "18"); // LINK token
+    // const maxSubmissionValue = tokenAmountToBigNumber("1", "20"); // USD
+    // const tvlAggConfig = {
+    //   paymentAmount, // payment amount (price paid for each oracle submission, in wei)
+    //   minSubmissionValue: 0,
+    //   maxSubmissionValue,
+    //   decimals: 8, // decimal offset for answer
+    //   description: "TVL aggregator",
+    // };
+    // const ethUsdAggConfig = {
+    //   paymentAmount, // payment amount (price paid for each oracle submission, in wei)
+    //   minSubmissionValue: 0,
+    //   maxSubmissionValue,
+    //   decimals: 8, // decimal offset for answer
+    //   description: "ETH-USD aggregator",
+    // };
+    // const tvlAgg = await deployAggregator(
+    //   tvlAggConfig,
+    //   oracle.address,
+    //   deployer.address, // oracle owner
+    //   deployer.address // ETH funder
+    // );
+    // const ethUsdAgg = await deployAggregator(
+    //   ethUsdAggConfig,
+    //   oracle.address,
+    //   deployer.address, // oracle owner
+    //   deployer.address // ETH funder
+    // );
+    const FluxAggregator = await ethers.getContractFactory("FluxAggregator");
+    const FluxAggregatorAbi = FluxAggregator.interface.format("json");
+    const tvlAgg = await deployMockContract(deployer, FluxAggregatorAbi);
+    const ethUsdAgg = await deployMockContract(deployer, FluxAggregatorAbi);
+
+    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+    const APYMetaPoolTokenProxy = await ethers.getContractFactory(
+      "APYMetaPoolTokenProxy"
+    );
+    const APYMetaPoolToken = await ethers.getContractFactory(
+      "APYMetaPoolToken"
+    );
+
+    const aggStalePeriod = 14400;
+    const proxyAdmin = await ProxyAdmin.deploy();
+    await proxyAdmin.deployed();
+    const logic = await APYMetaPoolToken.deploy();
+    await logic.deployed();
+    const proxy = await APYMetaPoolTokenProxy.deploy(
+      logic.address,
+      proxyAdmin.address,
+      tvlAgg.address,
+      ethUsdAgg.address,
+      aggStalePeriod
+    );
+    await proxy.deployed();
+
+    mApt = await APYMetaPoolToken.attach(proxy.address);
+    await mApt.setManagerAddress(Manager.address);
+
+    await Manager.setMetaPoolToken(mApt.address);
   });
 
   describe("Deploy Strategy", async () => {
-    it("Non-owner cannot call", async () => {
+    it("non-owner cannot call", async () => {
       const bad_signer = await ethers.provider.getSigner(randomAccount.address);
       const bad_MANAGER = await ethers.getContractAt(
         APYManagerV2.abi,
