@@ -74,7 +74,7 @@ contract("APYAddressRegistry", async (accounts) => {
     });
 
     it("Revert when ETH is sent", async () => {
-      await expectRevert(registry.send(10), "DONT_SEND_ETHER");
+      await expectRevert.unspecified(registry.send(10));
     });
   });
 

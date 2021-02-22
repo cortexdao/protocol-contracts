@@ -10,7 +10,7 @@ import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAddressRegistry.sol";
 import "./interfaces/IDetailedERC20.sol";
 import "./interfaces/IStrategyFactory.sol";
-import "./APYPoolToken.sol";
+import "./APYPoolTokenV2.sol";
 import "./APYMetaPoolToken.sol";
 import "./Strategy.sol";
 
@@ -135,12 +135,15 @@ contract APYManagerV2 is
         StrategyAllocation memory allocation
     ) public override onlyOwner {
         require(
-            allocation.pools.length == allocation.amounts.length,
+            allocation.poolIds.length == allocation.amounts.length,
             "allocation length mismatch"
         );
         require(isStrategyDeployed[strategy], "Invalid Strategy");
-        for (uint256 i = 0; i < allocation.pools.length; i++) {
-            APYPoolToken pool = APYPoolToken(allocation.pools[i]);
+        for (uint256 i = 0; i < allocation.poolIds.length; i++) {
+            APYPoolTokenV2 pool =
+                APYPoolTokenV2(
+                    addressRegistry.getAddress(allocation.poolIds[i])
+                );
             IDetailedERC20 underlyer = pool.underlyer();
             uint256 poolAmount = allocation.amounts[i];
             // uint256 poolValue = pool.getEthValueFromTokenAmount(poolAmount);
@@ -187,12 +190,15 @@ contract APYManagerV2 is
         StrategyAllocation memory allocation
     ) public override onlyOwner {
         require(
-            allocation.pools.length == allocation.amounts.length,
+            allocation.poolIds.length == allocation.amounts.length,
             "allocation length mismatch"
         );
         require(isStrategyDeployed[strategy], "Invalid Strategy");
-        for (uint256 i = 0; i < allocation.pools.length; i++) {
-            APYPoolToken pool = APYPoolToken(allocation.pools[i]);
+        for (uint256 i = 0; i < allocation.poolIds.length; i++) {
+            APYPoolTokenV2 pool =
+                APYPoolTokenV2(
+                    addressRegistry.getAddress(allocation.poolIds[i])
+                );
             IDetailedERC20 underlyer = pool.underlyer();
             uint256 amountToSend = allocation.amounts[i];
             // uint256 poolValue = pool.getEthValueFromTokenAmount(amountToSend);
@@ -301,7 +307,7 @@ contract APYManagerV2 is
     function pushFunds(address payable poolAddress) external onlyOwner {
         uint256 mAptAmount = mApt.balanceOf(poolAddress);
 
-        APYPoolToken pool = APYPoolToken(poolAddress);
+        APYPoolTokenV2 pool = APYPoolTokenV2(poolAddress);
         uint256 tokenEthPrice = pool.getTokenEthPrice();
         IDetailedERC20 underlyer = pool.underlyer();
         uint8 decimals = underlyer.decimals();
@@ -319,7 +325,7 @@ contract APYManagerV2 is
      * @dev Pool must approve manager to transfer its underlyer token.
      */
     function pullFunds(address payable poolAddress) external onlyOwner {
-        APYPoolToken pool = APYPoolToken(poolAddress);
+        APYPoolTokenV2 pool = APYPoolTokenV2(poolAddress);
         IDetailedERC20 underlyer = pool.underlyer();
         uint256 poolAmount = underlyer.balanceOf(poolAddress);
         uint256 poolValue = pool.getEthValueFromTokenAmount(poolAmount);
