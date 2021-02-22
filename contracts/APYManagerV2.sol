@@ -146,14 +146,14 @@ contract APYManagerV2 is
                 );
             IDetailedERC20 underlyer = pool.underlyer();
             uint256 poolAmount = allocation.amounts[i];
-            // uint256 poolValue = pool.getEthValueFromTokenAmount(poolAmount);
+            uint256 poolValue = pool.getEthValueFromTokenAmount(poolAmount);
 
-            // uint256 tokenEthPrice = pool.getTokenEthPrice();
-            // uint8 decimals = underlyer.decimals();
-            // uint256 mintAmount =
-            //     mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
+            uint256 tokenEthPrice = pool.getTokenEthPrice();
+            uint8 decimals = underlyer.decimals();
+            uint256 mintAmount =
+                mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
 
-            // mApt.mint(poolAddress, mintAmount);
+            mApt.mint(address(pool), mintAmount);
             underlyer.safeTransferFrom(address(pool), strategy, poolAmount);
         }
     }
@@ -201,14 +201,14 @@ contract APYManagerV2 is
                 );
             IDetailedERC20 underlyer = pool.underlyer();
             uint256 amountToSend = allocation.amounts[i];
-            // uint256 poolValue = pool.getEthValueFromTokenAmount(amountToSend);
+            uint256 poolValue = pool.getEthValueFromTokenAmount(amountToSend);
 
-            // uint256 tokenEthPrice = pool.getTokenEthPrice();
-            // uint8 decimals = underlyer.decimals();
-            // uint256 mintAmount =
-            //     mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
+            uint256 tokenEthPrice = pool.getTokenEthPrice();
+            uint8 decimals = underlyer.decimals();
+            uint256 mintAmount =
+                mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
 
-            // mApt.mint(poolAddress, mintAmount);
+            mApt.mint(address(pool), mintAmount);
             underlyer.safeTransferFrom(strategy, address(pool), amountToSend);
         }
     }
