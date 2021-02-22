@@ -2,10 +2,7 @@ require("dotenv").config();
 const { assert, expect } = require("chai");
 const { artifacts, ethers, network } = require("hardhat");
 const legos = require("@apy-finance/defi-legos");
-const {
-  tokenAmountToBigNumber,
-  deployAggregator,
-} = require("../utils/helpers");
+const { tokenAmountToBigNumber } = require("../utils/helpers");
 const { deployMockContract } = require("ethereum-waffle");
 
 const APYAddressRegistry = artifacts.require("APYAddressRegistry");
@@ -28,11 +25,11 @@ describe("APYManager", () => {
   // ENABLE_FORKING=true yarn hardhat node
   // yarn test:integration --network localhost
 
-  let APY_DAI_POOL;
-  let APY_USDC_POOL;
-  let APY_USDT_POOL;
+  let apyDaiPool;
+  let apyUsdcPool;
+  let apyUsdtPool;
 
-  let Manager;
+  let manager;
   let mApt;
   let executor;
   let strategy;
@@ -105,25 +102,25 @@ describe("APYManager", () => {
 
     //Handle approvals
     signer = await ethers.provider.getSigner(POOL_DEPLOYER);
-    APY_DAI_POOL = await ethers.getContractAt(
+    apyDaiPool = await ethers.getContractAt(
       APYPoolTokenV2.abi,
       legos.apy.addresses.APY_DAI_POOL,
       signer
     );
-    APY_USDC_POOL = await ethers.getContractAt(
+    apyUsdcPool = await ethers.getContractAt(
       APYPoolTokenV2.abi,
       legos.apy.addresses.APY_USDC_POOL,
       signer
     );
-    APY_USDT_POOL = await ethers.getContractAt(
+    apyUsdtPool = await ethers.getContractAt(
       APYPoolTokenV2.abi,
       legos.apy.addresses.APY_USDT_POOL,
       signer
     );
 
-    await APY_DAI_POOL.infiniteApprove(legos.apy.addresses.APY_MANAGER);
-    await APY_USDC_POOL.infiniteApprove(legos.apy.addresses.APY_MANAGER);
-    await APY_USDT_POOL.infiniteApprove(legos.apy.addresses.APY_MANAGER);
+    await apyDaiPool.infiniteApprove(legos.apy.addresses.APY_MANAGER);
+    await apyUsdcPool.infiniteApprove(legos.apy.addresses.APY_MANAGER);
+    await apyUsdtPool.infiniteApprove(legos.apy.addresses.APY_MANAGER);
 
     // Create Generic Executor
     const ExecutorFactory = await ethers.getContractFactory(
@@ -133,7 +130,7 @@ describe("APYManager", () => {
 
     // Set variables
     signer = await ethers.provider.getSigner(MANAGER_DEPLOYER);
-    Manager = await ethers.getContractAt(
+    manager = await ethers.getContractAt(
       APYManagerV2.abi,
       legos.apy.addresses.APY_MANAGER,
       signer
@@ -187,36 +184,8 @@ describe("APYManager", () => {
     );
 
     // Set address registry for manager
-    await Manager.setAddressRegistry(addressRegistry.address);
+    await manager.setAddressRegistry(addressRegistry.address);
 
-    // const paymentAmount = tokenAmountToBigNumber("1", "18"); // LINK token
-    // const maxSubmissionValue = tokenAmountToBigNumber("1", "20"); // USD
-    // const tvlAggConfig = {
-    //   paymentAmount, // payment amount (price paid for each oracle submission, in wei)
-    //   minSubmissionValue: 0,
-    //   maxSubmissionValue,
-    //   decimals: 8, // decimal offset for answer
-    //   description: "TVL aggregator",
-    // };
-    // const ethUsdAggConfig = {
-    //   paymentAmount, // payment amount (price paid for each oracle submission, in wei)
-    //   minSubmissionValue: 0,
-    //   maxSubmissionValue,
-    //   decimals: 8, // decimal offset for answer
-    //   description: "ETH-USD aggregator",
-    // };
-    // const tvlAgg = await deployAggregator(
-    //   tvlAggConfig,
-    //   oracle.address,
-    //   deployer.address, // oracle owner
-    //   deployer.address // ETH funder
-    // );
-    // const ethUsdAgg = await deployAggregator(
-    //   ethUsdAggConfig,
-    //   oracle.address,
-    //   deployer.address, // oracle owner
-    //   deployer.address // ETH funder
-    // );
     const tvlAgg = await deployMockContract(
       deployer,
       AggregatorV3Interface.abi
@@ -229,7 +198,6 @@ describe("APYManager", () => {
     const ethUsdPrice = tokenAmountToBigNumber("176767026385");
     const usdTvl = tokenAmountToBigNumber("2510012387654321");
     const updatedAt = (await ethers.provider.getBlock()).timestamp;
-    const invalidPrice = 0;
     // setting the mock mines a block and advances time by 1 sec
     await tvlAgg.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
     await ethUsdAgg.mock.latestRoundData.returns(
@@ -263,9 +231,9 @@ describe("APYManager", () => {
     await proxy.deployed();
 
     mApt = await APYMetaPoolToken.attach(proxy.address);
-    await mApt.setManagerAddress(Manager.address);
+    await mApt.setManagerAddress(manager.address);
 
-    await Manager.setMetaPoolToken(mApt.address);
+    await manager.setMetaPoolToken(mApt.address);
   });
 
   describe("Deploy Strategy", async () => {
@@ -281,25 +249,25 @@ describe("APYManager", () => {
       ).to.be.revertedWith("revert Ownable: caller is not the owner");
     });
 
-    it("Owner can call", async () => {
-      const stratAddress = await Manager.callStatic.deployStrategy(
+    it.only("Owner can call", async () => {
+      const stratAddress = await manager.callStatic.deployStrategy(
         executor.address
       );
-      Manager.once(
-        Manager.filters.StrategyDeployed(),
+      manager.once(
+        manager.filters.StrategyDeployed(),
         (strategy, genericExecutor) => {
           assert.equal(strategy, stratAddress);
           assert.equal(genericExecutor, executor.address);
         }
       );
-      await expect(Manager.deployStrategy(executor.address)).to.not.be.reverted;
+      await expect(manager.deployStrategy(executor.address)).to.not.be.reverted;
       strategy = await ethers.getContractAt(Strategy.abi, stratAddress);
       const stratOwner = await strategy.owner();
-      assert.equal(stratOwner, Manager.address);
+      assert.equal(stratOwner, manager.address);
     });
   });
 
-  describe("Fund Strategy", async () => {
+  describe.only("Fund Strategy", async () => {
     it("Non-owner cannot call", async () => {
       const bad_signer = await ethers.provider.getSigner(randomAccount.address);
       const bad_MANAGER = await ethers.getContractAt(
@@ -321,7 +289,7 @@ describe("APYManager", () => {
 
     it("Unregistered pool fails", async () => {
       await expect(
-        Manager.fundStrategy(strategy.address, [
+        manager.fundStrategy(strategy.address, [
           [
             ethers.utils.formatBytes32String("daiPool"),
             ethers.utils.formatBytes32String("invalidPoolId"),
@@ -333,15 +301,15 @@ describe("APYManager", () => {
     });
 
     it("Owner can call", async () => {
-      const DAI_Contract = await ethers.getContractAt(
+      const daiToken = await ethers.getContractAt(
         legos.maker.abis.DAI,
         legos.maker.addresses.DAI
       );
-      const USDC_Contract = await ethers.getContractAt(
+      const usdcToken = await ethers.getContractAt(
         legos.centre.abis.USDC_Logic,
         legos.centre.addresses.USDC
       );
-      const USDT_Contract = await ethers.getContractAt(
+      const usdtToken = await ethers.getContractAt(
         legos.tether.abis.USDT,
         legos.tether.addresses.USDT
       );
@@ -349,22 +317,37 @@ describe("APYManager", () => {
       // ETHERS contract.on() event listener doesnt seems to be working for some reason.
       // It might be because the event is not at the top most level
 
-      await Manager.fundStrategy(strategy.address, [
+      const daiPoolBalance = await daiToken.balanceOf(apyDaiPool.address);
+      const usdcPoolBalance = await usdcToken.balanceOf(apyUsdcPool.address);
+      const usdtPoolBalance = await usdtToken.balanceOf(apyUsdtPool.address);
+
+      const amount = "10";
+      await manager.fundStrategy(strategy.address, [
         [
           ethers.utils.formatBytes32String("daiPool"),
           ethers.utils.formatBytes32String("usdcPool"),
           ethers.utils.formatBytes32String("usdtPool"),
         ],
-        ["10", "10", "10"],
+        [amount, amount, amount],
       ]);
 
-      const stratDaiBal = await DAI_Contract.balanceOf(strategy.address);
-      const stratUsdcBal = await USDC_Contract.balanceOf(strategy.address);
-      const stratUsdtBal = await USDT_Contract.balanceOf(strategy.address);
+      const stratDaiBalance = await daiToken.balanceOf(strategy.address);
+      const stratUsdcBalance = await usdcToken.balanceOf(strategy.address);
+      const stratUsdtBalance = await usdtToken.balanceOf(strategy.address);
 
-      assert.equal(stratDaiBal.toString(), "10");
-      assert.equal(stratUsdcBal.toString(), "10");
-      assert.equal(stratUsdtBal.toString(), "10");
+      expect(stratDaiBalance).to.equal(amount);
+      expect(stratUsdcBalance).to.equal(amount);
+      expect(stratUsdtBalance).to.equal(amount);
+
+      expect(await daiToken.balanceOf(apyDaiPool.address)).to.equal(
+        daiPoolBalance.sub(amount)
+      );
+      expect(await usdcToken.balanceOf(apyUsdcPool.address)).to.equal(
+        usdcPoolBalance.sub(amount)
+      );
+      expect(await usdtToken.balanceOf(apyUsdtPool.address)).to.equal(
+        usdtPoolBalance.sub(amount)
+      );
     });
   });
 
@@ -393,7 +376,7 @@ describe("APYManager", () => {
 
     it("Unregistered pool fails", async () => {
       await expect(
-        Manager.fundAndExecute(
+        manager.fundAndExecute(
           strategy.address,
           [[ethers.utils.formatBytes32String("invalidPool")], ["100"]],
           [
@@ -419,7 +402,7 @@ describe("APYManager", () => {
         legos.tether.abis.USDT,
         legos.tether.addresses.USDT
       );
-      await Manager.fundAndExecute(
+      await manager.fundAndExecute(
         strategy.address,
         [[ethers.utils.formatBytes32String("daiPool")], ["100"]],
         [
@@ -467,7 +450,7 @@ describe("APYManager", () => {
       );
 
       // sequence is to give approval to DAI and cDAI @ 100 each
-      await Manager.execute(strategy.address, [
+      await manager.execute(strategy.address, [
         [
           "0x6B175474E89094C44Da98b954EedeAC495271d0F",
           "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
@@ -508,7 +491,7 @@ describe("APYManager", () => {
 
     it("Unregistered pool fails", async () => {
       await expect(
-        Manager.executeAndWithdraw(
+        manager.executeAndWithdraw(
           strategy.address,
           [[ethers.utils.formatBytes32String("invalidPool")], ["100"]],
           [
@@ -527,7 +510,7 @@ describe("APYManager", () => {
         legos.maker.addresses.DAI
       );
 
-      await Manager.executeAndWithdraw(
+      await manager.executeAndWithdraw(
         strategy.address,
         [[ethers.utils.formatBytes32String("daiPool")], ["10"]],
         [
@@ -566,7 +549,7 @@ describe("APYManager", () => {
 
     it("Unregistered pool fails", async () => {
       await expect(
-        Manager.withdrawFromStrategy(strategy.address, [
+        manager.withdrawFromStrategy(strategy.address, [
           [ethers.utils.formatBytes32String("invalidPool")],
           ["10"],
         ])
@@ -582,7 +565,7 @@ describe("APYManager", () => {
       // ETHERS contract.on() event listener doesnt seems to be working for some reason.
       // It might be because the event is not at the top most level
 
-      await Manager.withdrawFromStrategy(strategy.address, [
+      await manager.withdrawFromStrategy(strategy.address, [
         [ethers.utils.formatBytes32String("daiPool")],
         ["10"],
       ]);
