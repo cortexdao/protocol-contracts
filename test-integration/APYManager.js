@@ -317,37 +317,64 @@ describe("APYManager", () => {
       // ETHERS contract.on() event listener doesnt seems to be working for some reason.
       // It might be because the event is not at the top most level
 
+      // pre-conditions
+      expect(await mApt.balanceOf(apyDaiPool.address)).to.equal("0");
+      expect(await mApt.balanceOf(usdcToken.address)).to.equal("0");
+      expect(await mApt.balanceOf(usdtToken.address)).to.equal("0");
+
+      expect(await daiToken.balanceOf(strategy.address)).to.equal(0);
+      expect(await usdcToken.balanceOf(strategy.address)).to.equal(0);
+      expect(await usdtToken.balanceOf(strategy.address)).to.equal(0);
+
+      // start the tests
+
       const daiPoolBalance = await daiToken.balanceOf(apyDaiPool.address);
       const usdcPoolBalance = await usdcToken.balanceOf(apyUsdcPool.address);
       const usdtPoolBalance = await usdtToken.balanceOf(apyUsdtPool.address);
 
-      const amount = "10";
+      const daiAmount = tokenAmountToBigNumber("10", "18");
+      const usdcAmount = tokenAmountToBigNumber("10", "6");
+      const usdtAmount = tokenAmountToBigNumber("10", "6");
       await manager.fundStrategy(strategy.address, [
         [
           ethers.utils.formatBytes32String("daiPool"),
           ethers.utils.formatBytes32String("usdcPool"),
           ethers.utils.formatBytes32String("usdtPool"),
         ],
-        [amount, amount, amount],
+        [daiAmount, usdcAmount, usdtAmount],
       ]);
 
       const stratDaiBalance = await daiToken.balanceOf(strategy.address);
       const stratUsdcBalance = await usdcToken.balanceOf(strategy.address);
       const stratUsdtBalance = await usdtToken.balanceOf(strategy.address);
 
-      expect(stratDaiBalance).to.equal(amount);
-      expect(stratUsdcBalance).to.equal(amount);
-      expect(stratUsdtBalance).to.equal(amount);
+      expect(stratDaiBalance).to.equal(daiAmount);
+      expect(stratUsdcBalance).to.equal(usdcAmount);
+      expect(stratUsdtBalance).to.equal(usdtAmount);
 
       expect(await daiToken.balanceOf(apyDaiPool.address)).to.equal(
-        daiPoolBalance.sub(amount)
+        daiPoolBalance.sub(daiAmount)
       );
       expect(await usdcToken.balanceOf(apyUsdcPool.address)).to.equal(
-        usdcPoolBalance.sub(amount)
+        usdcPoolBalance.sub(usdcAmount)
       );
       expect(await usdtToken.balanceOf(apyUsdtPool.address)).to.equal(
-        usdtPoolBalance.sub(amount)
+        usdtPoolBalance.sub(usdtAmount)
       );
+
+      const daiValue = await apyDaiPool.getEthValueFromTokenAmount(daiAmount);
+      //  const daiValue = await apyDaiPool.getEthValueFromTokenAmount(poolAmount);
+
+      const tokenEthPrice = await apyDaiPool.getTokenEthPrice();
+      const decimals = await daiToken.decimals();
+      const mintAmount = await mApt.calculateMintAmount(
+        daiValue,
+        tokenEthPrice,
+        decimals
+      );
+
+      console.log(mintAmount.toString());
+      expect(await mApt.balanceOf(apyDaiPool.address)).to.equal(mintAmount);
     });
   });
 
