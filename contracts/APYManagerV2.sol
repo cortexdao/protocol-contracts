@@ -89,23 +89,40 @@ contract APYManagerV2 is
         onlyOwner
     {
         require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
-        EnumerableSet.AddressSet storage strategyTokens =
-            _strategyToTokens[strategy];
-
         for (uint256 i = 0; i < tokens.length; i++) {
             address token = tokens[i];
-            EnumerableSet.AddressSet storage tokenStrategies =
-                _tokenToStrategies[token];
+            _registerToken(strategy, token);
+        }
+    }
 
-            if (!isTokenRegistered(token)) {
-                _tokenAddresses.add(token);
-            }
-            if (!strategyTokens.contains(token)) {
-                strategyTokens.add(token);
-            }
-            if (!tokenStrategies.contains(strategy)) {
-                tokenStrategies.add(strategy);
-            }
+    function _registerToken(address strategy, address token) internal {
+        require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
+        // `add` is safe to call multiple times, as it
+        // returns a boolean to indicate if element was added
+        _tokenToStrategies[token].add(strategy);
+        _strategyToTokens[strategy].add(token);
+        _tokenAddresses.add(token);
+    }
+
+    function deregisterTokens(address strategy, address[] calldata tokens)
+        external
+        onlyOwner
+    {
+        require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
+        for (uint256 i = 0; i < tokens.length; i++) {
+            address token = tokens[i];
+            _deregisterToken(strategy, token);
+        }
+    }
+
+    function _deregisterToken(address strategy, address token) internal {
+        require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
+        // `remove` is safe to call multiple times, as it
+        // returns a boolean to indicate if element was removed
+        _tokenToStrategies[token].remove(strategy);
+        _strategyToTokens[strategy].remove(token);
+        if (_tokenToStrategies[token].length() == 0) {
+            _tokenAddresses.remove(token);
         }
     }
 
