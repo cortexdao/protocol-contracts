@@ -7,6 +7,9 @@
  * Alternatively, to pass command-line arguments:
  *
  * $ HARDHAT_NETWORK=<network name> node run scripts/<script filename> --arg1=val1 --arg2=val2
+ *
+ *
+ * This script will deploy the stablecoin pools along with the mAPT token.
  */
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
@@ -34,7 +37,7 @@ async function main() {
     "APYMetaPoolTokenProxy"
   );
   const APYPoolToken = await ethers.getContractFactory("APYPoolToken");
-  const APYPoolTokenV2 = await ethers.getContractFactory("TestAPYPoolTokenV2");
+  const APYPoolTokenV2 = await ethers.getContractFactory("APYPoolTokenV2");
   const APYPoolTokenProxy = await ethers.getContractFactory(
     "APYPoolTokenProxy"
   );
