@@ -75,7 +75,6 @@
   },
   "dependencies": {
     "@chainlink/contracts": "0.0.9",
-    "@compound-finance/compound-js": "^0.1.0",
     "@openzeppelin/contracts": "3.2.0",
     "@openzeppelin/contracts-ethereum-package": "3.0.0",
     "abdk-libraries-solidity": "2.4.0",
