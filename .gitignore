@@ -35,4 +35,4 @@ subgraph/build
 *.swp
 
 # cloned chainlink repo
-/external-adapters-js
+/chainlink-tvl-adapter

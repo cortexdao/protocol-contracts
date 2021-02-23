@@ -4,6 +4,11 @@ SHELL := bash
 
 DOCKERHOST := $(shell ifconfig | grep -E "([0-9]{1,3}\.){3}[0-9]{1,3}" | grep -v 127.0.0.1 | awk '{ print $$2 }' | cut -f2 -d: | head -n1)
 
+# original name of repo is external-adapter-js
+CHAINLINK_REPO_FOLDER := "./chainlink-tvl-adapter"
+CHAINLINK_REPO_URL := "git@github.com:smartcontractkit/external-adapters-js.git"
+
+
 .PHONY: help
 help:
 	@echo ""
@@ -32,9 +37,13 @@ build:
 
 .PHONY: up
 up:
+	@make up_detached
+	@make logs
+
+.PHONY: up_detached
+up_detached:
 	DOCKERHOST=$(DOCKERHOST) docker-compose up -d
 	@make create_job
-	@make logs
 
 .PHONY: down
 down:
@@ -115,4 +124,30 @@ create_job:
 
 .PHONY: clone_chainlink_repo
 clone_chainlink_repo:
-	git clone git@github.com:smartcontractkit/external-adapters-js.git
+	@if [ ! -d "$(CHAINLINK_REPO_FOLDER)" ]; then \
+    	git clone "$(CHAINLINK_REPO_URL)" "$(CHAINLINK_REPO_FOLDER)"; \
+	else \
+    	cd "$(CHAINLINK_REPO_FOLDER)"; \
+    	git pull "$(CHAINLINK_REPO_URL)"; \
+		cd -;\
+	fi
+
+
+.PHONY: test_chainlink
+test_chainlink:
+	yarn fork:mainnet > /dev/null &
+	make clone_chainlink_repo
+	while !</dev/tcp/localhost/8545; do sleep 5; done
+	make up_detached
+	##################
+	# run tests here
+	##################
+	make down
+	(ps -ef | grep 'fork_mainnet' | grep -v grep | awk '{print $2}' | xargs kill -9) || true
+
+
+.PHONY: CI_tests
+CI_tests:
+	yarn test:unit
+	yarn test:integration
+	make test_chainlink
