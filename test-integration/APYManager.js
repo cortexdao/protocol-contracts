@@ -335,13 +335,26 @@ describe("APYManager", () => {
       const daiAmount = tokenAmountToBigNumber("10", "18");
       const usdcAmount = tokenAmountToBigNumber("10", "6");
       const usdtAmount = tokenAmountToBigNumber("10", "6");
+
+      const tokenEthPrice = await apyDaiPool.getTokenEthPrice();
+      const decimals = await daiToken.decimals();
+      const mintAmount = await mApt.calculateMintAmount(
+        daiAmount,
+        tokenEthPrice,
+        decimals
+      );
+
       await manager.fundStrategy(strategy.address, [
         [
           ethers.utils.formatBytes32String("daiPool"),
           ethers.utils.formatBytes32String("usdcPool"),
           ethers.utils.formatBytes32String("usdtPool"),
         ],
-        [daiAmount, usdcAmount, usdtAmount],
+        [
+          daiAmount, //
+          usdcAmount, //
+          usdtAmount, //
+        ],
       ]);
 
       const stratDaiBalance = await daiToken.balanceOf(strategy.address);
@@ -360,17 +373,6 @@ describe("APYManager", () => {
       );
       expect(await usdtToken.balanceOf(apyUsdtPool.address)).to.equal(
         usdtPoolBalance.sub(usdtAmount)
-      );
-
-      const daiValue = await apyDaiPool.getEthValueFromTokenAmount(daiAmount);
-      //  const daiValue = await apyDaiPool.getEthValueFromTokenAmount(poolAmount);
-
-      const tokenEthPrice = await apyDaiPool.getTokenEthPrice();
-      const decimals = await daiToken.decimals();
-      const mintAmount = await mApt.calculateMintAmount(
-        daiValue,
-        tokenEthPrice,
-        decimals
       );
 
       console.log(mintAmount.toString());

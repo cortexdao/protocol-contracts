@@ -13,6 +13,7 @@ import "./interfaces/IStrategyFactory.sol";
 import "./APYPoolTokenV2.sol";
 import "./APYMetaPoolToken.sol";
 import "./Strategy.sol";
+import "hardhat/console.sol";
 
 contract APYManagerV2 is
     Initializable,
@@ -146,13 +147,12 @@ contract APYManagerV2 is
                 );
             IDetailedERC20 underlyer = pool.underlyer();
             uint256 poolAmount = allocation.amounts[i];
-            uint256 poolValue = pool.getEthValueFromTokenAmount(poolAmount);
-
             uint256 tokenEthPrice = pool.getTokenEthPrice();
             uint8 decimals = underlyer.decimals();
             uint256 mintAmount =
-                mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
+                mApt.calculateMintAmount(poolAmount, tokenEthPrice, decimals);
 
+            console.log(mintAmount);
             mApt.mint(address(pool), mintAmount);
             underlyer.safeTransferFrom(address(pool), strategy, poolAmount);
         }
