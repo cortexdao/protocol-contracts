@@ -5,10 +5,6 @@ const legos = require("@apy-finance/defi-legos");
 const { tokenAmountToBigNumber } = require("../utils/helpers");
 const { deployMockContract } = require("ethereum-waffle");
 
-const APYAddressRegistry = artifacts.require("APYAddressRegistry");
-const APYManagerV2 = artifacts.require("APYManagerV2");
-const APYPoolTokenV2 = artifacts.require("APYPoolTokenV2");
-const Strategy = artifacts.require("Strategy");
 const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
 
 const POOL_DEPLOYER = "0x6EAF0ab3455787bA10089800dB91F11fDf6370BE";
@@ -21,9 +17,11 @@ console.debugging = false;
 /* ************************ */
 
 describe("APYManager", () => {
-  // I use hardhat to be able switch between accounts with impersonateAcccount functionality
-  // ENABLE_FORKING=true yarn hardhat node
-  // yarn test:integration --network localhost
+  /*
+   * I use hardhat to be able switch between accounts with impersonateAcccount functionality
+   * ENABLE_FORKING=true yarn hardhat node
+   * yarn test:integration --network localhost
+   */
 
   let apyDaiPool;
   let apyUsdcPool;
@@ -34,7 +32,7 @@ describe("APYManager", () => {
   let executor;
   let strategy;
 
-  let signer;
+  let managerDeployer;
   let deployer;
   let funder;
   let randomAccount;
@@ -42,150 +40,94 @@ describe("APYManager", () => {
   before(async () => {
     [deployer, funder, randomAccount] = await ethers.getSigners();
 
+    /* unlock and fund Mainnet deployers */
     await funder.sendTransaction({
       to: POOL_DEPLOYER,
       value: ethers.utils.parseEther("10").toHexString(),
+    });
+    await network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [POOL_DEPLOYER],
     });
 
     await funder.sendTransaction({
       to: MANAGER_DEPLOYER,
       value: ethers.utils.parseEther("10").toHexString(),
     });
-
-    // Impersonate
-    await network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [POOL_DEPLOYER],
-    });
-
     await network.provider.request({
       method: "hardhat_impersonateAccount",
       params: [MANAGER_DEPLOYER],
     });
+    managerDeployer = await ethers.provider.getSigner(MANAGER_DEPLOYER);
+    /***************************/
 
-    // Upgrade pools
-    signer = await ethers.provider.getSigner(POOL_DEPLOYER);
-    const newPoolLogic = await ethers.getContractFactory("APYPoolTokenV2");
-    const newPoolLogicContract = await newPoolLogic.deploy();
-    const PoolAdmin = await ethers.getContractAt(
+    /***********************************/
+    /* upgrade pools and manager to V2 */
+    /***********************************/
+    const poolDeployer = await ethers.provider.getSigner(POOL_DEPLOYER);
+    const APYPoolTokenV2 = await ethers.getContractFactory("APYPoolTokenV2");
+    const newPoolLogic = await APYPoolTokenV2.deploy();
+    const poolAdmin = await ethers.getContractAt(
       legos.apy.abis.APY_POOL_Admin,
       legos.apy.addresses.APY_POOL_Admin,
-      signer
+      poolDeployer
     );
 
-    await PoolAdmin.upgrade(
+    await poolAdmin.upgrade(
       legos.apy.addresses.APY_DAI_POOL,
-      newPoolLogicContract.address
+      newPoolLogic.address
     );
-    await PoolAdmin.upgrade(
+    await poolAdmin.upgrade(
       legos.apy.addresses.APY_USDC_POOL,
-      newPoolLogicContract.address
+      newPoolLogic.address
     );
-    await PoolAdmin.upgrade(
+    await poolAdmin.upgrade(
       legos.apy.addresses.APY_USDT_POOL,
-      newPoolLogicContract.address
+      newPoolLogic.address
     );
 
-    // Upgrade manager
-    signer = await ethers.provider.getSigner(MANAGER_DEPLOYER);
-    const newManagerLogic = await ethers.getContractFactory("APYManagerV2");
-    const newManagerLogicContract = await newManagerLogic.deploy();
-    const ManagerAdmin = await ethers.getContractAt(
+    const APYManagerV2 = await ethers.getContractFactory("APYManagerV2");
+    const newManagerLogic = await APYManagerV2.deploy();
+    const managerAdmin = await ethers.getContractAt(
       legos.apy.abis.APY_MANAGER_Admin,
       legos.apy.addresses.APY_MANAGER_Admin,
-      signer
+      managerDeployer
     );
-    await ManagerAdmin.upgrade(
+    await managerAdmin.upgrade(
       legos.apy.addresses.APY_MANAGER,
-      newManagerLogicContract.address
+      newManagerLogic.address
     );
 
-    //Handle approvals
-    signer = await ethers.provider.getSigner(POOL_DEPLOYER);
+    // approve manager to withdraw from pools
     apyDaiPool = await ethers.getContractAt(
-      APYPoolTokenV2.abi,
+      "APYPoolTokenV2",
       legos.apy.addresses.APY_DAI_POOL,
-      signer
+      poolDeployer
     );
     apyUsdcPool = await ethers.getContractAt(
-      APYPoolTokenV2.abi,
+      "APYPoolTokenV2",
       legos.apy.addresses.APY_USDC_POOL,
-      signer
+      poolDeployer
     );
     apyUsdtPool = await ethers.getContractAt(
-      APYPoolTokenV2.abi,
+      "APYPoolTokenV2",
       legos.apy.addresses.APY_USDT_POOL,
-      signer
+      poolDeployer
     );
-
     await apyDaiPool.infiniteApprove(legos.apy.addresses.APY_MANAGER);
     await apyUsdcPool.infiniteApprove(legos.apy.addresses.APY_MANAGER);
     await apyUsdtPool.infiniteApprove(legos.apy.addresses.APY_MANAGER);
 
-    // Create Generic Executor
-    const ExecutorFactory = await ethers.getContractFactory(
-      "APYGenericExecutor"
-    );
-    executor = await ExecutorFactory.deploy();
-
-    // Set variables
-    signer = await ethers.provider.getSigner(MANAGER_DEPLOYER);
     manager = await ethers.getContractAt(
-      APYManagerV2.abi,
+      "APYManagerV2",
       legos.apy.addresses.APY_MANAGER,
-      signer
+      managerDeployer
     );
+    /******** upgrades finished **********/
 
-    // Deploy Address Registry
-    const ProxyAdminFactory = await ethers.getContractFactory(
-      "ProxyAdmin",
-      signer
-    );
-    const APYAddressRegistryFactory = await ethers.getContractFactory(
-      "APYAddressRegistry",
-      signer
-    );
-    const TransparentUpgradeableProxyFactory = await ethers.getContractFactory(
-      "TransparentUpgradeableProxy",
-      signer
-    );
-    const registryProxyAdmin = await ProxyAdminFactory.deploy();
-    await registryProxyAdmin.deployed();
-    const registryLogic = await APYAddressRegistryFactory.deploy();
-    await registryLogic.deployed();
-    const encodedInitialize = APYAddressRegistryFactory.interface.encodeFunctionData(
-      "initialize(address)",
-      [registryProxyAdmin.address]
-    );
-    const registryProxy = await TransparentUpgradeableProxyFactory.deploy(
-      registryLogic.address,
-      registryProxyAdmin.address,
-      encodedInitialize
-    );
-
-    const addressRegistry = await ethers.getContractAt(
-      APYAddressRegistry.abi,
-      registryProxy.address,
-      signer
-    );
-
-    // register pools to address registry
-    await addressRegistry.registerAddress(
-      ethers.utils.formatBytes32String("daiPool"),
-      legos.apy.addresses.APY_DAI_POOL
-    );
-    await addressRegistry.registerAddress(
-      ethers.utils.formatBytes32String("usdcPool"),
-      legos.apy.addresses.APY_USDC_POOL
-    );
-    await addressRegistry.registerAddress(
-      ethers.utils.formatBytes32String("usdtPool"),
-      legos.apy.addresses.APY_USDT_POOL
-    );
-
-    // Set address registry for manager
-    await manager.setAddressRegistry(addressRegistry.address);
-
+    /***********************/
+    /***** deploy mAPT *****/
+    /***********************/
     const tvlAgg = await deployMockContract(
       deployer,
       AggregatorV3Interface.abi
@@ -208,19 +150,21 @@ describe("APYManager", () => {
       0
     );
 
-    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     const APYMetaPoolTokenProxy = await ethers.getContractFactory(
       "APYMetaPoolTokenProxy"
     );
     const APYMetaPoolToken = await ethers.getContractFactory(
       "APYMetaPoolToken"
     );
+    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
 
-    const aggStalePeriod = 14400;
     const proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
+
     const logic = await APYMetaPoolToken.deploy();
     await logic.deployed();
+
+    const aggStalePeriod = 14400;
     const proxy = await APYMetaPoolTokenProxy.deploy(
       logic.address,
       proxyAdmin.address,
@@ -232,15 +176,21 @@ describe("APYManager", () => {
 
     mApt = await APYMetaPoolToken.attach(proxy.address);
     await mApt.setManagerAddress(manager.address);
-
     await manager.setMetaPoolToken(mApt.address);
+    /***** deployment finished *****/
+
+    const APYGenericExecutor = await ethers.getContractFactory(
+      "APYGenericExecutor"
+    );
+    executor = await APYGenericExecutor.deploy();
+    await executor.deployed();
   });
 
   describe("Deploy Strategy", async () => {
     it("non-owner cannot call", async () => {
       const bad_signer = await ethers.provider.getSigner(randomAccount.address);
       const bad_MANAGER = await ethers.getContractAt(
-        APYManagerV2.abi,
+        "APYManagerV2",
         legos.apy.addresses.APY_MANAGER,
         bad_signer
       );
@@ -261,7 +211,7 @@ describe("APYManager", () => {
         }
       );
       await expect(manager.deployStrategy(executor.address)).to.not.be.reverted;
-      strategy = await ethers.getContractAt(Strategy.abi, stratAddress);
+      strategy = await ethers.getContractAt("Strategy", stratAddress);
       const stratOwner = await strategy.owner();
       assert.equal(stratOwner, manager.address);
     });
@@ -269,14 +219,9 @@ describe("APYManager", () => {
 
   describe.only("Fund Strategy", async () => {
     it("Non-owner cannot call", async () => {
-      const bad_signer = await ethers.provider.getSigner(randomAccount.address);
-      const bad_MANAGER = await ethers.getContractAt(
-        APYManagerV2.abi,
-        legos.apy.addresses.APY_MANAGER,
-        bad_signer
-      );
+      const nonOwner = await ethers.provider.getSigner(randomAccount.address);
       await expect(
-        bad_MANAGER.fundStrategy(strategy.address, [
+        manager.connect(nonOwner).fundStrategy(strategy.address, [
           [
             ethers.utils.formatBytes32String("daiPool"),
             ethers.utils.formatBytes32String("usdcPool"),
@@ -298,6 +243,18 @@ describe("APYManager", () => {
           ["10", "10", "10"],
         ])
       ).to.be.revertedWith("Missing address");
+    });
+
+    it("Owner can call", async () => {
+      const amount = tokenAmountToBigNumber("10", "18");
+      await expect(
+        manager
+          .connect(managerDeployer)
+          .fundStrategy(strategy.address, [
+            [ethers.utils.formatBytes32String("daiPool")],
+            [amount],
+          ])
+      ).to.not.be.reverted;
     });
 
     it("Owner can call", async () => {
@@ -325,6 +282,15 @@ describe("APYManager", () => {
       expect(await daiToken.balanceOf(strategy.address)).to.equal(0);
       expect(await usdcToken.balanceOf(strategy.address)).to.equal(0);
       expect(await usdtToken.balanceOf(strategy.address)).to.equal(0);
+
+      await network.provider.request({
+        method: "hardhat_impersonateAccount",
+        params: [manager.address],
+      });
+      const managerSigner = await ethers.provider.getSigner(manager.address);
+      await mApt
+        .connect(managerSigner)
+        .mint(deployer.address, tokenAmountToBigNumber("100"));
 
       // start the tests
 
@@ -382,24 +348,20 @@ describe("APYManager", () => {
 
   describe("Fund and Execute", async () => {
     it("Non-owner cannot call", async () => {
-      const bad_signer = await ethers.provider.getSigner(randomAccount.address);
-      const bad_MANAGER = await ethers.getContractAt(
-        APYManagerV2.abi,
-        legos.apy.addresses.APY_MANAGER,
-        bad_signer
-      );
-
+      const nonOwner = await ethers.provider.getSigner(randomAccount.address);
       await expect(
-        bad_MANAGER.fundAndExecute(
-          strategy.address,
-          [[ethers.utils.formatBytes32String("daiPool")], ["100"]],
-          [
+        manager
+          .connect(nonOwner)
+          .fundAndExecute(
+            strategy.address,
+            [[ethers.utils.formatBytes32String("daiPool")], ["100"]],
             [
-              "0x6B175474E89094C44Da98b954EedeAC495271d0F",
-              "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
-            ],
-          ]
-        )
+              [
+                "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+                "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
+              ],
+            ]
+          )
       ).to.be.revertedWith("revert Ownable: caller is not the owner");
     });
 
@@ -454,21 +416,17 @@ describe("APYManager", () => {
 
   describe("Execute", async () => {
     it("Non-owner cannot call", async () => {
-      const bad_signer = await ethers.provider.getSigner(randomAccount.address);
-      const bad_MANAGER = await ethers.getContractAt(
-        APYManagerV2.abi,
-        legos.apy.addresses.APY_MANAGER,
-        bad_signer
-      );
-
+      const nonOwner = await ethers.provider.getSigner(randomAccount.address);
       // sequence is to give approval to DAI and cDAI @ 100 each
       await expect(
-        bad_MANAGER.execute(strategy.address, [
-          [
-            "0x6B175474E89094C44Da98b954EedeAC495271d0F",
-            "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
-          ],
-        ])
+        manager
+          .connect(nonOwner)
+          .execute(strategy.address, [
+            [
+              "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+              "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
+            ],
+          ])
       ).to.be.revertedWith("revert Ownable: caller is not the owner");
     });
 
@@ -497,24 +455,20 @@ describe("APYManager", () => {
 
   describe("Execute and Withdraw", async () => {
     it("Non-owner cannot call", async () => {
-      const bad_signer = await ethers.provider.getSigner(randomAccount.address);
-      const bad_MANAGER = await ethers.getContractAt(
-        APYManagerV2.abi,
-        legos.apy.addresses.APY_MANAGER,
-        bad_signer
-      );
-
+      const nonOwner = await ethers.provider.getSigner(randomAccount.address);
       await expect(
-        bad_MANAGER.executeAndWithdraw(
-          strategy.address,
-          [[ethers.utils.formatBytes32String("daiPool")], ["100"]],
-          [
+        manager
+          .connect(nonOwner)
+          .executeAndWithdraw(
+            strategy.address,
+            [[ethers.utils.formatBytes32String("daiPool")], ["100"]],
             [
-              "0x6B175474E89094C44Da98b954EedeAC495271d0F",
-              "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
-            ],
-          ]
-        )
+              [
+                "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+                "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
+              ],
+            ]
+          )
       ).to.be.revertedWith("revert Ownable: caller is not the owner");
     });
 
@@ -558,14 +512,9 @@ describe("APYManager", () => {
 
   describe("Withdraw from Strategy", async () => {
     it("Non-owner cannot call", async () => {
-      const bad_signer = await ethers.provider.getSigner(randomAccount.address);
-      const bad_MANAGER = await ethers.getContractAt(
-        APYManagerV2.abi,
-        legos.apy.addresses.APY_MANAGER,
-        bad_signer
-      );
+      const nonOwner = await ethers.provider.getSigner(randomAccount.address);
       await expect(
-        bad_MANAGER.withdrawFromStrategy(strategy.address, [
+        manager.connect(nonOwner).withdrawFromStrategy(strategy.address, [
           [
             ethers.utils.formatBytes32String("daiPool"),
             ethers.utils.formatBytes32String("usdcPool"),
