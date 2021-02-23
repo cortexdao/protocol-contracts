@@ -13,8 +13,10 @@
  */
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const { TOKEN_AGG_MAP } = require("../../utils/constants");
-const { getAggregatorAddress } = require("../../utils/helpers");
+const {
+  getAggregatorAddress,
+  getDeployedAddress,
+} = require("../../utils/helpers");
 
 async function main() {
   await hre.run("compile");
@@ -24,8 +26,8 @@ async function main() {
   console.log("");
 
   const signers = await ethers.getSigners();
-  const deployer = await signers[0].getAddress();
-  console.log("Deployer address:", deployer);
+  const deployer = signers[0];
+  console.log("Deployer address:", await deployer.getAddress());
 
   console.log("");
   console.log("Deploying ...");
@@ -36,11 +38,7 @@ async function main() {
   const APYMetaPoolTokenProxy = await ethers.getContractFactory(
     "APYMetaPoolTokenProxy"
   );
-  const APYPoolToken = await ethers.getContractFactory("APYPoolToken");
   const APYPoolTokenV2 = await ethers.getContractFactory("APYPoolTokenV2");
-  const APYPoolTokenProxy = await ethers.getContractFactory(
-    "APYPoolTokenProxy"
-  );
 
   const proxyAdmin = await ProxyAdmin.deploy();
   await proxyAdmin.deployed();
@@ -74,16 +72,26 @@ async function main() {
   console.log("");
   console.log("Deploying APT contracts...");
   console.log("");
-  for (const { symbol, token, aggregator } of TOKEN_AGG_MAP[NETWORK_NAME]) {
-    const logic = await APYPoolToken.deploy();
-    await logic.deployed();
-    const proxy = await APYPoolTokenProxy.deploy(
-      logic.address,
-      proxyAdmin.address,
-      token,
-      aggregator
+  for (const symbol of ["DAI", "USDC", "USDT"]) {
+    const poolAddress = getDeployedAddress(
+      symbol + "_APYPoolTokenProxy",
+      NETWORK_NAME
     );
-    await proxy.deployed();
+    const pool = await APYPoolTokenV2.attach(poolAddress);
+    console.log(`${symbol} APT: ${poolAddress}`);
+
+    // need to impersonate (and fund) pool owner
+    // so we can upgrade the proxy to V2 logic
+    const poolOwnerAddress = await pool.owner();
+    const poolOwner = await ethers.provider.getSigner(poolOwnerAddress);
+    await network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [poolOwnerAddress],
+    });
+    await deployer.sendTransaction({
+      to: poolOwnerAddress,
+      value: ethers.utils.parseEther("10").toHexString(),
+    });
 
     const logicV2 = await APYPoolTokenV2.deploy();
     await logicV2.deployed();
@@ -91,9 +99,11 @@ async function main() {
       "initializeUpgrade(address)",
       [mAptProxy.address]
     );
-    await proxyAdmin.upgradeAndCall(proxy.address, logicV2.address, initData);
-
-    console.log(`${symbol} APT: ${proxy.address}`);
+    const proxyAdminAddress = await pool.proxyAdmin();
+    const proxyAdmin = await ProxyAdmin.attach(proxyAdminAddress);
+    await proxyAdmin
+      .connect(poolOwner)
+      .upgradeAndCall(poolAddress, logicV2.address, initData);
   }
 }
 
