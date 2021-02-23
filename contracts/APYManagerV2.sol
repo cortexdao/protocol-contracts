@@ -140,21 +140,30 @@ contract APYManagerV2 is
             "allocation length mismatch"
         );
         require(isStrategyDeployed[strategy], "Invalid Strategy");
+        uint256[] memory mintAmounts = new uint256[](allocation.poolIds.length);
         for (uint256 i = 0; i < allocation.poolIds.length; i++) {
+            uint256 poolAmount = allocation.amounts[i];
             APYPoolTokenV2 pool =
                 APYPoolTokenV2(
                     addressRegistry.getAddress(allocation.poolIds[i])
                 );
             IDetailedERC20 underlyer = pool.underlyer();
-            uint256 poolAmount = allocation.amounts[i];
+
             uint256 tokenEthPrice = pool.getTokenEthPrice();
             uint8 decimals = underlyer.decimals();
             uint256 mintAmount =
                 mApt.calculateMintAmount(poolAmount, tokenEthPrice, decimals);
-
+            mintAmounts[i] = mintAmount;
             console.log(mintAmount);
-            mApt.mint(address(pool), mintAmount);
+
             underlyer.safeTransferFrom(address(pool), strategy, poolAmount);
+        }
+        for (uint256 i = 0; i < allocation.poolIds.length; i++) {
+            APYPoolTokenV2 pool =
+                APYPoolTokenV2(
+                    addressRegistry.getAddress(allocation.poolIds[i])
+                );
+            mApt.mint(address(pool), mintAmounts[i]);
         }
     }
 
