@@ -50,7 +50,7 @@ async function main() {
   const mAptLogic = await APYMetaPoolToken.deploy();
   await mAptLogic.deployed();
 
-  const tvlAggAddress = getAggregatorAddress("TVL", NETWORK_NAME); // this will return fake address
+  const tvlAggAddress = getAggregatorAddress("TVL", NETWORK_NAME);
   const ethUsdAggAddress = getAggregatorAddress("ETH-USD", NETWORK_NAME);
   const aggStalePeriod = 14400;
   const mAptProxy = await APYMetaPoolTokenProxy.deploy(
@@ -71,11 +71,10 @@ async function main() {
   console.log("Aggregator stale period:", aggStalePeriod);
   console.log("");
 
+  console.log("");
+  console.log("Deploying APT contracts...");
+  console.log("");
   for (const { symbol, token, aggregator } of TOKEN_AGG_MAP[NETWORK_NAME]) {
-    console.log("");
-    console.log("Deploying APT contracts...");
-    console.log("");
-
     const logic = await APYPoolToken.deploy();
     await logic.deployed();
     const proxy = await APYPoolTokenProxy.deploy(

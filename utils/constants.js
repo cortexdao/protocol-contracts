@@ -48,7 +48,11 @@ const AGG_MAP = {
     "USDT-ETH": "0x0bF499444525a23E7Bb61997539725cA2e928138",
   },
   LOCALHOST: {
-    TVL: "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE",
+    // TVL agg address is based on local deployment logic using
+    // our own ganache test mnemonic, i.e. `MNEMONIC='' yarn fork:mainnet`
+    // For this to be fully deterministic, the `deploy_agg.js`
+    // script must be run before any other contract deployments.
+    TVL: "0x344D5d70fc3c3097f82d1F26464aaDcEb30C6AC7",
     "ETH-USD": "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419",
     "DAI-ETH": "0x773616E4d11A78F511299002da57A0a94577F1f4",
     "USDC-ETH": "0x986b5E1e1755e3C2440e960477f25201B0a8bbD4",
