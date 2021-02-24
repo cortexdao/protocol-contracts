@@ -95,13 +95,13 @@ describe("Contract: APYManager - deployStrategy", () => {
     const stratAddress = await manager.callStatic.deployStrategy(
       executor.address
     );
-    manager.once(
-      manager.filters.StrategyDeployed(),
-      (strategy, genericExecutor) => {
-        assert.equal(strategy, stratAddress);
-        assert.equal(genericExecutor, executor.address);
-      }
-    );
+    // manager.once(
+    //   manager.filters.StrategyDeployed(),
+    //   (strategy, genericExecutor) => {
+    //     assert.equal(strategy, stratAddress);
+    //     assert.equal(genericExecutor, executor.address);
+    //   }
+    // );
     await expect(manager.deployStrategy(executor.address)).to.not.be.reverted;
 
     const strategy = await ethers.getContractAt("Strategy", stratAddress);
