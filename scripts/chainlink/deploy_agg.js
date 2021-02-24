@@ -49,8 +49,8 @@ async function main(argv) {
     100000, // timeout before allowing oracle to skip round
     ZERO_ADDRESS, // validator address
     0, // min submission value
-    1e12, // max submission value
-    0, // decimal offset for answer
+    tokenAmountToBigNumber(1, "20"), // max submission value
+    8, // decimal offset for answer
     "TVL aggregator" // description
   );
   await aggregator.deployed();

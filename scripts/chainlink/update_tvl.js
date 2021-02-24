@@ -30,6 +30,9 @@ async function main(argv) {
   console.log("Deployer address:", deployer.address);
   console.log("");
 
+  // TODO: this won't work anymore with the new V2 pools + mAPT.
+  // Need to deploy mAPT and have the node pick up TVL
+  // changes to submit to the aggregator
   const addressRegistryAddress = getDeployedAddress(
     "APYAddressRegistryProxy",
     NETWORK_NAME
