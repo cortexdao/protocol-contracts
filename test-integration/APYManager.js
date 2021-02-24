@@ -1,8 +1,12 @@
 require("dotenv").config();
 const { assert, expect } = require("chai");
-const { artifacts, ethers, network } = require("hardhat");
+const { artifacts, ethers } = require("hardhat");
 const legos = require("@apy-finance/defi-legos");
-const { tokenAmountToBigNumber } = require("../utils/helpers");
+const {
+  tokenAmountToBigNumber,
+  impersonateAccount,
+  bytes32,
+} = require("../utils/helpers");
 const { deployMockContract } = require("ethereum-waffle");
 
 const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
@@ -17,12 +21,6 @@ console.debugging = false;
 /* ************************ */
 
 describe("APYManager", () => {
-  /*
-   * I use hardhat to be able switch between accounts with impersonateAcccount functionality
-   * ENABLE_FORKING=true yarn hardhat node
-   * yarn test:integration --network localhost
-   */
-
   let apyDaiPool;
   let apyUsdcPool;
   let apyUsdtPool;
@@ -45,19 +43,14 @@ describe("APYManager", () => {
       to: POOL_DEPLOYER,
       value: ethers.utils.parseEther("10").toHexString(),
     });
-    await network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [POOL_DEPLOYER],
-    });
+    await impersonateAccount(POOL_DEPLOYER);
 
     await funder.sendTransaction({
       to: MANAGER_DEPLOYER,
       value: ethers.utils.parseEther("10").toHexString(),
     });
-    await network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [MANAGER_DEPLOYER],
-    });
+    await impersonateAccount(MANAGER_DEPLOYER);
+
     managerDeployer = await ethers.provider.getSigner(MANAGER_DEPLOYER);
     /***************************/
 
@@ -218,15 +211,30 @@ describe("APYManager", () => {
   });
 
   describe.only("Fund Strategy", async () => {
+    let daiToken;
+    let usdcToken;
+    let usdtToken;
+
+    before(async () => {
+      daiToken = await ethers.getContractAt(
+        legos.maker.abis.DAI,
+        legos.maker.addresses.DAI
+      );
+      usdcToken = await ethers.getContractAt(
+        legos.centre.abis.USDC_Logic,
+        legos.centre.addresses.USDC
+      );
+      usdtToken = await ethers.getContractAt(
+        legos.tether.abis.USDT,
+        legos.tether.addresses.USDT
+      );
+    });
+
     it("Non-owner cannot call", async () => {
       const nonOwner = await ethers.provider.getSigner(randomAccount.address);
       await expect(
         manager.connect(nonOwner).fundStrategy(strategy.address, [
-          [
-            ethers.utils.formatBytes32String("daiPool"),
-            ethers.utils.formatBytes32String("usdcPool"),
-            ethers.utils.formatBytes32String("usdtPool"),
-          ],
+          [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
           ["10", "10", "10"],
         ])
       ).to.be.revertedWith("revert Ownable: caller is not the owner");
@@ -235,11 +243,7 @@ describe("APYManager", () => {
     it("Unregistered pool fails", async () => {
       await expect(
         manager.fundStrategy(strategy.address, [
-          [
-            ethers.utils.formatBytes32String("daiPool"),
-            ethers.utils.formatBytes32String("invalidPoolId"),
-            ethers.utils.formatBytes32String("usdtPool"),
-          ],
+          [bytes32("daiPool"), bytes32("invalidPoolId"), bytes32("usdtPool")],
           ["10", "10", "10"],
         ])
       ).to.be.revertedWith("Missing address");
@@ -250,27 +254,11 @@ describe("APYManager", () => {
       await expect(
         manager
           .connect(managerDeployer)
-          .fundStrategy(strategy.address, [
-            [ethers.utils.formatBytes32String("daiPool")],
-            [amount],
-          ])
+          .fundStrategy(strategy.address, [[bytes32("daiPool")], [amount]])
       ).to.not.be.reverted;
     });
 
-    it("Owner can call", async () => {
-      const daiToken = await ethers.getContractAt(
-        legos.maker.abis.DAI,
-        legos.maker.addresses.DAI
-      );
-      const usdcToken = await ethers.getContractAt(
-        legos.centre.abis.USDC_Logic,
-        legos.centre.addresses.USDC
-      );
-      const usdtToken = await ethers.getContractAt(
-        legos.tether.abis.USDT,
-        legos.tether.addresses.USDT
-      );
-
+    it("Check balances, before and after", async () => {
       // ETHERS contract.on() event listener doesnt seems to be working for some reason.
       // It might be because the event is not at the top most level
 
@@ -283,10 +271,7 @@ describe("APYManager", () => {
       expect(await usdcToken.balanceOf(strategy.address)).to.equal(0);
       expect(await usdtToken.balanceOf(strategy.address)).to.equal(0);
 
-      await network.provider.request({
-        method: "hardhat_impersonateAccount",
-        params: [manager.address],
-      });
+      await impersonateAccount(manager);
       const managerSigner = await ethers.provider.getSigner(manager.address);
       await mApt
         .connect(managerSigner)
@@ -311,11 +296,7 @@ describe("APYManager", () => {
       );
 
       await manager.fundStrategy(strategy.address, [
-        [
-          ethers.utils.formatBytes32String("daiPool"),
-          ethers.utils.formatBytes32String("usdcPool"),
-          ethers.utils.formatBytes32String("usdtPool"),
-        ],
+        [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
         [
           daiAmount, //
           usdcAmount, //
@@ -354,7 +335,7 @@ describe("APYManager", () => {
           .connect(nonOwner)
           .fundAndExecute(
             strategy.address,
-            [[ethers.utils.formatBytes32String("daiPool")], ["100"]],
+            [[bytes32("daiPool")], ["100"]],
             [
               [
                 "0x6B175474E89094C44Da98b954EedeAC495271d0F",
@@ -369,7 +350,7 @@ describe("APYManager", () => {
       await expect(
         manager.fundAndExecute(
           strategy.address,
-          [[ethers.utils.formatBytes32String("invalidPool")], ["100"]],
+          [[bytes32("invalidPool")], ["100"]],
           [
             [
               "0x6B175474E89094C44Da98b954EedeAC495271d0F",
@@ -395,7 +376,7 @@ describe("APYManager", () => {
       );
       await manager.fundAndExecute(
         strategy.address,
-        [[ethers.utils.formatBytes32String("daiPool")], ["100"]],
+        [[bytes32("daiPool")], ["100"]],
         [
           [
             "0x6B175474E89094C44Da98b954EedeAC495271d0F",
@@ -461,7 +442,7 @@ describe("APYManager", () => {
           .connect(nonOwner)
           .executeAndWithdraw(
             strategy.address,
-            [[ethers.utils.formatBytes32String("daiPool")], ["100"]],
+            [[bytes32("daiPool")], ["100"]],
             [
               [
                 "0x6B175474E89094C44Da98b954EedeAC495271d0F",
@@ -476,7 +457,7 @@ describe("APYManager", () => {
       await expect(
         manager.executeAndWithdraw(
           strategy.address,
-          [[ethers.utils.formatBytes32String("invalidPool")], ["100"]],
+          [[bytes32("invalidPool")], ["100"]],
           [
             [
               "0x6B175474E89094C44Da98b954EedeAC495271d0F",
@@ -495,7 +476,7 @@ describe("APYManager", () => {
 
       await manager.executeAndWithdraw(
         strategy.address,
-        [[ethers.utils.formatBytes32String("daiPool")], ["10"]],
+        [[bytes32("daiPool")], ["10"]],
         [
           [
             "0x6B175474E89094C44Da98b954EedeAC495271d0F",
@@ -515,11 +496,7 @@ describe("APYManager", () => {
       const nonOwner = await ethers.provider.getSigner(randomAccount.address);
       await expect(
         manager.connect(nonOwner).withdrawFromStrategy(strategy.address, [
-          [
-            ethers.utils.formatBytes32String("daiPool"),
-            ethers.utils.formatBytes32String("usdcPool"),
-            ethers.utils.formatBytes32String("usdtPool"),
-          ],
+          [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
           ["10", "10", "10"],
         ])
       ).to.be.revertedWith("revert Ownable: caller is not the owner");
@@ -528,7 +505,7 @@ describe("APYManager", () => {
     it("Unregistered pool fails", async () => {
       await expect(
         manager.withdrawFromStrategy(strategy.address, [
-          [ethers.utils.formatBytes32String("invalidPool")],
+          [bytes32("invalidPool")],
           ["10"],
         ])
       ).to.be.revertedWith("Missing address");
@@ -544,7 +521,7 @@ describe("APYManager", () => {
       // It might be because the event is not at the top most level
 
       await manager.withdrawFromStrategy(strategy.address, [
-        [ethers.utils.formatBytes32String("daiPool")],
+        [bytes32("daiPool")],
         ["10"],
       ]);
 
