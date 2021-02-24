@@ -13,7 +13,6 @@ import "./interfaces/IStrategyFactory.sol";
 import "./APYPoolTokenV2.sol";
 import "./APYMetaPoolToken.sol";
 import "./Strategy.sol";
-import "hardhat/console.sol";
 
 contract APYManagerV2 is
     Initializable,
@@ -154,7 +153,6 @@ contract APYManagerV2 is
             uint256 mintAmount =
                 mApt.calculateMintAmount(poolAmount, tokenEthPrice, decimals);
             mintAmounts[i] = mintAmount;
-            console.log(mintAmount);
 
             underlyer.safeTransferFrom(address(pool), strategy, poolAmount);
         }
