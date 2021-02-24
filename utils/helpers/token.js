@@ -2,6 +2,7 @@ const hre = require("hardhat");
 const { artifacts, ethers } = hre;
 const { send } = require("@openzeppelin/test-helpers");
 const { tokenAmountToBigNumber } = require("./unit");
+const { getAddress } = require("./account.js");
 
 const transferERC20Tokens = async (
   tokenAddress,
@@ -38,8 +39,13 @@ async function acquireToken(sender, recipient, token, amount, ethFunder) {
     amount: BigNumber or string, should be in big units not wei if string
     ethFunder: unlocked address holding ETH, e.g. hardhat test account
   */
+  sender = await getAddress(sender);
+  recipient = await getAddress(recipient);
+  ethFunder = await getAddress(ethFunder);
+
   const decimals = await token.decimals();
   amount = tokenAmountToBigNumber(amount, decimals);
+
   await prepareTokenSender(sender, "0.50", ethFunder);
   const fundAccountSigner = await ethers.provider.getSigner(sender);
 

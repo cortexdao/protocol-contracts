@@ -7,8 +7,10 @@ const {
   tokenAmountToBigNumber,
   impersonateAccount,
   bytes32,
+  acquireToken,
 } = require("../utils/helpers");
 const { deployMockContract } = require("ethereum-waffle");
+const { STABLECOIN_POOLS } = require("../utils/constants");
 
 const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
 
@@ -48,7 +50,7 @@ async function upgradeManager(managerDeployerAddress) {
   return [manager, managerDeployer];
 }
 
-describe("Deploy Strategy", () => {
+describe("Contract: APYManager - deployStrategy", () => {
   let manager;
   let executor;
 
@@ -107,7 +109,7 @@ describe("Deploy Strategy", () => {
   });
 });
 
-describe("APYManager", () => {
+describe("Contract: APYManager", () => {
   let daiPool;
   let usdcPool;
   let usdtPool;
@@ -121,6 +123,10 @@ describe("APYManager", () => {
   let deployer;
   let funder;
   let randomAccount;
+
+  let daiToken;
+  let usdcToken;
+  let usdtToken;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -261,28 +267,43 @@ describe("APYManager", () => {
 
     strategyAddress = await manager.callStatic.deployStrategy(executor.address);
     await manager.deployStrategy(executor.address);
+
+    daiToken = await ethers.getContractAt(
+      legos.maker.abis.DAI,
+      legos.maker.addresses.DAI
+    );
+    usdcToken = await ethers.getContractAt(
+      legos.centre.abis.USDC_Logic,
+      legos.centre.addresses.USDC
+    );
+    usdtToken = await ethers.getContractAt(
+      legos.tether.abis.USDT,
+      legos.tether.addresses.USDT
+    );
+    await acquireToken(
+      STABLECOIN_POOLS["DAI"],
+      funder,
+      daiToken,
+      "1000",
+      funder
+    );
+    await acquireToken(
+      STABLECOIN_POOLS["USDC"],
+      funder,
+      usdcToken,
+      "1000",
+      funder
+    );
+    await acquireToken(
+      STABLECOIN_POOLS["USDT"],
+      funder,
+      usdtToken,
+      "1000",
+      funder
+    );
   });
 
-  describe.only("Fund Strategy", () => {
-    let daiToken;
-    let usdcToken;
-    let usdtToken;
-
-    before(async () => {
-      daiToken = await ethers.getContractAt(
-        legos.maker.abis.DAI,
-        legos.maker.addresses.DAI
-      );
-      usdcToken = await ethers.getContractAt(
-        legos.centre.abis.USDC_Logic,
-        legos.centre.addresses.USDC
-      );
-      usdtToken = await ethers.getContractAt(
-        legos.tether.abis.USDT,
-        legos.tether.addresses.USDT
-      );
-    });
-
+  describe("Fund Strategy", () => {
     it("Non-owner cannot call", async () => {
       const nonOwner = await ethers.provider.getSigner(randomAccount.address);
       await expect(
@@ -436,7 +457,7 @@ describe("APYManager", () => {
           [[bytes32("invalidPool")], ["100"]],
           [
             [
-              "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+              daiToken.address,
               "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
             ],
           ]
@@ -445,36 +466,24 @@ describe("APYManager", () => {
     });
 
     it("Owner can call", async () => {
-      const DAI_Contract = await ethers.getContractAt(
-        legos.maker.abis.DAI,
-        legos.maker.addresses.DAI
-      );
-      const USDC_Contract = await ethers.getContractAt(
-        legos.centre.abis.USDC_Logic,
-        legos.centre.addresses.USDC
-      );
-      const USDT_Contract = await ethers.getContractAt(
-        legos.tether.abis.USDT,
-        legos.tether.addresses.USDT
-      );
       await manager.fundAndExecute(
         strategyAddress,
         [[bytes32("daiPool")], ["100"]],
         [
           [
-            "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+            daiToken.address,
             "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
           ],
         ]
       );
-      const stratDaiBal = await DAI_Contract.balanceOf(strategyAddress);
-      const stratUsdcBal = await USDC_Contract.balanceOf(strategyAddress);
-      const stratUsdtBal = await USDT_Contract.balanceOf(strategyAddress);
+      const stratDaiBal = await daiToken.balanceOf(strategyAddress);
+      const stratUsdcBal = await usdcToken.balanceOf(strategyAddress);
+      const stratUsdtBal = await usdtToken.balanceOf(strategyAddress);
 
       // NOTE: DAI, USDC, and USDT funded to the account before with 10
-      assert.equal(stratDaiBal.toString(), "110");
-      assert.equal(stratUsdcBal.toString(), "10");
-      assert.equal(stratUsdtBal.toString(), "10");
+      assert.equal(stratDaiBal.toString(), "100");
+      assert.equal(stratUsdcBal.toString(), "0");
+      assert.equal(stratUsdtBal.toString(), "0");
     });
   });
 
@@ -487,7 +496,7 @@ describe("APYManager", () => {
           .connect(nonOwner)
           .execute(strategyAddress, [
             [
-              "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+              daiToken.address,
               "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
             ],
           ])
@@ -495,121 +504,125 @@ describe("APYManager", () => {
     });
 
     it("Owner can call", async () => {
-      const DAI_Contract = await ethers.getContractAt(
-        legos.maker.abis.DAI,
-        legos.maker.addresses.DAI
-      );
-
       // sequence is to give approval to DAI and cDAI @ 100 each
       await manager.execute(strategyAddress, [
         [
-          "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+          daiToken.address,
           "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
         ],
       ]);
 
-      const daiAllowance = await DAI_Contract.allowance(
+      const daiAllowance = await daiToken.allowance(
         strategyAddress,
-        legos.apy.addresses.APY_MANAGER
+        manager.address
       );
 
       assert.equal(daiAllowance.toString(), "100");
     });
   });
 
-  describe("Execute and Withdraw", () => {
-    it("Non-owner cannot call", async () => {
-      const nonOwner = await ethers.provider.getSigner(randomAccount.address);
-      await expect(
-        manager
-          .connect(nonOwner)
-          .executeAndWithdraw(
+  describe("Withdrawing", () => {
+    before("Approve manager for strategy transfer", async () => {
+      // sequence is to give approval to DAI and cDAI @ 100 each
+      await manager.execute(strategyAddress, [
+        [
+          daiToken.address,
+          "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
+        ],
+      ]);
+    });
+
+    describe("Execute and Withdraw", () => {
+      it("Non-owner cannot call", async () => {
+        const nonOwner = await ethers.provider.getSigner(randomAccount.address);
+        await expect(
+          manager
+            .connect(nonOwner)
+            .executeAndWithdraw(
+              strategyAddress,
+              [[bytes32("daiPool")], ["100"]],
+              [
+                [
+                  daiToken.address,
+                  "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
+                ],
+              ]
+            )
+        ).to.be.revertedWith("revert Ownable: caller is not the owner");
+      });
+
+      it("Unregistered pool fails", async () => {
+        await expect(
+          manager.executeAndWithdraw(
             strategyAddress,
-            [[bytes32("daiPool")], ["100"]],
+            [[bytes32("invalidPool")], ["100"]],
             [
               [
-                "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+                daiToken.address,
                 "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
               ],
             ]
           )
-      ).to.be.revertedWith("revert Ownable: caller is not the owner");
-    });
+        ).to.be.revertedWith("Missing address");
+      });
 
-    it("Unregistered pool fails", async () => {
-      await expect(
-        manager.executeAndWithdraw(
+      it("Owner can call", async () => {
+        const amount = "10";
+        await daiToken.connect(funder).transfer(strategyAddress, amount);
+        expect(await daiToken.balanceOf(strategyAddress)).to.equal(amount);
+
+        await manager.executeAndWithdraw(
           strategyAddress,
-          [[bytes32("invalidPool")], ["100"]],
+          [[bytes32("daiPool")], [amount]],
           [
             [
-              "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+              daiToken.address,
               "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
             ],
           ]
-        )
-      ).to.be.revertedWith("Missing address");
+        );
+
+        expect(await daiToken.balanceOf(strategyAddress)).to.equal(0);
+      });
     });
 
-    it("Owner can call", async () => {
-      const DAI_Contract = await ethers.getContractAt(
-        legos.maker.abis.DAI,
-        legos.maker.addresses.DAI
-      );
+    describe("withdrawFromStrategy", () => {
+      it("Non-owner cannot call", async () => {
+        const nonOwner = await ethers.provider.getSigner(randomAccount.address);
+        await expect(
+          manager.connect(nonOwner).withdrawFromStrategy(strategyAddress, [
+            [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
+            ["10", "10", "10"],
+          ])
+        ).to.be.revertedWith("revert Ownable: caller is not the owner");
+      });
 
-      await manager.executeAndWithdraw(
-        strategyAddress,
-        [[bytes32("daiPool")], ["10"]],
-        [
-          [
-            "0x6B175474E89094C44Da98b954EedeAC495271d0F",
-            "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
-          ],
-        ]
-      );
-      const stratDaiBal = await DAI_Contract.balanceOf(strategyAddress);
+      it("Unregistered pool fails", async () => {
+        await expect(
+          manager.withdrawFromStrategy(strategyAddress, [
+            [bytes32("invalidPool")],
+            ["10"],
+          ])
+        ).to.be.revertedWith("Missing address");
+      });
 
-      // NOTE: DAI, USDC, and USDT funded to the account before with 10
-      assert.equal(stratDaiBal.toString(), "100");
-    });
-  });
+      it("Owner can call", async () => {
+        const amount = "10";
+        await daiToken.connect(funder).transfer(strategyAddress, amount);
+        expect(await daiToken.balanceOf(strategyAddress)).to.equal(amount);
 
-  describe("Withdraw from Strategy", () => {
-    it("Non-owner cannot call", async () => {
-      const nonOwner = await ethers.provider.getSigner(randomAccount.address);
-      await expect(
-        manager.connect(nonOwner).withdrawFromStrategy(strategyAddress, [
-          [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
-          ["10", "10", "10"],
-        ])
-      ).to.be.revertedWith("revert Ownable: caller is not the owner");
-    });
+        // ETHERS contract.on() event listener doesnt seems to be working for some reason.
+        // It might be because the event is not at the top most level
 
-    it("Unregistered pool fails", async () => {
-      await expect(
-        manager.withdrawFromStrategy(strategyAddress, [
-          [bytes32("invalidPool")],
-          ["10"],
-        ])
-      ).to.be.revertedWith("Missing address");
-    });
+        await expect(
+          manager.withdrawFromStrategy(strategyAddress, [
+            [bytes32("daiPool")],
+            [amount],
+          ])
+        ).to.not.be.reverted;
 
-    it("Owner can call", async () => {
-      const DAI_Contract = await ethers.getContractAt(
-        legos.maker.abis.DAI,
-        legos.maker.addresses.DAI
-      );
-
-      // ETHERS contract.on() event listener doesnt seems to be working for some reason.
-      // It might be because the event is not at the top most level
-
-      await manager.withdrawFromStrategy(strategyAddress, [
-        [bytes32("daiPool")],
-        ["10"],
-      ]);
-
-      const stratDaiBal = await DAI_Contract.balanceOf(strategyAddress);
-      assert.equal(stratDaiBal.toString(), "90");
+        expect(await daiToken.balanceOf(strategyAddress)).to.equal(0);
+      });
     });
   });
 });
