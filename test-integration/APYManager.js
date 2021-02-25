@@ -8,12 +8,9 @@ const {
   impersonateAccount,
   bytes32,
   acquireToken,
-  getAggregatorAddress,
 } = require("../utils/helpers");
 const { deployMockContract } = require("ethereum-waffle");
 const { STABLECOIN_POOLS } = require("../utils/constants");
-
-const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
 
 const POOL_DEPLOYER = "0x6EAF0ab3455787bA10089800dB91F11fDf6370BE";
 const MANAGER_DEPLOYER = "0x0f7B66a4a3f7CfeAc2517c2fb9F0518D48457d41";
@@ -642,7 +639,7 @@ describe("Contract: APYManager", () => {
       });
     });
 
-    it.only("Check mAPT balances (non-zero supply)", async () => {
+    it("Check mAPT balances (non-zero supply)", async () => {
       // make mAPT total supply non-zero by minting to deployer
       await impersonateAccount(manager);
       await funder.sendTransaction({
@@ -653,7 +650,8 @@ describe("Contract: APYManager", () => {
       await mApt
         .connect(managerSigner)
         .mint(deployer.address, tokenAmountToBigNumber("1000000"));
-      const tvl = tokenAmountToBigNumber("85000000");
+      // don't forget to update the TVL!
+      const tvl = tokenAmountToBigNumber("85000");
       await mApt.setTVL(tvl);
 
       // now mint for each pool so withdraw can burn tokens
@@ -684,32 +682,35 @@ describe("Contract: APYManager", () => {
       await mApt
         .connect(managerSigner)
         .mint(daiPool.address, daiPoolMintAmount);
-      // await mApt
-      //   .connect(managerSigner)
-      //   .mint(usdcPool.address, usdcPoolMintAmount);
-      // await mApt
-      //   .connect(managerSigner)
-      //   .mint(usdtPool.address, usdtPoolMintAmount);
+      await mApt
+        .connect(managerSigner)
+        .mint(usdcPool.address, usdcPoolMintAmount);
+      await mApt
+        .connect(managerSigner)
+        .mint(usdtPool.address, usdtPoolMintAmount);
 
       // transfer stablecoin to each pool to be able to withdraw
       await daiToken.connect(funder).transfer(strategyAddress, daiAmount);
-      // await usdcToken.connect(funder).transfer(strategyAddress, usdcAmount);
-      // await usdtToken.connect(funder).transfer(strategyAddress, usdtAmount);
+      await usdcToken.connect(funder).transfer(strategyAddress, usdcAmount);
+      await usdtToken.connect(funder).transfer(strategyAddress, usdtAmount);
+      // also adjust the TVL appropriately, as there is no Chainlink to update it
       const daiValue = await daiPool.getEthValueFromTokenAmount(daiAmount);
-      const newTvl = tvl.add(daiValue);
+      const usdcValue = await usdcPool.getEthValueFromTokenAmount(usdcAmount);
+      const usdtValue = await usdtPool.getEthValueFromTokenAmount(usdtAmount);
+      const newTvl = tvl.add(daiValue).add(usdcValue).add(usdtValue);
       await mApt.setTVL(newTvl);
 
       tokenEthPrice = await daiPool.getTokenEthPrice();
       decimals = await daiToken.decimals();
       const daiPoolBurnAmount = await mApt.calculateMintAmount(
-        daiAmount,
+        daiAmount.div(2),
         tokenEthPrice,
         decimals
       );
       tokenEthPrice = await usdcPool.getTokenEthPrice();
       decimals = await usdcToken.decimals();
       const usdcPoolBurnAmount = await mApt.calculateMintAmount(
-        usdcAmount,
+        usdcAmount.div(5),
         tokenEthPrice,
         decimals
       );
@@ -722,28 +723,23 @@ describe("Contract: APYManager", () => {
       );
 
       await manager.withdrawFromStrategy(strategyAddress, [
-        // [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
-        // [daiAmount, usdcAmount, usdtAmount],
-        [bytes32("daiPool")],
-        [daiAmount],
+        [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
+        [daiAmount.div(2), usdcAmount.div(5), usdtAmount],
       ]);
 
-      expect(await mApt.balanceOf(daiPool.address)).to.equal(0);
-      expect(await mApt.balanceOf(usdcPool.address)).to.equal(0);
-      expect(await mApt.balanceOf(usdtPool.address)).to.equal(0);
+      const allowedDeviation = 2;
 
-      // const allowedDeviation = tokenAmountToBigNumber(1, "8");
-      // let expectedBalance = daiPoolMintAmount.sub(daiPoolBurnAmount);
-      // let balance = await mApt.balanceOf(daiPool.address);
-      // expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
+      let expectedBalance = daiPoolMintAmount.sub(daiPoolBurnAmount);
+      let balance = await mApt.balanceOf(daiPool.address);
+      expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
 
-      // expectedBalance = usdcPoolMintAmount.sub(usdcPoolBurnAmount);
-      // balance = await mApt.balanceOf(usdcPool.address);
-      // expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
+      expectedBalance = usdcPoolMintAmount.sub(usdcPoolBurnAmount);
+      balance = await mApt.balanceOf(usdcPool.address);
+      expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
 
-      // expectedBalance = usdtPoolMintAmount.sub(usdtPoolBurnAmount);
-      // balance = await mApt.balanceOf(usdtPool.address);
-      // expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
+      expectedBalance = usdtPoolMintAmount.sub(usdtPoolBurnAmount);
+      balance = await mApt.balanceOf(usdtPool.address);
+      expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
     });
   });
 });
