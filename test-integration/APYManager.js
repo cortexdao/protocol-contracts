@@ -528,13 +528,41 @@ describe("Contract: APYManager", () => {
   });
 
   describe("Withdrawing", () => {
+    // standard amounts we use in our tests
+    const dollars = 10;
+    const daiAmount = tokenAmountToBigNumber(dollars, 18);
+    const usdcAmount = tokenAmountToBigNumber(dollars, 6);
+    const usdtAmount = tokenAmountToBigNumber(dollars, 6);
+
+    // calldata to execute to approve manager for above amounts
+    let daiApprove;
+    let usdcApprove;
+    let usdtApprove;
+
     before("Approve manager for strategy transfer", async () => {
-      // sequence is to give approval to DAI and cDAI @ 100 each
+      const IDetailedERC20 = artifacts.require("IDetailedERC20");
+      const ifaceERC20 = new ethers.utils.Interface(IDetailedERC20.abi);
+
+      daiApprove = ifaceERC20.encodeFunctionData("approve(address,uint256)", [
+        manager.address,
+        daiAmount,
+      ]);
+      await manager.execute(strategyAddress, [[daiToken.address, daiApprove]]);
+
+      usdcApprove = ifaceERC20.encodeFunctionData("approve(address,uint256)", [
+        manager.address,
+        usdcAmount,
+      ]);
       await manager.execute(strategyAddress, [
-        [
-          daiToken.address,
-          "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
-        ],
+        [usdcToken.address, usdcApprove],
+      ]);
+
+      usdtApprove = ifaceERC20.encodeFunctionData("approve(address,uint256)", [
+        manager.address,
+        usdtAmount,
+      ]);
+      await manager.execute(strategyAddress, [
+        [usdtToken.address, usdtApprove],
       ]);
     });
 
@@ -547,12 +575,7 @@ describe("Contract: APYManager", () => {
             .executeAndWithdraw(
               strategyAddress,
               [[bytes32("daiPool")], ["100"]],
-              [
-                [
-                  daiToken.address,
-                  "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
-                ],
-              ]
+              [[daiToken.address, daiApprove]]
             )
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
       });
@@ -562,12 +585,7 @@ describe("Contract: APYManager", () => {
           manager.executeAndWithdraw(
             strategyAddress,
             [[bytes32("invalidPool")], ["100"]],
-            [
-              [
-                daiToken.address,
-                "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
-              ],
-            ]
+            [[daiToken.address, daiApprove]]
           )
         ).to.be.revertedWith("Missing address");
       });
@@ -580,12 +598,7 @@ describe("Contract: APYManager", () => {
         await manager.executeAndWithdraw(
           strategyAddress,
           [[bytes32("daiPool")], [amount]],
-          [
-            [
-              daiToken.address,
-              "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
-            ],
-          ]
+          [[daiToken.address, daiApprove]]
         );
 
         expect(await daiToken.balanceOf(strategyAddress)).to.equal(0);
@@ -651,6 +664,10 @@ describe("Contract: APYManager", () => {
       const usdcAmount = tokenAmountToBigNumber("10", "6");
       const usdtAmount = tokenAmountToBigNumber("10", "6");
 
+      await daiToken.connect(funder).transfer(strategyAddress, daiAmount);
+      await usdcToken.connect(funder).transfer(strategyAddress, usdcAmount);
+      await usdtToken.connect(funder).transfer(strategyAddress, usdtAmount);
+
       let tokenEthPrice = await daiPool.getTokenEthPrice();
       let decimals = await daiToken.decimals();
       const daiPoolMintAmount = await mApt.calculateMintAmount(
@@ -673,7 +690,7 @@ describe("Contract: APYManager", () => {
         decimals
       );
 
-      await manager.fundStrategy(strategyAddress, [
+      await manager.withdrawFromStrategy(strategyAddress, [
         [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
         [daiAmount, usdcAmount, usdtAmount],
       ]);
