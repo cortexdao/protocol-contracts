@@ -23,6 +23,12 @@ const MANAGER_DEPLOYER = "0x0f7B66a4a3f7CfeAc2517c2fb9F0518D48457d41";
 console.debugging = false;
 /* ************************ */
 
+/**
+ * Returns the upgraded (V2) manager contract instance, in addition
+ * to the signer for the manager's deployer.
+ * @param {address} managerDeployerAddress
+ * @returns {[Contract, Signer]}
+ */
 async function upgradeManager(managerDeployerAddress) {
   const managerDeployer = await ethers.provider.getSigner(
     managerDeployerAddress
@@ -623,6 +629,62 @@ describe("Contract: APYManager", () => {
 
         expect(await daiToken.balanceOf(strategyAddress)).to.equal(0);
       });
+    });
+
+    it.only("Check mAPT balances", async () => {
+      // pre-conditions
+      expect(await mApt.balanceOf(daiPool.address)).to.equal("0");
+      expect(await mApt.balanceOf(usdcToken.address)).to.equal("0");
+      expect(await mApt.balanceOf(usdtToken.address)).to.equal("0");
+
+      await impersonateAccount(manager);
+      await funder.sendTransaction({
+        to: manager.address,
+        value: ethers.utils.parseEther("10").toHexString(),
+      });
+      const managerSigner = await ethers.provider.getSigner(manager.address);
+      await mApt
+        .connect(managerSigner)
+        .mint(deployer.address, tokenAmountToBigNumber("100"));
+
+      const daiAmount = tokenAmountToBigNumber("10", "18");
+      const usdcAmount = tokenAmountToBigNumber("10", "6");
+      const usdtAmount = tokenAmountToBigNumber("10", "6");
+
+      let tokenEthPrice = await daiPool.getTokenEthPrice();
+      let decimals = await daiToken.decimals();
+      const daiPoolMintAmount = await mApt.calculateMintAmount(
+        daiAmount,
+        tokenEthPrice,
+        decimals
+      );
+      tokenEthPrice = await usdcPool.getTokenEthPrice();
+      decimals = await usdcToken.decimals();
+      const usdcPoolMintAmount = await mApt.calculateMintAmount(
+        usdcAmount,
+        tokenEthPrice,
+        decimals
+      );
+      tokenEthPrice = await usdtPool.getTokenEthPrice();
+      decimals = await usdtToken.decimals();
+      const usdtPoolMintAmount = await mApt.calculateMintAmount(
+        usdtAmount,
+        tokenEthPrice,
+        decimals
+      );
+
+      await manager.fundStrategy(strategyAddress, [
+        [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
+        [daiAmount, usdcAmount, usdtAmount],
+      ]);
+
+      expect(await mApt.balanceOf(daiPool.address)).to.equal(daiPoolMintAmount);
+      expect(await mApt.balanceOf(usdcPool.address)).to.equal(
+        usdcPoolMintAmount
+      );
+      expect(await mApt.balanceOf(usdtPool.address)).to.equal(
+        usdtPoolMintAmount
+      );
     });
   });
 });
