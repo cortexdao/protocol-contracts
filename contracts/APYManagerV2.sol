@@ -139,6 +139,7 @@ contract APYManagerV2 is
             "allocation length mismatch"
         );
         require(isStrategyDeployed[strategy], "Invalid Strategy");
+
         uint256[] memory mintAmounts = new uint256[](allocation.poolIds.length);
         for (uint256 i = 0; i < allocation.poolIds.length; i++) {
             uint256 poolAmount = allocation.amounts[i];
@@ -201,6 +202,8 @@ contract APYManagerV2 is
             "allocation length mismatch"
         );
         require(isStrategyDeployed[strategy], "Invalid Strategy");
+
+        uint256[] memory burnAmounts = new uint256[](allocation.poolIds.length);
         for (uint256 i = 0; i < allocation.poolIds.length; i++) {
             APYPoolTokenV2 pool =
                 APYPoolTokenV2(
@@ -208,15 +211,21 @@ contract APYManagerV2 is
                 );
             IDetailedERC20 underlyer = pool.underlyer();
             uint256 amountToSend = allocation.amounts[i];
-            uint256 poolValue = pool.getEthValueFromTokenAmount(amountToSend);
 
             uint256 tokenEthPrice = pool.getTokenEthPrice();
             uint8 decimals = underlyer.decimals();
             uint256 burnAmount =
-                mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
+                mApt.calculateMintAmount(amountToSend, tokenEthPrice, decimals);
+            burnAmounts[i] = burnAmount;
 
-            mApt.burn(address(pool), burnAmount);
             underlyer.safeTransferFrom(strategy, address(pool), amountToSend);
+        }
+        for (uint256 i = 0; i < allocation.poolIds.length; i++) {
+            APYPoolTokenV2 pool =
+                APYPoolTokenV2(
+                    addressRegistry.getAddress(allocation.poolIds[i])
+                );
+            mApt.burn(address(pool), burnAmounts[i]);
         }
     }
 
