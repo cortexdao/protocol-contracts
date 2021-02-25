@@ -8,6 +8,7 @@ const {
   impersonateAccount,
   bytes32,
   acquireToken,
+  getAggregatorAddress,
 } = require("../utils/helpers");
 const { deployMockContract } = require("ethereum-waffle");
 const { STABLECOIN_POOLS } = require("../utils/constants");
@@ -214,33 +215,30 @@ describe("Contract: APYManager", () => {
     /***********************/
     /***** deploy mAPT *****/
     /***********************/
-    const tvlAgg = await deployMockContract(
-      deployer,
-      AggregatorV3Interface.abi
-    );
-    const ethUsdAgg = await deployMockContract(
-      deployer,
-      AggregatorV3Interface.abi
-    );
+    /*
+    Possibly we should use real aggregators here, i.e. deploy
+    the TVL agg and connect to the Mainnet ETH-USD agg;
+    however, it's unclear what additional confidence it adds
+    to the tests for the additional complexity to update the
+    TVL values.
+    
+    For example, we'd need to update the TVL agg with USD values
+    which would either be off from the stablecoin amounts and
+    possibly cause issues with allowed deviation levels, or we
+    would need to use a stablecoin to USD conversion.
 
-    const ethUsdPrice = tokenAmountToBigNumber("176767026385");
-    const usdTvl = tokenAmountToBigNumber("2510012387654321");
-    const updatedAt = (await ethers.provider.getBlock()).timestamp;
-    // setting the mock mines a block and advances time by 1 sec
-    await tvlAgg.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
-    await ethUsdAgg.mock.latestRoundData.returns(
-      0,
-      ethUsdPrice,
-      0,
-      updatedAt,
-      0
-    );
+    As a final note, rather than dummy addresses, we deploy mocks,
+    as we may add checks for contract addresses in the future.
+    */
+    const tvlAgg = await deployMockContract(deployer, []);
+    const ethUsdAgg = await deployMockContract(deployer, []);
 
     const APYMetaPoolTokenProxy = await ethers.getContractFactory(
       "APYMetaPoolTokenProxy"
     );
+    // Use the *test* contract so we can set the TVL
     const APYMetaPoolToken = await ethers.getContractFactory(
-      "APYMetaPoolToken"
+      "TestAPYMetaPoolToken"
     );
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
 
@@ -655,6 +653,8 @@ describe("Contract: APYManager", () => {
       await mApt
         .connect(managerSigner)
         .mint(deployer.address, tokenAmountToBigNumber("1000000"));
+      const tvl = tokenAmountToBigNumber("85000000");
+      await mApt.setTVL(tvl);
 
       // now mint for each pool so withdraw can burn tokens
       let tokenEthPrice = await daiPool.getTokenEthPrice();
@@ -665,7 +665,6 @@ describe("Contract: APYManager", () => {
         tokenEthPrice,
         decimals
       );
-      console.log(daiPoolMintAmount.toString());
       tokenEthPrice = await usdcPool.getTokenEthPrice();
       decimals = await usdcToken.decimals();
       const usdcPoolMintAmount = await mApt.calculateMintAmount(
@@ -696,6 +695,9 @@ describe("Contract: APYManager", () => {
       await daiToken.connect(funder).transfer(strategyAddress, daiAmount);
       // await usdcToken.connect(funder).transfer(strategyAddress, usdcAmount);
       // await usdtToken.connect(funder).transfer(strategyAddress, usdtAmount);
+      const daiValue = await daiPool.getEthValueFromTokenAmount(daiAmount);
+      const newTvl = tvl.add(daiValue);
+      await mApt.setTVL(newTvl);
 
       tokenEthPrice = await daiPool.getTokenEthPrice();
       decimals = await daiToken.decimals();
@@ -704,7 +706,6 @@ describe("Contract: APYManager", () => {
         tokenEthPrice,
         decimals
       );
-      console.log(daiPoolBurnAmount.toString());
       tokenEthPrice = await usdcPool.getTokenEthPrice();
       decimals = await usdcToken.decimals();
       const usdcPoolBurnAmount = await mApt.calculateMintAmount(
