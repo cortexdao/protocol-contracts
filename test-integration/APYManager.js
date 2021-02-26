@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { assert, expect } = require("chai");
+const { expect } = require("chai");
 const { artifacts, ethers } = require("hardhat");
 const timeMachine = require("ganache-time-traveler");
 const legos = require("@apy-finance/defi-legos");
@@ -118,7 +118,7 @@ describe("Contract: APYManager - deployStrategy", () => {
   });
 });
 
-describe.only("Contract: APYManager", () => {
+describe("Contract: APYManager", () => {
   let daiPool;
   let usdcPool;
   let usdtPool;
@@ -322,22 +322,36 @@ describe.only("Contract: APYManager", () => {
     return mintAmount;
   }
 
-  describe("Fund Strategy", () => {
+  describe("fundStrategy", () => {
+    // standard amounts we use in our tests
+    const dollars = 100;
+    const daiAmount = tokenAmountToBigNumber(dollars, 18);
+    const usdcAmount = tokenAmountToBigNumber(dollars, 6);
+    const usdtAmount = tokenAmountToBigNumber(dollars, 6);
+
+    // used for test setups needing minting of mAPT
+    let managerSigner;
+
+    /** needed for the manager to be able to mint mAPT in test setups */
+    before("Setup manager for sending transactions", async () => {
+      await impersonateAccount(manager);
+      await funder.sendTransaction({
+        to: manager.address,
+        value: ethers.utils.parseEther("10").toHexString(),
+      });
+      managerSigner = await ethers.provider.getSigner(manager.address);
+    });
+
     it("Non-owner cannot call", async () => {
       const nonOwner = await ethers.provider.getSigner(randomAccount.address);
       await expect(
-        manager.connect(nonOwner).fundStrategy(strategyAddress, [
-          [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
-          ["10", "10", "10"],
-        ])
+        manager.connect(nonOwner).fundStrategy(strategyAddress, [[], []])
       ).to.be.revertedWith("revert Ownable: caller is not the owner");
     });
 
     it("Owner can call", async () => {
       await expect(
-        manager
-          .connect(managerDeployer)
-          .fundStrategy(strategyAddress, [[bytes32("daiPool")], ["10"]])
+        manager.connect(managerDeployer).fundStrategy(strategyAddress, [[], []])
       ).to.not.be.reverted;
     });
 
@@ -350,7 +364,7 @@ describe.only("Contract: APYManager", () => {
       ).to.be.revertedWith("Missing address");
     });
 
-    it("Check underlyer balances", async () => {
+    it("Transfers correct underlyer amounts", async () => {
       // ETHERS contract.on() event listener doesnt seems to be working for some reason.
       // It might be because the event is not at the top most level
 
@@ -365,22 +379,18 @@ describe.only("Contract: APYManager", () => {
       const usdcPoolBalance = await usdcToken.balanceOf(usdcPool.address);
       const usdtPoolBalance = await usdtToken.balanceOf(usdtPool.address);
 
-      const daiAmount = tokenAmountToBigNumber("10", "18");
-      const usdcAmount = tokenAmountToBigNumber("10", "6");
-      const usdtAmount = tokenAmountToBigNumber("10", "6");
-
       await manager.fundStrategy(strategyAddress, [
         [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
         [daiAmount, usdcAmount, usdtAmount],
       ]);
 
-      const stratDaiBalance = await daiToken.balanceOf(strategyAddress);
-      const stratUsdcBalance = await usdcToken.balanceOf(strategyAddress);
-      const stratUsdtBalance = await usdtToken.balanceOf(strategyAddress);
+      const strategyDaiBalance = await daiToken.balanceOf(strategyAddress);
+      const strategyUsdcBalance = await usdcToken.balanceOf(strategyAddress);
+      const strategyUsdtBalance = await usdtToken.balanceOf(strategyAddress);
 
-      expect(stratDaiBalance).to.equal(daiAmount);
-      expect(stratUsdcBalance).to.equal(usdcAmount);
-      expect(stratUsdtBalance).to.equal(usdtAmount);
+      expect(strategyDaiBalance).to.equal(daiAmount);
+      expect(strategyUsdcBalance).to.equal(usdcAmount);
+      expect(strategyUsdtBalance).to.equal(usdtAmount);
 
       expect(await daiToken.balanceOf(daiPool.address)).to.equal(
         daiPoolBalance.sub(daiAmount)
@@ -393,26 +403,17 @@ describe.only("Contract: APYManager", () => {
       );
     });
 
-    it("Check mAPT balances (non-zero mAPT supply)", async () => {
+    it("Mints correct mAPT amounts (start with non-zero supply)", async () => {
       // pre-conditions
       expect(await mApt.balanceOf(daiPool.address)).to.equal("0");
       expect(await mApt.balanceOf(usdcToken.address)).to.equal("0");
       expect(await mApt.balanceOf(usdtToken.address)).to.equal("0");
 
-      await impersonateAccount(manager);
-      await funder.sendTransaction({
-        to: manager.address,
-        value: ethers.utils.parseEther("10").toHexString(),
-      });
-      const managerSigner = await ethers.provider.getSigner(manager.address);
       await mApt
         .connect(managerSigner)
         .mint(deployer.address, tokenAmountToBigNumber("100"));
 
-      const daiAmount = tokenAmountToBigNumber("10", "18");
-      const usdcAmount = tokenAmountToBigNumber("10", "6");
-      const usdtAmount = tokenAmountToBigNumber("10", "6");
-
+      // start the test
       const daiPoolMintAmount = await getMintAmount(daiPool, daiAmount);
       const usdcPoolMintAmount = await getMintAmount(usdcPool, usdcAmount);
       const usdtPoolMintAmount = await getMintAmount(usdtPool, usdtAmount);
@@ -431,16 +432,11 @@ describe.only("Contract: APYManager", () => {
       );
     });
 
-    it("Check mAPT balances (zero mAPT supply)", async () => {
+    it("Mints correct mAPT amounts (start with zero supply)", async () => {
       // pre-conditions
-      expect(await mApt.balanceOf(daiPool.address)).to.equal("0");
-      expect(await mApt.balanceOf(usdcToken.address)).to.equal("0");
-      expect(await mApt.balanceOf(usdtToken.address)).to.equal("0");
+      expect(await mApt.totalSupply()).to.equal(0);
 
-      const daiAmount = tokenAmountToBigNumber("10", "18");
-      const usdcAmount = tokenAmountToBigNumber("10", "6");
-      const usdtAmount = tokenAmountToBigNumber("10", "6");
-
+      // start the test
       const daiPoolMintAmount = await getMintAmount(daiPool, daiAmount);
       const usdcPoolMintAmount = await getMintAmount(usdcPool, usdcAmount);
       const usdtPoolMintAmount = await getMintAmount(usdtPool, usdtAmount);
@@ -460,7 +456,17 @@ describe.only("Contract: APYManager", () => {
     });
   });
 
-  describe("Fund and Execute", () => {
+  describe("fundAndExecute", () => {
+    const amount = 100;
+    let encodedApprove;
+
+    before(async () => {
+      encodedApprove = erc20Interface.encodeFunctionData(
+        "approve(address,uint256)",
+        [manager.address, amount]
+      );
+    });
+
     it("Non-owner cannot call", async () => {
       const nonOwner = await ethers.provider.getSigner(randomAccount.address);
       await expect(
@@ -468,85 +474,79 @@ describe.only("Contract: APYManager", () => {
           .connect(nonOwner)
           .fundAndExecute(
             strategyAddress,
-            [[bytes32("daiPool")], ["100"]],
-            [
-              [
-                "0x6B175474E89094C44Da98b954EedeAC495271d0F",
-                "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
-              ],
-            ]
+            [[bytes32("daiPool")], [amount]],
+            [[daiToken.address, encodedApprove]]
           )
       ).to.be.revertedWith("revert Ownable: caller is not the owner");
     });
 
+    it("Owner can call", async () => {
+      await expect(
+        manager
+          .connect(managerDeployer)
+          .fundAndExecute(strategyAddress, [[], []], [])
+      ).to.not.be.reverted;
+    });
+
     it("Unregistered pool fails", async () => {
       await expect(
-        manager.fundAndExecute(
-          strategyAddress,
-          [[bytes32("invalidPool")], ["100"]],
-          [
-            [
-              daiToken.address,
-              "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
-            ],
-          ]
-        )
+        manager
+          .connect(managerDeployer)
+          .fundAndExecute(
+            strategyAddress,
+            [[bytes32("invalidPool")], [amount]],
+            [[daiToken.address, encodedApprove]]
+          )
       ).to.be.revertedWith("Missing address");
     });
 
-    it("Owner can call", async () => {
+    it("Transfers correct underlyer amounts", async () => {
       await manager.fundAndExecute(
         strategyAddress,
-        [[bytes32("daiPool")], ["100"]],
-        [
-          [
-            daiToken.address,
-            "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
-          ],
-        ]
+        [[bytes32("daiPool")], [amount]],
+        [[daiToken.address, encodedApprove]]
       );
-      const stratDaiBal = await daiToken.balanceOf(strategyAddress);
-      const stratUsdcBal = await usdcToken.balanceOf(strategyAddress);
-      const stratUsdtBal = await usdtToken.balanceOf(strategyAddress);
+      const strategyDaiBalance = await daiToken.balanceOf(strategyAddress);
+      const strategyUsdcBalance = await usdcToken.balanceOf(strategyAddress);
+      const strategyUsdtBalance = await usdtToken.balanceOf(strategyAddress);
 
-      // NOTE: DAI, USDC, and USDT funded to the account before with 10
-      assert.equal(stratDaiBal.toString(), "100");
-      assert.equal(stratUsdcBal.toString(), "0");
-      assert.equal(stratUsdtBal.toString(), "0");
+      expect(strategyDaiBalance).to.equal(amount);
+      expect(strategyUsdcBalance).to.equal(0);
+      expect(strategyUsdtBalance).to.equal(0);
     });
   });
 
   describe("Execute", () => {
     it("Non-owner cannot call", async () => {
       const nonOwner = await ethers.provider.getSigner(randomAccount.address);
-      // sequence is to give approval to DAI and cDAI @ 100 each
       await expect(
-        manager
-          .connect(nonOwner)
-          .execute(strategyAddress, [
-            [
-              daiToken.address,
-              "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
-            ],
-          ])
+        manager.connect(nonOwner).execute(strategyAddress, [])
       ).to.be.revertedWith("revert Ownable: caller is not the owner");
     });
 
     it("Owner can call", async () => {
-      // sequence is to give approval to DAI and cDAI @ 100 each
+      const encodedFunction = erc20Interface.encodeFunctionData("symbol()", []);
+      await expect(
+        manager.execute(strategyAddress, [[daiToken.address, encodedFunction]])
+      ).to.not.be.reverted;
+    });
+
+    it("Calldata executes properly", async () => {
+      const amount = 100;
+      const encodedApprove = erc20Interface.encodeFunctionData(
+        "approve(address,uint256)",
+        [manager.address, amount]
+      );
+
       await manager.execute(strategyAddress, [
-        [
-          daiToken.address,
-          "0x095ea7b3000000000000000000000000fed91f1f9d7dca3e6e4a4b83cef1b14380abde790000000000000000000000000000000000000000000000000000000000000064",
-        ],
+        [daiToken.address, encodedApprove],
       ]);
 
       const daiAllowance = await daiToken.allowance(
         strategyAddress,
         manager.address
       );
-
-      assert.equal(daiAllowance.toString(), "100");
+      expect(daiAllowance).to.equal(amount);
     });
   });
 
@@ -606,11 +606,7 @@ describe.only("Contract: APYManager", () => {
         await expect(
           manager
             .connect(nonOwner)
-            .executeAndWithdraw(
-              strategyAddress,
-              [[bytes32("daiPool")], ["100"]],
-              [[daiToken.address, daiApprove]]
-            )
+            .executeAndWithdraw(strategyAddress, [[], []], [])
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
       });
 
@@ -618,13 +614,21 @@ describe.only("Contract: APYManager", () => {
         await expect(
           manager.executeAndWithdraw(
             strategyAddress,
-            [[bytes32("invalidPool")], ["100"]],
-            [[daiToken.address, daiApprove]]
+            [[bytes32("invalidPool")], [0]],
+            []
           )
         ).to.be.revertedWith("Missing address");
       });
 
       it("Owner can call", async () => {
+        await expect(
+          manager
+            .connect(managerDeployer)
+            .executeAndWithdraw(strategyAddress, [[], []], [])
+        ).to.not.be.reverted;
+      });
+
+      it("Transfers underlyer correctly to one pool", async () => {
         const amount = "10";
         await daiToken.connect(funder).transfer(strategyAddress, amount);
         expect(await daiToken.balanceOf(strategyAddress)).to.equal(amount);
@@ -643,11 +647,18 @@ describe.only("Contract: APYManager", () => {
       it("Non-owner cannot call", async () => {
         const nonOwner = await ethers.provider.getSigner(randomAccount.address);
         await expect(
-          manager.connect(nonOwner).withdrawFromStrategy(strategyAddress, [
-            [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
-            ["10", "10", "10"],
-          ])
+          manager
+            .connect(nonOwner)
+            .withdrawFromStrategy(strategyAddress, [[], []])
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
+      });
+
+      it("Owner can call", async () => {
+        await expect(
+          manager
+            .connect(managerDeployer)
+            .withdrawFromStrategy(strategyAddress, [[], []])
+        ).to.not.be.reverted;
       });
 
       it("Unregistered pool fails", async () => {
@@ -659,7 +670,7 @@ describe.only("Contract: APYManager", () => {
         ).to.be.revertedWith("Missing address");
       });
 
-      it("Owner can call", async () => {
+      it("Transfers underlyer correctly for one pool", async () => {
         const amount = "10";
         await daiToken.connect(funder).transfer(strategyAddress, amount);
         expect(await daiToken.balanceOf(strategyAddress)).to.equal(amount);
@@ -667,17 +678,15 @@ describe.only("Contract: APYManager", () => {
         // ETHERS contract.on() event listener doesnt seems to be working for some reason.
         // It might be because the event is not at the top most level
 
-        await expect(
-          manager.withdrawFromStrategy(strategyAddress, [
-            [bytes32("daiPool")],
-            [amount],
-          ])
-        ).to.not.be.reverted;
+        await manager.withdrawFromStrategy(strategyAddress, [
+          [bytes32("daiPool")],
+          [amount],
+        ]);
 
         expect(await daiToken.balanceOf(strategyAddress)).to.equal(0);
       });
 
-      it("Check balances (zero mAPT supply)", async () => {
+      it("Transfers and mints correctly for multiple pools (start from zero supply)", async () => {
         expect(await mApt.totalSupply()).to.equal(0);
         expect(await mApt.getTVL()).to.equal(0);
 
@@ -743,7 +752,7 @@ describe.only("Contract: APYManager", () => {
         expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
       });
 
-      it("Check mAPT balances (non-zero mAPT supply)", async () => {
+      it("Transfers and mints correctly for multiple pools (start from non-zero supply)", async () => {
         // make mAPT total supply non-zero by minting to deployer
         await mApt
           .connect(managerSigner)
@@ -753,27 +762,9 @@ describe.only("Contract: APYManager", () => {
         await mApt.setTVL(tvl);
 
         // now mint for each pool so withdraw can burn tokens
-        let tokenEthPrice = await daiPool.getTokenEthPrice();
-        let decimals = await daiToken.decimals();
-        const daiPoolMintAmount = await mApt.calculateMintAmount(
-          daiAmount,
-          tokenEthPrice,
-          decimals
-        );
-        tokenEthPrice = await usdcPool.getTokenEthPrice();
-        decimals = await usdcToken.decimals();
-        const usdcPoolMintAmount = await mApt.calculateMintAmount(
-          usdcAmount,
-          tokenEthPrice,
-          decimals
-        );
-        tokenEthPrice = await usdtPool.getTokenEthPrice();
-        decimals = await usdtToken.decimals();
-        const usdtPoolMintAmount = await mApt.calculateMintAmount(
-          usdtAmount,
-          tokenEthPrice,
-          decimals
-        );
+        const daiPoolMintAmount = await getMintAmount(daiPool, daiAmount);
+        const usdcPoolMintAmount = await getMintAmount(usdcPool, usdcAmount);
+        const usdtPoolMintAmount = await getMintAmount(usdtPool, usdtAmount);
         await mApt
           .connect(managerSigner)
           .mint(daiPool.address, daiPoolMintAmount);
@@ -795,31 +786,25 @@ describe.only("Contract: APYManager", () => {
         const newTvl = tvl.add(daiValue).add(usdcValue).add(usdtValue);
         await mApt.setTVL(newTvl);
 
-        tokenEthPrice = await daiPool.getTokenEthPrice();
-        decimals = await daiToken.decimals();
-        const daiPoolBurnAmount = await mApt.calculateMintAmount(
-          daiAmount.div(2),
-          tokenEthPrice,
-          decimals
+        const daiWithdrawAmount = daiAmount.div(2);
+        const daiPoolBurnAmount = await getMintAmount(
+          daiPool,
+          daiWithdrawAmount
         );
-        tokenEthPrice = await usdcPool.getTokenEthPrice();
-        decimals = await usdcToken.decimals();
-        const usdcPoolBurnAmount = await mApt.calculateMintAmount(
-          usdcAmount.div(5),
-          tokenEthPrice,
-          decimals
+        const usdcWithdrawAmount = usdcAmount.div(5);
+        const usdcPoolBurnAmount = await getMintAmount(
+          usdcPool,
+          usdcWithdrawAmount
         );
-        tokenEthPrice = await usdtPool.getTokenEthPrice();
-        decimals = await usdtToken.decimals();
-        const usdtPoolBurnAmount = await mApt.calculateMintAmount(
-          usdtAmount,
-          tokenEthPrice,
-          decimals
+        const usdtWithdrawAmount = usdtAmount;
+        const usdtPoolBurnAmount = await getMintAmount(
+          usdtPool,
+          usdtWithdrawAmount
         );
 
         await manager.withdrawFromStrategy(strategyAddress, [
           [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
-          [daiAmount.div(2), usdcAmount.div(5), usdtAmount],
+          [daiWithdrawAmount, usdcWithdrawAmount, usdtWithdrawAmount],
         ]);
 
         const allowedDeviation = 2;
