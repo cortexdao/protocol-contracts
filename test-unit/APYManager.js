@@ -191,74 +191,44 @@ describe("Contract: APYManager", () => {
     describe("fundStrategy", () => {
       it("Non-owner cannot call", async () => {
         await expect(
-          manager.connect(randomUser).fundStrategy(strategy.address, [
-            [
-              ethers.utils.formatBytes32String("daiPool"),
-              ethers.utils.formatBytes32String("usdcPool"),
-            ],
-            [0, 0],
-          ])
+          manager.connect(randomUser).fundStrategy(strategy.address, [[], []])
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
       });
 
       it("Revert on invalid strategy", async () => {
         await expect(
-          manager.fundStrategy(FAKE_ADDRESS, [
-            [
-              ethers.utils.formatBytes32String("daiPool"),
-              ethers.utils.formatBytes32String("usdcPool"),
-            ],
-            [0, 0],
-          ])
+          manager.connect(deployer).fundStrategy(FAKE_ADDRESS, [[], []])
         ).to.be.revertedWith("Invalid Strategy");
       });
 
-      it.skip("Owner can call", async () => {
-        // TESTED IN INTEGRATION TESTS
+      it("Owner can call", async () => {
+        await expect(
+          manager.connect(deployer).fundStrategy(strategy.address, [[], []])
+        ).to.not.be.reverted;
       });
     });
 
     describe("fundAndExecute", () => {
       it("Non-owner cannot call", async () => {
         await expect(
-          manager.connect(randomUser).fundAndExecute(
-            strategy.address,
-            [
-              [
-                ethers.utils.formatBytes32String("daiPool"),
-                ethers.utils.formatBytes32String("usdcPool"),
-              ],
-              [0, 0],
-            ],
-            [
-              [tokenA.address, encodedApprove],
-              [tokenB.address, encodedApprove],
-            ]
-          )
+          manager
+            .connect(randomUser)
+            .fundAndExecute(strategy.address, [[], []], [])
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
       });
 
       it("Revert on invalid strategy", async () => {
         await expect(
-          manager.fundAndExecute(
-            FAKE_ADDRESS,
-            [
-              [
-                ethers.utils.formatBytes32String("daiPool"),
-                ethers.utils.formatBytes32String("usdcPool"),
-              ],
-              [0, 0],
-            ],
-            [
-              [tokenA.address, encodedApprove],
-              [tokenB.address, encodedApprove],
-            ]
-          )
+          manager.connect(deployer).fundAndExecute(FAKE_ADDRESS, [[], []], [])
         ).to.be.revertedWith("Invalid Strategy");
       });
 
-      it.skip("Owner can call", async () => {
-        // TESTED IN INTEGRATION TESTS
+      it("Owner can call", async () => {
+        await expect(
+          manager
+            .connect(deployer)
+            .fundAndExecute(strategy.address, [[], []], [])
+        ).to.not.be.reverted;
       });
     });
 
@@ -273,7 +243,7 @@ describe("Contract: APYManager", () => {
       });
 
       it("Owner can call", async () => {
-        const trx = await manager.execute(strategy.address, [
+        const trx = await manager.connect(deployer).execute(strategy.address, [
           [tokenA.address, encodedApprove],
           [tokenB.address, encodedApprove],
         ]);
@@ -294,74 +264,50 @@ describe("Contract: APYManager", () => {
     describe("executeAndWithdraw", () => {
       it("Non-owner cannot call", async () => {
         await expect(
-          manager.connect(randomUser).executeAndWithdraw(
-            strategy.address,
-            [
-              [
-                ethers.utils.formatBytes32String("daiPool"),
-                ethers.utils.formatBytes32String("usdcPool"),
-              ],
-              [0, 0],
-            ],
-            [
-              [tokenA.address, encodedApprove],
-              [tokenB.address, encodedApprove],
-            ]
-          )
+          manager
+            .connect(randomUser)
+            .executeAndWithdraw(strategy.address, [[], []], [])
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
       });
 
       it("Revert on invalid strategy", async () => {
         await expect(
-          manager.executeAndWithdraw(
-            FAKE_ADDRESS,
-            [
-              [
-                ethers.utils.formatBytes32String("daiPool"),
-                ethers.utils.formatBytes32String("usdcPool"),
-              ],
-              [0, 0],
-            ],
-            [
-              [tokenA.address, encodedApprove],
-              [tokenB.address, encodedApprove],
-            ]
-          )
+          manager
+            .connect(deployer)
+            .executeAndWithdraw(FAKE_ADDRESS, [[], []], [])
         ).to.be.revertedWith("Invalid Strategy");
       });
 
-      it.skip("Owner can call", async () => {
-        // TESTED IN INTEGRATION TESTS
+      it("Owner can call", async () => {
+        await expect(
+          manager
+            .connect(deployer)
+            .executeAndWithdraw(strategy.address, [[], []], [])
+        ).to.not.be.reverted;
       });
     });
 
     describe("withdrawFromStrategy", () => {
       it("Non-owner cannot call", async () => {
         await expect(
-          manager.connect(randomUser).withdrawFromStrategy(strategy.address, [
-            [
-              ethers.utils.formatBytes32String("daiPool"),
-              ethers.utils.formatBytes32String("usdcPool"),
-            ],
-            [0, 0],
-          ])
+          manager
+            .connect(randomUser)
+            .withdrawFromStrategy(strategy.address, [[], []])
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
       });
 
       it("Revert on invalid strategy", async () => {
         await expect(
-          manager.withdrawFromStrategy(FAKE_ADDRESS, [
-            [
-              ethers.utils.formatBytes32String("daiPool"),
-              ethers.utils.formatBytes32String("usdcPool"),
-            ],
-            [0, 0],
-          ])
+          manager.connect(deployer).withdrawFromStrategy(FAKE_ADDRESS, [[], []])
         ).to.be.revertedWith("Invalid Strategy");
       });
 
-      it.skip("Owner can call", async () => {
-        // TESTED IN INTEGRATION TESTS
+      it("Owner can call", async () => {
+        await expect(
+          manager
+            .connect(deployer)
+            .withdrawFromStrategy(strategy.address, [[], []])
+        ).to.not.be.reverted;
       });
     });
   });
