@@ -41,7 +41,7 @@ contract APYManagerV2 is
 
     // V2
     mapping(bytes32 => address) public getStrategy;
-    mapping(address => bool) public isStrategyDeployed;
+    mapping(address => bool) public override isStrategyDeployed;
 
     mapping(address => EnumerableSet.AddressSet) internal _strategyToTokens;
     mapping(address => EnumerableSet.AddressSet) internal _tokenToStrategies;
@@ -85,7 +85,6 @@ contract APYManagerV2 is
      */
     function registerTokens(address strategy, address[] calldata tokens)
         external
-        override
         onlyOwner
     {
         require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
