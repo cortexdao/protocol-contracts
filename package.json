@@ -19,6 +19,7 @@
     "compile": "hardhat compile",
     "test:unit": "hardhat test test-unit/*",
     "test:integration": "ENABLE_FORKING=true hardhat test test-integration/*",
+    "defi-legos": "populate -m apy,centre,maker,tether | grep -i error",
     "lint": "solhint contracts/**/*.sol contracts/*.sol",
     "coverage": "hardhat coverage --network coverage --testfiles \"test-unit/*.js\"",
     "ganache": "ganache-cli",
