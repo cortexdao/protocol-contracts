@@ -6,7 +6,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/utils/EnumerableSet.sol";
+import "./utils/EnumerableSet.sol";
 import "./interfaces/IDetailedERC20.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/ISequenceRegistry.sol";
@@ -16,7 +16,7 @@ import "./APYGenericExecutor.sol";
 contract SequenceRegistry is
     Initializable,
     OwnableUpgradeSafe,
-    ITokenRegistry,
+    ISequenceRegistry,
     IAssetAllocation
 {
     using SafeMath for uint256;
@@ -72,7 +72,7 @@ contract SequenceRegistry is
 
     function setExecutorAddress(address executorAddress) public onlyOwner {
         require(executorAddress != address(0), "INVALID_EXECUTOR");
-        manager = APYGenericExecutor(executorAddress);
+        executor = APYGenericExecutor(executorAddress);
         emit ExecutorChanged(executorAddress);
     }
 
@@ -84,14 +84,14 @@ contract SequenceRegistry is
     function addSequence(
         bytes32 sequenceId,
         APYGenericExecutor.Data[] calldata data,
-        bytes32 symbol
-    ) external onlyOwner {
+        string calldata symbol
+    ) external override onlyOwner {
         _sequenceIds.add(sequenceId);
         _sequenceData[sequenceId] = data;
         _sequenceSymbols[sequenceId] = symbol;
     }
 
-    function removeSequence(bytes32 sequenceId) external onlyOwner {
+    function removeSequence(bytes32 sequenceId) external override onlyOwner {
         delete _sequenceData[sequenceId];
         delete _sequenceSymbols[sequenceId];
         _sequenceIds.remove(sequenceId);
@@ -100,6 +100,7 @@ contract SequenceRegistry is
     function isSequenceRegistered(bytes32 sequenceId)
         public
         view
+        override
         returns (bool)
     {
         return _sequenceIds.contains(sequenceId);
@@ -112,10 +113,10 @@ contract SequenceRegistry is
         external
         view
         override
-        returns (address[] memory)
+        returns (bytes32[] memory)
     {
         uint256 length = _sequenceIds.length();
-        address[] memory sequenceIds = new address[](length);
+        bytes32[] memory sequenceIds = new bytes32[](length);
         for (uint256 i = 0; i < length; i++) {
             sequenceIds[i] = _sequenceIds.at(i);
         }
@@ -136,12 +137,12 @@ contract SequenceRegistry is
         bytes memory returnData =
             executor.executeView(_sequenceData[sequenceId]);
 
-        uint256 balance;
+        uint256 _balance;
         assembly {
-            balance := mload(add(returnData, 0x20))
+            _balance := mload(add(returnData, 0x20))
         }
 
-        return balance;
+        return _balance;
     }
 
     /// @notice Returns the symbol of the given token.

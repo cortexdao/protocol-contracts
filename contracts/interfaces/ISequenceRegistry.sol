@@ -15,7 +15,7 @@ interface ISequenceRegistry {
     function addSequence(
         bytes32 sequenceId,
         APYGenericExecutor.Data[] calldata data,
-        bytes32 symbol
+        string calldata symbol
     ) external;
 
     function removeSequence(bytes32 sequenceId) external;
