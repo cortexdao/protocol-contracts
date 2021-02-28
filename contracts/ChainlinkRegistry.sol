@@ -11,6 +11,7 @@ import "./interfaces/IDetailedERC20.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/ITokenRegistry.sol";
 import "./interfaces/IStrategyFactory.sol";
+import "./APYGenericExecutor.sol";
 
 contract ChainlinkRegistry is
     Initializable,
@@ -20,24 +21,28 @@ contract ChainlinkRegistry is
 {
     using SafeMath for uint256;
     using SafeERC20 for IDetailedERC20;
-    using EnumerableSet for EnumerableSet.AddressSet;
+    using EnumerableSet for EnumerableSet.Bytes32Set;
 
     address public proxyAdmin;
     IStrategyFactory public manager;
+    APYGenericExecutor public executor;
 
-    EnumerableSet.AddressSet internal _tokenAddresses;
-    mapping(address => EnumerableSet.AddressSet) internal _strategyToTokens;
-    mapping(address => EnumerableSet.AddressSet) internal _tokenToStrategies;
+    // Needs to be able to delete sequenceIds and sequences
+    EnumerableSet.Bytes32Set private _sequenceIds;
+    mapping(bytes32 => APYGenericExecutor.Data[]) private _sequenceData;
+    mapping(bytes32 => string) private _sequenceSymbols;
 
     event AdminChanged(address);
     event ManagerChanged(address);
+    event ExecutorChanged(address);
 
-    function initialize(address adminAddress, address managerAddress)
+    function initialize(address adminAddress, address managerAddress, address executorAddress)
         external
         initializer
     {
         require(adminAddress != address(0), "INVALID_ADMIN");
         require(managerAddress != address(0), "INVALID_MANAGER");
+        require(executorAddress != address(0), "INVALID_EXECUTOR");
 
         // initialize ancestor storage
         __Context_init_unchained();
@@ -46,6 +51,7 @@ contract ChainlinkRegistry is
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
         setManagerAddress(managerAddress);
+        setExecutorAddress(executorAddress);
     }
 
     // solhint-disable-next-line no-empty-blocks
@@ -63,108 +69,80 @@ contract ChainlinkRegistry is
         emit ManagerChanged(managerAddress);
     }
 
+    function setExecutorAddress(address executorAddress) public onlyOwner {
+        require(executorAddress != address(0), "INVALID_EXECUTOR");
+        manager = APYGenericExecutor(executorAddress);
+        emit ExecutorChanged(executorAddress);
+    }
+
     modifier onlyAdmin() {
         require(msg.sender == proxyAdmin, "ADMIN_ONLY");
         _;
     }
 
+    function addSequence(
+        bytes32 sequenceId,
+        APYGenericExecutor.Data[] calldata data,
+        bytes32 symbol
+    )
+        external
+        onlyOwner
+    {
+        _sequenceIds.add(sequenceId);
+        _sequenceData[sequenceId] = data;
+        _sequenceSymbols[sequenceId] = symbol;
+    }
+
+    function removeSequence(bytes32 sequenceId) external onlyOwner {
+        delete _sequenceData[sequenceId];
+        delete _sequenceSymbols[sequenceId];
+        _sequenceIds.remove(sequenceId);
+    }
+
+    function isSequenceRegistered(bytes32 sequenceId) public view returns (bool) {
+        return _sequenceIds.contains(sequenceId);
+    }
+
     /**
-     * @dev need this for as-yet-unknown tokens that may be air-dropped, etc.
+     * @notice Returns the list of sequenceIds.
      */
-    function registerTokens(address strategy, address[] calldata tokens)
-        external
-        override
-        onlyOwner
-    {
-        require(manager.isStrategyDeployed(strategy), "INVALID_STRATEGY");
-        for (uint256 i = 0; i < tokens.length; i++) {
-            address token = tokens[i];
-            _registerToken(strategy, token);
-        }
-    }
-
-    function _registerToken(address strategy, address token) internal {
-        require(manager.isStrategyDeployed(strategy), "INVALID_STRATEGY");
-        // `add` is safe to call multiple times, as it
-        // returns a boolean to indicate if element was added
-        _tokenToStrategies[token].add(strategy);
-        _strategyToTokens[strategy].add(token);
-        _tokenAddresses.add(token);
-    }
-
-    function deregisterTokens(address strategy, address[] calldata tokens)
-        external
-        override
-        onlyOwner
-    {
-        require(manager.isStrategyDeployed(strategy), "INVALID_STRATEGY");
-        for (uint256 i = 0; i < tokens.length; i++) {
-            address token = tokens[i];
-            _deregisterToken(strategy, token);
-        }
-    }
-
-    function _deregisterToken(address strategy, address token) internal {
-        require(manager.isStrategyDeployed(strategy), "INVALID_STRATEGY");
-        // `remove` is safe to call multiple times, as it
-        // returns a boolean to indicate if element was removed
-        _tokenToStrategies[token].remove(strategy);
-        _strategyToTokens[strategy].remove(token);
-        if (_tokenToStrategies[token].length() == 0) {
-            _tokenAddresses.remove(token);
-        }
-    }
-
-    function isTokenRegistered(address token)
-        public
-        view
-        override
-        returns (bool)
-    {
-        return _tokenAddresses.contains(token);
-    }
-
-    /** @notice Returns the list of asset addresses.
-     *  @dev Address list will be populated automatically from the set
-     *       of input and output assets for each strategy.
-     */
-    function getTokenAddresses()
+    function getSequenceIds()
         external
         view
         override
         returns (address[] memory)
     {
-        uint256 length = _tokenAddresses.length();
-        address[] memory tokenAddresses = new address[](length);
+        uint256 length = _sequenceIds.length();
+        address[] memory sequenceIds = new address[](length);
         for (uint256 i = 0; i < length; i++) {
-            tokenAddresses[i] = _tokenAddresses.at(i);
+            sequenceIds[i] = _sequenceIds.at(i);
         }
-        return tokenAddresses;
+        return sequenceIds;
     }
 
     /** @notice Returns the total balance in the system for given token.
      *  @dev The balance is possibly aggregated from multiple contracts
      *       holding the token.
      */
-    function balanceOf(address token) external view override returns (uint256) {
-        IDetailedERC20 erc20 = IDetailedERC20(token);
-        EnumerableSet.AddressSet storage strategies = _tokenToStrategies[token];
-        uint256 balance = 0;
-        for (uint256 i = 0; i < strategies.length(); i++) {
-            address strategy = strategies.at(i);
-            uint256 strategyBalance = erc20.balanceOf(strategy);
-            balance = balance.add(strategyBalance);
+    function balanceOf(bytes32 sequenceId) external view override returns (uint256) {
+        // Should check if the sequence ID exists first
+        bytes memory returnData = executor.executeView(_sequenceData[sequenceId]);
+
+        uint256 balance;
+        assembly {
+            balance := mload(add(returnData, 0x20))
         }
+
         return balance;
     }
 
     /// @notice Returns the symbol of the given token.
-    function symbolOf(address token)
+    function symbolOf(bytes32 sequenceId)
         external
         view
         override
         returns (string memory)
     {
-        return IDetailedERC20(token).symbol();
+        return _sequenceSymbols[sequenceId];
     }
 }

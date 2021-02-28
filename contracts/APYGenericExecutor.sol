@@ -24,6 +24,15 @@ contract APYGenericExecutor is Ownable {
         }
     }
 
+    function executeView(Data[] calldata executionSteps) external view returns (bytes memory returnData) {
+        for (uint256 i = 0; i < executionSteps.length; i++) {
+            returnData = _call(
+                executionSteps[i].target,
+                executionSteps[i].data
+            );
+        }
+    }
+
     function _call(address target, bytes memory data)
         private
         returns (bytes memory)
