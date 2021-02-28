@@ -14,12 +14,7 @@ import "./APYPoolTokenV2.sol";
 import "./APYMetaPoolToken.sol";
 import "./Strategy.sol";
 
-contract APYManagerV2 is
-    Initializable,
-    OwnableUpgradeSafe,
-    IAssetAllocation,
-    IStrategyFactory
-{
+contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
     using SafeMath for uint256;
     using SafeERC20 for IDetailedERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -41,7 +36,7 @@ contract APYManagerV2 is
 
     // V2
     mapping(bytes32 => address) public getStrategy;
-    mapping(address => bool) public isStrategyDeployed;
+    mapping(address => bool) public override isStrategyDeployed;
 
     mapping(address => EnumerableSet.AddressSet) internal _strategyToTokens;
     mapping(address => EnumerableSet.AddressSet) internal _tokenToStrategies;
@@ -85,7 +80,6 @@ contract APYManagerV2 is
      */
     function registerTokens(address strategy, address[] calldata tokens)
         external
-        override
         onlyOwner
     {
         require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
@@ -264,12 +258,7 @@ contract APYManagerV2 is
      *  @dev Address list will be populated automatically from the set
      *       of input and output assets for each strategy.
      */
-    function getTokenAddresses()
-        external
-        view
-        override
-        returns (address[] memory)
-    {
+    function getTokenAddresses() external view returns (address[] memory) {
         uint256 length = _tokenAddresses.length();
         address[] memory tokenAddresses = new address[](length);
         for (uint256 i = 0; i < length; i++) {
@@ -294,7 +283,7 @@ contract APYManagerV2 is
      *  @dev The balance is possibly aggregated from multiple contracts
      *       holding the token.
      */
-    function balanceOf(address token) external view override returns (uint256) {
+    function balanceOf(address token) external view returns (uint256) {
         IDetailedERC20 erc20 = IDetailedERC20(token);
         EnumerableSet.AddressSet storage strategies = _tokenToStrategies[token];
         uint256 balance = 0;
@@ -307,12 +296,7 @@ contract APYManagerV2 is
     }
 
     /// @notice Returns the symbol of the given token.
-    function symbolOf(address token)
-        external
-        view
-        override
-        returns (string memory)
-    {
+    function symbolOf(address token) external view returns (string memory) {
         return IDetailedERC20(token).symbol();
     }
 

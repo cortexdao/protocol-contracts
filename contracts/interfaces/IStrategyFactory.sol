@@ -12,8 +12,7 @@ interface IStrategyFactory {
 
     function deployStrategy(address generalExecutor) external returns (address);
 
-    function registerTokens(address strategy, address[] calldata tokens)
-        external;
+    function isStrategyDeployed(address strategy) external returns (bool);
 
     function fundStrategy(
         address strategy,

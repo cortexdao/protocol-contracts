@@ -10,7 +10,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAddressRegistry.sol";
 
-contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
+contract APYManager is Initializable, OwnableUpgradeSafe {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -73,12 +73,7 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
      *  @dev Address list will be populated automatically from the set
      *       of input and output assets for each strategy.
      */
-    function getTokenAddresses()
-        external
-        view
-        override
-        returns (address[] memory)
-    {
+    function getTokenAddresses() external view returns (address[] memory) {
         return _tokenAddresses;
     }
 
@@ -110,7 +105,7 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
      *       In actuality, we will not be computing the TVL from the pools,
      *       as their funds will not be tokenized into mAPT.
      */
-    function balanceOf(address token) external view override returns (uint256) {
+    function balanceOf(address token) external view returns (uint256) {
         IERC20 erc20 = IERC20(token);
         uint256 balance = 0;
         for (uint256 i = 0; i < _poolIds.length; i++) {
@@ -122,12 +117,7 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAssetAllocation {
     }
 
     /// @notice Returns the symbol of the given token.
-    function symbolOf(address token)
-        external
-        view
-        override
-        returns (string memory)
-    {
+    function symbolOf(address token) external view returns (string memory) {
         return ERC20UpgradeSafe(token).symbol();
     }
 }
