@@ -9,11 +9,11 @@ import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/EnumerableSet.sol";
 import "./interfaces/IDetailedERC20.sol";
 import "./interfaces/IAssetAllocation.sol";
-import "./interfaces/ITokenRegistry.sol";
+import "./interfaces/ISequenceRegistry.sol";
 import "./interfaces/IStrategyFactory.sol";
 import "./APYGenericExecutor.sol";
 
-contract ChainlinkRegistry is
+contract SequenceRegistry is
     Initializable,
     OwnableUpgradeSafe,
     ITokenRegistry,
@@ -36,10 +36,11 @@ contract ChainlinkRegistry is
     event ManagerChanged(address);
     event ExecutorChanged(address);
 
-    function initialize(address adminAddress, address managerAddress, address executorAddress)
-        external
-        initializer
-    {
+    function initialize(
+        address adminAddress,
+        address managerAddress,
+        address executorAddress
+    ) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");
         require(managerAddress != address(0), "INVALID_MANAGER");
         require(executorAddress != address(0), "INVALID_EXECUTOR");
@@ -84,10 +85,7 @@ contract ChainlinkRegistry is
         bytes32 sequenceId,
         APYGenericExecutor.Data[] calldata data,
         bytes32 symbol
-    )
-        external
-        onlyOwner
-    {
+    ) external onlyOwner {
         _sequenceIds.add(sequenceId);
         _sequenceData[sequenceId] = data;
         _sequenceSymbols[sequenceId] = symbol;
@@ -99,7 +97,11 @@ contract ChainlinkRegistry is
         _sequenceIds.remove(sequenceId);
     }
 
-    function isSequenceRegistered(bytes32 sequenceId) public view returns (bool) {
+    function isSequenceRegistered(bytes32 sequenceId)
+        public
+        view
+        returns (bool)
+    {
         return _sequenceIds.contains(sequenceId);
     }
 
@@ -124,9 +126,15 @@ contract ChainlinkRegistry is
      *  @dev The balance is possibly aggregated from multiple contracts
      *       holding the token.
      */
-    function balanceOf(bytes32 sequenceId) external view override returns (uint256) {
+    function balanceOf(bytes32 sequenceId)
+        external
+        view
+        override
+        returns (uint256)
+    {
         // Should check if the sequence ID exists first
-        bytes memory returnData = executor.executeView(_sequenceData[sequenceId]);
+        bytes memory returnData =
+            executor.executeView(_sequenceData[sequenceId]);
 
         uint256 balance;
         assembly {
