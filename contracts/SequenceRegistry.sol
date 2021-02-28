@@ -11,7 +11,7 @@ import "./interfaces/IDetailedERC20.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/ISequenceRegistry.sol";
 import "./interfaces/IStrategyFactory.sol";
-import "./APYGenericExecutor.sol";
+import "./APYViewExecutor.sol";
 
 contract SequenceRegistry is
     Initializable,
@@ -25,11 +25,11 @@ contract SequenceRegistry is
 
     address public proxyAdmin;
     IStrategyFactory public manager;
-    APYGenericExecutor public executor;
+    APYViewExecutor public executor;
 
     // Needs to be able to delete sequenceIds and sequences
     EnumerableSet.Bytes32Set private _sequenceIds;
-    mapping(bytes32 => APYGenericExecutor.Data[]) private _sequenceData;
+    mapping(bytes32 => APYViewExecutor.Data[]) private _sequenceData;
     mapping(bytes32 => string) private _sequenceSymbols;
 
     event AdminChanged(address);
@@ -72,7 +72,7 @@ contract SequenceRegistry is
 
     function setExecutorAddress(address executorAddress) public onlyOwner {
         require(executorAddress != address(0), "INVALID_EXECUTOR");
-        executor = APYGenericExecutor(executorAddress);
+        executor = APYViewExecutor(executorAddress);
         emit ExecutorChanged(executorAddress);
     }
 
@@ -83,12 +83,15 @@ contract SequenceRegistry is
 
     function addSequence(
         bytes32 sequenceId,
-        APYGenericExecutor.Data[] calldata data,
+        APYViewExecutor.Data[] memory data,
         string calldata symbol
     ) external override onlyOwner {
         _sequenceIds.add(sequenceId);
-        _sequenceData[sequenceId] = data;
         _sequenceSymbols[sequenceId] = symbol;
+
+        for (uint256 i = 0; i < data.length; i++) {
+            _sequenceData[sequenceId].push(data[i]);
+        }
     }
 
     function removeSequence(bytes32 sequenceId) external override onlyOwner {

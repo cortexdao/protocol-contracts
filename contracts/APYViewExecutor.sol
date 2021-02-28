@@ -4,32 +4,32 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract APYGenericExecutor is Ownable {
+contract APYViewExecutor is Ownable {
     struct Data {
         address target;
         bytes data;
     }
 
-    function execute(Data[] calldata executionSteps)
+    function executeView(Data[] calldata executionSteps)
         external
-        payable
-        onlyOwner
+        view
+        returns (bytes memory returnData)
     {
-        bytes memory returnData;
         for (uint256 i = 0; i < executionSteps.length; i++) {
-            returnData = _call(
+            returnData = _staticcall(
                 executionSteps[i].target,
                 executionSteps[i].data
             );
         }
     }
 
-    function _call(address target, bytes memory data)
+    function _staticcall(address target, bytes memory data)
         private
+        view
         returns (bytes memory)
     {
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory returndata) = target.call(data);
+        (bool success, bytes memory returndata) = target.staticcall(data);
         if (success) {
             return returndata;
         } else {

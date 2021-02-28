@@ -2,7 +2,7 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "../APYGenericExecutor.sol";
+import "../APYViewExecutor.sol";
 
 /**
  * @title Interface for addition and removal of balance sequences
@@ -14,7 +14,7 @@ import "../APYGenericExecutor.sol";
 interface ISequenceRegistry {
     function addSequence(
         bytes32 sequenceId,
-        APYGenericExecutor.Data[] calldata data,
+        APYViewExecutor.Data[] calldata data,
         string calldata symbol
     ) external;
 
