@@ -89,39 +89,6 @@ describe.only("Contract: SequenceRegistry", () => {
   });
 
   describe("Asset allocation", () => {
-    let peripheryContract;
-
-    before(async () => {
-      peripheryContract = await deployMockContract(deployer, [
-        {
-          inputs: [],
-          name: "balance",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "symbol",
-          outputs: [
-            {
-              internalType: "string",
-              name: "",
-              type: "string",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-      ]);
-    });
-
     describe("Token registration", () => {
       describe("addSequence", async () => {
         it("Non-owner cannot call", async () => {
@@ -248,101 +215,121 @@ describe.only("Contract: SequenceRegistry", () => {
       });
     });
 
-    // describe("balanceOf", async () => {
-    //   it("Single strategy and token", async () => {
-    //     const strategy = await registry.callStatic.deployStrategy(
-    //       executor.address
-    //     );
-    //     await registry.deployStrategy(executor.address);
+    describe("balanceOf", async () => {
+      let peripheryContract;
+      let peripheryAbi;
 
-    //     const mockToken = await deployMockContract(
-    //       deployer,
-    //       IDetailedERC20.abi
-    //     );
-    //     const expectedBalance = "129387";
-    //     await mockToken.mock.balanceOf.returns(expectedBalance);
+      before(async () => {
+        peripheryAbi = [
+          {
+            inputs: [],
+            name: "balance",
+            outputs: [
+              {
+                internalType: "uint256",
+                name: "",
+                type: "uint256",
+              },
+            ],
+            stateMutability: "view",
+            type: "function",
+          },
+        ];
+        peripheryContract = await deployMockContract(deployer, peripheryAbi);
+      });
 
-    //     await registry.registerTokens(strategy, [mockToken.address]);
+      it("Single balance sequence", async () => {
+        const sequenceId = bytes32("sequence 1");
+        const symbol = "FOO";
+        // create the step to execute
+        const iface = new ethers.utils.Interface(peripheryAbi);
+        const encodedBalance = iface.encodeFunctionData("balance()", []);
+        const data = [[peripheryContract.address, encodedBalance]];
+        // step execution should return a value
+        const expectedBalance = tokenAmountToBigNumber(100);
+        await peripheryContract.mock.balance.returns(expectedBalance);
 
-    //     const balance = await registry.balanceOf(mockToken.address);
-    //     expect(balance).to.equal(expectedBalance);
-    //   });
+        await registry.addSequence(sequenceId, data, symbol);
 
-    //   it("Multiple strategies", async () => {
-    //     const strategy_1 = await registry.callStatic.deployStrategy(
-    //       executor.address
-    //     );
-    //     await registry.deployStrategy(executor.address);
-    //     const strategy_2 = await registry.callStatic.deployStrategy(
-    //       executor.address
-    //     );
-    //     await registry.deployStrategy(executor.address);
+        const balance = await registry.balanceOf(sequenceId);
+        expect(balance).to.equal(expectedBalance);
+      });
 
-    //     const mockToken = await deployMockContract(
-    //       deployer,
-    //       IDetailedERC20.abi
-    //     );
-    //     const balance_1 = tokenAmountToBigNumber("129382");
-    //     const balance_2 = tokenAmountToBigNumber("298");
-    //     await mockToken.mock.balanceOf.withArgs(strategy_1).returns(balance_1);
-    //     await mockToken.mock.balanceOf.withArgs(strategy_2).returns(balance_2);
-    //     const expectedBalance = balance_1.add(balance_2);
+      it("Multiple strategies", async () => {
+        const strategy_1 = await registry.callStatic.deployStrategy(
+          executor.address
+        );
+        await registry.deployStrategy(executor.address);
+        const strategy_2 = await registry.callStatic.deployStrategy(
+          executor.address
+        );
+        await registry.deployStrategy(executor.address);
 
-    //     await registry.registerTokens(strategy_1, [mockToken.address]);
-    //     await registry.registerTokens(strategy_2, [mockToken.address]);
+        const mockToken = await deployMockContract(
+          deployer,
+          IDetailedERC20.abi
+        );
+        const balance_1 = tokenAmountToBigNumber("129382");
+        const balance_2 = tokenAmountToBigNumber("298");
+        await mockToken.mock.balanceOf.withArgs(strategy_1).returns(balance_1);
+        await mockToken.mock.balanceOf.withArgs(strategy_2).returns(balance_2);
+        const expectedBalance = balance_1.add(balance_2);
 
-    //     expect(await registry.balanceOf(mockToken.address)).to.equal(
-    //       expectedBalance
-    //     );
-    //   });
+        await registry.registerTokens(strategy_1, [mockToken.address]);
+        await registry.registerTokens(strategy_2, [mockToken.address]);
 
-    //   it("Multiple strategies and multiple tokens", async () => {
-    //     const strategy_1 = await registry.callStatic.deployStrategy(
-    //       executor.address
-    //     );
-    //     await registry.deployStrategy(executor.address);
-    //     const strategy_2 = await registry.callStatic.deployStrategy(
-    //       executor.address
-    //     );
-    //     await registry.deployStrategy(executor.address);
+        expect(await registry.balanceOf(mockToken.address)).to.equal(
+          expectedBalance
+        );
+      });
 
-    //     const token_a = await deployMockContract(deployer, IDetailedERC20.abi);
-    //     const balance_a_1 = tokenAmountToBigNumber("129382");
-    //     const balance_a_2 = tokenAmountToBigNumber("0");
-    //     await token_a.mock.balanceOf.withArgs(strategy_1).returns(balance_a_1);
-    //     await token_a.mock.balanceOf.withArgs(strategy_2).returns(balance_a_2);
-    //     const expectedBalance_a = balance_a_1.add(balance_a_2);
+      it("Multiple strategies and multiple tokens", async () => {
+        const strategy_1 = await registry.callStatic.deployStrategy(
+          executor.address
+        );
+        await registry.deployStrategy(executor.address);
+        const strategy_2 = await registry.callStatic.deployStrategy(
+          executor.address
+        );
+        await registry.deployStrategy(executor.address);
 
-    //     const token_b = await deployMockContract(deployer, IDetailedERC20.abi);
-    //     const balance_b_1 = tokenAmountToBigNumber("0");
-    //     const balance_b_2 = tokenAmountToBigNumber("9921");
-    //     await token_b.mock.balanceOf.withArgs(strategy_1).returns(balance_b_1);
-    //     await token_b.mock.balanceOf.withArgs(strategy_2).returns(balance_b_2);
-    //     const expectedBalance_b = balance_b_1.add(balance_b_2);
+        const token_a = await deployMockContract(deployer, IDetailedERC20.abi);
+        const balance_a_1 = tokenAmountToBigNumber("129382");
+        const balance_a_2 = tokenAmountToBigNumber("0");
+        await token_a.mock.balanceOf.withArgs(strategy_1).returns(balance_a_1);
+        await token_a.mock.balanceOf.withArgs(strategy_2).returns(balance_a_2);
+        const expectedBalance_a = balance_a_1.add(balance_a_2);
 
-    //     const token_c = await deployMockContract(deployer, IDetailedERC20.abi);
-    //     const balance_c_1 = tokenAmountToBigNumber("2812");
-    //     const balance_c_2 = tokenAmountToBigNumber("678123");
-    //     await token_c.mock.balanceOf.withArgs(strategy_1).returns(balance_c_1);
-    //     await token_c.mock.balanceOf.withArgs(strategy_2).returns(balance_c_2);
-    //     const expectedBalance_c = balance_c_1.add(balance_c_2);
+        const token_b = await deployMockContract(deployer, IDetailedERC20.abi);
+        const balance_b_1 = tokenAmountToBigNumber("0");
+        const balance_b_2 = tokenAmountToBigNumber("9921");
+        await token_b.mock.balanceOf.withArgs(strategy_1).returns(balance_b_1);
+        await token_b.mock.balanceOf.withArgs(strategy_2).returns(balance_b_2);
+        const expectedBalance_b = balance_b_1.add(balance_b_2);
 
-    //     const tokens = [token_a.address, token_b.address, token_c.address];
+        const token_c = await deployMockContract(deployer, IDetailedERC20.abi);
+        const balance_c_1 = tokenAmountToBigNumber("2812");
+        const balance_c_2 = tokenAmountToBigNumber("678123");
+        await token_c.mock.balanceOf.withArgs(strategy_1).returns(balance_c_1);
+        await token_c.mock.balanceOf.withArgs(strategy_2).returns(balance_c_2);
+        const expectedBalance_c = balance_c_1.add(balance_c_2);
 
-    //     await registry.registerTokens(strategy_1, tokens);
-    //     await registry.registerTokens(strategy_2, tokens);
+        const tokens = [token_a.address, token_b.address, token_c.address];
 
-    //     expect(await registry.balanceOf(token_a.address)).to.equal(
-    //       expectedBalance_a
-    //     );
-    //     expect(await registry.balanceOf(token_b.address)).to.equal(
-    //       expectedBalance_b
-    //     );
-    //     expect(await registry.balanceOf(token_c.address)).to.equal(
-    //       expectedBalance_c
-    //     );
-    //   });
-    // });
+        await registry.registerTokens(strategy_1, tokens);
+        await registry.registerTokens(strategy_2, tokens);
+
+        expect(await registry.balanceOf(token_a.address)).to.equal(
+          expectedBalance_a
+        );
+        expect(await registry.balanceOf(token_b.address)).to.equal(
+          expectedBalance_b
+        );
+        expect(await registry.balanceOf(token_c.address)).to.equal(
+          expectedBalance_c
+        );
+      });
+    });
 
     it("symbolOf", async () => {
       const sequenceId = bytes32("sequence 1");
