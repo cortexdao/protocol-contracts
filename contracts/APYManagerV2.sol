@@ -299,43 +299,4 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
     function symbolOf(address token) external view returns (string memory) {
         return IDetailedERC20(token).symbol();
     }
-
-    /**
-     * @notice Redeems mAPT amount for the pool into its underlyer token.
-     * @param poolAddress The address for the selected pool.
-     */
-    function pushFunds(address payable poolAddress) external onlyOwner {
-        uint256 mAptAmount = mApt.balanceOf(poolAddress);
-
-        APYPoolTokenV2 pool = APYPoolTokenV2(poolAddress);
-        uint256 tokenEthPrice = pool.getTokenEthPrice();
-        IDetailedERC20 underlyer = pool.underlyer();
-        uint8 decimals = underlyer.decimals();
-        uint256 poolAmount =
-            mApt.calculatePoolAmount(mAptAmount, tokenEthPrice, decimals);
-
-        // Burn must happen after pool amount calc, as quantities
-        // being compared are post-deposit amounts.
-        mApt.burn(poolAddress, mAptAmount);
-        underlyer.safeTransfer(poolAddress, poolAmount);
-    }
-
-    /**
-     * @notice Mint corresponding amount of mAPT tokens for pulled amount.
-     * @dev Pool must approve manager to transfer its underlyer token.
-     */
-    function pullFunds(address payable poolAddress) external onlyOwner {
-        APYPoolTokenV2 pool = APYPoolTokenV2(poolAddress);
-        IDetailedERC20 underlyer = pool.underlyer();
-        uint256 poolAmount = underlyer.balanceOf(poolAddress);
-        uint256 poolValue = pool.getEthValueFromTokenAmount(poolAmount);
-
-        uint256 tokenEthPrice = pool.getTokenEthPrice();
-        uint8 decimals = underlyer.decimals();
-        uint256 mintAmount =
-            mApt.calculateMintAmount(poolValue, tokenEthPrice, decimals);
-
-        mApt.mint(poolAddress, mintAmount);
-        underlyer.safeTransferFrom(poolAddress, address(this), poolAmount);
-    }
 }
