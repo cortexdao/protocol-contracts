@@ -230,31 +230,35 @@ describe.only("Contract: SequenceRegistry", () => {
             tokenMock_2.address,
             tokenMock_3.address,
           ];
-          expect(await registry.getTokenAddresses()).to.have.members(
+          expect(await registry.getSequenceIds()).to.have.members(
             expectedTokens
           );
-          expect(await registry.getTokenAddresses()).to.have.lengthOf(
+          expect(await registry.getSequenceIds()).to.have.lengthOf(
             expectedTokens.length
           );
         });
 
-        it("Does not retrieve deregistered tokens", async () => {
-          const tokenMock_1 = await deployMockContract(deployer, []);
-          const tokenMock_2 = await deployMockContract(deployer, []);
-          const tokenMock_3 = await deployMockContract(deployer, []);
+        it("Does not retrieve deregistered sequences", async () => {
+          const sequenceId_1 = bytes32("sequence 1");
+          const sequenceId_2 = bytes32("sequence 2");
+          const sequenceId_3 = bytes32("sequence 3");
+          const data = [];
+          const symbol = "FOO";
 
-          const deregisteredTokens = [tokenMock_1.address];
-          const leftoverTokens = [tokenMock_2.address, tokenMock_3.address];
-          const tokens = deregisteredTokens.concat(leftoverTokens);
+          const deregisteredIds = [sequenceId_1];
+          const leftoverIds = [sequenceId_2, sequenceId_3];
+          const sequenceIds = deregisteredIds.concat(leftoverIds);
 
-          await registry.registerTokens(strategy, tokens);
-          await registry.deregisterTokens(strategy, deregisteredTokens);
+          for (const id of sequenceIds) {
+            await registry.addSequence(id, data, symbol);
+          }
+          for (const id of deregisteredIds) {
+            await registry.removeSequence(id);
+          }
 
-          expect(await registry.getTokenAddresses()).to.have.members(
-            leftoverTokens
-          );
-          expect(await registry.getTokenAddresses()).to.have.lengthOf(
-            leftoverTokens.length
+          expect(await registry.getSequenceIds()).to.have.members(leftoverIds);
+          expect(await registry.getSequenceIds()).to.have.lengthOf(
+            leftoverIds.length
           );
         });
 
