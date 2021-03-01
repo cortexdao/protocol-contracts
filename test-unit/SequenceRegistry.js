@@ -16,7 +16,7 @@ const erc20Interface = new ethers.utils.Interface(
   artifacts.require("ERC20").abi
 );
 
-describe("Contract: APYManager", () => {
+describe.only("Contract: SequenceRegistry", () => {
   // signers
   let deployer;
   let randomUser;
@@ -129,7 +129,7 @@ describe("Contract: APYManager", () => {
         //
       });
 
-      describe.only("addSequence", async () => {
+      describe("addSequence", async () => {
         it("Non-owner cannot call", async () => {
           const sequenceId = bytes32("");
           const data = [];
@@ -151,49 +151,31 @@ describe("Contract: APYManager", () => {
 
       describe("deregisterTokens", async () => {
         it("Non-owner cannot call", async () => {
-          const tokens = [];
+          const sequenceId = bytes32("");
           await expect(
-            registry.connect(randomUser).deregisterTokens(strategy, tokens)
+            registry.connect(randomUser).removeSequence(sequenceId)
           ).to.be.revertedWith("revert Ownable: caller is not the owner");
         });
 
         it("Owner can call", async () => {
-          const tokens = [];
-          await expect(
-            registry.connect(deployer).deregisterTokens(strategy, tokens)
-          ).to.not.be.reverted;
-        });
-
-        it("Can deregister for deployed strategy", async () => {
-          const tokens = [];
-          await expect(registry.deregisterTokens(strategy, tokens)).to.not.be
-            .reverted;
-        });
-
-        it("Revert when deregistering for non-deployed address", async () => {
-          const tokens = [];
-          await expect(
-            registry.deregisterTokens(FAKE_ADDRESS, tokens)
-          ).to.be.revertedWith("INVALID_STRATEGY");
+          const sequenceId = bytes32("");
+          await expect(registry.connect(deployer).removeSequence(sequenceId)).to
+            .not.be.reverted;
         });
       });
 
-      it("isTokenRegistered", async () => {
-        const tokenMock_1 = await deployMockContract(deployer, []);
-        const tokenMock_2 = await deployMockContract(deployer, []);
-        const tokenMock_3 = await deployMockContract(deployer, []);
-        const tokens = [tokenMock_1.address, tokenMock_2.address];
-        await registry.registerTokens(strategy, tokens);
+      it("isSequenceRegistered", async () => {
+        const sequenceId_1 = bytes32("sequence 1");
+        const sequenceId_2 = bytes32("sequence 2");
+        const data = [];
+        const symbol = "FOO";
+        await registry.addSequence(sequenceId_1, data, symbol);
 
-        expect(await registry.isTokenRegistered(tokenMock_1.address)).to.be
-          .true;
-        expect(await registry.isTokenRegistered(tokenMock_2.address)).to.be
-          .true;
-        expect(await registry.isTokenRegistered(tokenMock_3.address)).to.be
-          .false;
+        expect(await registry.isSequenceRegistered(sequenceId_1)).to.be.true;
+        expect(await registry.isSequenceRegistered(sequenceId_2)).to.be.false;
       });
 
-      describe("getTokenAddresses", () => {
+      describe("getSequenceIds", () => {
         it("Retrieves tokens registered with 1 strategy", async () => {
           const tokenMock_1 = await deployMockContract(deployer, []);
           const tokenMock_2 = await deployMockContract(deployer, []);
