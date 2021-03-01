@@ -176,52 +176,34 @@ describe.only("Contract: SequenceRegistry", () => {
       });
 
       describe("getSequenceIds", () => {
-        it("Retrieves tokens registered with 1 strategy", async () => {
-          const tokenMock_1 = await deployMockContract(deployer, []);
-          const tokenMock_2 = await deployMockContract(deployer, []);
-          const tokens = [tokenMock_1.address, tokenMock_2.address];
-          await registry.registerTokens(strategy, tokens);
+        it("Retrieves single registered sequence", async () => {
+          const sequenceId = bytes32("sequence 1");
+          const data = [];
+          const symbol = "FOO";
+          const sequenceIds = [sequenceId];
+          await registry.addSequence(sequenceId, data, symbol);
 
-          expect(await registry.getTokenAddresses()).to.have.members(tokens);
-          expect(await registry.getTokenAddresses()).to.have.lengthOf(
-            tokens.length
+          expect(await registry.getSequenceIds()).to.have.members(sequenceIds);
+          expect(await registry.getSequenceIds()).to.have.lengthOf(
+            sequenceIds.length
           );
         });
 
         it("Does not return duplicates", async () => {
-          const tokenMock_1 = await deployMockContract(deployer, []);
-          const tokenMock_2 = await deployMockContract(deployer, []);
-          const tokenMock_3 = await deployMockContract(deployer, []);
-          const tokenMock_4 = await deployMockContract(deployer, []);
-          const tokenMock_5 = await deployMockContract(deployer, []);
+          const sequenceId_1 = bytes32("sequence 1");
+          const sequenceId_2 = bytes32("sequence 2");
+          const data = [];
+          const symbol = "FOO";
+          await registry.addSequence(sequenceId_1, data, symbol);
+          await registry.addSequence(sequenceId_2, data, symbol);
+          await registry.addSequence(sequenceId_1, data, symbol);
 
-          await registry.registerTokens(strategy, [
-            tokenMock_1.address,
-            tokenMock_2.address,
-          ]);
-          await registry.registerTokens(strategy, [tokenMock_3.address]);
-          await registry.registerTokens(strategy, [
-            tokenMock_2.address,
-            tokenMock_4.address,
-          ]);
-          await registry.registerTokens(strategy, [
-            tokenMock_1.address,
-            tokenMock_3.address,
-          ]);
-          await registry.registerTokens(strategy, [tokenMock_5.address]);
-
-          const expectedTokens = [
-            tokenMock_1.address,
-            tokenMock_2.address,
-            tokenMock_3.address,
-            tokenMock_4.address,
-            tokenMock_5.address,
-          ];
-          expect(await registry.getTokenAddresses()).to.have.members(
-            expectedTokens
+          const expectedSequenceIds = [sequenceId_1, sequenceId_2];
+          expect(await registry.getSequenceIds()).to.have.members(
+            expectedSequenceIds
           );
-          expect(await registry.getTokenAddresses()).to.have.lengthOf(
-            expectedTokens.length
+          expect(await registry.getSequenceIds()).to.have.lengthOf(
+            expectedSequenceIds.length
           );
         });
 
