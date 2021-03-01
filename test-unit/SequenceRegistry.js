@@ -123,12 +123,6 @@ describe.only("Contract: SequenceRegistry", () => {
     });
 
     describe("Token registration", () => {
-      let strategy;
-
-      before(async () => {
-        //
-      });
-
       describe("addSequence", async () => {
         it("Non-owner cannot call", async () => {
           const sequenceId = bytes32("");
@@ -350,10 +344,13 @@ describe.only("Contract: SequenceRegistry", () => {
     //   });
     // });
 
-    // it("symbolOf", async () => {
-    //   const mockToken = await deployMockContract(deployer, IDetailedERC20.abi);
-    //   await mockToken.mock.symbol.returns("MOCK");
-    //   expect(await registry.symbolOf(mockToken.address)).to.equal("MOCK");
-    // });
+    it("symbolOf", async () => {
+      const sequenceId = bytes32("sequence 1");
+      const data = [];
+      const symbol = "FOO";
+      await registry.addSequence(sequenceId, data, symbol);
+
+      expect(await registry.symbolOf(sequenceId)).to.equal(symbol);
+    });
   });
 });
