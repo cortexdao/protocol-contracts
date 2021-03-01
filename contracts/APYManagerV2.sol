@@ -30,16 +30,13 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
     bytes32[] internal _poolIds;
     // Replacing this last V1 storage slot is ok:
     // address[] internal _tokenAddresses;
-    // WARNING: to be safe, we should use `deleteTokenAddresses`
-    // before the V2 upgrade
-    EnumerableSet.AddressSet internal _tokenAddresses;
+    // WARNING: we should clear storage via `deleteTokenAddresses`
+    //          before the V2 upgrade
 
     // V2
     mapping(bytes32 => address) public getStrategy;
     mapping(address => bool) public override isStrategyDeployed;
 
-    mapping(address => EnumerableSet.AddressSet) internal _strategyToTokens;
-    mapping(address => EnumerableSet.AddressSet) internal _tokenToStrategies;
     /* ------------------------------- */
 
     event AdminChanged(address);
@@ -73,55 +70,6 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
 
     function setStrategyId(bytes32 id, address strategy) public onlyOwner {
         getStrategy[id] = strategy;
-    }
-
-    /**
-     * @dev need this for as-yet-unknown tokens that may be air-dropped, etc.
-     */
-    function registerTokens(address strategy, address[] calldata tokens)
-        external
-        onlyOwner
-    {
-        require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
-        for (uint256 i = 0; i < tokens.length; i++) {
-            address token = tokens[i];
-            _registerToken(strategy, token);
-        }
-    }
-
-    function _registerToken(address strategy, address token) internal {
-        require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
-        // `add` is safe to call multiple times, as it
-        // returns a boolean to indicate if element was added
-        _tokenToStrategies[token].add(strategy);
-        _strategyToTokens[strategy].add(token);
-        _tokenAddresses.add(token);
-    }
-
-    function deregisterTokens(address strategy, address[] calldata tokens)
-        external
-        onlyOwner
-    {
-        require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
-        for (uint256 i = 0; i < tokens.length; i++) {
-            address token = tokens[i];
-            _deregisterToken(strategy, token);
-        }
-    }
-
-    function _deregisterToken(address strategy, address token) internal {
-        require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
-        // `remove` is safe to call multiple times, as it
-        // returns a boolean to indicate if element was removed
-        _tokenToStrategies[token].remove(strategy);
-        _strategyToTokens[strategy].remove(token);
-        if (_tokenToStrategies[token].length() == 0) {
-            _tokenAddresses.remove(token);
-        }
-    }
-
-    function isTokenRegistered(address token) public view returns (bool) {
-        return _tokenAddresses.contains(token);
     }
 
     function fundStrategy(
@@ -254,49 +202,9 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
         return _poolIds;
     }
 
-    /** @notice Returns the list of asset addresses.
-     *  @dev Address list will be populated automatically from the set
-     *       of input and output assets for each strategy.
-     */
-    function getTokenAddresses() external view returns (address[] memory) {
-        uint256 length = _tokenAddresses.length();
-        address[] memory tokenAddresses = new address[](length);
-        for (uint256 i = 0; i < length; i++) {
-            tokenAddresses[i] = _tokenAddresses.at(i);
-        }
-        return tokenAddresses;
-    }
-
-    /// @dev part of temporary implementation for Chainlink integration;
-    ///      likely need this to clear out storage prior to real upgrade.
-    function deleteTokenAddresses() external onlyOwner {
-        delete _tokenAddresses;
-    }
-
     /// @dev part of temporary implementation for Chainlink integration;
     ///      likely need this to clear out storage prior to real upgrade.
     function deletePoolIds() external onlyOwner {
         delete _poolIds;
-    }
-
-    /** @notice Returns the total balance in the system for given token.
-     *  @dev The balance is possibly aggregated from multiple contracts
-     *       holding the token.
-     */
-    function balanceOf(address token) external view returns (uint256) {
-        IDetailedERC20 erc20 = IDetailedERC20(token);
-        EnumerableSet.AddressSet storage strategies = _tokenToStrategies[token];
-        uint256 balance = 0;
-        for (uint256 i = 0; i < strategies.length(); i++) {
-            address strategy = strategies.at(i);
-            uint256 strategyBalance = erc20.balanceOf(strategy);
-            balance = balance.add(strategyBalance);
-        }
-        return balance;
-    }
-
-    /// @notice Returns the symbol of the given token.
-    function symbolOf(address token) external view returns (string memory) {
-        return IDetailedERC20(token).symbol();
     }
 }
