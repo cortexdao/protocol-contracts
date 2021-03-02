@@ -1,16 +1,14 @@
 const { expect } = require("chai");
 const hre = require("hardhat");
-const { artifacts, ethers, waffle } = hre;
-const { AddressZero: ZERO_ADDRESS } = ethers.constants;
+const { ethers, waffle } = hre;
 const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
 const {
+  ZERO_ADDRESS,
   FAKE_ADDRESS,
-  ANOTHER_FAKE_ADDRESS,
   tokenAmountToBigNumber,
   bytes32,
 } = require("../utils/helpers");
-const APYManagerV2 = artifacts.require("APYManagerV2");
 
 describe.only("Contract: SequenceRegistry", () => {
   // signers
@@ -20,6 +18,7 @@ describe.only("Contract: SequenceRegistry", () => {
   // contract factories
   let SequenceRegistry;
   let APYViewExecutor;
+  let APYManagerV2;
 
   // deployed contracts
   let registry;
@@ -43,14 +42,15 @@ describe.only("Contract: SequenceRegistry", () => {
 
     SequenceRegistry = await ethers.getContractFactory("SequenceRegistry");
     APYViewExecutor = await ethers.getContractFactory("APYViewExecutor");
+    APYManagerV2 = await ethers.getContractFactory("APYManagerV2");
 
     executor = await APYViewExecutor.deploy();
     await executor.deployed();
 
-    managerMock = await deployMockContract(deployer, APYManagerV2.abi);
+    const managerAbi = APYManagerV2.interface.format("json");
+    managerMock = await deployMockContract(deployer, managerAbi);
 
     registry = await SequenceRegistry.deploy(
-      deployer.address,
       managerMock.address,
       executor.address
     );
@@ -63,22 +63,41 @@ describe.only("Contract: SequenceRegistry", () => {
     });
   });
 
-  describe("Setting admin address", () => {
+  describe("Setting manager address", () => {
     it("Owner can set to valid address", async () => {
-      await registry.connect(deployer).setAdminAddress(FAKE_ADDRESS);
-      expect(await registry.proxyAdmin()).to.equal(FAKE_ADDRESS);
+      await registry.connect(deployer).setManagerAddress(FAKE_ADDRESS);
+      expect(await registry.manager()).to.equal(FAKE_ADDRESS);
     });
 
     it("Non-owner cannot set", async () => {
       await expect(
-        registry.connect(randomUser).setAdminAddress(FAKE_ADDRESS)
+        registry.connect(randomUser).setManagerAddress(FAKE_ADDRESS)
       ).to.be.revertedWith("revert Ownable: caller is not the owner");
     });
 
     it("Cannot set to zero address", async () => {
       await expect(
-        registry.connect(deployer).setAdminAddress(ZERO_ADDRESS)
-      ).to.be.revertedWith("INVALID_ADMIN");
+        registry.connect(deployer).setManagerAddress(ZERO_ADDRESS)
+      ).to.be.revertedWith("INVALID_MANAGER");
+    });
+  });
+
+  describe("Setting executor address", () => {
+    it("Owner can set to valid address", async () => {
+      await registry.connect(deployer).setExecutorAddress(FAKE_ADDRESS);
+      expect(await registry.executor()).to.equal(FAKE_ADDRESS);
+    });
+
+    it("Non-owner cannot set", async () => {
+      await expect(
+        registry.connect(randomUser).setExecutorAddress(FAKE_ADDRESS)
+      ).to.be.revertedWith("revert Ownable: caller is not the owner");
+    });
+
+    it("Cannot set to zero address", async () => {
+      await expect(
+        registry.connect(deployer).setExecutorAddress(ZERO_ADDRESS)
+      ).to.be.revertedWith("INVALID_EXECUTOR");
     });
   });
 
@@ -279,15 +298,23 @@ describe.only("Contract: SequenceRegistry", () => {
       const sequenceId = bytes32("sequence 1");
       const symbol = "FOO";
       const strategy = FAKE_ADDRESS;
-      // create the step to execute
-      const iface = new ethers.utils.Interface(peripheryAbi);
-      const encodedBalance = iface.encodeFunctionData(
+      // create the steps to execute
+      const encodedStrategyCheck = APYManagerV2.interface.encodeFunctionData(
         "isStrategyDeployed(address)",
         [strategy]
       );
-      const data = [[peripheryContract.address, encodedBalance]];
-      // step execution will revert
-      await peripheryContract.mock.balance.reverts();
+      const iface = new ethers.utils.Interface(peripheryAbi);
+      const encodedBalance = iface.encodeFunctionData("balance(address)", [
+        strategy,
+      ]);
+      const data = [
+        [managerMock.address, encodedStrategyCheck],
+        [peripheryContract.address, encodedBalance],
+      ];
+      // step execution
+      await peripheryContract.mock.balance.returns(0);
+
+      await registry.addSequence(sequenceId, data, symbol);
     });
   });
 
