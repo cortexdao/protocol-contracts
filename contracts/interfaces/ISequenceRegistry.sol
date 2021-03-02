@@ -14,7 +14,7 @@ import "../APYViewExecutor.sol";
 interface ISequenceRegistry {
     function addSequence(
         bytes32 sequenceId,
-        APYViewExecutor.Data[] calldata data,
+        APYViewExecutor.Data calldata data,
         string calldata symbol
     ) external;
 

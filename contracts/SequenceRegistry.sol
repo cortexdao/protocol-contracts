@@ -17,7 +17,7 @@ contract SequenceRegistry is Ownable, ISequenceRegistry, IAssetAllocation {
 
     // Needs to be able to delete sequenceIds and sequences
     EnumerableSet.Bytes32Set private _sequenceIds;
-    mapping(bytes32 => APYViewExecutor.Data[]) private _sequenceData;
+    mapping(bytes32 => APYViewExecutor.Data) private _sequenceData;
     mapping(bytes32 => string) private _sequenceSymbols;
 
     event ManagerChanged(address);
@@ -49,15 +49,12 @@ contract SequenceRegistry is Ownable, ISequenceRegistry, IAssetAllocation {
      */
     function addSequence(
         bytes32 sequenceId,
-        APYViewExecutor.Data[] memory data,
+        APYViewExecutor.Data memory data,
         string calldata symbol
     ) external override onlyOwner {
         _sequenceIds.add(sequenceId);
         _sequenceSymbols[sequenceId] = symbol;
-
-        for (uint256 i = 0; i < data.length; i++) {
-            _sequenceData[sequenceId].push(data[i]);
-        }
+        _sequenceData[sequenceId] = data;
     }
 
     /**

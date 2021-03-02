@@ -10,7 +10,7 @@ const {
   bytes32,
 } = require("../utils/helpers");
 
-describe.only("Contract: SequenceRegistry", () => {
+describe("Contract: SequenceRegistry", () => {
   // signers
   let deployer;
   let randomUser;
@@ -105,7 +105,7 @@ describe.only("Contract: SequenceRegistry", () => {
     describe("addSequence", async () => {
       it("Non-owner cannot call", async () => {
         const sequenceId = bytes32("");
-        const data = [];
+        const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
         await expect(
           registry.connect(randomUser).addSequence(sequenceId, data, symbol)
@@ -114,7 +114,7 @@ describe.only("Contract: SequenceRegistry", () => {
 
       it("Owner can call", async () => {
         const sequenceId = bytes32("");
-        const data = [];
+        const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
         await expect(
           registry.connect(deployer).addSequence(sequenceId, data, symbol)
@@ -140,7 +140,7 @@ describe.only("Contract: SequenceRegistry", () => {
     it("isSequenceRegistered", async () => {
       const sequenceId_1 = bytes32("sequence 1");
       const sequenceId_2 = bytes32("sequence 2");
-      const data = [];
+      const data = [FAKE_ADDRESS, bytes32("")];
       const symbol = "FOO";
       await registry.addSequence(sequenceId_1, data, symbol);
 
@@ -151,7 +151,7 @@ describe.only("Contract: SequenceRegistry", () => {
     describe("getSequenceIds", () => {
       it("Retrieves single registered sequence", async () => {
         const sequenceId = bytes32("sequence 1");
-        const data = [];
+        const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
         const sequenceIds = [sequenceId];
         await registry.addSequence(sequenceId, data, symbol);
@@ -165,7 +165,7 @@ describe.only("Contract: SequenceRegistry", () => {
       it("Does not return duplicates", async () => {
         const sequenceId_1 = bytes32("sequence 1");
         const sequenceId_2 = bytes32("sequence 2");
-        const data = [];
+        const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
         await registry.addSequence(sequenceId_1, data, symbol);
         await registry.addSequence(sequenceId_2, data, symbol);
@@ -184,7 +184,7 @@ describe.only("Contract: SequenceRegistry", () => {
         const sequenceId_1 = bytes32("sequence 1");
         const sequenceId_2 = bytes32("sequence 2");
         const sequenceId_3 = bytes32("sequence 3");
-        const data = [];
+        const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
 
         const deregisteredIds = [sequenceId_1];
@@ -208,7 +208,7 @@ describe.only("Contract: SequenceRegistry", () => {
         const sequenceId_1 = bytes32("sequence 1");
         const sequenceId_2 = bytes32("sequence 2");
         const sequenceId_3 = bytes32("sequence 3");
-        const data = [];
+        const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
         for (const id of [sequenceId_1, sequenceId_2, sequenceId_3]) {
           await registry.addSequence(id, data, symbol);
@@ -263,7 +263,7 @@ describe.only("Contract: SequenceRegistry", () => {
       const encodedBalance = iface.encodeFunctionData("balance(address)", [
         strategy,
       ]);
-      const data = [[peripheryContract.address, encodedBalance]];
+      const data = [peripheryContract.address, encodedBalance];
       // step execution should return a value
       const expectedBalance = tokenAmountToBigNumber(100);
       await peripheryContract.mock.balance
@@ -285,7 +285,7 @@ describe.only("Contract: SequenceRegistry", () => {
       const encodedBalance = iface.encodeFunctionData("balance(address)", [
         invalidStrategy,
       ]);
-      const data = [[peripheryContract.address, encodedBalance]];
+      const data = [peripheryContract.address, encodedBalance];
       // step execution will revert
       await peripheryContract.mock.balance.reverts();
 
@@ -293,34 +293,11 @@ describe.only("Contract: SequenceRegistry", () => {
 
       await expect(registry.balanceOf(sequenceId)).to.be.reverted;
     });
-
-    it("Multiple calls", async () => {
-      const sequenceId = bytes32("sequence 1");
-      const symbol = "FOO";
-      const strategy = FAKE_ADDRESS;
-      // create the steps to execute
-      const encodedStrategyCheck = APYManagerV2.interface.encodeFunctionData(
-        "isStrategyDeployed(address)",
-        [strategy]
-      );
-      const iface = new ethers.utils.Interface(peripheryAbi);
-      const encodedBalance = iface.encodeFunctionData("balance(address)", [
-        strategy,
-      ]);
-      const data = [
-        [managerMock.address, encodedStrategyCheck],
-        [peripheryContract.address, encodedBalance],
-      ];
-      // step execution
-      await peripheryContract.mock.balance.returns(0);
-
-      await registry.addSequence(sequenceId, data, symbol);
-    });
   });
 
   it("symbolOf", async () => {
     const sequenceId = bytes32("sequence 1");
-    const data = [];
+    const data = [FAKE_ADDRESS, bytes32("")];
     const symbol = "FOO";
     await registry.addSequence(sequenceId, data, symbol);
 
