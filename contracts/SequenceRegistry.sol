@@ -2,28 +2,16 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./utils/EnumerableSet.sol";
-import "./interfaces/IDetailedERC20.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/ISequenceRegistry.sol";
 import "./interfaces/IStrategyFactory.sol";
 import "./APYViewExecutor.sol";
 
-contract SequenceRegistry is
-    Initializable,
-    OwnableUpgradeSafe,
-    ISequenceRegistry,
-    IAssetAllocation
-{
-    using SafeMath for uint256;
-    using SafeERC20 for IDetailedERC20;
+contract SequenceRegistry is Ownable, ISequenceRegistry, IAssetAllocation {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
-    address public proxyAdmin;
     IStrategyFactory public manager;
     APYViewExecutor public executor;
 
@@ -32,36 +20,15 @@ contract SequenceRegistry is
     mapping(bytes32 => APYViewExecutor.Data[]) private _sequenceData;
     mapping(bytes32 => string) private _sequenceSymbols;
 
-    event AdminChanged(address);
     event ManagerChanged(address);
     event ExecutorChanged(address);
 
-    function initialize(
-        address adminAddress,
-        address managerAddress,
-        address executorAddress
-    ) external initializer {
-        require(adminAddress != address(0), "INVALID_ADMIN");
+    constructor(address managerAddress, address executorAddress) public {
         require(managerAddress != address(0), "INVALID_MANAGER");
         require(executorAddress != address(0), "INVALID_EXECUTOR");
 
-        // initialize ancestor storage
-        __Context_init_unchained();
-        __Ownable_init_unchained();
-
-        // initialize impl-specific storage
-        setAdminAddress(adminAddress);
         setManagerAddress(managerAddress);
         setExecutorAddress(executorAddress);
-    }
-
-    // solhint-disable-next-line no-empty-blocks
-    function initializeUpgrade() external virtual onlyAdmin {}
-
-    function setAdminAddress(address adminAddress) public onlyOwner {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-        proxyAdmin = adminAddress;
-        emit AdminChanged(adminAddress);
     }
 
     function setManagerAddress(address managerAddress) public onlyOwner {
@@ -74,11 +41,6 @@ contract SequenceRegistry is
         require(executorAddress != address(0), "INVALID_EXECUTOR");
         executor = APYViewExecutor(executorAddress);
         emit ExecutorChanged(executorAddress);
-    }
-
-    modifier onlyAdmin() {
-        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
-        _;
     }
 
     function addSequence(

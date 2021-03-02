@@ -44,19 +44,17 @@ describe.only("Contract: SequenceRegistry", () => {
     SequenceRegistry = await ethers.getContractFactory("SequenceRegistry");
     APYViewExecutor = await ethers.getContractFactory("APYViewExecutor");
 
-    registry = await SequenceRegistry.deploy();
-    await registry.deployed();
-
     executor = await APYViewExecutor.deploy();
     await executor.deployed();
 
     managerMock = await deployMockContract(deployer, APYManagerV2.abi);
 
-    await registry.initialize(
+    registry = await SequenceRegistry.deploy(
       deployer.address,
       managerMock.address,
       executor.address
     );
+    await registry.deployed();
   });
 
   describe("Defaults", () => {
