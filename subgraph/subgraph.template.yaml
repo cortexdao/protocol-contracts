@@ -24,9 +24,9 @@ dataSources:
         - Pool
       abis:
         - name: APYPoolToken
-          file: ../artifacts/APYPoolToken.json
+          file: ../artifacts/contracts/APYPoolToken.sol/APYPoolToken.json
         - name: ERC20UpgradeSafe
-          file: ../artifacts/ERC20UpgradeSafe.json
+          file: ../artifacts/@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol/ERC20UpgradeSafe.json
       eventHandlers:
         - event: DepositedAPT(indexed address,address,uint256,uint256,uint256,uint256)
           handler: handleDepositedAPT
@@ -55,9 +55,9 @@ dataSources:
         - Pool
       abis:
         - name: APYPoolToken
-          file: ../artifacts/APYPoolToken.json
+          file: ../artifacts/contracts/APYPoolToken.sol/APYPoolToken.json
         - name: ERC20UpgradeSafe
-          file: ../artifacts/ERC20UpgradeSafe.json
+          file: ../artifacts/@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol/ERC20UpgradeSafe.json
       eventHandlers:
         - event: DepositedAPT(indexed address,address,uint256,uint256,uint256,uint256)
           handler: handleDepositedAPT
@@ -86,9 +86,9 @@ dataSources:
         - Pool
       abis:
         - name: APYPoolToken
-          file: ../artifacts/APYPoolToken.json
+          file: ../artifacts/contracts/APYPoolToken.sol/APYPoolToken.json
         - name: ERC20UpgradeSafe
-          file: ../artifacts/ERC20UpgradeSafe.json
+          file: ../artifacts/@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol/ERC20UpgradeSafe.json
       eventHandlers:
         - event: DepositedAPT(indexed address,address,uint256,uint256,uint256,uint256)
           handler: handleDepositedAPT
@@ -112,7 +112,7 @@ dataSources:
         - AccountClaim
       abis:
         - name: APYRewardDistributor
-          file: ../artifacts/APYRewardDistributor.json
+          file: ../artifacts/contracts/APYRewardDistributor.sol/APYRewardDistributor.json
       eventHandlers:
         - event: Claimed(uint256,address,uint256)
           handler: handleClaimed
