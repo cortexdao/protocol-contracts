@@ -7,7 +7,7 @@ import {
 import { ERC20UpgradeSafe } from "../generated/DAI_APYPoolToken/ERC20UpgradeSafe";
 import { Claimed } from "../generated/APYRewardDistributor/APYRewardDistributor";
 import { TotalEthValueLocked, PoolTotalValue, Transfer, User, Pool, AccountClaim } from "../generated/schema";
-import { BigInt } from "@graphprotocol/graph-ts";
+import { BigDecimal, BigInt } from "@graphprotocol/graph-ts";
 
 export function handleDepositedAPT(event: DepositedAPT): void {
   let tvl = new TotalEthValueLocked(
@@ -33,6 +33,8 @@ export function handleDepositedAPT(event: DepositedAPT): void {
   ptv.poolAddress = poolAddress;
   ptv.totalEthValueLocked = event.params.totalEthValueLocked;
   ptv.aptSupply = contract.totalSupply();
+  if (!ptv.aptSupply.isZero()) 
+    ptv.valuePerShare = new BigDecimal(ptv.totalEthValueLocked) / new BigDecimal(ptv.aptSupply);
   ptv.save();
 }
 
@@ -60,6 +62,8 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
   ptv.poolAddress = poolAddress;
   ptv.totalEthValueLocked = event.params.totalEthValueLocked;
   ptv.aptSupply = contract.totalSupply();
+  if (!ptv.aptSupply.isZero()) 
+    ptv.valuePerShare = new BigDecimal(ptv.totalEthValueLocked) / new BigDecimal(ptv.aptSupply);
   ptv.save();
 }
 
