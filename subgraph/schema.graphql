@@ -6,6 +6,14 @@ type TotalEthValueLocked @entity {
   totalEthValueLocked: BigInt!
 }
 
+type PoolTotalValue @entity {
+  id: ID!
+  poolAddress: Bytes!
+  timestamp: BigInt!
+  totalEthValueLocked: BigInt!
+  aptSupply: BigInt!
+}
+
 type Transfer @entity {
   id: ID!
   poolAddress: Bytes!
