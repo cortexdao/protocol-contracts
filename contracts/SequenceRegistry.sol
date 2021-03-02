@@ -133,7 +133,6 @@ contract SequenceRegistry is Ownable, ISequenceRegistry, IAssetAllocation {
         override
         returns (uint256)
     {
-        // Should check if the sequence ID exists first
         require(isSequenceRegistered(sequenceId), "INVALID_SEQUENCE_ID");
         bytes memory returnData =
             executor.executeView(_sequenceData[sequenceId]);
