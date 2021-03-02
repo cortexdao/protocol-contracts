@@ -13,17 +13,16 @@ const {
 describe("Contract: SequenceRegistry", () => {
   // signers
   let deployer;
+  let manager;
   let randomUser;
 
   // contract factories
   let SequenceRegistry;
   let APYViewExecutor;
-  let APYManagerV2;
 
   // deployed contracts
   let registry;
   let executor;
-  let managerMock;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -38,22 +37,15 @@ describe("Contract: SequenceRegistry", () => {
   });
 
   before(async () => {
-    [deployer, randomUser] = await ethers.getSigners();
+    [deployer, manager, randomUser] = await ethers.getSigners();
 
     SequenceRegistry = await ethers.getContractFactory("SequenceRegistry");
     APYViewExecutor = await ethers.getContractFactory("APYViewExecutor");
-    APYManagerV2 = await ethers.getContractFactory("APYManagerV2");
 
     executor = await APYViewExecutor.deploy();
     await executor.deployed();
 
-    const managerAbi = APYManagerV2.interface.format("json");
-    managerMock = await deployMockContract(deployer, managerAbi);
-
-    registry = await SequenceRegistry.deploy(
-      managerMock.address,
-      executor.address
-    );
+    registry = await SequenceRegistry.deploy(manager.address, executor.address);
     await registry.deployed();
   });
 
@@ -109,7 +101,7 @@ describe("Contract: SequenceRegistry", () => {
         const symbol = "FOO";
         await expect(
           registry.connect(randomUser).addSequence(sequenceId, data, symbol)
-        ).to.be.revertedWith("revert Ownable: caller is not the owner");
+        ).to.be.revertedWith("PERMISSIONED_ONLY");
       });
 
       it("Owner can call", async () => {
@@ -120,6 +112,15 @@ describe("Contract: SequenceRegistry", () => {
           registry.connect(deployer).addSequence(sequenceId, data, symbol)
         ).to.not.be.reverted;
       });
+
+      it("Manager can call", async () => {
+        const sequenceId = bytes32("");
+        const data = [FAKE_ADDRESS, bytes32("")];
+        const symbol = "FOO";
+        await expect(
+          registry.connect(manager).addSequence(sequenceId, data, symbol)
+        ).to.not.be.reverted;
+      });
     });
 
     describe("deregisterTokens", async () => {
@@ -127,12 +128,18 @@ describe("Contract: SequenceRegistry", () => {
         const sequenceId = bytes32("");
         await expect(
           registry.connect(randomUser).removeSequence(sequenceId)
-        ).to.be.revertedWith("revert Ownable: caller is not the owner");
+        ).to.be.revertedWith("PERMISSIONED_ONLY");
       });
 
       it("Owner can call", async () => {
         const sequenceId = bytes32("");
         await expect(registry.connect(deployer).removeSequence(sequenceId)).to
+          .not.be.reverted;
+      });
+
+      it("Manager can call", async () => {
+        const sequenceId = bytes32("");
+        await expect(registry.connect(manager).removeSequence(sequenceId)).to
           .not.be.reverted;
       });
     });

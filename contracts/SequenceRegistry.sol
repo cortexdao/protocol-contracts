@@ -12,7 +12,7 @@ import "./APYViewExecutor.sol";
 contract SequenceRegistry is Ownable, ISequenceRegistry, IAssetAllocation {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
-    IStrategyFactory public manager;
+    address public manager;
     APYViewExecutor public executor;
 
     EnumerableSet.Bytes32Set private _sequenceIds;
@@ -30,16 +30,24 @@ contract SequenceRegistry is Ownable, ISequenceRegistry, IAssetAllocation {
         setExecutorAddress(executorAddress);
     }
 
-    function setManagerAddress(address managerAddress) public onlyOwner {
-        require(managerAddress != address(0), "INVALID_MANAGER");
-        manager = IStrategyFactory(managerAddress);
-        emit ManagerChanged(managerAddress);
+    function setManagerAddress(address _manager) public onlyOwner {
+        require(_manager != address(0), "INVALID_MANAGER");
+        manager = _manager;
+        emit ManagerChanged(_manager);
     }
 
     function setExecutorAddress(address executorAddress) public onlyOwner {
         require(executorAddress != address(0), "INVALID_EXECUTOR");
         executor = APYViewExecutor(executorAddress);
         emit ExecutorChanged(executorAddress);
+    }
+
+    modifier onlyPermissioned() {
+        require(
+            msg.sender == owner() || msg.sender == manager,
+            "PERMISSIONED_ONLY"
+        );
+        _;
     }
 
     /**
@@ -50,7 +58,7 @@ contract SequenceRegistry is Ownable, ISequenceRegistry, IAssetAllocation {
         bytes32 sequenceId,
         APYViewExecutor.Data memory data,
         string calldata symbol
-    ) external override onlyOwner {
+    ) external override onlyPermissioned {
         _sequenceIds.add(sequenceId);
         _sequenceSymbols[sequenceId] = symbol;
         _sequenceData[sequenceId] = data;
@@ -60,7 +68,11 @@ contract SequenceRegistry is Ownable, ISequenceRegistry, IAssetAllocation {
      * @notice Deregisters a sequence for use with the `balanceOf` functionality.
      * @dev Has O(n) time complexity, where n is the total size of sequence data.
      */
-    function removeSequence(bytes32 sequenceId) external override onlyOwner {
+    function removeSequence(bytes32 sequenceId)
+        external
+        override
+        onlyPermissioned
+    {
         delete _sequenceData[sequenceId];
         delete _sequenceSymbols[sequenceId];
         _sequenceIds.remove(sequenceId);
