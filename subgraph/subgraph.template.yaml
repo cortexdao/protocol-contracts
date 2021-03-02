@@ -17,10 +17,11 @@ dataSources:
       language: wasm/assemblyscript
       entities:
         - TotalEthValueLocked
+        - PoolTotalValue
         - Transfer
         - User
         - TokenEthPrice
-        - AccountClaim
+        - Pool
       abis:
         - name: APYPoolToken
           file: ../artifacts/APYPoolToken.json
@@ -47,9 +48,11 @@ dataSources:
       language: wasm/assemblyscript
       entities:
         - TotalEthValueLocked
+        - PoolTotalValue
         - Transfer
         - User
         - TokenEthPrice
+        - Pool
       abis:
         - name: APYPoolToken
           file: ../artifacts/APYPoolToken.json
@@ -76,9 +79,11 @@ dataSources:
       language: wasm/assemblyscript
       entities:
         - TotalEthValueLocked
+        - PoolTotalValue
         - Transfer
         - User
         - TokenEthPrice
+        - Pool
       abis:
         - name: APYPoolToken
           file: ../artifacts/APYPoolToken.json
