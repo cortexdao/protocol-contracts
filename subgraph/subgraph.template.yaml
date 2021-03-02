@@ -30,8 +30,12 @@ dataSources:
       eventHandlers:
         - event: DepositedAPT(indexed address,address,uint256,uint256,uint256,uint256)
           handler: handleDepositedAPT
+        - event: DepositedAPT(indexed address,address,uint256,uint256,uint256,uint256)
+          handler: handleDeposit
         - event: RedeemedAPT(indexed address,address,uint256,uint256,uint256,uint256)
           handler: handleRedeemedAPT
+        - event: RedeemedAPT(indexed address,address,uint256,uint256,uint256,uint256)
+          handler: handleRedeem
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer
       file: ./src/mapping.ts
@@ -61,8 +65,12 @@ dataSources:
       eventHandlers:
         - event: DepositedAPT(indexed address,address,uint256,uint256,uint256,uint256)
           handler: handleDepositedAPT
+        - event: DepositedAPT(indexed address,address,uint256,uint256,uint256,uint256)
+          handler: handleDeposit
         - event: RedeemedAPT(indexed address,address,uint256,uint256,uint256,uint256)
           handler: handleRedeemedAPT
+        - event: RedeemedAPT(indexed address,address,uint256,uint256,uint256,uint256)
+          handler: handleRedeem
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer
       file: ./src/mapping.ts
@@ -92,8 +100,12 @@ dataSources:
       eventHandlers:
         - event: DepositedAPT(indexed address,address,uint256,uint256,uint256,uint256)
           handler: handleDepositedAPT
+        - event: DepositedAPT(indexed address,address,uint256,uint256,uint256,uint256)
+          handler: handleDeposit
         - event: RedeemedAPT(indexed address,address,uint256,uint256,uint256,uint256)
           handler: handleRedeemedAPT
+        - event: RedeemedAPT(indexed address,address,uint256,uint256,uint256,uint256)
+          handler: handleRedeem
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer
       file: ./src/mapping.ts
