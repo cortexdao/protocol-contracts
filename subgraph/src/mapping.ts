@@ -21,23 +21,7 @@ export function handleDepositedAPT(event: DepositedAPT): void {
   tvl.poolAddress = event.address;
   tvl.totalEthValueLocked = event.params.totalEthValueLocked;
   tvl.save();
-}
 
-export function handleRedeemedAPT(event: RedeemedAPT): void {
-  let tvl = new TotalEthValueLocked(
-    event.params.sender.toHexString() +
-      event.block.timestamp.toString() +
-      event.logIndex.toString() +
-      event.transaction.hash.toHexString()
-  );
-  tvl.timestamp = event.block.timestamp;
-  tvl.sequenceNumber = (event.block.timestamp * BigInt.fromI32(100000000)) + event.logIndex;
-  tvl.poolAddress = event.address;
-  tvl.totalEthValueLocked = event.params.totalEthValueLocked;
-  tvl.save();
-}
-
-export function handleDeposit(event: DepositedAPT): void {
   const poolAddress = event.address;
   const contract = APYPoolToken.bind(poolAddress);
 
@@ -52,7 +36,19 @@ export function handleDeposit(event: DepositedAPT): void {
   ptv.save();
 }
 
-export function handleRedeem(event: RedeemedAPT): void {
+export function handleRedeemedAPT(event: RedeemedAPT): void {
+  let tvl = new TotalEthValueLocked(
+    event.params.sender.toHexString() +
+      event.block.timestamp.toString() +
+      event.logIndex.toString() +
+      event.transaction.hash.toHexString()
+  );
+  tvl.timestamp = event.block.timestamp;
+  tvl.sequenceNumber = (event.block.timestamp * BigInt.fromI32(100000000)) + event.logIndex;
+  tvl.poolAddress = event.address;
+  tvl.totalEthValueLocked = event.params.totalEthValueLocked;
+  tvl.save();
+
   const poolAddress = event.address;
   const contract = APYPoolToken.bind(poolAddress);
 
