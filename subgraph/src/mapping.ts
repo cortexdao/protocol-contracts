@@ -6,35 +6,37 @@ import {
 } from "../generated/DAI_APYPoolToken/APYPoolToken";
 import { ERC20UpgradeSafe } from "../generated/DAI_APYPoolToken/ERC20UpgradeSafe";
 import { Claimed } from "../generated/APYRewardDistributor/APYRewardDistributor";
-import { TotalEthValueLocked, Transfer, User, Pool, AccountClaim } from "../generated/schema";
+import { PoolTotalValue, Transfer, User, Pool, AccountClaim } from "../generated/schema";
 import { BigInt } from "@graphprotocol/graph-ts";
 
 export function handleDepositedAPT(event: DepositedAPT): void {
-  let tvl = new TotalEthValueLocked(
-    event.params.sender.toHexString() +
-      event.block.timestamp.toString() +
-      event.logIndex.toString() +
-      event.transaction.hash.toHexString()
+  const poolAddress = event.address;
+  const contract = APYPoolToken.bind(poolAddress);
+
+  let ptv = new PoolTotalValue(
+      poolAddress.toHexString() + 
+      event.block.timestamp.toString()
   );
-  tvl.timestamp = event.block.timestamp;
-  tvl.sequenceNumber = (event.block.timestamp * BigInt.fromI32(100000000)) + event.logIndex;
-  tvl.poolAddress = event.address;
-  tvl.totalEthValueLocked = event.params.totalEthValueLocked;
-  tvl.save();
+  ptv.timestamp = event.block.timestamp;
+  ptv.poolAddress = poolAddress;
+  ptv.totalEthValueLocked = event.params.totalEthValueLocked;
+  ptv.aptSupply = contract.totalSupply();
+  ptv.save();
 }
 
 export function handleRedeemedAPT(event: RedeemedAPT): void {
-  let tvl = new TotalEthValueLocked(
-    event.params.sender.toHexString() +
-      event.block.timestamp.toString() +
-      event.logIndex.toString() +
-      event.transaction.hash.toHexString()
+  const poolAddress = event.address;
+  const contract = APYPoolToken.bind(poolAddress);
+
+  let ptv = new PoolTotalValue(
+      poolAddress.toHexString() + 
+      event.block.timestamp.toString()
   );
-  tvl.timestamp = event.block.timestamp;
-  tvl.sequenceNumber = (event.block.timestamp * BigInt.fromI32(100000000)) + event.logIndex;
-  tvl.poolAddress = event.address;
-  tvl.totalEthValueLocked = event.params.totalEthValueLocked;
-  tvl.save();
+  ptv.timestamp = event.block.timestamp;
+  ptv.poolAddress = poolAddress;
+  ptv.totalEthValueLocked = event.params.totalEthValueLocked;
+  ptv.aptSupply = contract.totalSupply();
+  ptv.save();
 }
 
 export function handleTransfer(event: TransferEvent): void {
