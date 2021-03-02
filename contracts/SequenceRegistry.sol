@@ -15,7 +15,6 @@ contract SequenceRegistry is Ownable, ISequenceRegistry, IAssetAllocation {
     IStrategyFactory public manager;
     APYViewExecutor public executor;
 
-    // Needs to be able to delete sequenceIds and sequences
     EnumerableSet.Bytes32Set private _sequenceIds;
     mapping(bytes32 => APYViewExecutor.Data) private _sequenceData;
     mapping(bytes32 => string) private _sequenceSymbols;
@@ -123,6 +122,7 @@ contract SequenceRegistry is Ownable, ISequenceRegistry, IAssetAllocation {
         returns (uint256)
     {
         // Should check if the sequence ID exists first
+        require(isSequenceRegistered(sequenceId), "INVALID_SEQUENCE_ID");
         bytes memory returnData =
             executor.executeView(_sequenceData[sequenceId]);
 

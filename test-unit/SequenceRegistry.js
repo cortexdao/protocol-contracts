@@ -293,6 +293,18 @@ describe("Contract: SequenceRegistry", () => {
 
       await expect(registry.balanceOf(sequenceId)).to.be.reverted;
     });
+
+    it("Revert on unregistered ID", async () => {
+      const registeredId = bytes32("sequence 1");
+      const unregisteredId = bytes32("sequence 2");
+      const symbol = "FOO";
+      const data = [FAKE_ADDRESS, bytes32("")];
+      await registry.addSequence(registeredId, data, symbol);
+
+      await expect(registry.balanceOf(unregisteredId)).to.be.revertedWith(
+        "INVALID_SEQUENCE_ID"
+      );
+    });
   });
 
   it("symbolOf", async () => {
