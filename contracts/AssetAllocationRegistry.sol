@@ -6,8 +6,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./utils/EnumerableSet.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAssetAllocationRegistry.sol";
-import "./interfaces/IStrategyFactory.sol";
-import "./APYViewExecutor.sol";
 
 contract AssetAllocationRegistry is
     Ownable,
@@ -17,33 +15,23 @@ contract AssetAllocationRegistry is
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
     address public manager;
-    APYViewExecutor public executor;
 
     EnumerableSet.Bytes32Set private _allocationIds;
-    mapping(bytes32 => APYViewExecutor.Data) private _allocationData;
+    mapping(bytes32 => Data) private _allocationData;
     mapping(bytes32 => string) private _allocationSymbols;
 
     event ManagerChanged(address);
-    event ExecutorChanged(address);
 
-    constructor(address managerAddress, address executorAddress) public {
+    constructor(address managerAddress) public {
         require(managerAddress != address(0), "INVALID_MANAGER");
-        require(executorAddress != address(0), "INVALID_EXECUTOR");
 
         setManagerAddress(managerAddress);
-        setExecutorAddress(executorAddress);
     }
 
     function setManagerAddress(address _manager) public onlyOwner {
         require(_manager != address(0), "INVALID_MANAGER");
         manager = _manager;
         emit ManagerChanged(_manager);
-    }
-
-    function setExecutorAddress(address executorAddress) public onlyOwner {
-        require(executorAddress != address(0), "INVALID_EXECUTOR");
-        executor = APYViewExecutor(executorAddress);
-        emit ExecutorChanged(executorAddress);
     }
 
     modifier onlyPermissioned() {
@@ -60,7 +48,7 @@ contract AssetAllocationRegistry is
      */
     function addAssetAllocation(
         bytes32 allocationId,
-        APYViewExecutor.Data memory data,
+        Data memory data,
         string calldata symbol
     ) external override onlyPermissioned {
         _allocationIds.add(allocationId);
@@ -141,8 +129,8 @@ contract AssetAllocationRegistry is
             isAssetAllocationRegistered(allocationId),
             "INVALID_ALLOCATION_ID"
         );
-        bytes memory returnData =
-            executor.executeView(_allocationData[allocationId]);
+        Data memory data = _allocationData[allocationId];
+        bytes memory returnData = executeView(data);
 
         uint256 _balance;
         assembly {
@@ -164,5 +152,38 @@ contract AssetAllocationRegistry is
         returns (string memory)
     {
         return _allocationSymbols[allocationId];
+    }
+
+    function executeView(Data memory data)
+        public
+        view
+        returns (bytes memory returnData)
+    {
+        returnData = _staticcall(data.target, data.data);
+    }
+
+    function _staticcall(address target, bytes memory data)
+        private
+        view
+        returns (bytes memory)
+    {
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, bytes memory returndata) = target.staticcall(data);
+        if (success) {
+            return returndata;
+        } else {
+            // Look for revert reason and bubble it up if present
+            if (returndata.length > 0) {
+                // The easiest way to bubble the revert reason is using memory via assembly
+
+                // solhint-disable-next-line no-inline-assembly
+                assembly {
+                    let returndata_size := mload(returndata)
+                    revert(add(32, returndata), returndata_size)
+                }
+            } else {
+                revert("STATIC_CALL_FAILED");
+            }
+        }
     }
 }

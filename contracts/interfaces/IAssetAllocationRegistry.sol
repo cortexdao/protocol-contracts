@@ -12,9 +12,14 @@ import "../APYViewExecutor.sol";
  *         to compute the TVL of the APY.Finance system.
  */
 interface IAssetAllocationRegistry {
+    struct Data {
+        address target;
+        bytes data;
+    }
+
     function addAssetAllocation(
         bytes32 allocationId,
-        APYViewExecutor.Data calldata data,
+        Data calldata data,
         string calldata symbol
     ) external;
 

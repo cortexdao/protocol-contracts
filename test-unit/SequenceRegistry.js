@@ -18,11 +18,9 @@ describe("Contract: AssetAllocationRegistry", () => {
 
   // contract factories
   let AssetAllocationRegistry;
-  let APYViewExecutor;
 
   // deployed contracts
   let registry;
-  let executor;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -42,15 +40,8 @@ describe("Contract: AssetAllocationRegistry", () => {
     AssetAllocationRegistry = await ethers.getContractFactory(
       "AssetAllocationRegistry"
     );
-    APYViewExecutor = await ethers.getContractFactory("APYViewExecutor");
 
-    executor = await APYViewExecutor.deploy();
-    await executor.deployed();
-
-    registry = await AssetAllocationRegistry.deploy(
-      manager.address,
-      executor.address
-    );
+    registry = await AssetAllocationRegistry.deploy(manager.address);
     await registry.deployed();
   });
 
@@ -76,25 +67,6 @@ describe("Contract: AssetAllocationRegistry", () => {
       await expect(
         registry.connect(deployer).setManagerAddress(ZERO_ADDRESS)
       ).to.be.revertedWith("INVALID_MANAGER");
-    });
-  });
-
-  describe("Setting executor address", () => {
-    it("Owner can set to valid address", async () => {
-      await registry.connect(deployer).setExecutorAddress(FAKE_ADDRESS);
-      expect(await registry.executor()).to.equal(FAKE_ADDRESS);
-    });
-
-    it("Non-owner cannot set", async () => {
-      await expect(
-        registry.connect(randomUser).setExecutorAddress(FAKE_ADDRESS)
-      ).to.be.revertedWith("revert Ownable: caller is not the owner");
-    });
-
-    it("Cannot set to zero address", async () => {
-      await expect(
-        registry.connect(deployer).setExecutorAddress(ZERO_ADDRESS)
-      ).to.be.revertedWith("INVALID_EXECUTOR");
     });
   });
 
