@@ -1,9 +1,9 @@
 /* eslint-disable no-console */
-const upgradePoolsLogic = require("./upgrade_pools_logic");
-const poolsApprovals = require("./pool_approvals");
-const upgradeManagerLogic = require("./upgrade_manager");
-const deployGenericExecutor = require("./deploy_generic_executor");
-const deployNewStrategy = require("./deploy_new_strategy");
+const upgradePoolsLogic = require("./alpha/upgrade_pools_logic");
+const poolsApprovals = require("./alpha/pool_approvals");
+const upgradeManagerLogic = require("./alpha/upgrade_manager");
+const deployGenericExecutor = require("./alpha/deploy_generic_executor");
+const deployNewStrategy = require("./alpha/deploy_new_strategy");
 
 // The following steps should be very similar to test-integration/APYPoolToken.js
 const steps = [
