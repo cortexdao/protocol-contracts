@@ -73,99 +73,101 @@ describe("Contract: AssetAllocationRegistry", () => {
   describe("Token registration", () => {
     describe("addAssetAllocation", async () => {
       it("Non-owner cannot call", async () => {
-        const sequenceId = bytes32("");
+        const allocationId = bytes32("");
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
         await expect(
           registry
             .connect(randomUser)
-            .addAssetAllocation(sequenceId, data, symbol)
+            .addAssetAllocation(allocationId, data, symbol)
         ).to.be.revertedWith("PERMISSIONED_ONLY");
       });
 
       it("Owner can call", async () => {
-        const sequenceId = bytes32("");
+        const allocationId = bytes32("");
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
         await expect(
           registry
             .connect(deployer)
-            .addAssetAllocation(sequenceId, data, symbol)
+            .addAssetAllocation(allocationId, data, symbol)
         ).to.not.be.reverted;
       });
 
       it("Manager can call", async () => {
-        const sequenceId = bytes32("");
+        const allocationId = bytes32("");
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
         await expect(
-          registry.connect(manager).addAssetAllocation(sequenceId, data, symbol)
+          registry
+            .connect(manager)
+            .addAssetAllocation(allocationId, data, symbol)
         ).to.not.be.reverted;
       });
     });
 
     describe("deregisterTokens", async () => {
       it("Non-owner cannot call", async () => {
-        const sequenceId = bytes32("");
+        const allocationId = bytes32("");
         await expect(
-          registry.connect(randomUser).removeAssetAllocation(sequenceId)
+          registry.connect(randomUser).removeAssetAllocation(allocationId)
         ).to.be.revertedWith("PERMISSIONED_ONLY");
       });
 
       it("Owner can call", async () => {
-        const sequenceId = bytes32("");
+        const allocationId = bytes32("");
         await expect(
-          registry.connect(deployer).removeAssetAllocation(sequenceId)
+          registry.connect(deployer).removeAssetAllocation(allocationId)
         ).to.not.be.reverted;
       });
 
       it("Manager can call", async () => {
-        const sequenceId = bytes32("");
+        const allocationId = bytes32("");
         await expect(
-          registry.connect(manager).removeAssetAllocation(sequenceId)
+          registry.connect(manager).removeAssetAllocation(allocationId)
         ).to.not.be.reverted;
       });
     });
 
     it("isAssetAllocationRegistered", async () => {
-      const sequenceId_1 = bytes32("sequence 1");
-      const sequenceId_2 = bytes32("sequence 2");
+      const allocationId_1 = bytes32("allocation 1");
+      const allocationId_2 = bytes32("allocation 2");
       const data = [FAKE_ADDRESS, bytes32("")];
       const symbol = "FOO";
-      await registry.addAssetAllocation(sequenceId_1, data, symbol);
+      await registry.addAssetAllocation(allocationId_1, data, symbol);
 
-      expect(await registry.isAssetAllocationRegistered(sequenceId_1)).to.be
+      expect(await registry.isAssetAllocationRegistered(allocationId_1)).to.be
         .true;
-      expect(await registry.isAssetAllocationRegistered(sequenceId_2)).to.be
+      expect(await registry.isAssetAllocationRegistered(allocationId_2)).to.be
         .false;
     });
 
     describe("getAssetAllocationIds", () => {
-      it("Retrieves single registered sequence", async () => {
-        const sequenceId = bytes32("sequence 1");
+      it("Retrieves single registered allocation", async () => {
+        const allocationId = bytes32("allocation 1");
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
-        const sequenceIds = [sequenceId];
-        await registry.addAssetAllocation(sequenceId, data, symbol);
+        const allocationIds = [allocationId];
+        await registry.addAssetAllocation(allocationId, data, symbol);
 
         expect(await registry.getAssetAllocationIds()).to.have.members(
-          sequenceIds
+          allocationIds
         );
         expect(await registry.getAssetAllocationIds()).to.have.lengthOf(
-          sequenceIds.length
+          allocationIds.length
         );
       });
 
       it("Does not return duplicates", async () => {
-        const sequenceId_1 = bytes32("sequence 1");
-        const sequenceId_2 = bytes32("sequence 2");
+        const allocationId_1 = bytes32("allocation 1");
+        const allocationId_2 = bytes32("allocation 2");
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
-        await registry.addAssetAllocation(sequenceId_1, data, symbol);
-        await registry.addAssetAllocation(sequenceId_2, data, symbol);
-        await registry.addAssetAllocation(sequenceId_1, data, symbol);
+        await registry.addAssetAllocation(allocationId_1, data, symbol);
+        await registry.addAssetAllocation(allocationId_2, data, symbol);
+        await registry.addAssetAllocation(allocationId_1, data, symbol);
 
-        const expectedAssetAllocationIds = [sequenceId_1, sequenceId_2];
+        const expectedAssetAllocationIds = [allocationId_1, allocationId_2];
         expect(await registry.getAssetAllocationIds()).to.have.members(
           expectedAssetAllocationIds
         );
@@ -174,18 +176,18 @@ describe("Contract: AssetAllocationRegistry", () => {
         );
       });
 
-      it("Does not retrieve deregistered sequences", async () => {
-        const sequenceId_1 = bytes32("sequence 1");
-        const sequenceId_2 = bytes32("sequence 2");
-        const sequenceId_3 = bytes32("sequence 3");
+      it("Does not retrieve deregistered allocations", async () => {
+        const allocationId_1 = bytes32("allocation 1");
+        const allocationId_2 = bytes32("allocation 2");
+        const allocationId_3 = bytes32("allocation 3");
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
 
-        const deregisteredIds = [sequenceId_1];
-        const leftoverIds = [sequenceId_2, sequenceId_3];
-        const sequenceIds = deregisteredIds.concat(leftoverIds);
+        const deregisteredIds = [allocationId_1];
+        const leftoverIds = [allocationId_2, allocationId_3];
+        const allocationIds = deregisteredIds.concat(leftoverIds);
 
-        for (const id of sequenceIds) {
+        for (const id of allocationIds) {
           await registry.addAssetAllocation(id, data, symbol);
         }
         for (const id of deregisteredIds) {
@@ -200,26 +202,26 @@ describe("Contract: AssetAllocationRegistry", () => {
         );
       });
 
-      it("Returns sequences still registered after deregistration", async () => {
-        const sequenceId_1 = bytes32("sequence 1");
-        const sequenceId_2 = bytes32("sequence 2");
-        const sequenceId_3 = bytes32("sequence 3");
+      it("Returns allocations still registered after deregistration", async () => {
+        const allocationId_1 = bytes32("allocation 1");
+        const allocationId_2 = bytes32("allocation 2");
+        const allocationId_3 = bytes32("allocation 3");
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
-        for (const id of [sequenceId_1, sequenceId_2, sequenceId_3]) {
+        for (const id of [allocationId_1, allocationId_2, allocationId_3]) {
           await registry.addAssetAllocation(id, data, symbol);
         }
 
-        await registry.removeAssetAllocation(sequenceId_3);
+        await registry.removeAssetAllocation(allocationId_3);
         expect(await registry.getAssetAllocationIds()).to.not.include(
-          sequenceId_3
+          allocationId_3
         );
         expect(await registry.getAssetAllocationIds()).to.have.lengthOf(2);
 
-        await registry.removeAssetAllocation(sequenceId_1);
+        await registry.removeAssetAllocation(allocationId_1);
         expect(await registry.getAssetAllocationIds()).to.have.lengthOf(1);
         expect(await registry.getAssetAllocationIds()).to.have.members([
-          sequenceId_2,
+          allocationId_2,
         ]);
       });
     });
@@ -255,7 +257,7 @@ describe("Contract: AssetAllocationRegistry", () => {
     });
 
     it("Call with address arg", async () => {
-      const sequenceId = bytes32("sequence 1");
+      const allocationId = bytes32("allocation 1");
       const symbol = "FOO";
       const strategy = FAKE_ADDRESS;
       // create the step to execute
@@ -270,14 +272,14 @@ describe("Contract: AssetAllocationRegistry", () => {
         .withArgs(strategy)
         .returns(expectedBalance);
 
-      await registry.addAssetAllocation(sequenceId, data, symbol);
+      await registry.addAssetAllocation(allocationId, data, symbol);
 
-      const balance = await registry.balanceOf(sequenceId);
+      const balance = await registry.balanceOf(allocationId);
       expect(balance).to.equal(expectedBalance);
     });
 
     it("Call that reverts", async () => {
-      const sequenceId = bytes32("sequence 1");
+      const allocationId = bytes32("allocation 1");
       const symbol = "FOO";
       const invalidStrategy = FAKE_ADDRESS;
       // create the step to execute
@@ -289,14 +291,14 @@ describe("Contract: AssetAllocationRegistry", () => {
       // step execution will revert
       await peripheryContract.mock.balance.reverts();
 
-      await registry.addAssetAllocation(sequenceId, data, symbol);
+      await registry.addAssetAllocation(allocationId, data, symbol);
 
-      await expect(registry.balanceOf(sequenceId)).to.be.reverted;
+      await expect(registry.balanceOf(allocationId)).to.be.reverted;
     });
 
     it("Revert on unregistered ID", async () => {
-      const registeredId = bytes32("sequence 1");
-      const unregisteredId = bytes32("sequence 2");
+      const registeredId = bytes32("allocation 1");
+      const unregisteredId = bytes32("allocation 2");
       const symbol = "FOO";
       const data = [FAKE_ADDRESS, bytes32("")];
       await registry.addAssetAllocation(registeredId, data, symbol);
@@ -308,11 +310,11 @@ describe("Contract: AssetAllocationRegistry", () => {
   });
 
   it("symbolOf", async () => {
-    const sequenceId = bytes32("sequence 1");
+    const allocationId = bytes32("allocation 1");
     const data = [FAKE_ADDRESS, bytes32("")];
     const symbol = "FOO";
-    await registry.addAssetAllocation(sequenceId, data, symbol);
+    await registry.addAssetAllocation(allocationId, data, symbol);
 
-    expect(await registry.symbolOf(sequenceId)).to.equal(symbol);
+    expect(await registry.symbolOf(allocationId)).to.equal(symbol);
   });
 });
