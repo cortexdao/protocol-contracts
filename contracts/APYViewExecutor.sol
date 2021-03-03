@@ -10,17 +10,12 @@ contract APYViewExecutor is Ownable {
         bytes data;
     }
 
-    function executeView(Data[] calldata executionSteps)
+    function executeView(Data calldata data)
         external
         view
         returns (bytes memory returnData)
     {
-        for (uint256 i = 0; i < executionSteps.length; i++) {
-            returnData = _staticcall(
-                executionSteps[i].target,
-                executionSteps[i].data
-            );
-        }
+        returnData = _staticcall(data.target, data.data);
     }
 
     function _staticcall(address target, bytes memory data)
