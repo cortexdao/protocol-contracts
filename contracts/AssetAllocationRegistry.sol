@@ -24,7 +24,6 @@ contract AssetAllocationRegistry is
 
     constructor(address managerAddress) public {
         require(managerAddress != address(0), "INVALID_MANAGER");
-
         setManagerAddress(managerAddress);
     }
 
@@ -43,7 +42,7 @@ contract AssetAllocationRegistry is
     }
 
     /**
-     * @notice Registers a sequence for use with the `balanceOf` functionality.
+     * @notice Registers an allocation for use with the `balanceOf` functionality.
      * @dev Has O(n) time complexity, where n is the total size of `data`.
      */
     function addAssetAllocation(
@@ -57,8 +56,8 @@ contract AssetAllocationRegistry is
     }
 
     /**
-     * @notice Deregisters a sequence for use with the `balanceOf` functionality.
-     * @dev Has O(n) time complexity, where n is the total size of sequence data.
+     * @notice Deregisters an allocation for use with the `balanceOf` functionality.
+     * @dev Has O(n) time complexity, where n is the total size of allocation data.
      */
     function removeAssetAllocation(bytes32 allocationId)
         external
@@ -71,7 +70,7 @@ contract AssetAllocationRegistry is
     }
 
     /**
-     * @notice Returns true/false indicating if sequence is registered.
+     * @notice Returns true/false indicating if allocation is registered.
      * @dev Operation is O(1) in time complexity.
      */
     function isAssetAllocationRegistered(bytes32 allocationId)
