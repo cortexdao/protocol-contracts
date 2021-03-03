@@ -12,7 +12,7 @@ type PoolTotalValue @entity {
   timestamp: BigInt!
   totalEthValueLocked: BigInt!
   aptSupply: BigInt!
-  valuePerShare: BigDecimal!
+  valuePerShare: BigDecimal
 }
 
 type Transfer @entity {
