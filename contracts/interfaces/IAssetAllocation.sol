@@ -22,22 +22,25 @@ interface IAssetAllocation {
      * @dev Identifiers are added during strategy deployments.
      * @return List of identifiers
      */
-    function getSequenceIds() external view returns (bytes32[] memory);
+    function getAssetAllocationIds() external view returns (bytes32[] memory);
 
     /**
      * @notice Returns the balance represented by the identifier, i.e.
      *         the token balance held in a specific part of the system.
      * @dev The balance may be aggregated from multiple contracts holding
      *      the token and also may result from a series of calculations.
-     * @param sequenceId identifier for a token placed in the system
-     * @return token balance represented by the identifer
+     * @param allocationId Identifier for a token placed in the system
+     * @return Token balance represented by the identifer
      */
-    function balanceOf(bytes32 sequenceId) external view returns (uint256);
+    function balanceOf(bytes32 allocationId) external view returns (uint256);
 
     /**
      * @notice Returns the symbol of the token represented by the identifier.
-     * @param sequenceId identifier for a token placed in the system
-     * @return the token symbol
+     * @param allocationId Identifier for a token placed in the system
+     * @return The token symbol
      */
-    function symbolOf(bytes32 sequenceId) external view returns (string memory);
+    function symbolOf(bytes32 allocationId)
+        external
+        view
+        returns (string memory);
 }

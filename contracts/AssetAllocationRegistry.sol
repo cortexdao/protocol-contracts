@@ -5,19 +5,23 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./utils/EnumerableSet.sol";
 import "./interfaces/IAssetAllocation.sol";
-import "./interfaces/ISequenceRegistry.sol";
+import "./interfaces/IAssetAllocationRegistry.sol";
 import "./interfaces/IStrategyFactory.sol";
 import "./APYViewExecutor.sol";
 
-contract SequenceRegistry is Ownable, ISequenceRegistry, IAssetAllocation {
+contract AssetAllocationRegistry is
+    Ownable,
+    IAssetAllocationRegistry,
+    IAssetAllocation
+{
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
     address public manager;
     APYViewExecutor public executor;
 
-    EnumerableSet.Bytes32Set private _sequenceIds;
-    mapping(bytes32 => APYViewExecutor.Data) private _sequenceData;
-    mapping(bytes32 => string) private _sequenceSymbols;
+    EnumerableSet.Bytes32Set private _allocationIds;
+    mapping(bytes32 => APYViewExecutor.Data) private _allocationData;
+    mapping(bytes32 => string) private _allocationSymbols;
 
     event ManagerChanged(address);
     event ExecutorChanged(address);
@@ -54,41 +58,41 @@ contract SequenceRegistry is Ownable, ISequenceRegistry, IAssetAllocation {
      * @notice Registers a sequence for use with the `balanceOf` functionality.
      * @dev Has O(n) time complexity, where n is the total size of `data`.
      */
-    function addSequence(
-        bytes32 sequenceId,
+    function addAssetAllocation(
+        bytes32 allocationId,
         APYViewExecutor.Data memory data,
         string calldata symbol
     ) external override onlyPermissioned {
-        _sequenceIds.add(sequenceId);
-        _sequenceSymbols[sequenceId] = symbol;
-        _sequenceData[sequenceId] = data;
+        _allocationIds.add(allocationId);
+        _allocationSymbols[allocationId] = symbol;
+        _allocationData[allocationId] = data;
     }
 
     /**
      * @notice Deregisters a sequence for use with the `balanceOf` functionality.
      * @dev Has O(n) time complexity, where n is the total size of sequence data.
      */
-    function removeSequence(bytes32 sequenceId)
+    function removeAssetAllocation(bytes32 allocationId)
         external
         override
         onlyPermissioned
     {
-        delete _sequenceData[sequenceId];
-        delete _sequenceSymbols[sequenceId];
-        _sequenceIds.remove(sequenceId);
+        delete _allocationData[allocationId];
+        delete _allocationSymbols[allocationId];
+        _allocationIds.remove(allocationId);
     }
 
     /**
      * @notice Returns true/false indicating if sequence is registered.
      * @dev Operation is O(1) in time complexity.
      */
-    function isSequenceRegistered(bytes32 sequenceId)
+    function isAssetAllocationRegistered(bytes32 allocationId)
         public
         view
         override
         returns (bool)
     {
-        return _sequenceIds.contains(sequenceId);
+        return _allocationIds.contains(allocationId);
     }
 
     /**
@@ -105,18 +109,18 @@ contract SequenceRegistry is Ownable, ISequenceRegistry, IAssetAllocation {
      * @dev Identifiers are added during strategy deployments.
      * @return List of identifiers
      */
-    function getSequenceIds()
+    function getAssetAllocationIds()
         external
         view
         override
         returns (bytes32[] memory)
     {
-        uint256 length = _sequenceIds.length();
-        bytes32[] memory sequenceIds = new bytes32[](length);
+        uint256 length = _allocationIds.length();
+        bytes32[] memory allocationIds = new bytes32[](length);
         for (uint256 i = 0; i < length; i++) {
-            sequenceIds[i] = _sequenceIds.at(i);
+            allocationIds[i] = _allocationIds.at(i);
         }
-        return sequenceIds;
+        return allocationIds;
     }
 
     /**
@@ -124,18 +128,21 @@ contract SequenceRegistry is Ownable, ISequenceRegistry, IAssetAllocation {
      *         the token balance held in a specific part of the system.
      * @dev The balance may be aggregated from multiple contracts holding
      *      the token and also may result from a series of calculations.
-     * @param sequenceId identifier for a token placed in the system
+     * @param allocationId identifier for a token placed in the system
      * @return token balance represented by the identifer
      */
-    function balanceOf(bytes32 sequenceId)
+    function balanceOf(bytes32 allocationId)
         external
         view
         override
         returns (uint256)
     {
-        require(isSequenceRegistered(sequenceId), "INVALID_SEQUENCE_ID");
+        require(
+            isAssetAllocationRegistered(allocationId),
+            "INVALID_ALLOCATION_ID"
+        );
         bytes memory returnData =
-            executor.executeView(_sequenceData[sequenceId]);
+            executor.executeView(_allocationData[allocationId]);
 
         uint256 _balance;
         assembly {
@@ -147,15 +154,15 @@ contract SequenceRegistry is Ownable, ISequenceRegistry, IAssetAllocation {
 
     /**
      * @notice Returns the symbol of the token represented by the identifier.
-     * @param sequenceId identifier for a token placed in the system
+     * @param allocationId identifier for a token placed in the system
      * @return the token symbol
      */
-    function symbolOf(bytes32 sequenceId)
+    function symbolOf(bytes32 allocationId)
         external
         view
         override
         returns (string memory)
     {
-        return _sequenceSymbols[sequenceId];
+        return _allocationSymbols[allocationId];
     }
 }
