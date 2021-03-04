@@ -19,15 +19,21 @@ describe.only("Contract: CurvePeriphery", () => {
     await curve.deployed();
   });
 
-  describe("Test calculating underlying assets from LP token balance", async () => {
-    let stableSwapMock = await deployMockContract(deployer, IStableSwap.abi);
-    let lpTokenMock = await deployMockContract(deployer, IDetailedERC20.abi);
-    stableSwapMock.mock.lp_token.returns(lpTokenMock);
+  describe("Test calculating underlying assets from LP token balance", () => {
+    let stableSwapMock;
+    let lpTokenMock;
+
+    before(async () => {
+      stableSwapMock = await deployMockContract(deployer, IStableSwap.abi);
+      lpTokenMock = await deployMockContract(deployer, IDetailedERC20.abi);
+      await stableSwapMock.mock.lp_token.returns(lpTokenMock.address);
+    });
 
     it("Get the correct underlying balance", async () => {
-      stableSwapMock.mock.balances.returns(1000);
-      lpTokenMock.mock.balanceOf.returns(500);
-      lpTokenMock.mock.totalSupply.returns(1000);
+      await stableSwapMock.mock.balances.returns(1000);
+      await stableSwapMock.mock.N_COINS.returns(4);
+      await lpTokenMock.mock.balanceOf.returns(500);
+      await lpTokenMock.mock.totalSupply.returns(1000);
 
       const balance = await curve.getUnderlyingAsset(
         deployer.address,
