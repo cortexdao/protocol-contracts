@@ -22,7 +22,7 @@ contract CurvePeriphery {
     function getUnderlyingAsset(
         address account,
         IStableSwap stableSwap,
-        uint256 coin
+        int128 coin
     )
         external
         view
@@ -39,7 +39,7 @@ contract CurvePeriphery {
         address account,
         IStableSwap stableSwap,
         ILiquidityGauge gauge,
-        uint256 coin
+        int128 coin
     )
         external
         view
