@@ -28,6 +28,9 @@ contract CurvePeriphery {
         view
         returns (uint256 balance)
     {
+        require(address(stableSwap) != address(0), "INVALID_STABLESWAP");
+        require(coin < stableSwap.N_COINS(), "INVALID_COIN");
+
         uint256 totalBalance = stableSwap.balances(coin);
         IERC20 lpToken = IERC20(stableSwap.lp_token());
         balance = lpToken.balanceOf(account)
@@ -45,6 +48,10 @@ contract CurvePeriphery {
         view
         returns (uint256 balance)
     {
+        require(address(stableSwap) != address(0), "INVALID_STABLESWAP");
+        require(address(gauge) != address(0), "INVALID_GAUGE");
+        require(coin < stableSwap.N_COINS(), "INVALID_COIN");
+
         uint256 totalBalance = stableSwap.balances(coin);
         IERC20 lpToken = IERC20(stableSwap.lp_token());
         balance = gauge.balanceOf(account)
