@@ -5,7 +5,9 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IStableSwap {
-    function balances(uint256 coin) external view returns (uint256);
+    // solhint-disable-next-line func-name-mixedcase
+    function N_COINS() external view returns (int128);
+    function balances(int256 coin) external view returns (uint256);
     // solhint-disable-next-line func-name-mixedcase
     function lp_token() external view returns (address);
 }
