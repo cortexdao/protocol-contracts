@@ -165,6 +165,17 @@ contract APYMetaPoolToken is
         return uint256(answer);
     }
 
+    /**
+     * @notice Checks to guard against stale data from Chainlink:
+     *
+     *         1. Require time since last update is not greater than `aggStalePeriod`.
+     *
+     *         2. Require update took place after last change in mAPT supply
+     *            (mint or burn), as it is necessary pulled deployed value always
+     *            reflects the newly acquired/disposed of funds from pools.
+     *
+     * @param updatedAt update time for Chainlink round
+     */
     function validateNotStale(uint256 updatedAt) private view {
         // solhint-disable not-rely-on-time
         require(
