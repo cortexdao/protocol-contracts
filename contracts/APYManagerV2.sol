@@ -76,7 +76,7 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
 
     function fundStrategy(
         address strategy,
-        StrategyAllocation memory allocation,
+        IStrategyFactory.StrategyAllocation memory allocation,
         IAssetAllocationRegistry.AssetAllocation[] memory viewData
     ) external override onlyOwner {
         _registerAllocationData(viewData);
@@ -85,7 +85,7 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
 
     function fundAndExecute(
         address strategy,
-        StrategyAllocation memory allocation,
+        IStrategyFactory.StrategyAllocation memory allocation,
         APYGenericExecutor.Data[] memory steps,
         IAssetAllocationRegistry.AssetAllocation[] memory viewData
     ) external override onlyOwner {
@@ -106,7 +106,7 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
 
     function executeAndWithdraw(
         address strategy,
-        StrategyAllocation memory allocation,
+        IStrategyFactory.StrategyAllocation memory allocation,
         APYGenericExecutor.Data[] memory steps,
         IAssetAllocationRegistry.AssetAllocation[] memory viewData
     ) external override onlyOwner {
@@ -117,7 +117,7 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
 
     function withdrawFromStrategy(
         address strategy,
-        StrategyAllocation memory allocation,
+        IStrategyFactory.StrategyAllocation memory allocation,
         IAssetAllocationRegistry.AssetAllocation[] memory viewData
     ) external override onlyOwner {
         _registerAllocationData(viewData);
@@ -126,7 +126,7 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
 
     function _fundStrategy(
         address strategy,
-        StrategyAllocation memory allocation
+        IStrategyFactory.StrategyAllocation memory allocation
     ) internal {
         require(
             allocation.poolIds.length == allocation.amounts.length,
@@ -161,7 +161,7 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
 
     function _withdrawFromStrategy(
         address strategy,
-        StrategyAllocation memory allocation
+        IStrategyFactory.StrategyAllocation memory allocation
     ) internal {
         require(
             allocation.poolIds.length == allocation.amounts.length,
