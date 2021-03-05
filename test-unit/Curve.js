@@ -5,7 +5,7 @@ const { deployMockContract } = waffle;
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
 const IStableSwap = artifacts.require("IStableSwap");
 
-describe.only("Contract: CurvePeriphery", () => {
+describe("Contract: CurvePeriphery", () => {
   let deployer;
 
   let CurvePeriphery;
