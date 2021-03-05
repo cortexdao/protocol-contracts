@@ -30,6 +30,7 @@ contract APYMetaPoolToken is
     AggregatorV3Interface public tvlAgg;
     AggregatorV3Interface public ethUsdAgg;
     uint256 public aggStalePeriod;
+    uint256 public lastMintOrBurn;
 
     /* ------------------------------- */
 
@@ -100,11 +101,13 @@ contract APYMetaPoolToken is
     }
 
     function mint(address account, uint256 amount) public override onlyManager {
+        lastMintOrBurn = block.timestamp; // solhint-disable-line not-rely-on-time
         _mint(account, amount);
         emit Mint(account, amount);
     }
 
     function burn(address account, uint256 amount) public override onlyManager {
+        lastMintOrBurn = block.timestamp; // solhint-disable-line not-rely-on-time
         _burn(account, amount);
         emit Burn(account, amount);
     }
@@ -163,10 +166,13 @@ contract APYMetaPoolToken is
     }
 
     function validateNotStale(uint256 updatedAt) private view {
+        // solhint-disable not-rely-on-time
         require(
-            block.timestamp.sub(updatedAt) < aggStalePeriod, // solhint-disable-line not-rely-on-time
+            block.timestamp.sub(updatedAt) < aggStalePeriod,
             "CHAINLINK_STALE_DATA"
         );
+        require(updatedAt > lastMintOrBurn, "CHAINLINK_STALE_DATA");
+        // solhint-enable not-rely-on-time
     }
 
     /** @notice Calculate mAPT amount to be minted for given pool's underlyer amount.
