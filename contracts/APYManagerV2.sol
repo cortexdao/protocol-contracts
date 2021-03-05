@@ -10,6 +10,7 @@ import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAddressRegistry.sol";
 import "./interfaces/IDetailedERC20.sol";
 import "./interfaces/IStrategyFactory.sol";
+import "./interfaces/IAssetAllocationRegistry.sol";
 import "./APYPoolTokenV2.sol";
 import "./APYMetaPoolToken.sol";
 import "./Strategy.sol";
@@ -36,6 +37,7 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
     // V2
     mapping(bytes32 => address) public getStrategy;
     mapping(address => bool) public override isStrategyDeployed;
+    IAssetAllocationRegistry public assetAllocationRegistry;
 
     /* ------------------------------- */
 
@@ -74,13 +76,16 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
 
     function fundStrategy(
         address strategy,
-        StrategyAllocation memory allocation
+        StrategyAllocation memory allocation,
+        IAssetAllocationRegistry.AssetAllocation[] memory viewData
     ) public override onlyOwner {
         require(
             allocation.poolIds.length == allocation.amounts.length,
             "allocation length mismatch"
         );
         require(isStrategyDeployed[strategy], "Invalid Strategy");
+
+        _registerAllocationData(viewData);
 
         uint256[] memory mintAmounts = new uint256[](allocation.poolIds.length);
         for (uint256 i = 0; i < allocation.poolIds.length; i++) {
@@ -111,39 +116,45 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
     function fundAndExecute(
         address strategy,
         StrategyAllocation memory allocation,
-        APYGenericExecutor.Data[] memory steps
+        APYGenericExecutor.Data[] memory steps,
+        IAssetAllocationRegistry.AssetAllocation[] memory viewData
     ) external override onlyOwner {
-        fundStrategy(strategy, allocation);
-        execute(strategy, steps);
+        fundStrategy(strategy, allocation, viewData);
+        execute(strategy, steps, viewData);
     }
 
-    function execute(address strategy, APYGenericExecutor.Data[] memory steps)
-        public
-        override
-        onlyOwner
-    {
+    function execute(
+        address strategy,
+        APYGenericExecutor.Data[] memory steps,
+        IAssetAllocationRegistry.AssetAllocation[] memory viewData
+    ) public override onlyOwner {
         require(isStrategyDeployed[strategy], "Invalid Strategy");
+        _registerAllocationData(viewData);
         IStrategy(strategy).execute(steps);
     }
 
     function executeAndWithdraw(
         address strategy,
         StrategyAllocation memory allocation,
-        APYGenericExecutor.Data[] memory steps
+        APYGenericExecutor.Data[] memory steps,
+        IAssetAllocationRegistry.AssetAllocation[] memory viewData
     ) external override onlyOwner {
-        execute(strategy, steps);
-        withdrawFromStrategy(strategy, allocation);
+        execute(strategy, steps, viewData);
+        withdrawFromStrategy(strategy, allocation, viewData);
     }
 
     function withdrawFromStrategy(
         address strategy,
-        StrategyAllocation memory allocation
+        StrategyAllocation memory allocation,
+        IAssetAllocationRegistry.AssetAllocation[] memory viewData
     ) public override onlyOwner {
         require(
             allocation.poolIds.length == allocation.amounts.length,
             "allocation length mismatch"
         );
         require(isStrategyDeployed[strategy], "Invalid Strategy");
+
+        _registerAllocationData(viewData);
 
         uint256[] memory burnAmounts = new uint256[](allocation.poolIds.length);
         for (uint256 i = 0; i < allocation.poolIds.length; i++) {
@@ -171,6 +182,20 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
         }
     }
 
+    function _registerAllocationData(
+        IAssetAllocationRegistry.AssetAllocation[] memory viewData
+    ) internal {
+        for (uint256 i = 0; i < viewData.length; i++) {
+            IAssetAllocationRegistry.AssetAllocation memory viewAllocation =
+                viewData[i];
+            assetAllocationRegistry.addAssetAllocation(
+                viewAllocation.sequenceId,
+                viewAllocation.data,
+                viewAllocation.symbol
+            );
+        }
+    }
+
     function setAdminAddress(address adminAddress) public onlyOwner {
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
@@ -192,6 +217,14 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
     function setAddressRegistry(address _addressRegistry) public onlyOwner {
         require(_addressRegistry != address(0), "Invalid address");
         addressRegistry = IAddressRegistry(_addressRegistry);
+    }
+
+    function setAssetAllocatioRegistry(address _addressRegistry)
+        public
+        onlyOwner
+    {
+        require(_addressRegistry != address(0), "Invalid address");
+        assetAllocationRegistry = IAssetAllocationRegistry(_addressRegistry);
     }
 
     function setPoolIds(bytes32[] memory poolIds) public onlyOwner {
