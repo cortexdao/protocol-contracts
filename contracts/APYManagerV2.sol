@@ -78,15 +78,61 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
         address strategy,
         StrategyAllocation memory allocation,
         IAssetAllocationRegistry.AssetAllocation[] memory viewData
+    ) external override onlyOwner {
+        _registerAllocationData(viewData);
+        _fundStrategy(strategy, allocation);
+    }
+
+    function fundAndExecute(
+        address strategy,
+        StrategyAllocation memory allocation,
+        APYGenericExecutor.Data[] memory steps,
+        IAssetAllocationRegistry.AssetAllocation[] memory viewData
+    ) external override onlyOwner {
+        _registerAllocationData(viewData);
+        _fundStrategy(strategy, allocation);
+        execute(strategy, steps, viewData);
+    }
+
+    function execute(
+        address strategy,
+        APYGenericExecutor.Data[] memory steps,
+        IAssetAllocationRegistry.AssetAllocation[] memory viewData
     ) public override onlyOwner {
+        require(isStrategyDeployed[strategy], "Invalid Strategy");
+        _registerAllocationData(viewData);
+        IStrategy(strategy).execute(steps);
+    }
+
+    function executeAndWithdraw(
+        address strategy,
+        StrategyAllocation memory allocation,
+        APYGenericExecutor.Data[] memory steps,
+        IAssetAllocationRegistry.AssetAllocation[] memory viewData
+    ) external override onlyOwner {
+        execute(strategy, steps, viewData);
+        _withdrawFromStrategy(strategy, allocation);
+        _registerAllocationData(viewData);
+    }
+
+    function withdrawFromStrategy(
+        address strategy,
+        StrategyAllocation memory allocation,
+        IAssetAllocationRegistry.AssetAllocation[] memory viewData
+    ) external override onlyOwner {
+        _registerAllocationData(viewData);
+        _withdrawFromStrategy(strategy, allocation);
+    }
+
+    function _fundStrategy(
+        address strategy,
+        StrategyAllocation memory allocation
+    ) internal {
         require(
             allocation.poolIds.length == allocation.amounts.length,
             "allocation length mismatch"
         );
         require(isStrategyDeployed[strategy], "Invalid Strategy");
-
-        _registerAllocationData(viewData);
-
         uint256[] memory mintAmounts = new uint256[](allocation.poolIds.length);
         for (uint256 i = 0; i < allocation.poolIds.length; i++) {
             uint256 poolAmount = allocation.amounts[i];
@@ -113,48 +159,15 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
         }
     }
 
-    function fundAndExecute(
+    function _withdrawFromStrategy(
         address strategy,
-        StrategyAllocation memory allocation,
-        APYGenericExecutor.Data[] memory steps,
-        IAssetAllocationRegistry.AssetAllocation[] memory viewData
-    ) external override onlyOwner {
-        fundStrategy(strategy, allocation, viewData);
-        execute(strategy, steps, viewData);
-    }
-
-    function execute(
-        address strategy,
-        APYGenericExecutor.Data[] memory steps,
-        IAssetAllocationRegistry.AssetAllocation[] memory viewData
-    ) public override onlyOwner {
-        require(isStrategyDeployed[strategy], "Invalid Strategy");
-        _registerAllocationData(viewData);
-        IStrategy(strategy).execute(steps);
-    }
-
-    function executeAndWithdraw(
-        address strategy,
-        StrategyAllocation memory allocation,
-        APYGenericExecutor.Data[] memory steps,
-        IAssetAllocationRegistry.AssetAllocation[] memory viewData
-    ) external override onlyOwner {
-        execute(strategy, steps, viewData);
-        withdrawFromStrategy(strategy, allocation, viewData);
-    }
-
-    function withdrawFromStrategy(
-        address strategy,
-        StrategyAllocation memory allocation,
-        IAssetAllocationRegistry.AssetAllocation[] memory viewData
-    ) public override onlyOwner {
+        StrategyAllocation memory allocation
+    ) internal {
         require(
             allocation.poolIds.length == allocation.amounts.length,
             "allocation length mismatch"
         );
         require(isStrategyDeployed[strategy], "Invalid Strategy");
-
-        _registerAllocationData(viewData);
 
         uint256[] memory burnAmounts = new uint256[](allocation.poolIds.length);
         for (uint256 i = 0; i < allocation.poolIds.length; i++) {
