@@ -1,7 +1,7 @@
 require("dotenv").config();
 const { ethers, network } = require("hardhat");
 const chalk = require("chalk");
-const legos = require("@apy-finance/defi-legos");
+const { getDeployedAddress } = require("../../utils/helpers");
 
 async function main() {
   const NETWORK_NAME = network.name.toUpperCase();
@@ -19,38 +19,19 @@ async function main() {
     )}`
   );
 
-  const PoolAdmin = await ethers.getContractAt(
-    legos.apy.abis.APY_POOL_Admin,
-    legos.apy.addresses.APY_POOL_Admin
-  );
+  const poolAdmin = getDeployedAddress("APYPoolTokenProxyAdmin", NETWORK_NAME);
 
-  await PoolAdmin.upgrade(
-    legos.apy.addresses.APY_DAI_POOL,
-    newPoolLogicContract.address
-  );
-  console.log(
-    `${chalk.yellow("DAI")} Pool: ${chalk.green(
-      legos.apy.addresses.APY_DAI_POOL
-    )}, Logic: ${chalk.green(newPoolLogicContract.address)}`
-  );
-  await PoolAdmin.upgrade(
-    legos.apy.addresses.APY_USDC_POOL,
-    newPoolLogicContract.address
-  );
-  console.log(
-    `${chalk.yellow("USDC")} Pool: ${chalk.green(
-      legos.apy.addresses.APY_USDC_POOL
-    )}, Logic: ${chalk.green(newPoolLogicContract.address)}`
-  );
-  await PoolAdmin.upgrade(
-    legos.apy.addresses.APY_USDT_POOL,
-    newPoolLogicContract.address
-  );
-  console.log(
-    `${chalk.yellow("USDT")} Pool: ${chalk.green(
-      legos.apy.addresses.APY_USDT_POOL
-    )}, Logic: ${chalk.green(newPoolLogicContract.address)}`
-  );
+  for (const symbol of ["DAI", "USDC", "USDC"]) {
+    await poolAdmin.upgrade(
+      legos.apy.addresses.APY_DAI_POOL,
+      newPoolLogicContract.address
+    );
+    console.log(
+      `${chalk.yellow("DAI")} Pool: ${chalk.green(
+        legos.apy.addresses.APY_DAI_POOL
+      )}, Logic: ${chalk.green(newPoolLogicContract.address)}`
+    );
+  }
 }
 
 if (!module.parent) {
