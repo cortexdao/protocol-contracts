@@ -124,6 +124,7 @@ describe("Contract: APYManager", () => {
   let usdtPool;
 
   let manager;
+  let assetRegistry;
   let mApt;
   let executor;
   let strategyAddress;
@@ -263,6 +264,14 @@ describe("Contract: APYManager", () => {
     mApt = await APYMetaPoolToken.attach(proxy.address);
     await mApt.setManagerAddress(manager.address);
     await manager.setMetaPoolToken(mApt.address);
+
+    const AssetAllocationRegistry = await ethers.getContractFactory(
+      "AssetAllocationRegistry"
+    );
+    assetRegistry = await AssetAllocationRegistry.deploy(manager.address);
+    await assetRegistry.deployed();
+    await manager.setAssetAllocationRegistry(assetRegistry.address);
+
     /***** deployment finished *****/
 
     const APYGenericExecutor = await ethers.getContractFactory(

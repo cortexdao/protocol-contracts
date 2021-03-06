@@ -232,7 +232,7 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
         addressRegistry = IAddressRegistry(_addressRegistry);
     }
 
-    function setAssetAllocatioRegistry(address _addressRegistry)
+    function setAssetAllocationRegistry(address _addressRegistry)
         public
         onlyOwner
     {
