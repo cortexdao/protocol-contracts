@@ -9,7 +9,7 @@ const IDetailedERC20 = artifacts.require("IDetailedERC20");
 const IStableSwap = artifacts.require("IStableSwap");
 const ILiquidityGauge = artifacts.require("ILiquidityGauge");
 
-describe.only("Contract: CurvePeriphery", () => {
+describe("Contract: CurvePeriphery", () => {
   // signers
   let deployer;
   let strategy;
