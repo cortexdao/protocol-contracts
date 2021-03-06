@@ -485,6 +485,7 @@ describe("Contract: APYPoolToken", () => {
 
           before(async () => {
             // default to giving entire deployed value to the pool
+            await mApt.connect(manager).mint(poolToken.address, mAptSupply);
             roundId += 1;
             const ethUsdPrice = tokenAmountToBigNumber(1800, "8");
             const usdDeployedValue = deployedValue
@@ -492,14 +493,13 @@ describe("Contract: APYPoolToken", () => {
               .div(ether(1));
             await tvlAgg.connect(oracle).submit(roundId, usdDeployedValue);
             await ethUsdAgg.connect(oracle).submit(roundId, ethUsdPrice);
-            await mApt.connect(manager).mint(poolToken.address, mAptSupply);
           });
 
           after(async () => {
+            await mApt.connect(manager).burn(poolToken.address, mAptSupply);
             roundId += 1;
             await tvlAgg.connect(oracle).submit(roundId, 0);
             await ethUsdAgg.connect(oracle).submit(roundId, ether(1));
-            await mApt.connect(manager).burn(poolToken.address, mAptSupply);
           });
 
           describe("Underlyer and mAPT integration with calculations", () => {
