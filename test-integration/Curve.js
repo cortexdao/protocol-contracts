@@ -88,7 +88,7 @@ describe("Contract: CurvePeriphery", () => {
       }
     });
 
-    it.only("Get underlyer balance from strategy holding", async () => {
+    it("Get underlyer balance from strategy holding", async () => {
       const daiAmount = tokenAmountToBigNumber("1000", 18);
       const daiIndex = 0;
       const minAmount = 0;
@@ -102,9 +102,11 @@ describe("Contract: CurvePeriphery", () => {
       const strategyLpBalance = await lpToken.balanceOf(strategy.address);
       const poolBalance = await stableSwap.balances(daiIndex);
       const lpTotalSupply = await lpToken.totalSupply();
+
       const expectedBalance = strategyLpBalance
         .mul(poolBalance)
         .div(lpTotalSupply);
+      expect(expectedBalance).to.be.gt(0);
 
       const balance = await curve.getUnderlyerBalance(
         strategy.address,
@@ -116,7 +118,7 @@ describe("Contract: CurvePeriphery", () => {
       expect(balance).to.equal(expectedBalance);
     });
 
-    it.only("Get underlyer balance from gauge holding", async () => {
+    it("Get underlyer balance from gauge holding", async () => {
       const daiAmount = tokenAmountToBigNumber("1000", 18);
       const daiIndex = 0;
       const minAmount = 0;
@@ -130,7 +132,9 @@ describe("Contract: CurvePeriphery", () => {
       await lpToken.connect(strategy).approve(gauge.address, MAX_UINT256);
       const strategyLpBalance = await lpToken.balanceOf(strategy.address);
       await gauge.connect(strategy)["deposit(uint256)"](strategyLpBalance);
+      expect(await lpToken.balanceOf(strategy.address)).to.equal(0);
       const gaugeLpBalance = await gauge.balanceOf(strategy.address);
+      expect(gaugeLpBalance).to.be.gt(0);
 
       const poolBalance = await stableSwap.balances(daiIndex);
       const lpTotalSupply = await lpToken.totalSupply();
@@ -138,6 +142,7 @@ describe("Contract: CurvePeriphery", () => {
       const expectedBalance = gaugeLpBalance
         .mul(poolBalance)
         .div(lpTotalSupply);
+      expect(expectedBalance).to.be.gt(0);
 
       const balance = await curve.getUnderlyerBalance(
         strategy.address,
@@ -150,8 +155,38 @@ describe("Contract: CurvePeriphery", () => {
     });
 
     it("Get underlyer balance from combined holdings", async () => {
-      const lpBalance = strategyLpBalance.add(gaugeLpBalance);
-      const expectedBalance = lpBalance.mul(poolBalance).div(lpTotalSupply);
+      const daiAmount = tokenAmountToBigNumber("1000", 18);
+      const daiIndex = 0;
+      const minAmount = 0;
+      await stablecoins["DAI"]
+        .connect(strategy)
+        .approve(stableSwap.address, MAX_UINT256);
+      await stableSwap
+        .connect(strategy)
+        .add_liquidity([daiAmount, "0", "0"], minAmount);
+
+      // split LP tokens between strategy and gauge
+      const totalLPBalance = await lpToken.balanceOf(strategy.address);
+      const strategyLpBalance = totalLPBalance.div(3);
+      const gaugeLpBalance = totalLPBalance.sub(strategyLpBalance);
+      expect(gaugeLpBalance).to.be.gt(0);
+      expect(strategyLpBalance).to.be.gt(0);
+
+      await lpToken.connect(strategy).approve(gauge.address, MAX_UINT256);
+      await gauge.connect(strategy)["deposit(uint256)"](gaugeLpBalance);
+
+      expect(await lpToken.balanceOf(strategy.address)).to.equal(
+        strategyLpBalance
+      );
+      expect(await gauge.balanceOf(strategy.address)).to.equal(gaugeLpBalance);
+
+      const poolBalance = await stableSwap.balances(daiIndex);
+      const lpTotalSupply = await lpToken.totalSupply();
+
+      const expectedBalance = totalLPBalance
+        .mul(poolBalance)
+        .div(lpTotalSupply);
+      expect(expectedBalance).to.be.gt(0);
 
       const balance = await curve.getUnderlyerBalance(
         strategy.address,

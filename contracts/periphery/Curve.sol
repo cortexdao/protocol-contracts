@@ -62,6 +62,7 @@ contract CurvePeriphery {
     ) public view returns (uint256 balance, uint256 totalSupply) {
         require(address(stableSwap) != address(0), "INVALID_STABLESWAP");
         require(address(gauge) != address(0), "INVALID_GAUGE");
+        require(address(lpToken) != address(0), "INVALID_LP_TOKEN");
 
         totalSupply = lpToken.totalSupply();
         balance = lpToken.balanceOf(account);

@@ -56,8 +56,6 @@ describe("Contract: CurvePeriphery", () => {
         deployer,
         ILiquidityGauge.abi
       );
-
-      await stableSwapMock.mock.N_COINS.returns(4);
     });
 
     it("Get underlyer balance from strategy holding", async () => {
