@@ -5,10 +5,9 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IStableSwap {
-    function N_COINS() external view returns (int128); // solhint-disable-line func-name-mixedcase
+    function balances(uint256 coin) external view returns (uint256);
 
-    function balances(int256 coin) external view returns (uint256);
-
+    /// @dev the number of coins is hard-coded in curve contracts
     // solhint-disable-next-line
     function add_liquidity(uint256[3] memory amounts, uint256 min_mint_amount)
         external;
@@ -18,6 +17,10 @@ interface IStableSwap {
 }
 
 interface ILiquidityGauge {
+    function deposit(uint256 _value) external;
+
+    function deposit(uint256 _value, address _addr) external;
+
     function balanceOf(address account) external view returns (uint256);
 }
 
@@ -29,7 +32,7 @@ contract CurvePeriphery {
         IStableSwap stableSwap,
         ILiquidityGauge gauge,
         IERC20 lpToken,
-        int128 coin
+        uint128 coin
     ) external view returns (uint256 balance) {
         require(address(stableSwap) != address(0), "INVALID_STABLESWAP");
         require(address(gauge) != address(0), "INVALID_GAUGE");
@@ -42,13 +45,12 @@ contract CurvePeriphery {
         balance = lpTokenBalance.mul(poolBalance).div(lpTokenSupply);
     }
 
-    function getPoolBalance(IStableSwap stableSwap, int128 coin)
+    function getPoolBalance(IStableSwap stableSwap, uint256 coin)
         public
         view
         returns (uint256)
     {
         require(address(stableSwap) != address(0), "INVALID_STABLESWAP");
-        require(coin < stableSwap.N_COINS(), "INVALID_COIN");
         return stableSwap.balances(coin);
     }
 
@@ -61,7 +63,6 @@ contract CurvePeriphery {
         require(address(stableSwap) != address(0), "INVALID_STABLESWAP");
         require(address(gauge) != address(0), "INVALID_GAUGE");
 
-        // IERC20 lpToken = IERC20(stableSwap.lp_token());
         totalSupply = lpToken.totalSupply();
         balance = lpToken.balanceOf(account);
         balance = balance.add(gauge.balanceOf(account));
