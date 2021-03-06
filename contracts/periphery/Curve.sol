@@ -9,6 +9,10 @@ interface IStableSwap {
 
     function balances(int256 coin) external view returns (uint256);
 
+    // solhint-disable-next-line
+    function add_liquidity(uint256[3] memory amounts, uint256 min_mint_amount)
+        external;
+
     /// @dev For newest curve pools like aave; older pools refer to a private `token` variable.
     // function lp_token() external view returns (address); // solhint-disable-line func-name-mixedcase
 }

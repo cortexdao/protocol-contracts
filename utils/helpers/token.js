@@ -31,14 +31,14 @@ const getERC20Balance = async (contractAddress, accountAddress) => {
   return balance;
 };
 
+/**
+ * @param sender: address, holds the tokens to be sent
+ * @param recipient: address, receives the tokens
+ * @param token: contract instance of token (ethers)
+ * @param amount: BigNumber or string, should be in big units not wei if string
+ * @param ethFunder: unlocked address holding ETH, e.g. hardhat test account
+ */
 async function acquireToken(sender, recipient, token, amount, ethFunder) {
-  /*
-    sender: address, holds the tokens to be sent
-    recipient: address, receives the tokens
-    token: contract instance of token (ethers)
-    amount: BigNumber or string, should be in big units not wei if string
-    ethFunder: unlocked address holding ETH, e.g. hardhat test account
-  */
   sender = await getAddress(sender);
   recipient = await getAddress(recipient);
   ethFunder = await getAddress(ethFunder);
