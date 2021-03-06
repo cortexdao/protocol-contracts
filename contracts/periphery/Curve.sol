@@ -5,11 +5,12 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IStableSwap {
-    // solhint-disable-next-line func-name-mixedcase
-    function N_COINS() external view returns (int128);
+    function N_COINS() external view returns (int128); // solhint-disable-line func-name-mixedcase
+
     function balances(int256 coin) external view returns (uint256);
-    // solhint-disable-next-line func-name-mixedcase
-    function lp_token() external view returns (address);
+
+    /// @dev For newest curve pools like aave; older pools refer to just `token`.
+    function lp_token() external view returns (address); // solhint-disable-line func-name-mixedcase
 }
 
 interface ILiquidityGauge {
@@ -19,43 +20,43 @@ interface ILiquidityGauge {
 contract CurvePeriphery {
     using SafeMath for uint256;
 
-    function getUnderlyingAsset(
-        address account,
-        IStableSwap stableSwap,
-        int128 coin
-    )
-        external
-        view
-        returns (uint256 balance)
-    {
-        require(address(stableSwap) != address(0), "INVALID_STABLESWAP");
-        require(coin < stableSwap.N_COINS(), "INVALID_COIN");
-
-        uint256 totalBalance = stableSwap.balances(coin);
-        IERC20 lpToken = IERC20(stableSwap.lp_token());
-        balance = lpToken.balanceOf(account)
-            .mul(totalBalance)
-            .div(lpToken.totalSupply());
-    }
-
-    function getUnderlyingAssetFromGauge(
+    function getUnderlyerBalance(
         address account,
         IStableSwap stableSwap,
         ILiquidityGauge gauge,
         int128 coin
-    )
-        external
-        view
-        returns (uint256 balance)
-    {
+    ) external view returns (uint256 balance) {
         require(address(stableSwap) != address(0), "INVALID_STABLESWAP");
         require(address(gauge) != address(0), "INVALID_GAUGE");
-        require(coin < stableSwap.N_COINS(), "INVALID_COIN");
 
-        uint256 totalBalance = stableSwap.balances(coin);
+        uint256 poolBalance = getPoolBalance(stableSwap, coin);
+        (uint256 lpTokenBalance, uint256 lpTokenSupply) =
+            getLpTokenShare(account, stableSwap, gauge);
+
+        balance = lpTokenBalance.mul(poolBalance).div(lpTokenSupply);
+    }
+
+    function getPoolBalance(IStableSwap stableSwap, int128 coin)
+        public
+        view
+        returns (uint256)
+    {
+        require(address(stableSwap) != address(0), "INVALID_STABLESWAP");
+        require(coin < stableSwap.N_COINS(), "INVALID_COIN");
+        return stableSwap.balances(coin);
+    }
+
+    function getLpTokenShare(
+        address account,
+        IStableSwap stableSwap,
+        ILiquidityGauge gauge
+    ) public view returns (uint256 balance, uint256 totalSupply) {
+        require(address(stableSwap) != address(0), "INVALID_STABLESWAP");
+        require(address(gauge) != address(0), "INVALID_GAUGE");
+
         IERC20 lpToken = IERC20(stableSwap.lp_token());
-        balance = gauge.balanceOf(account)
-            .mul(totalBalance)
-            .div(lpToken.totalSupply());
+        totalSupply = lpToken.totalSupply();
+        balance = lpToken.balanceOf(account);
+        balance = balance.add(gauge.balanceOf(account));
     }
 }
