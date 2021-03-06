@@ -126,6 +126,25 @@ describe("Contract: APYManager", () => {
     });
   });
 
+  describe("Set asset allocation registry", () => {
+    it("Cannot set to zero address", async () => {
+      await expect(
+        manager.connect(deployer).setAssetAllocationRegistry(ZERO_ADDRESS)
+      ).to.be.revertedWith("Invalid address");
+    });
+
+    it("Non-owner cannot set", async () => {
+      await expect(
+        manager.connect(randomUser).setAssetAllocationRegistry(FAKE_ADDRESS)
+      ).to.be.revertedWith("revert Ownable: caller is not the owner");
+    });
+
+    it("Owner can set", async () => {
+      await manager.connect(deployer).setAssetAllocationRegistry(FAKE_ADDRESS);
+      expect(await manager.assetAllocationRegistry()).to.equal(FAKE_ADDRESS);
+    });
+  });
+
   describe.skip("Test setting pool ids", () => {
     it("Test setting pool ids by not owner", async () => {});
     it("Test setting pool ids successfully", async () => {});
