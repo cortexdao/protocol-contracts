@@ -582,12 +582,17 @@ describe("Contract: APYManager", () => {
       ).to.be.revertedWith("Missing address");
     });
 
-    it("Transfers correct underlyer amounts", async () => {
+    it("Transfers correct underlyer amounts and updates asset allocation registry", async () => {
+      const encodedBalanceOf = erc20Interface.encodeFunctionData(
+        "balanceOf(address)",
+        [strategyAddress]
+      );
+
       await manager.fundAndExecute(
         strategyAddress,
         [[bytes32("daiPool")], [amount]],
         [[daiToken.address, encodedApprove]],
-        []
+        [[bytes32("strat1DaiBal"), "DAI", [daiToken.address, encodedBalanceOf]]]
       );
       const strategyDaiBalance = await daiToken.balanceOf(strategyAddress);
       const strategyUsdcBalance = await usdcToken.balanceOf(strategyAddress);
@@ -596,6 +601,21 @@ describe("Contract: APYManager", () => {
       expect(strategyDaiBalance).to.equal(amount);
       expect(strategyUsdcBalance).to.equal(0);
       expect(strategyUsdtBalance).to.equal(0);
+
+      // Check the manager registered the asset allocations corretly
+      const registeredIds = await assetRegistry.getAssetAllocationIds();
+      expect(registeredIds.length).to.equal(1);
+      expect(registeredIds[0]).to.equal(bytes32("strat1DaiBal"));
+
+      const registeredDaiSymbol = await assetRegistry.symbolOf(
+        registeredIds[0]
+      );
+      expect(registeredDaiSymbol).to.equal("DAI");
+
+      const registeredStratDaiBal = await assetRegistry.balanceOf(
+        registeredIds[0]
+      );
+      expect(registeredStratDaiBal).equal(strategyDaiBalance);
     });
   });
 
@@ -618,7 +638,12 @@ describe("Contract: APYManager", () => {
       ).to.not.be.reverted;
     });
 
-    it("Calldata executes properly", async () => {
+    it("Calldata executes properly and updates asset allocation registry", async () => {
+      const encodedBalanceOf = erc20Interface.encodeFunctionData(
+        "balanceOf(address)",
+        [strategyAddress]
+      );
+
       const amount = 100;
       const encodedApprove = erc20Interface.encodeFunctionData(
         "approve(address,uint256)",
@@ -628,7 +653,7 @@ describe("Contract: APYManager", () => {
       await manager.execute(
         strategyAddress,
         [[daiToken.address, encodedApprove]],
-        []
+        [[bytes32("strat1DaiBal"), "DAI", [daiToken.address, encodedBalanceOf]]]
       );
 
       const daiAllowance = await daiToken.allowance(
@@ -636,6 +661,21 @@ describe("Contract: APYManager", () => {
         manager.address
       );
       expect(daiAllowance).to.equal(amount);
+
+      // Check the manager registered the asset allocations corretly
+      const registeredIds = await assetRegistry.getAssetAllocationIds();
+      expect(registeredIds.length).to.equal(1);
+      expect(registeredIds[0]).to.equal(bytes32("strat1DaiBal"));
+
+      const registeredDaiSymbol = await assetRegistry.symbolOf(
+        registeredIds[0]
+      );
+      expect(registeredDaiSymbol).to.equal("DAI");
+
+      const registeredStratDaiBal = await assetRegistry.balanceOf(
+        registeredIds[0]
+      );
+      expect(registeredStratDaiBal).equal(0);
     });
   });
 
@@ -727,6 +767,10 @@ describe("Contract: APYManager", () => {
       });
 
       it("Transfers underlyer correctly to one pool", async () => {
+        const encodedBalanceOf = erc20Interface.encodeFunctionData(
+          "balanceOf(address)",
+          [strategyAddress]
+        );
         const amount = "10";
         await daiToken.connect(funder).transfer(strategyAddress, amount);
         expect(await daiToken.balanceOf(strategyAddress)).to.equal(amount);
@@ -735,10 +779,31 @@ describe("Contract: APYManager", () => {
           strategyAddress,
           [[bytes32("daiPool")], [amount]],
           [[daiToken.address, daiApprove]],
-          []
+          [
+            [
+              bytes32("strat1DaiBal"),
+              "DAI",
+              [daiToken.address, encodedBalanceOf],
+            ],
+          ]
         );
 
         expect(await daiToken.balanceOf(strategyAddress)).to.equal(0);
+
+        // Check the manager registered the asset allocations corretly
+        const registeredIds = await assetRegistry.getAssetAllocationIds();
+        expect(registeredIds.length).to.equal(1);
+        expect(registeredIds[0]).to.equal(bytes32("strat1DaiBal"));
+
+        const registeredDaiSymbol = await assetRegistry.symbolOf(
+          registeredIds[0]
+        );
+        expect(registeredDaiSymbol).to.equal("DAI");
+
+        const registeredStratDaiBal = await assetRegistry.balanceOf(
+          registeredIds[0]
+        );
+        expect(registeredStratDaiBal).equal(0);
       });
     });
 
@@ -907,14 +972,10 @@ describe("Contract: APYManager", () => {
           usdtWithdrawAmount
         );
 
-        await manager.withdrawFromStrategy(
-          strategyAddress,
-          [
-            [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
-            [daiWithdrawAmount, usdcWithdrawAmount, usdtWithdrawAmount],
-          ],
-          []
-        );
+        await manager.withdrawFromStrategy(strategyAddress, [
+          [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
+          [daiWithdrawAmount, usdcWithdrawAmount, usdtWithdrawAmount],
+        ]);
 
         const allowedDeviation = 2;
 

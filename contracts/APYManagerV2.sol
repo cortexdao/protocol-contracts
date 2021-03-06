@@ -117,10 +117,8 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
 
     function withdrawFromStrategy(
         address strategy,
-        IStrategyFactory.StrategyAllocation memory allocation,
-        IAssetAllocationRegistry.AssetAllocation[] memory viewData
+        IStrategyFactory.StrategyAllocation memory allocation
     ) external override onlyOwner {
-        _registerAllocationData(viewData);
         _withdrawFromStrategy(strategy, allocation);
     }
 

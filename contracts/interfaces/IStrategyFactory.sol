@@ -43,7 +43,6 @@ interface IStrategyFactory {
 
     function withdrawFromStrategy(
         address strategy,
-        StrategyAllocation calldata allocation,
-        IAssetAllocationRegistry.AssetAllocation[] calldata viewData
+        StrategyAllocation calldata allocation
     ) external;
 }

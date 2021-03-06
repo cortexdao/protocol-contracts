@@ -313,15 +313,13 @@ describe("Contract: APYManager", () => {
         await expect(
           manager
             .connect(randomUser)
-            .withdrawFromStrategy(strategy.address, [[], []], [])
+            .withdrawFromStrategy(strategy.address, [[], []])
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
       });
 
       it("Revert on invalid strategy", async () => {
         await expect(
-          manager
-            .connect(deployer)
-            .withdrawFromStrategy(FAKE_ADDRESS, [[], []], [])
+          manager.connect(deployer).withdrawFromStrategy(FAKE_ADDRESS, [[], []])
         ).to.be.revertedWith("Invalid Strategy");
       });
 
@@ -329,7 +327,7 @@ describe("Contract: APYManager", () => {
         await expect(
           manager
             .connect(deployer)
-            .withdrawFromStrategy(strategy.address, [[], []], [])
+            .withdrawFromStrategy(strategy.address, [[], []])
         ).to.not.be.reverted;
       });
     });
