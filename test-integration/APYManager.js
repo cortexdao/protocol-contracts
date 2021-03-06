@@ -379,7 +379,7 @@ describe("Contract: APYManager", () => {
       ).to.be.revertedWith("Missing address");
     });
 
-    it("Transfers correct underlyer amounts", async () => {
+    it("Transfers correct underlyer amounts and updates asset allocation registry", async () => {
       // ETHERS contract.on() event listener doesnt seems to be working for some reason.
       // It might be because the event is not at the top most level
 
@@ -389,10 +389,14 @@ describe("Contract: APYManager", () => {
       expect(await usdtToken.balanceOf(strategyAddress)).to.equal(0);
 
       // start the tests
-
       const daiPoolBalance = await daiToken.balanceOf(daiPool.address);
       const usdcPoolBalance = await usdcToken.balanceOf(usdcPool.address);
       const usdtPoolBalance = await usdtToken.balanceOf(usdtPool.address);
+
+      const encodedBalanceOf = erc20Interface.encodeFunctionData(
+        "balanceOf(address)",
+        [strategyAddress]
+      );
 
       await manager.fundStrategy(
         strategyAddress,
@@ -400,7 +404,23 @@ describe("Contract: APYManager", () => {
           [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
           [daiAmount, usdcAmount, usdtAmount],
         ],
-        []
+        [
+          [
+            bytes32("strat1DaiBal"),
+            "DAI",
+            [daiToken.address, encodedBalanceOf],
+          ],
+          [
+            bytes32("strat1UsdcBal"),
+            "USDC",
+            [usdcToken.address, encodedBalanceOf],
+          ],
+          [
+            bytes32("strat1UsdtBal"),
+            "USDT",
+            [usdtToken.address, encodedBalanceOf],
+          ],
+        ]
       );
 
       const strategyDaiBalance = await daiToken.balanceOf(strategyAddress);
@@ -420,6 +440,39 @@ describe("Contract: APYManager", () => {
       expect(await usdtToken.balanceOf(usdtPool.address)).to.equal(
         usdtPoolBalance.sub(usdtAmount)
       );
+
+      // Check the manager registered the asset allocations corretly
+      const registeredIds = await assetRegistry.getAssetAllocationIds();
+      expect(registeredIds.length).to.equal(3);
+      expect(registeredIds[0]).to.equal(bytes32("strat1DaiBal"));
+      expect(registeredIds[1]).to.equal(bytes32("strat1UsdcBal"));
+      expect(registeredIds[2]).to.equal(bytes32("strat1UsdtBal"));
+
+      const registeredDaiSymbol = await assetRegistry.symbolOf(
+        registeredIds[0]
+      );
+      const registeredUsdcSymbol = await assetRegistry.symbolOf(
+        registeredIds[1]
+      );
+      const registeredUsdtSymbol = await assetRegistry.symbolOf(
+        registeredIds[2]
+      );
+      expect(registeredDaiSymbol).to.equal("DAI");
+      expect(registeredUsdcSymbol).to.equal("USDC");
+      expect(registeredUsdtSymbol).to.equal("USDT");
+
+      const registeredStratDaiBal = await assetRegistry.balanceOf(
+        registeredIds[0]
+      );
+      const registeredStratUsdcBal = await assetRegistry.balanceOf(
+        registeredIds[1]
+      );
+      const registeredStratUsdtBal = await assetRegistry.balanceOf(
+        registeredIds[2]
+      );
+      expect(registeredStratDaiBal).equal(strategyDaiBalance);
+      expect(registeredStratUsdcBal).equal(strategyUsdcBalance);
+      expect(registeredStratUsdtBal).equal(strategyUsdtBalance);
     });
 
     it("Mints correct mAPT amounts (start with non-zero supply)", async () => {
