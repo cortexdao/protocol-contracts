@@ -9,7 +9,7 @@ interface IStableSwap {
 
     function balances(int256 coin) external view returns (uint256);
 
-    /// @dev For newest curve pools like aave; older pools refer to just `token`.
+    /// @dev For newest curve pools like aave; older pools refer to a private `token` variable.
     function lp_token() external view returns (address); // solhint-disable-line func-name-mixedcase
 }
 
