@@ -102,7 +102,9 @@ async function main(argv) {
   updateDeployJsons(NETWORK_NAME, deploy_data);
 
   const managerAddress = getDeployedAddress("APYManagerProxy", NETWORK_NAME);
-  const trx = await proxy.setManagerAddress(managerAddress);
+  console.log("Manager:", managerAddress);
+  const mAPT = await APYMetaPoolToken.attach(proxy.address);
+  const trx = await mAPT.setManagerAddress(managerAddress);
   console.log("Etherscan:", `https://etherscan.io/tx/${trx.hash}`);
   await trx.wait();
   console.log("Set manager address on mAPT.");
