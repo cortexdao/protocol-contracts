@@ -6,7 +6,11 @@ const { argv } = require("yargs").option("gasPrice", {
 const hre = require("hardhat");
 const { ethers, network } = hre;
 const chalk = require("chalk");
-const { getGasPrice, updateDeployJsons } = require("../../utils/helpers");
+const {
+  getGasPrice,
+  updateDeployJsons,
+  getDeployedAddress,
+} = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -37,37 +41,38 @@ async function main(argv) {
   console.log("ETH balance:", balance.toString());
   console.log("");
 
-  console.log("");
-  console.log("Deploying generic executor ...");
-  console.log("");
-  const APYGenericExecutor = await ethers.getContractFactory(
-    "APYGenericExecutor",
+  const managerAddress = getDeployedAddress("APYManagerProxy", NETWORK_NAME);
+  const manager = await ethers.getContractAt(
+    "APYManagerV2",
+    managerAddress,
     managerDeployer
   );
-  let gasPrice = await getGasPrice(argv.gasPrice);
-  const genericExecutor = await APYGenericExecutor.deploy({ gasPrice });
-  console.log(
-    "Deploy:",
-    `https://etherscan.io/tx/${genericExecutor.deployTransaction.hash}`
+  console.log("Manager (proxy):", chalk.green(managerAddress));
+  const executorAddress = getDeployedAddress(
+    "APYGenericExecutor",
+    NETWORK_NAME
   );
-  await genericExecutor.deployed();
-  console.log("Generic Executor", chalk.green(genericExecutor.address));
-  console.log("");
+  console.log("Executor:", chalk.green(executorAddress));
+  const strategyAddress = await manager.callStatic.deployStrategy(
+    executorAddress
+  );
+  let gasPrice = await getGasPrice(argv.gasPrice);
+  const trx = await manager.deployStrategy(executorAddress, { gasPrice });
+  console.log("Deploy strategy:", `https://etherscan.io/tx/${trx.hash}`);
+  await trx.wait();
+  console.log("Strategy:", chalk.green(strategyAddress));
 
   const deployData = {
-    APYGenericExecutor: genericExecutor.address,
+    Strategy: strategyAddress,
   };
   updateDeployJsons(NETWORK_NAME, deployData);
 
   if (["KOVAN", "MAINNET"].includes(NETWORK_NAME)) {
     console.log("");
     console.log("Verifying on Etherscan ...");
-    await ethers.provider.waitForTransaction(
-      genericExecutor.deployTransaction.hash,
-      5
-    ); // wait for Etherscan to catch up
+    await ethers.provider.waitForTransaction(trx.hash, 5); // wait for Etherscan to catch up
     await hre.run("verify:verify", {
-      address: genericExecutor.address,
+      address: strategyAddress,
     });
     console.log("");
   }
@@ -77,7 +82,7 @@ if (!module.parent) {
   main(argv)
     .then(() => {
       console.log("");
-      console.log("Executor deployment successful.");
+      console.log("Strategy deployment successful.");
       console.log("");
       process.exit(0);
     })

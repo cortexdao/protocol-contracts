@@ -94,8 +94,9 @@ async function main(argv) {
   await logicV2.deployed();
   console.log(`Manager logic V2: ${chalk.green(logicV2.address)}`);
 
-  const deployData = {};
-  deployData["APYManager"] = logicV2.address;
+  const deployData = {
+    APYManager: logicV2.address,
+  };
   updateDeployJsons(NETWORK_NAME, deployData);
 
   gasPrice = await getGasPrice(argv.gasPrice);
