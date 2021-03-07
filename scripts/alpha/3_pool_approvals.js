@@ -1,52 +1,40 @@
-require("dotenv").config();
-const { ethers, network } = require("hardhat");
+const hre = require("hardhat");
+const { ethers, network } = hre;
 const chalk = require("chalk");
-const legos = require("@apy-finance/defi-legos");
+const { getDeployedAddress, getGasPrice } = require("../../utils/helpers");
 
-async function main() {
+async function main(argv) {
+  await hre.run("compile");
   const NETWORK_NAME = network.name.toUpperCase();
+  console.log("");
   console.log(`${NETWORK_NAME} selected`);
-  const signers = await ethers.getSigners();
-  const deployer = await signers[0].getAddress();
-  console.log(`Deployer: ${chalk.green(deployer)}`);
+  console.log("");
+  const [deployer] = await ethers.getSigners();
+  console.log("Deployer address:", deployer.address);
+  console.log("");
 
-  const APY_DAI_POOL = await ethers.getContractAt(
-    legos.apy.abis.APY_DAI_POOL_Logic,
-    legos.apy.addresses.APY_DAI_POOL
-  );
-  const APY_USDC_POOL = await ethers.getContractAt(
-    legos.apy.abis.APY_USDC_POOL_Logic,
-    legos.apy.addresses.APY_USDC_POOL
-  );
-  const APY_USDT_POOL = await ethers.getContractAt(
-    legos.apy.abis.APY_USDT_POOL_Logic,
-    legos.apy.addresses.APY_USDT_POOL
-  );
+  const managerAddress = getDeployedAddress("APYManagerProxy", NETWORK_NAME);
+  for (const symbol of ["DAI", "USDC", "USDC"]) {
+    const poolAddress = getDeployedAddress(
+      symbol + "_APYPoolTokenProxy",
+      NETWORK_NAME
+    );
+    const gasPrice = await getGasPrice(argv.gasPrice);
+    const pool = await ethers.getContractAt("APYPoolTokenV2", poolAddress);
+    const trx = await pool.infiniteApprove(managerAddress, { gasPrice });
+    await trx.wait();
 
-  APY_DAI_POOL.infiniteApprove(legos.apy.addresses.APY_MANAGER);
-  console.log(
-    `${chalk.yellow("DAI")} Pool: ${chalk.green(
-      legos.apy.addresses.APY_DAI_POOL
-    )} has given the Manager: ${chalk.green(
-      legos.apy.addresses.APY_MANAGER
-    )} infinite approval to move funds`
-  );
-  APY_USDC_POOL.infiniteApprove(legos.apy.addresses.APY_MANAGER);
-  console.log(
-    `${chalk.yellow("USDC")} Pool: ${chalk.green(
-      legos.apy.addresses.APY_USDC_POOL
-    )} has given the Manager: ${chalk.green(
-      legos.apy.addresses.APY_MANAGER
-    )} infinite approval to move funds`
-  );
-  APY_USDT_POOL.infiniteApprove(legos.apy.addresses.APY_MANAGER);
-  console.log(
-    `${chalk.yellow("USDT")} Pool: ${chalk.green(
-      legos.apy.addresses.APY_USDT_POOL
-    )} has given the Manager: ${chalk.green(
-      legos.apy.addresses.APY_MANAGER
-    )} infinite approval to move funds`
-  );
+    console.log("Etherscan:", `https://etherscan.io/tx/${trx.hash}`);
+    console.log("");
+    console.log(
+      `${chalk.yellow("USDT")} Pool: ${chalk.green(
+        poolAddress
+      )} has given the Manager: ${chalk.green(
+        managerAddress
+      )} infinite approval to move funds`
+    );
+    console.log("");
+  }
 }
 
 if (!module.parent) {

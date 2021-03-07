@@ -47,26 +47,29 @@ async function main() {
     [mApt.address]
   );
 
-  const deployData = {};
   for (const symbol of ["DAI", "USDC", "USDC"]) {
     const poolAddress = getDeployedAddress(
       symbol + "_APYPoolTokenProxy",
       NETWORK_NAME
     );
     gasPrice = await getGasPrice(argv.gasPrice);
-    await proxyAdmin
+    const trx = await proxyAdmin
       .connect(deployer)
       .upgradeAndCall(poolAddress, logicV2.address, initData, { gasPrice });
-    deployData[symbol + "_APYPoolToken"] = logicV2.address;
+    console.log("Etherscan:", `https://etherscan.io/tx/${trx.hash}`);
+    await trx.wait();
+
     console.log(
       `${chalk.yellow(symbol)} Pool: ${chalk.green(
         poolAddress
       )}, Logic: ${chalk.green(logicV2.address)}`
     );
     console.log("");
-  }
 
-  updateDeployJsons(NETWORK_NAME, deployData);
+    const deployData = {};
+    deployData[symbol + "_APYPoolToken"] = logicV2.address;
+    updateDeployJsons(NETWORK_NAME, deployData);
+  }
 
   if (["KOVAN", "MAINNET"].includes(NETWORK_NAME)) {
     console.log("");
