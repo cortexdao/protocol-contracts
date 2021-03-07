@@ -56,9 +56,8 @@ async function main(argv) {
       poolDeployer
     );
     const trx = await pool.infiniteApprove(managerAddress, { gasPrice });
-    console.log("Etherscan:", `https://etherscan.io/tx/${trx.hash}`);
+    console.log("Approve:", `https://etherscan.io/tx/${trx.hash}`);
     await trx.wait();
-    console.log("... done.");
     console.log("");
   }
 }

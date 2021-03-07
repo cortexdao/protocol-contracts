@@ -69,7 +69,7 @@ async function main(argv) {
     gasPrice,
   });
   console.log(
-    "Etherscan:",
+    "Deploy:",
     `https://etherscan.io/tx/${logicV2.deployTransaction.hash}`
   );
   await logicV2.deployed();
@@ -94,7 +94,7 @@ async function main(argv) {
     const trx = await proxyAdmin
       .connect(poolDeployer)
       .upgradeAndCall(poolAddress, logicV2.address, initData, { gasPrice });
-    console.log("Etherscan:", `https://etherscan.io/tx/${trx.hash}`);
+    console.log("Upgrade:", `https://etherscan.io/tx/${trx.hash}`);
     await trx.wait();
     console.log("... pool upgraded.");
     console.log("");

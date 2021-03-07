@@ -73,7 +73,7 @@ async function main(argv) {
   let gasPrice = await getGasPrice(argv.gasPrice);
   const proxyAdmin = await ProxyAdmin.deploy({ gasPrice });
   console.log(
-    "Etherscan:",
+    "Deploy:",
     `https://etherscan.io/tx/${proxyAdmin.deployTransaction.hash}`
   );
   await proxyAdmin.deployed();
@@ -89,7 +89,7 @@ async function main(argv) {
   gasPrice = await getGasPrice(argv.gasPrice);
   const logic = await APYMetaPoolToken.deploy({ gasPrice });
   console.log(
-    "Etherscan:",
+    "Deploy:",
     `https://etherscan.io/tx/${logic.deployTransaction.hash}`
   );
   await logic.deployed();
@@ -110,7 +110,7 @@ async function main(argv) {
     { gasPrice }
   );
   console.log(
-    "Etherscan:",
+    "Deploy:",
     `https://etherscan.io/tx/${proxy.deployTransaction.hash}`
   );
   await proxy.deployed();
@@ -125,15 +125,13 @@ async function main(argv) {
 
   updateDeployJsons(NETWORK_NAME, deploy_data);
 
-  console.log("Set manager address on mAPT ...");
   const managerAddress = getDeployedAddress("APYManagerProxy", NETWORK_NAME);
   console.log("Manager:", managerAddress);
   gasPrice = await getGasPrice(argv.gasPrice);
   const mAPT = await APYMetaPoolToken.attach(proxy.address);
   const trx = await mAPT.setManagerAddress(managerAddress, { gasPrice });
-  console.log("Etherscan:", `https://etherscan.io/tx/${trx.hash}`);
+  console.log("Set manager address:", `https://etherscan.io/tx/${trx.hash}`);
   await trx.wait();
-  console.log("... done.");
   console.log("");
 
   if (["KOVAN", "MAINNET"].includes(NETWORK_NAME)) {
