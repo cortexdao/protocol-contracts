@@ -75,9 +75,12 @@ async function main(argv) {
   console.log("Delete token addresses:", `https://etherscan.io/tx/${trx.hash}`);
   await trx.wait();
   gasPrice = await getGasPrice(argv.gasPrice);
-  trx = await managerV1.deletePoolIds({ gasPrice });
-  console.log("Delete pool IDs:", `https://etherscan.io/tx/${trx.hash}`);
-  await trx.wait();
+  // TODO: check if we need to delete pool IDs.  This doesn't seem necessary,
+  // but we should double-check by calling `getPoolIds`.
+  // trx = await managerV1.deletePoolIds({ gasPrice });
+  // console.log("Delete pool IDs:", `https://etherscan.io/tx/${trx.hash}`);
+  // await trx.wait();
+  // Register new pool IDs here if needed.
   console.log("... done.");
   console.log("");
 
