@@ -478,26 +478,25 @@ describe("Contract: APYPoolToken", () => {
         tokenAmountToBigNumber(83729),
         tokenAmountToBigNumber(32283729),
       ];
-      let roundId = 0;
       deployedValues.forEach(function (deployedValue) {
         describe(`deployed value: ${deployedValue}`, () => {
           const mAptSupply = tokenAmountToBigNumber("100");
           const ethUsdPrice = tokenAmountToBigNumber(1800, "8");
           const usdDeployedValue = deployedValue.mul(ethUsdPrice).div(ether(1));
 
-          before(async () => {
+          async function updateTvlAgg(usdDeployedValue, ethUsdPrice) {
+            const lastRoundId = await tvlAgg.latestRound();
+            const newRoundId = lastRoundId.add(1);
+            await tvlAgg.connect(oracle).submit(newRoundId, usdDeployedValue);
+            await ethUsdAgg.connect(oracle).submit(newRoundId, ethUsdPrice);
+          }
+
+          beforeEach(async () => {
+            /* these get rollbacked after each test due to snapshotting */
+
             // default to giving entire deployed value to the pool
             await mApt.connect(manager).mint(poolToken.address, mAptSupply);
-            roundId += 1;
-            await tvlAgg.connect(oracle).submit(roundId, usdDeployedValue);
-            await ethUsdAgg.connect(oracle).submit(roundId, ethUsdPrice);
-          });
-
-          after(async () => {
-            await mApt.connect(manager).burn(poolToken.address, mAptSupply);
-            roundId += 1;
-            await tvlAgg.connect(oracle).submit(roundId, 0);
-            await ethUsdAgg.connect(oracle).submit(roundId, ether(1));
+            await updateTvlAgg(usdDeployedValue, ethUsdPrice);
           });
 
           describe("Underlyer and mAPT integration with calculations", () => {
@@ -610,9 +609,8 @@ describe("Contract: APYPoolToken", () => {
               await mApt
                 .connect(manager)
                 .burn(poolToken.address, mAptSupply.div(4));
-              let newRoundId = roundId + 1;
-              await tvlAgg.connect(oracle).submit(newRoundId, usdDeployedValue);
-              await ethUsdAgg.connect(oracle).submit(newRoundId, ethUsdPrice);
+              // must update agg so staleness check passes
+              await updateTvlAgg(usdDeployedValue, ethUsdPrice);
               expect(await poolToken.getDeployedEthValue()).to.equal(
                 deployedValue.mul(3).div(4)
               );
@@ -622,9 +620,8 @@ describe("Contract: APYPoolToken", () => {
               await mApt
                 .connect(manager)
                 .burn(poolToken.address, mAptSupply.div(4));
-              newRoundId += 1;
-              await tvlAgg.connect(oracle).submit(newRoundId, usdDeployedValue);
-              await ethUsdAgg.connect(oracle).submit(newRoundId, ethUsdPrice);
+              // must update agg so staleness check passes
+              await updateTvlAgg(usdDeployedValue, ethUsdPrice);
               expect(await poolToken.getDeployedEthValue()).to.equal(
                 deployedValue.div(2)
               );
