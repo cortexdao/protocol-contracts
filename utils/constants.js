@@ -136,6 +136,9 @@ const DEPLOYS_JSON = {
   APYManager: `${__dirname}/../deployed_addresses/APYManager.json`,
   APYManagerProxy: `${__dirname}/../deployed_addresses/APYManagerProxy.json`,
   ProxyConstructorArg: `${__dirname}/../deployed_addresses/ProxyConstructorArg.json`,
+  APYGenericExecutor: `${__dirname}/../deployed_addresses/APYGenericExecutor.json`,
+  Strategy: `${__dirname}/../deployed_addresses/Strategy.json`,
+  AssetAllocationRegistry: `${__dirname}/../deployed_addresses/AssetAllocationRegistry.json`,
 };
 
 module.exports = {

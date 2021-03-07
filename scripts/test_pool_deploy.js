@@ -86,7 +86,7 @@ const main = async () => {
 };
 
 main()
-  .then((text) => {
+  .then(() => {
     console.log("");
     console.log("Finished with no errors.");
     console.log("");
