@@ -35,10 +35,7 @@ async function main(argv) {
     "APYPoolTokenProxyAdmin",
     NETWORK_NAME
   );
-  const proxyAdmin = await ethers.getContractAt(
-    "APYPoolTokenProxyAdmin",
-    poolAdminAddress
-  );
+  const proxyAdmin = await ethers.getContractAt("ProxyAdmin", poolAdminAddress);
 
   const APYPoolTokenV2 = await ethers.getContractFactory("APYPoolTokenV2");
   let gasPrice = await getGasPrice(argv.gasPrice);
