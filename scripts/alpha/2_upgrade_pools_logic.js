@@ -11,12 +11,25 @@ const {
   updateDeployJsons,
 } = require("../../utils/helpers");
 
-async function main() {
+// eslint-disable-next-line no-unused-vars
+async function main(argv) {
   await hre.run("compile");
   const NETWORK_NAME = network.name.toUpperCase();
+  console.log("");
   console.log(`${NETWORK_NAME} selected`);
+  console.log("");
+
   const [deployer] = await ethers.getSigners();
   console.log(`Deployer: ${chalk.green(deployer.address)}`);
+
+  const balance =
+    (await ethers.provider.getBalance(deployer.address)).toString() / 1e18;
+  console.log("ETH balance:", balance.toString());
+  console.log("");
+
+  console.log("");
+  console.log("Upgrading pools ...");
+  console.log("");
 
   const poolAdminAddress = getDeployedAddress(
     "APYPoolTokenProxyAdmin",
@@ -26,8 +39,6 @@ async function main() {
     "APYPoolTokenProxyAdmin",
     poolAdminAddress
   );
-  const mAPTAddress = getDeployedAddress("APYMetaPoolToken", NETWORK_NAME);
-  const mApt = await ethers.getContractAt("APYMetaPoolToken", mAPTAddress);
 
   const APYPoolTokenV2 = await ethers.getContractFactory("APYPoolTokenV2");
   let gasPrice = await getGasPrice(argv.gasPrice);
@@ -37,38 +48,34 @@ async function main() {
     `https://etherscan.io/tx/${logicV2.deployTransaction.hash}`
   );
   await logicV2.deployed();
-  console.log(
-    `New Implementation Logic for Pools: ${chalk.green(logicV2.address)}`
-  );
+  console.log(`Pool logic V2: ${chalk.green(logicV2.address)}`);
+  console.log("");
 
+  const mAPTAddress = getDeployedAddress("APYMetaPoolToken", NETWORK_NAME);
   const initData = APYPoolTokenV2.interface.encodeFunctionData(
     "initializeUpgrade(address)",
-    [mApt.address]
+    [mAPTAddress]
   );
 
+  const deployData = {};
   for (const symbol of ["DAI", "USDC", "USDC"]) {
     const poolAddress = getDeployedAddress(
       symbol + "_APYPoolTokenProxy",
       NETWORK_NAME
     );
+    console.log(`${symbol} Pool: ${chalk.green(poolAddress)}`);
+
     gasPrice = await getGasPrice(argv.gasPrice);
     const trx = await proxyAdmin
       .connect(deployer)
       .upgradeAndCall(poolAddress, logicV2.address, initData, { gasPrice });
     console.log("Etherscan:", `https://etherscan.io/tx/${trx.hash}`);
     await trx.wait();
+    console.log("... pool upgraded.");
 
-    console.log(
-      `${chalk.yellow(symbol)} Pool: ${chalk.green(
-        poolAddress
-      )}, Logic: ${chalk.green(logicV2.address)}`
-    );
-    console.log("");
-
-    const deployData = {};
     deployData[symbol + "_APYPoolToken"] = logicV2.address;
-    updateDeployJsons(NETWORK_NAME, deployData);
   }
+  updateDeployJsons(NETWORK_NAME, deployData);
 
   if (["KOVAN", "MAINNET"].includes(NETWORK_NAME)) {
     console.log("");
@@ -85,7 +92,7 @@ if (!module.parent) {
   main(argv)
     .then(() => {
       console.log("");
-      console.log("Deployment successful.");
+      console.log("Upgrades successful.");
       console.log("");
       process.exit(0);
     })
