@@ -3,6 +3,7 @@ const { argv } = require("yargs").option("gasPrice", {
   description: "Gas price in gwei; omitting uses EthGasStation value",
 });
 const hre = require("hardhat");
+const assert = require("assert");
 const { ethers, network } = hre;
 const chalk = require("chalk");
 const { getDeployedAddress, getGasPrice } = require("../../utils/helpers");
@@ -16,11 +17,21 @@ async function main(argv) {
   const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
 
-  const proxyAddress = getDeployedAddress("APYManagerProxy", NETWORK_NAME);
   const proxyAdminAddress = getDeployedAddress(
     "APYManagerProxyAdmin",
     NETWORK_NAME
   );
+  const proxyAdmin = await ethers.getContractAt(
+    "ProxyAdmin",
+    proxyAdminAddress
+  );
+  assert.strictEqual(
+    await proxyAdmin.owner(),
+    deployer.address,
+    "MNEMONIC needs to be set to pool deployer."
+  );
+
+  const proxyAddress = getDeployedAddress("APYManagerProxy", NETWORK_NAME);
   let proxy = await ethers.getContractAt("APYManager", proxyAddress);
 
   // Delete unneeded V1 storage
@@ -44,12 +55,8 @@ async function main(argv) {
     `New Implementation Logic for Manager: ${chalk.green(logicV2.address)}`
   );
 
-  const ManagerAdmin = await ethers.getContractAt(
-    "APYManagerProxyAdmin",
-    proxyAdminAddress
-  );
   gasPrice = await getGasPrice(argv.gasPrice);
-  trx = await ManagerAdmin.upgrade(proxyAddress, logicV2.address, { gasPrice });
+  trx = await proxyAdmin.upgrade(proxyAddress, logicV2.address, { gasPrice });
   console.log("Etherscan:", `https://etherscan.io/tx/${trx.hash}`);
   await trx.wait();
   console.log(

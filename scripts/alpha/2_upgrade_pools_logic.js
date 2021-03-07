@@ -1,9 +1,11 @@
+require("dotenv").config({ path: "./alpha.env" });
 const { argv } = require("yargs").option("gasPrice", {
   type: "number",
   description: "Gas price in gwei; omitting uses EthGasStation value",
 });
 const hre = require("hardhat");
 const { ethers, network } = hre;
+const assert = require("assert");
 const chalk = require("chalk");
 const {
   getGasPrice,
@@ -19,11 +21,13 @@ async function main(argv) {
   console.log(`${NETWORK_NAME} selected`);
   console.log("");
 
-  const [deployer] = await ethers.getSigners();
-  console.log(`Deployer: ${chalk.green(deployer.address)}`);
+  const POOL_MNEMONIC = process.env.POOL_MNEMONIC;
+  const poolDeployer = ethers.Wallet.fromMnemonic(POOL_MNEMONIC).connect(
+    ethers.provider
+  );
 
   const balance =
-    (await ethers.provider.getBalance(deployer.address)).toString() / 1e18;
+    (await ethers.provider.getBalance(poolDeployer.address)).toString() / 1e18;
   console.log("ETH balance:", balance.toString());
   console.log("");
 
@@ -35,9 +39,21 @@ async function main(argv) {
     "APYPoolTokenProxyAdmin",
     NETWORK_NAME
   );
-  const proxyAdmin = await ethers.getContractAt("ProxyAdmin", poolAdminAddress);
+  const proxyAdmin = await ethers.getContractAt(
+    "ProxyAdmin",
+    poolAdminAddress,
+    poolDeployer
+  );
+  assert.strictEqual(
+    await proxyAdmin.owner(),
+    poolDeployer.address,
+    "MNEMONIC needs to be set to pool deployer."
+  );
 
-  const APYPoolTokenV2 = await ethers.getContractFactory("APYPoolTokenV2");
+  const APYPoolTokenV2 = await ethers.getContractFactory(
+    "APYPoolTokenV2",
+    poolDeployer
+  );
   let gasPrice = await getGasPrice(argv.gasPrice);
   const logicV2 = await APYPoolTokenV2.deploy({ gasPrice });
   console.log(
@@ -64,7 +80,7 @@ async function main(argv) {
 
     gasPrice = await getGasPrice(argv.gasPrice);
     const trx = await proxyAdmin
-      .connect(deployer)
+      .connect(poolDeployer)
       .upgradeAndCall(poolAddress, logicV2.address, initData, { gasPrice });
     console.log("Etherscan:", `https://etherscan.io/tx/${trx.hash}`);
     await trx.wait();
