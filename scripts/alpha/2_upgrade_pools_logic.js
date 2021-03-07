@@ -32,14 +32,13 @@ async function main() {
   const APYPoolTokenV2 = await ethers.getContractFactory("APYPoolTokenV2");
   let gasPrice = await getGasPrice(argv.gasPrice);
   const logicV2 = await APYPoolTokenV2.deploy({ gasPrice });
-  await logicV2.deployed();
-
-  console.log(
-    `New Implementation Logic for Pools: ${chalk.green(logicV2.address)}`
-  );
   console.log(
     "Etherscan:",
     `https://etherscan.io/tx/${logicV2.deployTransaction.hash}`
+  );
+  await logicV2.deployed();
+  console.log(
+    `New Implementation Logic for Pools: ${chalk.green(logicV2.address)}`
   );
 
   const initData = APYPoolTokenV2.interface.encodeFunctionData(

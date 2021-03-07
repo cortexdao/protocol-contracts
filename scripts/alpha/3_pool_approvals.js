@@ -22,9 +22,8 @@ async function main(argv) {
     const gasPrice = await getGasPrice(argv.gasPrice);
     const pool = await ethers.getContractAt("APYPoolTokenV2", poolAddress);
     const trx = await pool.infiniteApprove(managerAddress, { gasPrice });
-    await trx.wait();
-
     console.log("Etherscan:", `https://etherscan.io/tx/${trx.hash}`);
+    await trx.wait();
     console.log("");
     console.log(
       `${chalk.yellow("USDT")} Pool: ${chalk.green(

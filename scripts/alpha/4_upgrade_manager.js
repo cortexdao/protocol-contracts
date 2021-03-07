@@ -21,7 +21,7 @@ async function main(argv) {
     "APYManagerProxyAdmin",
     NETWORK_NAME
   );
-  const proxy = await ethers.getContractAt("APYManager", proxyAddress);
+  let proxy = await ethers.getContractAt("APYManager", proxyAddress);
 
   // Delete unneeded V1 storage
   let gasPrice = await getGasPrice(argv.gasPrice);
@@ -48,12 +48,22 @@ async function main(argv) {
     "APYManagerProxyAdmin",
     proxyAdminAddress
   );
-  await ManagerAdmin.upgrade(proxyAddress, logicV2.address);
+  gasPrice = await getGasPrice(argv.gasPrice);
+  trx = await ManagerAdmin.upgrade(proxyAddress, logicV2.address, { gasPrice });
+  console.log("Etherscan:", `https://etherscan.io/tx/${trx.hash}`);
+  await trx.wait();
   console.log(
     `${chalk.yellow("Manager")}: ${chalk.green(
       proxyAddress
     )}, Logic: ${chalk.green(logicV2.address)}`
   );
+
+  const mAPTAddress = getDeployedAddress("APYMetaPoolToken", NETWORK_NAME);
+  proxy = await ethers.getContractAt("APYManagerV2", proxyAddress);
+  gasPrice = await getGasPrice(argv.gasPrice);
+  trx = await proxy.setMetaPoolToken(mAPTAddress, { gasPrice });
+  console.log("Etherscan:", `https://etherscan.io/tx/${trx.hash}`);
+  await trx.wait();
 }
 
 if (!module.parent) {

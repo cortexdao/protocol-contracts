@@ -18,6 +18,7 @@ const {
   getGasPrice,
   updateDeployJsons,
   getAggregatorAddress,
+  getDeployedAddress,
 } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
@@ -50,24 +51,24 @@ async function main(argv) {
 
   let gasPrice = await getGasPrice(argv.gasPrice);
   const proxyAdmin = await ProxyAdmin.deploy({ gasPrice });
-  await proxyAdmin.deployed();
-  deploy_data["APYMetaPoolTokenProxyAdmin"] = proxyAdmin.address;
-  console.log(`ProxyAdmin: ${proxyAdmin.address}`);
   console.log(
     "Etherscan:",
     `https://etherscan.io/tx/${proxyAdmin.deployTransaction.hash}`
   );
+  await proxyAdmin.deployed();
+  deploy_data["APYMetaPoolTokenProxyAdmin"] = proxyAdmin.address;
+  console.log(`ProxyAdmin: ${proxyAdmin.address}`);
   console.log("");
 
   gasPrice = await getGasPrice(argv.gasPrice);
   const logic = await APYMetaPoolToken.deploy({ gasPrice });
-  await logic.deployed();
-  deploy_data["APYMetaPoolToken"] = logic.address;
-  console.log(`Implementation Logic: ${logic.address}`);
   console.log(
     "Etherscan:",
     `https://etherscan.io/tx/${logic.deployTransaction.hash}`
   );
+  await logic.deployed();
+  deploy_data["APYMetaPoolToken"] = logic.address;
+  console.log(`Implementation Logic: ${logic.address}`);
   console.log("");
 
   const tvlAggAddress = getAggregatorAddress("TVL", NETWORK_NAME);
@@ -82,13 +83,13 @@ async function main(argv) {
     aggStalePeriod,
     { gasPrice }
   );
-  await proxy.deployed();
-  deploy_data["APYMetaPoolTokenProxy"] = proxy.address;
-  console.log(`Proxy: ${proxy.address}`);
   console.log(
     "Etherscan:",
     `https://etherscan.io/tx/${proxy.deployTransaction.hash}`
   );
+  await proxy.deployed();
+  deploy_data["APYMetaPoolTokenProxy"] = proxy.address;
+  console.log(`Proxy: ${proxy.address}`);
   console.log("");
 
   console.log("");
@@ -99,6 +100,10 @@ async function main(argv) {
   console.log("");
 
   updateDeployJsons(NETWORK_NAME, deploy_data);
+
+  const managerAddress = getDeployedAddress("APYManagerProxy", NETWORK_NAME);
+  const trx = await proxy.setManagerAddress(managerAddress);
+  await trx.wait();
 
   if (["KOVAN", "MAINNET"].includes(NETWORK_NAME)) {
     console.log("");
