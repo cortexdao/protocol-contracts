@@ -17,6 +17,12 @@ interface IAssetAllocationRegistry {
         bytes data;
     }
 
+    struct AssetAllocation {
+        bytes32 sequenceId;
+        string symbol;
+        Data data;
+    }
+
     function addAssetAllocation(
         bytes32 allocationId,
         Data calldata data,
