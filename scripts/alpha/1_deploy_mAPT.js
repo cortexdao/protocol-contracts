@@ -15,6 +15,7 @@ const { argv } = require("yargs").option("gasPrice", {
 });
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
+const assert = require("assert");
 const {
   getGasPrice,
   updateDeployJsons,
@@ -30,11 +31,23 @@ async function main(argv) {
   console.log(`${NETWORK_NAME} selected`);
   console.log("");
 
-  const [deployer] = await ethers.getSigners();
-  console.log("Deployer address:", deployer.address);
+  const MAPT_MNEMONIC = process.env.MAPT_MNEMONIC;
+  const mAptDeployer = ethers.Wallet.fromMnemonic(MAPT_MNEMONIC).connect(
+    ethers.provider
+  );
+  console.log("Deployer address:", mAptDeployer.address);
+  /* TESTING on localhost only
+   * need to fund as there is no ETH on Mainnet for the deployer
+   */
+  // const [funder] = await ethers.getSigners();
+  // const fundingTrx = await funder.sendTransaction({
+  //   to: mAptDeployer.address,
+  //   value: ethers.utils.parseEther("1.0"),
+  // });
+  // await fundingTrx.wait();
 
   const balance =
-    (await ethers.provider.getBalance(deployer.address)).toString() / 1e18;
+    (await ethers.provider.getBalance(mAptDeployer.address)).toString() / 1e18;
   console.log("ETH balance:", balance.toString());
   console.log("");
 
@@ -42,10 +55,17 @@ async function main(argv) {
   console.log("Deploying ...");
   console.log("");
 
-  const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-  const APYMetaPoolToken = await ethers.getContractFactory("APYMetaPoolToken");
+  const ProxyAdmin = await ethers.getContractFactory(
+    "ProxyAdmin",
+    mAptDeployer
+  );
+  const APYMetaPoolToken = await ethers.getContractFactory(
+    "APYMetaPoolToken",
+    mAptDeployer
+  );
   const APYMetaPoolTokenProxy = await ethers.getContractFactory(
-    "APYMetaPoolTokenProxy"
+    "APYMetaPoolTokenProxy",
+    mAptDeployer
   );
 
   let deploy_data = {};
@@ -60,6 +80,11 @@ async function main(argv) {
   deploy_data["APYMetaPoolTokenProxyAdmin"] = proxyAdmin.address;
   console.log(`ProxyAdmin: ${proxyAdmin.address}`);
   console.log("");
+  assert.strictEqual(
+    await proxyAdmin.owner(),
+    mAptDeployer.address,
+    "Owner must be mAPT deployer"
+  );
 
   gasPrice = await getGasPrice(argv.gasPrice);
   const logic = await APYMetaPoolToken.deploy({ gasPrice });
@@ -92,8 +117,6 @@ async function main(argv) {
   deploy_data["APYMetaPoolTokenProxy"] = proxy.address;
   console.log(`Proxy: ${proxy.address}`);
   console.log("");
-
-  console.log("");
   console.log("ETH-USD Aggregator:", ethUsdAggAddress);
   console.log("TVL Aggregator:", tvlAggAddress);
   console.log("");
@@ -102,13 +125,15 @@ async function main(argv) {
 
   updateDeployJsons(NETWORK_NAME, deploy_data);
 
+  console.log("Set manager address on mAPT ...");
   const managerAddress = getDeployedAddress("APYManagerProxy", NETWORK_NAME);
   console.log("Manager:", managerAddress);
+  gasPrice = await getGasPrice(argv.gasPrice);
   const mAPT = await APYMetaPoolToken.attach(proxy.address);
-  const trx = await mAPT.setManagerAddress(managerAddress);
+  const trx = await mAPT.setManagerAddress(managerAddress, { gasPrice });
   console.log("Etherscan:", `https://etherscan.io/tx/${trx.hash}`);
   await trx.wait();
-  console.log("Set manager address on mAPT.");
+  console.log("... done.");
   console.log("");
 
   if (["KOVAN", "MAINNET"].includes(NETWORK_NAME)) {
