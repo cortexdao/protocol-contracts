@@ -18,7 +18,7 @@ const {
   getGasPrice,
   updateDeployJsons,
   getAggregatorAddress,
-} = require("../utils/helpers");
+} = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -28,12 +28,11 @@ async function main(argv) {
   console.log(`${NETWORK_NAME} selected`);
   console.log("");
 
-  const signers = await ethers.getSigners();
-  const deployer = await signers[0].getAddress();
-  console.log("Deployer address:", deployer);
+  const [deployer] = await ethers.getSigners();
+  console.log("Deployer address:", deployer.address);
 
   const balance =
-    (await ethers.provider.getBalance(deployer)).toString() / 1e18;
+    (await ethers.provider.getBalance(deployer.address)).toString() / 1e18;
   console.log("ETH balance:", balance.toString());
   console.log("");
 
