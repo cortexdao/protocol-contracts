@@ -7,7 +7,11 @@ const hre = require("hardhat");
 const assert = require("assert");
 const { ethers, network } = hre;
 const chalk = require("chalk");
-const { getDeployedAddress, getGasPrice } = require("../../utils/helpers");
+const {
+  getDeployedAddress,
+  getGasPrice,
+  updateDeployJsons,
+} = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -90,6 +94,10 @@ async function main(argv) {
   await logicV2.deployed();
   console.log(`Manager logic V2: ${chalk.green(logicV2.address)}`);
 
+  const deployData = {};
+  deployData["APYManager"] = logicV2.address;
+  updateDeployJsons(NETWORK_NAME, deployData);
+
   gasPrice = await getGasPrice(argv.gasPrice);
   trx = await proxyAdmin.upgrade(proxyAddress, logicV2.address, { gasPrice });
   console.log("Upgrade:", `https://etherscan.io/tx/${trx.hash}`);
@@ -107,6 +115,16 @@ async function main(argv) {
   trx = await managerV2.setMetaPoolToken(mAPTAddress, { gasPrice });
   console.log("Set mAPT address:", `https://etherscan.io/tx/${trx.hash}`);
   await trx.wait();
+
+  if (["KOVAN", "MAINNET"].includes(NETWORK_NAME)) {
+    console.log("");
+    console.log("Verifying on Etherscan ...");
+    await ethers.provider.waitForTransaction(logicV2.deployTransaction.hash, 5); // wait for Etherscan to catch up
+    await hre.run("verify:verify", {
+      address: logicV2.address,
+    });
+    console.log("");
+  }
 }
 
 if (!module.parent) {
