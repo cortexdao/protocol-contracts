@@ -6,7 +6,7 @@ const { argv } = require("yargs").option("gasPrice", {
 const hre = require("hardhat");
 const { ethers, network } = hre;
 const chalk = require("chalk");
-const { getGasPrice } = require("../../utils/helpers");
+const { getGasPrice, updateDeployJsons } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -53,6 +53,23 @@ async function main(argv) {
   await genericExecutor.deployed();
   console.log("Generic Executor", chalk.green(genericExecutor.address));
   console.log("");
+
+  const deployData = {};
+  deployData["APYGenericExecutor"] = genericExecutor.address;
+  updateDeployJsons(NETWORK_NAME, deployData);
+
+  if (["KOVAN", "MAINNET"].includes(NETWORK_NAME)) {
+    console.log("");
+    console.log("Verifying on Etherscan ...");
+    await ethers.provider.waitForTransaction(
+      genericExecutor.deployTransaction.hash,
+      5
+    ); // wait for Etherscan to catch up
+    await hre.run("verify:verify", {
+      address: genericExecutor.address,
+    });
+    console.log("");
+  }
 }
 
 if (!module.parent) {
