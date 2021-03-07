@@ -320,13 +320,19 @@ describe("Contract: APYMetaPoolToken", () => {
   });
 
   describe("getDeployedEthValue", async () => {
+    before(async () => {
+      await mApt.connect(deployer).setManagerAddress(manager.address);
+    });
+
     it("Return 0 if zero mAPT supply", async () => {
       expect(await mApt.totalSupply()).to.equal("0");
       expect(await mApt.getDeployedEthValue(FAKE_ADDRESS)).to.equal("0");
     });
 
     it("Return 0 if zero mAPT balance", async () => {
-      await mApt.testMint(FAKE_ADDRESS, tokenAmountToBigNumber(1000));
+      await mApt
+        .connect(manager)
+        .mint(FAKE_ADDRESS, tokenAmountToBigNumber(1000));
       expect(await mApt.getDeployedEthValue(ANOTHER_FAKE_ADDRESS)).to.equal(0);
     });
 
@@ -337,8 +343,8 @@ describe("Contract: APYMetaPoolToken", () => {
       const totalSupply = balance.add(anotherBalance);
 
       await mApt.setTVL(tvl);
-      await mApt.testMint(FAKE_ADDRESS, balance);
-      await mApt.testMint(ANOTHER_FAKE_ADDRESS, anotherBalance);
+      await mApt.connect(manager).mint(FAKE_ADDRESS, balance);
+      await mApt.connect(manager).mint(ANOTHER_FAKE_ADDRESS, anotherBalance);
 
       const expectedEthValue = tvl.mul(balance).div(totalSupply);
       expect(await mApt.getDeployedEthValue(FAKE_ADDRESS)).to.equal(
@@ -348,12 +354,18 @@ describe("Contract: APYMetaPoolToken", () => {
   });
 
   describe("Calculations", async () => {
+    before(async () => {
+      await mApt.connect(deployer).setManagerAddress(manager.address);
+    });
+
     it("Calculate mint amount with zero deployed TVL", async () => {
       const usdcEthPrice = tokenAmountToBigNumber("1602950450000000");
       let usdcAmount = usdc(107);
       let usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
 
-      await mApt.testMint(anotherUser.address, tokenAmountToBigNumber(100));
+      await mApt
+        .connect(manager)
+        .mint(anotherUser.address, tokenAmountToBigNumber(100));
 
       const mintAmount = await mApt.calculateMintAmount(
         usdcAmount,
@@ -390,7 +402,7 @@ describe("Contract: APYMetaPoolToken", () => {
       await mApt.setTVL(tvl);
 
       const totalSupply = tokenAmountToBigNumber(21);
-      await mApt.testMint(anotherUser.address, totalSupply);
+      await mApt.connect(manager).mint(anotherUser.address, totalSupply);
 
       let mintAmount = await mApt.calculateMintAmount(
         usdcAmount,
@@ -417,7 +429,7 @@ describe("Contract: APYMetaPoolToken", () => {
       await mApt.setTVL(tvl);
 
       const totalSupply = tokenAmountToBigNumber(21);
-      await mApt.testMint(anotherUser.address, totalSupply);
+      await mApt.connect(manager).mint(anotherUser.address, totalSupply);
 
       let poolAmount = await mApt.calculatePoolAmount(
         totalSupply,
@@ -453,7 +465,7 @@ describe("Contract: APYMetaPoolToken", () => {
       let mAptAmount = tokenAmountToBigNumber(10);
       let expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
       let expectedPoolAmount = expectedPoolValue.mul(usdc(1)).div(usdcEthPrice);
-      await mApt.testMint(anotherUser.address, totalSupply);
+      await mApt.connect(manager).mint(anotherUser.address, totalSupply);
       let poolAmount = await mApt.calculatePoolAmount(
         mAptAmount,
         usdcEthPrice,
@@ -500,6 +512,7 @@ describe("Contract: APYMetaPoolToken", () => {
       // Set the `mAPT` global to point to a deployed proxy with
       // the real logic, not the test one.
       mApt = await APYMetaPoolToken.attach(proxy.address);
+      await mApt.setManagerAddress(manager.address);
     });
 
     after(async () => {
@@ -563,22 +576,30 @@ describe("Contract: APYMetaPoolToken", () => {
       );
     });
 
-    it("getUsdTvl reverts when stale", async () => {
+    it("getUsdTvl reverts when update is too old", async () => {
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
       // setting the mock mines a block and advances time by 1 sec
-      await tvlAggMock.mock.latestRoundData.returns(
-        0,
-        ethUsdPrice,
-        0,
-        updatedAt,
-        0
-      );
+      await tvlAggMock.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
       await ethers.provider.send("evm_increaseTime", [aggStalePeriod / 2]);
       await ethers.provider.send("evm_mine");
       await expect(mApt.getUsdTvl()).to.not.be.reverted;
 
       await ethers.provider.send("evm_increaseTime", [aggStalePeriod / 2]);
       await ethers.provider.send("evm_mine");
+      await expect(mApt.getUsdTvl()).to.be.revertedWith("CHAINLINK_STALE_DATA");
+    });
+
+    it("getUsdTvl reverts when update is before last mint/burn", async () => {
+      await mApt.connect(manager).mint(deployer.address, 1);
+      const mintTime = (await ethers.provider.getBlock()).timestamp;
+      let updatedAt = mintTime + 1;
+      await tvlAggMock.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
+      await expect(mApt.getUsdTvl()).to.not.be.reverted;
+
+      await mApt.connect(manager).burn(deployer.address, 1);
+      const burnTime = (await ethers.provider.getBlock()).timestamp;
+      updatedAt = burnTime - 1;
+      await tvlAggMock.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
       await expect(mApt.getUsdTvl()).to.be.revertedWith("CHAINLINK_STALE_DATA");
     });
 
