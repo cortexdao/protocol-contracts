@@ -8,17 +8,20 @@
  *
  * $ HARDHAT_NETWORK=<network name> node run scripts/<script filename> --arg1=val1 --arg2=val2
  */
+require("dotenv").config({ path: "./alpha.env" });
 const { argv } = require("yargs").option("gasPrice", {
   type: "number",
   description: "Gas price in gwei; omitting uses EthGasStation value",
 });
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
+const assert = require("assert");
 const {
   getGasPrice,
   updateDeployJsons,
   getAggregatorAddress,
-} = require("../utils/helpers");
+  getDeployedAddress,
+} = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -28,111 +31,55 @@ async function main(argv) {
   console.log(`${NETWORK_NAME} selected`);
   console.log("");
 
-  const signers = await ethers.getSigners();
-  const deployer = await signers[0].getAddress();
-  console.log("Deployer address:", deployer);
+  const ALLOCATION_REGISTRY_MNEMONIC = process.env.ALLOCATION_REGISTRY_MNEMONIC;
+  const registryDeployer = ethers.Wallet.fromMnemonic(
+    ALLOCATION_REGISTRY_MNEMONIC
+  ).connect(ethers.provider);
+  console.log("Deployer address:", registryDeployer.address);
+  /* TESTING on localhost only
+   * need to fund as there is no ETH on Mainnet for the deployer
+   */
+  // const [funder] = await ethers.getSigners();
+  // const fundingTrx = await funder.sendTransaction({
+  //   to: mAptDeployer.address,
+  //   value: ethers.utils.parseEther("1.0"),
+  // });
+  // await fundingTrx.wait();
 
   const balance =
-    (await ethers.provider.getBalance(deployer)).toString() / 1e18;
+    (await ethers.provider.getBalance(registryDeployer.address)).toString() /
+    1e18;
   console.log("ETH balance:", balance.toString());
   console.log("");
 
   console.log("");
-  console.log("Deploying ...");
+  console.log("Registering ...");
   console.log("");
 
-  const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-  const APYMetaPoolToken = await ethers.getContractFactory("APYMetaPoolToken");
-  const APYMetaPoolTokenProxy = await ethers.getContractFactory(
-    "APYMetaPoolTokenProxy"
+  const registryAddress = getDeployedAddress(
+    "AssetAllocationRegistry",
+    NETWORK_NAME
+  );
+  const registry = await ethers.getContractAt(
+    "AssetAllocationRegistry",
+    registryAddress,
+    registryDeployer
   );
 
-  let deploy_data = {};
-
-  let gasPrice = await getGasPrice(argv.gasPrice);
-  const proxyAdmin = await ProxyAdmin.deploy({ gasPrice });
-  await proxyAdmin.deployed();
-  deploy_data["APYMetaPoolTokenProxyAdmin"] = proxyAdmin.address;
-  console.log(`ProxyAdmin: ${proxyAdmin.address}`);
-  console.log(
-    "Etherscan:",
-    `https://etherscan.io/tx/${proxyAdmin.deployTransaction.hash}`
-  );
-  console.log("");
-
-  gasPrice = await getGasPrice(argv.gasPrice);
-  const logic = await APYMetaPoolToken.deploy({ gasPrice });
-  await logic.deployed();
-  deploy_data["APYMetaPoolToken"] = logic.address;
-  console.log(`Implementation Logic: ${logic.address}`);
-  console.log(
-    "Etherscan:",
-    `https://etherscan.io/tx/${logic.deployTransaction.hash}`
-  );
-  console.log("");
-
-  const tvlAggAddress = getAggregatorAddress("TVL", NETWORK_NAME);
-  const ethUsdAggAddress = getAggregatorAddress("ETH-USD", NETWORK_NAME);
-  const aggStalePeriod = 14400;
-  gasPrice = await getGasPrice(argv.gasPrice);
-  const proxy = await APYMetaPoolTokenProxy.deploy(
-    logic.address,
-    proxyAdmin.address,
-    tvlAggAddress,
-    ethUsdAggAddress,
-    aggStalePeriod,
-    { gasPrice }
-  );
-  await proxy.deployed();
-  deploy_data["APYMetaPoolTokenProxy"] = proxy.address;
-  console.log(`Proxy: ${proxy.address}`);
-  console.log(
-    "Etherscan:",
-    `https://etherscan.io/tx/${proxy.deployTransaction.hash}`
-  );
-  console.log("");
-
-  console.log("");
-  console.log("ETH-USD Aggregator:", ethUsdAggAddress);
-  console.log("TVL Aggregator:", tvlAggAddress);
-  console.log("");
-  console.log("Aggregator stale period:", aggStalePeriod);
-  console.log("");
-
-  updateDeployJsons(NETWORK_NAME, deploy_data);
-
-  if (["KOVAN", "MAINNET"].includes(NETWORK_NAME)) {
-    console.log("");
-    console.log("Verifying on Etherscan ...");
-    await ethers.provider.waitForTransaction(proxy.deployTransaction.hash, 5); // wait for Etherscan to catch up
-    await hre.run("verify:verify", {
-      address: proxy.address,
-      constructorArguments: [
-        logic.address,
-        proxyAdmin.address,
-        tvlAggAddress,
-        ethUsdAggAddress,
-        aggStalePeriod.toString(),
-      ],
-      // to avoid the "More than one contract was found to match the deployed bytecode."
-      // with proxy contracts that only differ in constructors but have the same bytecode
-      contract: "contracts/APYMetaPoolTokenProxy.sol:APYMetaPoolTokenProxy",
-    });
-    await hre.run("verify:verify", {
-      address: logic.address,
-    });
-    await hre.run("verify:verify", {
-      address: proxyAdmin.address,
-    });
-    console.log("");
-  }
+  // let gasPrice = await getGasPrice(argv.gasPrice);
+  // let trx = ...
+  // console.log(
+  //   "Deploy:",
+  //   `https://etherscan.io/tx/${trx.hash}`
+  // );
+  // await trx.wait()
 }
 
 if (!module.parent) {
   main(argv)
     .then(() => {
       console.log("");
-      console.log("Deployment successful.");
+      console.log("Registration successful.");
       console.log("");
       process.exit(0);
     })
