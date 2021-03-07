@@ -41,62 +41,21 @@ async function main(argv) {
   console.log("Deploying ...");
   console.log("");
 
-  const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-  const APYMetaPoolToken = await ethers.getContractFactory("APYMetaPoolToken");
-  const APYMetaPoolTokenProxy = await ethers.getContractFactory(
-    "APYMetaPoolTokenProxy"
+  const AssetAllocationRegistry = await ethers.getContractFactory(
+    "AssetAllocationRegistry"
   );
 
   let deploy_data = {};
 
   let gasPrice = await getGasPrice(argv.gasPrice);
-  const proxyAdmin = await ProxyAdmin.deploy({ gasPrice });
-  await proxyAdmin.deployed();
-  deploy_data["APYMetaPoolTokenProxyAdmin"] = proxyAdmin.address;
-  console.log(`ProxyAdmin: ${proxyAdmin.address}`);
+  const registry = await AssetAllocationRegistry.deploy({ gasPrice });
+  await registry.deployed();
+  deploy_data["AssetAllocationRegistry"] = registry.address;
+  console.log(`AssetAllocationRegistry: ${registry.address}`);
   console.log(
     "Etherscan:",
-    `https://etherscan.io/tx/${proxyAdmin.deployTransaction.hash}`
+    `https://etherscan.io/tx/${registry.deployTransaction.hash}`
   );
-  console.log("");
-
-  gasPrice = await getGasPrice(argv.gasPrice);
-  const logic = await APYMetaPoolToken.deploy({ gasPrice });
-  await logic.deployed();
-  deploy_data["APYMetaPoolToken"] = logic.address;
-  console.log(`Implementation Logic: ${logic.address}`);
-  console.log(
-    "Etherscan:",
-    `https://etherscan.io/tx/${logic.deployTransaction.hash}`
-  );
-  console.log("");
-
-  const tvlAggAddress = getAggregatorAddress("TVL", NETWORK_NAME);
-  const ethUsdAggAddress = getAggregatorAddress("ETH-USD", NETWORK_NAME);
-  const aggStalePeriod = 14400;
-  gasPrice = await getGasPrice(argv.gasPrice);
-  const proxy = await APYMetaPoolTokenProxy.deploy(
-    logic.address,
-    proxyAdmin.address,
-    tvlAggAddress,
-    ethUsdAggAddress,
-    aggStalePeriod,
-    { gasPrice }
-  );
-  await proxy.deployed();
-  deploy_data["APYMetaPoolTokenProxy"] = proxy.address;
-  console.log(`Proxy: ${proxy.address}`);
-  console.log(
-    "Etherscan:",
-    `https://etherscan.io/tx/${proxy.deployTransaction.hash}`
-  );
-  console.log("");
-
-  console.log("");
-  console.log("ETH-USD Aggregator:", ethUsdAggAddress);
-  console.log("TVL Aggregator:", tvlAggAddress);
-  console.log("");
-  console.log("Aggregator stale period:", aggStalePeriod);
   console.log("");
 
   updateDeployJsons(NETWORK_NAME, deploy_data);
@@ -109,7 +68,7 @@ async function main(argv) {
       address: proxy.address,
       constructorArguments: [
         logic.address,
-        proxyAdmin.address,
+        registry.address,
         tvlAggAddress,
         ethUsdAggAddress,
         aggStalePeriod.toString(),
@@ -122,7 +81,7 @@ async function main(argv) {
       address: logic.address,
     });
     await hre.run("verify:verify", {
-      address: proxyAdmin.address,
+      address: registry.address,
     });
     console.log("");
   }
