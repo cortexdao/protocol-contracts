@@ -25,6 +25,16 @@ async function main(argv) {
   const poolDeployer = ethers.Wallet.fromMnemonic(POOL_MNEMONIC).connect(
     ethers.provider
   );
+  console.log("Deployer address:", poolDeployer.address);
+  /* TESTING on localhost only
+   * useful if running out of ETH for deployer address
+   */
+  // const [funder] = await ethers.getSigners();
+  // const fundingTrx = await funder.sendTransaction({
+  //   to: poolDeployer.address,
+  //   value: ethers.utils.parseEther("1.0"),
+  // });
+  // await fundingTrx.wait();
 
   const balance =
     (await ethers.provider.getBalance(poolDeployer.address)).toString() / 1e18;
@@ -55,7 +65,9 @@ async function main(argv) {
     poolDeployer
   );
   let gasPrice = await getGasPrice(argv.gasPrice);
-  const logicV2 = await APYPoolTokenV2.deploy({ gasPrice });
+  const logicV2 = await APYPoolTokenV2.connect(poolDeployer).deploy({
+    gasPrice,
+  });
   console.log(
     "Etherscan:",
     `https://etherscan.io/tx/${logicV2.deployTransaction.hash}`
@@ -71,7 +83,7 @@ async function main(argv) {
   );
 
   const deployData = {};
-  for (const symbol of ["DAI", "USDC", "USDC"]) {
+  for (const symbol of ["DAI", "USDC", "USDT"]) {
     const poolAddress = getDeployedAddress(
       symbol + "_APYPoolTokenProxy",
       NETWORK_NAME
@@ -85,6 +97,7 @@ async function main(argv) {
     console.log("Etherscan:", `https://etherscan.io/tx/${trx.hash}`);
     await trx.wait();
     console.log("... pool upgraded.");
+    console.log("");
 
     deployData[symbol + "_APYPoolToken"] = logicV2.address;
   }
