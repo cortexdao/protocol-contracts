@@ -103,7 +103,10 @@ async function main(argv) {
 
   const managerAddress = getDeployedAddress("APYManagerProxy", NETWORK_NAME);
   const trx = await proxy.setManagerAddress(managerAddress);
+  console.log("Etherscan:", `https://etherscan.io/tx/${trx.hash}`);
   await trx.wait();
+  console.log("Set manager address on mAPT.");
+  console.log("");
 
   if (["KOVAN", "MAINNET"].includes(NETWORK_NAME)) {
     console.log("");
