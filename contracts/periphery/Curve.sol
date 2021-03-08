@@ -32,7 +32,7 @@ contract CurvePeriphery {
         IStableSwap stableSwap,
         ILiquidityGauge gauge,
         IERC20 lpToken,
-        uint128 coin
+        uint256 coin
     ) external view returns (uint256 balance) {
         require(address(stableSwap) != address(0), "INVALID_STABLESWAP");
         require(address(gauge) != address(0), "INVALID_GAUGE");
