@@ -5,7 +5,6 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/utils/EnumerableSet.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAddressRegistry.sol";
 import "./interfaces/IDetailedERC20.sol";
@@ -18,7 +17,6 @@ import "./Strategy.sol";
 contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
     using SafeMath for uint256;
     using SafeERC20 for IDetailedERC20;
-    using EnumerableSet for EnumerableSet.AddressSet;
 
     /* ------------------------------- */
     /* impl-specific storage variables */
