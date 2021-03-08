@@ -64,8 +64,8 @@ async function main(argv) {
     "AssetAllocationRegistry",
     registryAddress
   );
-  const registryDeployer = await impersonateAccount(await registry.owner());
-  registry = registry.connect(registryDeployer);
+  // const registryDeployer = await impersonateAccount(await registry.owner());
+  // registry = registry.connect(registryDeployer);
 
   /****************************************/
   /********** CURVE FINANCE ***************/
@@ -122,9 +122,6 @@ async function main(argv) {
   // use sequence
   // await lpToken.connect(strategy).approve(gauge.address, MAX_UINT256);
   // await gauge.connect(strategy)["deposit(uint256)"](gaugeLpBalance);
-
-  // expect(await lpToken.balanceOf(strategy.address)).to.equal(strategyLpBalance);
-  // expect(await gauge.balanceOf(strategy.address)).to.equal(gaugeLpBalance);
 
   const poolBalance = await stableSwap.balances(daiIndex);
   const lpTotalSupply = await lpToken.totalSupply();
