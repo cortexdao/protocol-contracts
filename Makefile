@@ -6,7 +6,10 @@ DOCKERHOST := $(shell ifconfig | grep -E "([0-9]{1,3}\.){3}[0-9]{1,3}" | grep -v
 
 # original name of repo is external-adapter-js
 CHAINLINK_REPO_FOLDER := "./chainlink-tvl-adapter"
-CHAINLINK_REPO_URL := "git@github.com:smartcontractkit/external-adapters-js.git"
+# CHAINLINK_REPO_URL := "git@github.com:smartcontractkit/external-adapters-js.git"
+# Use our own repo for testing/audit until Chainlink updates their adaptor code
+# for the new IAssetAllocation changes
+CHAINLINK_REPO_URL := "git@github.com:apy-finance/external-adapters-js.git"
 
 
 .PHONY: help
@@ -125,11 +128,14 @@ create_job:
 .PHONY: clone_chainlink_repo
 clone_chainlink_repo:
 	@if [ ! -d "$(CHAINLINK_REPO_FOLDER)" ]; then \
-    	git clone "$(CHAINLINK_REPO_URL)" "$(CHAINLINK_REPO_FOLDER)"; \
+    	  git clone "$(CHAINLINK_REPO_URL)" "$(CHAINLINK_REPO_FOLDER)"; \
+    	  cd "$(CHAINLINK_REPO_FOLDER)"; \
+	  git checkout apy-finance-audit-testing; \
+	  cd -;\
 	else \
-    	cd "$(CHAINLINK_REPO_FOLDER)"; \
-    	git pull "$(CHAINLINK_REPO_URL)"; \
-		cd -;\
+    	  cd "$(CHAINLINK_REPO_FOLDER)"; \
+    	  git pull "$(CHAINLINK_REPO_URL)"; \
+	  cd -;\
 	fi
 
 
