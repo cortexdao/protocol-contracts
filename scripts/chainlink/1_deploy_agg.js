@@ -16,6 +16,7 @@ const {
   tokenAmountToBigNumber,
   acquireToken,
 } = require("../../utils/helpers");
+const assert = require("assert");
 
 const NODE_ADDRESS = "0xAD702b65733aC8BcBA2be6d9Da94d5b7CE25C0bb";
 const LINK_ADDRESS = "0x514910771AF9Ca656af840dff83E8264EcF986CA";
@@ -29,13 +30,22 @@ async function main(argv) {
   console.log("");
   console.log(`${NETWORK_NAME} selected`);
   console.log("");
+  assert.strictEqual(
+    NETWORK_NAME,
+    "LOCALHOST",
+    "This script is for local forked mainnet testing only."
+  );
 
-  const signers = await ethers.getSigners();
-  const deployer = signers[0];
+  const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
   const nonce = await ethers.provider.getTransactionCount(deployer.address);
   console.log("Deployer nonce:", nonce);
   console.log("");
+  assert.strictEqual(
+    nonce,
+    0,
+    "Nonce must be zero as we rely on deterministic contract addresses."
+  );
 
   console.log("Deploying ...");
 

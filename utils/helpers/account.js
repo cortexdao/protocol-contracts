@@ -6,6 +6,7 @@ const { ethers } = hre;
  * @param {address|signer|contract} account - an "account-like" object
  *    with either a `getAddress` function or `address` property.
  *    Allowed to be an address string.
+ * @returns signer for unlocked account
  */
 async function impersonateAccount(account) {
   const address = await getAddress(account);
@@ -21,6 +22,8 @@ async function impersonateAccount(account) {
       params: [address],
     });
   }
+  const signer = ethers.provider.getSigner(address);
+  return signer;
 }
 
 async function getAddress(object) {
