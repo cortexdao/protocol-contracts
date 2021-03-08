@@ -120,6 +120,20 @@ async function main(argv) {
   console.log("Set mAPT address:", `https://etherscan.io/tx/${trx.hash}`);
   await trx.wait();
 
+  const allocationRegistryAddress = getDeployedAddress(
+    "AssetAllocationRegistry",
+    NETWORK_NAME
+  );
+  gasPrice = await getGasPrice(argv.gasPrice);
+  trx = await managerV2.setAssetAllocationRegistry(allocationRegistryAddress, {
+    gasPrice,
+  });
+  console.log(
+    "Set asset allocation registry address:",
+    `https://etherscan.io/tx/${trx.hash}`
+  );
+  await trx.wait();
+
   if (["KOVAN", "MAINNET"].includes(NETWORK_NAME)) {
     console.log("");
     console.log("Verifying on Etherscan ...");
