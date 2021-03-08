@@ -21,6 +21,7 @@ const {
   getGasPrice,
   updateDeployJsons,
   getDeployedAddress,
+  bytes32,
 } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
@@ -37,14 +38,14 @@ async function main(argv) {
   ).connect(ethers.provider);
   console.log("Deployer address:", registryDeployer.address);
   /* TESTING on localhost only
-   * need to fund as there is no ETH on Mainnet for the deployer
+   * may need to fund if ETH runs out while testing
    */
-  const [funder] = await ethers.getSigners();
-  const fundingTrx = await funder.sendTransaction({
-    to: registryDeployer.address,
-    value: ethers.utils.parseEther("1.0"),
-  });
-  await fundingTrx.wait();
+  // const [funder] = await ethers.getSigners();
+  // const fundingTrx = await funder.sendTransaction({
+  //   to: registryDeployer.address,
+  //   value: ethers.utils.parseEther("1.0"),
+  // });
+  // await fundingTrx.wait();
 
   const balance =
     (await ethers.provider.getBalance(registryDeployer.address)).toString() /
@@ -79,6 +80,36 @@ async function main(argv) {
     AssetAllocationRegistry: registry.address,
   };
   updateDeployJsons(NETWORK_NAME, deploy_data);
+
+  console.log("");
+  console.log("Register address for chainlink registry ...");
+  console.log("");
+  const addressRegistryAddress = getDeployedAddress(
+    "APYAddressRegistryProxy",
+    NETWORK_NAME
+  );
+  console.log("Address registry:", addressRegistryAddress);
+  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
+  const addressRegistryDeployer = ethers.Wallet.fromMnemonic(
+    ADDRESS_REGISTRY_MNEMONIC
+  ).connect(ethers.provider);
+  const addressRegistry = await ethers.getContractAt(
+    "APYAddressRegistry",
+    addressRegistryAddress,
+    addressRegistryDeployer
+  );
+  const trx = await addressRegistry.registerAddress(
+    bytes32("chainlinkRegistry"),
+    registry.address
+  );
+  console.log("Deploy:", `https://etherscan.io/tx/${trx.hash}`);
+  await trx.wait();
+  assert.strictEqual(
+    await addressRegistry.chainlinkRegistryAddress(),
+    registry.address,
+    "Chainlink registry address is not registered correctly."
+  );
+  console.log("... done.");
 
   if (["KOVAN", "MAINNET"].includes(NETWORK_NAME)) {
     console.log("");
