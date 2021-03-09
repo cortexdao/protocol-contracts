@@ -138,10 +138,10 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
                 );
             IDetailedERC20 underlyer = pool.underlyer();
 
-            uint256 tokenEthPrice = pool.getTokenEthPrice();
+            uint256 tokenPrice = pool.getUnderlyerPrice();
             uint8 decimals = underlyer.decimals();
             uint256 mintAmount =
-                mApt.calculateMintAmount(poolAmount, tokenEthPrice, decimals);
+                mApt.calculateMintAmount(poolAmount, tokenPrice, decimals);
             mintAmounts[i] = mintAmount;
 
             underlyer.safeTransferFrom(address(pool), strategy, poolAmount);
@@ -174,10 +174,10 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
             IDetailedERC20 underlyer = pool.underlyer();
             uint256 amountToSend = allocation.amounts[i];
 
-            uint256 tokenEthPrice = pool.getTokenEthPrice();
+            uint256 tokenPrice = pool.getUnderlyerPrice();
             uint8 decimals = underlyer.decimals();
             uint256 burnAmount =
-                mApt.calculateMintAmount(amountToSend, tokenEthPrice, decimals);
+                mApt.calculateMintAmount(amountToSend, tokenPrice, decimals);
             burnAmounts[i] = burnAmount;
 
             underlyer.safeTransferFrom(strategy, address(pool), amountToSend);

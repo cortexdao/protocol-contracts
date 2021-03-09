@@ -28,7 +28,6 @@ contract APYMetaPoolToken is
     address public proxyAdmin;
     address public manager;
     AggregatorV3Interface public tvlAgg;
-    AggregatorV3Interface public ethUsdAgg;
     uint256 public aggStalePeriod;
     uint256 public lastMintOrBurn;
 
@@ -39,17 +38,14 @@ contract APYMetaPoolToken is
     event AdminChanged(address);
     event ManagerChanged(address);
     event TvlAggregatorChanged(address agg);
-    event EthUsdAggregatorChanged(address agg);
 
     function initialize(
         address adminAddress,
         address _tvlAgg,
-        address _ethUsdAgg,
         uint256 _aggStalePeriod
     ) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");
         require(_tvlAgg != address(0), "INVALID_AGG");
-        require(_ethUsdAgg != address(0), "INVALID_AGG");
 
         // initialize ancestor storage
         __Context_init_unchained();
@@ -61,7 +57,6 @@ contract APYMetaPoolToken is
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
         setTvlAggregator(_tvlAgg);
-        setEthUsdAggregator(_ethUsdAgg);
         setAggStalePeriod(_aggStalePeriod);
     }
 
@@ -78,12 +73,6 @@ contract APYMetaPoolToken is
         require(_tvlAgg != address(0), "INVALID_AGG");
         tvlAgg = AggregatorV3Interface(_tvlAgg);
         emit TvlAggregatorChanged(_tvlAgg);
-    }
-
-    function setEthUsdAggregator(address _ethUsdAgg) public onlyOwner {
-        require(_ethUsdAgg != address(0), "INVALID_AGG");
-        ethUsdAgg = AggregatorV3Interface(_ethUsdAgg);
-        emit EthUsdAggregatorChanged(_ethUsdAgg);
     }
 
     function setAggStalePeriod(uint256 _aggStalePeriod) public onlyOwner {
@@ -124,43 +113,23 @@ contract APYMetaPoolToken is
     }
 
     /**
-     * @notice Get the ETH value of all assets being managed by the APYManager,
+     * @notice Get the USD value of all assets being managed by the APYManager,
      *         i.e. the "deployed capital".  This is the same as the total value
      *         represented by the total mAPT supply.
-     * @return uint256 the ETH value of the deployed capital
-     * @dev Chainlink's aggregator will return USD value but for compatibility
-     *      with the stablecoin pools, we return the value in ETH value.
+     *
+     * @dev Chainlink nodes read from the AssetAllocationRegistry, pull the
+     *      prices from market feeds, and submits the calculated total value
+     *      to an aggregator contract.
+     *
+     *      USD prices have 8 decimals.
+     *
+     * @return the USD value of the deployed capital
      */
     function getTVL() public view virtual returns (uint256) {
-        uint256 usdTvl = getUsdTvl();
-        uint256 ethUsdPrice = getEthUsdPrice();
-        return uint256(usdTvl).mul(10**18).div(ethUsdPrice);
-    }
-
-    /**
-     * @notice Get the latest TVL in USD from the Chainlink adapter.
-     * @dev USD prices have 8 decimals.
-     * @return uint256 deployed TVL value in USD
-     */
-    function getUsdTvl() public view returns (uint256) {
         // possible revert with "No data present" but this can
         // only happen if there has never been a successful round.
         (, int256 answer, , uint256 updatedAt, ) = tvlAgg.latestRoundData();
         require(answer >= 0, "CHAINLINK_INVALID_ANSWER");
-        validateNotStale(updatedAt);
-        return uint256(answer);
-    }
-
-    /**
-     * @notice Get the price for 1 ETH in USD from the Chainlink adapter.
-     * @dev USD prices have 8 decimals.
-     * @return uint256 ETH price in USD
-     */
-    function getEthUsdPrice() public view returns (uint256) {
-        // possible revert with "No data present" but this can
-        // only happen if there has never been a successful round.
-        (, int256 answer, , uint256 updatedAt, ) = ethUsdAgg.latestRoundData();
-        require(answer > 0, "CHAINLINK_INVALID_ANSWER");
         validateNotStale(updatedAt);
         return uint256(answer);
     }
@@ -188,7 +157,7 @@ contract APYMetaPoolToken is
 
     /** @notice Calculate mAPT amount to be minted for given pool's underlyer amount.
      *  @param depositAmount Pool underlyer amount to be converted
-     *  @param tokenEthPrice Pool underlyer's ETH price (in wei) per underlyer token
+     *  @param tokenPrice Pool underlyer's USD price (in wei) per underlyer token
      *  @param decimals Pool underlyer's number of decimals
      *  @dev Price parameter is in units of wei per token ("big" unit), since
      *       attempting to express wei per token bit ("small" unit) will be
@@ -198,21 +167,25 @@ contract APYMetaPoolToken is
      */
     function calculateMintAmount(
         uint256 depositAmount,
-        uint256 tokenEthPrice,
+        uint256 tokenPrice,
         uint256 decimals
     ) public view returns (uint256) {
         uint256 depositValue =
-            (depositAmount.mul(tokenEthPrice)).div(10**decimals);
+            (depositAmount.mul(tokenPrice)).div(10**decimals);
         uint256 totalValue = getTVL();
         return _calculateMintAmount(depositValue, totalValue);
     }
 
     /**
-     *  @notice amount of mAPT minted should be in same ratio to mAPT supply
-     *          as token amount sent is to contract's token balance, i.e.:
+     *  @dev amount of APT minted should be in same ratio to APT supply
+     *       as deposit value is to pool's total value, i.e.:
      *
-     *          mint amount / total supply (before deposit)
-     *          = token amount sent / contract token balance (before deposit)
+     *       mint amount / total supply
+     *       = deposit value / pool total value
+     *
+     *       For denominators, pre or post-deposit amounts can be used.
+     *       The important thing is they are consistent, i.e. both pre-deposit
+     *       or both post-deposit.
      */
     function _calculateMintAmount(uint256 depositValue, uint256 totalValue)
         internal
@@ -230,7 +203,7 @@ contract APYMetaPoolToken is
 
     /** @notice Calculate amount in pool's underlyer token from given mAPT amount.
      *  @param mAptAmount mAPT amount to be converted
-     *  @param tokenEthPrice Pool underlyer's ETH price (in wei) per underlyer token
+     *  @param tokenPrice Pool underlyer's USD price (in wei) per underlyer token
      *  @param decimals Pool underlyer's number of decimals
      *  @dev Price parameter is in units of wei per token ("big" unit), since
      *       attempting to express wei per token bit ("small" unit) will be
@@ -240,23 +213,22 @@ contract APYMetaPoolToken is
      */
     function calculatePoolAmount(
         uint256 mAptAmount,
-        uint256 tokenEthPrice,
+        uint256 tokenPrice,
         uint256 decimals
     ) public view returns (uint256) {
         if (mAptAmount == 0) return 0;
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        uint256 poolEthValue = (mAptAmount.mul(getTVL())).div(totalSupply());
-        uint256 poolAmount =
-            (poolEthValue.mul(10**decimals)).div(tokenEthPrice);
+        uint256 poolValue = (mAptAmount.mul(getTVL())).div(totalSupply());
+        uint256 poolAmount = (poolValue.mul(10**decimals)).div(tokenPrice);
         return poolAmount;
     }
 
     /**
-     * @notice Get the ETH-denominated value (in wei) of the pool's share
+     * @notice Get the USD-denominated value (in wei) of the pool's share
      *         of the deployed capital, as tracked by the mAPT token.
      * @return uint256
      */
-    function getDeployedEthValue(address pool) public view returns (uint256) {
+    function getDeployedValue(address pool) public view returns (uint256) {
         uint256 balance = balanceOf(pool);
         uint256 totalSupply = totalSupply();
         if (totalSupply == 0 || balance == 0) return 0;
