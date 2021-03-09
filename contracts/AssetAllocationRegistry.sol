@@ -19,6 +19,7 @@ contract AssetAllocationRegistry is
     EnumerableSet.Bytes32Set private _allocationIds;
     mapping(bytes32 => Data) private _allocationData;
     mapping(bytes32 => string) private _allocationSymbols;
+    mapping(bytes32 => uint256) private _allocationDecimals;
 
     event ManagerChanged(address);
 
@@ -151,6 +152,20 @@ contract AssetAllocationRegistry is
         returns (string memory)
     {
         return _allocationSymbols[allocationId];
+    }
+
+    /**
+     * @notice Returns the decimals of the token represented by the identifier.
+     * @param allocationId Identifier for a token placed in the system
+     * @return The token decimals
+     */
+    function decimalsOf(bytes32 allocationId)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        return _allocationDecimals[allocationId];
     }
 
     function executeView(Data memory data)
