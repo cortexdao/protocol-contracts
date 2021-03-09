@@ -302,7 +302,22 @@ contract APYPoolTokenV2 is
         if (aptAmount == 0) {
             return 0;
         }
-        return getUnderlyerAmountFromValue(getAPTValue(aptAmount));
+        require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
+        // the below is mathematically equivalent to:
+        //
+        // getUnderlyerAmountFromValue(getAPTValue(aptAmount));
+        //
+        // but composing the two functions leads to early loss
+        // of precision from division, so it's better to do it
+        // this way:
+        uint256 underlyerPrice = getUnderlyerPrice();
+        uint256 decimals = underlyer.decimals();
+        return
+            aptAmount
+                .mul(getPoolTotalValue())
+                .mul(10**decimals)
+                .div(totalSupply())
+                .div(underlyerPrice);
     }
 
     /**

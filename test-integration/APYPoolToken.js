@@ -895,7 +895,7 @@ describe("Contract: APYPoolToken", () => {
               const underlyerAmount = await poolToken.getUnderlyerAmount(
                 mintAmount
               );
-              expect(underlyerAmount).to.not.equal(depositAmount);
+              expect(underlyerAmount).to.be.lt(depositAmount);
               const tolerance = Math.ceil((await underlyer.decimals()) / 4);
               const allowedDeviation = tokenAmountToBigNumber(5, tolerance);
               expect(Math.abs(underlyerAmount.sub(depositAmount))).to.be.lt(
