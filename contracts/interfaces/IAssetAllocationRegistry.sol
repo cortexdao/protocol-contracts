@@ -20,13 +20,15 @@ interface IAssetAllocationRegistry {
     struct AssetAllocation {
         bytes32 sequenceId;
         string symbol;
+        uint256 decimals;
         Data data;
     }
 
     function addAssetAllocation(
         bytes32 allocationId,
         Data calldata data,
-        string calldata symbol
+        string calldata symbol,
+        uint256 decimals
     ) external;
 
     function removeAssetAllocation(bytes32 allocationId) external;

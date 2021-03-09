@@ -49,11 +49,13 @@ contract AssetAllocationRegistry is
     function addAssetAllocation(
         bytes32 allocationId,
         Data memory data,
-        string calldata symbol
+        string calldata symbol,
+        uint256 decimals
     ) external override onlyPermissioned {
         _allocationIds.add(allocationId);
-        _allocationSymbols[allocationId] = symbol;
         _allocationData[allocationId] = data;
+        _allocationSymbols[allocationId] = symbol;
+        _allocationDecimals[allocationId] = decimals;
     }
 
     /**
@@ -65,9 +67,10 @@ contract AssetAllocationRegistry is
         override
         onlyPermissioned
     {
+        _allocationIds.remove(allocationId);
         delete _allocationData[allocationId];
         delete _allocationSymbols[allocationId];
-        _allocationIds.remove(allocationId);
+        delete _allocationDecimals[allocationId];
     }
 
     /**
