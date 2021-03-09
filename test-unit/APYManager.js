@@ -8,6 +8,7 @@ const {
   expectEventInTransaction,
   ANOTHER_FAKE_ADDRESS,
 } = require("../utils/helpers");
+const { deployMockContract } = require("@ethereum-waffle/mock-contract");
 const erc20Interface = new ethers.utils.Interface(
   artifacts.require("ERC20").abi
 );
@@ -74,18 +75,19 @@ describe("Contract: APYManager", () => {
     );
     await proxy.deployed();
 
-    await proxyAdmin.upgrade(proxy.address, logicV2.address);
-    manager = await APYManagerV2.attach(proxy.address);
-  });
+    manager = await APYManager.attach(proxy.address);
+    const addressRegistryMock = await deployMockContract(deployer, []);
+    await manager.setAddressRegistry(addressRegistryMock.address);
 
-  describe("Test initialization", () => {
-    it("Cannot initialize with zero address", async () => {
-      let tempManager = await APYManager.deploy();
-      await tempManager.deployed();
-      await expect(tempManager.initialize(ZERO_ADDRESS)).to.be.revertedWith(
-        "INVALID_ADMIN"
-      );
-    });
+    const mAptMock = await deployMockContract(deployer, []);
+    const allocationRegistryMock = await deployMockContract(deployer, []);
+    const initData = APYManagerV2.interface.encodeFunctionData(
+      "initializeUpgrade(address,address)",
+      [mAptMock.address, allocationRegistryMock.address]
+    );
+    await proxyAdmin.upgradeAndCall(proxy.address, logicV2.address, initData);
+
+    manager = await APYManagerV2.attach(proxy.address);
   });
 
   describe("Defaults", () => {
@@ -102,8 +104,9 @@ describe("Contract: APYManager", () => {
     });
 
     it("Owner can set", async () => {
-      await manager.connect(deployer).setMetaPoolToken(FAKE_ADDRESS);
-      expect(await manager.mApt()).to.equal(FAKE_ADDRESS);
+      const contract = await deployMockContract(deployer, []);
+      await manager.connect(deployer).setMetaPoolToken(contract.address);
+      expect(await manager.mApt()).to.equal(contract.address);
     });
   });
 
@@ -111,7 +114,7 @@ describe("Contract: APYManager", () => {
     it("Cannot set to zero address", async () => {
       await expect(
         manager.connect(deployer).setAddressRegistry(ZERO_ADDRESS)
-      ).to.be.revertedWith("Invalid address");
+      ).to.be.revertedWith("INVALID_ADDRESS");
     });
 
     it("Non-owner cannot set", async () => {
@@ -121,8 +124,9 @@ describe("Contract: APYManager", () => {
     });
 
     it("Owner can set", async () => {
-      await manager.connect(deployer).setAddressRegistry(FAKE_ADDRESS);
-      expect(await manager.addressRegistry()).to.equal(FAKE_ADDRESS);
+      const contract = await deployMockContract(deployer, []);
+      await manager.connect(deployer).setAddressRegistry(contract.address);
+      expect(await manager.addressRegistry()).to.equal(contract.address);
     });
   });
 
@@ -130,7 +134,7 @@ describe("Contract: APYManager", () => {
     it("Cannot set to zero address", async () => {
       await expect(
         manager.connect(deployer).setAssetAllocationRegistry(ZERO_ADDRESS)
-      ).to.be.revertedWith("Invalid address");
+      ).to.be.revertedWith("INVALID_ADDRESS");
     });
 
     it("Non-owner cannot set", async () => {
@@ -140,8 +144,13 @@ describe("Contract: APYManager", () => {
     });
 
     it("Owner can set", async () => {
-      await manager.connect(deployer).setAssetAllocationRegistry(FAKE_ADDRESS);
-      expect(await manager.assetAllocationRegistry()).to.equal(FAKE_ADDRESS);
+      const contract = await deployMockContract(deployer, []);
+      await manager
+        .connect(deployer)
+        .setAssetAllocationRegistry(contract.address);
+      expect(await manager.assetAllocationRegistry()).to.equal(
+        contract.address
+      );
     });
   });
 
@@ -216,7 +225,7 @@ describe("Contract: APYManager", () => {
       it("Revert on invalid strategy", async () => {
         await expect(
           manager.connect(deployer).fundStrategy(FAKE_ADDRESS, [[], []], [])
-        ).to.be.revertedWith("Invalid Strategy");
+        ).to.be.revertedWith("INVALID_STRATEGY");
       });
 
       it("Owner can call", async () => {
@@ -240,7 +249,7 @@ describe("Contract: APYManager", () => {
           manager
             .connect(deployer)
             .fundAndExecute(FAKE_ADDRESS, [[], []], [], [])
-        ).to.be.revertedWith("Invalid Strategy");
+        ).to.be.revertedWith("INVALID_STRATEGY");
       });
 
       it("Owner can call", async () => {
@@ -296,7 +305,7 @@ describe("Contract: APYManager", () => {
           manager
             .connect(deployer)
             .executeAndWithdraw(FAKE_ADDRESS, [[], []], [], [])
-        ).to.be.revertedWith("Invalid Strategy");
+        ).to.be.revertedWith("INVALID_STRATEGY");
       });
 
       it("Owner can call", async () => {
@@ -320,7 +329,7 @@ describe("Contract: APYManager", () => {
       it("Revert on invalid strategy", async () => {
         await expect(
           manager.connect(deployer).withdrawFromStrategy(FAKE_ADDRESS, [[], []])
-        ).to.be.revertedWith("Invalid Strategy");
+        ).to.be.revertedWith("INVALID_STRATEGY");
       });
 
       it("Owner can call", async () => {
