@@ -348,7 +348,7 @@ contract APYPoolTokenV2 is
 
     function getAPTValue(uint256 amount) public view returns (uint256) {
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        return (amount.mul(getPoolTotalValue())).div(totalSupply());
+        return amount.mul(getPoolTotalValue()).div(totalSupply());
     }
 
     function getValueFromUnderlyerAmount(uint256 amount)
@@ -370,7 +370,7 @@ contract APYPoolTokenV2 is
     {
         uint256 underlyerPrice = getUnderlyerPrice();
         uint256 decimals = underlyer.decimals();
-        return ((10**decimals).mul(value)).div(underlyerPrice);
+        return (10**decimals).mul(value).div(underlyerPrice);
     }
 
     function getUnderlyerPrice() public view returns (uint256) {

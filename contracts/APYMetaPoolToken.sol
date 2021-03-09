@@ -170,8 +170,7 @@ contract APYMetaPoolToken is
         uint256 tokenPrice,
         uint256 decimals
     ) public view returns (uint256) {
-        uint256 depositValue =
-            (depositAmount.mul(tokenPrice)).div(10**decimals);
+        uint256 depositValue = depositAmount.mul(tokenPrice).div(10**decimals);
         uint256 totalValue = getTVL();
         return _calculateMintAmount(depositValue, totalValue);
     }
@@ -198,7 +197,7 @@ contract APYMetaPoolToken is
             return depositValue.mul(DEFAULT_MAPT_TO_UNDERLYER_FACTOR);
         }
 
-        return (depositValue.mul(totalSupply)).div(totalValue);
+        return depositValue.mul(totalSupply).div(totalValue);
     }
 
     /** @notice Calculate amount in pool's underlyer token from given mAPT amount.
@@ -218,8 +217,8 @@ contract APYMetaPoolToken is
     ) public view returns (uint256) {
         if (mAptAmount == 0) return 0;
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        uint256 poolValue = (mAptAmount.mul(getTVL())).div(totalSupply());
-        uint256 poolAmount = (poolValue.mul(10**decimals)).div(tokenPrice);
+        uint256 poolValue = mAptAmount.mul(getTVL()).div(totalSupply());
+        uint256 poolAmount = poolValue.mul(10**decimals).div(tokenPrice);
         return poolAmount;
     }
 
