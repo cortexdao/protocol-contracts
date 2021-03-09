@@ -33,13 +33,11 @@ contract("APYMetaPoolTokenProxy", async (accounts) => {
     proxyAdmin = await ProxyAdmin.new({ from: deployer });
     logic = await APYMetaPoolToken.new({ from: deployer });
     const fakeTvlAggAddress = FAKE_ADDRESS;
-    const fakeEthUsdAggAddress = FAKE_ADDRESS;
     const aggStalePeriod = 120;
     proxy = await APYMetaPoolTokenProxy.new(
       logic.address,
       proxyAdmin.address,
       fakeTvlAggAddress,
-      fakeEthUsdAggAddress,
       aggStalePeriod,
       {
         from: deployer,

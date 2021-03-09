@@ -275,21 +275,21 @@ describe("Contract: APYMetaPoolToken", () => {
     });
   });
 
-  describe("getDeployedEthValue", async () => {
+  describe("getDeployedValue", async () => {
     before(async () => {
       await mApt.connect(deployer).setManagerAddress(manager.address);
     });
 
     it("Return 0 if zero mAPT supply", async () => {
       expect(await mApt.totalSupply()).to.equal("0");
-      expect(await mApt.getDeployedEthValue(FAKE_ADDRESS)).to.equal("0");
+      expect(await mApt.getDeployedValue(FAKE_ADDRESS)).to.equal("0");
     });
 
     it("Return 0 if zero mAPT balance", async () => {
       await mApt
         .connect(manager)
         .mint(FAKE_ADDRESS, tokenAmountToBigNumber(1000));
-      expect(await mApt.getDeployedEthValue(ANOTHER_FAKE_ADDRESS)).to.equal(0);
+      expect(await mApt.getDeployedValue(ANOTHER_FAKE_ADDRESS)).to.equal(0);
     });
 
     it("Returns calculated value for non-zero mAPT balance", async () => {
@@ -302,10 +302,8 @@ describe("Contract: APYMetaPoolToken", () => {
       await mApt.connect(manager).mint(FAKE_ADDRESS, balance);
       await mApt.connect(manager).mint(ANOTHER_FAKE_ADDRESS, anotherBalance);
 
-      const expectedEthValue = tvl.mul(balance).div(totalSupply);
-      expect(await mApt.getDeployedEthValue(FAKE_ADDRESS)).to.equal(
-        expectedEthValue
-      );
+      const expectedValue = tvl.mul(balance).div(totalSupply);
+      expect(await mApt.getDeployedValue(FAKE_ADDRESS)).to.equal(expectedValue);
     });
   });
 
@@ -475,7 +473,7 @@ describe("Contract: APYMetaPoolToken", () => {
       mApt = await APYMetaPoolToken.attach(proxy.address);
     });
 
-    it("getTvl reverts on negative answer", async () => {
+    it("getTVL reverts on negative answer", async () => {
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
       const invalidPrice = -1;
       // setting the mock mines a block and advances time by 1 sec
@@ -487,36 +485,36 @@ describe("Contract: APYMetaPoolToken", () => {
         0
       );
 
-      await expect(mApt.getTvl()).to.be.revertedWith(
+      await expect(mApt.getTVL()).to.be.revertedWith(
         "CHAINLINK_INVALID_ANSWER"
       );
     });
 
-    it("getTvl reverts when update is too old", async () => {
+    it("getTVL reverts when update is too old", async () => {
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
       // setting the mock mines a block and advances time by 1 sec
       await tvlAggMock.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
       await ethers.provider.send("evm_increaseTime", [aggStalePeriod / 2]);
       await ethers.provider.send("evm_mine");
-      await expect(mApt.getTvl()).to.not.be.reverted;
+      await expect(mApt.getTVL()).to.not.be.reverted;
 
       await ethers.provider.send("evm_increaseTime", [aggStalePeriod / 2]);
       await ethers.provider.send("evm_mine");
-      await expect(mApt.getTvl()).to.be.revertedWith("CHAINLINK_STALE_DATA");
+      await expect(mApt.getTVL()).to.be.revertedWith("CHAINLINK_STALE_DATA");
     });
 
-    it("getTvl reverts when update is before last mint/burn", async () => {
+    it("getTVL reverts when update is before last mint/burn", async () => {
       await mApt.connect(manager).mint(deployer.address, 1);
       const mintTime = (await ethers.provider.getBlock()).timestamp;
       let updatedAt = mintTime + 1;
       await tvlAggMock.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
-      await expect(mApt.getTvl()).to.not.be.reverted;
+      await expect(mApt.getTVL()).to.not.be.reverted;
 
       await mApt.connect(manager).burn(deployer.address, 1);
       const burnTime = (await ethers.provider.getBlock()).timestamp;
       updatedAt = burnTime - 1;
       await tvlAggMock.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
-      await expect(mApt.getTvl()).to.be.revertedWith("CHAINLINK_STALE_DATA");
+      await expect(mApt.getTVL()).to.be.revertedWith("CHAINLINK_STALE_DATA");
     });
   });
 });
