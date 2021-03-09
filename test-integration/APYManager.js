@@ -234,7 +234,6 @@ describe("Contract: APYManager", () => {
     as we may add checks for contract addresses in the future.
     */
     const tvlAgg = await deployMockContract(deployer, []);
-    const ethUsdAgg = await deployMockContract(deployer, []);
 
     const APYMetaPoolTokenProxy = await ethers.getContractFactory(
       "APYMetaPoolTokenProxy"
@@ -256,7 +255,6 @@ describe("Contract: APYManager", () => {
       logic.address,
       proxyAdmin.address,
       tvlAgg.address,
-      ethUsdAgg.address,
       aggStalePeriod
     );
     await proxy.deployed();
@@ -319,13 +317,13 @@ describe("Contract: APYManager", () => {
   });
 
   async function getMintAmount(pool, underlyerAmount) {
-    const tokenEthPrice = await pool.getTokenEthPrice();
+    const tokenPrice = await pool.getUnderlyerPrice();
     const underlyer = await pool.underlyer();
     const erc20 = await ethers.getContractAt(IDetailedERC20.abi, underlyer);
     const decimals = await erc20.decimals();
     const mintAmount = await mApt.calculateMintAmount(
       underlyerAmount,
-      tokenEthPrice,
+      tokenPrice,
       decimals
     );
     return mintAmount;
@@ -876,9 +874,13 @@ describe("Contract: APYManager", () => {
         await usdcToken.connect(funder).transfer(strategyAddress, usdcAmount);
         await usdtToken.connect(funder).transfer(strategyAddress, usdtAmount);
         // also adjust the TVL appropriately, as there is no Chainlink to update it
-        const daiValue = await daiPool.getEthValueFromTokenAmount(daiAmount);
-        const usdcValue = await usdcPool.getEthValueFromTokenAmount(usdcAmount);
-        const usdtValue = await usdtPool.getEthValueFromTokenAmount(usdtAmount);
+        const daiValue = await daiPool.getValueFromUnderlyerAmount(daiAmount);
+        const usdcValue = await usdcPool.getValueFromUnderlyerAmount(
+          usdcAmount
+        );
+        const usdtValue = await usdtPool.getValueFromUnderlyerAmount(
+          usdtAmount
+        );
         const newTvl = daiValue.add(usdcValue).add(usdtValue);
         await mApt.setTVL(newTvl);
 
@@ -950,9 +952,13 @@ describe("Contract: APYManager", () => {
         await usdcToken.connect(funder).transfer(strategyAddress, usdcAmount);
         await usdtToken.connect(funder).transfer(strategyAddress, usdtAmount);
         // also adjust the TVL appropriately, as there is no Chainlink to update it
-        const daiValue = await daiPool.getEthValueFromTokenAmount(daiAmount);
-        const usdcValue = await usdcPool.getEthValueFromTokenAmount(usdcAmount);
-        const usdtValue = await usdtPool.getEthValueFromTokenAmount(usdtAmount);
+        const daiValue = await daiPool.getValueFromUnderlyerAmount(daiAmount);
+        const usdcValue = await usdcPool.getValueFromUnderlyerAmount(
+          usdcAmount
+        );
+        const usdtValue = await usdtPool.getValueFromUnderlyerAmount(
+          usdtAmount
+        );
         const newTvl = tvl.add(daiValue).add(usdcValue).add(usdtValue);
         await mApt.setTVL(newTvl);
 
