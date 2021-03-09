@@ -16,7 +16,6 @@ const LINK_ADDRESS = "0x514910771AF9Ca656af840dff83E8264EcF986CA";
 // https://etherscan.io/address/0x3dfd23a6c5e8bbcfc9581d2e864a68feb6a076d3
 const WHALE_ADDRESS = "0x3dfd23A6c5E8BbcFc9581d2E864a68feb6a076d3";
 
-const ether = (amount) => tokenAmountToBigNumber(amount, "18");
 const dai = (amount) => tokenAmountToBigNumber(amount, "18");
 const link = (amount) => tokenAmountToBigNumber(amount, "18");
 const usdc = (amount) => tokenAmountToBigNumber(amount, "6");
@@ -47,7 +46,6 @@ describe("Contract: APYMetaPoolToken", () => {
   let mApt;
 
   let tvlAgg;
-  let ethUsdAgg;
   let aggStalePeriod = 14400;
 
   // use EVM snapshots for test isolation
@@ -80,21 +78,8 @@ describe("Contract: APYMetaPoolToken", () => {
       decimals: 8, // decimal offset for answer
       description: "TVL aggregator",
     };
-    const ethUsdAggConfig = {
-      paymentAmount, // payment amount (price paid for each oracle submission, in wei)
-      minSubmissionValue: 0,
-      maxSubmissionValue,
-      decimals: 8, // decimal offset for answer
-      description: "ETH-USD aggregator",
-    };
     tvlAgg = await deployAggregator(
       tvlAggConfig,
-      oracle.address,
-      deployer.address, // oracle owner
-      deployer.address // ETH funder
-    );
-    ethUsdAgg = await deployAggregator(
-      ethUsdAggConfig,
       oracle.address,
       deployer.address, // oracle owner
       deployer.address // ETH funder
@@ -114,7 +99,6 @@ describe("Contract: APYMetaPoolToken", () => {
       logic.address,
       proxyAdmin.address,
       tvlAgg.address,
-      ethUsdAgg.address,
       aggStalePeriod
     );
     await proxy.deployed();
@@ -170,19 +154,17 @@ describe("Contract: APYMetaPoolToken", () => {
     });
   });
 
-  describe("getDeployedEthValue", async () => {
+  describe("getDeployedValue", async () => {
     it("Return 0 if zero mAPT supply", async () => {
       expect(await mApt.totalSupply()).to.equal("0");
-      expect(await mApt.getDeployedEthValue(FAKE_ADDRESS)).to.equal("0");
+      expect(await mApt.getDeployedValue(FAKE_ADDRESS)).to.equal("0");
     });
 
     it("Return 0 if zero mAPT balance", async () => {
       await mApt
         .connect(manager)
         .mint(FAKE_ADDRESS, tokenAmountToBigNumber(1000));
-      expect(await mApt.getDeployedEthValue(ANOTHER_FAKE_ADDRESS)).to.equal(
-        "0"
-      );
+      expect(await mApt.getDeployedValue(ANOTHER_FAKE_ADDRESS)).to.equal("0");
     });
 
     it("Returns calculated value for non-zero mAPT balance", async () => {
@@ -194,10 +176,9 @@ describe("Contract: APYMetaPoolToken", () => {
       await mApt.connect(manager).mint(FAKE_ADDRESS, balance);
       await mApt.connect(manager).mint(ANOTHER_FAKE_ADDRESS, anotherBalance);
       await tvlAgg.connect(oracle).submit(1, tvl);
-      await ethUsdAgg.connect(oracle).submit(1, ether(1));
 
       const expectedEthValue = tvl.mul(balance).div(totalSupply);
-      expect(await mApt.getDeployedEthValue(FAKE_ADDRESS)).to.equal(
+      expect(await mApt.getDeployedValue(FAKE_ADDRESS)).to.equal(
         expectedEthValue
       );
     });
@@ -205,20 +186,19 @@ describe("Contract: APYMetaPoolToken", () => {
 
   describe("Calculations", async () => {
     it("Calculate mint amount with zero deployed TVL", async () => {
-      const usdcEthPrice = BigNumber.from("1602950450000000");
+      const usdcUsdPrice = BigNumber.from("101260000");
       let usdcAmount = usdc(107);
-      let usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
+      let usdcValue = usdcUsdPrice.mul(usdcAmount).div(usdc(1));
 
       await mApt
         .connect(manager)
         .mint(anotherUser.address, tokenAmountToBigNumber(100));
 
       await tvlAgg.connect(oracle).submit(1, 0);
-      await ethUsdAgg.connect(oracle).submit(1, 1);
 
       const mintAmount = await mApt.calculateMintAmount(
         usdcAmount,
-        usdcEthPrice,
+        usdcUsdPrice,
         "6"
       );
       const expectedMintAmount = usdcValue.mul(
@@ -228,16 +208,14 @@ describe("Contract: APYMetaPoolToken", () => {
     });
 
     it("Calculate mint amount with zero total supply", async () => {
-      const usdcEthPrice = BigNumber.from("1602950450000000");
+      const usdcUsdPrice = BigNumber.from("101260000");
       let usdcAmount = usdc(107);
-      let usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
-      // await mApt.setTVL(1);
+      let usdcValue = usdcUsdPrice.mul(usdcAmount).div(usdc(1));
       await tvlAgg.connect(oracle).submit(1, 1);
-      await ethUsdAgg.connect(oracle).submit(1, 1);
 
       const mintAmount = await mApt.calculateMintAmount(
         usdcAmount,
-        usdcEthPrice,
+        usdcUsdPrice,
         "6"
       );
       const expectedMintAmount = usdcValue.mul(
@@ -247,47 +225,44 @@ describe("Contract: APYMetaPoolToken", () => {
     });
 
     it("Calculate mint amount with non-zero total supply", async () => {
-      const usdcEthPrice = BigNumber.from("1602950450000000");
+      const usdcUsdPrice = BigNumber.from("101260000");
       let usdcAmount = usdc(107);
-      let tvl = usdcEthPrice.mul(usdcAmount).div(usdc(1));
+      let tvl = usdcUsdPrice.mul(usdcAmount).div(usdc(1));
 
       const totalSupply = tokenAmountToBigNumber(21);
       await mApt.connect(manager).mint(anotherUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
-      await ethUsdAgg.connect(oracle).submit(1, ether(1));
 
       let mintAmount = await mApt.calculateMintAmount(
         usdcAmount,
-        usdcEthPrice,
+        usdcUsdPrice,
         "6"
       );
       expect(mintAmount).to.be.equal(totalSupply);
 
-      tvl = usdcEthPrice.mul(usdcAmount.mul(2)).div(usdc(1));
+      tvl = usdcUsdPrice.mul(usdcAmount.mul(2)).div(usdc(1));
       await tvlAgg.connect(oracle).submit(2, tvl);
-      await ethUsdAgg.connect(oracle).submit(2, ether(1));
       const expectedMintAmount = totalSupply.div(2);
       mintAmount = await mApt.calculateMintAmount(
         usdcAmount,
-        usdcEthPrice,
+        usdcUsdPrice,
         "6"
       );
       expect(mintAmount).to.be.equal(expectedMintAmount);
     });
 
     it("Calculate pool amount with 1 pool", async () => {
-      const usdcEthPrice = BigNumber.from("1602950450000000");
+      const usdcUsdPrice = BigNumber.from("101260000");
       const usdcAmount = usdc(107);
-      const tvl = usdcEthPrice.mul(usdcAmount).div(usdc(1));
+      const tvl = usdcUsdPrice.mul(usdcAmount).div(usdc(1));
 
       const totalSupply = tokenAmountToBigNumber(21);
       await mApt.connect(manager).mint(anotherUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
-      await ethUsdAgg.connect(oracle).submit(1, ether(1));
 
       let poolAmount = await mApt.calculatePoolAmount(
         totalSupply,
-        usdcEthPrice,
+        usdcUsdPrice,
         "6"
       );
       expect(poolAmount).to.be.equal(usdcAmount);
@@ -296,45 +271,44 @@ describe("Contract: APYMetaPoolToken", () => {
       const expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
       const expectedPoolAmount = expectedPoolValue
         .mul(usdc(1))
-        .div(usdcEthPrice);
+        .div(usdcUsdPrice);
       poolAmount = await mApt.calculatePoolAmount(
         mAptAmount,
-        usdcEthPrice,
+        usdcUsdPrice,
         "6"
       );
       expect(poolAmount).to.be.equal(expectedPoolAmount);
     });
 
     it("Calculate pool amount with 2 pools", async () => {
-      const usdcEthPrice = BigNumber.from("1602950450000000");
-      const daiEthPrice = BigNumber.from("1603100000000000");
+      const usdcUsdPrice = BigNumber.from("101260000");
+      const daiUsdPrice = BigNumber.from("103030000");
       const usdcAmount = usdc(107);
       const daiAmount = dai(10);
-      const usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
-      const daiValue = daiEthPrice.mul(daiAmount).div(dai(1));
+      const usdcValue = usdcUsdPrice.mul(usdcAmount).div(usdc(1));
+      const daiValue = daiUsdPrice.mul(daiAmount).div(dai(1));
       const tvl = usdcValue.add(daiValue);
 
       const totalSupply = tokenAmountToBigNumber(21);
       let mAptAmount = tokenAmountToBigNumber(10);
       let expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
-      let expectedPoolAmount = expectedPoolValue.mul(usdc(1)).div(usdcEthPrice);
+      let expectedPoolAmount = expectedPoolValue.mul(usdc(1)).div(usdcUsdPrice);
       await mApt.connect(manager).mint(anotherUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
-      await ethUsdAgg.connect(oracle).submit(1, ether(1));
 
       let poolAmount = await mApt.calculatePoolAmount(
         mAptAmount,
-        usdcEthPrice,
+        usdcUsdPrice,
         "6"
       );
       expect(poolAmount).to.be.equal(expectedPoolAmount);
 
       mAptAmount = totalSupply.sub(mAptAmount);
       expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
-      expectedPoolAmount = expectedPoolValue.mul(dai(1)).div(daiEthPrice);
+      expectedPoolAmount = expectedPoolValue.mul(dai(1)).div(daiUsdPrice);
       poolAmount = await mApt.calculatePoolAmount(
         mAptAmount,
-        daiEthPrice,
+        daiUsdPrice,
         "18"
       );
       expect(poolAmount).to.be.equal(expectedPoolAmount);
