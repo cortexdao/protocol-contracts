@@ -76,10 +76,11 @@ describe("Contract: AssetAllocationRegistry", () => {
         const allocationId = bytes32("");
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
+        const decimals = 18;
         await expect(
           registry
             .connect(randomUser)
-            .addAssetAllocation(allocationId, data, symbol)
+            .addAssetAllocation(allocationId, data, symbol, decimals)
         ).to.be.revertedWith("PERMISSIONED_ONLY");
       });
 
@@ -87,10 +88,11 @@ describe("Contract: AssetAllocationRegistry", () => {
         const allocationId = bytes32("");
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
+        const decimals = 18;
         await expect(
           registry
             .connect(deployer)
-            .addAssetAllocation(allocationId, data, symbol)
+            .addAssetAllocation(allocationId, data, symbol, decimals)
         ).to.not.be.reverted;
       });
 
@@ -98,10 +100,11 @@ describe("Contract: AssetAllocationRegistry", () => {
         const allocationId = bytes32("");
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
+        const decimals = 18;
         await expect(
           registry
             .connect(manager)
-            .addAssetAllocation(allocationId, data, symbol)
+            .addAssetAllocation(allocationId, data, symbol, decimals)
         ).to.not.be.reverted;
       });
     });
@@ -134,7 +137,8 @@ describe("Contract: AssetAllocationRegistry", () => {
       const allocationId_2 = bytes32("allocation 2");
       const data = [FAKE_ADDRESS, bytes32("")];
       const symbol = "FOO";
-      await registry.addAssetAllocation(allocationId_1, data, symbol);
+      const decimals = 18;
+      await registry.addAssetAllocation(allocationId_1, data, symbol, decimals);
 
       expect(await registry.isAssetAllocationRegistered(allocationId_1)).to.be
         .true;
@@ -147,8 +151,9 @@ describe("Contract: AssetAllocationRegistry", () => {
         const allocationId = bytes32("allocation 1");
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
+        const decimals = 18;
         const allocationIds = [allocationId];
-        await registry.addAssetAllocation(allocationId, data, symbol);
+        await registry.addAssetAllocation(allocationId, data, symbol, decimals);
 
         expect(await registry.getAssetAllocationIds()).to.have.members(
           allocationIds
@@ -163,9 +168,25 @@ describe("Contract: AssetAllocationRegistry", () => {
         const allocationId_2 = bytes32("allocation 2");
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
-        await registry.addAssetAllocation(allocationId_1, data, symbol);
-        await registry.addAssetAllocation(allocationId_2, data, symbol);
-        await registry.addAssetAllocation(allocationId_1, data, symbol);
+        const decimals = 18;
+        await registry.addAssetAllocation(
+          allocationId_1,
+          data,
+          symbol,
+          decimals
+        );
+        await registry.addAssetAllocation(
+          allocationId_2,
+          data,
+          symbol,
+          decimals
+        );
+        await registry.addAssetAllocation(
+          allocationId_1,
+          data,
+          symbol,
+          decimals
+        );
 
         const expectedAssetAllocationIds = [allocationId_1, allocationId_2];
         expect(await registry.getAssetAllocationIds()).to.have.members(
@@ -182,13 +203,14 @@ describe("Contract: AssetAllocationRegistry", () => {
         const allocationId_3 = bytes32("allocation 3");
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
+        const decimals = 18;
 
         const deregisteredIds = [allocationId_1];
         const leftoverIds = [allocationId_2, allocationId_3];
         const allocationIds = deregisteredIds.concat(leftoverIds);
 
         for (const id of allocationIds) {
-          await registry.addAssetAllocation(id, data, symbol);
+          await registry.addAssetAllocation(id, data, symbol, decimals);
         }
         for (const id of deregisteredIds) {
           await registry.removeAssetAllocation(id);
@@ -208,8 +230,9 @@ describe("Contract: AssetAllocationRegistry", () => {
         const allocationId_3 = bytes32("allocation 3");
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
+        const decimals = 18;
         for (const id of [allocationId_1, allocationId_2, allocationId_3]) {
-          await registry.addAssetAllocation(id, data, symbol);
+          await registry.addAssetAllocation(id, data, symbol, decimals);
         }
 
         await registry.removeAssetAllocation(allocationId_3);
@@ -259,6 +282,7 @@ describe("Contract: AssetAllocationRegistry", () => {
     it("Call with address arg", async () => {
       const allocationId = bytes32("allocation 1");
       const symbol = "FOO";
+      const decimals = 18;
       const strategy = FAKE_ADDRESS;
       // create the step to execute
       const iface = new ethers.utils.Interface(peripheryAbi);
@@ -272,7 +296,7 @@ describe("Contract: AssetAllocationRegistry", () => {
         .withArgs(strategy)
         .returns(expectedBalance);
 
-      await registry.addAssetAllocation(allocationId, data, symbol);
+      await registry.addAssetAllocation(allocationId, data, symbol, decimals);
 
       const balance = await registry.balanceOf(allocationId);
       expect(balance).to.equal(expectedBalance);
@@ -281,6 +305,7 @@ describe("Contract: AssetAllocationRegistry", () => {
     it("Call that reverts", async () => {
       const allocationId = bytes32("allocation 1");
       const symbol = "FOO";
+      const decimals = 18;
       const invalidStrategy = FAKE_ADDRESS;
       // create the step to execute
       const iface = new ethers.utils.Interface(peripheryAbi);
@@ -291,7 +316,7 @@ describe("Contract: AssetAllocationRegistry", () => {
       // step execution will revert
       await peripheryContract.mock.balance.reverts();
 
-      await registry.addAssetAllocation(allocationId, data, symbol);
+      await registry.addAssetAllocation(allocationId, data, symbol, decimals);
 
       await expect(registry.balanceOf(allocationId)).to.be.reverted;
     });
@@ -300,8 +325,9 @@ describe("Contract: AssetAllocationRegistry", () => {
       const registeredId = bytes32("allocation 1");
       const unregisteredId = bytes32("allocation 2");
       const symbol = "FOO";
+      const decimals = 18;
       const data = [FAKE_ADDRESS, bytes32("")];
-      await registry.addAssetAllocation(registeredId, data, symbol);
+      await registry.addAssetAllocation(registeredId, data, symbol, decimals);
 
       await expect(registry.balanceOf(unregisteredId)).to.be.revertedWith(
         "INVALID_ALLOCATION_ID"
@@ -313,8 +339,19 @@ describe("Contract: AssetAllocationRegistry", () => {
     const allocationId = bytes32("allocation 1");
     const data = [FAKE_ADDRESS, bytes32("")];
     const symbol = "FOO";
-    await registry.addAssetAllocation(allocationId, data, symbol);
+    const decimals = 18;
+    await registry.addAssetAllocation(allocationId, data, symbol, decimals);
 
     expect(await registry.symbolOf(allocationId)).to.equal(symbol);
+  });
+
+  it("decimalsOf", async () => {
+    const allocationId = bytes32("allocation 1");
+    const data = [FAKE_ADDRESS, bytes32("")];
+    const symbol = "FOO";
+    const decimals = 18;
+    await registry.addAssetAllocation(allocationId, data, symbol, decimals);
+
+    expect(await registry.decimalsOf(allocationId)).to.equal(decimals);
   });
 });

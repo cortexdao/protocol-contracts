@@ -408,16 +408,19 @@ describe("Contract: APYManager", () => {
           [
             bytes32("strat1DaiBal"),
             "DAI",
+            18,
             [daiToken.address, encodedBalanceOf],
           ],
           [
             bytes32("strat1UsdcBal"),
             "USDC",
+            6,
             [usdcToken.address, encodedBalanceOf],
           ],
           [
             bytes32("strat1UsdtBal"),
             "USDT",
+            6,
             [usdtToken.address, encodedBalanceOf],
           ],
         ]
@@ -460,6 +463,19 @@ describe("Contract: APYManager", () => {
       expect(registeredDaiSymbol).to.equal("DAI");
       expect(registeredUsdcSymbol).to.equal("USDC");
       expect(registeredUsdtSymbol).to.equal("USDT");
+
+      const registeredDaiDecimals = await assetRegistry.decimalsOf(
+        registeredIds[0]
+      );
+      const registeredUsdcDecimals = await assetRegistry.decimalsOf(
+        registeredIds[1]
+      );
+      const registeredUsdtDecimals = await assetRegistry.decimalsOf(
+        registeredIds[2]
+      );
+      expect(registeredDaiDecimals).to.equal(18);
+      expect(registeredUsdcDecimals).to.equal(6);
+      expect(registeredUsdtDecimals).to.equal(6);
 
       const registeredStratDaiBal = await assetRegistry.balanceOf(
         registeredIds[0]
@@ -592,7 +608,14 @@ describe("Contract: APYManager", () => {
         strategyAddress,
         [[bytes32("daiPool")], [amount]],
         [[daiToken.address, encodedApprove]],
-        [[bytes32("strat1DaiBal"), "DAI", [daiToken.address, encodedBalanceOf]]]
+        [
+          [
+            bytes32("strat1DaiBal"),
+            "DAI",
+            18,
+            [daiToken.address, encodedBalanceOf],
+          ],
+        ]
       );
       const strategyDaiBalance = await daiToken.balanceOf(strategyAddress);
       const strategyUsdcBalance = await usdcToken.balanceOf(strategyAddress);
@@ -611,6 +634,11 @@ describe("Contract: APYManager", () => {
         registeredIds[0]
       );
       expect(registeredDaiSymbol).to.equal("DAI");
+
+      const registeredDaiDecimals = await assetRegistry.decimalsOf(
+        registeredIds[0]
+      );
+      expect(registeredDaiDecimals).to.equal(18);
 
       const registeredStratDaiBal = await assetRegistry.balanceOf(
         registeredIds[0]
@@ -653,7 +681,14 @@ describe("Contract: APYManager", () => {
       await manager.execute(
         strategyAddress,
         [[daiToken.address, encodedApprove]],
-        [[bytes32("strat1DaiBal"), "DAI", [daiToken.address, encodedBalanceOf]]]
+        [
+          [
+            bytes32("strat1DaiBal"),
+            "DAI",
+            18,
+            [daiToken.address, encodedBalanceOf],
+          ],
+        ]
       );
 
       const daiAllowance = await daiToken.allowance(
@@ -671,6 +706,11 @@ describe("Contract: APYManager", () => {
         registeredIds[0]
       );
       expect(registeredDaiSymbol).to.equal("DAI");
+
+      const registeredDaiDecimals = await assetRegistry.decimalsOf(
+        registeredIds[0]
+      );
+      expect(registeredDaiDecimals).to.equal(18);
 
       const registeredStratDaiBal = await assetRegistry.balanceOf(
         registeredIds[0]
@@ -783,6 +823,7 @@ describe("Contract: APYManager", () => {
             [
               bytes32("strat1DaiBal"),
               "DAI",
+              18,
               [daiToken.address, encodedBalanceOf],
             ],
           ]
@@ -799,6 +840,11 @@ describe("Contract: APYManager", () => {
           registeredIds[0]
         );
         expect(registeredDaiSymbol).to.equal("DAI");
+
+        const registeredDaiDecimals = await assetRegistry.decimalsOf(
+          registeredIds[0]
+        );
+        expect(registeredDaiDecimals).to.equal(18);
 
         const registeredStratDaiBal = await assetRegistry.balanceOf(
           registeredIds[0]

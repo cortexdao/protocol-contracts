@@ -200,7 +200,8 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
             assetAllocationRegistry.addAssetAllocation(
                 viewAllocation.sequenceId,
                 viewAllocation.data,
-                viewAllocation.symbol
+                viewAllocation.symbol,
+                viewAllocation.decimals
             );
         }
     }
