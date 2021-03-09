@@ -30,9 +30,15 @@ console.debugging = false;
  * Returns the upgraded (V2) manager contract instance, in addition
  * to the signer for the manager's deployer.
  * @param {address} managerDeployerAddress
+ * @param {address} mAptAddress  - need for initializeUpgrade
+ * @param {address} allocationRegistryAddress  - need for initializeUpgrade
  * @returns {[Contract, Signer]}
  */
-async function upgradeManager(managerDeployerAddress) {
+async function upgradeManager(
+  managerDeployerAddress,
+  mAptAddress,
+  allocationRegistryAddress
+) {
   const managerDeployer = await ethers.provider.getSigner(
     managerDeployerAddress
   );
@@ -46,9 +52,14 @@ async function upgradeManager(managerDeployerAddress) {
     legos.apy.addresses.APY_MANAGER_Admin,
     managerDeployer
   );
-  await managerAdmin.upgrade(
+  const initData = APYManagerV2.interface.encodeFunctionData(
+    "initializeUpgrade(address,address)",
+    [mAptAddress, allocationRegistryAddress]
+  );
+  await managerAdmin.upgradeAndCall(
     legos.apy.addresses.APY_MANAGER,
-    newManagerLogic.address
+    newManagerLogic.address,
+    initData
   );
   const manager = await ethers.getContractAt(
     "APYManagerV2",
@@ -83,7 +94,12 @@ describe("Contract: APYManager - deployStrategy", () => {
     });
     await impersonateAccount(MANAGER_DEPLOYER);
 
-    [manager] = await upgradeManager(MANAGER_DEPLOYER);
+    const dummyContract = await deployMockContract(funder, []);
+    [manager] = await upgradeManager(
+      MANAGER_DEPLOYER,
+      dummyContract.address,
+      dummyContract.address
+    );
     const APYGenericExecutor = await ethers.getContractFactory(
       "APYGenericExecutor"
     );
@@ -124,7 +140,7 @@ describe("Contract: APYManager", () => {
   let usdtPool;
 
   let manager;
-  let assetRegistry;
+  let allocationRegistry;
   let mApt;
   let executor;
   let strategyAddress;
@@ -153,7 +169,9 @@ describe("Contract: APYManager", () => {
   before(async () => {
     [deployer, funder, randomAccount] = await ethers.getSigners();
 
+    /*************************************/
     /* unlock and fund Mainnet deployers */
+    /*************************************/
     await funder.sendTransaction({
       to: POOL_DEPLOYER,
       value: ethers.utils.parseEther("10").toHexString(),
@@ -165,10 +183,9 @@ describe("Contract: APYManager", () => {
       value: ethers.utils.parseEther("10").toHexString(),
     });
     await impersonateAccount(MANAGER_DEPLOYER);
-    /***************************/
 
     /***********************************/
-    /* upgrade pools and manager to V2 */
+    /* upgrade pools to V2 */
     /***********************************/
     const poolDeployer = await ethers.provider.getSigner(POOL_DEPLOYER);
     const APYPoolTokenV2 = await ethers.getContractFactory("APYPoolTokenV2");
@@ -192,8 +209,6 @@ describe("Contract: APYManager", () => {
       newPoolLogic.address
     );
 
-    [manager, managerDeployer] = await upgradeManager(MANAGER_DEPLOYER);
-
     // approve manager to withdraw from pools
     daiPool = await ethers.getContractAt(
       "APYPoolTokenV2",
@@ -213,7 +228,6 @@ describe("Contract: APYManager", () => {
     await daiPool.infiniteApprove(legos.apy.addresses.APY_MANAGER);
     await usdcPool.infiniteApprove(legos.apy.addresses.APY_MANAGER);
     await usdtPool.infiniteApprove(legos.apy.addresses.APY_MANAGER);
-    /******** upgrades finished **********/
 
     /***********************/
     /***** deploy mAPT *****/
@@ -260,17 +274,30 @@ describe("Contract: APYManager", () => {
     await proxy.deployed();
 
     mApt = await APYMetaPoolToken.attach(proxy.address);
-    await mApt.setManagerAddress(manager.address);
-    await manager.setMetaPoolToken(mApt.address);
+    await mApt.setManagerAddress(legos.apy.addresses.APY_MANAGER);
 
+    /*******************************************/
+    /***** deploy asset allocation registry ****/
+    /*******************************************/
     const AssetAllocationRegistry = await ethers.getContractFactory(
       "AssetAllocationRegistry"
     );
-    assetRegistry = await AssetAllocationRegistry.deploy(manager.address);
-    await assetRegistry.deployed();
-    await manager.setAssetAllocationRegistry(assetRegistry.address);
+    allocationRegistry = await AssetAllocationRegistry.deploy(
+      legos.apy.addresses.APY_MANAGER
+    );
+    await allocationRegistry.deployed();
 
-    /***** deployment finished *****/
+    /***********************************/
+    /***** upgrade manager to V2 *******/
+    /***********************************/
+    [manager, managerDeployer] = await upgradeManager(
+      MANAGER_DEPLOYER,
+      mApt.address,
+      allocationRegistry.address
+    );
+    /*********************************************/
+    /* main deployments and upgrades finished 
+    /*********************************************/
 
     const APYGenericExecutor = await ethers.getContractFactory(
       "APYGenericExecutor"
@@ -443,45 +470,45 @@ describe("Contract: APYManager", () => {
       );
 
       // Check the manager registered the asset allocations corretly
-      const registeredIds = await assetRegistry.getAssetAllocationIds();
+      const registeredIds = await allocationRegistry.getAssetAllocationIds();
       expect(registeredIds.length).to.equal(3);
       expect(registeredIds[0]).to.equal(bytes32("strat1DaiBal"));
       expect(registeredIds[1]).to.equal(bytes32("strat1UsdcBal"));
       expect(registeredIds[2]).to.equal(bytes32("strat1UsdtBal"));
 
-      const registeredDaiSymbol = await assetRegistry.symbolOf(
+      const registeredDaiSymbol = await allocationRegistry.symbolOf(
         registeredIds[0]
       );
-      const registeredUsdcSymbol = await assetRegistry.symbolOf(
+      const registeredUsdcSymbol = await allocationRegistry.symbolOf(
         registeredIds[1]
       );
-      const registeredUsdtSymbol = await assetRegistry.symbolOf(
+      const registeredUsdtSymbol = await allocationRegistry.symbolOf(
         registeredIds[2]
       );
       expect(registeredDaiSymbol).to.equal("DAI");
       expect(registeredUsdcSymbol).to.equal("USDC");
       expect(registeredUsdtSymbol).to.equal("USDT");
 
-      const registeredDaiDecimals = await assetRegistry.decimalsOf(
+      const registeredDaiDecimals = await allocationRegistry.decimalsOf(
         registeredIds[0]
       );
-      const registeredUsdcDecimals = await assetRegistry.decimalsOf(
+      const registeredUsdcDecimals = await allocationRegistry.decimalsOf(
         registeredIds[1]
       );
-      const registeredUsdtDecimals = await assetRegistry.decimalsOf(
+      const registeredUsdtDecimals = await allocationRegistry.decimalsOf(
         registeredIds[2]
       );
       expect(registeredDaiDecimals).to.equal(18);
       expect(registeredUsdcDecimals).to.equal(6);
       expect(registeredUsdtDecimals).to.equal(6);
 
-      const registeredStratDaiBal = await assetRegistry.balanceOf(
+      const registeredStratDaiBal = await allocationRegistry.balanceOf(
         registeredIds[0]
       );
-      const registeredStratUsdcBal = await assetRegistry.balanceOf(
+      const registeredStratUsdcBal = await allocationRegistry.balanceOf(
         registeredIds[1]
       );
-      const registeredStratUsdtBal = await assetRegistry.balanceOf(
+      const registeredStratUsdtBal = await allocationRegistry.balanceOf(
         registeredIds[2]
       );
       expect(registeredStratDaiBal).equal(strategyDaiBalance);
@@ -624,21 +651,21 @@ describe("Contract: APYManager", () => {
       expect(strategyUsdtBalance).to.equal(0);
 
       // Check the manager registered the asset allocations corretly
-      const registeredIds = await assetRegistry.getAssetAllocationIds();
+      const registeredIds = await allocationRegistry.getAssetAllocationIds();
       expect(registeredIds.length).to.equal(1);
       expect(registeredIds[0]).to.equal(bytes32("strat1DaiBal"));
 
-      const registeredDaiSymbol = await assetRegistry.symbolOf(
+      const registeredDaiSymbol = await allocationRegistry.symbolOf(
         registeredIds[0]
       );
       expect(registeredDaiSymbol).to.equal("DAI");
 
-      const registeredDaiDecimals = await assetRegistry.decimalsOf(
+      const registeredDaiDecimals = await allocationRegistry.decimalsOf(
         registeredIds[0]
       );
       expect(registeredDaiDecimals).to.equal(18);
 
-      const registeredStratDaiBal = await assetRegistry.balanceOf(
+      const registeredStratDaiBal = await allocationRegistry.balanceOf(
         registeredIds[0]
       );
       expect(registeredStratDaiBal).equal(strategyDaiBalance);
@@ -696,21 +723,21 @@ describe("Contract: APYManager", () => {
       expect(daiAllowance).to.equal(amount);
 
       // Check the manager registered the asset allocations corretly
-      const registeredIds = await assetRegistry.getAssetAllocationIds();
+      const registeredIds = await allocationRegistry.getAssetAllocationIds();
       expect(registeredIds.length).to.equal(1);
       expect(registeredIds[0]).to.equal(bytes32("strat1DaiBal"));
 
-      const registeredDaiSymbol = await assetRegistry.symbolOf(
+      const registeredDaiSymbol = await allocationRegistry.symbolOf(
         registeredIds[0]
       );
       expect(registeredDaiSymbol).to.equal("DAI");
 
-      const registeredDaiDecimals = await assetRegistry.decimalsOf(
+      const registeredDaiDecimals = await allocationRegistry.decimalsOf(
         registeredIds[0]
       );
       expect(registeredDaiDecimals).to.equal(18);
 
-      const registeredStratDaiBal = await assetRegistry.balanceOf(
+      const registeredStratDaiBal = await allocationRegistry.balanceOf(
         registeredIds[0]
       );
       expect(registeredStratDaiBal).equal(0);
@@ -830,21 +857,21 @@ describe("Contract: APYManager", () => {
         expect(await daiToken.balanceOf(strategyAddress)).to.equal(0);
 
         // Check the manager registered the asset allocations corretly
-        const registeredIds = await assetRegistry.getAssetAllocationIds();
+        const registeredIds = await allocationRegistry.getAssetAllocationIds();
         expect(registeredIds.length).to.equal(1);
         expect(registeredIds[0]).to.equal(bytes32("strat1DaiBal"));
 
-        const registeredDaiSymbol = await assetRegistry.symbolOf(
+        const registeredDaiSymbol = await allocationRegistry.symbolOf(
           registeredIds[0]
         );
         expect(registeredDaiSymbol).to.equal("DAI");
 
-        const registeredDaiDecimals = await assetRegistry.decimalsOf(
+        const registeredDaiDecimals = await allocationRegistry.decimalsOf(
           registeredIds[0]
         );
         expect(registeredDaiDecimals).to.equal(18);
 
-        const registeredStratDaiBal = await assetRegistry.balanceOf(
+        const registeredStratDaiBal = await allocationRegistry.balanceOf(
           registeredIds[0]
         );
         expect(registeredStratDaiBal).equal(0);

@@ -103,22 +103,27 @@ async function main(argv) {
   updateDeployJsons(NETWORK_NAME, deployData);
 
   gasPrice = await getGasPrice(argv.gasPrice);
-  trx = await proxyAdmin.upgrade(proxyAddress, logicV2.address, { gasPrice });
+  const mAptAddress = getDeployedAddress("APYMetaPoolToken", NETWORK_NAME);
+  const allocationRegistryAddress = getDeployedAddress(
+    "AssetAllocationRegistry",
+    NETWORK_NAME
+  );
+  const initData = APYManagerV2.interface.encodeFunctionData(
+    "initializeUpgrade(address,address)",
+    [mAptAddress, allocationRegistryAddress]
+  );
+  trx = await proxyAdmin.upgradeAndCall(
+    proxyAddress,
+    logicV2.address,
+    initData,
+    {
+      gasPrice,
+    }
+  );
   console.log("Upgrade:", `https://etherscan.io/tx/${trx.hash}`);
   await trx.wait();
   console.log("Upgraded manager to V2.");
   console.log("");
-
-  const mAPTAddress = getDeployedAddress("APYMetaPoolToken", NETWORK_NAME);
-  const managerV2 = await ethers.getContractAt(
-    "APYManagerV2",
-    proxyAddress,
-    managerDeployer
-  );
-  gasPrice = await getGasPrice(argv.gasPrice);
-  trx = await managerV2.setMetaPoolToken(mAPTAddress, { gasPrice });
-  console.log("Set mAPT address:", `https://etherscan.io/tx/${trx.hash}`);
-  await trx.wait();
 
   if (["KOVAN", "MAINNET"].includes(NETWORK_NAME)) {
     console.log("");
