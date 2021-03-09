@@ -9,7 +9,6 @@ contract APYMetaPoolTokenProxy is TransparentUpgradeableProxy {
         address _logic,
         address _proxyAdmin,
         address _tvlAgg,
-        address _ethUsdAgg,
         uint256 _aggStalePeriod
     )
         public
@@ -17,10 +16,9 @@ contract APYMetaPoolTokenProxy is TransparentUpgradeableProxy {
             _logic,
             _proxyAdmin,
             abi.encodeWithSignature(
-                "initialize(address,address,address,uint256)",
+                "initialize(address,address,uint256)",
                 _proxyAdmin,
                 _tvlAgg,
-                _ethUsdAgg,
                 _aggStalePeriod
             )
         )

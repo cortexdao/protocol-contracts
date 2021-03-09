@@ -154,10 +154,9 @@ contract APYPoolTokenV2 is
 
         // calculateMintAmount() is not used because deposit value
         // is needed for the event
-        uint256 depositEthValue = getEthValueFromTokenAmount(tokenAmt);
-        uint256 poolTotalEthValue = getPoolTotalEthValue();
-        uint256 mintAmount =
-            _calculateMintAmount(depositEthValue, poolTotalEthValue);
+        uint256 depositValue = getValueFromUnderlyerAmount(tokenAmt);
+        uint256 poolTotalValue = getPoolTotalValue();
+        uint256 mintAmount = _calculateMintAmount(depositValue, poolTotalValue);
 
         _mint(msg.sender, mintAmount);
         underlyer.safeTransferFrom(msg.sender, address(this), tokenAmt);
@@ -167,8 +166,8 @@ contract APYPoolTokenV2 is
             underlyer,
             tokenAmt,
             mintAmount,
-            depositEthValue,
-            getPoolTotalEthValue()
+            depositValue,
+            getPoolTotalValue()
         );
     }
 
@@ -199,22 +198,22 @@ contract APYPoolTokenV2 is
         require(aptAmount > 0, "AMOUNT_INSUFFICIENT");
         require(aptAmount <= balanceOf(msg.sender), "BALANCE_INSUFFICIENT");
 
-        uint256 redeemTokenAmt = getUnderlyerAmountWithFee(aptAmount);
+        uint256 redeemUnderlyerAmt = getUnderlyerAmountWithFee(aptAmount);
         require(
-            redeemTokenAmt <= underlyer.balanceOf(address(this)),
+            redeemUnderlyerAmt <= underlyer.balanceOf(address(this)),
             "RESERVE_INSUFFICIENT"
         );
 
         _burn(msg.sender, aptAmount);
-        underlyer.safeTransfer(msg.sender, redeemTokenAmt);
+        underlyer.safeTransfer(msg.sender, redeemUnderlyerAmt);
 
         emit RedeemedAPT(
             msg.sender,
             underlyer,
-            redeemTokenAmt,
+            redeemUnderlyerAmt,
             aptAmount,
-            getEthValueFromTokenAmount(redeemTokenAmt),
-            getPoolTotalEthValue()
+            getValueFromUnderlyerAmount(redeemUnderlyerAmt),
+            getPoolTotalValue()
         );
     }
 
@@ -240,29 +239,34 @@ contract APYPoolTokenV2 is
         view
         returns (uint256)
     {
-        uint256 depositEthValue = getEthValueFromTokenAmount(tokenAmt);
-        uint256 poolTotalEthValue = getPoolTotalEthValue();
-        return _calculateMintAmount(depositEthValue, poolTotalEthValue);
+        uint256 depositValue = getValueFromUnderlyerAmount(tokenAmt);
+        uint256 poolTotalValue = getPoolTotalValue();
+        return _calculateMintAmount(depositValue, poolTotalValue);
     }
 
     /**
      *  @dev amount of APT minted should be in same ratio to APT supply
-     *       as token amount sent is to contract's token balance, i.e.:
+     *       as deposit value is to pool's total value, i.e.:
      *
-     *       mint amount / total supply (before deposit)
-     *       = token amount sent / contract token balance (before deposit)
+     *       mint amount / total supply
+     *       = deposit value / pool total value
+     *
+     *       For denominators, pre or post-deposit amounts can be used.
+     *       The important thing is they are consistent, i.e. both pre-deposit
+     *       or both post-deposit.
      */
-    function _calculateMintAmount(
-        uint256 depositEthAmount,
-        uint256 totalEthAmount
-    ) internal view returns (uint256) {
+    function _calculateMintAmount(uint256 depositValue, uint256 poolTotalValue)
+        internal
+        view
+        returns (uint256)
+    {
         uint256 totalSupply = totalSupply();
 
-        if (totalEthAmount == 0 || totalSupply == 0) {
-            return depositEthAmount.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR);
+        if (poolTotalValue == 0 || totalSupply == 0) {
+            return depositValue.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR);
         }
 
-        return (depositEthAmount.mul(totalSupply)).div(totalEthAmount);
+        return (depositValue.mul(totalSupply)).div(poolTotalValue);
     }
 
     /**
@@ -277,12 +281,12 @@ contract APYPoolTokenV2 is
         view
         returns (uint256)
     {
-        uint256 redeemTokenAmt = getUnderlyerAmount(aptAmount);
+        uint256 redeemUnderlyerAmt = getUnderlyerAmount(aptAmount);
         if (isEarlyRedeem()) {
-            uint256 fee = redeemTokenAmt.mul(feePercentage).div(100);
-            redeemTokenAmt = redeemTokenAmt.sub(fee);
+            uint256 fee = redeemUnderlyerAmt.mul(feePercentage).div(100);
+            redeemUnderlyerAmt = redeemUnderlyerAmt.sub(fee);
         }
-        return redeemTokenAmt;
+        return redeemUnderlyerAmt;
     }
 
     /**
@@ -298,7 +302,22 @@ contract APYPoolTokenV2 is
         if (aptAmount == 0) {
             return 0;
         }
-        return getTokenAmountFromEthValue(getAPTEthValue(aptAmount));
+        require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
+        // the below is mathematically equivalent to:
+        //
+        // getUnderlyerAmountFromValue(getAPTValue(aptAmount));
+        //
+        // but composing the two functions leads to early loss
+        // of precision from division, so it's better to do it
+        // this way:
+        uint256 underlyerPrice = getUnderlyerPrice();
+        uint256 decimals = underlyer.decimals();
+        return
+            aptAmount
+                .mul(getPoolTotalValue())
+                .mul(10**decimals)
+                .div(totalSupply())
+                .div(underlyerPrice);
     }
 
     /**
@@ -313,41 +332,41 @@ contract APYPoolTokenV2 is
     }
 
     /**
-     * @notice Get the total ETH-denominated value (in wei) of the pool's assets,
+     * @notice Get the total USD-denominated value (in wei) of the pool's assets,
      *         including not only its underlyer balance, but any part of deployed
      *         capital that is owed to it.
      * @return uint256
      */
-    function getPoolTotalEthValue() public view virtual returns (uint256) {
-        uint256 underlyerValue = getPoolUnderlyerEthValue();
-        uint256 mAptValue = getDeployedEthValue();
+    function getPoolTotalValue() public view virtual returns (uint256) {
+        uint256 underlyerValue = getPoolUnderlyerValue();
+        uint256 mAptValue = getDeployedValue();
         return underlyerValue.add(mAptValue);
     }
 
     /**
-     * @notice Get the ETH-denominated value (in wei) of the pool's
+     * @notice Get the USD-denominated value (in wei) of the pool's
      *         underlyer balance.
      * @return uint256
      */
-    function getPoolUnderlyerEthValue() public view virtual returns (uint256) {
-        return getEthValueFromTokenAmount(underlyer.balanceOf(address(this)));
+    function getPoolUnderlyerValue() public view virtual returns (uint256) {
+        return getValueFromUnderlyerAmount(underlyer.balanceOf(address(this)));
     }
 
     /**
-     * @notice Get the Eth-denominated value (in wei) of the pool's share
+     * @notice Get the USD-denominated value (in wei) of the pool's share
      *         of the deployed capital, as tracked by the mAPT token.
      * @return uint256
      */
-    function getDeployedEthValue() public view virtual returns (uint256) {
-        return mApt.getDeployedEthValue(address(this));
+    function getDeployedValue() public view virtual returns (uint256) {
+        return mApt.getDeployedValue(address(this));
     }
 
-    function getAPTEthValue(uint256 amount) public view returns (uint256) {
+    function getAPTValue(uint256 amount) public view returns (uint256) {
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        return (amount.mul(getPoolTotalEthValue())).div(totalSupply());
+        return amount.mul(getPoolTotalValue()).div(totalSupply());
     }
 
-    function getEthValueFromTokenAmount(uint256 amount)
+    function getValueFromUnderlyerAmount(uint256 amount)
         public
         view
         returns (uint256)
@@ -356,32 +375,32 @@ contract APYPoolTokenV2 is
             return 0;
         }
         uint256 decimals = underlyer.decimals();
-        return ((getTokenEthPrice()).mul(amount)).div(10**decimals);
+        return getUnderlyerPrice().mul(amount).div(10**decimals);
     }
 
-    function getTokenAmountFromEthValue(uint256 ethValue)
+    function getUnderlyerAmountFromValue(uint256 value)
         public
         view
         returns (uint256)
     {
-        uint256 tokenEthPrice = getTokenEthPrice();
+        uint256 underlyerPrice = getUnderlyerPrice();
         uint256 decimals = underlyer.decimals();
-        return ((10**decimals).mul(ethValue)).div(tokenEthPrice);
+        return (10**decimals).mul(value).div(underlyerPrice);
     }
 
-    function getTokenEthPrice() public view returns (uint256) {
+    function getUnderlyerPrice() public view returns (uint256) {
         (, int256 price, , , ) = priceAgg.latestRoundData();
-        require(price > 0, "UNABLE_TO_RETRIEVE_ETH_PRICE");
+        require(price > 0, "UNABLE_TO_RETRIEVE_USD_PRICE");
         return uint256(price);
     }
 
     /**
-     * @notice Get the ETH value needed to meet the reserve percentage
+     * @notice Get the USD value needed to meet the reserve percentage
      *         of the pool's deployed value.
      *
      *         This "top-up" value should satisfy:
      *
-     *         top-up ETH value + pool underlyer ETH value
+     *         top-up USD value + pool underlyer USD value
      *            = (reserve %) * pool deployed value (after unwinding)
      *
      * @dev Taking the percentage of the pool's current deployed value
@@ -391,11 +410,11 @@ contract APYPoolTokenV2 is
      *
      *      More precisely:
      *
-     *      R_pre = pool underlyer ETH value before pushing unwound
+     *      R_pre = pool underlyer USD value before pushing unwound
      *              capital to the pool
-     *      R_post = pool underlyer ETH value after pushing
-     *      DV_pre = pool's deployed ETH value before unwinding
-     *      DV_post = pool's deployed ETH value after unwinding
+     *      R_post = pool underlyer USD value after pushing
+     *      DV_pre = pool's deployed USD value before unwinding
+     *      DV_post = pool's deployed USD value after unwinding
      *      rPerc = the reserve percentage as a whole number
      *                          out of 100
      *
@@ -414,9 +433,8 @@ contract APYPoolTokenV2 is
      */
     function getReserveTopUpValue() public view returns (int256) {
         uint256 unnormalizedTargetValue =
-            getDeployedEthValue().mul(reservePercentage);
-        uint256 unnormalizedUnderlyerValue =
-            getPoolUnderlyerEthValue().mul(100);
+            getDeployedValue().mul(reservePercentage);
+        uint256 unnormalizedUnderlyerValue = getPoolUnderlyerValue().mul(100);
 
         require(unnormalizedTargetValue <= _MAX_INT256, "SIGNED_INT_OVERFLOW");
         require(

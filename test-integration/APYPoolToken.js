@@ -13,7 +13,6 @@ const {
 } = require("../utils/helpers");
 
 const link = (amount) => tokenAmountToBigNumber(amount, "18");
-const ether = (amount) => tokenAmountToBigNumber(amount, "18");
 
 /* ************************ */
 /* set DEBUG log level here */
@@ -53,21 +52,23 @@ describe("Contract: APYPoolToken", () => {
     APYMetaPoolToken = await ethers.getContractFactory("APYMetaPoolToken");
   });
 
+  // for Chainlink aggregator (price feed) addresses, see the Mainnet
+  // section of: https://docs.chain.link/docs/ethereum-addresses
   const tokenParams = [
     {
       symbol: "USDC",
       tokenAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-      aggAddress: "0x986b5E1e1755e3C2440e960477f25201B0a8bbD4",
+      aggAddress: "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6",
     },
     {
       symbol: "DAI",
       tokenAddress: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
-      aggAddress: "0x773616E4d11A78F511299002da57A0a94577F1f4",
+      aggAddress: "0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9",
     },
     {
       symbol: "USDT",
       tokenAddress: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      aggAddress: "0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46",
+      aggAddress: "0x3E7d1eAB13ad0104d2750B8863b489D65364e32D",
     },
   ];
 
@@ -87,22 +88,19 @@ describe("Contract: APYPoolToken", () => {
     const { symbol, tokenAddress, aggAddress } = params;
 
     describe(`\n    **** ${symbol} as underlyer ****\n`, () => {
-      let agg;
       let tvlAgg;
-      let ethUsdAgg;
       let underlyer;
       let mApt;
 
-      let proxyAdmin;
-      let logic;
-      let proxy;
       let poolToken;
 
       before("Setup", async () => {
-        agg = await ethers.getContractAt("AggregatorV3Interface", aggAddress);
+        const agg = await ethers.getContractAt(
+          "AggregatorV3Interface",
+          aggAddress
+        );
         underlyer = await ethers.getContractAt("IDetailedERC20", tokenAddress);
-        mApt = await APYMetaPoolToken.deploy();
-        await mApt.deployed();
+
         const paymentAmount = link("1");
         const maxSubmissionValue = tokenAmountToBigNumber("1", "20");
         const tvlAggConfig = {
@@ -112,21 +110,8 @@ describe("Contract: APYPoolToken", () => {
           decimals: 8, // decimal offset for answer
           description: "TVL aggregator",
         };
-        const ethUsdAggConfig = {
-          paymentAmount, // payment amount (price paid for each oracle submission, in wei)
-          minSubmissionValue: 0,
-          maxSubmissionValue,
-          decimals: 8, // decimal offset for answer
-          description: "ETH-USD aggregator",
-        };
         tvlAgg = await deployAggregator(
           tvlAggConfig,
-          oracle.address,
-          deployer.address, // oracle owner
-          deployer.address // ETH funder
-        );
-        ethUsdAgg = await deployAggregator(
-          ethUsdAggConfig,
           oracle.address,
           deployer.address, // oracle owner
           deployer.address // ETH funder
@@ -138,25 +123,24 @@ describe("Contract: APYPoolToken", () => {
         );
         APYMetaPoolToken = await ethers.getContractFactory("APYMetaPoolToken");
 
-        proxyAdmin = await ProxyAdmin.deploy();
+        const proxyAdmin = await ProxyAdmin.deploy();
         await proxyAdmin.deployed();
 
-        logic = await APYMetaPoolToken.deploy();
-        await logic.deployed();
-        proxy = await APYMetaPoolTokenProxy.deploy(
-          logic.address,
+        const mAptLogic = await APYMetaPoolToken.deploy();
+        await mAptLogic.deployed();
+        const mAptProxy = await APYMetaPoolTokenProxy.deploy(
+          mAptLogic.address,
           proxyAdmin.address,
           tvlAgg.address,
-          ethUsdAgg.address,
           14400
         );
-        await proxy.deployed();
-        mApt = await APYMetaPoolToken.attach(proxy.address);
+        await mAptProxy.deployed();
+        mApt = await APYMetaPoolToken.attach(mAptProxy.address);
         await mApt.connect(deployer).setManagerAddress(manager.address);
 
-        logic = await APYPoolToken.deploy();
+        const logic = await APYPoolToken.deploy();
         await logic.deployed();
-        proxy = await APYPoolTokenProxy.deploy(
+        const proxy = await APYPoolTokenProxy.deploy(
           logic.address,
           proxyAdmin.address,
           underlyer.address,
@@ -473,22 +457,20 @@ describe("Contract: APYPoolToken", () => {
         });
       });
 
+      const usdDecimals = 8;
       const deployedValues = [
-        tokenAmountToBigNumber(0),
-        tokenAmountToBigNumber(83729),
-        tokenAmountToBigNumber(32283729),
+        tokenAmountToBigNumber(0, usdDecimals),
+        tokenAmountToBigNumber(837290, usdDecimals),
+        tokenAmountToBigNumber(32283729, usdDecimals),
       ];
       deployedValues.forEach(function (deployedValue) {
         describe(`deployed value: ${deployedValue}`, () => {
           const mAptSupply = tokenAmountToBigNumber("100");
-          const ethUsdPrice = tokenAmountToBigNumber(1800, "8");
-          const usdDeployedValue = deployedValue.mul(ethUsdPrice).div(ether(1));
 
-          async function updateTvlAgg(usdDeployedValue, ethUsdPrice) {
+          async function updateTvlAgg(usdDeployedValue) {
             const lastRoundId = await tvlAgg.latestRound();
             const newRoundId = lastRoundId.add(1);
             await tvlAgg.connect(oracle).submit(newRoundId, usdDeployedValue);
-            await ethUsdAgg.connect(oracle).submit(newRoundId, ethUsdPrice);
           }
 
           beforeEach(async () => {
@@ -496,7 +478,7 @@ describe("Contract: APYPoolToken", () => {
 
             // default to giving entire deployed value to the pool
             await mApt.connect(manager).mint(poolToken.address, mAptSupply);
-            await updateTvlAgg(usdDeployedValue, ethUsdPrice);
+            await updateTvlAgg(deployedValue);
           });
 
           describe("Underlyer and mAPT integration with calculations", () => {
@@ -515,8 +497,12 @@ describe("Contract: APYPoolToken", () => {
             });
 
             it("calculateMintAmount returns value", async () => {
+              const depositAmount = tokenAmountToBigNumber(
+                1,
+                await underlyer.decimals()
+              );
               const expectedAptMinted = await poolToken.calculateMintAmount(
-                1000000000
+                depositAmount
               );
               console.debug(
                 `\tExpected APT Minted: ${expectedAptMinted.toString()}`
@@ -524,23 +510,23 @@ describe("Contract: APYPoolToken", () => {
               assert(expectedAptMinted.gt(0));
             });
 
-            it("getPoolTotalEthValue returns value", async () => {
-              const val = await poolToken.getPoolTotalEthValue();
+            it("getPoolTotalValue returns value", async () => {
+              const val = await poolToken.getPoolTotalValue();
               console.debug(`\tPool Total Eth Value ${val.toString()}`);
               assert(val.gt(0));
             });
 
-            it("getAPTEthValue returns value", async () => {
+            it("getAPTValue returns value", async () => {
               const aptAmount = tokenAmountToBigNumber("100", "18");
-              const val = await poolToken.getAPTEthValue(aptAmount);
+              const val = await poolToken.getAPTValue(aptAmount);
               console.debug(`\tAPT Eth Value: ${val.toString()}`);
               assert(val.gt(0));
             });
 
-            it("getTokenAmountFromEthValue returns value", async () => {
-              const ethAmount = tokenAmountToBigNumber("500", "18");
-              const tokenAmount = await poolToken.getTokenAmountFromEthValue(
-                ethAmount
+            it("getUnderlyerAmountFromValue returns value", async () => {
+              const usdValue = tokenAmountToBigNumber("500", "8");
+              const tokenAmount = await poolToken.getUnderlyerAmountFromValue(
+                usdValue
               );
               console.debug(
                 `\tToken Amount from Eth Value: ${tokenAmount.toString()}`
@@ -548,14 +534,18 @@ describe("Contract: APYPoolToken", () => {
               assert(tokenAmount.gt(0));
             });
 
-            it("getEthValueFromTokenAmount returns value", async () => {
-              const val = await poolToken.getEthValueFromTokenAmount("5000");
+            it("getValueFromUnderlyerAmount returns value", async () => {
+              const amount = tokenAmountToBigNumber(
+                5000,
+                await underlyer.decimals()
+              );
+              const val = await poolToken.getValueFromUnderlyerAmount(amount);
               console.debug(`\tEth Value from Token Amount ${val.toString()}`);
               assert(val.gt(0));
             });
 
-            it("getTokenEthPrice returns value", async () => {
-              const price = await poolToken.getTokenEthPrice();
+            it("getUnderlyerPrice returns value", async () => {
+              const price = await poolToken.getUnderlyerPrice();
               console.debug(`\tToken Eth Price: ${price.toString()}`);
               assert(price.gt(0));
             });
@@ -571,15 +561,15 @@ describe("Contract: APYPoolToken", () => {
               assert(underlyerAmount.gt(0));
             });
 
-            it("getUnderlyerEthValue returns correct value", async () => {
+            it("getUnderlyerValue returns correct value", async () => {
               let underlyerBalance = await underlyer.balanceOf(
                 poolToken.address
               );
-              let expectedUnderlyerEthValue = await poolToken.getEthValueFromTokenAmount(
+              let expectedUnderlyerValue = await poolToken.getValueFromUnderlyerAmount(
                 underlyerBalance
               );
-              expect(await poolToken.getPoolUnderlyerEthValue()).to.equal(
-                expectedUnderlyerEthValue
+              expect(await poolToken.getPoolUnderlyerValue()).to.equal(
+                expectedUnderlyerValue
               );
 
               const underlyerAmount = tokenAmountToBigNumber(
@@ -591,16 +581,16 @@ describe("Contract: APYPoolToken", () => {
                 .transfer(poolToken.address, underlyerAmount);
 
               underlyerBalance = await underlyer.balanceOf(poolToken.address);
-              expectedUnderlyerEthValue = await poolToken.getEthValueFromTokenAmount(
+              expectedUnderlyerValue = await poolToken.getValueFromUnderlyerAmount(
                 underlyerBalance
               );
-              expect(await poolToken.getPoolUnderlyerEthValue()).to.equal(
-                expectedUnderlyerEthValue
+              expect(await poolToken.getPoolUnderlyerValue()).to.equal(
+                expectedUnderlyerValue
               );
             });
 
             it("getDeployedValue returns correct value", async () => {
-              expect(await poolToken.getDeployedEthValue()).to.equal(
+              expect(await poolToken.getDeployedValue()).to.equal(
                 deployedValue
               );
 
@@ -610,8 +600,8 @@ describe("Contract: APYPoolToken", () => {
                 .connect(manager)
                 .burn(poolToken.address, mAptSupply.div(4));
               // must update agg so staleness check passes
-              await updateTvlAgg(usdDeployedValue, ethUsdPrice);
-              expect(await poolToken.getDeployedEthValue()).to.equal(
+              await updateTvlAgg(deployedValue);
+              expect(await poolToken.getDeployedValue()).to.equal(
                 deployedValue.mul(3).div(4)
               );
 
@@ -621,8 +611,8 @@ describe("Contract: APYPoolToken", () => {
                 .connect(manager)
                 .burn(poolToken.address, mAptSupply.div(4));
               // must update agg so staleness check passes
-              await updateTvlAgg(usdDeployedValue, ethUsdPrice);
-              expect(await poolToken.getDeployedEthValue()).to.equal(
+              await updateTvlAgg(deployedValue);
+              expect(await poolToken.getDeployedValue()).to.equal(
                 deployedValue.div(2)
               );
             });
@@ -638,7 +628,7 @@ describe("Contract: APYPoolToken", () => {
                 expect(topUpValue).to.be.gt(0);
               }
 
-              const poolUnderlyerValue = await poolToken.getPoolUnderlyerEthValue();
+              const poolUnderlyerValue = await poolToken.getPoolUnderlyerValue();
               // assuming we unwind the top-up value from the pool's deployed
               // capital, the reserve percentage of resulting deployed value
               // is what we are targeting
@@ -720,10 +710,10 @@ describe("Contract: APYPoolToken", () => {
 
               // DepositedAPT event:
               // check the values reflect post-interaction state
-              const depositEthValue = await poolToken.getEthValueFromTokenAmount(
+              const depositValue = await poolToken.getValueFromUnderlyerAmount(
                 depositAmount
               );
-              const poolEthValue = await poolToken.getPoolTotalEthValue();
+              const poolValue = await poolToken.getPoolTotalValue();
               await expect(addLiquidityPromise)
                 .to.emit(poolToken, "DepositedAPT")
                 .withArgs(
@@ -731,8 +721,8 @@ describe("Contract: APYPoolToken", () => {
                   underlyer.address,
                   depositAmount,
                   mintAmount,
-                  depositEthValue,
-                  poolEthValue
+                  depositValue,
+                  poolValue
                 );
             });
           });
@@ -861,10 +851,10 @@ describe("Contract: APYPoolToken", () => {
 
               // RedeemedAPT event:
               // check the values reflect post-interaction state
-              const tokenEthValue = await poolToken.getEthValueFromTokenAmount(
+              const tokenValue = await poolToken.getValueFromUnderlyerAmount(
                 underlyerTransferAmount
               );
-              const poolEthValue = await poolToken.getPoolTotalEthValue();
+              const poolValue = await poolToken.getPoolTotalValue();
               await expect(redeemPromise)
                 .to.emit(poolToken, "RedeemedAPT")
                 .withArgs(
@@ -872,8 +862,8 @@ describe("Contract: APYPoolToken", () => {
                   underlyer.address,
                   underlyerTransferAmount,
                   redeemAptAmount,
-                  tokenEthValue,
-                  poolEthValue
+                  tokenValue,
+                  poolValue
                 );
             });
           });
@@ -905,7 +895,7 @@ describe("Contract: APYPoolToken", () => {
               const underlyerAmount = await poolToken.getUnderlyerAmount(
                 mintAmount
               );
-              expect(underlyerAmount).to.not.equal(depositAmount);
+              expect(underlyerAmount).to.be.lt(depositAmount);
               const tolerance = Math.ceil((await underlyer.decimals()) / 4);
               const allowedDeviation = tokenAmountToBigNumber(5, tolerance);
               expect(Math.abs(underlyerAmount.sub(depositAmount))).to.be.lt(

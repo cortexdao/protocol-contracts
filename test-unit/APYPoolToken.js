@@ -150,7 +150,7 @@ describe("Contract: APYPoolToken", () => {
     it("Block ether transfer", async () => {
       await expect(
         deployer.sendTransaction({ to: poolToken.address, value: "10" })
-      ).to.be.reverted
+      ).to.be.reverted;
     });
 
     it("mAPT set correctly", async () => {
@@ -233,17 +233,17 @@ describe("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("getTokenEthPrice", async () => {
+  describe("getUnderlyerPrice", async () => {
     it("Revert when price agg returns non-positive price", async () => {
       await priceAggMock.mock.latestRoundData.returns(0, 0, 0, 0, 0);
-      await expect(poolToken.getTokenEthPrice.call()).to.be.revertedWith(
-        "UNABLE_TO_RETRIEVE_ETH_PRICE"
+      await expect(poolToken.getUnderlyerPrice()).to.be.revertedWith(
+        "UNABLE_TO_RETRIEVE_USD_PRICE"
       );
     });
 
     it("Returns value when price agg returns positive price", async () => {
       await priceAggMock.mock.latestRoundData.returns(0, 100, 0, 0, 0);
-      expect(await poolToken.getTokenEthPrice()).to.equal(100);
+      expect(await poolToken.getUnderlyerPrice()).to.equal(100);
     });
   });
 
@@ -371,7 +371,7 @@ describe("Contract: APYPoolToken", () => {
     });
   });
 
-  describe("getTokenAmountFromEthValue", () => {
+  describe("getUnderlyerAmountFromValue", () => {
     it("Returns correct value", async () => {
       const decimals = 0;
       await underlyerMock.mock.decimals.returns(decimals);
@@ -382,15 +382,15 @@ describe("Contract: APYPoolToken", () => {
       const expectedUnderlyerAmount = BigNumber.from(10 ** decimals)
         .mul(ethValue)
         .div(price);
-      expect(await poolToken.getTokenAmountFromEthValue(ethValue)).to.equal(
+      expect(await poolToken.getUnderlyerAmountFromValue(ethValue)).to.equal(
         expectedUnderlyerAmount
       );
     });
   });
 
-  describe("getEthValueFromTokenAmount", () => {
+  describe("getValueFromUnderlyerAmount", () => {
     it("Return 0 for zero amount", async () => {
-      expect(await poolToken.getEthValueFromTokenAmount(0)).to.equal(0);
+      expect(await poolToken.getValueFromUnderlyerAmount(0)).to.equal(0);
     });
 
     it("Returns correct value", async () => {
@@ -401,14 +401,14 @@ describe("Contract: APYPoolToken", () => {
 
       const underlyerAmount = tokenAmountToBigNumber(5, decimals);
       // 50 * 2 / 10 ^ 1
-      const expectedEthValue = underlyerAmount.mul(price).div(10 ** decimals);
+      const expectedValue = underlyerAmount.mul(price).div(10 ** decimals);
       expect(
-        await poolToken.getEthValueFromTokenAmount(underlyerAmount)
-      ).to.equal(expectedEthValue);
+        await poolToken.getValueFromUnderlyerAmount(underlyerAmount)
+      ).to.equal(expectedValue);
     });
   });
 
-  describe("getPoolUnderlyerEthValue", () => {
+  describe("getPoolUnderlyerValue", () => {
     it("Returns correct value regardless of deployed value", async () => {
       const decimals = 1;
       await underlyerMock.mock.decimals.returns(decimals);
@@ -419,36 +419,32 @@ describe("Contract: APYPoolToken", () => {
       await priceAggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
 
       // 75 * 2 / 10^1
-      const expectedEthValue = balance.mul(price).div(10 ** decimals);
+      const expectedValue = balance.mul(price).div(10 ** decimals);
 
       // force zero deployed value
-      await mAptMock.mock.getDeployedEthValue.returns(0);
-      expect(await poolToken.getDeployedEthValue()).to.equal(0);
-      expect(await poolToken.getPoolUnderlyerEthValue()).to.equal(
-        expectedEthValue
-      );
+      await mAptMock.mock.getDeployedValue.returns(0);
+      expect(await poolToken.getDeployedValue()).to.equal(0);
+      expect(await poolToken.getPoolUnderlyerValue()).to.equal(expectedValue);
 
       // force non-zero deployed value
-      await mAptMock.mock.getDeployedEthValue.returns(1234);
-      expect(await poolToken.getDeployedEthValue()).to.be.gt(0);
-      expect(await poolToken.getPoolUnderlyerEthValue()).to.equal(
-        expectedEthValue
-      );
+      await mAptMock.mock.getDeployedValue.returns(1234);
+      expect(await poolToken.getDeployedValue()).to.be.gt(0);
+      expect(await poolToken.getPoolUnderlyerValue()).to.equal(expectedValue);
     });
   });
 
-  describe("getDeployedEthValue", () => {
+  describe("getDeployedValue", () => {
     it("Delegates properly to mAPT contract", async () => {
-      await mAptMock.mock.getDeployedEthValue.returns(0);
-      expect(await poolToken.getDeployedEthValue()).to.equal(0);
+      await mAptMock.mock.getDeployedValue.returns(0);
+      expect(await poolToken.getDeployedValue()).to.equal(0);
 
       const deployedValue = tokenAmountToBigNumber(12345);
-      await mAptMock.mock.getDeployedEthValue.returns(deployedValue);
-      expect(await poolToken.getDeployedEthValue()).to.equal(deployedValue);
+      await mAptMock.mock.getDeployedValue.returns(deployedValue);
+      expect(await poolToken.getDeployedValue()).to.equal(deployedValue);
     });
   });
 
-  describe("getPoolTotalEthValue", () => {
+  describe("getPoolTotalValue", () => {
     it("Returns correct value", async () => {
       const decimals = 1;
       await underlyerMock.mock.decimals.returns(decimals);
@@ -456,22 +452,22 @@ describe("Contract: APYPoolToken", () => {
       await underlyerMock.mock.balanceOf.returns(underlyerBalance);
 
       const deployedValue = tokenAmountToBigNumber(1234);
-      await mAptMock.mock.getDeployedEthValue.returns(deployedValue);
+      await mAptMock.mock.getDeployedValue.returns(deployedValue);
 
       const price = 2;
       await priceAggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
 
       // Underlyer ETH value: 75 * 2 / 10^1 = 15
       const underlyerValue = underlyerBalance.mul(price).div(10 ** decimals);
-      const expectedEthValue = underlyerValue.add(deployedValue);
-      expect(await poolToken.getPoolTotalEthValue()).to.equal(expectedEthValue);
+      const expectedValue = underlyerValue.add(deployedValue);
+      expect(await poolToken.getPoolTotalValue()).to.equal(expectedValue);
     });
   });
 
-  describe("getAPTEthValue", () => {
+  describe("getAPTValue", () => {
     it("Revert when zero APT supply", async () => {
       expect(await poolToken.totalSupply()).to.equal(0);
-      await expect(poolToken.getAPTEthValue(10)).to.be.revertedWith(
+      await expect(poolToken.getAPTValue(10)).to.be.revertedWith(
         "INSUFFICIENT_TOTAL_SUPPLY"
       );
     });
@@ -488,21 +484,17 @@ describe("Contract: APYPoolToken", () => {
       const aptAmount = tokenAmountToBigNumber(10);
 
       // zero deployed value
-      await mAptMock.mock.getDeployedEthValue.returns(0);
-      let poolTotalValue = await poolToken.getPoolTotalEthValue();
-      let expectedEthValue = poolTotalValue.mul(aptAmount).div(aptSupply);
-      expect(await poolToken.getAPTEthValue(aptAmount)).to.equal(
-        expectedEthValue
-      );
+      await mAptMock.mock.getDeployedValue.returns(0);
+      let poolTotalValue = await poolToken.getPoolTotalValue();
+      let expectedValue = poolTotalValue.mul(aptAmount).div(aptSupply);
+      expect(await poolToken.getAPTValue(aptAmount)).to.equal(expectedValue);
 
       // non-zero deployed value
       const deployedValue = tokenAmountToBigNumber(1234);
-      await mAptMock.mock.getDeployedEthValue.returns(deployedValue);
-      poolTotalValue = await poolToken.getPoolTotalEthValue();
-      expectedEthValue = poolTotalValue.mul(aptAmount).div(aptSupply);
-      expect(await poolToken.getAPTEthValue(aptAmount)).to.equal(
-        expectedEthValue
-      );
+      await mAptMock.mock.getDeployedValue.returns(deployedValue);
+      poolTotalValue = await poolToken.getPoolTotalValue();
+      expectedValue = poolTotalValue.mul(aptAmount).div(aptSupply);
+      expect(await poolToken.getAPTValue(aptAmount)).to.equal(expectedValue);
     });
   });
 
@@ -510,7 +502,7 @@ describe("Contract: APYPoolToken", () => {
     it("Returns 0 when pool has zero total value", async () => {
       // set pool total ETH value to 0
       await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
-      await mAptMock.mock.getDeployedEthValue.returns(0);
+      await mAptMock.mock.getDeployedValue.returns(0);
       await underlyerMock.mock.balanceOf.returns(0);
       await underlyerMock.mock.decimals.returns(6);
 
@@ -519,7 +511,7 @@ describe("Contract: APYPoolToken", () => {
 
     it("Returns correctly calculated value when zero deployed value", async () => {
       await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
-      await mAptMock.mock.getDeployedEthValue.returns(0);
+      await mAptMock.mock.getDeployedValue.returns(0);
       // set positive pool underlyer ETH value,
       // which should result in negative reserve top-up
       const decimals = 6;
@@ -530,7 +522,7 @@ describe("Contract: APYPoolToken", () => {
       const aptSupply = tokenAmountToBigNumber(10000);
       await poolToken.testMint(deployer.address, aptSupply);
 
-      const poolUnderlyerValue = await poolToken.getPoolUnderlyerEthValue();
+      const poolUnderlyerValue = await poolToken.getPoolUnderlyerValue();
       const topUpValue = await poolToken.getReserveTopUpValue();
       expect(topUpValue).to.be.lt(0);
 
@@ -552,7 +544,7 @@ describe("Contract: APYPoolToken", () => {
       await poolToken.testMint(deployer.address, aptSupply);
 
       const deployedValue = tokenAmountToBigNumber(1000);
-      await mAptMock.mock.getDeployedEthValue.returns(deployedValue);
+      await mAptMock.mock.getDeployedValue.returns(deployedValue);
 
       const topUpValue = await poolToken.getReserveTopUpValue();
 
@@ -578,9 +570,9 @@ describe("Contract: APYPoolToken", () => {
       await poolToken.testMint(deployer.address, aptSupply);
 
       const deployedValue = tokenAmountToBigNumber(500);
-      await mAptMock.mock.getDeployedEthValue.returns(deployedValue);
+      await mAptMock.mock.getDeployedValue.returns(deployedValue);
 
-      const poolUnderlyerValue = await poolToken.getPoolUnderlyerEthValue();
+      const poolUnderlyerValue = await poolToken.getPoolUnderlyerValue();
       const topUpValue = await poolToken.getReserveTopUpValue();
       expect(topUpValue).to.be.gt(0);
 
@@ -606,9 +598,9 @@ describe("Contract: APYPoolToken", () => {
       await poolToken.testMint(deployer.address, aptSupply);
 
       const deployedValue = tokenAmountToBigNumber(20);
-      await mAptMock.mock.getDeployedEthValue.returns(deployedValue);
+      await mAptMock.mock.getDeployedValue.returns(deployedValue);
 
-      const poolUnderlyerValue = await poolToken.getPoolUnderlyerEthValue();
+      const poolUnderlyerValue = await poolToken.getPoolUnderlyerValue();
       const topUpValue = await poolToken.getReserveTopUpValue();
       expect(topUpValue).to.be.lt(0);
 
@@ -626,7 +618,7 @@ describe("Contract: APYPoolToken", () => {
 
   describe("calculateMintAmount", () => {
     beforeEach(async () => {
-      await mAptMock.mock.getDeployedEthValue.returns(0);
+      await mAptMock.mock.getDeployedValue.returns(0);
     });
 
     it("Uses fixed ratio with zero total supply", async () => {
@@ -650,7 +642,7 @@ describe("Contract: APYPoolToken", () => {
       );
 
       // result doesn't depend on pool's deployed value
-      await mAptMock.mock.getDeployedEthValue.returns(10000000);
+      await mAptMock.mock.getDeployedValue.returns(10000000);
       expect(await poolToken.calculateMintAmount(depositAmount)).to.equal(
         depositAmount.mul(DEPOSIT_FACTOR)
       );
@@ -700,7 +692,7 @@ describe("Contract: APYPoolToken", () => {
       await poolToken.mint(poolToken.address, aptTotalSupply);
 
       const depositValue = depositAmount.mul(price).div(10 ** decimals);
-      const poolTotalValue = await poolToken.getPoolTotalEthValue();
+      const poolTotalValue = await poolToken.getPoolTotalValue();
       const expectedMintAmount = aptTotalSupply
         .mul(depositValue)
         .div(poolTotalValue);
@@ -712,7 +704,7 @@ describe("Contract: APYPoolToken", () => {
 
   describe("getUnderlyerAmount", () => {
     beforeEach(async () => {
-      await mAptMock.mock.getDeployedEthValue.returns(0);
+      await mAptMock.mock.getDeployedValue.returns(0);
     });
 
     it("Test getUnderlyerAmount when divide by zero", async () => {
@@ -750,7 +742,7 @@ describe("Contract: APYPoolToken", () => {
       beforeEach(async () => {
         // These get rollbacked due to snapshotting.
         // Just enough mocking to get `addLiquidity` to not revert.
-        await mAptMock.mock.getDeployedEthValue.returns(0);
+        await mAptMock.mock.getDeployedValue.returns(0);
         await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
         await underlyerMock.mock.decimals.returns(6);
         await underlyerMock.mock.allowance.returns(1);
@@ -849,7 +841,7 @@ describe("Contract: APYPoolToken", () => {
           const snapshot = await timeMachine.takeSnapshot();
           snapshotId = snapshot["result"];
 
-          await mAptMock.mock.getDeployedEthValue.returns(deployedValue);
+          await mAptMock.mock.getDeployedValue.returns(deployedValue);
 
           const price = 1;
           await priceAggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
@@ -880,7 +872,7 @@ describe("Contract: APYPoolToken", () => {
           const expectedMintAmount = await poolToken.calculateMintAmount(
             depositAmount
           );
-          const depositEthValue = await poolToken.getEthValueFromTokenAmount(
+          const depositValue = await poolToken.getValueFromUnderlyerAmount(
             depositAmount
           );
 
@@ -889,12 +881,12 @@ describe("Contract: APYPoolToken", () => {
           await underlyerMock.mock.balanceOf
             .withArgs(poolToken.address)
             .returns(poolBalance.add(depositAmount));
-          const poolEthValue = await poolToken.getPoolTotalEthValue();
-          // Technically this is a hack.  `getPoolTotalEthValue` gets called twice
+          const poolValue = await poolToken.getPoolTotalValue();
+          // Technically this is a hack.  `getPoolTotalValue` gets called twice
           // in `addLiquidity`: before and after the transfer.  If APT total supply
           // were not zero, the pool eth value would be calculated and used both
           // times.  This would give inconsistent values to check against the event
-          // and the test should fail (`expectedMintAmount` and `poolEthValue`
+          // and the test should fail (`expectedMintAmount` and `poolValue`
           // would be inconsistent.)
           //
           // See similar, but more extensive comments in the corresponding test
@@ -915,8 +907,8 @@ describe("Contract: APYPoolToken", () => {
               underlyerMock.address,
               depositAmount,
               expectedMintAmount,
-              depositEthValue,
-              poolEthValue
+              depositValue,
+              poolValue
             );
         });
 
@@ -1030,7 +1022,7 @@ describe("Contract: APYPoolToken", () => {
           const snapshot = await timeMachine.takeSnapshot();
           snapshotId = snapshot["result"];
 
-          await mAptMock.mock.getDeployedEthValue.returns(deployedValue);
+          await mAptMock.mock.getDeployedValue.returns(deployedValue);
 
           const price = 1;
           await priceAggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
@@ -1064,11 +1056,11 @@ describe("Contract: APYPoolToken", () => {
 
         it("Emit correct APT events", async () => {
           const underlyerAmount = await poolToken.getUnderlyerAmount(aptAmount);
-          const depositEthValue = await poolToken.getEthValueFromTokenAmount(
+          const depositValue = await poolToken.getValueFromUnderlyerAmount(
             underlyerAmount
           );
 
-          const poolEthValue = await poolToken.getPoolTotalEthValue();
+          const poolValue = await poolToken.getPoolTotalValue();
           // This is wrong, as it is the value prior to the underlyer transfer.
           // However, it is the only way to get the test to pass with mocking.
           //
@@ -1079,10 +1071,10 @@ describe("Contract: APYPoolToken", () => {
           //   .withArgs(poolToken.address)
           //   .returns(poolBalance.sub(underlyerAmount));
           //
-          // The problem is that `getPoolTotalEthValue` gets called twice
-          // in `redeem`: before (inside `getAPTEthValue`) and after the transfer,
+          // The problem is that `getPoolTotalValue` gets called twice
+          // in `redeem`: before (inside `getAPTValue`) and after the transfer,
           // in the event.  This gives inconsistent values between underlyerAmount
-          // and poolTotalEthValue in the event args and we can't fix it by mocking
+          // and poolTotalValue in the event args and we can't fix it by mocking
           // since it is all done in one transaction.
           //
           // If the mock contract allowed us to return different values on
@@ -1104,8 +1096,8 @@ describe("Contract: APYPoolToken", () => {
               underlyerMock.address,
               underlyerAmount,
               aptAmount,
-              depositEthValue,
-              poolEthValue
+              depositValue,
+              poolValue
             );
         });
 
