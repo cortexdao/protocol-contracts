@@ -1,18 +1,19 @@
-const { assert } = require("chai");
-const { ethers, artifacts, contract } = require("hardhat");
+const hre = require("hardhat");
+const { ethers, waffle } = hre;
+const { deployMockContract } = waffle;
+const { assert, expect } = require("chai");
 const timeMachine = require("ganache-time-traveler");
 const { expectRevert } = require("@openzeppelin/test-helpers");
+const { ZERO_ADDRESS, FAKE_ADDRESS } = require("../utils/helpers");
 
-const ProxyAdmin = artifacts.require("ProxyAdmin");
-const APYManagerUpgraded = artifacts.require("APYManagerUpgraded");
-const TransparentUpgradeableProxy = artifacts.require(
-  "TransparentUpgradeableProxy"
-);
-const ProxyConstructorArg = artifacts.require("ProxyConstructorArg");
-const APYManager = artifacts.require("APYManager");
+describe("Contract: APYManagerProxy", () => {
+  let deployer;
+  let randomUser;
 
-contract("APYManagerProxy", async (accounts) => {
-  const [deployer, randomUser] = accounts;
+  let ProxyAdmin;
+  let APYManager;
+  let ProxyConstructorArg;
+  let TransparentUpgradeableProxy;
 
   let proxyAdmin;
   let logic;
@@ -32,31 +33,44 @@ contract("APYManagerProxy", async (accounts) => {
   });
 
   before(async () => {
-    proxyAdmin = await ProxyAdmin.new({ from: deployer });
-    logic = await APYManager.new({ from: deployer });
-    const encodedArg = await (await ProxyConstructorArg.new()).getEncodedArg(
+    [deployer, randomUser] = await ethers.getSigners();
+
+    ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+    proxyAdmin = await ProxyAdmin.deploy();
+    await proxyAdmin.deployed();
+
+    APYManager = await ethers.getContractFactory("APYManager");
+    logic = await APYManager.deploy();
+    await logic.deployed();
+
+    ProxyConstructorArg = await ethers.getContractFactory(
+      "ProxyConstructorArg"
+    );
+    const proxyConstructorArg = await ProxyConstructorArg.deploy();
+    await proxyConstructorArg.deployed();
+    const encodedArg = await proxyConstructorArg.getEncodedArg(
       proxyAdmin.address
     );
-    proxy = await TransparentUpgradeableProxy.new(
+
+    TransparentUpgradeableProxy = await ethers.getContractFactory(
+      "TransparentUpgradeableProxy"
+    );
+    proxy = await TransparentUpgradeableProxy.deploy(
       logic.address,
       proxyAdmin.address,
-      encodedArg,
-      {
-        from: deployer,
-      }
+      encodedArg
     );
+    await proxy.deployed();
   });
 
-  describe("ProxyAdmin defaults", async () => {
+  describe("ProxyAdmin defaults", () => {
     it("ProxyAdmin owner is deployer", async () => {
-      assert.equal(await proxyAdmin.owner(), deployer);
+      expect(await proxyAdmin.owner()).to.equal(deployer.address);
     });
 
     it("Proxy implementation is set to logic contract", async () => {
       assert.equal(
-        await proxyAdmin.getProxyImplementation(proxy.address, {
-          from: deployer,
-        }),
+        await proxyAdmin.getProxyImplementation(proxy.address),
         logic.address
       );
     });
@@ -69,9 +83,14 @@ contract("APYManagerProxy", async (accounts) => {
     });
   });
 
-  describe("Upgradability", async () => {
+  describe("Upgradability", () => {
+    let APYManagerUpgraded;
+
     beforeEach(async () => {
-      manager = await APYManager.at(proxy.address);
+      APYManagerUpgraded = await ethers.getContractFactory(
+        "APYManagerUpgraded"
+      );
+      manager = await APYManager.attach(proxy.address);
     });
 
     it("Owner can upgrade logic", async () => {
@@ -79,61 +98,55 @@ contract("APYManagerProxy", async (accounts) => {
       assert.equal(typeof manager.newlyAddedVariable, "undefined");
 
       //prematurely point instance to upgraded implementation
-      manager = await APYManagerUpgraded.at(proxy.address);
+      manager = await APYManagerUpgraded.attach(proxy.address);
       assert.equal(typeof manager.newlyAddedVariable, "function");
 
       //function should fail due to the proxy not pointing to the correct implementation
       await expectRevert.unspecified(manager.newlyAddedVariable());
 
       // create the new implementation and point the proxy to it
-      const newLogic = await APYManagerUpgraded.new({ from: deployer });
-      await proxyAdmin.upgrade(proxy.address, newLogic.address, {
-        from: deployer,
-      });
+      const newLogic = await APYManagerUpgraded.deploy();
+      await newLogic.deployed();
+      await proxyAdmin.upgrade(proxy.address, newLogic.address);
 
       const newVal = await manager.newlyAddedVariable();
       assert.equal(newVal, false);
       assert.equal(
-        await proxyAdmin.getProxyImplementation(proxy.address, {
-          from: deployer,
-        }),
+        await proxyAdmin.getProxyImplementation(proxy.address),
         newLogic.address
       );
     });
 
     it("Revert when non-owner attempts upgrade", async () => {
-      const newLogic = await APYManagerUpgraded.new({ from: deployer });
+      const newLogic = await APYManagerUpgraded.deploy();
+      await newLogic.deployed();
       await expectRevert(
-        proxyAdmin.upgrade(proxy.address, newLogic.address, {
-          from: randomUser,
-        }),
+        proxyAdmin.connect(randomUser).upgrade(proxy.address, newLogic.address),
         "Ownable: caller is not the owner"
       );
     });
 
     it("Revert when user attempts to initialize upgrade", async () => {
       await expectRevert(
-        manager.initializeUpgrade({ from: randomUser }),
+        manager.connect(randomUser).initializeUpgrade(),
         "ADMIN_ONLY"
       );
     });
 
     it("Revert when non-admin attempts `upgradeAndCall`", async () => {
       // deploy new implementation
-      const newLogic = await APYManagerUpgraded.new({ from: deployer });
+      const newLogic = await APYManagerUpgraded.deploy();
+      await newLogic.deployed();
       // construct init data
-      const iImplementation = new ethers.utils.Interface(
-        APYManagerUpgraded.abi
-      );
-      const initData = iImplementation.encodeFunctionData(
+      const initData = APYManagerUpgraded.interface.encodeFunctionData(
         "initializeUpgrade",
         []
       );
 
       await expectRevert(
-        proxyAdmin.upgradeAndCall(proxy.address, newLogic.address, initData, {
-          from: randomUser,
-        }),
+        proxyAdmin
+          .connect(randomUser)
+          .upgradeAndCall(proxy.address, newLogic.address, initData),
         "Ownable: caller is not the owner"
       );
     });
@@ -143,18 +156,16 @@ contract("APYManagerProxy", async (accounts) => {
       assert.equal(typeof manager.newlyAddedVariable, "undefined");
 
       //prematurely point instance to upgraded implementation
-      manager = await APYManagerUpgraded.at(proxy.address);
+      manager = await APYManagerUpgraded.attach(proxy.address);
       assert.equal(typeof manager.newlyAddedVariable, "function");
 
       //function should fail due to the proxy not pointing to the correct implementation
       await expectRevert.unspecified(manager.newlyAddedVariable());
 
       // create the new implementation and point the proxy to it
-      const newLogic = await APYManagerUpgraded.new({ from: deployer });
-      const iImplementation = new ethers.utils.Interface(
-        APYManagerUpgraded.abi
-      );
-      const initData = iImplementation.encodeFunctionData(
+      const newLogic = await APYManagerUpgraded.deploy();
+      await newLogic.deployed();
+      const initData = APYManagerUpgraded.interface.encodeFunctionData(
         "initializeUpgrade",
         []
       );
@@ -162,18 +173,101 @@ contract("APYManagerProxy", async (accounts) => {
       await proxyAdmin.upgradeAndCall(
         proxy.address,
         newLogic.address,
-        initData,
-        { from: deployer }
+        initData
       );
 
       const newVal = await manager.newlyAddedVariable.call();
       assert.equal(newVal, true);
       assert.equal(
-        await proxyAdmin.getProxyImplementation(proxy.address, {
-          from: deployer,
-        }),
+        await proxyAdmin.getProxyImplementation(proxy.address),
         newLogic.address
       );
+    });
+
+    describe("initialize", () => {
+      it("Cannot initialize with zero address", async () => {
+        let tempManager = await APYManager.deploy();
+        await tempManager.deployed();
+        await expect(tempManager.initialize(ZERO_ADDRESS)).to.be.revertedWith(
+          "INVALID_ADMIN"
+        );
+      });
+    });
+
+    describe("initializeUpgrade", () => {
+      let APYManagerV2;
+
+      before(async () => {
+        APYManagerV2 = await ethers.getContractFactory("APYManagerV2");
+      });
+
+      it("Cannot initialize with non-contract addresses", async () => {
+        const contract = await deployMockContract(deployer, []);
+
+        let newLogic = await APYManagerV2.deploy();
+        await newLogic.deployed();
+
+        let initData = APYManagerV2.interface.encodeFunctionData(
+          "initializeUpgrade(address,address)",
+          [FAKE_ADDRESS, contract.address]
+        );
+        await expect(
+          proxyAdmin.upgradeAndCall(proxy.address, newLogic.address, initData)
+        ).to.be.reverted;
+
+        initData = APYManagerV2.interface.encodeFunctionData(
+          "initializeUpgrade(address,address)",
+          [contract.address, FAKE_ADDRESS]
+        );
+        await expect(
+          proxyAdmin.upgradeAndCall(proxy.address, newLogic.address, initData)
+        ).to.be.reverted;
+      });
+
+      it("Can initialize with contract addresses if address registry is set", async () => {
+        const contract = await deployMockContract(deployer, []);
+
+        let newLogic = await APYManagerV2.deploy();
+        await newLogic.deployed();
+
+        // address registry was set on the V1 manager deployment, but as a safety check,
+        // and since it's not necessarily clear from purely reading smart contract code,
+        // we put a "require" for it in the `initializeUpgrade` function.
+
+        // should revert as address registry is unset
+        const initData = APYManagerV2.interface.encodeFunctionData(
+          "initializeUpgrade(address,address)",
+          [contract.address, contract.address]
+        );
+        await expect(
+          proxyAdmin.upgradeAndCall(proxy.address, newLogic.address, initData)
+        ).to.be.reverted;
+        // should not revert after setting
+        const manager = await APYManager.attach(proxy.address);
+        await manager.setAddressRegistry(contract.address);
+        await expect(
+          proxyAdmin.upgradeAndCall(proxy.address, newLogic.address, initData)
+        ).to.not.be.reverted;
+      });
+
+      it("upgradeAndCall with initializeUpgrade is successful", async () => {
+        let logicV2 = await APYManagerV2.deploy();
+        await logicV2.deployed();
+
+        const addressRegistry = await deployMockContract(deployer, []);
+        await manager.setAddressRegistry(addressRegistry.address);
+
+        const mApt = await deployMockContract(deployer, []);
+        const allocationRegistry = await deployMockContract(deployer, []);
+        const initData = APYManagerV2.interface.encodeFunctionData(
+          "initializeUpgrade(address,address)",
+          [mApt.address, allocationRegistry.address]
+        );
+
+        await expect(
+          proxyAdmin.upgradeAndCall(proxy.address, logicV2.address, initData)
+        ).to.not.be.reverted;
+      });
     });
   });
 });

@@ -5,6 +5,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAddressRegistry.sol";
 import "./interfaces/IDetailedERC20.sol";
@@ -53,8 +54,19 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
         setAdminAddress(adminAddress);
     }
 
-    // solhint-disable-next-line no-empty-blocks
-    function initializeUpgrade() external virtual onlyAdmin {}
+    function initializeUpgrade(
+        address payable _mApt,
+        address _allocationRegistry
+    ) external virtual onlyAdmin {
+        require(Address.isContract(_mApt), "INVALID_ADDRESS");
+        require(Address.isContract(_allocationRegistry), "INVALID_ADDRESS");
+        require(
+            Address.isContract(address(addressRegistry)),
+            "Address registry should be set"
+        );
+        mApt = APYMetaPoolToken(_mApt);
+        assetAllocationRegistry = IAssetAllocationRegistry(_allocationRegistry);
+    }
 
     function deployStrategy(address generalExecutor)
         external
@@ -97,7 +109,7 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
         APYGenericExecutor.Data[] memory steps,
         IAssetAllocationRegistry.AssetAllocation[] memory viewData
     ) public override onlyOwner {
-        require(isStrategyDeployed[strategy], "Invalid Strategy");
+        require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
         _registerAllocationData(viewData);
         IStrategy(strategy).execute(steps);
     }
@@ -128,7 +140,7 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
             allocation.poolIds.length == allocation.amounts.length,
             "allocation length mismatch"
         );
-        require(isStrategyDeployed[strategy], "Invalid Strategy");
+        require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
         uint256[] memory mintAmounts = new uint256[](allocation.poolIds.length);
         for (uint256 i = 0; i < allocation.poolIds.length; i++) {
             uint256 poolAmount = allocation.amounts[i];
@@ -163,7 +175,7 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
             allocation.poolIds.length == allocation.amounts.length,
             "allocation length mismatch"
         );
-        require(isStrategyDeployed[strategy], "Invalid Strategy");
+        require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
 
         uint256[] memory burnAmounts = new uint256[](allocation.poolIds.length);
         for (uint256 i = 0; i < allocation.poolIds.length; i++) {
@@ -221,20 +233,21 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
     receive() external payable {} // solhint-disable-line no-empty-blocks
 
     function setMetaPoolToken(address payable _mApt) public onlyOwner {
+        require(Address.isContract(_mApt), "INVALID_ADDRESS");
         mApt = APYMetaPoolToken(_mApt);
     }
 
     function setAddressRegistry(address _addressRegistry) public onlyOwner {
-        require(_addressRegistry != address(0), "Invalid address");
+        require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistry(_addressRegistry);
     }
 
-    function setAssetAllocationRegistry(address _addressRegistry)
+    function setAssetAllocationRegistry(address _allocationRegistry)
         public
         onlyOwner
     {
-        require(_addressRegistry != address(0), "Invalid address");
-        assetAllocationRegistry = IAssetAllocationRegistry(_addressRegistry);
+        require(Address.isContract(_allocationRegistry), "INVALID_ADDRESS");
+        assetAllocationRegistry = IAssetAllocationRegistry(_allocationRegistry);
     }
 
     function setPoolIds(bytes32[] memory poolIds) public onlyOwner {
