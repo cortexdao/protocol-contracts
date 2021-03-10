@@ -11,6 +11,7 @@ require("dotenv").config();
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
+const { getDeployedAddress } = require("../../utils/helpers");
 
 const AGG_ADDRESS = "0x344D5d70fc3c3097f82d1F26464aaDcEb30C6AC7";
 

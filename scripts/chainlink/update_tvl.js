@@ -39,23 +39,12 @@ async function main(argv) {
   const sender = STABLECOIN_POOLS["DAI"];
   await acquireToken(sender, strategy, daiToken, amount, deployer);
 
-  // split LP tokens between strategy and gauge
-  // const totalLPBalance = await lpToken.balanceOf(strategy.address);
-  // const strategyLpBalance = totalLPBalance.div(3);
-  // const gaugeLpBalance = totalLPBalance.sub(strategyLpBalance);
-  // expect(gaugeLpBalance).to.be.gt(0);
-  // expect(strategyLpBalance).to.be.gt(0);
-
   const daiIndex = 0;
-
-  // const poolBalance = await stableSwap.balances(daiIndex);
-  // const lpTotalSupply = await lpToken.totalSupply();
-
-  // const expectedBalance = totalLPBalance.mul(poolBalance).div(lpTotalSupply);
-  // expect(expectedBalance).to.be.gt(0);
 
   // 3Pool addresses:
   const STABLE_SWAP_ADDRESS = "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7";
+  const LP_TOKEN_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
+  const LIQUIDITY_GAUGE_ADDRESS = "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A";
 
   const daiAmount = tokenAmountToBigNumber("1000", 18);
   const minAmount = 0;
@@ -75,12 +64,30 @@ async function main(argv) {
   //   "ILiquidityGauge",
   //   LIQUIDITY_GAUGE_ADDRESS
   // );
-  // const lpToken = await ethers.getContractAt(
-  //   "IDetailedERC20",
-  //   LP_TOKEN_ADDRESS
-  // );
+  const lpToken = await ethers.getContractAt(
+    "IDetailedERC20",
+    LP_TOKEN_ADDRESS
+  );
   // await lpToken.connect(strategy).approve(gauge.address, MAX_UINT256);
   // await gauge.connect(strategy)["deposit(uint256)"](gaugeLpBalance);
+
+  // split LP tokens between strategy and gauge
+  const totalLPBalance = await lpToken.balanceOf(strategy.address);
+  // const strategyLpBalance = totalLPBalance.div(3);
+  // const gaugeLpBalance = totalLPBalance.sub(strategyLpBalance);
+  // expect(gaugeLpBalance).to.be.gt(0);
+  // expect(strategyLpBalance).to.be.gt(0);
+
+  // for (const idx of [0, 1, 2]) {
+  //   const poolBalance = await stableSwap.balances(idx);
+  //   console.log("Pool balance:", poolBalance.toString());
+  //   const lpTotalSupply = await lpToken.totalSupply();
+  //   console.log("LP total supply:", lpTotalSupply.toString());
+
+  //   const expectedBalance = totalLPBalance.mul(poolBalance).div(lpTotalSupply);
+  //   console.log();
+  //   console.log("expected balance:", expectedBalance.toString());
+  // }
 }
 
 if (!module.parent) {

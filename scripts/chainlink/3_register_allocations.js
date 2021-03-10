@@ -86,27 +86,56 @@ async function main(argv) {
    * data: a pair (address, bytes) where the bytes are encoded function
    *       calldata to be used at the target address
    */
-  const allocationId = bytes32("1");
-  const symbol = "DAI";
-  const decimals = 18;
-  const coinIndex = 0;
-  const calldata = CurvePeriphery.interface.encodeFunctionData(
+  const calldataForDai = CurvePeriphery.interface.encodeFunctionData(
     "getUnderlyerBalance(address,address,address,address,uint256)",
     [
       strategy.address,
       STABLE_SWAP_ADDRESS,
       LIQUIDITY_GAUGE_ADDRESS,
       LP_TOKEN_ADDRESS,
-      coinIndex,
+      0,
+    ]
+  );
+  const calldataForUsdc = CurvePeriphery.interface.encodeFunctionData(
+    "getUnderlyerBalance(address,address,address,address,uint256)",
+    [
+      strategy.address,
+      STABLE_SWAP_ADDRESS,
+      LIQUIDITY_GAUGE_ADDRESS,
+      LP_TOKEN_ADDRESS,
+      1,
+    ]
+  );
+  const calldataForUsdt = CurvePeriphery.interface.encodeFunctionData(
+    "getUnderlyerBalance(address,address,address,address,uint256)",
+    [
+      strategy.address,
+      STABLE_SWAP_ADDRESS,
+      LIQUIDITY_GAUGE_ADDRESS,
+      LP_TOKEN_ADDRESS,
+      2,
     ]
   );
 
-  const data = [curve.address, calldata];
   let trx = await registry.addAssetAllocation(
-    allocationId,
-    data,
-    symbol,
-    decimals
+    bytes32("dai"),
+    [curve.address, calldataForDai],
+    "DAI",
+    18
+  );
+  await trx.wait();
+  trx = await registry.addAssetAllocation(
+    bytes32("usdc"),
+    [curve.address, calldataForUsdc],
+    "USDC",
+    6
+  );
+  await trx.wait();
+  trx = await registry.addAssetAllocation(
+    bytes32("usdt"),
+    [curve.address, calldataForUsdt],
+    "USDT",
+    6
   );
   await trx.wait();
 
