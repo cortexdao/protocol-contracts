@@ -1,17 +1,21 @@
-/*
+#!/usr/bin/env node
+/**
  * Command to run script:
  *
- * $ yarn hardhat --network <network name> run scripts/<script filename>
+ * $ HARDHAT_NETWORK=localhost node scripts/1_deployments.js
  *
- * Alternatively, to pass command-line arguments:
+ * You can modify the script to handle command-line args and retrieve them
+ * through the `argv` object.  Values are passed like so:
  *
- * $ HARDHAT_NETWORK=<network name> node run scripts/<script filename> --arg1=val1 --arg2=val2
+ * $ HARDHAT_NETWORK=localhost node scripts/1_deployments.js --arg1=val1 --arg2=val2
+ *
+ * Remember, you should have started the forked mainnet locally in another terminal:
+ *
+ * $ MNEMONIC='' yarn fork:mainnet
  */
-require("dotenv").config();
 const { argv } = require("yargs");
 const hre = require("hardhat");
-const { ethers, network } = require("hardhat");
-const { getDeployedAddress } = require("../../utils/helpers");
+const { ethers, network } = hre;
 
 const AGG_ADDRESS = "0x344D5d70fc3c3097f82d1F26464aaDcEb30C6AC7";
 

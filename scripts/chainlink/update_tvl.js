@@ -1,12 +1,17 @@
 #!/usr/bin/env node
-/*
+/**
  * Command to run script:
  *
- * $ yarn hardhat --network <network name> run scripts/<script filename>
+ * $ HARDHAT_NETWORK=localhost node scripts/1_deployments.js
  *
- * Alternatively, to pass command-line arguments:
+ * You can modify the script to handle command-line args and retrieve them
+ * through the `argv` object.  Values are passed like so:
  *
- * $ HARDHAT_NETWORK=<network name> node run scripts/<script filename> --arg1=val1 --arg2=val2
+ * $ HARDHAT_NETWORK=localhost node scripts/1_deployments.js --arg1=val1 --arg2=val2
+ *
+ * Remember, you should have started the forked mainnet locally in another terminal:
+ *
+ * $ MNEMONIC='' yarn fork:mainnet
  */
 const { argv } = require("yargs");
 const hre = require("hardhat");
@@ -18,6 +23,11 @@ const {
   acquireToken,
 } = require("../../utils/helpers");
 const { STABLECOIN_POOLS } = require("../../utils/constants");
+
+// 3Pool addresses:
+const STABLE_SWAP_ADDRESS = "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7";
+const LP_TOKEN_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
+const LIQUIDITY_GAUGE_ADDRESS = "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A"; // eslint-disable-line no-unused-vars
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -31,6 +41,7 @@ async function main(argv) {
   console.log("Deployer address:", deployer.address);
   console.log("");
 
+  const amounts = [];
   const stablecoins = {};
   for (const symbol of ["DAI", "USDC", "USDT"]) {
     const tokenAddress = getStablecoinAddress(symbol, "MAINNET");
@@ -38,42 +49,39 @@ async function main(argv) {
     stablecoins[symbol] = token;
 
     const decimals = await token.decimals();
-    const amount = tokenAmountToBigNumber("10000", decimals);
     const minBalance = tokenAmountToBigNumber("1000", decimals);
+    const fundingAmount = tokenAmountToBigNumber("10000", decimals);
 
     // replenish strategy account with coins if running low
-    const balance = await token.balanceOf(strategy);
+    const balance = await token.balanceOf(strategy.address);
     if (balance.lt(minBalance)) {
       const sender = STABLECOIN_POOLS[symbol];
-      await acquireToken(sender, strategy, token, amount, deployer);
+      await acquireToken(sender, strategy, token, fundingAmount, deployer);
     }
+
+    // ensure there is enough to deposit, i.e.
+    // amount <= minBalance
+    amounts.push(tokenAmountToBigNumber("333", decimals));
   }
-
-  // 3Pool addresses:
-  const STABLE_SWAP_ADDRESS = "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7";
-  const LP_TOKEN_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
-
-  const daiAmount = tokenAmountToBigNumber(334, 18);
-  const usdcAmount = tokenAmountToBigNumber(334, 6);
-  const usdtAmount = tokenAmountToBigNumber(334, 6);
-  const minAmount = 0;
 
   const stableSwap = await ethers.getContractAt(
     "IStableSwap",
     STABLE_SWAP_ADDRESS
   );
-  await stablecoins["DAI"]
-    .connect(strategy)
-    .approve(stableSwap.address, MAX_UINT256);
-  await stablecoins["USDC"]
-    .connect(strategy)
-    .approve(stableSwap.address, MAX_UINT256);
-  await stablecoins["USDT"]
-    .connect(strategy)
-    .approve(stableSwap.address, MAX_UINT256);
-  await stableSwap
-    .connect(strategy)
-    .add_liquidity([daiAmount, usdcAmount, usdtAmount], minAmount);
+  for (const symbol of ["DAI", "USDC", "USDT"]) {
+    const token = stablecoins[symbol];
+    const allowance = await token.allowance(
+      strategy.address,
+      stableSwap.address
+    );
+    // Tether doesn't like repeated approvals
+    if (allowance.eq(MAX_UINT256)) continue;
+    await stablecoins[symbol]
+      .connect(strategy)
+      .approve(stableSwap.address, MAX_UINT256);
+  }
+
+  await stableSwap.connect(strategy).add_liquidity(amounts, 0);
 
   const lpToken = await ethers.getContractAt(
     "IDetailedERC20",
@@ -84,7 +92,6 @@ async function main(argv) {
   /******************************************************/
   /* use this if you want to earn CRV through the gauge */
   /******************************************************/
-  // const LIQUIDITY_GAUGE_ADDRESS = "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A";
   // const gauge = await ethers.getContractAt(
   //   "ILiquidityGauge",
   //   LIQUIDITY_GAUGE_ADDRESS
@@ -95,6 +102,7 @@ async function main(argv) {
   // await lpToken.connect(strategy).approve(gauge.address, MAX_UINT256);
   // await gauge.connect(strategy)["deposit(uint256)"](gaugeLpBalance);
 
+  const lpTotalSupply = await lpToken.totalSupply();
   for (const [idx, symbol] of [
     [0, "DAI"],
     [1, "USDC"],
@@ -102,15 +110,13 @@ async function main(argv) {
   ]) {
     const poolBalance = await stableSwap.balances(idx);
     console.log(`Pool balance (${symbol}):`, poolBalance.toString());
-    const lpTotalSupply = await lpToken.totalSupply();
-    console.log(`LP total supply (${symbol}):`, lpTotalSupply.toString());
 
     const expectedBalance = totalLPBalance.mul(poolBalance).div(lpTotalSupply);
-    console.log();
     console.log(
       `Expected user balance (${symbol}):`,
       expectedBalance.toString()
     );
+    console.log("");
   }
 }
 

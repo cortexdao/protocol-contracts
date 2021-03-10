@@ -1,18 +1,19 @@
 #!/usr/bin/env node
-/*
+/**
  * Command to run script:
  *
- * $ yarn hardhat --network <network name> run scripts/<script filename>
+ * $ HARDHAT_NETWORK=localhost node scripts/1_deployments.js
  *
- * Alternatively, to pass command-line arguments:
+ * You can modify the script to handle command-line args and retrieve them
+ * through the `argv` object.  Values are passed like so:
  *
- * $ HARDHAT_NETWORK=<network name> node run scripts/<script filename> --arg1=val1 --arg2=val2
+ * $ HARDHAT_NETWORK=localhost node scripts/1_deployments.js --arg1=val1 --arg2=val2
+ *
+ * Remember, you should have started the forked mainnet locally in another terminal:
+ *
+ * $ MNEMONIC='' yarn fork:mainnet
  */
-require("dotenv").config({ path: "./alpha.env" });
-const { argv } = require("yargs").option("gasPrice", {
-  type: "number",
-  description: "Gas price in gwei; omitting uses EthGasStation value",
-});
+const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
 const { getDeployedAddress, bytes32 } = require("../../utils/helpers");
@@ -27,19 +28,6 @@ async function main(argv) {
 
   const [deployer, strategy] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
-  /* TESTING on localhost only
-   * need to fund as there is no ETH on Mainnet for the deployer
-   */
-  // const [funder] = await ethers.getSigners();
-  // const fundingTrx = await funder.sendTransaction({
-  //   to: mAptDeployer.address,
-  //   value: ethers.utils.parseEther("1.0"),
-  // });
-  // await fundingTrx.wait();
-
-  console.log("");
-  console.log("Registering ...");
-  console.log("");
 
   const addressRegistryAddress = getDeployedAddress(
     "APYAddressRegistryProxy",
@@ -50,14 +38,22 @@ async function main(argv) {
     addressRegistryAddress
   );
   const registryAddress = await addressRegistry.chainlinkRegistryAddress();
-  let registry = await ethers.getContractAt(
+  const registry = await ethers.getContractAt(
     "AssetAllocationRegistry",
     registryAddress
   );
 
+  console.log("");
+  console.log("Registering ...");
+  console.log("");
+
   /****************************************/
   /********** CURVE FINANCE ***************/
   /****************************************/
+
+  console.log("");
+  console.log("Curve 3pool");
+  console.log("");
   const CurvePeriphery = await ethers.getContractFactory("CurvePeriphery");
   const curve = await CurvePeriphery.deploy();
   await curve.deployed();
@@ -138,6 +134,9 @@ async function main(argv) {
     6
   );
   await trx.wait();
+
+  console.log("... done.");
+  console.log("");
 
   /****************************************/
 }
