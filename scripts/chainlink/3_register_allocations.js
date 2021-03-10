@@ -14,18 +14,8 @@ const { argv } = require("yargs").option("gasPrice", {
   description: "Gas price in gwei; omitting uses EthGasStation value",
 });
 const hre = require("hardhat");
-const { ethers, network, artifacts } = require("hardhat");
-const { expect } = require("chai");
-const {
-  getDeployedAddress,
-  impersonateAccount,
-  tokenAmountToBigNumber,
-  getStablecoinAddress,
-  acquireToken,
-  MAX_UINT256,
-  bytes32,
-} = require("../../utils/helpers");
-const { STABLECOIN_POOLS } = require("../../utils/constants");
+const { ethers, network } = require("hardhat");
+const { getDeployedAddress, bytes32 } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -64,8 +54,6 @@ async function main(argv) {
     "AssetAllocationRegistry",
     registryAddress
   );
-  // const registryDeployer = await impersonateAccount(await registry.owner());
-  // registry = registry.connect(registryDeployer);
 
   /****************************************/
   /********** CURVE FINANCE ***************/
@@ -79,82 +67,48 @@ async function main(argv) {
   const LP_TOKEN_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
   const LIQUIDITY_GAUGE_ADDRESS = "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A";
 
-  const daiIndex = 0;
-  const daiAddress = getStablecoinAddress("DAI", "MAINNET");
-  const daiToken = await ethers.getContractAt("IDetailedERC20", daiAddress);
-
-  const decimals = await daiToken.decimals();
-  const amount = tokenAmountToBigNumber("10000", decimals);
-  const sender = STABLECOIN_POOLS["DAI"];
-  await acquireToken(sender, strategy, daiToken, amount, deployer);
-
-  const daiAmount = tokenAmountToBigNumber("1000", 18);
-  const minAmount = 0;
-
-  const IDetailedERC20 = artifacts.require("IDetailedERC20");
-  const IStableSwap = artifacts.require("IStableSwap");
-  const ILiquidityGauge = artifacts.require("ILiquidityGauge");
-
-  const lpToken = await ethers.getContractAt(
-    IDetailedERC20.abi,
-    LP_TOKEN_ADDRESS
-  );
-  const stableSwap = await ethers.getContractAt(
-    IStableSwap.abi,
-    STABLE_SWAP_ADDRESS
-  );
-  const gauge = await ethers.getContractAt(
-    ILiquidityGauge.abi,
-    LIQUIDITY_GAUGE_ADDRESS
-  );
-  // use sequence
-  await daiToken.connect(strategy).approve(stableSwap.address, MAX_UINT256);
-  await stableSwap
-    .connect(strategy)
-    .add_liquidity([daiAmount, "0", "0"], minAmount);
-
-  // split LP tokens between strategy and gauge
-  const totalLPBalance = await lpToken.balanceOf(strategy.address);
-  // const strategyLpBalance = totalLPBalance.div(3);
-  // const gaugeLpBalance = totalLPBalance.sub(strategyLpBalance);
-  // expect(gaugeLpBalance).to.be.gt(0);
-  // expect(strategyLpBalance).to.be.gt(0);
-  // use sequence
-  // await lpToken.connect(strategy).approve(gauge.address, MAX_UINT256);
-  // await gauge.connect(strategy)["deposit(uint256)"](gaugeLpBalance);
-
-  const poolBalance = await stableSwap.balances(daiIndex);
-  const lpTotalSupply = await lpToken.totalSupply();
-
-  const expectedBalance = totalLPBalance.mul(poolBalance).div(lpTotalSupply);
-  expect(expectedBalance).to.be.gt(0);
-
-  const balance = await curve.getUnderlyerBalance(
-    strategy.address,
-    stableSwap.address,
-    gauge.address,
-    lpToken.address,
-    daiIndex
-  );
-  expect(balance).to.equal(expectedBalance);
-  // let trx = ...
-  // await trx.wait()
+  /*  Asset Allocations:
+   *
+   * Each asset allocation is a token placed in a particular way within
+   * the APY.Finance system. The same token may have multiple allocations
+   * managed in differing ways, whether they are held by different
+   * contracts or subject to different holding periods.
+   *
+   * Each asset allocation must be registered with AssetAllocationRegistry,
+   * in order for the Chainlink nodes to include it within their TVL
+   * computation.
+   *
+   * The data required in an allocation is:
+   *
+   * allocationId (bytes32): a unique identifier across all allocations
+   * symbol (string): the token symbol
+   * decimals (uint256): the token decimals
+   * data: a pair (address, bytes) where the bytes are encoded function
+   *       calldata to be used at the target address
+   */
+  const allocationId = bytes32("1");
+  const symbol = "DAI";
+  const decimals = 18;
+  const coinIndex = 0;
   const calldata = CurvePeriphery.interface.encodeFunctionData(
     "getUnderlyerBalance(address,address,address,address,uint256)",
     [
       strategy.address,
-      stableSwap.address,
-      gauge.address,
-      lpToken.address,
-      daiIndex,
+      STABLE_SWAP_ADDRESS,
+      LIQUIDITY_GAUGE_ADDRESS,
+      LP_TOKEN_ADDRESS,
+      coinIndex,
     ]
   );
 
-  const allocationId = bytes32("1");
   const data = [curve.address, calldata];
-  const symbol = "DAI";
-  await registry.addAssetAllocation(allocationId, data, symbol);
-  expect(await registry.balanceOf(allocationId)).to.equal(balance);
+  let trx = await registry.addAssetAllocation(
+    allocationId,
+    data,
+    symbol,
+    decimals
+  );
+  await trx.wait();
 
   /****************************************/
 }
