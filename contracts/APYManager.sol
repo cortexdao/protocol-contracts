@@ -48,6 +48,9 @@ contract APYManager is Initializable, OwnableUpgradeSafe {
         emit AdminChanged(adminAddress);
     }
 
+    /**
+     * @dev Throws if called by any account other than the proxy admin.
+     */
     modifier onlyAdmin() {
         require(msg.sender == proxyAdmin, "ADMIN_ONLY");
         _;
