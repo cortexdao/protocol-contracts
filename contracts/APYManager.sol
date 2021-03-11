@@ -71,7 +71,7 @@ contract APYManager is Initializable, OwnableUpgradeSafe {
 
     /** @notice Returns the list of asset addresses.
      *  @dev Address list will be populated automatically from the set
-     *       of input and output assets for each strategy.
+     *       of input and output assets for each Account.
      */
     function getTokenAddresses() external view returns (address[] memory) {
         return _tokenAddresses;

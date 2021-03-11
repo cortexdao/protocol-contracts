@@ -9,13 +9,13 @@ import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAddressRegistry.sol";
 import "./interfaces/IDetailedERC20.sol";
-import "./interfaces/IStrategyFactory.sol";
+import "./interfaces/IAccountFactory.sol";
 import "./interfaces/IAssetAllocationRegistry.sol";
 import "./APYPoolTokenV2.sol";
 import "./APYMetaPoolToken.sol";
-import "./Strategy.sol";
+import "./APYAccount.sol";
 
-contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
+contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IAccountFactory {
     using SafeMath for uint256;
     using SafeERC20 for IDetailedERC20;
 
@@ -34,14 +34,14 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
     //          before the V2 upgrade
 
     // V2
-    mapping(bytes32 => address) public getStrategy;
-    mapping(address => bool) public override isStrategyDeployed;
+    mapping(bytes32 => address) public getAccount;
+    mapping(address => bool) public override isAccountDeployed;
     IAssetAllocationRegistry public assetAllocationRegistry;
 
     /* ------------------------------- */
 
     event AdminChanged(address);
-    event StrategyDeployed(address strategy, address generalExecutor);
+    event APYAccountDeployed(address account, address generalExecutor);
 
     function initialize(address adminAddress) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");
@@ -68,79 +68,79 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
         assetAllocationRegistry = IAssetAllocationRegistry(_allocationRegistry);
     }
 
-    function deployStrategy(address generalExecutor)
+    function deployAccount(address generalExecutor)
         external
         override
         onlyOwner
         returns (address)
     {
-        Strategy strategy = new Strategy(generalExecutor);
-        isStrategyDeployed[address(strategy)] = true;
-        emit StrategyDeployed(address(strategy), generalExecutor);
-        return address(strategy);
+        APYAccount account = new APYAccount(generalExecutor);
+        isAccountDeployed[address(account)] = true;
+        emit APYAccountDeployed(address(account), generalExecutor);
+        return address(account);
     }
 
-    function setStrategyId(bytes32 id, address strategy) public onlyOwner {
-        getStrategy[id] = strategy;
+    function setAccountId(bytes32 id, address account) public onlyOwner {
+        getAccount[id] = account;
     }
 
-    function fundStrategy(
-        address strategy,
-        IStrategyFactory.StrategyAllocation memory allocation,
+    function fundAccount(
+        address account,
+        IAccountFactory.AccountAllocation memory allocation,
         IAssetAllocationRegistry.AssetAllocation[] memory viewData
     ) external override onlyOwner {
         _registerAllocationData(viewData);
-        _fundStrategy(strategy, allocation);
+        _fundAccount(account, allocation);
     }
 
     function fundAndExecute(
-        address strategy,
-        IStrategyFactory.StrategyAllocation memory allocation,
+        address account,
+        IAccountFactory.AccountAllocation memory allocation,
         APYGenericExecutor.Data[] memory steps,
         IAssetAllocationRegistry.AssetAllocation[] memory viewData
     ) external override onlyOwner {
         _registerAllocationData(viewData);
-        _fundStrategy(strategy, allocation);
-        execute(strategy, steps, viewData);
+        _fundAccount(account, allocation);
+        execute(account, steps, viewData);
     }
 
     function execute(
-        address strategy,
+        address account,
         APYGenericExecutor.Data[] memory steps,
         IAssetAllocationRegistry.AssetAllocation[] memory viewData
     ) public override onlyOwner {
-        require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
+        require(isAccountDeployed[account], "INVALID_ACCOUNT");
         _registerAllocationData(viewData);
-        IStrategy(strategy).execute(steps);
+        IAccount(account).execute(steps);
     }
 
     function executeAndWithdraw(
-        address strategy,
-        IStrategyFactory.StrategyAllocation memory allocation,
+        address account,
+        IAccountFactory.AccountAllocation memory allocation,
         APYGenericExecutor.Data[] memory steps,
         IAssetAllocationRegistry.AssetAllocation[] memory viewData
     ) external override onlyOwner {
-        execute(strategy, steps, viewData);
-        _withdrawFromStrategy(strategy, allocation);
+        execute(account, steps, viewData);
+        _withdrawFromAccount(account, allocation);
         _registerAllocationData(viewData);
     }
 
-    function withdrawFromStrategy(
-        address strategy,
-        IStrategyFactory.StrategyAllocation memory allocation
+    function withdrawFromAccount(
+        address account,
+        IAccountFactory.AccountAllocation memory allocation
     ) external override onlyOwner {
-        _withdrawFromStrategy(strategy, allocation);
+        _withdrawFromAccount(account, allocation);
     }
 
-    function _fundStrategy(
-        address strategy,
-        IStrategyFactory.StrategyAllocation memory allocation
+    function _fundAccount(
+        address account,
+        IAccountFactory.AccountAllocation memory allocation
     ) internal {
         require(
             allocation.poolIds.length == allocation.amounts.length,
             "allocation length mismatch"
         );
-        require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
+        require(isAccountDeployed[account], "INVALID_ACCOUNT");
         uint256[] memory mintAmounts = new uint256[](allocation.poolIds.length);
         for (uint256 i = 0; i < allocation.poolIds.length; i++) {
             uint256 poolAmount = allocation.amounts[i];
@@ -156,7 +156,7 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
                 mApt.calculateMintAmount(poolAmount, tokenPrice, decimals);
             mintAmounts[i] = mintAmount;
 
-            underlyer.safeTransferFrom(address(pool), strategy, poolAmount);
+            underlyer.safeTransferFrom(address(pool), account, poolAmount);
         }
         for (uint256 i = 0; i < allocation.poolIds.length; i++) {
             APYPoolTokenV2 pool =
@@ -167,15 +167,15 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
         }
     }
 
-    function _withdrawFromStrategy(
-        address strategy,
-        IStrategyFactory.StrategyAllocation memory allocation
+    function _withdrawFromAccount(
+        address account,
+        IAccountFactory.AccountAllocation memory allocation
     ) internal {
         require(
             allocation.poolIds.length == allocation.amounts.length,
             "allocation length mismatch"
         );
-        require(isStrategyDeployed[strategy], "INVALID_STRATEGY");
+        require(isAccountDeployed[account], "INVALID_ACCOUNT");
 
         uint256[] memory burnAmounts = new uint256[](allocation.poolIds.length);
         for (uint256 i = 0; i < allocation.poolIds.length; i++) {
@@ -192,7 +192,7 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IStrategyFactory {
                 mApt.calculateMintAmount(amountToSend, tokenPrice, decimals);
             burnAmounts[i] = burnAmount;
 
-            underlyer.safeTransferFrom(strategy, address(pool), amountToSend);
+            underlyer.safeTransferFrom(account, address(pool), amountToSend);
         }
         for (uint256 i = 0; i < allocation.poolIds.length; i++) {
             APYPoolTokenV2 pool =

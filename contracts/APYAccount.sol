@@ -3,10 +3,10 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./interfaces/IStrategy.sol";
+import "./interfaces/IAccount.sol";
 import "./APYGenericExecutor.sol";
 
-contract Strategy is Ownable, IStrategy {
+contract APYAccount is Ownable, IAccount {
     address public generalExecutor;
 
     constructor(address _generalExecutor) public {

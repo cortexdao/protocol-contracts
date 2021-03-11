@@ -4,6 +4,6 @@ pragma experimental ABIEncoderV2;
 
 import "../APYGenericExecutor.sol";
 
-interface IStrategy {
+interface IAccount {
     function execute(APYGenericExecutor.Data[] memory steps) external;
 }

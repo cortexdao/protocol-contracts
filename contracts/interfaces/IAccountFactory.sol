@@ -5,44 +5,44 @@ pragma experimental ABIEncoderV2;
 import "../APYGenericExecutor.sol";
 import "./IAssetAllocationRegistry.sol";
 
-interface IStrategyFactory {
-    struct StrategyAllocation {
+interface IAccountFactory {
+    struct AccountAllocation {
         bytes32[] poolIds;
         uint256[] amounts;
     }
 
-    function deployStrategy(address generalExecutor) external returns (address);
+    function deployAccount(address generalExecutor) external returns (address);
 
-    function isStrategyDeployed(address strategy) external returns (bool);
+    function isAccountDeployed(address account) external returns (bool);
 
-    function fundStrategy(
-        address strategy,
-        StrategyAllocation calldata allocation,
+    function fundAccount(
+        address account,
+        AccountAllocation calldata allocation,
         IAssetAllocationRegistry.AssetAllocation[] calldata viewData
     ) external;
 
     function fundAndExecute(
-        address strategy,
-        StrategyAllocation calldata allocation,
+        address account,
+        AccountAllocation calldata allocation,
         APYGenericExecutor.Data[] calldata steps,
         IAssetAllocationRegistry.AssetAllocation[] calldata viewData
     ) external;
 
     function execute(
-        address strategy,
+        address account,
         APYGenericExecutor.Data[] memory steps,
         IAssetAllocationRegistry.AssetAllocation[] calldata viewData
     ) external;
 
     function executeAndWithdraw(
-        address strategy,
-        StrategyAllocation calldata allocation,
+        address account,
+        AccountAllocation calldata allocation,
         APYGenericExecutor.Data[] calldata steps,
         IAssetAllocationRegistry.AssetAllocation[] calldata viewData
     ) external;
 
-    function withdrawFromStrategy(
-        address strategy,
-        StrategyAllocation calldata allocation
+    function withdrawFromAccount(
+        address account,
+        AccountAllocation calldata allocation
     ) external;
 }

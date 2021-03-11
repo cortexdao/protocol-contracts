@@ -261,7 +261,7 @@ describe("Contract: AssetAllocationRegistry", () => {
           inputs: [
             {
               internalType: "address",
-              name: "strategy",
+              name: "Account",
               type: "address",
             },
           ],
@@ -283,17 +283,17 @@ describe("Contract: AssetAllocationRegistry", () => {
       const allocationId = bytes32("allocation 1");
       const symbol = "FOO";
       const decimals = 18;
-      const strategy = FAKE_ADDRESS;
+      const Account = FAKE_ADDRESS;
       // create the step to execute
       const iface = new ethers.utils.Interface(peripheryAbi);
       const encodedBalance = iface.encodeFunctionData("balance(address)", [
-        strategy,
+        Account,
       ]);
       const data = [peripheryContract.address, encodedBalance];
       // step execution should return a value
       const expectedBalance = tokenAmountToBigNumber(100);
       await peripheryContract.mock.balance
-        .withArgs(strategy)
+        .withArgs(Account)
         .returns(expectedBalance);
 
       await registry.addAssetAllocation(allocationId, data, symbol, decimals);
@@ -306,11 +306,11 @@ describe("Contract: AssetAllocationRegistry", () => {
       const allocationId = bytes32("allocation 1");
       const symbol = "FOO";
       const decimals = 18;
-      const invalidStrategy = FAKE_ADDRESS;
+      const invalidAccount = FAKE_ADDRESS;
       // create the step to execute
       const iface = new ethers.utils.Interface(peripheryAbi);
       const encodedBalance = iface.encodeFunctionData("balance(address)", [
-        invalidStrategy,
+        invalidAccount,
       ]);
       const data = [peripheryContract.address, encodedBalance];
       // step execution will revert
