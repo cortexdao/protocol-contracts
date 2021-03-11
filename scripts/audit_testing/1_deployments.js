@@ -162,6 +162,72 @@ async function main(argv) {
     "Chainlink registry address is not registered correctly."
   );
   console.log("... done.");
+
+  console.log("");
+  console.log("Deploying APYMetaPoolToken ...");
+  console.log("");
+
+  const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+  const APYMetaPoolToken = await ethers.getContractFactory("APYMetaPoolToken");
+  const APYMetaPoolTokenProxy = await ethers.getContractFactory(
+    "APYMetaPoolTokenProxy"
+  );
+
+  const mAPtAdmin = await ProxyAdmin.deploy();
+  await mAPtAdmin.deployed();
+  const logic = await APYMetaPoolToken.deploy();
+  await logic.deployed();
+
+  const aggStalePeriod = 14400;
+  const proxy = await APYMetaPoolTokenProxy.deploy(
+    logic.address,
+    mAPtAdmin.address,
+    aggregator.address,
+    aggStalePeriod
+  );
+  await proxy.deployed();
+
+  const mAPT = await APYMetaPoolToken.attach(proxy.address);
+  trx = await mAPT.setManagerAddress(managerAddress);
+  await trx.wait();
+  console.log("... done.");
+
+  console.log("");
+  console.log("Upgrading pools ...");
+  console.log("");
+
+  const poolAdminAddress = getDeployedAddress(
+    "APYPoolTokenProxyAdmin",
+    NETWORK_NAME
+  );
+  const poolAdmin = await ethers.getContractAt("ProxyAdmin", poolAdminAddress);
+  const poolDeployer = await impersonateAccount(await poolAdmin.owner());
+  console.log("pool admin:", await poolAdmin.owner());
+  console.log("pool deployer:", await poolDeployer.getAddress());
+
+  const APYPoolTokenV2 = await ethers.getContractFactory("APYPoolTokenV2");
+  const logicV2 = await APYPoolTokenV2.deploy();
+  await logicV2.deployed();
+
+  const initData = APYPoolTokenV2.interface.encodeFunctionData(
+    "initializeUpgrade(address)",
+    [mAPT.address]
+  );
+
+  for (const symbol of ["DAI", "USDC", "USDT"]) {
+    const poolAddress = getDeployedAddress(
+      symbol + "_APYPoolTokenProxy",
+      NETWORK_NAME
+    );
+
+    const trx = await poolAdmin
+      .connect(poolDeployer)
+      .upgradeAndCall(poolAddress, logicV2.address, initData);
+    await trx.wait();
+    console.log(`${symbol} pool upgraded.`);
+  }
+  console.log("... done upgrading pools.");
+  console.log("");
 }
 
 if (!module.parent) {
