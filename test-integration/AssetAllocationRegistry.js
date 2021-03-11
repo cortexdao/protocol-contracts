@@ -131,7 +131,7 @@ describe("Contract: AssetAllocationRegistry", () => {
       );
     });
 
-    it("Get underlyer balance from strategy holding", async () => {
+    it("Get underlyer balance from account holding", async () => {
       const daiAmount = dai("1000");
       const minAmount = 0;
       await daiToken.connect(strategy).approve(stableSwap.address, MAX_UINT256);

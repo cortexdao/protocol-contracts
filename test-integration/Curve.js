@@ -88,7 +88,7 @@ describe("Contract: CurvePeriphery", () => {
       }
     });
 
-    it("Get underlyer balance from strategy holding", async () => {
+    it("Get underlyer balance from account holding", async () => {
       const daiAmount = tokenAmountToBigNumber("1000", 18);
       const daiIndex = 0;
       const minAmount = 0;

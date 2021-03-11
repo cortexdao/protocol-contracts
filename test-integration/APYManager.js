@@ -878,7 +878,7 @@ describe("Contract: APYManager", () => {
       });
     });
 
-    describe("withdrawFromStrategy", () => {
+    describe("withdrawFromAccount", () => {
       it("Non-owner cannot call", async () => {
         const nonOwner = await ethers.provider.getSigner(randomAccount.address);
         await expect(
