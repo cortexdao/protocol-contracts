@@ -41,6 +41,7 @@ contract APYGenericExecutor is Ownable {
      * @param target the bytes data will be executed against
      * @param data the bytes data representing the encoded function signature + parameters
      * @return returns bytes memory represneting the returned data from the target.call()
+     * @dev will bubble up revert messages
      */
     function _call(address target, bytes memory data)
         private
