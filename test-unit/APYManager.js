@@ -178,8 +178,8 @@ describe("Contract: APYManager", () => {
     });
   });
 
-  describe("Strategy factory", () => {
-    let strategy;
+  describe("Account factory", () => {
+    let account;
 
     let tokenA;
     let tokenB;
@@ -192,7 +192,7 @@ describe("Contract: APYManager", () => {
       [spenderAddress, approvalAmount]
     );
 
-    before("Deploy strategy", async () => {
+    before("Deploy APYAccount", async () => {
       // NOTE: I use a real ERC20 contract here since MockContract cannot emit events
       const ERC20 = await ethers.getContractFactory("ERC20");
       tokenA = await ERC20.deploy("TokenA", "A");
@@ -200,37 +200,35 @@ describe("Contract: APYManager", () => {
       tokenB = await ERC20.deploy("TokenB", "B");
       await tokenB.deployed();
 
-      const strategyAddress = await manager.callStatic.deployStrategy(
+      const accountAddress = await manager.callStatic.deployAccount(
         executor.address
       );
-      await manager.deployStrategy(executor.address);
+      await manager.deployAccount(executor.address);
 
-      const Strategy = await ethers.getContractFactory("Strategy");
-      strategy = await Strategy.attach(strategyAddress);
+      const APYAccount = await ethers.getContractFactory("APYAccount");
+      account = await APYAccount.attach(accountAddress);
     });
 
-    it("Strategy owner is manager", async () => {
-      expect(await strategy.owner()).to.equal(manager.address);
+    it("Account owner is manager", async () => {
+      expect(await account.owner()).to.equal(manager.address);
     });
 
-    describe("fundStrategy", () => {
+    describe("fundAccount", () => {
       it("Non-owner cannot call", async () => {
         await expect(
-          manager
-            .connect(randomUser)
-            .fundStrategy(strategy.address, [[], []], [])
+          manager.connect(randomUser).fundAccount(account.address, [[], []], [])
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
       });
 
-      it("Revert on invalid strategy", async () => {
+      it("Revert on invalid account", async () => {
         await expect(
-          manager.connect(deployer).fundStrategy(FAKE_ADDRESS, [[], []], [])
-        ).to.be.revertedWith("INVALID_STRATEGY");
+          manager.connect(deployer).fundAccount(FAKE_ADDRESS, [[], []], [])
+        ).to.be.revertedWith("INVALID_ACCOUNT");
       });
 
       it("Owner can call", async () => {
         await expect(
-          manager.connect(deployer).fundStrategy(strategy.address, [[], []], [])
+          manager.connect(deployer).fundAccount(account.address, [[], []], [])
         ).to.not.be.reverted;
       });
     });
@@ -240,23 +238,23 @@ describe("Contract: APYManager", () => {
         await expect(
           manager
             .connect(randomUser)
-            .fundAndExecute(strategy.address, [[], []], [], [])
+            .fundAndExecute(account.address, [[], []], [], [])
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
       });
 
-      it("Revert on invalid strategy", async () => {
+      it("Revert on invalid account", async () => {
         await expect(
           manager
             .connect(deployer)
             .fundAndExecute(FAKE_ADDRESS, [[], []], [], [])
-        ).to.be.revertedWith("INVALID_STRATEGY");
+        ).to.be.revertedWith("INVALID_ACCOUNT");
       });
 
       it("Owner can call", async () => {
         await expect(
           manager
             .connect(deployer)
-            .fundAndExecute(strategy.address, [[], []], [], [])
+            .fundAndExecute(account.address, [[], []], [], [])
         ).to.not.be.reverted;
       });
     });
@@ -264,13 +262,13 @@ describe("Contract: APYManager", () => {
     describe("execute", () => {
       it("Non-owner cannot call", async () => {
         await expect(
-          manager.connect(randomUser).execute(strategy.address, [], [])
+          manager.connect(randomUser).execute(account.address, [], [])
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
       });
 
       it("Owner can call", async () => {
         const trx = await manager.connect(deployer).execute(
-          strategy.address,
+          account.address,
           [
             [tokenA.address, encodedApprove],
             [tokenB.address, encodedApprove],
@@ -279,12 +277,12 @@ describe("Contract: APYManager", () => {
         );
 
         await expectEventInTransaction(trx.hash, tokenA, "Approval", {
-          owner: strategy.address,
+          owner: account.address,
           spender: spenderAddress,
           value: approvalAmount,
         });
         await expectEventInTransaction(trx.hash, tokenB, "Approval", {
-          owner: strategy.address,
+          owner: account.address,
           spender: spenderAddress,
           value: approvalAmount,
         });
@@ -296,47 +294,47 @@ describe("Contract: APYManager", () => {
         await expect(
           manager
             .connect(randomUser)
-            .executeAndWithdraw(strategy.address, [[], []], [], [])
+            .executeAndWithdraw(account.address, [[], []], [], [])
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
       });
 
-      it("Revert on invalid strategy", async () => {
+      it("Revert on invalid account", async () => {
         await expect(
           manager
             .connect(deployer)
             .executeAndWithdraw(FAKE_ADDRESS, [[], []], [], [])
-        ).to.be.revertedWith("INVALID_STRATEGY");
+        ).to.be.revertedWith("INVALID_ACCOUNT");
       });
 
       it("Owner can call", async () => {
         await expect(
           manager
             .connect(deployer)
-            .executeAndWithdraw(strategy.address, [[], []], [], [])
+            .executeAndWithdraw(account.address, [[], []], [], [])
         ).to.not.be.reverted;
       });
     });
 
-    describe("withdrawFromStrategy", () => {
+    describe("withdrawFromAccount", () => {
       it("Non-owner cannot call", async () => {
         await expect(
           manager
             .connect(randomUser)
-            .withdrawFromStrategy(strategy.address, [[], []])
+            .withdrawFromAccount(account.address, [[], []])
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
       });
 
-      it("Revert on invalid strategy", async () => {
+      it("Revert on invalid account", async () => {
         await expect(
-          manager.connect(deployer).withdrawFromStrategy(FAKE_ADDRESS, [[], []])
-        ).to.be.revertedWith("INVALID_STRATEGY");
+          manager.connect(deployer).withdrawFromAccount(FAKE_ADDRESS, [[], []])
+        ).to.be.revertedWith("INVALID_ACCOUNT");
       });
 
       it("Owner can call", async () => {
         await expect(
           manager
             .connect(deployer)
-            .withdrawFromStrategy(strategy.address, [[], []])
+            .withdrawFromAccount(account.address, [[], []])
         ).to.not.be.reverted;
       });
     });

@@ -12,7 +12,7 @@ const ILiquidityGauge = artifacts.require("ILiquidityGauge");
 describe("Contract: CurvePeriphery", () => {
   // signers
   let deployer;
-  let strategy;
+  let Account;
 
   // contract factories
   let CurvePeriphery;
@@ -33,7 +33,7 @@ describe("Contract: CurvePeriphery", () => {
   });
 
   before(async () => {
-    [deployer, strategy] = await ethers.getSigners();
+    [deployer, Account] = await ethers.getSigners();
     CurvePeriphery = await ethers.getContractFactory("CurvePeriphery");
     curve = await CurvePeriphery.deploy();
     await curve.deployed();
@@ -58,28 +58,28 @@ describe("Contract: CurvePeriphery", () => {
       );
     });
 
-    it("Get underlyer balance from strategy holding", async () => {
+    it("Get underlyer balance from Account holding", async () => {
       // setup stableswap with underlyer balance
       const poolBalance = tokenAmountToBigNumber(1000);
       await stableSwapMock.mock.balances.returns(poolBalance);
-      // setup LP token with supply and strategy balance
+      // setup LP token with supply and Account balance
       const lpTotalSupply = tokenAmountToBigNumber(1234);
       await lpTokenMock.mock.totalSupply.returns(lpTotalSupply);
-      const strategyLpBalance = tokenAmountToBigNumber(518);
+      const AccountLpBalance = tokenAmountToBigNumber(518);
       await lpTokenMock.mock.balanceOf
-        .withArgs(strategy.address)
-        .returns(strategyLpBalance);
-      // setup gauge with strategy balance
+        .withArgs(Account.address)
+        .returns(AccountLpBalance);
+      // setup gauge with Account balance
       await liquidityGaugeMock.mock.balanceOf
-        .withArgs(strategy.address)
+        .withArgs(Account.address)
         .returns(0);
 
-      const expectedBalance = strategyLpBalance
-        .mul(poolBalance)
-        .div(lpTotalSupply);
+      const expectedBalance = AccountLpBalance.mul(poolBalance).div(
+        lpTotalSupply
+      );
 
       const balance = await curve.getUnderlyerBalance(
-        strategy.address,
+        Account.address,
         stableSwapMock.address,
         liquidityGaugeMock.address,
         lpTokenMock.address,
@@ -92,14 +92,14 @@ describe("Contract: CurvePeriphery", () => {
       // setup stableswap with underlyer balance
       const poolBalance = tokenAmountToBigNumber(1000);
       await stableSwapMock.mock.balances.returns(poolBalance);
-      // setup LP token with supply and strategy balance
+      // setup LP token with supply and Account balance
       const lpTotalSupply = tokenAmountToBigNumber(1234);
       await lpTokenMock.mock.totalSupply.returns(lpTotalSupply);
-      await lpTokenMock.mock.balanceOf.withArgs(strategy.address).returns(0);
-      // setup gauge with strategy balance
+      await lpTokenMock.mock.balanceOf.withArgs(Account.address).returns(0);
+      // setup gauge with Account balance
       const gaugeLpBalance = tokenAmountToBigNumber(256);
       await liquidityGaugeMock.mock.balanceOf
-        .withArgs(strategy.address)
+        .withArgs(Account.address)
         .returns(gaugeLpBalance);
 
       const expectedBalance = gaugeLpBalance
@@ -107,7 +107,7 @@ describe("Contract: CurvePeriphery", () => {
         .div(lpTotalSupply);
 
       const balance = await curve.getUnderlyerBalance(
-        strategy.address,
+        Account.address,
         stableSwapMock.address,
         liquidityGaugeMock.address,
         lpTokenMock.address,
@@ -120,24 +120,24 @@ describe("Contract: CurvePeriphery", () => {
       // setup stableswap with underlyer balance
       const poolBalance = tokenAmountToBigNumber(1000);
       await stableSwapMock.mock.balances.returns(poolBalance);
-      // setup LP token with supply and strategy balance
+      // setup LP token with supply and Account balance
       const lpTotalSupply = tokenAmountToBigNumber(1234);
       await lpTokenMock.mock.totalSupply.returns(lpTotalSupply);
-      const strategyLpBalance = tokenAmountToBigNumber(51);
+      const AccountLpBalance = tokenAmountToBigNumber(51);
       await lpTokenMock.mock.balanceOf
-        .withArgs(strategy.address)
-        .returns(strategyLpBalance);
-      // setup gauge with strategy balance
+        .withArgs(Account.address)
+        .returns(AccountLpBalance);
+      // setup gauge with Account balance
       const gaugeLpBalance = tokenAmountToBigNumber(256);
       await liquidityGaugeMock.mock.balanceOf
-        .withArgs(strategy.address)
+        .withArgs(Account.address)
         .returns(gaugeLpBalance);
 
-      const lpBalance = strategyLpBalance.add(gaugeLpBalance);
+      const lpBalance = AccountLpBalance.add(gaugeLpBalance);
       const expectedBalance = lpBalance.mul(poolBalance).div(lpTotalSupply);
 
       const balance = await curve.getUnderlyerBalance(
-        strategy.address,
+        Account.address,
         stableSwapMock.address,
         liquidityGaugeMock.address,
         lpTokenMock.address,

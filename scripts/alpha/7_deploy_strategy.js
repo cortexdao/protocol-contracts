@@ -53,11 +53,11 @@ async function main(argv) {
     NETWORK_NAME
   );
   console.log("Executor:", chalk.green(executorAddress));
-  const strategyAddress = await manager.callStatic.deployStrategy(
+  const strategyAddress = await manager.callStatic.deployAccount(
     executorAddress
   );
   let gasPrice = await getGasPrice(argv.gasPrice);
-  const trx = await manager.deployStrategy(executorAddress, { gasPrice });
+  const trx = await manager.deployAccount(executorAddress, { gasPrice });
   console.log("Deploy strategy:", `https://etherscan.io/tx/${trx.hash}`);
   await trx.wait();
   console.log("Strategy:", chalk.green(strategyAddress));

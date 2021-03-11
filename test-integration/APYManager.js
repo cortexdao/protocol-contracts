@@ -70,7 +70,7 @@ async function upgradeManager(
   return [manager, managerDeployer];
 }
 
-describe("Contract: APYManager - deployStrategy", () => {
+describe("Contract: APYManager - deployAccount", () => {
   let manager;
   let executor;
 
@@ -112,25 +112,25 @@ describe("Contract: APYManager - deployStrategy", () => {
     expect(await manager.owner()).to.not.equal(nonOwner.address);
 
     await expect(
-      manager.connect(nonOwner).deployStrategy(executor.address)
+      manager.connect(nonOwner).deployAccount(executor.address)
     ).to.be.revertedWith("revert Ownable: caller is not the owner");
   });
 
   it("Owner can call", async () => {
-    const stratAddress = await manager.callStatic.deployStrategy(
+    const accountAddress = await manager.callStatic.deployAccount(
       executor.address
     );
     // manager.once(
-    //   manager.filters.StrategyDeployed(),
+    //   manager.filters.AccountDeployed(),
     //   (strategy, genericExecutor) => {
     //     assert.equal(strategy, stratAddress);
     //     assert.equal(genericExecutor, executor.address);
     //   }
     // );
-    await expect(manager.deployStrategy(executor.address)).to.not.be.reverted;
+    await expect(manager.deployAccount(executor.address)).to.not.be.reverted;
 
-    const strategy = await ethers.getContractAt("Strategy", stratAddress);
-    expect(await strategy.owner()).to.equal(manager.address);
+    const account = await ethers.getContractAt("APYAccount", accountAddress);
+    expect(await account.owner()).to.equal(manager.address);
   });
 });
 
@@ -305,8 +305,8 @@ describe("Contract: APYManager", () => {
     executor = await APYGenericExecutor.deploy();
     await executor.deployed();
 
-    strategyAddress = await manager.callStatic.deployStrategy(executor.address);
-    await manager.deployStrategy(executor.address);
+    strategyAddress = await manager.callStatic.deployAccount(executor.address);
+    await manager.deployAccount(executor.address);
 
     daiToken = await ethers.getContractAt(
       legos.maker.abis.DAI,
@@ -356,7 +356,7 @@ describe("Contract: APYManager", () => {
     return mintAmount;
   }
 
-  describe("fundStrategy", () => {
+  describe("fundAccount", () => {
     // standard amounts we use in our tests
     const dollars = 100;
     const daiAmount = tokenAmountToBigNumber(dollars, 18);
@@ -379,7 +379,7 @@ describe("Contract: APYManager", () => {
     it("Non-owner cannot call", async () => {
       const nonOwner = await ethers.provider.getSigner(randomAccount.address);
       await expect(
-        manager.connect(nonOwner).fundStrategy(strategyAddress, [[], []], [])
+        manager.connect(nonOwner).fundAccount(strategyAddress, [[], []], [])
       ).to.be.revertedWith("revert Ownable: caller is not the owner");
     });
 
@@ -387,13 +387,13 @@ describe("Contract: APYManager", () => {
       await expect(
         manager
           .connect(managerDeployer)
-          .fundStrategy(strategyAddress, [[], []], [])
+          .fundAccount(strategyAddress, [[], []], [])
       ).to.not.be.reverted;
     });
 
     it("Unregistered pool fails", async () => {
       await expect(
-        manager.fundStrategy(
+        manager.fundAccount(
           strategyAddress,
           [
             [bytes32("daiPool"), bytes32("invalidPoolId"), bytes32("usdtPool")],
@@ -423,7 +423,7 @@ describe("Contract: APYManager", () => {
         [strategyAddress]
       );
 
-      await manager.fundStrategy(
+      await manager.fundAccount(
         strategyAddress,
         [
           [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
@@ -531,7 +531,7 @@ describe("Contract: APYManager", () => {
       const usdcPoolMintAmount = await getMintAmount(usdcPool, usdcAmount);
       const usdtPoolMintAmount = await getMintAmount(usdtPool, usdtAmount);
 
-      await manager.fundStrategy(
+      await manager.fundAccount(
         strategyAddress,
         [
           [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
@@ -558,7 +558,7 @@ describe("Contract: APYManager", () => {
       const usdcPoolMintAmount = await getMintAmount(usdcPool, usdcAmount);
       const usdtPoolMintAmount = await getMintAmount(usdtPool, usdtAmount);
 
-      await manager.fundStrategy(
+      await manager.fundAccount(
         strategyAddress,
         [
           [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
@@ -884,7 +884,7 @@ describe("Contract: APYManager", () => {
         await expect(
           manager
             .connect(nonOwner)
-            .withdrawFromStrategy(strategyAddress, [[], []], [])
+            .withdrawFromAccount(strategyAddress, [[], []], [])
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
       });
 
@@ -892,13 +892,13 @@ describe("Contract: APYManager", () => {
         await expect(
           manager
             .connect(managerDeployer)
-            .withdrawFromStrategy(strategyAddress, [[], []], [])
+            .withdrawFromAccount(strategyAddress, [[], []], [])
         ).to.not.be.reverted;
       });
 
       it("Unregistered pool fails", async () => {
         await expect(
-          manager.withdrawFromStrategy(
+          manager.withdrawFromAccount(
             strategyAddress,
             [[bytes32("invalidPool")], ["10"]],
             []
@@ -914,7 +914,7 @@ describe("Contract: APYManager", () => {
         // ETHERS contract.on() event listener doesnt seems to be working for some reason.
         // It might be because the event is not at the top most level
 
-        await manager.withdrawFromStrategy(
+        await manager.withdrawFromAccount(
           strategyAddress,
           [[bytes32("daiPool")], [amount]],
           []
@@ -973,7 +973,7 @@ describe("Contract: APYManager", () => {
           usdtWithdrawAmount
         );
 
-        await manager.withdrawFromStrategy(
+        await manager.withdrawFromAccount(
           strategyAddress,
           [
             [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
@@ -1051,7 +1051,7 @@ describe("Contract: APYManager", () => {
           usdtWithdrawAmount
         );
 
-        await manager.withdrawFromStrategy(strategyAddress, [
+        await manager.withdrawFromAccount(strategyAddress, [
           [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
           [daiWithdrawAmount, usdcWithdrawAmount, usdtWithdrawAmount],
         ]);

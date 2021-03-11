@@ -6,7 +6,7 @@ import "../APYViewExecutor.sol";
 
 /**
  * @title Interface for addition and removal of asset allocations
-          for strategy deployments
+          for Account deployments
  * @author APY.Finance
  * @notice These functions enable external systems to pull necessary info
  *         to compute the TVL of the APY.Finance system.

@@ -97,7 +97,7 @@ contract AssetAllocationRegistry is
      *         multiplier identifiers since it may be placed in different
      *         parts of the system.
      *
-     * @dev Identifiers are added during strategy deployments.
+     * @dev Identifiers are added during Account deployments.
      * @return List of identifiers
      */
     function getAssetAllocationIds()
