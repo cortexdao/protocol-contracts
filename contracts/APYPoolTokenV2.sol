@@ -35,21 +35,43 @@ contract APYPoolTokenV2 is
     /* ------------------------------- */
 
     // V1
+    //// @notice used to protect init functions for upgrades
     address public proxyAdmin;
+    /// @notice true if depositing is locked
     bool public addLiquidityLock;
+    /// @notice true if withdrawing is locked
     bool public redeemLock;
+    /// @notice underlying stablecoin
     IDetailedERC20 public underlyer;
+    /// @notice USD price feed for the stablecoin
     AggregatorV3Interface public priceAgg;
 
     // V2
+    /// @notice token tracking value owed to the pool
     APYMetaPoolToken public mApt;
+    /// @notice period, in seconds, for which early withdrawal fee is charged
     uint256 public feePeriod;
+    /// @notice percentage charged for early withdrawal fee
     uint256 public feePercentage;
+    /// @notice time of last deposit
     mapping(address => uint256) public lastDepositTime;
+    /// @notice percentage of pool total value available for immediate withdrawal
     uint256 public reservePercentage;
 
     /* ------------------------------- */
 
+    /**
+     * @dev Since the proxy delegate calls to this "logic" contract, any
+     * storage set by the logic contract's constructor during deploy is
+     * disregarded and this function is needed to initialize the proxy
+     * contract's storage according to this contract's layout.
+     *
+     * Since storage is not set yet, there is no simple way to protect
+     * calling this function with owner modifiers.  Thus the OpenZeppelin
+     * `initializer` modifier protects this function from being called
+     * repeatedly.  It should be called during the deployment so that
+     * it cannot be called by someone else later.
+     */
     function initialize(
         address adminAddress,
         IDetailedERC20 _underlyer,
@@ -74,9 +96,15 @@ contract APYPoolTokenV2 is
         setPriceAggregator(_priceAgg);
     }
 
-    // solhint-disable-next-line no-empty-blocks
-    function initializeUpgrade() external virtual onlyAdmin {}
-
+    /**
+     * @dev Note the `initializer` modifier can only be used once in the
+     * entire contract, so we can't use it here.  Instead, we protect
+     * this function with `onlyAdmin`, which allows only the `proxyAdmin`
+     * address to call this function.  Since that address is in fact
+     * set to the actual proxy admin during deployment, this ensures
+     * this function can only be called as part of a delegate call
+     * during upgrades, i.e. in ProxyAdmin's `upgradeAndCall`.
+     */
     function initializeUpgrade(address payable _mApt)
         external
         virtual
