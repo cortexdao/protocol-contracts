@@ -12,9 +12,9 @@
             "bridge": "apy-finance"
           }
         ],
-        "threshold": 0.00000000001,
+        "threshold": 1,
         "absoluteThreshold": 0,
-        "precision": 18,
+        "precision": 0,
         "pollTimer": {
           "period": "1m0s"
         },
@@ -26,6 +26,11 @@
     }
   ],
   "tasks": [
+    {
+      "type": "multiply",
+      "confirmations": null,
+      "params": { "times": 100000000 }
+    },
     {
       "type": "ethint256",
       "confirmations": null,

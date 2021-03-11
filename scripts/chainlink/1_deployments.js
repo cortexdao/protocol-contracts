@@ -1,22 +1,35 @@
-/*
+#!/usr/bin/env node
+/**
  * Command to run script:
  *
- * $ yarn hardhat --network <network name> run scripts/<script filename>
+ * $ HARDHAT_NETWORK=localhost node scripts/1_deployments.js
  *
- * Alternatively, to pass command-line arguments:
+ * You can modify the script to handle command-line args and retrieve them
+ * through the `argv` object.  Values are passed like so:
  *
- * $ HARDHAT_NETWORK=<network name> node run scripts/<script filename> --arg1=val1 --arg2=val2
+ * $ HARDHAT_NETWORK=localhost node scripts/1_deployments.js --arg1=val1 --arg2=val2
+ *
+ * Remember, you should have started the forked mainnet locally in another terminal:
+ *
+ * $ MNEMONIC='' yarn fork:mainnet
  */
 require("dotenv").config();
+// require("dotenv").config({ path: "./alpha.env" });
 const { argv } = require("yargs");
 const hre = require("hardhat");
-const { ethers, network } = require("hardhat");
+const { ethers, network } = hre;
 const {
   ZERO_ADDRESS,
   tokenAmountToBigNumber,
   acquireToken,
 } = require("../../utils/helpers");
 const assert = require("assert");
+const chalk = require("chalk");
+const {
+  getDeployedAddress,
+  bytes32,
+  impersonateAccount,
+} = require("../../utils/helpers");
 
 const NODE_ADDRESS = "0xAD702b65733aC8BcBA2be6d9Da94d5b7CE25C0bb";
 const LINK_ADDRESS = "0x514910771AF9Ca656af840dff83E8264EcF986CA";
@@ -108,13 +121,60 @@ async function main(argv) {
   });
   await trx.wait();
   console.log("... done.");
+
+  console.log("");
+  console.log("Deploying AssetAllocationRegistry ...");
+  console.log("");
+
+  const AssetAllocationRegistry = await ethers.getContractFactory(
+    "AssetAllocationRegistry"
+  );
+
+  const managerAddress = getDeployedAddress("APYManagerProxy", NETWORK_NAME);
+  const registry = await AssetAllocationRegistry.deploy(managerAddress);
+  await registry.deployed();
+  console.log("AssetAllocationRegistry:", chalk.green(registry.address));
+  console.log("");
+
+  console.log("");
+  console.log("Registering address with AddressRegistry ...");
+  console.log("");
+  const addressRegistryAddress = getDeployedAddress(
+    "APYAddressRegistryProxy",
+    NETWORK_NAME
+  );
+  console.log("Address registry:", addressRegistryAddress);
+  const addressRegistry = await ethers.getContractAt(
+    "APYAddressRegistry",
+    addressRegistryAddress
+  );
+  const addressRegistryOwnerAddress = await addressRegistry.owner();
+  const addressRegistryOwner = await impersonateAccount(
+    addressRegistryOwnerAddress
+  );
+  trx = await addressRegistry
+    .connect(addressRegistryOwner)
+    .registerAddress(bytes32("chainlinkRegistry"), registry.address);
+  await trx.wait();
+  assert.strictEqual(
+    await addressRegistry.chainlinkRegistryAddress(),
+    registry.address,
+    "Chainlink registry address is not registered correctly."
+  );
+  console.log("... done.");
 }
 
 if (!module.parent) {
   main(argv)
-    .then(() => process.exit(0))
+    .then(() => {
+      console.log("");
+      console.log("Deployment successful.");
+      console.log("");
+      process.exit(0);
+    })
     .catch((error) => {
       console.error(error);
+      console.log("");
       process.exit(1);
     });
 } else {
