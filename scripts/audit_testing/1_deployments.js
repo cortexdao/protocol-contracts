@@ -131,9 +131,14 @@ async function main(argv) {
   );
 
   const managerAddress = getDeployedAddress("APYManagerProxy", NETWORK_NAME);
-  const registry = await AssetAllocationRegistry.deploy(managerAddress);
-  await registry.deployed();
-  console.log("AssetAllocationRegistry:", chalk.green(registry.address));
+  const allocationRegistry = await AssetAllocationRegistry.deploy(
+    managerAddress
+  );
+  await allocationRegistry.deployed();
+  console.log(
+    "AssetAllocationRegistry:",
+    chalk.green(allocationRegistry.address)
+  );
   console.log("");
 
   console.log("");
@@ -154,11 +159,11 @@ async function main(argv) {
   );
   trx = await addressRegistry
     .connect(addressRegistryOwner)
-    .registerAddress(bytes32("chainlinkRegistry"), registry.address);
+    .registerAddress(bytes32("chainlinkRegistry"), allocationRegistry.address);
   await trx.wait();
   assert.strictEqual(
     await addressRegistry.chainlinkRegistryAddress(),
-    registry.address,
+    allocationRegistry.address,
     "Chainlink registry address is not registered correctly."
   );
   console.log("... done.");
@@ -187,8 +192,8 @@ async function main(argv) {
   );
   await proxy.deployed();
 
-  const mAPT = await APYMetaPoolToken.attach(proxy.address);
-  trx = await mAPT.setManagerAddress(managerAddress);
+  const mApt = await APYMetaPoolToken.attach(proxy.address);
+  trx = await mApt.setManagerAddress(managerAddress);
   await trx.wait();
   console.log("... done.");
 
@@ -202,16 +207,14 @@ async function main(argv) {
   );
   const poolAdmin = await ethers.getContractAt("ProxyAdmin", poolAdminAddress);
   const poolDeployer = await impersonateAccount(await poolAdmin.owner());
-  console.log("pool admin:", await poolAdmin.owner());
-  console.log("pool deployer:", await poolDeployer.getAddress());
 
   const APYPoolTokenV2 = await ethers.getContractFactory("APYPoolTokenV2");
-  const logicV2 = await APYPoolTokenV2.deploy();
-  await logicV2.deployed();
+  const poolLogicV2 = await APYPoolTokenV2.deploy();
+  await poolLogicV2.deployed();
 
-  const initData = APYPoolTokenV2.interface.encodeFunctionData(
+  let initData = APYPoolTokenV2.interface.encodeFunctionData(
     "initializeUpgrade(address)",
-    [mAPT.address]
+    [mApt.address]
   );
 
   for (const symbol of ["DAI", "USDC", "USDT"]) {
@@ -220,14 +223,100 @@ async function main(argv) {
       NETWORK_NAME
     );
 
-    const trx = await poolAdmin
+    let trx = await poolAdmin
       .connect(poolDeployer)
-      .upgradeAndCall(poolAddress, logicV2.address, initData);
+      .upgradeAndCall(poolAddress, poolLogicV2.address, initData);
     await trx.wait();
     console.log(`${symbol} pool upgraded.`);
+
+    const pool = await ethers.getContractAt(
+      "APYPoolTokenV2",
+      poolAddress,
+      poolDeployer
+    );
+    trx = await pool.infiniteApprove(managerAddress);
+    console.log("Manager given infinite approval for pool.");
+    await trx.wait();
   }
   console.log("... done upgrading pools.");
+
   console.log("");
+  console.log("Starting manager upgrade process ...");
+  console.log("");
+
+  const proxyAdminAddress = getDeployedAddress(
+    "APYManagerProxyAdmin",
+    NETWORK_NAME
+  );
+  const managerAdmin = await ethers.getContractAt(
+    "ProxyAdmin",
+    proxyAdminAddress
+  );
+  const managerDeployer = await impersonateAccount(await managerAdmin.owner());
+  // need to fund as there is not enough ETH on Mainnet for the deployer
+  const fundingTrx = await deployer.sendTransaction({
+    to: await managerDeployer.getAddress(),
+    value: ethers.utils.parseEther("1000"),
+  });
+  await fundingTrx.wait();
+
+  const managerProxyAddress = getDeployedAddress(
+    "APYManagerProxy",
+    NETWORK_NAME
+  );
+  const managerV1 = await ethers.getContractAt(
+    "APYManager",
+    managerProxyAddress,
+    managerDeployer
+  );
+
+  console.log("Deleting deprecated storage ...");
+  trx = await managerV1.deleteTokenAddresses();
+  await trx.wait();
+  console.log("... done.");
+
+  console.log("Beginning the upgrade ...");
+  const APYManagerV2 = await ethers.getContractFactory(
+    "APYManagerV2",
+    managerDeployer
+  );
+  const managerLogicV2 = await APYManagerV2.deploy();
+  await managerLogicV2.deployed();
+
+  initData = APYManagerV2.interface.encodeFunctionData(
+    "initializeUpgrade(address,address)",
+    [mApt.address, allocationRegistry.address]
+  );
+  trx = await managerAdmin
+    .connect(managerDeployer)
+    .upgradeAndCall(managerProxyAddress, managerLogicV2.address, initData);
+  await trx.wait();
+  console.log("Upgraded manager to V2.");
+  console.log("");
+
+  console.log("Deploying generic executor ...");
+  const APYGenericExecutor = await ethers.getContractFactory(
+    "APYGenericExecutor",
+    managerDeployer
+  );
+  const executor = await APYGenericExecutor.deploy();
+  await executor.deployed();
+  console.log("... done.");
+
+  console.log("Deploying strategy ...");
+  const manager = await ethers.getContractAt(
+    "APYManagerV2",
+    managerProxyAddress,
+    managerDeployer
+  );
+  const strategyAddress = await manager.callStatic.deployStrategy(
+    executor.address
+  );
+  trx = await manager.deployStrategy(executor.address);
+  await trx.wait();
+
+  await manager.setStrategyId(bytes32("alpha"), strategyAddress);
+  console.log("... done.");
 }
 
 if (!module.parent) {
