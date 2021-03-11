@@ -83,19 +83,30 @@ contract APYAddressRegistry is
         emit AdminChanged(adminAddress);
     }
 
+    /**
+     * @dev Throws if called by any account other than the proxy admin.
+     */
     modifier onlyAdmin() {
         require(msg.sender == proxyAdmin, "ADMIN_ONLY");
         _;
     }
 
+    /// @notice Returns the list of all registered identifiers.
     function getIds() public view override returns (bytes32[] memory) {
         return _idList;
     }
 
+    /// @dev block ETHER transfers as the registry will never need it
     receive() external payable {
         revert("DONT_SEND_ETHER");
     }
 
+    /**
+     * @notice Register address with identifier.
+     * @dev Using an existing ID will replace the old address with new.
+     *      Currently there is no way to remove an ID, as attempting to
+     *      register the zero address will revert.
+     */
     function registerAddress(bytes32 id, address _address) public onlyOwner {
         require(_address != address(0), "Invalid address");
         if (_idToAddress[id] == address(0)) {
@@ -106,6 +117,7 @@ contract APYAddressRegistry is
         emit AddressRegistered(id, _address);
     }
 
+    /// @dev Convenient method to register multiple addresses at once.
     function registerMultipleAddresses(
         bytes32[] calldata ids,
         address[] calldata addresses
@@ -118,28 +130,57 @@ contract APYAddressRegistry is
         }
     }
 
+    /// @notice Retrieve the address corresponding to the identifier.
     function getAddress(bytes32 id) public view override returns (address) {
         address _address = _idToAddress[id];
         require(_address != address(0), "Missing address");
         return _address;
     }
 
+    /**
+     * @notice Get the address for the APY Manager.
+     * @dev Not just a helper function, this makes explicit a key ID
+     *      for the system.
+     */
     function managerAddress() public view returns (address) {
         return getAddress("manager");
     }
 
+    /**
+     * @notice Get the address for the APYAssetAllocationRegistry,
+     *         aka the "Chainlink Registry", as it is used by
+     *         Chainlink nodes to compute the deployed value of the
+     *         APY.Finance system.
+     * @dev Not just a helper function, this makes explicit a key ID
+     *      for the system.
+     */
     function chainlinkRegistryAddress() public view returns (address) {
         return getAddress("chainlinkRegistry");
     }
 
+    /**
+     * @notice Get the address for APY.Finance's DAI stablecoin pool.
+     * @dev Not just a helper function, this makes explicit a key ID
+     *      for the system.
+     */
     function daiPoolAddress() public view returns (address) {
         return getAddress("daiPool");
     }
 
+    /**
+     * @notice Get the address for APY.Finance's USDC stablecoin pool.
+     * @dev Not just a helper function, this makes explicit a key ID
+     *      for the system.
+     */
     function usdcPoolAddress() public view returns (address) {
         return getAddress("usdcPool");
     }
 
+    /**
+     * @notice Get the address for APY.Finance's USDT stablecoin pool.
+     * @dev Not just a helper function, this makes explicit a key ID
+     *      for the system.
+     */
     function usdtPoolAddress() public view returns (address) {
         return getAddress("usdtPool");
     }
