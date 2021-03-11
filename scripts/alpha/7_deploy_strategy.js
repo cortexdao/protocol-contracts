@@ -58,12 +58,12 @@ async function main(argv) {
   );
   let gasPrice = await getGasPrice(argv.gasPrice);
   const trx = await manager.deployAccount(executorAddress, { gasPrice });
-  console.log("Deploy strategy:", `https://etherscan.io/tx/${trx.hash}`);
+  console.log("Deploy account:", `https://etherscan.io/tx/${trx.hash}`);
   await trx.wait();
-  console.log("Strategy:", chalk.green(accountAddress));
+  console.log("Account:", chalk.green(accountAddress));
 
   const deployData = {
-    Strategy: accountAddress,
+    Account: accountAddress,
   };
   updateDeployJsons(NETWORK_NAME, deployData);
 
