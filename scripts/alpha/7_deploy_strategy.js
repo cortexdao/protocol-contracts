@@ -53,17 +53,17 @@ async function main(argv) {
     NETWORK_NAME
   );
   console.log("Executor:", chalk.green(executorAddress));
-  const strategyAddress = await manager.callStatic.deployAccount(
+  const accountAddress = await manager.callStatic.deployAccount(
     executorAddress
   );
   let gasPrice = await getGasPrice(argv.gasPrice);
   const trx = await manager.deployAccount(executorAddress, { gasPrice });
   console.log("Deploy strategy:", `https://etherscan.io/tx/${trx.hash}`);
   await trx.wait();
-  console.log("Strategy:", chalk.green(strategyAddress));
+  console.log("Strategy:", chalk.green(accountAddress));
 
   const deployData = {
-    Strategy: strategyAddress,
+    Strategy: accountAddress,
   };
   updateDeployJsons(NETWORK_NAME, deployData);
 
@@ -72,7 +72,7 @@ async function main(argv) {
     console.log("Verifying on Etherscan ...");
     await ethers.provider.waitForTransaction(trx.hash, 5); // wait for Etherscan to catch up
     await hre.run("verify:verify", {
-      address: strategyAddress,
+      address: accountAddress,
     });
     console.log("");
   }
