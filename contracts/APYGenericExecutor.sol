@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 /**
  * @title Contract that generically executes functions given a target contract to execute against
  * @author APY.Finance
- * @notice This contract is delegate called to by an APYAccount.sol
+ * @notice This contract is delegate called to by an APYAccount.sol when executing sequences
  */
 contract APYGenericExecutor is Ownable {
     // struct representing an execution against a contracts given bytes data
@@ -20,7 +20,8 @@ contract APYGenericExecutor is Ownable {
     /**
      * @notice Given a Data struct with a target and bytes sequence data, executes the method on the target contract
      * @param executionSteps Data struct containing the target address to execute against and the bytes data to execute
-     * @dev Given the generic functionality of this contract, only owner can call this method to prevent situations where malicious actors from causing this contract to self destruct by delegating to another contract
+     * @dev Given the generic functionality of this contract, only owner can call this method to prevent situations where
+     *      malicious actors from causing this contract to self destruct by delegating to another contract
      */
     function execute(Data[] calldata executionSteps)
         external
