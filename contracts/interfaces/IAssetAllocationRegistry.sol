@@ -2,16 +2,17 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "../APYViewExecutor.sol";
-
 /**
  * @title Interface for addition and removal of asset allocations
-          for Account deployments
+          for account deployments
  * @author APY.Finance
  * @notice These functions enable external systems to pull necessary info
  *         to compute the TVL of the APY.Finance system.
  */
 interface IAssetAllocationRegistry {
+    // struct representing an execution against a contract given bytes
+    // target is the garget contract to execute view calls agaisnt
+    // bytes data represents the encoded function signature + parameters
     struct Data {
         address target;
         bytes data;

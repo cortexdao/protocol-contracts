@@ -16,6 +16,40 @@ import "./interfaces/ILiquidityPool.sol";
 import "./interfaces/IDetailedERC20.sol";
 import "./APYMetaPoolToken.sol";
 
+/**
+ * @title APY.Finance Pool Token
+ * @author APY.Finance
+ * @notice This token (APT) is the basic liquidity-provider token used
+ *         within the APY.Fiinance system.
+ *
+ *         For simplicity, it has been integrated with pool functionality
+ *         enabling users to deposit and withdraw in an underlying token,
+ *         currently one of three stablecoins.
+ *
+ *         Upon deposit of the underlyer, an appropriate amount of APT
+ *         is minted.  This amount is calculated as a share of the pool's
+ *         total value, which may change as strategies gain or lose.
+ *
+ *         The pool's total value is comprised of the value of its balance
+ *         of the underlying stablecoin and also the value of its balance
+ *         of mAPT, an internal token used by the system to track how much
+ *         is owed to the pool.  Every time the Manager withdraws funds
+ *         from the pool, mAPT is issued to the pool.
+ *
+ *         Upon redemption of APT (withdrawal), the user will get back
+ *         in the underlying stablecoin, the amount equivalent in value
+ *         to the user's APT share of the pool's total value.
+ *
+ *         Currently the user may not be able to redeem their full APT
+ *         balance, as the majority of funds will be deployed at any
+ *         given time.  Funds will periodically be pushed to the pools
+ *         so that each pool maintains a reserve percentage of the
+ *         pool's total value.
+ *
+ *         Later upgrades to the system will enable users to submit
+ *         withdrawal requests, which will be processed periodically
+ *         and unwind positions to free up funds.
+ */
 contract APYPoolTokenV2 is
     ILiquidityPool,
     Initializable,
@@ -35,21 +69,43 @@ contract APYPoolTokenV2 is
     /* ------------------------------- */
 
     // V1
+    //// @notice used to protect init functions for upgrades
     address public proxyAdmin;
+    /// @notice true if depositing is locked
     bool public addLiquidityLock;
+    /// @notice true if withdrawing is locked
     bool public redeemLock;
+    /// @notice underlying stablecoin
     IDetailedERC20 public underlyer;
+    /// @notice USD price feed for the stablecoin
     AggregatorV3Interface public priceAgg;
 
     // V2
+    /// @notice token tracking value owed to the pool
     APYMetaPoolToken public mApt;
+    /// @notice seconds since last deposit during which withdrawal fee is charged
     uint256 public feePeriod;
+    /// @notice percentage charged for withdrawal fee
     uint256 public feePercentage;
+    /// @notice time of last deposit
     mapping(address => uint256) public lastDepositTime;
+    /// @notice percentage of pool total value available for immediate withdrawal
     uint256 public reservePercentage;
 
     /* ------------------------------- */
 
+    /**
+     * @dev Since the proxy delegate calls to this "logic" contract, any
+     * storage set by the logic contract's constructor during deploy is
+     * disregarded and this function is needed to initialize the proxy
+     * contract's storage according to this contract's layout.
+     *
+     * Since storage is not set yet, there is no simple way to protect
+     * calling this function with owner modifiers.  Thus the OpenZeppelin
+     * `initializer` modifier protects this function from being called
+     * repeatedly.  It should be called during the deployment so that
+     * it cannot be called by someone else later.
+     */
     function initialize(
         address adminAddress,
         IDetailedERC20 _underlyer,
@@ -74,9 +130,15 @@ contract APYPoolTokenV2 is
         setPriceAggregator(_priceAgg);
     }
 
-    // solhint-disable-next-line no-empty-blocks
-    function initializeUpgrade() external virtual onlyAdmin {}
-
+    /**
+     * @dev Note the `initializer` modifier can only be used once in the
+     * entire contract, so we can't use it here.  Instead, we protect
+     * this function with `onlyAdmin`, which allows only the `proxyAdmin`
+     * address to call this function.  Since that address is in fact
+     * set to the actual proxy admin during deployment, this ensures
+     * this function can only be called as part of a delegate call
+     * during upgrades, i.e. in ProxyAdmin's `upgradeAndCall`.
+     */
     function initializeUpgrade(address payable _mApt)
         external
         virtual
@@ -121,24 +183,36 @@ contract APYPoolTokenV2 is
         reservePercentage = _reservePercentage;
     }
 
+    /**
+     * @dev Throws if called by any account other than the proxy admin.
+     */
     modifier onlyAdmin() {
         require(msg.sender == proxyAdmin, "ADMIN_ONLY");
         _;
     }
 
+    /**
+     * @notice Disable both depositing and withdrawals.
+     *      Note that `addLiquidity` and `redeem` also have individual locks.
+     */
     function lock() external onlyOwner {
         _pause();
     }
 
+    /**
+     * @notice Re-enable both depositing and withdrawals.
+     *      Note that `addLiquidity` and `redeem` also have individual locks.
+     */
     function unlock() external onlyOwner {
         _unpause();
     }
 
     /**
-     * @notice Mint corresponding amount of APT tokens for sent token amount.
+     * @notice Mint corresponding amount of APT tokens for deposited stablecoin.
      * @dev If no APT tokens have been minted yet, fallback to a fixed ratio.
+     * @param depositAmount Amount to deposit of the underlying stablecoin
      */
-    function addLiquidity(uint256 tokenAmt)
+    function addLiquidity(uint256 depositAmount)
         external
         virtual
         override
@@ -146,9 +220,9 @@ contract APYPoolTokenV2 is
         whenNotPaused
     {
         require(!addLiquidityLock, "LOCKED");
-        require(tokenAmt > 0, "AMOUNT_INSUFFICIENT");
+        require(depositAmount > 0, "AMOUNT_INSUFFICIENT");
         require(
-            underlyer.allowance(msg.sender, address(this)) >= tokenAmt,
+            underlyer.allowance(msg.sender, address(this)) >= depositAmount,
             "ALLOWANCE_INSUFFICIENT"
         );
         // solhint-disable-next-line not-rely-on-time
@@ -156,17 +230,17 @@ contract APYPoolTokenV2 is
 
         // calculateMintAmount() is not used because deposit value
         // is needed for the event
-        uint256 depositValue = getValueFromUnderlyerAmount(tokenAmt);
+        uint256 depositValue = getValueFromUnderlyerAmount(depositAmount);
         uint256 poolTotalValue = getPoolTotalValue();
         uint256 mintAmount = _calculateMintAmount(depositValue, poolTotalValue);
 
         _mint(msg.sender, mintAmount);
-        underlyer.safeTransferFrom(msg.sender, address(this), tokenAmt);
+        underlyer.safeTransferFrom(msg.sender, address(this), depositAmount);
 
         emit DepositedAPT(
             msg.sender,
             underlyer,
-            tokenAmt,
+            depositAmount,
             mintAmount,
             depositValue,
             getPoolTotalValue()
@@ -186,7 +260,8 @@ contract APYPoolTokenV2 is
     }
 
     /**
-     * @notice Redeems APT amount for its underlying token amount.
+     * @notice Redeems APT amount for its underlying stablecoin amount.
+     * @dev May revert if there is not enough in the pool.
      * @param aptAmount The amount of APT tokens to redeem
      */
     function redeem(uint256 aptAmount)
@@ -233,15 +308,15 @@ contract APYPoolTokenV2 is
 
     /**
      * @notice Calculate APT amount to be minted from deposit amount.
-     * @param tokenAmt The deposit amount of stablecoin
+     * @param depositAmount The deposit amount of stablecoin
      * @return The mint amount
      */
-    function calculateMintAmount(uint256 tokenAmt)
+    function calculateMintAmount(uint256 depositAmount)
         public
         view
         returns (uint256)
     {
-        uint256 depositValue = getValueFromUnderlyerAmount(tokenAmt);
+        uint256 depositValue = getValueFromUnderlyerAmount(depositAmount);
         uint256 poolTotalValue = getPoolTotalValue();
         return _calculateMintAmount(depositValue, poolTotalValue);
     }
@@ -326,7 +401,7 @@ contract APYPoolTokenV2 is
      * @notice Checks if caller will be charged early withdrawal fee.
      * @dev `lastDepositTime` is stored each time user makes a deposit, so
      *      the waiting period is restarted on each deposit.
-     * @return bool "true" means the fee will apply, "false" means it won't.
+     * @return "true" when fee will apply, "false" when it won't.
      */
     function isEarlyRedeem() public view returns (bool) {
         // solhint-disable-next-line not-rely-on-time
@@ -334,10 +409,10 @@ contract APYPoolTokenV2 is
     }
 
     /**
-     * @notice Get the total USD-denominated value (in wei) of the pool's assets,
+     * @notice Get the total USD-denominated value (in bits) of the pool's assets,
      *         including not only its underlyer balance, but any part of deployed
      *         capital that is owed to it.
-     * @return uint256
+     * @return USD value
      */
     function getPoolTotalValue() public view virtual returns (uint256) {
         uint256 underlyerValue = getPoolUnderlyerValue();
@@ -346,40 +421,55 @@ contract APYPoolTokenV2 is
     }
 
     /**
-     * @notice Get the USD-denominated value (in wei) of the pool's
+     * @notice Get the USD-denominated value (in bits) of the pool's
      *         underlyer balance.
-     * @return uint256
+     * @return USD value
      */
     function getPoolUnderlyerValue() public view virtual returns (uint256) {
         return getValueFromUnderlyerAmount(underlyer.balanceOf(address(this)));
     }
 
     /**
-     * @notice Get the USD-denominated value (in wei) of the pool's share
+     * @notice Get the USD-denominated value (in bits) of the pool's share
      *         of the deployed capital, as tracked by the mAPT token.
-     * @return uint256
+     * @return USD value
      */
     function getDeployedValue() public view virtual returns (uint256) {
         return mApt.getDeployedValue(address(this));
     }
 
-    function getAPTValue(uint256 amount) public view returns (uint256) {
+    /**
+     * @notice Get the USD-denominated value (in bits) represented by APT amount.
+     * @param aptAmount APT amount
+     * @return USD value
+     */
+    function getAPTValue(uint256 aptAmount) public view returns (uint256) {
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        return amount.mul(getPoolTotalValue()).div(totalSupply());
+        return aptAmount.mul(getPoolTotalValue()).div(totalSupply());
     }
 
-    function getValueFromUnderlyerAmount(uint256 amount)
+    /**
+     * @notice Get the USD-denominated value (in bits) represented by stablecoin amount.
+     * @param underlyerAmount amount of underlying stablecoin
+     * @return USD value
+     */
+    function getValueFromUnderlyerAmount(uint256 underlyerAmount)
         public
         view
         returns (uint256)
     {
-        if (amount == 0) {
+        if (underlyerAmount == 0) {
             return 0;
         }
         uint256 decimals = underlyer.decimals();
-        return getUnderlyerPrice().mul(amount).div(10**decimals);
+        return getUnderlyerPrice().mul(underlyerAmount).div(10**decimals);
     }
 
+    /**
+     * @notice Get the underlyer amount equivalent to given USD-denominated value (in bits).
+     * @param value USD value
+     * @return amount of underlying stablecoin
+     */
     function getUnderlyerAmountFromValue(uint256 value)
         public
         view
@@ -390,6 +480,10 @@ contract APYPoolTokenV2 is
         return (10**decimals).mul(value).div(underlyerPrice);
     }
 
+    /**
+     * @notice Get the underlyer stablecoin's USD price (in bits).
+     * @return USD price
+     */
     function getUnderlyerPrice() public view returns (uint256) {
         (, int256 price, , , ) = priceAgg.latestRoundData();
         require(price > 0, "UNABLE_TO_RETRIEVE_USD_PRICE");

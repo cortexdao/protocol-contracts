@@ -303,19 +303,19 @@ async function main(argv) {
   await executor.deployed();
   console.log("... done.");
 
-  console.log("Deploying strategy ...");
+  console.log("Deploying account ...");
   const manager = await ethers.getContractAt(
     "APYManagerV2",
     managerProxyAddress,
     managerDeployer
   );
-  const strategyAddress = await manager.callStatic.deployStrategy(
+  const accountAddress = await manager.callStatic.deployAccount(
     executor.address
   );
-  trx = await manager.deployStrategy(executor.address);
+  trx = await manager.deployAccount(executor.address);
   await trx.wait();
 
-  await manager.setStrategyId(bytes32("alpha"), strategyAddress);
+  await manager.setAccountId(bytes32("alpha"), accountAddress);
   console.log("... done.");
 }
 
