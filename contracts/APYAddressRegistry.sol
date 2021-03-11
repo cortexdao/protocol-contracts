@@ -6,6 +6,24 @@ import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "./interfaces/IAddressRegistry.sol";
 
+/**
+ * @title APY.Finance's address registry
+ * @author APY.Finance
+ * @notice The address registry has two important purposes, one which
+ *         is fairly concrete and another abstract.
+ *
+ *         1. The registry enables components of the APY.Finance system
+ *         and external systems to retrieve core addresses reliably
+ *         even when the functionality may move to a different
+ *         address.
+ *
+ *         2. The registry also makes explicit which contracts serve
+ *         as primary entrypoints for interacting with different
+ *         components.  Not every contract is registered here, only
+ *         the ones properly deserving of an identifier.  This helps
+ *         define explicit boundaries between groups of contracts,
+ *         each of which is logically cohesive.
+ */
 contract APYAddressRegistry is
     Initializable,
     OwnableUpgradeSafe,
@@ -14,6 +32,8 @@ contract APYAddressRegistry is
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
+    /** @notice the same address as the proxy admin; used
+     *  to protect init functions for upgrades */
     address public proxyAdmin;
     bytes32[] internal _idList;
     mapping(bytes32 => address) internal _idToAddress;
@@ -23,6 +43,18 @@ contract APYAddressRegistry is
     event AdminChanged(address);
     event AddressRegistered(bytes32 id, address _address);
 
+    /**
+     * @dev Since the proxy delegate calls to this "logic" contract, any
+     * storage set by the logic contract's constructor during deploy is
+     * disregarded and this function is needed to initialize the proxy
+     * contract's storage according to this contract's layout.
+     *
+     * Since storage is not set yet, there is no simple way to protect
+     * calling this function with owner modifiers.  Thus the OpenZeppelin
+     * `initializer` modifier protects this function from being called
+     * repeatedly.  It should be called during the deployment so that
+     * it cannot be called by someone else later.
+     */
     function initialize(address adminAddress) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");
 
@@ -34,6 +66,14 @@ contract APYAddressRegistry is
         setAdminAddress(adminAddress);
     }
 
+    /**
+     * @dev Dummy function to show how one would implement an init function
+     * for future upgrades.  Note the `initializer` modifier can only be used
+     * once in the entire contract, so we can't use it here.  Instead,
+     * we set the proxy admin address as a variable and protect this
+     * function with `onlyAdmin`, which only allows the proxy admin
+     * to call this function during upgrades.
+     */
     // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual onlyAdmin {}
 
