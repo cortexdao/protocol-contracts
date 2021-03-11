@@ -22,6 +22,7 @@ import "@chainlink/contracts/src/v0.6/interfaces/AggregatorValidatorInterface.so
 import "@chainlink/contracts/src/v0.6/interfaces/LinkTokenInterface.sol";
 import "@chainlink/contracts/src/v0.6/vendor/SafeMath.sol";
 
+/* solhint-disable */
 /**
  * @title The Prepaid Aggregator contract
  * @notice Handles aggregating data pushed in from off-chain, and unlocks
