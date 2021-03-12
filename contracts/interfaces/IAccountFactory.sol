@@ -11,38 +11,40 @@ interface IAccountFactory {
         uint256[] amounts;
     }
 
-    function deployAccount(address generalExecutor) external returns (address);
+    function deployAccount(bytes32 accountId, address generalExecutor)
+        external
+        returns (address);
 
-    function isAccountDeployed(address account) external returns (bool);
+    function getAccount(bytes32 accountId) external returns (address);
 
     function fundAccount(
-        address account,
+        bytes32 accountId,
         AccountAllocation calldata allocation,
         IAssetAllocationRegistry.AssetAllocation[] calldata viewData
     ) external;
 
     function fundAndExecute(
-        address account,
+        bytes32 accountId,
         AccountAllocation calldata allocation,
         APYGenericExecutor.Data[] calldata steps,
         IAssetAllocationRegistry.AssetAllocation[] calldata viewData
     ) external;
 
     function execute(
-        address account,
+        bytes32 accountId,
         APYGenericExecutor.Data[] memory steps,
         IAssetAllocationRegistry.AssetAllocation[] calldata viewData
     ) external;
 
     function executeAndWithdraw(
-        address account,
+        bytes32 accountId,
         AccountAllocation calldata allocation,
         APYGenericExecutor.Data[] calldata steps,
         IAssetAllocationRegistry.AssetAllocation[] calldata viewData
     ) external;
 
     function withdrawFromAccount(
-        address account,
+        bytes32 accountId,
         AccountAllocation calldata allocation
     ) external;
 }

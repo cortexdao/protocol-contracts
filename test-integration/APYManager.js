@@ -112,12 +112,15 @@ describe("Contract: APYManager - deployAccount", () => {
     expect(await manager.owner()).to.not.equal(nonOwner.address);
 
     await expect(
-      manager.connect(nonOwner).deployAccount(executor.address)
+      manager
+        .connect(nonOwner)
+        .deployAccount(bytes32("account1"), executor.address)
     ).to.be.revertedWith("revert Ownable: caller is not the owner");
   });
 
   it("Owner can call", async () => {
     const accountAddress = await manager.callStatic.deployAccount(
+      bytes32("account1"),
       executor.address
     );
     // manager.once(
@@ -127,7 +130,8 @@ describe("Contract: APYManager - deployAccount", () => {
     //     assert.equal(genericExecutor, executor.address);
     //   }
     // );
-    await expect(manager.deployAccount(executor.address)).to.not.be.reverted;
+    await expect(manager.deployAccount(bytes32("account1"), executor.address))
+      .to.not.be.reverted;
 
     const account = await ethers.getContractAt("APYAccount", accountAddress);
     expect(await account.owner()).to.equal(manager.address);
@@ -305,8 +309,11 @@ describe("Contract: APYManager", () => {
     executor = await APYGenericExecutor.deploy();
     await executor.deployed();
 
-    accountAddress = await manager.callStatic.deployAccount(executor.address);
-    await manager.deployAccount(executor.address);
+    accountAddress = await manager.callStatic.deployAccount(
+      bytes32("account1"),
+      executor.address
+    );
+    await manager.deployAccount(bytes32("account1"), executor.address);
 
     daiToken = await ethers.getContractAt(
       legos.maker.abis.DAI,
@@ -379,7 +386,7 @@ describe("Contract: APYManager", () => {
     it("Non-owner cannot call", async () => {
       const nonOwner = await ethers.provider.getSigner(randomAccount.address);
       await expect(
-        manager.connect(nonOwner).fundAccount(accountAddress, [[], []], [])
+        manager.connect(nonOwner).fundAccount(bytes32("account1"), [[], []], [])
       ).to.be.revertedWith("revert Ownable: caller is not the owner");
     });
 
@@ -387,14 +394,14 @@ describe("Contract: APYManager", () => {
       await expect(
         manager
           .connect(managerDeployer)
-          .fundAccount(accountAddress, [[], []], [])
+          .fundAccount(bytes32("account1"), [[], []], [])
       ).to.not.be.reverted;
     });
 
     it("Unregistered pool fails", async () => {
       await expect(
         manager.fundAccount(
-          accountAddress,
+          bytes32("account1"),
           [
             [bytes32("daiPool"), bytes32("invalidPoolId"), bytes32("usdtPool")],
             ["10", "10", "10"],
@@ -424,7 +431,7 @@ describe("Contract: APYManager", () => {
       );
 
       await manager.fundAccount(
-        accountAddress,
+        bytes32("account1"),
         [
           [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
           [daiAmount, usdcAmount, usdtAmount],
@@ -532,7 +539,7 @@ describe("Contract: APYManager", () => {
       const usdtPoolMintAmount = await getMintAmount(usdtPool, usdtAmount);
 
       await manager.fundAccount(
-        accountAddress,
+        bytes32("account1"),
         [
           [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
           [daiAmount, usdcAmount, usdtAmount],
@@ -559,7 +566,7 @@ describe("Contract: APYManager", () => {
       const usdtPoolMintAmount = await getMintAmount(usdtPool, usdtAmount);
 
       await manager.fundAccount(
-        accountAddress,
+        bytes32("account1"),
         [
           [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
           [daiAmount, usdcAmount, usdtAmount],
@@ -594,7 +601,7 @@ describe("Contract: APYManager", () => {
         manager
           .connect(nonOwner)
           .fundAndExecute(
-            accountAddress,
+            bytes32("account1"),
             [[bytes32("daiPool")], [amount]],
             [[daiToken.address, encodedApprove]],
             []
@@ -606,7 +613,7 @@ describe("Contract: APYManager", () => {
       await expect(
         manager
           .connect(managerDeployer)
-          .fundAndExecute(accountAddress, [[], []], [], [])
+          .fundAndExecute(bytes32("account1"), [[], []], [], [])
       ).to.not.be.reverted;
     });
 
@@ -615,7 +622,7 @@ describe("Contract: APYManager", () => {
         manager
           .connect(managerDeployer)
           .fundAndExecute(
-            accountAddress,
+            bytes32("account1"),
             [[bytes32("invalidPool")], [amount]],
             [[daiToken.address, encodedApprove]],
             []
@@ -630,7 +637,7 @@ describe("Contract: APYManager", () => {
       );
 
       await manager.fundAndExecute(
-        accountAddress,
+        bytes32("account1"),
         [[bytes32("daiPool")], [amount]],
         [[daiToken.address, encodedApprove]],
         [
@@ -676,7 +683,7 @@ describe("Contract: APYManager", () => {
     it("Non-owner cannot call", async () => {
       const nonOwner = await ethers.provider.getSigner(randomAccount.address);
       await expect(
-        manager.connect(nonOwner).execute(accountAddress, [], [])
+        manager.connect(nonOwner).execute(bytes32("account1"), [], [])
       ).to.be.revertedWith("revert Ownable: caller is not the owner");
     });
 
@@ -684,7 +691,7 @@ describe("Contract: APYManager", () => {
       const encodedFunction = erc20Interface.encodeFunctionData("symbol()", []);
       await expect(
         manager.execute(
-          accountAddress,
+          bytes32("account1"),
           [[daiToken.address, encodedFunction]],
           []
         )
@@ -704,7 +711,7 @@ describe("Contract: APYManager", () => {
       );
 
       await manager.execute(
-        accountAddress,
+        bytes32("account1"),
         [[daiToken.address, encodedApprove]],
         [
           [
@@ -766,7 +773,7 @@ describe("Contract: APYManager", () => {
         [manager.address, daiAmount]
       );
       await manager.execute(
-        accountAddress,
+        bytes32("account1"),
         [[daiToken.address, daiApprove]],
         []
       );
@@ -776,7 +783,7 @@ describe("Contract: APYManager", () => {
         [manager.address, usdcAmount]
       );
       await manager.execute(
-        accountAddress,
+        bytes32("account1"),
         [[usdcToken.address, usdcApprove]],
         []
       );
@@ -786,7 +793,7 @@ describe("Contract: APYManager", () => {
         [manager.address, usdtAmount]
       );
       await manager.execute(
-        accountAddress,
+        bytes32("account1"),
         [[usdtToken.address, usdtApprove]],
         []
       );
@@ -808,14 +815,14 @@ describe("Contract: APYManager", () => {
         await expect(
           manager
             .connect(nonOwner)
-            .executeAndWithdraw(accountAddress, [[], []], [], [])
+            .executeAndWithdraw(bytes32("account1"), [[], []], [], [])
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
       });
 
       it("Unregistered pool fails", async () => {
         await expect(
           manager.executeAndWithdraw(
-            accountAddress,
+            bytes32("account1"),
             [[bytes32("invalidPool")], [0]],
             [],
             []
@@ -827,7 +834,7 @@ describe("Contract: APYManager", () => {
         await expect(
           manager
             .connect(managerDeployer)
-            .executeAndWithdraw(accountAddress, [[], []], [], [])
+            .executeAndWithdraw(bytes32("account1"), [[], []], [], [])
         ).to.not.be.reverted;
       });
 
@@ -841,7 +848,7 @@ describe("Contract: APYManager", () => {
         expect(await daiToken.balanceOf(accountAddress)).to.equal(amount);
 
         await manager.executeAndWithdraw(
-          accountAddress,
+          bytes32("account1"),
           [[bytes32("daiPool")], [amount]],
           [[daiToken.address, daiApprove]],
           [
@@ -884,7 +891,7 @@ describe("Contract: APYManager", () => {
         await expect(
           manager
             .connect(nonOwner)
-            .withdrawFromAccount(accountAddress, [[], []], [])
+            .withdrawFromAccount(bytes32("account1"), [[], []], [])
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
       });
 
@@ -892,14 +899,14 @@ describe("Contract: APYManager", () => {
         await expect(
           manager
             .connect(managerDeployer)
-            .withdrawFromAccount(accountAddress, [[], []], [])
+            .withdrawFromAccount(bytes32("account1"), [[], []], [])
         ).to.not.be.reverted;
       });
 
       it("Unregistered pool fails", async () => {
         await expect(
           manager.withdrawFromAccount(
-            accountAddress,
+            bytes32("account1"),
             [[bytes32("invalidPool")], ["10"]],
             []
           )
@@ -915,7 +922,7 @@ describe("Contract: APYManager", () => {
         // It might be because the event is not at the top most level
 
         await manager.withdrawFromAccount(
-          accountAddress,
+          bytes32("account1"),
           [[bytes32("daiPool")], [amount]],
           []
         );
@@ -974,7 +981,7 @@ describe("Contract: APYManager", () => {
         );
 
         await manager.withdrawFromAccount(
-          accountAddress,
+          bytes32("account1"),
           [
             [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
             [daiWithdrawAmount, usdcWithdrawAmount, usdtWithdrawAmount],
@@ -1051,7 +1058,7 @@ describe("Contract: APYManager", () => {
           usdtWithdrawAmount
         );
 
-        await manager.withdrawFromAccount(accountAddress, [
+        await manager.withdrawFromAccount(bytes32("account1"), [
           [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
           [daiWithdrawAmount, usdcWithdrawAmount, usdtWithdrawAmount],
         ]);
