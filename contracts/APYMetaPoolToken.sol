@@ -11,6 +11,35 @@ import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/IMintable.sol";
 
+/**
+ * @title APY Meta Pool Token
+ * @author APY.Finance
+ * @notice This token is used to keep track of the capital that has been
+ * pulled from the APYPoolToken contracts.
+ *
+ * When the APYManager pulls capital from the APYPoolToken contracts to
+ * deploy to yield farming strategies, it will mint mAPT and transfer it to
+ * the APYPoolToken contracts. The ratio of the mAPT held by each APYPoolToken
+ * to the total supply of mAPT determines the amount of the TVL dedicated to
+ * APYPoolToken.
+ *
+ * DEPLOY CAPITAL TO YIELD FARMING STRATEGIES
+ * Tracks the share of deployed TVL owned by an APYPoolToken using mAPT.
+ *
+ * +--------------+   APYManagerV2.fundAccount   +--------------+
+ * | APYPoolToken | ---------------------------> | APYManagerV2 |
+ * +--------------+     APYMetaPoolToken.mint    +--------------+
+ *                  <---------------------------
+ *
+ *
+ * WITHDRAW CAPITAL FROM YIELD FARMING STRATEGIES
+ * Uses mAPT to calculate the amount of capital returned to the APYPoolToken.
+ *
+ * +--------------+   APYManagerV2.withdrawFromAccount   +--------------+
+ * | APYPoolToken | <----------------------------------- | APYManagerV2 |
+ * +--------------+        APYMetaPoolToken.burn         +--------------+
+ *                  ----------------------------------->
+ */
 contract APYMetaPoolToken is
     Initializable,
     OwnableUpgradeSafe,
