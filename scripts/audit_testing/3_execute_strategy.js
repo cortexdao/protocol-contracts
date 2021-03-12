@@ -111,28 +111,47 @@ async function main(argv) {
     "approve(address,uint256)",
     [STABLE_SWAP_ADDRESS, MAX_UINT256]
   );
-  const approveGauge = ifaceERC20.encodeFunctionData(
-    "approve(address,uint256)",
-    [LIQUIDITY_GAUGE_ADDRESS, MAX_UINT256]
-  );
   const stableSwapAddLiquidity = ifaceStableSwap.encodeFunctionData(
     "add_liquidity(uint256[3],uint256)",
     [[daiAmount, 0, 0], 0]
   );
   const daiToken = stablecoins["DAI"];
 
-  // const totalLPBalance = await lpToken.balanceOf(strategy.address);
-  // await lpToken.connect(strategy).approve(gauge.address, MAX_UINT256);
-  // await gauge.connect(strategy)["deposit(uint256)"](gaugeLpBalance);
-
-  const executionSteps = [
+  let executionSteps = [
     [daiToken.address, approveStableSwap], // approve StableSwap for DAI
-    [LP_TOKEN_ADDRESS, approveGauge], // approve LiquidityGauge for LP token
     [STABLE_SWAP_ADDRESS, stableSwapAddLiquidity], // deposit DAI into Curve 3pool
   ];
   await manager.execute(accountAddress, executionSteps, []);
   console.log("... done.");
   console.log("");
+
+  const lpToken = await ethers.getContractAt(
+    "IDetailedERC20",
+    LP_TOKEN_ADDRESS
+  );
+  const lpBalance = await lpToken.balanceOf(accountAddress);
+  console.log("LP balance:", lpBalance.toString());
+
+  const ifaceLiquidityGague = new ethers.utils.Interface(
+    artifacts.require("ILiquidityGauge").abi
+  );
+  const approveGauge = ifaceERC20.encodeFunctionData(
+    "approve(address,uint256)",
+    [LIQUIDITY_GAUGE_ADDRESS, MAX_UINT256]
+  );
+  const liquidityGaugeDeposit = ifaceLiquidityGague.encodeFunctionData(
+    "deposit(uint256)",
+    [lpBalance]
+  );
+  executionSteps = [
+    [LP_TOKEN_ADDRESS, approveGauge], // approve LiquidityGauge for LP token
+    [LIQUIDITY_GAUGE_ADDRESS, liquidityGaugeDeposit],
+  ];
+  await manager.execute(accountAddress, executionSteps, []);
+
+  const gauge = await ethers.getContractAt("IDetailedERC20", LP_TOKEN_ADDRESS);
+  const gaugeBalance = await gauge.balanceOf(accountAddress);
+  console.log("Gauge balance:", gaugeBalance.toString());
 
   /****************************************/
 }
