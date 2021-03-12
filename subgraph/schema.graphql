@@ -19,7 +19,7 @@ type Cashflow @entity {
   id: ID!
   timestamp: BigInt!
   userAddress: Bytes!
-  poolAddress: BigInt!
+  poolAddress: Bytes!
   userAptBalance: BigInt!
   total: BigInt!
 }
