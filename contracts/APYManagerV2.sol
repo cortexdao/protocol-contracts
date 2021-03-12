@@ -34,14 +34,17 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IAccountFactory {
     //          before the V2 upgrade
 
     // V2
-    mapping(bytes32 => address) public getAccount;
-    mapping(address => bool) public override isAccountDeployed;
+    mapping(bytes32 => address) public override getAccount;
     IAssetAllocationRegistry public assetAllocationRegistry;
 
     /* ------------------------------- */
 
     event AdminChanged(address);
-    event APYAccountDeployed(address account, address generalExecutor);
+    event APYAccountDeployed(
+        bytes32 accountId,
+        address account,
+        address generalExecutor
+    );
 
     function initialize(address adminAddress) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");
@@ -68,79 +71,81 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IAccountFactory {
         assetAllocationRegistry = IAssetAllocationRegistry(_allocationRegistry);
     }
 
-    function deployAccount(address generalExecutor)
+    function deployAccount(bytes32 accountId, address generalExecutor)
         external
         override
         onlyOwner
         returns (address)
     {
         APYAccount account = new APYAccount(generalExecutor);
-        isAccountDeployed[address(account)] = true;
-        emit APYAccountDeployed(address(account), generalExecutor);
+        getAccount[accountId] = address(account);
+        emit APYAccountDeployed(accountId, address(account), generalExecutor);
         return address(account);
     }
 
-    function setAccountId(bytes32 id, address account) public onlyOwner {
-        getAccount[id] = account;
+    function setAccountId(bytes32 accountId, address account) public onlyOwner {
+        getAccount[accountId] = account;
     }
 
     function fundAccount(
-        address account,
+        bytes32 accountId,
         IAccountFactory.AccountAllocation memory allocation,
         IAssetAllocationRegistry.AssetAllocation[] memory viewData
     ) external override onlyOwner {
         _registerAllocationData(viewData);
-        _fundAccount(account, allocation);
+        _fundAccount(accountId, allocation);
     }
 
     function fundAndExecute(
-        address account,
+        bytes32 accountId,
         IAccountFactory.AccountAllocation memory allocation,
         APYGenericExecutor.Data[] memory steps,
         IAssetAllocationRegistry.AssetAllocation[] memory viewData
     ) external override onlyOwner {
         _registerAllocationData(viewData);
-        _fundAccount(account, allocation);
-        execute(account, steps, viewData);
+        _fundAccount(accountId, allocation);
+        execute(accountId, steps, viewData);
     }
 
     function execute(
-        address account,
+        bytes32 accountId,
         APYGenericExecutor.Data[] memory steps,
         IAssetAllocationRegistry.AssetAllocation[] memory viewData
     ) public override onlyOwner {
-        require(isAccountDeployed[account], "INVALID_ACCOUNT");
+        require(getAccount[accountId] != address(0), "INVALID_ACCOUNT");
+        address accountAddress = getAccount[accountId];
         _registerAllocationData(viewData);
-        IAccount(account).execute(steps);
+        IAccount(accountAddress).execute(steps);
     }
 
     function executeAndWithdraw(
-        address account,
+        bytes32 accountId,
         IAccountFactory.AccountAllocation memory allocation,
         APYGenericExecutor.Data[] memory steps,
         IAssetAllocationRegistry.AssetAllocation[] memory viewData
     ) external override onlyOwner {
-        execute(account, steps, viewData);
-        _withdrawFromAccount(account, allocation);
+        execute(accountId, steps, viewData);
+        _withdrawFromAccount(accountId, allocation);
         _registerAllocationData(viewData);
     }
 
     function withdrawFromAccount(
-        address account,
+        bytes32 accountId,
         IAccountFactory.AccountAllocation memory allocation
     ) external override onlyOwner {
-        _withdrawFromAccount(account, allocation);
+        _withdrawFromAccount(accountId, allocation);
     }
 
     function _fundAccount(
-        address account,
+        bytes32 accountId,
         IAccountFactory.AccountAllocation memory allocation
     ) internal {
         require(
             allocation.poolIds.length == allocation.amounts.length,
             "allocation length mismatch"
         );
-        require(isAccountDeployed[account], "INVALID_ACCOUNT");
+        require(getAccount[accountId] != address(0), "INVALID_ACCOUNT");
+        address accountAddress = getAccount[accountId];
         uint256[] memory mintAmounts = new uint256[](allocation.poolIds.length);
         for (uint256 i = 0; i < allocation.poolIds.length; i++) {
             uint256 poolAmount = allocation.amounts[i];
@@ -156,7 +161,11 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IAccountFactory {
                 mApt.calculateMintAmount(poolAmount, tokenPrice, decimals);
             mintAmounts[i] = mintAmount;
 
-            underlyer.safeTransferFrom(address(pool), account, poolAmount);
+            underlyer.safeTransferFrom(
+                address(pool),
+                accountAddress,
+                poolAmount
+            );
         }
         for (uint256 i = 0; i < allocation.poolIds.length; i++) {
             APYPoolTokenV2 pool =
@@ -168,15 +177,15 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IAccountFactory {
     }
 
     function _withdrawFromAccount(
-        address account,
+        bytes32 accountId,
         IAccountFactory.AccountAllocation memory allocation
     ) internal {
         require(
             allocation.poolIds.length == allocation.amounts.length,
             "allocation length mismatch"
         );
-        require(isAccountDeployed[account], "INVALID_ACCOUNT");
-
+        require(getAccount[accountId] != address(0), "INVALID_ACCOUNT");
+        address accountAddress = getAccount[accountId];
         uint256[] memory burnAmounts = new uint256[](allocation.poolIds.length);
         for (uint256 i = 0; i < allocation.poolIds.length; i++) {
             APYPoolTokenV2 pool =
@@ -192,7 +201,11 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IAccountFactory {
                 mApt.calculateMintAmount(amountToSend, tokenPrice, decimals);
             burnAmounts[i] = burnAmount;
 
-            underlyer.safeTransferFrom(account, address(pool), amountToSend);
+            underlyer.safeTransferFrom(
+                accountAddress,
+                address(pool),
+                amountToSend
+            );
         }
         for (uint256 i = 0; i < allocation.poolIds.length; i++) {
             APYPoolTokenV2 pool =
