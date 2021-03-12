@@ -15,6 +15,59 @@ import "./APYPoolTokenV2.sol";
 import "./APYMetaPoolToken.sol";
 import "./APYAccount.sol";
 
+/**
+ * @title APY Manager
+ * @author APY.Finance
+ * @notice This is the V2 of the manager logic contract for use with the
+ * manager proxy contract.
+ *
+ *--------------------
+ * MANAGING CAPITAL
+ *--------------------
+ * The APY Manager orchestrates the movement of capital within the APY system.
+ * This movement of capital occurs in two major ways:
+ *
+ * - Capital transferred to and from APYPoolToken contracts and the
+ *   APYAccount contract with the following functions:
+ *
+ *   - fundAccount
+ *   - fundAndExecute
+ *   - withdrawFromAccount
+ *   - executeAndWithdraw
+ *
+ * - Capital routed to and from other protocols using generic execution with
+ *   the following functions:
+ *
+ *   - execute
+ *   - fundAndExecute
+ *   - executeAndWithdraw
+ *
+ * Transferring from the APYPoolToken contracts to the Account contract stages
+ * capital for deployment to yield farming strategies. Transferring from the
+ * Account contract to the APYPoolToken contracts is done to capital unwound
+ * from yield farming strategies for the purpose of user withdrawal.
+ *
+ * Routing capital to yield farming strategies using generic execution assumes
+ * capital has been staged in the Account contract. Generic execution is also
+ * used to unwind capital from yield farming strategies in preperation for
+ * user withdrawal.
+ *
+ *--------------------
+ * UPDATING TVL
+ *--------------------
+ * When the APY Manager routes capital using generic execution it can also
+ * register an asset allocation with the AssetAllocationRegistry. Registering
+ * asset allocations is important for Chainlink to calculate accurate TVL
+ * values.
+ *
+ * Any time a new asset is acquired by the APYAccount contract or when capital
+ * is deployed as liquidity to a new protocol, a new asset allocation must be
+ * registered so the capital can be properly tracked for TVL calculations.
+ *
+ * The reason this is done atomically with the generic execution that routes
+ * capital is to prevent the possibility of blocks which the TVL calculation
+ * does not match the state of capital held by the APYAccount contract.
+ */
 contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
     using SafeMath for uint256;
     using SafeERC20 for IDetailedERC20;
