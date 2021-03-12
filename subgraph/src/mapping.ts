@@ -55,7 +55,7 @@ export function handleDepositedAPT(event: DepositedAPT): void {
   const cashflow = Cashflow.load(cashflowId) || new Cashflow(cashflowId);
 
   cashflow.timestamp = event.block.timestamp;
-  cashflow.userAddress = user.toHexString();
+  cashflow.userAddress = user;
   cashflow.poolAddress = poolAddress;
   cashflow.userAptBalance = contract.balanceOf(user);
 
@@ -103,7 +103,7 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
   const cashflow = Cashflow.load(cashflowId) || new Cashflow(cashflowId);
 
   cashflow.timestamp = event.block.timestamp;
-  cashflow.userAddress = user.toHexString();
+  cashflow.userAddress = user;
   cashflow.poolAddress = poolAddress;
   cashflow.userAptBalance = contract.balanceOf(user);
 
