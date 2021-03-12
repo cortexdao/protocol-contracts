@@ -17,6 +17,13 @@ type PoolTotalValue @entity {
 
 type Cashflow @entity {
   id: ID!
+  userAddress: Bytes!
+  poolAddress: Bytes!
+  total: BigInt!
+}
+
+type CashflowPoint @entity {
+  id: ID!
   timestamp: BigInt!
   userAddress: Bytes!
   poolAddress: Bytes!
