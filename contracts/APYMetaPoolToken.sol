@@ -54,10 +54,15 @@ contract APYMetaPoolToken is
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
+    /// @notice used to protect init functions for upgrades
     address public proxyAdmin;
+    /// @notice used to protect mint and burn function
     address public manager;
+    /// @notice Chainlink aggregator for deployed TVL
     AggregatorV3Interface public tvlAgg;
+    /// @notice seconds within which aggregator should be updated
     uint256 public aggStalePeriod;
+    /// @notice used to guard against non-updated TVL
     uint256 public lastMintOrBurn;
 
     /* ------------------------------- */
@@ -68,6 +73,18 @@ contract APYMetaPoolToken is
     event ManagerChanged(address);
     event TvlAggregatorChanged(address agg);
 
+    /**
+     * @dev Since the proxy delegate calls to this "logic" contract, any
+     * storage set by the logic contract's constructor during deploy is
+     * disregarded and this function is needed to initialize the proxy
+     * contract's storage according to this contract's layout.
+     *
+     * Since storage is not set yet, there is no simple way to protect
+     * calling this function with owner modifiers.  Thus the OpenZeppelin
+     * `initializer` modifier protects this function from being called
+     * repeatedly.  It should be called during the deployment so that
+     * it cannot be called by someone else later.
+     */
     function initialize(
         address adminAddress,
         address _tvlAgg,
@@ -89,6 +106,14 @@ contract APYMetaPoolToken is
         setAggStalePeriod(_aggStalePeriod);
     }
 
+    /**
+     * @dev Dummy function to show how one would implement an init function
+     * for future upgrades.  Note the `initializer` modifier can only be used
+     * once in the entire contract, so we can't use it here.  Instead,
+     * we set the proxy admin address as a variable and protect this
+     * function with `onlyAdmin`, which only allows the proxy admin
+     * to call this function during upgrades.
+     */
     // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual onlyAdmin {}
 
@@ -109,6 +134,9 @@ contract APYMetaPoolToken is
         aggStalePeriod = _aggStalePeriod;
     }
 
+    /**
+     * @dev Throws if called by any account other than the proxy admin.
+     */
     modifier onlyAdmin() {
         require(msg.sender == proxyAdmin, "ADMIN_ONLY");
         _;
