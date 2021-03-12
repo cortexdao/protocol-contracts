@@ -15,6 +15,15 @@ type PoolTotalValue @entity {
   valuePerShare: BigDecimal
 }
 
+type Cashflow @entity {
+  id: ID!
+  timestamp: Bytes!
+  userAddress: BigInt!
+  poolAddress: BigInt!
+  userAptBalance: BigInt!
+  total: BigInt!
+}
+
 type Transfer @entity {
   id: ID!
   poolAddress: Bytes!

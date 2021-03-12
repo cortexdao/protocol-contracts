@@ -6,7 +6,15 @@ import {
 } from "../generated/DAI_APYPoolToken/APYPoolToken";
 import { ERC20UpgradeSafe } from "../generated/DAI_APYPoolToken/ERC20UpgradeSafe";
 import { Claimed } from "../generated/APYRewardDistributor/APYRewardDistributor";
-import { TotalEthValueLocked, PoolTotalValue, Transfer, User, Pool, AccountClaim } from "../generated/schema";
+import {
+  TotalEthValueLocked,
+  PoolTotalValue,
+  Cashflow,
+  Transfer,
+  User,
+  Pool,
+  AccountClaim,
+} from "../generated/schema";
 import { BigDecimal, BigInt } from "@graphprotocol/graph-ts";
 
 export function handleDepositedAPT(event: DepositedAPT): void {
@@ -17,7 +25,8 @@ export function handleDepositedAPT(event: DepositedAPT): void {
       event.transaction.hash.toHexString()
   );
   tvl.timestamp = event.block.timestamp;
-  tvl.sequenceNumber = (event.block.timestamp * BigInt.fromI32(100000000)) + event.logIndex;
+  tvl.sequenceNumber =
+    event.block.timestamp * BigInt.fromI32(100000000) + event.logIndex;
   tvl.poolAddress = event.address;
   tvl.totalEthValueLocked = event.params.totalEthValueLocked;
   tvl.save();
@@ -26,16 +35,34 @@ export function handleDepositedAPT(event: DepositedAPT): void {
   const contract = APYPoolToken.bind(poolAddress);
 
   let ptv = new PoolTotalValue(
-      poolAddress.toHexString() + 
-      event.block.timestamp.toString()
+    poolAddress.toHexString() + event.block.timestamp.toString()
   );
   ptv.timestamp = event.block.timestamp;
   ptv.poolAddress = poolAddress;
   ptv.totalEthValueLocked = event.params.totalEthValueLocked;
   ptv.aptSupply = contract.totalSupply();
-  if (!ptv.aptSupply.isZero()) 
-    ptv.valuePerShare = new BigDecimal(ptv.totalEthValueLocked) / new BigDecimal(ptv.aptSupply);
+  if (!ptv.aptSupply.isZero())
+    ptv.valuePerShare =
+      new BigDecimal(ptv.totalEthValueLocked) / new BigDecimal(ptv.aptSupply);
   ptv.save();
+
+  // Cashflow entity
+  const user = event.params.sender;
+  const cashflowId =
+    poolAddress.toHexString() +
+    user.toHexString() +
+    event.block.timestamp.toString();
+  const cashflow = Cashflow.load(cashflowId) || new Cashflow(cashflowId);
+
+  cashflow.timestamp = event.block.timestamp;
+  cashflow.userAddress = user.toHexString();
+  cashflow.poolAddress = poolAddress;
+  cashflow.userAptBalance = contract.balanceOf(user);
+
+  const previousTotal = cashflow.total || BigInt.fromI32(0);
+  cashflow.total = previousTotal.minus(event.params.tokenAmount);
+
+  cashflow.save();
 }
 
 export function handleRedeemedAPT(event: RedeemedAPT): void {
@@ -46,7 +73,8 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
       event.transaction.hash.toHexString()
   );
   tvl.timestamp = event.block.timestamp;
-  tvl.sequenceNumber = (event.block.timestamp * BigInt.fromI32(100000000)) + event.logIndex;
+  tvl.sequenceNumber =
+    event.block.timestamp * BigInt.fromI32(100000000) + event.logIndex;
   tvl.poolAddress = event.address;
   tvl.totalEthValueLocked = event.params.totalEthValueLocked;
   tvl.save();
@@ -55,16 +83,34 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
   const contract = APYPoolToken.bind(poolAddress);
 
   let ptv = new PoolTotalValue(
-      poolAddress.toHexString() + 
-      event.block.timestamp.toString()
+    poolAddress.toHexString() + event.block.timestamp.toString()
   );
   ptv.timestamp = event.block.timestamp;
   ptv.poolAddress = poolAddress;
   ptv.totalEthValueLocked = event.params.totalEthValueLocked;
   ptv.aptSupply = contract.totalSupply();
-  if (!ptv.aptSupply.isZero()) 
-    ptv.valuePerShare = new BigDecimal(ptv.totalEthValueLocked) / new BigDecimal(ptv.aptSupply);
+  if (!ptv.aptSupply.isZero())
+    ptv.valuePerShare =
+      new BigDecimal(ptv.totalEthValueLocked) / new BigDecimal(ptv.aptSupply);
   ptv.save();
+
+  // Cashflow entity
+  const user = event.params.sender;
+  const cashflowId =
+    poolAddress.toHexString() +
+    user.toHexString() +
+    event.block.timestamp.toString();
+  const cashflow = Cashflow.load(cashflowId) || new Cashflow(cashflowId);
+
+  cashflow.timestamp = event.block.timestamp;
+  cashflow.userAddress = user.toHexString();
+  cashflow.poolAddress = poolAddress;
+  cashflow.userAptBalance = contract.balanceOf(user);
+
+  const previousTotal = cashflow.total || BigInt.fromI32(0);
+  cashflow.total = previousTotal.plus(event.params.redeemedTokenAmount);
+
+  cashflow.save();
 }
 
 export function handleTransfer(event: TransferEvent): void {
@@ -139,19 +185,19 @@ export function handleTransfer(event: TransferEvent): void {
 }
 
 export function handleClaimed(event: Claimed): void {
-  let accountClaimId = event.params.recipient.toHex()
-  let accountClaim = AccountClaim.load(accountClaimId)
+  let accountClaimId = event.params.recipient.toHex();
+  let accountClaim = AccountClaim.load(accountClaimId);
 
   if (accountClaim == null) {
-    accountClaim = new AccountClaim(accountClaimId)
-    accountClaim.claimAmount = event.params.amount
+    accountClaim = new AccountClaim(accountClaimId);
+    accountClaim.claimAmount = event.params.amount;
   } else {
     accountClaim.claimAmount = event.params.amount.plus(
       accountClaim.claimAmount
-    )
+    );
   }
 
-  accountClaim.account = event.params.recipient
-  accountClaim.nonce = event.params.nonce
-  accountClaim.save()
+  accountClaim.account = event.params.recipient;
+  accountClaim.nonce = event.params.nonce;
+  accountClaim.save();
 }
