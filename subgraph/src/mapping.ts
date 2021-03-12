@@ -100,15 +100,17 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
     poolAddress.toHexString() +
     user.toHexString() +
     event.block.timestamp.toString();
-  const cashflow = Cashflow.load(cashflowId) || new Cashflow(cashflowId);
+  let cashflow = Cashflow.load(cashflowId);
+  if (cashflow == null) {
+    cashflow = new Cashflow(cashflowId);
+    cashflow.total = BigInt.fromI32(0);
+    cashflow.timestamp = event.block.timestamp;
+    cashflow.userAddress = user;
+    cashflow.poolAddress = poolAddress;
+  }
 
-  cashflow.timestamp = event.block.timestamp;
-  cashflow.userAddress = user;
-  cashflow.poolAddress = poolAddress;
   cashflow.userAptBalance = contract.balanceOf(user);
-
-  const previousTotal = cashflow.total || BigInt.fromI32(0);
-  cashflow.total = previousTotal.plus(event.params.redeemedTokenAmount);
+  cashflow.total = cashflow.total.plus(event.params.redeemedTokenAmount);
 
   cashflow.save();
 }
