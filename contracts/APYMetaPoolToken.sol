@@ -123,6 +123,12 @@ contract APYMetaPoolToken is
         emit AdminChanged(adminAddress);
     }
 
+    function setManagerAddress(address managerAddress) public onlyOwner {
+        require(managerAddress != address(0), "INVALID_MANAGER");
+        manager = managerAddress;
+        emit ManagerChanged(managerAddress);
+    }
+
     function setTvlAggregator(address _tvlAgg) public onlyOwner {
         require(_tvlAgg != address(0), "INVALID_AGG");
         tvlAgg = AggregatorV3Interface(_tvlAgg);
@@ -142,31 +148,44 @@ contract APYMetaPoolToken is
         _;
     }
 
+    /**
+     * @dev Throws if called by any account other than the APYManager.
+     */
+    modifier onlyManager() {
+        require(msg.sender == manager, "MANAGER_ONLY");
+        _;
+    }
+
     receive() external payable {
         revert("DONT_SEND_ETHER");
     }
 
+    /**
+     * @notice Mint specified amount of mAPT to the given account.
+     * @dev Only the manager can call this.  The timestamp is saved so that
+     *      `getTVL` can revert if the Chainlink aggregator hasn't updated since
+     *       mint was called.
+     * @param account address to mint to
+     * @param amount mint amount
+     */
     function mint(address account, uint256 amount) public override onlyManager {
         lastMintOrBurn = block.timestamp; // solhint-disable-line not-rely-on-time
         _mint(account, amount);
         emit Mint(account, amount);
     }
 
+    /**
+     * @notice Burn specified amount of mAPT from the given account.
+     * @dev Only the manager can call this.  The timestamp is saved so that
+     *      `getTVL` can revert if the Chainlink aggregator hasn't updated since
+     *       burn was called.
+     * @param account address to burn from
+     * @param amount burn amount
+     */
     function burn(address account, uint256 amount) public override onlyManager {
         lastMintOrBurn = block.timestamp; // solhint-disable-line not-rely-on-time
         _burn(account, amount);
         emit Burn(account, amount);
-    }
-
-    function setManagerAddress(address managerAddress) public onlyOwner {
-        require(managerAddress != address(0), "INVALID_ADMIN");
-        manager = managerAddress;
-        emit ManagerChanged(managerAddress);
-    }
-
-    modifier onlyManager() {
-        require(msg.sender == manager, "MANAGER_ONLY");
-        _;
     }
 
     /**
