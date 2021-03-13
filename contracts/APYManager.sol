@@ -78,6 +78,7 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
     address public proxyAdmin;
     APYMetaPoolToken public mApt;
     IAddressRegistry public addressRegistry;
+    /// @notice Accounts store assets for strategies and interact with other protocols
     mapping(bytes32 => address) public override getAccount;
     bytes32[] internal _poolIds;
 
@@ -99,8 +100,9 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
      * Since storage is not set yet, there is no simple way to protect
      * calling this function with owner modifiers.  Thus the OpenZeppelin
      * `initializer` modifier protects this function from being called
-     * repeatedly.  It should be called during the deployment so that
-     * it cannot be called by someone else later.
+     * repeatedly.
+     *
+     * Our proxy deployment will call this as part of the constructor.
      */
     function initialize(
         address adminAddress,
@@ -122,16 +124,24 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
     }
 
     /**
-     * @dev Dummy function to show how one would implement an init function
-     * for future upgrades.  Note the `initializer` modifier can only be used
-     * once in the entire contract, so we can't use it here.  Instead,
-     * we set the proxy admin address as a variable and protect this
-     * function with `onlyAdmin`, which only allows the proxy admin
-     * to call this function during upgrades.
+     * @notice Initialize the new logic in V2 when upgrading from V1.
+     * @dev The `onlyAdmin` modifier prevents this function from being called
+     * multiple times, because the call has to come from the ProxyAdmin contract
+     * and it can only call this during its `upgradeAndCall` function.
+     *
+     * Note the `initializer` modifier can only be used once in the entire
+     * contract, so we can't use it here.
      */
     // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual onlyAdmin {}
 
+    /**
+     * @notice Create a new account to run strategies.
+     * @dev Associates an APYGenericExecutor with the account. This executor
+     * is used when the `execute` function is called for a specific account ID.
+     * @param accountId ID identifying an address for execution
+     * @param generalExecutor implementation contract for execution engine
+     */
     function deployAccount(bytes32 accountId, address generalExecutor)
         external
         override
@@ -144,6 +154,15 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
         return address(account);
     }
 
+    /**
+     * @notice Fund Account contract and register an asset allocation
+     * @param accountId The Account contract ID
+     * @param allocation Specifies the APYPoolToken contracts to pull from and
+     * the amounts to pull.  See APYManager._fundAccount.
+     * @param viewData The array of asset allocations to calculate the TVL of
+     * new assets stored in the Account contract.
+     * See APYManagerV2._registerAllocationData.
+     */
     function fundAccount(
         bytes32 accountId,
         IAccountFactory.AccountAllocation memory allocation,
@@ -153,6 +172,19 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
         _fundAccount(accountId, allocation);
     }
 
+    /**
+     * @notice Fund the Account contract and route capital to strategies
+     * @param accountId The Account contract ID
+     * @param allocation Specifies the APYPoolToken contracts to pull from and
+     * the amounts to pull.
+     * See APYManagerV2._fundAccount.
+     * @param steps The generic execution sequence that will route capital
+     * from the Account to yield farming strategies.
+     * See APYManagerV2.execute.
+     * @param viewData The array of asset allocations to calculate the TVL of
+     * new assets stored in the Account contract.
+     * See APYManagerV2._registerAllocationData.
+     */
     function fundAndExecute(
         bytes32 accountId,
         IAccountFactory.AccountAllocation memory allocation,
@@ -164,6 +196,36 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
         execute(accountId, steps, viewData);
     }
 
+    /**
+     * @notice Route capital in an Account contract to yield farming strategies
+     * @param accountId The Account contract ID
+     * @param steps The generic execution sequence that will route capital
+     * from the Account to yield farming strategies.
+     *
+     * @notice Data[] example (adds DAI, USDC, and USDT to a Curve pool):
+     *      [
+     *          {
+     *              target: 0x6B175474E89094C44Da98b954EedeAC495271d0F
+     *              data: 0x... // calldata for DAI approve function
+     *          },
+     *          {
+     *              target: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+     *              data: 0x... // calldata for USDC approve function
+     *          },
+     *          {
+     *              target: 0xdAC17F958D2ee523a2206206994597C13D831ec7
+     *              data: 0x... // calldata for USDT approve function
+     *          },
+     *          {
+     *              target: 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7,
+     *              data: 0x... // calldata for the Curve add_liquidity function
+     *          }
+     *      ]
+     *
+     * @param viewData The array of asset allocations to calculate the TVL of
+     * new assets stored in the Account contract.
+     * See APYManagerV2._registerAllocationData.
+     */
     function execute(
         bytes32 accountId,
         APYGenericExecutor.Data[] memory steps,
@@ -175,6 +237,19 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
         IAccount(accountAddress).execute(steps);
     }
 
+    /**
+     * @notice Move capital from an Account to the APYPoolToken contracts
+     * @param accountId The Account contract ID
+     * @param allocation Specifies the APYPoolToken contracts to push to and
+     * the amounts to push.
+     * See APYManagerV2._withdrawFromAccount.
+     * @param steps The generic execution sequence that will unwind capital
+     * from yield farming strategies and store it in the Account.
+     * See APYManagerV2.execute.
+     * @param viewData The array of asset allocations to calculate the TVL of
+     * new assets stored in the Account contract.
+     * See APYManagerV2._registerAllocationData.
+     */
     function executeAndWithdraw(
         bytes32 accountId,
         IAccountFactory.AccountAllocation memory allocation,
@@ -186,6 +261,13 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
         _registerAllocationData(viewData);
     }
 
+    /**
+     * @notice Move capital from an Account to the APYPoolToken contracts
+     * @param accountId The Account contract ID
+     * @param allocation Specifies the APYPoolToken contracts to push to and
+     * the amounts to push.
+     * See APYManagerV2._withdrawFromAccount.
+     */
     function withdrawFromAccount(
         bytes32 accountId,
         IAccountFactory.AccountAllocation memory allocation
@@ -193,6 +275,18 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
         _withdrawFromAccount(accountId, allocation);
     }
 
+    /**
+     * @notice Move capital from APYPoolToken contracts to an Account
+     * @param accountId The Account contract ID
+     * @param allocation Specifies the APYPoolToken contracts to pull from and
+     * the amounts to pull.
+     *
+     * @notice AccountAllocation example (pulls ~$1 from each pool):
+     *      {
+     *          poolIds: ["daiPool", "usdcPool", "usdtPool"],
+     *          amounts: ["1000000000000", "1000000", "1000000"]
+     *      }
+     */
     function _fundAccount(
         bytes32 accountId,
         IAccountFactory.AccountAllocation memory allocation
@@ -233,6 +327,18 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
         }
     }
 
+    /**
+     * @notice Move capital from an Account to the APYPoolToken contracts
+     * @param accountId The Account contract ID
+     * @param allocation Specifies the APYPoolToken contracts to push to and
+     * the amounts to push.
+     *
+     * @notice AccountAllocation example (pushes ~$1 to each pool from the Account):
+     *      {
+     *          poolIds: ["daiPool", "usdcPool", "usdtPool"],
+     *          amounts: ["1000000000000", "1000000", "1000000"]
+     *      }
+     */
     function _withdrawFromAccount(
         bytes32 accountId,
         IAccountFactory.AccountAllocation memory allocation
@@ -273,6 +379,26 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
         }
     }
 
+    /**
+     * @notice Register a new asset allocation
+     * @notice When capital is routed to new protocols, asset allocations are
+     * registered to return the balances of underlying assets so the TVL can be
+     * computed.
+     * @param viewData The array of asset allocations to calculate the TVL of
+     * new assets stored in the Account contract.
+     *
+     * @notice AssetAllocation example (gets the DAI balance of the account):
+     *      {
+     *          sequenceId: "daiBalance",
+     *          symbol: "DAI",
+     *          decimals: 18,
+     *          data: {
+     *             target: 0x6B175474E89094C44Da98b954EedeAC495271d0F,
+     *             data: 0x... // calldata for balanceOf function with account
+     *                         // address encoded as parameter
+     *          }
+     *      }
+     */
     function _registerAllocationData(
         IAssetAllocationRegistry.AssetAllocation[] memory viewData
     ) internal {
@@ -319,16 +445,15 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
         addressRegistry = IAddressRegistry(_addressRegistry);
     }
 
-    function setPoolIds(bytes32[] memory poolIds) public onlyOwner {
-        _poolIds = poolIds;
-    }
-
+    /// @notice Return the list of pool IDs.
     function getPoolIds() public view returns (bytes32[] memory) {
         return _poolIds;
     }
 
-    /// @dev part of temporary implementation for Chainlink integration;
-    ///      likely need this to clear out storage prior to real upgrade.
+    function setPoolIds(bytes32[] memory poolIds) public onlyOwner {
+        _poolIds = poolIds;
+    }
+
     function deletePoolIds() external onlyOwner {
         delete _poolIds;
     }
