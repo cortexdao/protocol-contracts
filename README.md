@@ -124,5 +124,5 @@ Manager (proxy): [0xfed91F1f9d7DcA3E6e4a4B83CEf1B14380AbDE79](https://etherscan.
 
 ## Deployment and Unroll of Capital
 
-![deployment](https://github.com/apy-finance/apy-core/blob/d73b9121806b61d5d184447ab0dc9c339aa0b456/DeploymentOfCapital.png?raw=true)
-![unroll](https://github.com/apy-finance/apy-core/blob/d73b9121806b61d5d184447ab0dc9c339aa0b456/UnrollOfCapital.png?raw=true)
+![deployment](https://github.com/apy-finance/apy-core/blob/develop/diagrams/DeploymentOfCapital.png?raw=true)
+![unroll](https://github.com/apy-finance/apy-core/blob/develop/diagrams/UnwindOfCapital.png?raw=true)
