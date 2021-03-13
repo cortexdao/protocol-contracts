@@ -8,7 +8,7 @@ participant AggregatorV3Interface(ERC20)#lightblue
 participant AggregatorV3Interface(TVL)#turquoise
 
 
-User ->APYPool: redeem(aptAmnt)
+User ->APYPool: redeem(aptAmt)
 activate APYPool#lightgrey
 APYPool ->AggregatorV3Interface(ERC20): lastRoundData(); price the UnderlyingERC20
 APYPool ->APYMetaPoolToken: getDeployedValue()
