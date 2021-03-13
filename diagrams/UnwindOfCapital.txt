@@ -1,4 +1,4 @@
-title Unroll of Capital
+title Unwinding of Capital
 
 participant USDCPool#steelblue
 participant DAIPool#yellow
