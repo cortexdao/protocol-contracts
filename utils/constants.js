@@ -138,7 +138,7 @@ const DEPLOYS_JSON = {
   ProxyConstructorArg: `${__dirname}/../deployed_addresses/ProxyConstructorArg.json`,
   APYGenericExecutor: `${__dirname}/../deployed_addresses/APYGenericExecutor.json`,
   Account: `${__dirname}/../deployed_addresses/Account.json`,
-  AssetAllocationRegistry: `${__dirname}/../deployed_addresses/AssetAllocationRegistry.json`,
+  APYAssetAllocationRegistry: `${__dirname}/../deployed_addresses/APYAssetAllocationRegistry.json`,
 };
 
 module.exports = {

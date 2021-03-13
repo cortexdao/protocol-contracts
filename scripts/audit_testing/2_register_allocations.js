@@ -39,7 +39,7 @@ async function main(argv) {
   );
   const registryAddress = await addressRegistry.chainlinkRegistryAddress();
   const registry = await ethers.getContractAt(
-    "AssetAllocationRegistry",
+    "APYAssetAllocationRegistry",
     registryAddress
   );
 
@@ -70,7 +70,7 @@ async function main(argv) {
    * managed in differing ways, whether they are held by different
    * contracts or subject to different holding periods.
    *
-   * Each asset allocation must be registered with AssetAllocationRegistry,
+   * Each asset allocation must be registered with APYAssetAllocationRegistry,
    * in order for the Chainlink nodes to include it within their TVL
    * computation.
    *

@@ -105,7 +105,7 @@ async function main(argv) {
   gasPrice = await getGasPrice(argv.gasPrice);
   const mAptAddress = getDeployedAddress("APYMetaPoolToken", NETWORK_NAME);
   const allocationRegistryAddress = getDeployedAddress(
-    "AssetAllocationRegistry",
+    "APYAssetAllocationRegistry",
     NETWORK_NAME
   );
   const initData = APYManagerV2.interface.encodeFunctionData(

@@ -193,7 +193,7 @@ contract APYMetaPoolToken is
      *         i.e. the "deployed capital".  This is the same as the total value
      *         represented by the total mAPT supply.
      *
-     * @dev Chainlink nodes read from the AssetAllocationRegistry, pull the
+     * @dev Chainlink nodes read from the APYAssetAllocationRegistry, pull the
      *      prices from market feeds, and submits the calculated total value
      *      to an aggregator contract.
      *

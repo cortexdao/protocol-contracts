@@ -7,7 +7,7 @@ import "./utils/EnumerableSet.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAssetAllocationRegistry.sol";
 
-contract AssetAllocationRegistry is
+contract APYAssetAllocationRegistry is
     Ownable,
     IAssetAllocationRegistry,
     IAssetAllocation

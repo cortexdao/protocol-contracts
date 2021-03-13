@@ -283,10 +283,10 @@ describe("Contract: APYManager", () => {
     /*******************************************/
     /***** deploy asset allocation registry ****/
     /*******************************************/
-    const AssetAllocationRegistry = await ethers.getContractFactory(
-      "AssetAllocationRegistry"
+    const APYAssetAllocationRegistry = await ethers.getContractFactory(
+      "APYAssetAllocationRegistry"
     );
-    allocationRegistry = await AssetAllocationRegistry.deploy(
+    allocationRegistry = await APYAssetAllocationRegistry.deploy(
       legos.apy.addresses.APY_MANAGER
     );
     await allocationRegistry.deployed();

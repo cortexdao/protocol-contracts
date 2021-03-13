@@ -123,17 +123,17 @@ async function main(argv) {
   console.log("... done.");
 
   console.log("");
-  console.log("Deploying AssetAllocationRegistry ...");
+  console.log("Deploying APYAssetAllocationRegistry ...");
   console.log("");
 
-  const AssetAllocationRegistry = await ethers.getContractFactory(
-    "AssetAllocationRegistry"
+  const APYAssetAllocationRegistry = await ethers.getContractFactory(
+    "APYAssetAllocationRegistry"
   );
 
   const managerAddress = getDeployedAddress("APYManagerProxy", NETWORK_NAME);
-  const registry = await AssetAllocationRegistry.deploy(managerAddress);
+  const registry = await APYAssetAllocationRegistry.deploy(managerAddress);
   await registry.deployed();
-  console.log("AssetAllocationRegistry:", chalk.green(registry.address));
+  console.log("APYAssetAllocationRegistry:", chalk.green(registry.address));
   console.log("");
 
   console.log("");
