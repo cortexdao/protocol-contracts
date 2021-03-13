@@ -1,25 +1,46 @@
 title Chainlink Pricing TVL
 
-participant ChainlinkAgg#lightblue
+participant ChainlinkNode#lightblue
 participant APYAssetAllocationRegistry#pink
-participant DefiProtocol
+participant ERC20#yellow
 participant APYPeripheryContract
+participant DeFiProtocol
+database PriceFeed-1#lightgray
+database PriceFeed-2#lightgray
+database PriceFeed-3#lightgray
 participant AggregatorV3Interface(TVL)#lightblue
 
-ChainlinkAgg -> APYAssetAllocationRegistry: getAssetAllocationIds()
-loop#yellow iterate through all asset ids
-activate ChainlinkAgg
-ChainlinkAgg ->APYAssetAllocationRegistry: symbolOf(id)
-ChainlinkAgg ->APYAssetAllocationRegistry: decimalsOf(id)
-ChainlinkAgg ->APYAssetAllocationRegistry: balanceOf(id)
+ChainlinkNode -> APYAssetAllocationRegistry: getAssetAllocationIds()
+
+//Loop through Ids to price
+loop#lightblue
+activate ChainlinkNode
+ChainlinkNode ->APYAssetAllocationRegistry: symbolOf(id)
+ChainlinkNode ->APYAssetAllocationRegistry: decimalsOf(id)
+ChainlinkNode ->APYAssetAllocationRegistry: balanceOf(id)
 activate APYAssetAllocationRegistry
-alt#lightyellow Protocol
-APYAssetAllocationRegistry -> DefiProtocol: balanceOf()
-else #lightyellow Periphery
-APYAssetAllocationRegistry -> APYPeripheryContract: balanceOf()
+alt #yellow Protocol
+APYAssetAllocationRegistry -> ERC20: balanceOf(account)
+else Periphery
+APYAssetAllocationRegistry -> APYPeripheryContract: balanceOf(account)
+activate APYPeripheryContract
+APYPeripheryContract ->DeFiProtocol: call() 
+APYPeripheryContract ->DeFiProtocol: call()
+APYPeripheryContract ->DeFiProtocol: call()
+APYPeripheryContract -->APYAssetAllocationRegistry:
+deactivate APYPeripheryContract
 end
-APYAssetAllocationRegistry -->ChainlinkAgg:
+APYAssetAllocationRegistry -->ChainlinkNode:
 deactivate APYAssetAllocationRegistry
+
+// Price Asset
+par#lightgreen PriceFeed-1
+ChainlinkNode ->PriceFeed-1: symbol + decimals + bal to price
+thread PriceFeed-2
+ChainlinkNode ->PriceFeed-2: symbol + decimals + bal to price
+thread PriceFeed-3
+ChainlinkNode ->PriceFeed-3: symbol + decimals + bal to price
 end
-ChainlinkAgg ->ChainlinkAgg: uses symbol + decimals + bal to price
-ChainlinkAgg -> AggregatorV3Interface(TVL): publish(); publishes summed TVL
+end
+abox over ChainlinkNode#Pink: TVL Computed
+ChainlinkNode -> AggregatorV3Interface(TVL): publish(); publishes summed TVL
