@@ -12,11 +12,14 @@ activate ChainlinkAgg
 ChainlinkAgg ->APYAssetAllocationRegistry: symbolOf(id)
 ChainlinkAgg ->APYAssetAllocationRegistry: decimalsOf(id)
 ChainlinkAgg ->APYAssetAllocationRegistry: balanceOf(id)
-group#lightyellow Protocol
+activate APYAssetAllocationRegistry
+alt#lightyellow Protocol
 APYAssetAllocationRegistry -> DefiProtocol: balanceOf()
-end
-group#lightyellow Periphery
+else #lightyellow Periphery
 APYAssetAllocationRegistry -> APYPeripheryContract: balanceOf()
 end
+APYAssetAllocationRegistry -->ChainlinkAgg:
+deactivate APYAssetAllocationRegistry
 end
+ChainlinkAgg ->ChainlinkAgg: uses symbol + decimals + bal to price
 ChainlinkAgg -> AggregatorV3Interface(TVL): publish(); publishes summed TVL
