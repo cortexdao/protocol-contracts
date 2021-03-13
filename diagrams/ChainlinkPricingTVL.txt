@@ -1,0 +1,22 @@
+title Chainlink Pricing TVL
+
+participant ChainlinkAgg#lightblue
+participant APYAssetAllocationRegistry#pink
+participant DefiProtocol
+participant APYPeripheryContract
+participant AggregatorV3Interface(TVL)#lightblue
+
+ChainlinkAgg -> APYAssetAllocationRegistry: getAssetAllocationIds()
+loop#yellow iterate through all asset ids
+activate ChainlinkAgg
+ChainlinkAgg ->APYAssetAllocationRegistry: symbolOf(id)
+ChainlinkAgg ->APYAssetAllocationRegistry: decimalsOf(id)
+ChainlinkAgg ->APYAssetAllocationRegistry: balanceOf(id)
+group#lightyellow Protocol
+APYAssetAllocationRegistry -> DefiProtocol: balanceOf()
+end
+group#lightyellow Periphery
+APYAssetAllocationRegistry -> APYPeripheryContract: balanceOf()
+end
+end
+ChainlinkAgg -> AggregatorV3Interface(TVL): publish(); publishes summed TVL
