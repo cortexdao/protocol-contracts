@@ -11,6 +11,35 @@ import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/IMintable.sol";
 
+/**
+ * @title APY Meta Pool Token
+ * @author APY.Finance
+ * @notice This token is used to keep track of the capital that has been
+ * pulled from the APYPoolToken contracts.
+ *
+ * When the APYManager pulls capital from the APYPoolToken contracts to
+ * deploy to yield farming strategies, it will mint mAPT and transfer it to
+ * the APYPoolToken contracts. The ratio of the mAPT held by each APYPoolToken
+ * to the total supply of mAPT determines the amount of the TVL dedicated to
+ * APYPoolToken.
+ *
+ * DEPLOY CAPITAL TO YIELD FARMING STRATEGIES
+ * Tracks the share of deployed TVL owned by an APYPoolToken using mAPT.
+ *
+ * +--------------+   APYManagerV2.fundAccount   +--------------+
+ * | APYPoolToken | ---------------------------> | APYManagerV2 |
+ * +--------------+     APYMetaPoolToken.mint    +--------------+
+ *                  <---------------------------
+ *
+ *
+ * WITHDRAW CAPITAL FROM YIELD FARMING STRATEGIES
+ * Uses mAPT to calculate the amount of capital returned to the APYPoolToken.
+ *
+ * +--------------+   APYManagerV2.withdrawFromAccount   +--------------+
+ * | APYPoolToken | <----------------------------------- | APYManagerV2 |
+ * +--------------+        APYMetaPoolToken.burn         +--------------+
+ *                  ----------------------------------->
+ */
 contract APYMetaPoolToken is
     Initializable,
     OwnableUpgradeSafe,
@@ -25,10 +54,15 @@ contract APYMetaPoolToken is
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
+    /// @notice used to protect init functions for upgrades
     address public proxyAdmin;
+    /// @notice used to protect mint and burn function
     address public manager;
+    /// @notice Chainlink aggregator for deployed TVL
     AggregatorV3Interface public tvlAgg;
+    /// @notice seconds within which aggregator should be updated
     uint256 public aggStalePeriod;
+    /// @notice used to guard against non-updated TVL
     uint256 public lastMintOrBurn;
 
     /* ------------------------------- */
@@ -39,6 +73,18 @@ contract APYMetaPoolToken is
     event ManagerChanged(address);
     event TvlAggregatorChanged(address agg);
 
+    /**
+     * @dev Since the proxy delegate calls to this "logic" contract, any
+     * storage set by the logic contract's constructor during deploy is
+     * disregarded and this function is needed to initialize the proxy
+     * contract's storage according to this contract's layout.
+     *
+     * Since storage is not set yet, there is no simple way to protect
+     * calling this function with owner modifiers.  Thus the OpenZeppelin
+     * `initializer` modifier protects this function from being called
+     * repeatedly.  It should be called during the deployment so that
+     * it cannot be called by someone else later.
+     */
     function initialize(
         address adminAddress,
         address _tvlAgg,
@@ -60,6 +106,14 @@ contract APYMetaPoolToken is
         setAggStalePeriod(_aggStalePeriod);
     }
 
+    /**
+     * @dev Dummy function to show how one would implement an init function
+     * for future upgrades.  Note the `initializer` modifier can only be used
+     * once in the entire contract, so we can't use it here.  Instead,
+     * we set the proxy admin address as a variable and protect this
+     * function with `onlyAdmin`, which only allows the proxy admin
+     * to call this function during upgrades.
+     */
     // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual onlyAdmin {}
 
@@ -67,6 +121,12 @@ contract APYMetaPoolToken is
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
         emit AdminChanged(adminAddress);
+    }
+
+    function setManagerAddress(address managerAddress) public onlyOwner {
+        require(managerAddress != address(0), "INVALID_MANAGER");
+        manager = managerAddress;
+        emit ManagerChanged(managerAddress);
     }
 
     function setTvlAggregator(address _tvlAgg) public onlyOwner {
@@ -80,8 +140,19 @@ contract APYMetaPoolToken is
         aggStalePeriod = _aggStalePeriod;
     }
 
+    /**
+     * @dev Throws if called by any account other than the proxy admin.
+     */
     modifier onlyAdmin() {
         require(msg.sender == proxyAdmin, "ADMIN_ONLY");
+        _;
+    }
+
+    /**
+     * @dev Throws if called by any account other than the APYManager.
+     */
+    modifier onlyManager() {
+        require(msg.sender == manager, "MANAGER_ONLY");
         _;
     }
 
@@ -89,27 +160,32 @@ contract APYMetaPoolToken is
         revert("DONT_SEND_ETHER");
     }
 
+    /**
+     * @notice Mint specified amount of mAPT to the given account.
+     * @dev Only the manager can call this.  The timestamp is saved so that
+     *      `getTVL` can revert if the Chainlink aggregator hasn't updated since
+     *       mint was called.
+     * @param account address to mint to
+     * @param amount mint amount
+     */
     function mint(address account, uint256 amount) public override onlyManager {
         lastMintOrBurn = block.timestamp; // solhint-disable-line not-rely-on-time
         _mint(account, amount);
         emit Mint(account, amount);
     }
 
+    /**
+     * @notice Burn specified amount of mAPT from the given account.
+     * @dev Only the manager can call this.  The timestamp is saved so that
+     *      `getTVL` can revert if the Chainlink aggregator hasn't updated since
+     *       burn was called.
+     * @param account address to burn from
+     * @param amount burn amount
+     */
     function burn(address account, uint256 amount) public override onlyManager {
         lastMintOrBurn = block.timestamp; // solhint-disable-line not-rely-on-time
         _burn(account, amount);
         emit Burn(account, amount);
-    }
-
-    function setManagerAddress(address managerAddress) public onlyOwner {
-        require(managerAddress != address(0), "INVALID_ADMIN");
-        manager = managerAddress;
-        emit ManagerChanged(managerAddress);
-    }
-
-    modifier onlyManager() {
-        require(msg.sender == manager, "MANAGER_ONLY");
-        _;
     }
 
     /**

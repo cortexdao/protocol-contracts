@@ -20,7 +20,7 @@ import "./APYMetaPoolToken.sol";
  * @title APY.Finance Pool Token
  * @author APY.Finance
  * @notice This token (APT) is the basic liquidity-provider token used
- *         within the APY.Fiinance system.
+ *         within the APY.Finance system.
  *
  *         For simplicity, it has been integrated with pool functionality
  *         enabling users to deposit and withdraw in an underlying token,
@@ -69,7 +69,7 @@ contract APYPoolTokenV2 is
     /* ------------------------------- */
 
     // V1
-    //// @notice used to protect init functions for upgrades
+    /// @notice used to protect init functions for upgrades
     address public proxyAdmin;
     /// @notice true if depositing is locked
     bool public addLiquidityLock;
