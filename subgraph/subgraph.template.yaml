@@ -18,6 +18,7 @@ dataSources:
       entities:
         - TotalEthValueLocked
         - PoolTotalValue
+        - Cashflow
         - Transfer
         - User
         - TokenEthPrice
@@ -49,6 +50,7 @@ dataSources:
       entities:
         - TotalEthValueLocked
         - PoolTotalValue
+        - Cashflow
         - Transfer
         - User
         - TokenEthPrice
@@ -80,6 +82,7 @@ dataSources:
       entities:
         - TotalEthValueLocked
         - PoolTotalValue
+        - Cashflow
         - Transfer
         - User
         - TokenEthPrice
