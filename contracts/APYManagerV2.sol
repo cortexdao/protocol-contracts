@@ -83,10 +83,6 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IAccountFactory {
         return address(account);
     }
 
-    function setAccountId(bytes32 accountId, address account) public onlyOwner {
-        getAccount[accountId] = account;
-    }
-
     function fundAccount(
         bytes32 accountId,
         IAccountFactory.AccountAllocation memory allocation,
