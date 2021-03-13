@@ -54,17 +54,17 @@ async function main(argv) {
   console.log("");
 
   console.log("");
-  console.log("Deploying AssetAllocationRegistry ...");
+  console.log("Deploying APYAssetAllocationRegistry ...");
   console.log("");
 
-  const AssetAllocationRegistry = await ethers.getContractFactory(
-    "AssetAllocationRegistry",
+  const APYAssetAllocationRegistry = await ethers.getContractFactory(
+    "APYAssetAllocationRegistry",
     registryDeployer
   );
 
   const managerAddress = getDeployedAddress("APYManagerProxy", NETWORK_NAME);
   let gasPrice = await getGasPrice(argv.gasPrice);
-  const registry = await AssetAllocationRegistry.deploy(managerAddress, {
+  const registry = await APYAssetAllocationRegistry.deploy(managerAddress, {
     gasPrice,
   });
   console.log(
@@ -72,12 +72,12 @@ async function main(argv) {
     `https://etherscan.io/tx/${registry.deployTransaction.hash}`
   );
   await registry.deployed();
-  console.log("AssetAllocationRegistry:", chalk.green(registry.address));
+  console.log("APYAssetAllocationRegistry:", chalk.green(registry.address));
   console.log("");
   assert.strictEqual(await registry.owner(), registryDeployer.address);
 
   const deploy_data = {
-    AssetAllocationRegistry: registry.address,
+    APYAssetAllocationRegistry: registry.address,
   };
   updateDeployJsons(NETWORK_NAME, deploy_data);
 

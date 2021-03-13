@@ -57,11 +57,11 @@ async function main(argv) {
   console.log("");
 
   const registryAddress = getDeployedAddress(
-    "AssetAllocationRegistry",
+    "APYAssetAllocationRegistry",
     NETWORK_NAME
   );
   const registry = await ethers.getContractAt(
-    "AssetAllocationRegistry",
+    "APYAssetAllocationRegistry",
     registryAddress,
     registryDeployer
   );
