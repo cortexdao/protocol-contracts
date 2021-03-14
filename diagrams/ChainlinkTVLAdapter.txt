@@ -1,4 +1,4 @@
-title Chainlink Pricing TVL
+title Chainlink TVL Adapter
 
 participant ChainlinkNode#lightblue
 participant APYAssetAllocationRegistry#pink
@@ -8,12 +8,12 @@ participant DeFiProtocol
 database PriceFeed-1#lightgray
 database PriceFeed-2#lightgray
 database PriceFeed-3#lightgray
-participant AggregatorV3Interface(TVL)#lightblue
+participant FluxAggregator#lightblue
 
 ChainlinkNode -> APYAssetAllocationRegistry: getAssetAllocationIds()
 
 //Loop through Ids to price
-loop#lightblue
+loop#lightblue Loop over Allocation Ids
 activate ChainlinkNode
 ChainlinkNode ->APYAssetAllocationRegistry: symbolOf(id)
 ChainlinkNode ->APYAssetAllocationRegistry: decimalsOf(id)
@@ -35,12 +35,12 @@ deactivate APYAssetAllocationRegistry
 
 // Price Asset
 par#lightgreen PriceFeed-1
-ChainlinkNode ->PriceFeed-1: symbol + decimals + bal to price
+ChainlinkNode ->PriceFeed-1: look up price using symbol
 thread PriceFeed-2
-ChainlinkNode ->PriceFeed-2: symbol + decimals + bal to price
+ChainlinkNode ->PriceFeed-2: look up price using symbol
 thread PriceFeed-3
-ChainlinkNode ->PriceFeed-3: symbol + decimals + bal to price
+ChainlinkNode ->PriceFeed-3: look up price using symbol
 end
 end
-abox over ChainlinkNode#Pink: TVL Computed
-ChainlinkNode -> AggregatorV3Interface(TVL): publish(); publishes summed TVL
+abox over ChainlinkNode#Pink: Compute TVL
+ChainlinkNode -> FluxAggregator: submit(TVL)
