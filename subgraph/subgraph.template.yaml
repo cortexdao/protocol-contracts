@@ -22,7 +22,6 @@ dataSources:
         - CashflowPoint
         - Transfer
         - User
-        - TokenEthPrice
         - Pool
       abis:
         - name: APYPoolToken
@@ -55,7 +54,6 @@ dataSources:
         - CashflowPoint
         - Transfer
         - User
-        - TokenEthPrice
         - Pool
       abis:
         - name: APYPoolToken
@@ -88,7 +86,6 @@ dataSources:
         - CashflowPoint
         - Transfer
         - User
-        - TokenEthPrice
         - Pool
       abis:
         - name: APYPoolToken
