@@ -134,4 +134,4 @@ Manager (proxy): [0xfed91F1f9d7DcA3E6e4a4B83CEf1B14380AbDE79](https://etherscan.
 
 ## Chainlink Pricing TVL
 
-![ChainlinkTVL](https://github.com/apy-finance/apy-core/blob/15b6ec7606da53d1b66d4bbd7e3807e1c9c5edf0/diagrams/ChainlinkPricingTVL.png?raw=true)
+![ChainlinkTVL](https://github.com/apy-finance/apy-core/blob/develop/diagrams/ChainlinkTVLAdapter.png?raw=true)
