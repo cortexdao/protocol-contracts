@@ -6,6 +6,31 @@ type TotalEthValueLocked @entity {
   totalEthValueLocked: BigInt!
 }
 
+type PoolTotalValue @entity {
+  id: ID!
+  poolAddress: Bytes!
+  timestamp: BigInt!
+  totalEthValueLocked: BigInt!
+  aptSupply: BigInt!
+  valuePerShare: BigDecimal
+}
+
+type Cashflow @entity {
+  id: ID!
+  userAddress: Bytes!
+  poolAddress: Bytes!
+  total: BigInt!
+}
+
+type CashflowPoint @entity {
+  id: ID!
+  timestamp: BigInt!
+  userAddress: Bytes!
+  poolAddress: Bytes!
+  userAptBalance: BigInt!
+  total: BigInt!
+}
+
 type Transfer @entity {
   id: ID!
   poolAddress: Bytes!
