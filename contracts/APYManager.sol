@@ -163,7 +163,8 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
      * @notice Fund Account contract and register an asset allocation
      * @param accountId The Account contract ID
      * @param allocation Specifies the APYPoolToken contracts to pull from and
-     * the amounts to pull.  See APYManager._fundAccount.
+     * the amounts to pull.
+     * See APYManager._fundAccount.
      * @param viewData The array of asset allocations to calculate the TVL of
      * new assets stored in the Account contract.
      * See APYManagerV2._registerAllocationData.
