@@ -7,6 +7,17 @@ import "./utils/EnumerableSet.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAssetAllocationRegistry.sol";
 
+/**
+ * @title APY Asset Allocation Registry
+ * @author APY.Finance
+ * @notice This contract allows registration of asset allocations
+ *         expected to arise from movement of capital through
+ *         the system such as funding or execution of strategies.
+ *
+ *         Information on registered allocations, such as balances,
+ *         can then be pulled by external systems to compute the
+ *         TVL of the APY.Finance system.
+ */
 contract APYAssetAllocationRegistry is
     Ownable,
     IAssetAllocationRegistry,
@@ -34,6 +45,10 @@ contract APYAssetAllocationRegistry is
         emit ManagerChanged(_manager);
     }
 
+    /**
+     * @dev Throws if non-permissioned account calls.  Access list for
+     *      now includes only the deployer (owner) and the APY Manager.
+     */
     modifier onlyPermissioned() {
         require(
             msg.sender == owner() || msg.sender == manager,
@@ -171,6 +186,13 @@ contract APYAssetAllocationRegistry is
         return _allocationDecimals[allocationId];
     }
 
+    /**
+     * @notice Executes code to return a result from a smart contract function,
+     *         without modifying the internal state of the contract.
+     * @dev The execution is via static call, meaning no state changes can arise.
+     * @param data a struct holding the target and data of the static call
+     * See IAssetAllocationRegistry.Data.
+     */
     function executeView(Data memory data)
         public
         view

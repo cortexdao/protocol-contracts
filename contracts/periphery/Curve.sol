@@ -4,6 +4,7 @@ pragma solidity 0.6.11;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+/// @notice the stablecoin pool contract
 interface IStableSwap {
     function balances(uint256 coin) external view returns (uint256);
 
@@ -16,6 +17,7 @@ interface IStableSwap {
     // function lp_token() external view returns (address); // solhint-disable-line func-name-mixedcase
 }
 
+/// @notice the liquidity gauge, i.e. staking contract, for the stablecoin pool
 interface ILiquidityGauge {
     function deposit(uint256 _value) external;
 
@@ -24,9 +26,27 @@ interface ILiquidityGauge {
     function balanceOf(address account) external view returns (uint256);
 }
 
+/**
+ * @title Periphery Contract for the Curve 3pool
+ * @author APY.Finance
+ * @notice This contract enables the APY.Finance system to retrieve the balance
+ *         of an underlyer of a Curve LP token. The balance is used as part
+ *         of the Chainlink computation of the deployed TVL.  The primary
+ *         `getUnderlyerBalance` function is invoked indirectly when a
+ *         Chainlink node calls `balanceOf` on the APYAssetAllocationRegistry.
+ */
 contract CurvePeriphery {
     using SafeMath for uint256;
 
+    /**
+     * @notice Returns the balance of an underlying token represented by
+     *         an account's LP token balance.
+     * @param stableSwap the liquidity pool comprised of multiple underlyers
+     * @param gauge the staking contract for the LP tokens
+     * @param lpToken the LP token representing the share of the pool
+     * @param coin the index indicating which underlyer
+     * @return balance
+     */
     function getUnderlyerBalance(
         address account,
         IStableSwap stableSwap,
