@@ -39,12 +39,12 @@ async function main(argv) {
   /* TESTING on localhost only
    * need to fund as there is no ETH on Mainnet for the deployer
    */
-  const [funder] = await ethers.getSigners();
-  const fundingTrx = await funder.sendTransaction({
-    to: mAptDeployer.address,
-    value: ethers.utils.parseEther("1.0"),
-  });
-  await fundingTrx.wait();
+  // const [funder] = await ethers.getSigners();
+  // const fundingTrx = await funder.sendTransaction({
+  //   to: mAptDeployer.address,
+  //   value: ethers.utils.parseEther("1.0"),
+  // });
+  // await fundingTrx.wait();
 
   const balance =
     (await ethers.provider.getBalance(mAptDeployer.address)).toString() / 1e18;
