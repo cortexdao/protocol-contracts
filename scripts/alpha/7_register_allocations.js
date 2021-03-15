@@ -15,12 +15,10 @@ const { argv } = require("yargs").option("gasPrice", {
 });
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const assert = require("assert");
 const {
   getGasPrice,
-  updateDeployJsons,
-  getAggregatorAddress,
   getDeployedAddress,
+  bytes32,
 } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
@@ -52,10 +50,6 @@ async function main(argv) {
   console.log("ETH balance:", balance.toString());
   console.log("");
 
-  console.log("");
-  console.log("Registering ...");
-  console.log("");
-
   const registryAddress = getDeployedAddress(
     "APYAssetAllocationRegistry",
     NETWORK_NAME
@@ -66,7 +60,34 @@ async function main(argv) {
     registryDeployer
   );
 
-  // let gasPrice = await getGasPrice(argv.gasPrice);
+  console.log("");
+  console.log("Clear out deprecated allocations from testing ...");
+  console.log("");
+
+  let gasPrice = await getGasPrice(argv.gasPrice);
+  let trx = await registry.removeAssetAllocation(bytes32("daiPool"), {
+    gasPrice,
+  });
+  console.log("Remove allocation:", `https://etherscan.io/tx/${trx.hash}`);
+  await trx.wait();
+  gasPrice = await getGasPrice(argv.gasPrice);
+  trx = await registry.removeAssetAllocation(bytes32("usdcPool"), { gasPrice });
+  console.log("Remove allocation:", `https://etherscan.io/tx/${trx.hash}`);
+  await trx.wait();
+  gasPrice = await getGasPrice(argv.gasPrice);
+  trx = await registry.removeAssetAllocation(bytes32("usdtPool"), { gasPrice });
+  console.log("Remove allocation:", `https://etherscan.io/tx/${trx.hash}`);
+  await trx.wait();
+  console.log(
+    "Asset allocations (should be []):",
+    await registry.getAssetAllocationIds()
+  );
+  console.log("... done.");
+
+  console.log("");
+  console.log("Registering ...");
+  console.log("");
+  // gasPrice = await getGasPrice(argv.gasPrice);
   // let trx = ...
   // console.log(
   //   "Deploy:",
