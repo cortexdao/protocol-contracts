@@ -43,9 +43,9 @@ import "./APYAccount.sol";
  *   - executeAndWithdraw
  *
  * Transferring from the APYPoolToken contracts to the Account contract stages
- * capital for deployment to yield farming strategies. Transferring from the
- * Account contract to the APYPoolToken contracts is done to capital unwound
- * from yield farming strategies for the purpose of user withdrawal.
+ * capital for deployment to yield farming strategies.  Capital unwound from
+ * yield farming strategies for user withdrawals is transferred from the
+ * Account contract to the APYPoolToken contracts.
  *
  * Routing capital to yield farming strategies using generic execution assumes
  * capital has been staged in the Account contract. Generic execution is also
@@ -60,13 +60,18 @@ import "./APYAccount.sol";
  * asset allocations is important for Chainlink to calculate accurate TVL
  * values.
  *
- * Any time a new asset is acquired by the APYAccount contract or when capital
- * is deployed as liquidity to a new protocol, a new asset allocation must be
- * registered so the capital can be properly tracked for TVL calculations.
+ * The flexibility of generic execution means previously unused assets may be
+ * acquired by the APYAccount contract, including those from providing
+ * liquidity to a new protocol. These newly acquired assets and the manner
+ * in which they are held in the system must be registered with the
+ * AssetAllocationRegistry in order to be used in Chainlink's computation
+ * of deployed TVL.
  *
- * The reason this is done atomically with the generic execution that routes
- * capital is to prevent the possibility of blocks which the TVL calculation
- * does not match the state of capital held by the APYAccount contract.
+ * Registration should not be done after generic execution as the TVL may
+ * then be updated before the registered asset allocations are picked up by
+ * Chainlink. Providing the option to register allocations atomically with
+ * execution allows us to conveniently leverage generic execution while
+ * avoiding late updates to the TVL.
  */
 contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
     using SafeMath for uint256;
