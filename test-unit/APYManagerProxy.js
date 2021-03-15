@@ -38,7 +38,7 @@ describe("Contract: APYManagerProxy", () => {
     proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
 
-    APYManager = await ethers.getContractFactory("APYManagerV2");
+    APYManager = await ethers.getContractFactory("APYManager");
     logic = await APYManager.deploy();
     await logic.deployed();
 
@@ -177,12 +177,6 @@ describe("Contract: APYManagerProxy", () => {
   });
 
   describe("initialize", () => {
-    let APYManager;
-
-    before(async () => {
-      APYManager = await ethers.getContractFactory("APYManagerV2");
-    });
-
     it("Cannot initialize with zero admin address", async () => {
       const dummyContract = await deployMockContract(deployer, []);
       const logic = await APYManager.deploy();

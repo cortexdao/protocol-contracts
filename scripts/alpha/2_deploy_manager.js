@@ -50,8 +50,8 @@ async function main(argv) {
     "ProxyAdmin",
     managerDeployer
   );
-  const APYManagerV2 = await ethers.getContractFactory(
-    "APYManagerV2",
+  const APYManager = await ethers.getContractFactory(
+    "APYManager",
     managerDeployer
   );
   const APYManagerProxy = await ethers.getContractFactory(
@@ -78,7 +78,7 @@ async function main(argv) {
   );
 
   gasPrice = await getGasPrice(argv.gasPrice);
-  const logic = await APYManagerV2.deploy({ gasPrice });
+  const logic = await APYManager.deploy({ gasPrice });
   console.log(
     "Deploy:",
     `https://etherscan.io/tx/${logic.deployTransaction.hash}`

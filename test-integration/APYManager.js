@@ -50,13 +50,13 @@ describe("Contract: APYManager - deployAccount", () => {
     [deployer, randomUser] = await ethers.getSigners();
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    const APYManagerV2 = await ethers.getContractFactory("APYManagerV2");
+    const APYManager = await ethers.getContractFactory("APYManager");
     const APYManagerProxy = await ethers.getContractFactory("APYManagerProxy");
 
     const dummyContract = await deployMockContract(deployer, []);
     const proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
-    const logic = await APYManagerV2.deploy();
+    const logic = await APYManager.deploy();
     await logic.deployed();
     const proxy = await APYManagerProxy.deploy(
       logic.address,
@@ -65,7 +65,7 @@ describe("Contract: APYManager - deployAccount", () => {
       dummyContract.address
     );
     await proxy.deployed();
-    manager = APYManagerV2.attach(proxy.address);
+    manager = APYManager.attach(proxy.address);
 
     const APYGenericExecutor = await ethers.getContractFactory(
       "APYGenericExecutor"
@@ -242,8 +242,8 @@ describe("Contract: APYManager", () => {
     /***********************************/
     /***** deploy manager  *************/
     /***********************************/
-    const APYManagerV2 = await ethers.getContractFactory(
-      "APYManagerV2",
+    const APYManager = await ethers.getContractFactory(
+      "APYManager",
       managerDeployer
     );
     const APYManagerProxy = await ethers.getContractFactory(
@@ -253,7 +253,7 @@ describe("Contract: APYManager", () => {
 
     const managerAdmin = await ProxyAdmin.connect(managerDeployer).deploy();
     await managerAdmin.deployed();
-    const managerLogic = await APYManagerV2.deploy();
+    const managerLogic = await APYManager.deploy();
     await managerLogic.deployed();
     const managerProxy = await APYManagerProxy.deploy(
       managerLogic.address,
@@ -262,7 +262,7 @@ describe("Contract: APYManager", () => {
       legos.apy.addresses.APY_ADDRESS_REGISTRY
     );
     await managerProxy.deployed();
-    manager = await APYManagerV2.attach(managerProxy.address);
+    manager = await APYManager.attach(managerProxy.address);
 
     await daiPool.infiniteApprove(manager.address);
     await usdcPool.infiniteApprove(manager.address);

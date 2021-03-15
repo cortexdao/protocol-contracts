@@ -20,7 +20,7 @@ describe("Contract: APYManager", () => {
   let randomUser;
 
   // contract factories
-  let APYManagerV2;
+  let APYManager;
   let ProxyAdmin;
   let APYGenericExecutor;
 
@@ -44,13 +44,13 @@ describe("Contract: APYManager", () => {
     [deployer, randomUser] = await ethers.getSigners();
 
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    APYManagerV2 = await ethers.getContractFactory("APYManagerV2");
+    APYManager = await ethers.getContractFactory("APYManager");
     const APYManagerProxy = await ethers.getContractFactory("APYManagerProxy");
     APYGenericExecutor = await ethers.getContractFactory("APYGenericExecutor");
     executor = await APYGenericExecutor.deploy();
     await executor.deployed();
 
-    const logic = await APYManagerV2.deploy();
+    const logic = await APYManager.deploy();
     await logic.deployed();
 
     const proxyAdmin = await ProxyAdmin.deploy();
@@ -69,7 +69,7 @@ describe("Contract: APYManager", () => {
       addressRegistryMock.address
     );
     await proxy.deployed();
-    manager = await APYManagerV2.attach(proxy.address);
+    manager = await APYManager.attach(proxy.address);
   });
 
   describe("Defaults", () => {
