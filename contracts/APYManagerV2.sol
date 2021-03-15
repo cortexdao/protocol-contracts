@@ -22,32 +22,32 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IAccountFactory {
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
-    // V1
     address public proxyAdmin;
-    IAddressRegistry public addressRegistry;
     APYMetaPoolToken public mApt;
-
-    bytes32[] internal _poolIds;
-    // Replacing this last V1 storage slot is ok:
-    // address[] internal _tokenAddresses;
-    // WARNING: we should clear storage via `deleteTokenAddresses`
-    //          before the V2 upgrade
-
-    // V2
-    mapping(bytes32 => address) public override getAccount;
+    IAddressRegistry public addressRegistry;
     IAssetAllocationRegistry public assetAllocationRegistry;
+    mapping(bytes32 => address) public override getAccount;
+    bytes32[] internal _poolIds;
 
     /* ------------------------------- */
 
     event AdminChanged(address);
-    event APYAccountDeployed(
+    event AccountDeployed(
         bytes32 accountId,
         address account,
         address generalExecutor
     );
 
-    function initialize(address adminAddress) external initializer {
+    function initialize(
+        address adminAddress,
+        address payable _mApt,
+        address _allocationRegistry,
+        address _addressRegistry
+    ) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");
+        require(Address.isContract(_mApt), "INVALID_ADDRESS");
+        require(Address.isContract(_allocationRegistry), "INVALID_ADDRESS");
+        require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
 
         // initialize ancestor storage
         __Context_init_unchained();
@@ -55,21 +55,21 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IAccountFactory {
 
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
-    }
-
-    function initializeUpgrade(
-        address payable _mApt,
-        address _allocationRegistry
-    ) external virtual onlyAdmin {
-        require(Address.isContract(_mApt), "INVALID_ADDRESS");
-        require(Address.isContract(_allocationRegistry), "INVALID_ADDRESS");
-        require(
-            Address.isContract(address(addressRegistry)),
-            "Address registry should be set"
-        );
         mApt = APYMetaPoolToken(_mApt);
+        addressRegistry = IAddressRegistry(_addressRegistry);
         assetAllocationRegistry = IAssetAllocationRegistry(_allocationRegistry);
     }
+
+    /**
+     * @dev Dummy function to show how one would implement an init function
+     * for future upgrades.  Note the `initializer` modifier can only be used
+     * once in the entire contract, so we can't use it here.  Instead,
+     * we set the proxy admin address as a variable and protect this
+     * function with `onlyAdmin`, which only allows the proxy admin
+     * to call this function during upgrades.
+     */
+    // solhint-disable-next-line no-empty-blocks
+    function initializeUpgrade() external virtual onlyAdmin {}
 
     function deployAccount(bytes32 accountId, address generalExecutor)
         external
@@ -79,7 +79,7 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IAccountFactory {
     {
         APYAccount account = new APYAccount(generalExecutor);
         getAccount[accountId] = address(account);
-        emit APYAccountDeployed(accountId, address(account), generalExecutor);
+        emit AccountDeployed(accountId, address(account), generalExecutor);
         return address(account);
     }
 
