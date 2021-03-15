@@ -9,7 +9,6 @@ contract APYManagerProxy is TransparentUpgradeableProxy {
         address _logic,
         address _proxyAdmin,
         address _mApt,
-        address _allocationRegistry,
         address _addressRegistry
     )
         public
@@ -17,10 +16,9 @@ contract APYManagerProxy is TransparentUpgradeableProxy {
             _logic,
             _proxyAdmin,
             abi.encodeWithSignature(
-                "initialize(address,address,address,address)",
+                "initialize(address,address,address)",
                 _proxyAdmin,
                 _mApt,
-                _allocationRegistry,
                 _addressRegistry
             )
         )

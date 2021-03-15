@@ -25,7 +25,6 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IAccountFactory {
     address public proxyAdmin;
     APYMetaPoolToken public mApt;
     IAddressRegistry public addressRegistry;
-    IAssetAllocationRegistry public assetAllocationRegistry;
     mapping(bytes32 => address) public override getAccount;
     bytes32[] internal _poolIds;
 
@@ -41,12 +40,10 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IAccountFactory {
     function initialize(
         address adminAddress,
         address payable _mApt,
-        address _allocationRegistry,
         address _addressRegistry
     ) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");
         require(Address.isContract(_mApt), "INVALID_ADDRESS");
-        require(Address.isContract(_allocationRegistry), "INVALID_ADDRESS");
         require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
 
         // initialize ancestor storage
@@ -57,7 +54,6 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IAccountFactory {
         setAdminAddress(adminAddress);
         mApt = APYMetaPoolToken(_mApt);
         addressRegistry = IAddressRegistry(_addressRegistry);
-        assetAllocationRegistry = IAssetAllocationRegistry(_allocationRegistry);
     }
 
     /**
@@ -215,6 +211,10 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IAccountFactory {
     function _registerAllocationData(
         IAssetAllocationRegistry.AssetAllocation[] memory viewData
     ) internal {
+        IAssetAllocationRegistry assetAllocationRegistry =
+            IAssetAllocationRegistry(
+                addressRegistry.getAddress("chainlinkRegistry")
+            );
         for (uint256 i = 0; i < viewData.length; i++) {
             IAssetAllocationRegistry.AssetAllocation memory viewAllocation =
                 viewData[i];
@@ -249,14 +249,6 @@ contract APYManagerV2 is Initializable, OwnableUpgradeSafe, IAccountFactory {
     function setAddressRegistry(address _addressRegistry) public onlyOwner {
         require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistry(_addressRegistry);
-    }
-
-    function setAssetAllocationRegistry(address _allocationRegistry)
-        public
-        onlyOwner
-    {
-        require(Address.isContract(_allocationRegistry), "INVALID_ADDRESS");
-        assetAllocationRegistry = IAssetAllocationRegistry(_allocationRegistry);
     }
 
     function setPoolIds(bytes32[] memory poolIds) public onlyOwner {
