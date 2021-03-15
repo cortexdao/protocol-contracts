@@ -18,7 +18,7 @@ const erc20Interface = new ethers.utils.Interface(
 );
 
 const POOL_DEPLOYER = "0x6EAF0ab3455787bA10089800dB91F11fDf6370BE";
-const MANAGER_DEPLOYER = "0x0f7B66a4a3f7CfeAc2517c2fb9F0518D48457d41";
+const ADDRESS_REGISTRY_DEPLOYER = "0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3";
 
 /* ************************ */
 /* set DEBUG log level here */
@@ -26,53 +26,13 @@ const MANAGER_DEPLOYER = "0x0f7B66a4a3f7CfeAc2517c2fb9F0518D48457d41";
 console.debugging = false;
 /* ************************ */
 
-/**
- * Returns the upgraded (V2) manager contract instance, in addition
- * to the signer for the manager's deployer.
- * @param {address} managerDeployerAddress
- * @param {address} mAptAddress  - need for initializeUpgrade
- * @param {address} allocationRegistryAddress  - need for initializeUpgrade
- * @returns {[Contract, Signer]}
- */
-async function upgradeManager(
-  managerDeployerAddress,
-  mAptAddress,
-  allocationRegistryAddress
-) {
-  const managerDeployer = await ethers.provider.getSigner(
-    managerDeployerAddress
-  );
-
-  const APYManagerV2 = await ethers.getContractFactory("APYManagerV2");
-  const newManagerLogic = await APYManagerV2.deploy();
-  await newManagerLogic.deployed();
-
-  const managerAdmin = await ethers.getContractAt(
-    legos.apy.abis.APY_MANAGER_Admin,
-    legos.apy.addresses.APY_MANAGER_Admin,
-    managerDeployer
-  );
-  const initData = APYManagerV2.interface.encodeFunctionData(
-    "initializeUpgrade(address,address)",
-    [mAptAddress, allocationRegistryAddress]
-  );
-  await managerAdmin.upgradeAndCall(
-    legos.apy.addresses.APY_MANAGER,
-    newManagerLogic.address,
-    initData
-  );
-  const manager = await ethers.getContractAt(
-    "APYManagerV2",
-    legos.apy.addresses.APY_MANAGER,
-    managerDeployer
-  );
-
-  return [manager, managerDeployer];
-}
-
 describe("Contract: APYManager - deployAccount", () => {
   let manager;
   let executor;
+
+  // signers
+  let deployer;
+  let randomUser;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -87,19 +47,26 @@ describe("Contract: APYManager - deployAccount", () => {
   });
 
   before(async () => {
-    const [funder] = await ethers.getSigners();
-    await funder.sendTransaction({
-      to: MANAGER_DEPLOYER,
-      value: ethers.utils.parseEther("10").toHexString(),
-    });
-    await impersonateAccount(MANAGER_DEPLOYER);
+    [deployer, randomUser] = await ethers.getSigners();
 
-    const dummyContract = await deployMockContract(funder, []);
-    [manager] = await upgradeManager(
-      MANAGER_DEPLOYER,
+    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+    const APYManagerV2 = await ethers.getContractFactory("APYManagerV2");
+    const APYManagerProxy = await ethers.getContractFactory("APYManagerProxy");
+
+    const dummyContract = await deployMockContract(deployer, []);
+    const proxyAdmin = await ProxyAdmin.deploy();
+    await proxyAdmin.deployed();
+    const logic = await APYManagerV2.deploy();
+    await logic.deployed();
+    const proxy = await APYManagerProxy.deploy(
+      logic.address,
+      proxyAdmin.address,
       dummyContract.address,
       dummyContract.address
     );
+    await proxy.deployed();
+    manager = APYManagerV2.attach(proxy.address);
+
     const APYGenericExecutor = await ethers.getContractFactory(
       "APYGenericExecutor"
     );
@@ -108,31 +75,22 @@ describe("Contract: APYManager - deployAccount", () => {
   });
 
   it("non-owner cannot call", async () => {
-    const nonOwner = (await ethers.getSigners())[0];
-    expect(await manager.owner()).to.not.equal(nonOwner.address);
+    expect(await manager.owner()).to.not.equal(randomUser.address);
 
     await expect(
       manager
-        .connect(nonOwner)
+        .connect(randomUser)
         .deployAccount(bytes32("account1"), executor.address)
     ).to.be.revertedWith("revert Ownable: caller is not the owner");
   });
 
   it("Owner can call", async () => {
-    const accountAddress = await manager.callStatic.deployAccount(
-      bytes32("account1"),
-      executor.address
-    );
-    // manager.once(
-    //   manager.filters.AccountDeployed(),
-    //   (strategy, genericExecutor) => {
-    //     assert.equal(strategy, stratAddress);
-    //     assert.equal(genericExecutor, executor.address);
-    //   }
-    // );
-    await expect(manager.deployAccount(bytes32("account1"), executor.address))
-      .to.not.be.reverted;
+    const accountId = bytes32("account1");
+    await expect(
+      manager.connect(deployer).deployAccount(accountId, executor.address)
+    ).to.not.be.reverted;
 
+    const accountAddress = await manager.getAccount(accountId);
     const account = await ethers.getContractAt("APYAccount", accountAddress);
     expect(await account.owner()).to.equal(manager.address);
   });
@@ -171,7 +129,12 @@ describe("Contract: APYManager", () => {
   });
 
   before(async () => {
-    [deployer, funder, randomAccount] = await ethers.getSigners();
+    [
+      deployer,
+      managerDeployer,
+      funder,
+      randomAccount,
+    ] = await ethers.getSigners();
 
     /*************************************/
     /* unlock and fund Mainnet deployers */
@@ -183,10 +146,10 @@ describe("Contract: APYManager", () => {
     await impersonateAccount(POOL_DEPLOYER);
 
     await funder.sendTransaction({
-      to: MANAGER_DEPLOYER,
+      to: ADDRESS_REGISTRY_DEPLOYER,
       value: ethers.utils.parseEther("10").toHexString(),
     });
-    await impersonateAccount(MANAGER_DEPLOYER);
+    await impersonateAccount(ADDRESS_REGISTRY_DEPLOYER);
 
     /***********************************/
     /* upgrade pools to V2 */
@@ -229,9 +192,6 @@ describe("Contract: APYManager", () => {
       legos.apy.addresses.APY_USDT_POOL,
       poolDeployer
     );
-    await daiPool.infiniteApprove(legos.apy.addresses.APY_MANAGER);
-    await usdcPool.infiniteApprove(legos.apy.addresses.APY_MANAGER);
-    await usdtPool.infiniteApprove(legos.apy.addresses.APY_MANAGER);
 
     /***********************/
     /***** deploy mAPT *****/
@@ -260,8 +220,8 @@ describe("Contract: APYManager", () => {
     const APYMetaPoolToken = await ethers.getContractFactory(
       "TestAPYMetaPoolToken"
     );
-    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
 
+    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     const proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
 
@@ -278,7 +238,37 @@ describe("Contract: APYManager", () => {
     await proxy.deployed();
 
     mApt = await APYMetaPoolToken.attach(proxy.address);
-    await mApt.setManagerAddress(legos.apy.addresses.APY_MANAGER);
+
+    /***********************************/
+    /***** deploy manager  *************/
+    /***********************************/
+    const APYManagerV2 = await ethers.getContractFactory(
+      "APYManagerV2",
+      managerDeployer
+    );
+    const APYManagerProxy = await ethers.getContractFactory(
+      "APYManagerProxy",
+      managerDeployer
+    );
+
+    const managerAdmin = await ProxyAdmin.connect(managerDeployer).deploy();
+    await managerAdmin.deployed();
+    const managerLogic = await APYManagerV2.deploy();
+    await managerLogic.deployed();
+    const managerProxy = await APYManagerProxy.deploy(
+      managerLogic.address,
+      managerAdmin.address,
+      mApt.address,
+      legos.apy.addresses.APY_ADDRESS_REGISTRY
+    );
+    await managerProxy.deployed();
+    manager = await APYManagerV2.attach(managerProxy.address);
+
+    await daiPool.infiniteApprove(manager.address);
+    await usdcPool.infiniteApprove(manager.address);
+    await usdtPool.infiniteApprove(manager.address);
+
+    await mApt.setManagerAddress(manager.address);
 
     /*******************************************/
     /***** deploy asset allocation registry ****/
@@ -287,18 +277,22 @@ describe("Contract: APYManager", () => {
       "APYAssetAllocationRegistry"
     );
     allocationRegistry = await APYAssetAllocationRegistry.deploy(
-      legos.apy.addresses.APY_MANAGER
+      manager.address
     );
     await allocationRegistry.deployed();
-
-    /***********************************/
-    /***** upgrade manager to V2 *******/
-    /***********************************/
-    [manager, managerDeployer] = await upgradeManager(
-      MANAGER_DEPLOYER,
-      mApt.address,
+    const addressRegistryDeployer = await ethers.provider.getSigner(
+      ADDRESS_REGISTRY_DEPLOYER
+    );
+    const addressRegistry = await ethers.getContractAt(
+      legos.apy.abis.APY_ADDRESS_REGISTRY_Logic,
+      legos.apy.addresses.APY_ADDRESS_REGISTRY,
+      addressRegistryDeployer
+    );
+    await addressRegistry.registerAddress(
+      bytes32("chainlinkRegistry"),
       allocationRegistry.address
     );
+
     /*********************************************/
     /* main deployments and upgrades finished 
     /*********************************************/
