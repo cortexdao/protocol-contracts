@@ -28,6 +28,7 @@ TODOs:
 Comments:
 
 - Hardhat node is used with mainnet forking which requires `INFURA_API_KEY` to be set in a `.env` file
+- Some test use the `defi-legos` package.  This needs to be setup after a `yarn install` with `yarn defi-legos` (this last command is a bit hacky for now; it wil have exit code 1 if there are *no* errors.)
 - the timeout for tests may need to be adjusted; the mocha `timeout` variable is set in `hardhat.config.js`
 
 ## Generating mnemonics
@@ -122,16 +123,16 @@ Manager (proxy): [0xfed91F1f9d7DcA3E6e4a4B83CEf1B14380AbDE79](https://etherscan.
 - admin: [0x10d44E4bC2370dedB80Faa06613a9ebfAd6bDE11](https://etherscan.io/address/0x10d44E4bC2370dedB80Faa06613a9ebfAd6bDE11)
 - logic: [0x2A07D00710DF6BC79d77339014a8bc7e2ebc6dE2](https://etherscan.io/address/0x2A07D00710DF6BC79d77339014a8bc7e2ebc6dE2)
 
-## Adding and Redeeming from APYPools
+## Depositing and Redeeming from APY Pools
 
 ![addLiquidity](https://github.com/apy-finance/apy-core/blob/209756f99f5783fd5167b6c8e9693cdb213498c7/diagrams/PoolAddingLiquidity.png)
 ![redeem](https://github.com/apy-finance/apy-core/blob/209756f99f5783fd5167b6c8e9693cdb213498c7/diagrams/Redeem%20APT.png)
 
-## Deployment and Unroll of Capital
+## Deployment and Unwinding of Capital
 
 ![deployment](https://github.com/apy-finance/apy-core/blob/develop/diagrams/DeploymentOfCapital.png?raw=true)
 ![unroll](https://github.com/apy-finance/apy-core/blob/develop/diagrams/UnwindOfCapital.png?raw=true)
 
-## Chainlink Pricing TVL
+## Chainlink TVL Computation
 
 ![ChainlinkTVL](https://github.com/apy-finance/apy-core/blob/develop/diagrams/ChainlinkTVLAdapter.png?raw=true)
