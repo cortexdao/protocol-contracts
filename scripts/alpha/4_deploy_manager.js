@@ -6,6 +6,7 @@ const { argv } = require("yargs").option("gasPrice", {
 const hre = require("hardhat");
 const assert = require("assert");
 const { ethers, network } = hre;
+const chalk = require("chalk");
 const {
   getDeployedAddress,
   getGasPrice,
@@ -28,12 +29,12 @@ async function main(argv) {
   /* TESTING on localhost only
    * may need to fund the deployer while testing
    */
-  // const [funder] = await ethers.getSigners();
-  // const fundingTrx = await funder.sendTransaction({
-  //   to: managerDeployer.address,
-  //   value: ethers.utils.parseEther("1.0"),
-  // });
-  // await fundingTrx.wait();
+  const [funder] = await ethers.getSigners();
+  const fundingTrx = await funder.sendTransaction({
+    to: managerDeployer.address,
+    value: ethers.utils.parseEther("1.0"),
+  });
+  await fundingTrx.wait();
 
   const balance =
     (await ethers.provider.getBalance(managerDeployer.address)).toString() /
@@ -68,7 +69,7 @@ async function main(argv) {
   );
   await proxyAdmin.deployed();
   deploy_data["APYManagerProxyAdmin"] = proxyAdmin.address;
-  console.log(`ProxyAdmin: ${proxyAdmin.address}`);
+  console.log(`ProxyAdmin: ${chalk.green(proxyAdmin.address)}`);
   console.log("");
   assert.strictEqual(
     await proxyAdmin.owner(),
@@ -117,7 +118,15 @@ async function main(argv) {
   updateDeployJsons(NETWORK_NAME, deploy_data);
 
   gasPrice = await getGasPrice(argv.gasPrice);
-  const mAPT = await ethers.getContractAt("APYMetaPoolToken", mAptAddress);
+  const MAPT_MNEMONIC = process.env.MAPT_MNEMONIC;
+  const mAptDeployer = ethers.Wallet.fromMnemonic(MAPT_MNEMONIC).connect(
+    ethers.provider
+  );
+  const mAPT = await ethers.getContractAt(
+    "APYMetaPoolToken",
+    mAptAddress,
+    mAptDeployer
+  );
   const trx = await mAPT.setManagerAddress(proxy.address, { gasPrice });
   console.log(
     "Set manager address on mAPT:",

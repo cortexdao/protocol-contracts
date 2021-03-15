@@ -40,12 +40,12 @@ async function main(argv) {
   /* TESTING on localhost only
    * may need to fund if ETH runs out while testing
    */
-  // const [funder] = await ethers.getSigners();
-  // const fundingTrx = await funder.sendTransaction({
-  //   to: registryDeployer.address,
-  //   value: ethers.utils.parseEther("1.0"),
-  // });
-  // await fundingTrx.wait();
+  const [funder] = await ethers.getSigners();
+  const fundingTrx = await funder.sendTransaction({
+    to: registryDeployer.address,
+    value: ethers.utils.parseEther("1.0"),
+  });
+  await fundingTrx.wait();
 
   const balance =
     (await ethers.provider.getBalance(registryDeployer.address)).toString() /

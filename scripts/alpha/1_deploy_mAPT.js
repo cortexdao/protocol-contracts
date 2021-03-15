@@ -16,6 +16,7 @@ const { argv } = require("yargs").option("gasPrice", {
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
 const assert = require("assert");
+const chalk = require("chalk");
 const {
   getGasPrice,
   updateDeployJsons,
@@ -38,12 +39,12 @@ async function main(argv) {
   /* TESTING on localhost only
    * need to fund as there is no ETH on Mainnet for the deployer
    */
-  // const [funder] = await ethers.getSigners();
-  // const fundingTrx = await funder.sendTransaction({
-  //   to: mAptDeployer.address,
-  //   value: ethers.utils.parseEther("1.0"),
-  // });
-  // await fundingTrx.wait();
+  const [funder] = await ethers.getSigners();
+  const fundingTrx = await funder.sendTransaction({
+    to: mAptDeployer.address,
+    value: ethers.utils.parseEther("1.0"),
+  });
+  await fundingTrx.wait();
 
   const balance =
     (await ethers.provider.getBalance(mAptDeployer.address)).toString() / 1e18;
@@ -77,7 +78,7 @@ async function main(argv) {
   );
   await proxyAdmin.deployed();
   deploy_data["APYMetaPoolTokenProxyAdmin"] = proxyAdmin.address;
-  console.log(`ProxyAdmin: ${proxyAdmin.address}`);
+  console.log(`ProxyAdmin: ${chalk.green(proxyAdmin.address)}`);
   console.log("");
   assert.strictEqual(
     await proxyAdmin.owner(),
@@ -93,7 +94,7 @@ async function main(argv) {
   );
   await logic.deployed();
   deploy_data["APYMetaPoolToken"] = logic.address;
-  console.log(`Implementation Logic: ${logic.address}`);
+  console.log(`Implementation Logic: ${chalk.green(logic.address)}`);
   console.log("");
 
   const tvlAggAddress = getAggregatorAddress("TVL", NETWORK_NAME);
@@ -112,7 +113,7 @@ async function main(argv) {
   );
   await proxy.deployed();
   deploy_data["APYMetaPoolTokenProxy"] = proxy.address;
-  console.log(`Proxy: ${proxy.address}`);
+  console.log(`Proxy: ${chalk.green(proxy.address)}`);
   console.log("");
   console.log("TVL Aggregator:", tvlAggAddress);
   console.log("");

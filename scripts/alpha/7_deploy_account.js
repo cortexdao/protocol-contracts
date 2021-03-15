@@ -10,6 +10,7 @@ const {
   getGasPrice,
   updateDeployJsons,
   getDeployedAddress,
+  bytes32,
 } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
@@ -53,13 +54,14 @@ async function main(argv) {
     NETWORK_NAME
   );
   console.log("Executor:", chalk.green(executorAddress));
-  const accountAddress = await manager.callStatic.deployAccount(
-    executorAddress
-  );
+  const accountId = bytes32("alpha");
   let gasPrice = await getGasPrice(argv.gasPrice);
-  const trx = await manager.deployAccount(executorAddress, { gasPrice });
+  const trx = await manager.deployAccount(accountId, executorAddress, {
+    gasPrice,
+  });
   console.log("Deploy account:", `https://etherscan.io/tx/${trx.hash}`);
   await trx.wait();
+  const accountAddress = await manager.getAccount(accountId);
   console.log("Account:", chalk.green(accountAddress));
 
   const deployData = {

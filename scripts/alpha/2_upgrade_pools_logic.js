@@ -29,12 +29,12 @@ async function main(argv) {
   /* TESTING on localhost only
    * useful if running out of ETH for deployer address
    */
-  // const [funder] = await ethers.getSigners();
-  // const fundingTrx = await funder.sendTransaction({
-  //   to: poolDeployer.address,
-  //   value: ethers.utils.parseEther("1.0"),
-  // });
-  // await fundingTrx.wait();
+  const [funder] = await ethers.getSigners();
+  const fundingTrx = await funder.sendTransaction({
+    to: poolDeployer.address,
+    value: ethers.utils.parseEther("1.0"),
+  });
+  await fundingTrx.wait();
 
   const balance =
     (await ethers.provider.getBalance(poolDeployer.address)).toString() / 1e18;
