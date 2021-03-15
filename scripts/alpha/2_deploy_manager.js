@@ -90,10 +90,6 @@ async function main(argv) {
 
   gasPrice = await getGasPrice(argv.gasPrice);
   const mAptAddress = getDeployedAddress("APYMetaPoolTokenProxy", NETWORK_NAME);
-  const allocationRegistryAddress = getDeployedAddress(
-    "APYAssetAllocationRegistry",
-    NETWORK_NAME
-  );
   const addressRegistryAddress = getDeployedAddress(
     "APYAddressRegistryProxy",
     NETWORK_NAME
@@ -102,7 +98,6 @@ async function main(argv) {
     logic.address,
     proxyAdmin.address,
     mAptAddress,
-    allocationRegistryAddress,
     addressRegistryAddress,
     { gasPrice }
   );
@@ -145,7 +140,6 @@ async function main(argv) {
         logic.address,
         proxyAdmin.address,
         mAptAddress,
-        allocationRegistryAddress,
         addressRegistryAddress,
       ],
       // to avoid the "More than one contract was found to match the deployed bytecode."
