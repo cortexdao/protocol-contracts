@@ -18,7 +18,7 @@ import "./APYAccount.sol";
 /**
  * @title APY Manager
  * @author APY.Finance
- * @notice This is the V2 of the manager logic contract for use with the
+ * @notice This is the manager logic contract for use with the
  * manager proxy contract.
  *
  *--------------------
@@ -167,7 +167,7 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
      * See APYManager._fundAccount.
      * @param viewData The array of asset allocations to calculate the TVL of
      * new assets stored in the Account contract.
-     * See APYManagerV2._registerAllocationData.
+     * See APYManager._registerAllocationData.
      */
     function fundAccount(
         bytes32 accountId,
@@ -183,13 +183,13 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
      * @param accountId The Account contract ID
      * @param allocation Specifies the APYPoolToken contracts to pull from and
      * the amounts to pull.
-     * See APYManagerV2._fundAccount.
+     * See APYManager._fundAccount.
      * @param steps The generic execution sequence that will route capital
      * from the Account to yield farming strategies.
-     * See APYManagerV2.execute.
+     * See APYManager.execute.
      * @param viewData The array of asset allocations to calculate the TVL of
      * new assets stored in the Account contract.
-     * See APYManagerV2._registerAllocationData.
+     * See APYManager._registerAllocationData.
      */
     function fundAndExecute(
         bytes32 accountId,
@@ -230,7 +230,7 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
      *
      * @param viewData The array of asset allocations to calculate the TVL of
      * new assets stored in the Account contract.
-     * See APYManagerV2._registerAllocationData.
+     * See APYManager._registerAllocationData.
      */
     function execute(
         bytes32 accountId,
@@ -248,13 +248,13 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
      * @param accountId The Account contract ID
      * @param allocation Specifies the APYPoolToken contracts to push to and
      * the amounts to push.
-     * See APYManagerV2._withdrawFromAccount.
+     * See APYManager._withdrawFromAccount.
      * @param steps The generic execution sequence that will unwind capital
      * from yield farming strategies and store it in the Account.
-     * See APYManagerV2.execute.
+     * See APYManager.execute.
      * @param viewData The array of asset allocations to calculate the TVL of
      * new assets stored in the Account contract.
-     * See APYManagerV2._registerAllocationData.
+     * See APYManager._registerAllocationData.
      */
     function executeAndWithdraw(
         bytes32 accountId,
@@ -272,7 +272,7 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
      * @param accountId The Account contract ID
      * @param allocation Specifies the APYPoolToken contracts to push to and
      * the amounts to push.
-     * See APYManagerV2._withdrawFromAccount.
+     * See APYManager._withdrawFromAccount.
      */
     function withdrawFromAccount(
         bytes32 accountId,
