@@ -20,7 +20,6 @@ describe("Contract: APYManager", () => {
   let randomUser;
 
   // contract factories
-  let APYManager;
   let APYManagerV2;
   let ProxyAdmin;
   let APYGenericExecutor;
@@ -44,50 +43,32 @@ describe("Contract: APYManager", () => {
   before(async () => {
     [deployer, randomUser] = await ethers.getSigners();
 
-    APYManager = await ethers.getContractFactory("APYManager");
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     APYManagerV2 = await ethers.getContractFactory("APYManagerV2");
-    const ProxyConstructorArg = await ethers.getContractFactory(
-      "ProxyConstructorArg"
-    );
-    const TransparentUpgradeableProxy = await ethers.getContractFactory(
-      "TransparentUpgradeableProxy"
-    );
+    const APYManagerProxy = await ethers.getContractFactory("APYManagerProxy");
     APYGenericExecutor = await ethers.getContractFactory("APYGenericExecutor");
     executor = await APYGenericExecutor.deploy();
     await executor.deployed();
 
-    const logic = await APYManager.deploy();
+    const logic = await APYManagerV2.deploy();
     await logic.deployed();
-    const logicV2 = await APYManagerV2.deploy();
-    await logicV2.deployed();
 
     const proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
-    const proxyConstructorArg = await ProxyConstructorArg.deploy();
-    await proxyConstructorArg.deployed();
-    const encodedArg = await proxyConstructorArg.getEncodedArg(
-      proxyAdmin.address
-    );
-    const proxy = await TransparentUpgradeableProxy.deploy(
-      logic.address,
-      proxyAdmin.address,
-      encodedArg
-    );
-    await proxy.deployed();
-
-    manager = await APYManager.attach(proxy.address);
-    const addressRegistryMock = await deployMockContract(deployer, []);
-    await manager.setAddressRegistry(addressRegistryMock.address);
 
     const mAptMock = await deployMockContract(deployer, []);
-    const allocationRegistryMock = await deployMockContract(deployer, []);
-    const initData = APYManagerV2.interface.encodeFunctionData(
-      "initializeUpgrade(address,address)",
-      [mAptMock.address, allocationRegistryMock.address]
+    const addressRegistryMock = await deployMockContract(
+      deployer,
+      artifacts.require("IAddressRegistry").abi
     );
-    await proxyAdmin.upgradeAndCall(proxy.address, logicV2.address, initData);
-
+    await addressRegistryMock.mock.getAddress.returns(FAKE_ADDRESS);
+    const proxy = await APYManagerProxy.deploy(
+      logic.address,
+      proxyAdmin.address,
+      mAptMock.address,
+      addressRegistryMock.address
+    );
+    await proxy.deployed();
     manager = await APYManagerV2.attach(proxy.address);
   });
 
@@ -128,30 +109,6 @@ describe("Contract: APYManager", () => {
       const contract = await deployMockContract(deployer, []);
       await manager.connect(deployer).setAddressRegistry(contract.address);
       expect(await manager.addressRegistry()).to.equal(contract.address);
-    });
-  });
-
-  describe("Set asset allocation registry", () => {
-    it("Cannot set to zero address", async () => {
-      await expect(
-        manager.connect(deployer).setAssetAllocationRegistry(ZERO_ADDRESS)
-      ).to.be.revertedWith("INVALID_ADDRESS");
-    });
-
-    it("Non-owner cannot set", async () => {
-      await expect(
-        manager.connect(randomUser).setAssetAllocationRegistry(FAKE_ADDRESS)
-      ).to.be.revertedWith("revert Ownable: caller is not the owner");
-    });
-
-    it("Owner can set", async () => {
-      const contract = await deployMockContract(deployer, []);
-      await manager
-        .connect(deployer)
-        .setAssetAllocationRegistry(contract.address);
-      expect(await manager.assetAllocationRegistry()).to.equal(
-        contract.address
-      );
     });
   });
 
