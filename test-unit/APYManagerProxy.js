@@ -12,8 +12,7 @@ describe("Contract: APYManagerProxy", () => {
 
   let ProxyAdmin;
   let APYManager;
-  let ProxyConstructorArg;
-  let TransparentUpgradeableProxy;
+  let APYManagerProxy;
 
   let proxyAdmin;
   let logic;
@@ -43,22 +42,14 @@ describe("Contract: APYManagerProxy", () => {
     logic = await APYManager.deploy();
     await logic.deployed();
 
-    ProxyConstructorArg = await ethers.getContractFactory(
-      "ProxyConstructorArg"
-    );
-    const proxyConstructorArg = await ProxyConstructorArg.deploy();
-    await proxyConstructorArg.deployed();
-    const encodedArg = await proxyConstructorArg.getEncodedArg(
-      proxyAdmin.address
-    );
-
-    TransparentUpgradeableProxy = await ethers.getContractFactory(
-      "TransparentUpgradeableProxy"
-    );
-    proxy = await TransparentUpgradeableProxy.deploy(
+    const mApt = await deployMockContract(deployer, []);
+    const addressRegistry = await deployMockContract(deployer, []);
+    APYManagerProxy = await ethers.getContractFactory("APYManagerProxy");
+    proxy = await APYManagerProxy.deploy(
       logic.address,
       proxyAdmin.address,
-      encodedArg
+      mApt.address,
+      addressRegistry.address
     );
     await proxy.deployed();
   });
@@ -183,91 +174,67 @@ describe("Contract: APYManagerProxy", () => {
         newLogic.address
       );
     });
+  });
 
-    describe("initialize", () => {
-      it("Cannot initialize with zero address", async () => {
-        let tempManager = await APYManager.deploy();
-        await tempManager.deployed();
-        await expect(tempManager.initialize(ZERO_ADDRESS)).to.be.revertedWith(
-          "INVALID_ADMIN"
-        );
-      });
+  describe("initialize", () => {
+    it("Cannot initialize with zero admin address", async () => {
+      const dummyContract = await deployMockContract(deployer, []);
+      const logic = await APYManager.deploy();
+      await logic.deployed();
+
+      await expect(
+        APYManagerProxy.deploy(
+          logic.address,
+          ZERO_ADDRESS,
+          dummyContract.address,
+          dummyContract.address
+        )
+      ).to.be.reverted;
     });
 
-    describe("initializeUpgrade", () => {
-      let APYManagerV2;
+    it("Cannot initialize with non-contract addresses", async () => {
+      const dummyContract = await deployMockContract(deployer, []);
+      const logic = await APYManager.deploy();
+      await logic.deployed();
 
-      before(async () => {
-        APYManagerV2 = await ethers.getContractFactory("APYManagerV2");
-      });
+      await expect(
+        APYManagerProxy.deploy(
+          logic.address,
+          proxyAdmin.address,
+          FAKE_ADDRESS,
+          dummyContract.address
+        )
+      ).to.be.reverted;
 
-      it("Cannot initialize with non-contract addresses", async () => {
-        const contract = await deployMockContract(deployer, []);
+      await expect(
+        APYManagerProxy.deploy(
+          logic.address,
+          proxyAdmin.address,
+          dummyContract.address,
+          FAKE_ADDRESS
+        )
+      ).to.be.reverted;
+    });
 
-        let newLogic = await APYManagerV2.deploy();
-        await newLogic.deployed();
+    it("deploy initializes correctly", async () => {
+      const logic = await APYManager.deploy();
+      await logic.deployed();
 
-        let initData = APYManagerV2.interface.encodeFunctionData(
-          "initializeUpgrade(address,address)",
-          [FAKE_ADDRESS, contract.address]
-        );
-        await expect(
-          proxyAdmin.upgradeAndCall(proxy.address, newLogic.address, initData)
-        ).to.be.reverted;
+      const mApt = await deployMockContract(deployer, []);
+      const addressRegistry = await deployMockContract(deployer, []);
 
-        initData = APYManagerV2.interface.encodeFunctionData(
-          "initializeUpgrade(address,address)",
-          [contract.address, FAKE_ADDRESS]
-        );
-        await expect(
-          proxyAdmin.upgradeAndCall(proxy.address, newLogic.address, initData)
-        ).to.be.reverted;
-      });
+      const proxy = await APYManagerProxy.deploy(
+        logic.address,
+        proxyAdmin.address,
+        mApt.address,
+        addressRegistry.address
+      );
+      const manager = await APYManager.attach(proxy.address);
 
-      it("Can initialize with contract addresses if address registry is set", async () => {
-        const contract = await deployMockContract(deployer, []);
-
-        let newLogic = await APYManagerV2.deploy();
-        await newLogic.deployed();
-
-        // address registry was set on the V1 manager deployment, but as a safety check,
-        // and since it's not necessarily clear from purely reading smart contract code,
-        // we put a "require" for it in the `initializeUpgrade` function.
-
-        // should revert as address registry is unset
-        const initData = APYManagerV2.interface.encodeFunctionData(
-          "initializeUpgrade(address,address)",
-          [contract.address, contract.address]
-        );
-        await expect(
-          proxyAdmin.upgradeAndCall(proxy.address, newLogic.address, initData)
-        ).to.be.reverted;
-        // should not revert after setting
-        const manager = await APYManager.attach(proxy.address);
-        await manager.setAddressRegistry(contract.address);
-        await expect(
-          proxyAdmin.upgradeAndCall(proxy.address, newLogic.address, initData)
-        ).to.not.be.reverted;
-      });
-
-      it("upgradeAndCall with initializeUpgrade is successful", async () => {
-        let logicV2 = await APYManagerV2.deploy();
-        await logicV2.deployed();
-
-        const addressRegistry = await deployMockContract(deployer, []);
-        await manager.setAddressRegistry(addressRegistry.address);
-
-        const mApt = await deployMockContract(deployer, []);
-        const allocationRegistry = await deployMockContract(deployer, []);
-        const initData = APYManagerV2.interface.encodeFunctionData(
-          "initializeUpgrade(address,address)",
-          [mApt.address, allocationRegistry.address]
-        );
-
-        await expect(
-          proxyAdmin.upgradeAndCall(proxy.address, logicV2.address, initData)
-        ).to.not.be.reverted;
-      });
+      expect(await manager.owner()).to.equal(deployer.address);
+      expect(await manager.proxyAdmin()).to.equal(proxyAdmin.address);
+      expect(await manager.addressRegistry()).to.equal(addressRegistry.address);
+      expect(await manager.mApt()).to.equal(mApt.address);
     });
   });
 });

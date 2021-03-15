@@ -1,51 +1,41 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.11;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAddressRegistry.sol";
+import "./interfaces/IDetailedERC20.sol";
+import "./interfaces/IAccountFactory.sol";
+import "./interfaces/IAssetAllocationRegistry.sol";
+import "./APYPoolTokenV2.sol";
+import "./APYMetaPoolToken.sol";
+import "./APYAccount.sol";
 
-/**
- * @title APY.Finance Manager
- * @author APY.Finance
- * @notice This is the initial version of the manager, deployed
- * primarily for the proxy and to register its address with
- * the address registry.
- *
- * It has limited functionality and is only used for testing
- * the implementation for the interface used by Chainlink.
- *
- * For the alpha launch, we will be upgrading to a V2 version
- * which has real functionality.
- *
- * Note that the Chainlink interface functions (indicated below
- * individually) are deprecated.  Consult APYManagerV2 for the
- * new interface and its implemention.
- */
-contract APYManager is Initializable, OwnableUpgradeSafe {
+contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
     using SafeMath for uint256;
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IDetailedERC20;
 
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
-    /** @notice the same address as the proxy admin; used
-     *  to protect init functions for upgrades */
     address public proxyAdmin;
+    APYMetaPoolToken public mApt;
     IAddressRegistry public addressRegistry;
-    address public mApt; // placeholder for future-proofing storage
-
+    mapping(bytes32 => address) public override getAccount;
     bytes32[] internal _poolIds;
-    address[] internal _tokenAddresses;
 
     /* ------------------------------- */
 
     event AdminChanged(address);
+    event AccountDeployed(
+        bytes32 accountId,
+        address account,
+        address generalExecutor
+    );
 
     /**
      * @dev Since the proxy delegate calls to this "logic" contract, any
@@ -59,8 +49,14 @@ contract APYManager is Initializable, OwnableUpgradeSafe {
      * repeatedly.  It should be called during the deployment so that
      * it cannot be called by someone else later.
      */
-    function initialize(address adminAddress) external initializer {
+    function initialize(
+        address adminAddress,
+        address payable _mApt,
+        address _addressRegistry
+    ) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");
+        require(Address.isContract(_mApt), "INVALID_ADDRESS");
+        require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
 
         // initialize ancestor storage
         __Context_init_unchained();
@@ -68,6 +64,8 @@ contract APYManager is Initializable, OwnableUpgradeSafe {
 
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
+        mApt = APYMetaPoolToken(_mApt);
+        addressRegistry = IAddressRegistry(_addressRegistry);
     }
 
     /**
@@ -80,6 +78,166 @@ contract APYManager is Initializable, OwnableUpgradeSafe {
      */
     // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual onlyAdmin {}
+
+    function deployAccount(bytes32 accountId, address generalExecutor)
+        external
+        override
+        onlyOwner
+        returns (address)
+    {
+        APYAccount account = new APYAccount(generalExecutor);
+        getAccount[accountId] = address(account);
+        emit AccountDeployed(accountId, address(account), generalExecutor);
+        return address(account);
+    }
+
+    function fundAccount(
+        bytes32 accountId,
+        IAccountFactory.AccountAllocation memory allocation,
+        IAssetAllocationRegistry.AssetAllocation[] memory viewData
+    ) external override onlyOwner {
+        _registerAllocationData(viewData);
+        _fundAccount(accountId, allocation);
+    }
+
+    function fundAndExecute(
+        bytes32 accountId,
+        IAccountFactory.AccountAllocation memory allocation,
+        APYGenericExecutor.Data[] memory steps,
+        IAssetAllocationRegistry.AssetAllocation[] memory viewData
+    ) external override onlyOwner {
+        _registerAllocationData(viewData);
+        _fundAccount(accountId, allocation);
+        execute(accountId, steps, viewData);
+    }
+
+    function execute(
+        bytes32 accountId,
+        APYGenericExecutor.Data[] memory steps,
+        IAssetAllocationRegistry.AssetAllocation[] memory viewData
+    ) public override onlyOwner {
+        require(getAccount[accountId] != address(0), "INVALID_ACCOUNT");
+        address accountAddress = getAccount[accountId];
+        _registerAllocationData(viewData);
+        IAccount(accountAddress).execute(steps);
+    }
+
+    function executeAndWithdraw(
+        bytes32 accountId,
+        IAccountFactory.AccountAllocation memory allocation,
+        APYGenericExecutor.Data[] memory steps,
+        IAssetAllocationRegistry.AssetAllocation[] memory viewData
+    ) external override onlyOwner {
+        execute(accountId, steps, viewData);
+        _withdrawFromAccount(accountId, allocation);
+        _registerAllocationData(viewData);
+    }
+
+    function withdrawFromAccount(
+        bytes32 accountId,
+        IAccountFactory.AccountAllocation memory allocation
+    ) external override onlyOwner {
+        _withdrawFromAccount(accountId, allocation);
+    }
+
+    function _fundAccount(
+        bytes32 accountId,
+        IAccountFactory.AccountAllocation memory allocation
+    ) internal {
+        require(
+            allocation.poolIds.length == allocation.amounts.length,
+            "allocation length mismatch"
+        );
+        require(getAccount[accountId] != address(0), "INVALID_ACCOUNT");
+        address accountAddress = getAccount[accountId];
+        uint256[] memory mintAmounts = new uint256[](allocation.poolIds.length);
+        for (uint256 i = 0; i < allocation.poolIds.length; i++) {
+            uint256 poolAmount = allocation.amounts[i];
+            APYPoolTokenV2 pool =
+                APYPoolTokenV2(
+                    addressRegistry.getAddress(allocation.poolIds[i])
+                );
+            IDetailedERC20 underlyer = pool.underlyer();
+
+            uint256 tokenPrice = pool.getUnderlyerPrice();
+            uint8 decimals = underlyer.decimals();
+            uint256 mintAmount =
+                mApt.calculateMintAmount(poolAmount, tokenPrice, decimals);
+            mintAmounts[i] = mintAmount;
+
+            underlyer.safeTransferFrom(
+                address(pool),
+                accountAddress,
+                poolAmount
+            );
+        }
+        for (uint256 i = 0; i < allocation.poolIds.length; i++) {
+            APYPoolTokenV2 pool =
+                APYPoolTokenV2(
+                    addressRegistry.getAddress(allocation.poolIds[i])
+                );
+            mApt.mint(address(pool), mintAmounts[i]);
+        }
+    }
+
+    function _withdrawFromAccount(
+        bytes32 accountId,
+        IAccountFactory.AccountAllocation memory allocation
+    ) internal {
+        require(
+            allocation.poolIds.length == allocation.amounts.length,
+            "allocation length mismatch"
+        );
+        require(getAccount[accountId] != address(0), "INVALID_ACCOUNT");
+        address accountAddress = getAccount[accountId];
+        uint256[] memory burnAmounts = new uint256[](allocation.poolIds.length);
+        for (uint256 i = 0; i < allocation.poolIds.length; i++) {
+            APYPoolTokenV2 pool =
+                APYPoolTokenV2(
+                    addressRegistry.getAddress(allocation.poolIds[i])
+                );
+            IDetailedERC20 underlyer = pool.underlyer();
+            uint256 amountToSend = allocation.amounts[i];
+
+            uint256 tokenPrice = pool.getUnderlyerPrice();
+            uint8 decimals = underlyer.decimals();
+            uint256 burnAmount =
+                mApt.calculateMintAmount(amountToSend, tokenPrice, decimals);
+            burnAmounts[i] = burnAmount;
+
+            underlyer.safeTransferFrom(
+                accountAddress,
+                address(pool),
+                amountToSend
+            );
+        }
+        for (uint256 i = 0; i < allocation.poolIds.length; i++) {
+            APYPoolTokenV2 pool =
+                APYPoolTokenV2(
+                    addressRegistry.getAddress(allocation.poolIds[i])
+                );
+            mApt.burn(address(pool), burnAmounts[i]);
+        }
+    }
+
+    function _registerAllocationData(
+        IAssetAllocationRegistry.AssetAllocation[] memory viewData
+    ) internal {
+        IAssetAllocationRegistry assetAllocationRegistry =
+            IAssetAllocationRegistry(
+                addressRegistry.getAddress("chainlinkRegistry")
+            );
+        for (uint256 i = 0; i < viewData.length; i++) {
+            IAssetAllocationRegistry.AssetAllocation memory viewAllocation =
+                viewData[i];
+            assetAllocationRegistry.addAssetAllocation(
+                viewAllocation.sequenceId,
+                viewAllocation.data,
+                viewAllocation.symbol,
+                viewAllocation.decimals
+            );
+        }
+    }
 
     function setAdminAddress(address adminAddress) public onlyOwner {
         require(adminAddress != address(0), "INVALID_ADMIN");
@@ -98,8 +256,13 @@ contract APYManager is Initializable, OwnableUpgradeSafe {
     /// @dev Allow contract to receive Ether.
     receive() external payable {} // solhint-disable-line no-empty-blocks
 
+    function setMetaPoolToken(address payable _mApt) public onlyOwner {
+        require(Address.isContract(_mApt), "INVALID_ADDRESS");
+        mApt = APYMetaPoolToken(_mApt);
+    }
+
     function setAddressRegistry(address _addressRegistry) public onlyOwner {
-        require(_addressRegistry != address(0), "Invalid address");
+        require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistry(_addressRegistry);
     }
 
@@ -111,63 +274,9 @@ contract APYManager is Initializable, OwnableUpgradeSafe {
         return _poolIds;
     }
 
-    /** @notice Returns the list of asset addresses.
-     *  @dev Address list will be populated automatically from the set
-     *       of input and output assets for each Account.
-     *
-     *       Note the use of token addresses is deprecated.  The V2
-     *       manager will use asset allocation IDs.
-     */
-    function getTokenAddresses() external view returns (address[] memory) {
-        return _tokenAddresses;
-    }
-
-    /// @dev part of temporary implementation for Chainlink integration
-    function setTokenAddresses(address[] calldata tokenAddresses)
-        external
-        onlyOwner
-    {
-        _tokenAddresses = tokenAddresses;
-    }
-
-    /// @dev part of temporary implementation for Chainlink integration;
-    ///      likely need this to clear out storage prior to real upgrade.
-    function deleteTokenAddresses() external onlyOwner {
-        delete _tokenAddresses;
-    }
-
     /// @dev part of temporary implementation for Chainlink integration;
     ///      likely need this to clear out storage prior to real upgrade.
     function deletePoolIds() external onlyOwner {
         delete _poolIds;
-    }
-
-    /** @notice Returns the total balance in the system for given token.
-     *  @dev The balance is possibly aggregated from multiple contracts
-     *       holding the token.
-     *
-     *       This is a temporary implementation until there are deployed funds.
-     *       In actuality, we will not be computing the TVL from the pools,
-     *       as their funds will not be tokenized into mAPT.
-     *
-     *       Note the use of token addresses is deprecated.  The V2
-     *       manager will use asset allocation IDs.
-     */
-    function balanceOf(address token) external view returns (uint256) {
-        IERC20 erc20 = IERC20(token);
-        uint256 balance = 0;
-        for (uint256 i = 0; i < _poolIds.length; i++) {
-            address pool = addressRegistry.getAddress(_poolIds[i]);
-            uint256 poolBalance = erc20.balanceOf(pool);
-            balance = balance.add(poolBalance);
-        }
-        return balance;
-    }
-
-    /// @notice Returns the symbol of the given token.
-    /// @dev deprecated; new Chainlink interface uses asset allocation IDs
-    /// insead of token addresses.
-    function symbolOf(address token) external view returns (string memory) {
-        return ERC20UpgradeSafe(token).symbol();
     }
 }

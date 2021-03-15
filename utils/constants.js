@@ -137,7 +137,7 @@ const DEPLOYS_JSON = {
   APYManagerProxy: `${__dirname}/../deployed_addresses/APYManagerProxy.json`,
   ProxyConstructorArg: `${__dirname}/../deployed_addresses/ProxyConstructorArg.json`,
   APYGenericExecutor: `${__dirname}/../deployed_addresses/APYGenericExecutor.json`,
-  Account: `${__dirname}/../deployed_addresses/Account.json`,
+  APYAccount: `${__dirname}/../deployed_addresses/APYAccount.json`,
   APYAssetAllocationRegistry: `${__dirname}/../deployed_addresses/APYAssetAllocationRegistry.json`,
 };
 
