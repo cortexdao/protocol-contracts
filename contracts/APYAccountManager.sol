@@ -76,8 +76,7 @@ import "./APYAccount.sol";
 contract APYAccountManager is
     Initializable,
     OwnableUpgradeSafe,
-    IAccountFactory,
-    IExecutor
+    IAccountFactory
 {
     using SafeMath for uint256;
     using SafeERC20 for IDetailedERC20;
@@ -193,7 +192,7 @@ contract APYAccountManager is
         bytes32 accountId,
         IExecutor.Data[] memory steps,
         IAssetAllocationRegistry.AssetAllocation[] memory viewData
-    ) public override onlyOwner {
+    ) public onlyOwner {
         require(getAccount[accountId] != address(0), "INVALID_ACCOUNT");
         address accountAddress = getAccount[accountId];
         _registerAllocationData(viewData);
