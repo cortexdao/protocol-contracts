@@ -307,8 +307,10 @@ contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
                 abi.encodeWithSignature("balanceOf(address)", account);
             IAssetAllocationRegistry.Data memory data =
                 IAssetAllocationRegistry.Data(address(pool.underlyer()), _data);
+            bytes32 id =
+                keccak256(abi.encodePacked(address(underlyer), account));
             assetAllocationRegistry.addAssetAllocation(
-                stringToBytes32(symbol), // just use the symbol as ID
+                id,
                 data,
                 symbol,
                 underlyer.decimals()
@@ -359,20 +361,5 @@ contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
 
     function deletePoolIds() external onlyOwner {
         delete _poolIds;
-    }
-
-    function stringToBytes32(string memory source)
-        public
-        pure
-        returns (bytes32 result)
-    {
-        bytes memory tempEmptyStringTest = bytes(source);
-        if (tempEmptyStringTest.length == 0) {
-            return 0x0;
-        }
-
-        assembly {
-            result := mload(add(source, 32))
-        }
     }
 }
