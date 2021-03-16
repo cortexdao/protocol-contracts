@@ -159,6 +159,7 @@ contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
 
     function _getPoolsAndAmounts(IAccountFunder.PoolAmount[] memory poolAmounts)
         internal
+        view
         returns (APYPoolTokenV2[] memory, uint256[] memory)
     {
         APYPoolTokenV2[] memory pools =
