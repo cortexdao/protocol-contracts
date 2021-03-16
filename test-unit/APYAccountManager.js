@@ -14,7 +14,7 @@ const erc20Interface = new ethers.utils.Interface(
   artifacts.require("ERC20").abi
 );
 
-describe("Contract: APYAccountManager", () => {
+describe.only("Contract: APYAccountManager", () => {
   // signers
   let deployer;
   let randomUser;
@@ -45,7 +45,9 @@ describe("Contract: APYAccountManager", () => {
 
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     APYAccountManager = await ethers.getContractFactory("APYAccountManager");
-    const APYManagerProxy = await ethers.getContractFactory("APYManagerProxy");
+    const APYAccountManagerProxy = await ethers.getContractFactory(
+      "APYAccountManagerProxy"
+    );
     APYGenericExecutor = await ethers.getContractFactory("APYGenericExecutor");
     executor = await APYGenericExecutor.deploy();
     await executor.deployed();
@@ -56,16 +58,14 @@ describe("Contract: APYAccountManager", () => {
     const proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
 
-    const mAptMock = await deployMockContract(deployer, []);
     const addressRegistryMock = await deployMockContract(
       deployer,
       artifacts.require("IAddressRegistry").abi
     );
     await addressRegistryMock.mock.getAddress.returns(FAKE_ADDRESS);
-    const proxy = await APYManagerProxy.deploy(
+    const proxy = await APYAccountManagerProxy.deploy(
       logic.address,
       proxyAdmin.address,
-      mAptMock.address,
       addressRegistryMock.address
     );
     await proxy.deployed();
@@ -75,20 +75,6 @@ describe("Contract: APYAccountManager", () => {
   describe("Defaults", () => {
     it("Owner is set to deployer", async () => {
       expect(await manager.owner()).to.equal(deployer.address);
-    });
-  });
-
-  describe("Set metapool token", () => {
-    it("Non-owner cannot set", async () => {
-      await expect(
-        manager.connect(randomUser).setMetaPoolToken(FAKE_ADDRESS)
-      ).to.be.revertedWith("revert Ownable: caller is not the owner");
-    });
-
-    it("Owner can set", async () => {
-      const contract = await deployMockContract(deployer, []);
-      await manager.connect(deployer).setMetaPoolToken(contract.address);
-      expect(await manager.mApt()).to.equal(contract.address);
     });
   });
 

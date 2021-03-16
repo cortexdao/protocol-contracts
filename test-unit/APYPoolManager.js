@@ -39,7 +39,9 @@ describe.only("Contract: APYPoolManager", () => {
 
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     APYPoolManager = await ethers.getContractFactory("APYPoolManager");
-    const APYManagerProxy = await ethers.getContractFactory("APYManagerProxy");
+    const APYPoolManagerProxy = await ethers.getContractFactory(
+      "APYPoolManagerProxy"
+    );
     APYGenericExecutor = await ethers.getContractFactory("APYGenericExecutor");
     executor = await APYGenericExecutor.deploy();
     await executor.deployed();
@@ -56,7 +58,7 @@ describe.only("Contract: APYPoolManager", () => {
       artifacts.require("IAddressRegistry").abi
     );
     await addressRegistryMock.mock.getAddress.returns(FAKE_ADDRESS);
-    const proxy = await APYManagerProxy.deploy(
+    const proxy = await APYPoolManagerProxy.deploy(
       logic.address,
       proxyAdmin.address,
       mAptMock.address,
@@ -172,6 +174,11 @@ describe.only("Contract: APYPoolManager", () => {
     });
 
     describe("fundAccount", () => {
+      it("Owner can call", async () => {
+        await expect(manager.connect(deployer).fundAccount(accountId, [])).to
+          .not.be.reverted;
+      });
+
       it("Non-owner cannot call", async () => {
         await expect(
           manager.connect(randomUser).fundAccount(accountId, [])
@@ -183,14 +190,15 @@ describe.only("Contract: APYPoolManager", () => {
           manager.connect(deployer).fundAccount(bytes32("invalidAccount"), [])
         ).to.be.revertedWith("INVALID_ACCOUNT");
       });
-
-      it("Owner can call", async () => {
-        await expect(manager.connect(deployer).fundAccount(accountId, [])).to
-          .not.be.reverted;
-      });
     });
 
     describe("withdrawFromAccount", () => {
+      it("Owner can call", async () => {
+        await expect(
+          manager.connect(deployer).withdrawFromAccount(accountId, [])
+        ).to.not.be.reverted;
+      });
+
       it("Non-owner cannot call", async () => {
         await expect(
           manager.connect(randomUser).withdrawFromAccount(accountId, [])
@@ -203,12 +211,6 @@ describe.only("Contract: APYPoolManager", () => {
             .connect(deployer)
             .withdrawFromAccount(bytes32("invalidAccount"), [])
         ).to.be.revertedWith("INVALID_ACCOUNT");
-      });
-
-      it("Owner can call", async () => {
-        await expect(
-          manager.connect(deployer).withdrawFromAccount(accountId, [])
-        ).to.not.be.reverted;
       });
     });
   });
