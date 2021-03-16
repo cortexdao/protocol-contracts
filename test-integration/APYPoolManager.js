@@ -24,7 +24,7 @@ const ADDRESS_REGISTRY_DEPLOYER = "0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3";
 console.debugging = false;
 /* ************************ */
 
-describe.only("Contract: APYPoolManager", () => {
+describe("Contract: APYPoolManager", () => {
   // to-be-deployed contracts
   let manager;
   let allocationRegistry;
@@ -360,11 +360,23 @@ describe.only("Contract: APYPoolManager", () => {
       );
 
       // Check the manager registered the asset allocations corretly
+      const expectedDaiId = ethers.utils.solidityKeccak256(
+        ["address", "address"],
+        [daiToken.address, fundedAccountAddress]
+      );
+      const expectedUsdcId = ethers.utils.solidityKeccak256(
+        ["address", "address"],
+        [usdcToken.address, fundedAccountAddress]
+      );
+      const expectedUsdtId = ethers.utils.solidityKeccak256(
+        ["address", "address"],
+        [usdtToken.address, fundedAccountAddress]
+      );
       const registeredIds = await allocationRegistry.getAssetAllocationIds();
       expect(registeredIds.length).to.equal(3);
-      expect(registeredIds[0]).to.equal(bytes32("strat1DaiBal"));
-      expect(registeredIds[1]).to.equal(bytes32("strat1UsdcBal"));
-      expect(registeredIds[2]).to.equal(bytes32("strat1UsdtBal"));
+      expect(registeredIds[0]).to.equal(expectedDaiId);
+      expect(registeredIds[1]).to.equal(expectedUsdcId);
+      expect(registeredIds[2]).to.equal(expectedUsdtId);
 
       const registeredDaiSymbol = await allocationRegistry.symbolOf(
         registeredIds[0]
