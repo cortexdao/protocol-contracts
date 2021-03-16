@@ -130,8 +130,8 @@ Manager (proxy): [0xfed91F1f9d7DcA3E6e4a4B83CEf1B14380AbDE79](https://etherscan.
 
 ## Deployment and Unwinding of Capital
 
-![deployment](https://github.com/apy-finance/apy-core/blob/develop/diagrams/PoolAddingLiquidity.png?raw=true)
-![unroll](https://github.com/apy-finance/apy-core/blob/develop/diagrams/PoolRedeemAPT.png?raw=true)
+![deployment](https://github.com/apy-finance/apy-core/blob/develop/diagrams/DeploymentOfCapital.png?raw=true)
+![unroll](https://github.com/apy-finance/apy-core/blob/develop/diagrams/UnwindOfCapital.png?raw=true)
 
 ## Chainlink TVL Computation
 
