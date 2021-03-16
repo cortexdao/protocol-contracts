@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "../APYPoolManager.sol";
 
-contract APYManagerUpgraded is APYPoolManager {
+contract APYPoolManagerUpgraded is APYPoolManager {
     bool public newlyAddedVariable;
 
     function initializeUpgrade() public override onlyAdmin {

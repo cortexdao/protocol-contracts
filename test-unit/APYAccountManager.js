@@ -14,7 +14,7 @@ const erc20Interface = new ethers.utils.Interface(
   artifacts.require("ERC20").abi
 );
 
-describe.only("Contract: APYAccountManager", () => {
+describe("Contract: APYAccountManager", () => {
   // signers
   let deployer;
   let randomUser;
@@ -158,58 +158,6 @@ describe.only("Contract: APYAccountManager", () => {
       expect(await account.owner()).to.equal(manager.address);
     });
 
-    describe("fundAccount", () => {
-      it("Non-owner cannot call", async () => {
-        await expect(
-          manager
-            .connect(randomUser)
-            .fundAccount(bytes32("account1"), [[], []], [])
-        ).to.be.revertedWith("revert Ownable: caller is not the owner");
-      });
-
-      it("Revert on invalid account", async () => {
-        await expect(
-          manager
-            .connect(deployer)
-            .fundAccount(bytes32("invalidAccount"), [[], []], [])
-        ).to.be.revertedWith("INVALID_ACCOUNT");
-      });
-
-      it("Owner can call", async () => {
-        await expect(
-          manager
-            .connect(deployer)
-            .fundAccount(bytes32("account1"), [[], []], [])
-        ).to.not.be.reverted;
-      });
-    });
-
-    describe("fundAndExecute", () => {
-      it("Non-owner cannot call", async () => {
-        await expect(
-          manager
-            .connect(randomUser)
-            .fundAndExecute(bytes32("account1"), [[], []], [], [])
-        ).to.be.revertedWith("revert Ownable: caller is not the owner");
-      });
-
-      it("Revert on invalid account", async () => {
-        await expect(
-          manager
-            .connect(deployer)
-            .fundAndExecute(bytes32("invalidAccount"), [[], []], [], [])
-        ).to.be.revertedWith("INVALID_ACCOUNT");
-      });
-
-      it("Owner can call", async () => {
-        await expect(
-          manager
-            .connect(deployer)
-            .fundAndExecute(bytes32("account1"), [[], []], [], [])
-        ).to.not.be.reverted;
-      });
-    });
-
     describe("execute", () => {
       it("Non-owner cannot call", async () => {
         await expect(
@@ -237,58 +185,6 @@ describe.only("Contract: APYAccountManager", () => {
           spender: spenderAddress,
           value: approvalAmount,
         });
-      });
-    });
-
-    describe("executeAndWithdraw", () => {
-      it("Non-owner cannot call", async () => {
-        await expect(
-          manager
-            .connect(randomUser)
-            .executeAndWithdraw(bytes32("account1"), [[], []], [], [])
-        ).to.be.revertedWith("revert Ownable: caller is not the owner");
-      });
-
-      it("Revert on invalid account", async () => {
-        await expect(
-          manager
-            .connect(deployer)
-            .executeAndWithdraw(bytes32("invalidAccount"), [[], []], [], [])
-        ).to.be.revertedWith("INVALID_ACCOUNT");
-      });
-
-      it("Owner can call", async () => {
-        await expect(
-          manager
-            .connect(deployer)
-            .executeAndWithdraw(bytes32("account1"), [[], []], [], [])
-        ).to.not.be.reverted;
-      });
-    });
-
-    describe("withdrawFromAccount", () => {
-      it("Non-owner cannot call", async () => {
-        await expect(
-          manager
-            .connect(randomUser)
-            .withdrawFromAccount(bytes32("acount1"), [[], []])
-        ).to.be.revertedWith("revert Ownable: caller is not the owner");
-      });
-
-      it("Revert on invalid account", async () => {
-        await expect(
-          manager
-            .connect(deployer)
-            .withdrawFromAccount(bytes32("invalidAccount"), [[], []])
-        ).to.be.revertedWith("INVALID_ACCOUNT");
-      });
-
-      it("Owner can call", async () => {
-        await expect(
-          manager
-            .connect(deployer)
-            .withdrawFromAccount(bytes32("account1"), [[], []])
-        ).to.not.be.reverted;
       });
     });
   });

@@ -7,7 +7,7 @@ const { bytes32 } = require("../utils/helpers");
 const { FAKE_ADDRESS } = require("../utils/helpers");
 const { deployMockContract } = require("@ethereum-waffle/mock-contract");
 
-describe.only("Contract: APYPoolManager", () => {
+describe("Contract: APYPoolManager", () => {
   // signers
   let deployer;
   let randomUser;
