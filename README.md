@@ -125,8 +125,8 @@ Manager (proxy): [0xfed91F1f9d7DcA3E6e4a4B83CEf1B14380AbDE79](https://etherscan.
 
 ## Depositing and Redeeming from APY Pools
 
-![addLiquidity](https://github.com/apy-finance/apy-core/blob/209756f99f5783fd5167b6c8e9693cdb213498c7/diagrams/PoolAddingLiquidity.png)
-![redeem](https://github.com/apy-finance/apy-core/blob/209756f99f5783fd5167b6c8e9693cdb213498c7/diagrams/Redeem%20APT.png)
+![addLiquidity](https://github.com/apy-finance/apy-core/blob/develop/diagrams/PoolRedeemAPT.png?raw=true)
+![redeem](https://github.com/apy-finance/apy-core/blob/develop/diagrams/PoolAddingLiquidity.png?raw=true)
 
 ## Deployment and Unwinding of Capital
 
