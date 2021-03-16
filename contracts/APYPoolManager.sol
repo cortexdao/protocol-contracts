@@ -193,11 +193,10 @@ contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     }
 
     /**
-     * @notice Move capital from APYPoolToken contracts to an Account
+     * @notice Move capital from APYPoolTokenV2 contracts to an Account
      * @param account The Account contract ID
-     * @param pools Specifies the APYPoolToken contracts to pull from and
-     * the amounts to pull.
-     * @param amounts
+     * @param pools the pools to pull from
+     * @param amounts the amounts to pull from pools
      *
      * @notice AccountAllocation example (pulls ~$1 from each pool):
      *      {
