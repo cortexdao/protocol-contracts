@@ -146,11 +146,8 @@ contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         bytes32 accountId,
         IAccountFunder.PoolAmount[] memory poolAmounts
     ) external override onlyOwner {
-        require(
-            accountFactory.getAccount(accountId) != address(0),
-            "INVALID_ACCOUNT"
-        );
         address accountAddress = accountFactory.getAccount(accountId);
+        require(accountAddress != address(0), "INVALID_ACCOUNT");
         (APYPoolTokenV2[] memory pools, uint256[] memory amounts) =
             _getPoolsAndAmounts(poolAmounts);
         _registerPoolUnderlyers(accountAddress, pools);
@@ -185,11 +182,8 @@ contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         bytes32 accountId,
         IAccountFunder.PoolAmount[] memory poolAmounts
     ) external override onlyOwner {
-        require(
-            accountFactory.getAccount(accountId) != address(0),
-            "INVALID_ACCOUNT"
-        );
         address accountAddress = accountFactory.getAccount(accountId);
+        require(accountAddress != address(0), "INVALID_ACCOUNT");
         _withdrawFromAccount(accountAddress, poolAmounts);
     }
 
@@ -224,9 +218,10 @@ contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
 
             underlyer.safeTransferFrom(address(pool), account, poolAmount);
         }
-        // MUST do the actual minting after calculating *all* mint amounts;
-        // otherwise the totalSupply will be changing while TVL doesn't,
-        // due to Chainlink not updating yet.
+        // MUST do the actual minting after calculating *all* mint amounts,
+        // otherwise due to Chainlink not updating during a transaction,
+        // the totalSupply will change while TVL doesn't.
+        //
         // Using the pre-mint TVL and totalSupply gives the same answer
         // as using post-mint values.
         for (uint256 i = 0; i < pools.length; i++) {
@@ -266,6 +261,12 @@ contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
 
             underlyer.safeTransferFrom(account, address(pool), amountToSend);
         }
+        // MUST do the actual burning after calculating *all* burn amounts,
+        // otherwise due to Chainlink not updating during a transaction,
+        // the totalSupply will change while TVL doesn't.
+        //
+        // Using the pre-burn TVL and totalSupply gives the same answer
+        // as using post-burn values.
         for (uint256 i = 0; i < pools.length; i++) {
             mApt.burn(address(pools[i]), burnAmounts[i]);
         }
