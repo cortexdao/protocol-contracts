@@ -14,13 +14,13 @@ const erc20Interface = new ethers.utils.Interface(
   artifacts.require("ERC20").abi
 );
 
-describe("Contract: APYManager", () => {
+describe("Contract: APYAccountManager", () => {
   // signers
   let deployer;
   let randomUser;
 
   // contract factories
-  let APYManager;
+  let APYAccountManager;
   let ProxyAdmin;
   let APYGenericExecutor;
 
@@ -44,13 +44,13 @@ describe("Contract: APYManager", () => {
     [deployer, randomUser] = await ethers.getSigners();
 
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    APYManager = await ethers.getContractFactory("APYManager");
+    APYAccountManager = await ethers.getContractFactory("APYAccountManager");
     const APYManagerProxy = await ethers.getContractFactory("APYManagerProxy");
     APYGenericExecutor = await ethers.getContractFactory("APYGenericExecutor");
     executor = await APYGenericExecutor.deploy();
     await executor.deployed();
 
-    const logic = await APYManager.deploy();
+    const logic = await APYAccountManager.deploy();
     await logic.deployed();
 
     const proxyAdmin = await ProxyAdmin.deploy();
@@ -69,7 +69,7 @@ describe("Contract: APYManager", () => {
       addressRegistryMock.address
     );
     await proxy.deployed();
-    manager = await APYManager.attach(proxy.address);
+    manager = await APYAccountManager.attach(proxy.address);
   });
 
   describe("Defaults", () => {
