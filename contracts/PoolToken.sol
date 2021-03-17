@@ -13,7 +13,7 @@ import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/ILiquidityPool.sol";
 import "./interfaces/IDetailedERC20.sol";
 
-contract APYPoolToken is
+contract PoolToken is
     ILiquidityPool,
     Initializable,
     OwnableUpgradeSafe,

@@ -9,7 +9,7 @@ import "./interfaces/IExecutor.sol";
  * @author APY.Finance
  * @notice This contract is delegate called to by an APYAccount.sol when executing sequences
  */
-contract APYGenericExecutor is Ownable, IExecutor {
+contract GenericExecutor is Ownable, IExecutor {
     /**
      * @notice Given a Data struct with a target and bytes sequence data, executes the method on the target contract
      * @param executionSteps Data struct containing the target address to execute against and the bytes data to execute

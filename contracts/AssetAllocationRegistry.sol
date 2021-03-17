@@ -18,7 +18,7 @@ import "./interfaces/IAssetAllocationRegistry.sol";
  *         can then be pulled by external systems to compute the
  *         TVL of the APY.Finance system.
  */
-contract APYAssetAllocationRegistry is
+contract AssetAllocationRegistry is
     Ownable,
     IAssetAllocationRegistry,
     IAssetAllocation

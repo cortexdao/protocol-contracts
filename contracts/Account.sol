@@ -6,12 +6,15 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IAccount.sol";
 import "./interfaces/IExecutor.sol";
 
-/// @title APY account represents one of many accounts APYManager.sol can deploy
-/// @author APY.Finance
-/// @notice The APYAccount is an abstracted representation of one of many accounts deployed by the APYManager that hold funds in various defi protocols that are earning yield
-/// @dev Deployed by APYManager and delegate calls to APYGenericExecutor
-
-contract APYAccount is Ownable, IAccount {
+/**
+ * @title The APY Account Contract
+ * @author APY.Finance
+ * @notice An Account is an abstracted representation of one of multiple
+ *         accounts deployed by the AccountManager that hold funds from various
+ *         yield-farming protocols.
+ * @dev Deployed by AccountManager and delegate calls to GenericExecutor
+ */
+contract Account is Ownable, IAccount {
     address public generalExecutor;
 
     /// @notice Constructor
@@ -21,8 +24,8 @@ contract APYAccount is Ownable, IAccount {
     }
 
     /// @notice Executes the steps array in sequence
-    /// @dev only callable by the deployer APYManager.sol
-    /// @param steps an array of APYGenericExecutor.Data that will be executed in order
+    /// @dev only callable by the deployer AccountManager.sol
+    /// @param steps an array of GenericExecutor.Data that will be executed in order
     function execute(IExecutor.Data[] memory steps)
         external
         override

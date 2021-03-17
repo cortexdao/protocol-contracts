@@ -2,9 +2,9 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "../APYAddressRegistry.sol";
+import "../AddressRegistry.sol";
 
-contract APYAddressRegistryUpgraded is APYAddressRegistry {
+contract AddressRegistryUpgraded is AddressRegistry {
     bool public newlyAddedVariable;
 
     function initializeUpgrade() public override onlyAdmin {

@@ -14,7 +14,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/math/SignedSafeMath.s
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/ILiquidityPool.sol";
 import "./interfaces/IDetailedERC20.sol";
-import "./APYMetaPoolToken.sol";
+import "./MetaPoolToken.sol";
 
 /**
  * @title APY.Finance Pool Token
@@ -50,7 +50,7 @@ import "./APYMetaPoolToken.sol";
  *         withdrawal requests, which will be processed periodically
  *         and unwind positions to free up funds.
  */
-contract APYPoolTokenV2 is
+contract PoolTokenV2 is
     ILiquidityPool,
     Initializable,
     OwnableUpgradeSafe,
@@ -82,7 +82,7 @@ contract APYPoolTokenV2 is
 
     // V2
     /// @notice token tracking value owed to the pool
-    APYMetaPoolToken public mApt;
+    MetaPoolToken public mApt;
     /// @notice seconds since last deposit during which withdrawal fee is charged
     uint256 public feePeriod;
     /// @notice percentage charged for withdrawal fee
@@ -145,7 +145,7 @@ contract APYPoolTokenV2 is
         onlyAdmin
     {
         require(Address.isContract(_mApt), "INVALID_ADDRESS");
-        mApt = APYMetaPoolToken(_mApt);
+        mApt = MetaPoolToken(_mApt);
         feePeriod = 1 days;
         feePercentage = 5;
         reservePercentage = 5;
@@ -168,7 +168,7 @@ contract APYPoolTokenV2 is
 
     function setMetaPoolToken(address payable _mApt) public onlyOwner {
         require(Address.isContract(_mApt), "INVALID_ADDRESS");
-        mApt = APYMetaPoolToken(_mApt);
+        mApt = MetaPoolToken(_mApt);
     }
 
     function setFeePeriod(uint256 _feePeriod) public onlyOwner {

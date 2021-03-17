@@ -2,9 +2,9 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "../APYAccountManager.sol";
+import "../AccountManager.sol";
 
-contract APYAccountManagerUpgraded is APYAccountManager {
+contract AccountManagerUpgraded is AccountManager {
     bool public newlyAddedVariable;
 
     function initializeUpgrade() public override onlyAdmin {

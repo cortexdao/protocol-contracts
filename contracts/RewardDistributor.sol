@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract APYRewardDistributor is Ownable {
+contract RewardDistributor is Ownable {
     using ECDSA for bytes32;
     using SafeERC20 for IERC20;
 
@@ -27,13 +27,13 @@ contract APYRewardDistributor is Ownable {
         uint256 amount;
     }
 
-    bytes32 private constant EIP712_DOMAIN_TYPEHASH = keccak256(
-        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-    );
+    bytes32 private constant EIP712_DOMAIN_TYPEHASH =
+        keccak256(
+            "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+        );
 
-    bytes32 private constant RECIPIENT_TYPEHASH = keccak256(
-        "Recipient(uint256 nonce,address wallet,uint256 amount)"
-    );
+    bytes32 private constant RECIPIENT_TYPEHASH =
+        keccak256("Recipient(uint256 nonce,address wallet,uint256 amount)");
 
     bytes32 private immutable DOMAIN_SEPARATOR;
 

@@ -11,9 +11,9 @@ import "./interfaces/IAddressRegistry.sol";
 import "./interfaces/IDetailedERC20.sol";
 import "./interfaces/IAccountFactory.sol";
 import "./interfaces/IAssetAllocationRegistry.sol";
-import "./APYPoolTokenV2.sol";
-import "./APYMetaPoolToken.sol";
-import "./APYAccount.sol";
+import "./PoolTokenV2.sol";
+import "./MetaPoolToken.sol";
+import "./Account.sol";
 
 /**
  * @title APY Manager
@@ -73,11 +73,7 @@ import "./APYAccount.sol";
  * execution allows us to conveniently leverage generic execution while
  * avoiding late updates to the TVL.
  */
-contract APYAccountManager is
-    Initializable,
-    OwnableUpgradeSafe,
-    IAccountFactory
-{
+contract AccountManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
     using SafeMath for uint256;
     using SafeERC20 for IDetailedERC20;
 
@@ -141,7 +137,7 @@ contract APYAccountManager is
 
     /**
      * @notice Create a new account to run strategies.
-     * @dev Associates an APYGenericExecutor with the account. This executor
+     * @dev Associates an GenericExecutor with the account. This executor
      * is used when the `execute` function is called for a specific account ID.
      * @param accountId ID identifying an address for execution
      * @param generalExecutor implementation contract for execution engine
@@ -152,7 +148,7 @@ contract APYAccountManager is
         onlyOwner
         returns (address)
     {
-        APYAccount account = new APYAccount(generalExecutor);
+        Account account = new Account(generalExecutor);
         getAccount[accountId] = address(account);
         emit AccountDeployed(accountId, address(account), generalExecutor);
         return address(account);

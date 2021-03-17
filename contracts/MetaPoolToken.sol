@@ -40,7 +40,7 @@ import "./interfaces/IMintable.sol";
  * +--------------+        APYMetaPoolToken.burn         +--------------+
  *                  ----------------------------------->
  */
-contract APYMetaPoolToken is
+contract MetaPoolToken is
     Initializable,
     OwnableUpgradeSafe,
     ReentrancyGuardUpgradeSafe,

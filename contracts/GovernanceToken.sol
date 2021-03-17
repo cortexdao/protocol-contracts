@@ -6,7 +6,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 
-contract APYGovernanceToken is
+contract GovernanceToken is
     Initializable,
     OwnableUpgradeSafe,
     ERC20UpgradeSafe

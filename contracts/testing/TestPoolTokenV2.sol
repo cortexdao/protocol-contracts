@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.11;
 
-import "../APYPoolTokenV2.sol";
+import "../PoolTokenV2.sol";
 
 /**
  * @dev Proxy contract to test internal variables and functions
  *      Should not be used other than in test files!
  */
-contract TestAPYPoolTokenV2 is APYPoolTokenV2 {
+contract TestPoolTokenV2 is PoolTokenV2 {
     function mint(address account, uint256 amount) public {
         _mint(account, amount);
     }

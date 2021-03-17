@@ -24,7 +24,7 @@ import "./interfaces/IAddressRegistry.sol";
  *         define explicit boundaries between groups of contracts,
  *         each of which is logically cohesive.
  */
-contract APYAddressRegistry is
+contract AddressRegistry is
     Initializable,
     OwnableUpgradeSafe,
     IAddressRegistry
@@ -147,7 +147,7 @@ contract APYAddressRegistry is
     }
 
     /**
-     * @notice Get the address for the APYAssetAllocationRegistry,
+     * @notice Get the address for the AssetAllocationRegistry,
      *         aka the "Chainlink Registry", as it is used by
      *         Chainlink nodes to compute the deployed value of the
      *         APY.Finance system.

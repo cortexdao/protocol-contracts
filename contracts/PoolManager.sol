@@ -12,9 +12,9 @@ import "./interfaces/IDetailedERC20.sol";
 import "./interfaces/IAccountFunder.sol";
 import "./interfaces/IAccountFactory.sol";
 import "./interfaces/IAssetAllocationRegistry.sol";
-import "./APYPoolTokenV2.sol";
-import "./APYMetaPoolToken.sol";
-import "./APYAccount.sol";
+import "./PoolTokenV2.sol";
+import "./MetaPoolToken.sol";
+import "./Account.sol";
 
 /**
  * @title APY Manager
@@ -74,7 +74,7 @@ import "./APYAccount.sol";
  * execution allows us to conveniently leverage generic execution while
  * avoiding late updates to the TVL.
  */
-contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
+contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     using SafeMath for uint256;
     using SafeERC20 for IDetailedERC20;
 
@@ -82,7 +82,7 @@ contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     /* impl-specific storage variables */
     /* ------------------------------- */
     address public proxyAdmin;
-    APYMetaPoolToken public mApt;
+    MetaPoolToken public mApt;
     IAddressRegistry public addressRegistry;
     IAccountFactory public accountFactory;
     bytes32[] internal _poolIds;
@@ -119,7 +119,7 @@ contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
 
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
-        mApt = APYMetaPoolToken(_mApt);
+        mApt = MetaPoolToken(_mApt);
         addressRegistry = IAddressRegistry(_addressRegistry);
     }
 
@@ -138,7 +138,7 @@ contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     /**
      * @notice Fund Account contract and register an asset allocation
      * @param accountId The Account contract ID
-     * @param poolAmounts Specifies the APYPoolToken contracts to pull from and
+     * @param poolAmounts Specifies the PoolToken contracts to pull from and
      * the amounts to pull.
      * See APYManager._fundAccount.
      */
@@ -148,7 +148,7 @@ contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     ) external override onlyOwner {
         address accountAddress = accountFactory.getAccount(accountId);
         require(accountAddress != address(0), "INVALID_ACCOUNT");
-        (APYPoolTokenV2[] memory pools, uint256[] memory amounts) =
+        (PoolTokenV2[] memory pools, uint256[] memory amounts) =
             _getPoolsAndAmounts(poolAmounts);
         _registerPoolUnderlyers(accountAddress, pools);
         _fundAccount(accountAddress, pools, amounts);
@@ -157,14 +157,13 @@ contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     function _getPoolsAndAmounts(IAccountFunder.PoolAmount[] memory poolAmounts)
         internal
         view
-        returns (APYPoolTokenV2[] memory, uint256[] memory)
+        returns (PoolTokenV2[] memory, uint256[] memory)
     {
-        APYPoolTokenV2[] memory pools =
-            new APYPoolTokenV2[](poolAmounts.length);
+        PoolTokenV2[] memory pools = new PoolTokenV2[](poolAmounts.length);
         uint256[] memory amounts = new uint256[](poolAmounts.length);
         for (uint256 i = 0; i < poolAmounts.length; i++) {
             amounts[i] = poolAmounts[i].amount;
-            pools[i] = APYPoolTokenV2(
+            pools[i] = PoolTokenV2(
                 addressRegistry.getAddress(poolAmounts[i].poolId)
             );
         }
@@ -172,9 +171,9 @@ contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     }
 
     /**
-     * @notice Move capital from an Account to the APYPoolToken contracts
+     * @notice Move capital from an Account to the PoolToken contracts
      * @param accountId The Account contract ID
-     * @param poolAmounts Specifies the APYPoolToken contracts to push to and
+     * @param poolAmounts Specifies the PoolToken contracts to push to and
      * the amounts to push.
      * See APYManager._withdrawFromAccount.
      */
@@ -188,7 +187,7 @@ contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     }
 
     /**
-     * @notice Move capital from APYPoolTokenV2 contracts to an Account
+     * @notice Move capital from PoolTokenV2 contracts to an Account
      * @param account The Account contract ID
      * @param pools the pools to pull from
      * @param amounts the amounts to pull from pools
@@ -201,12 +200,12 @@ contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
      */
     function _fundAccount(
         address account,
-        APYPoolTokenV2[] memory pools,
+        PoolTokenV2[] memory pools,
         uint256[] memory amounts
     ) internal {
         uint256[] memory mintAmounts = new uint256[](pools.length);
         for (uint256 i = 0; i < pools.length; i++) {
-            APYPoolTokenV2 pool = pools[i];
+            PoolTokenV2 pool = pools[i];
             uint256 poolAmount = amounts[i];
             IDetailedERC20 underlyer = pool.underlyer();
 
@@ -230,9 +229,9 @@ contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     }
 
     /**
-     * @notice Move capital from an Account to the APYPoolToken contracts
+     * @notice Move capital from an Account to the PoolToken contracts
      * @param account The Account contract ID
-     * @param poolAmounts Specifies the APYPoolToken contracts to push to and
+     * @param poolAmounts Specifies the PoolToken contracts to push to and
      * the amounts to push.
      *
      * @notice AccountAllocation example (pushes ~$1 to each pool from the Account):
@@ -245,11 +244,11 @@ contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         address account,
         IAccountFunder.PoolAmount[] memory poolAmounts
     ) internal {
-        (APYPoolTokenV2[] memory pools, uint256[] memory amounts) =
+        (PoolTokenV2[] memory pools, uint256[] memory amounts) =
             _getPoolsAndAmounts(poolAmounts);
         uint256[] memory burnAmounts = new uint256[](pools.length);
         for (uint256 i = 0; i < pools.length; i++) {
-            APYPoolTokenV2 pool = pools[i];
+            PoolTokenV2 pool = pools[i];
             uint256 amountToSend = amounts[i];
             IDetailedERC20 underlyer = pool.underlyer();
 
@@ -294,14 +293,14 @@ contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
      */
     function _registerPoolUnderlyers(
         address account,
-        APYPoolTokenV2[] memory pools
+        PoolTokenV2[] memory pools
     ) internal {
         IAssetAllocationRegistry assetAllocationRegistry =
             IAssetAllocationRegistry(
                 addressRegistry.getAddress("chainlinkRegistry")
             );
         for (uint256 i = 0; i < pools.length; i++) {
-            APYPoolTokenV2 pool = pools[i];
+            PoolTokenV2 pool = pools[i];
             IDetailedERC20 underlyer = pool.underlyer();
             string memory symbol = underlyer.symbol();
             bytes memory _data =
@@ -338,7 +337,7 @@ contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
 
     function setMetaPoolToken(address payable _mApt) public onlyOwner {
         require(Address.isContract(_mApt), "INVALID_ADDRESS");
-        mApt = APYMetaPoolToken(_mApt);
+        mApt = MetaPoolToken(_mApt);
     }
 
     function setAddressRegistry(address _addressRegistry) public onlyOwner {
