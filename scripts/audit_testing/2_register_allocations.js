@@ -38,10 +38,7 @@ async function main(argv) {
     addressRegistryAddress
   );
   const registryAddress = await addressRegistry.chainlinkRegistryAddress();
-  const registry = await ethers.getContractAt(
-    "APYAssetAllocationRegistry",
-    registryAddress
-  );
+  const tvlManager = await ethers.getContractAt("TVLManager", registryAddress);
 
   console.log("");
   console.log("Registering ...");
@@ -70,7 +67,7 @@ async function main(argv) {
    * managed in differing ways, whether they are held by different
    * contracts or subject to different holding periods.
    *
-   * Each asset allocation must be registered with APYAssetAllocationRegistry,
+   * Each asset allocation must be registered with TVLManager,
    * in order for the Chainlink nodes to include it within their TVL
    * computation.
    *
@@ -113,21 +110,21 @@ async function main(argv) {
     ]
   );
 
-  let trx = await registry.addAssetAllocation(
+  let trx = await tvlManager.addAssetAllocation(
     bytes32("dai"),
     [curve.address, calldataForDai],
     "DAI",
     18
   );
   await trx.wait();
-  trx = await registry.addAssetAllocation(
+  trx = await tvlManager.addAssetAllocation(
     bytes32("usdc"),
     [curve.address, calldataForUsdc],
     "USDC",
     6
   );
   await trx.wait();
-  trx = await registry.addAssetAllocation(
+  trx = await tvlManager.addAssetAllocation(
     bytes32("usdt"),
     [curve.address, calldataForUsdt],
     "USDT",
