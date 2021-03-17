@@ -27,7 +27,7 @@ console.debugging = false;
 describe("Contract: PoolManager", () => {
   // to-be-deployed contracts
   let manager;
-  let allocationRegistry;
+  let tvlManager;
   let mApt;
 
   // signers
@@ -206,11 +206,9 @@ describe("Contract: PoolManager", () => {
     /*******************************************/
     /***** deploy asset allocation registry ****/
     /*******************************************/
-    const AssetAllocationRegistry = await ethers.getContractFactory(
-      "AssetAllocationRegistry"
-    );
-    allocationRegistry = await AssetAllocationRegistry.deploy(manager.address);
-    await allocationRegistry.deployed();
+    const TVLManager = await ethers.getContractFactory("TVLManager");
+    tvlManager = await TVLManager.deploy(manager.address);
+    await tvlManager.deployed();
     const addressRegistry = await ethers.getContractAt(
       legos.apy.abis.APY_ADDRESS_REGISTRY_Logic,
       legos.apy.addresses.APY_ADDRESS_REGISTRY,
@@ -218,7 +216,7 @@ describe("Contract: PoolManager", () => {
     );
     await addressRegistry.registerAddress(
       bytes32("chainlinkRegistry"),
-      allocationRegistry.address
+      tvlManager.address
     );
 
     /*********************************************/
@@ -306,9 +304,9 @@ describe("Contract: PoolManager", () => {
     it("Unregistered pool fails", async () => {
       await expect(
         manager.fundAccount(accountId, [
-          [bytes32("daiPool"), 10],
-          [bytes32("invalidPoolId"), 10],
-          [bytes32("usdtPool"), 10],
+          { poolId: bytes32("daiPool"), amount: 10 },
+          { poolId: bytes32("invalidPoolId"), amount: 10 },
+          { poolId: bytes32("usdtPool"), amount: 10 },
         ])
       ).to.be.revertedWith("Missing address");
     });
@@ -368,45 +366,39 @@ describe("Contract: PoolManager", () => {
         ["address", "address"],
         [usdtToken.address, fundedAccountAddress]
       );
-      const registeredIds = await allocationRegistry.getAssetAllocationIds();
+      const registeredIds = await tvlManager.getAssetAllocationIds();
       expect(registeredIds.length).to.equal(3);
       expect(registeredIds[0]).to.equal(expectedDaiId);
       expect(registeredIds[1]).to.equal(expectedUsdcId);
       expect(registeredIds[2]).to.equal(expectedUsdtId);
 
-      const registeredDaiSymbol = await allocationRegistry.symbolOf(
-        registeredIds[0]
-      );
-      const registeredUsdcSymbol = await allocationRegistry.symbolOf(
-        registeredIds[1]
-      );
-      const registeredUsdtSymbol = await allocationRegistry.symbolOf(
-        registeredIds[2]
-      );
+      const registeredDaiSymbol = await tvlManager.symbolOf(registeredIds[0]);
+      const registeredUsdcSymbol = await tvlManager.symbolOf(registeredIds[1]);
+      const registeredUsdtSymbol = await tvlManager.symbolOf(registeredIds[2]);
       expect(registeredDaiSymbol).to.equal("DAI");
       expect(registeredUsdcSymbol).to.equal("USDC");
       expect(registeredUsdtSymbol).to.equal("USDT");
 
-      const registeredDaiDecimals = await allocationRegistry.decimalsOf(
+      const registeredDaiDecimals = await tvlManager.decimalsOf(
         registeredIds[0]
       );
-      const registeredUsdcDecimals = await allocationRegistry.decimalsOf(
+      const registeredUsdcDecimals = await tvlManager.decimalsOf(
         registeredIds[1]
       );
-      const registeredUsdtDecimals = await allocationRegistry.decimalsOf(
+      const registeredUsdtDecimals = await tvlManager.decimalsOf(
         registeredIds[2]
       );
       expect(registeredDaiDecimals).to.equal(18);
       expect(registeredUsdcDecimals).to.equal(6);
       expect(registeredUsdtDecimals).to.equal(6);
 
-      const registeredStratDaiBal = await allocationRegistry.balanceOf(
+      const registeredStratDaiBal = await tvlManager.balanceOf(
         registeredIds[0]
       );
-      const registeredStratUsdcBal = await allocationRegistry.balanceOf(
+      const registeredStratUsdcBal = await tvlManager.balanceOf(
         registeredIds[1]
       );
-      const registeredStratUsdtBal = await allocationRegistry.balanceOf(
+      const registeredStratUsdtBal = await tvlManager.balanceOf(
         registeredIds[2]
       );
       expect(registeredStratDaiBal).equal(strategyDaiBalance);
