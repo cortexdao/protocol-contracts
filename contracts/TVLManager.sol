@@ -18,31 +18,39 @@ import "./interfaces/ITVLManager.sol";
  *         can then be pulled by external systems to compute the
  *         TVL of the APY.Finance system.
  */
-contract TVLManager is
-    Ownable,
-    ITVLManager,
-    IAssetAllocation
-{
+contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
-    address public manager;
+    address public poolManager;
+    address public accountManager;
 
     EnumerableSet.Bytes32Set private _allocationIds;
     mapping(bytes32 => Data) private _allocationData;
     mapping(bytes32 => string) private _allocationSymbols;
     mapping(bytes32 => uint256) private _allocationDecimals;
 
-    event ManagerChanged(address);
+    event PoolManagerChanged(address);
+    event AccountManagerChanged(address);
 
-    constructor(address managerAddress) public {
-        require(managerAddress != address(0), "INVALID_MANAGER");
-        setManagerAddress(managerAddress);
+    constructor(address poolManagerAddress, address accountManagerAddress)
+        public
+    {
+        require(poolManagerAddress != address(0), "INVALID_MANAGER");
+        require(accountManagerAddress != address(0), "INVALID_MANAGER");
+        setPoolManagerAddress(poolManagerAddress);
+        setAccountManagerAddress(accountManagerAddress);
     }
 
-    function setManagerAddress(address _manager) public onlyOwner {
+    function setPoolManagerAddress(address _manager) public onlyOwner {
         require(_manager != address(0), "INVALID_MANAGER");
-        manager = _manager;
-        emit ManagerChanged(_manager);
+        poolManager = _manager;
+        emit PoolManagerChanged(_manager);
+    }
+
+    function setAccountManagerAddress(address _manager) public onlyOwner {
+        require(_manager != address(0), "INVALID_MANAGER");
+        accountManager = _manager;
+        emit AccountManagerChanged(_manager);
     }
 
     /**
@@ -51,7 +59,9 @@ contract TVLManager is
      */
     modifier onlyPermissioned() {
         require(
-            msg.sender == owner() || msg.sender == manager,
+            msg.sender == owner() ||
+                msg.sender == poolManager ||
+                msg.sender == accountManager,
             "PERMISSIONED_ONLY"
         );
         _;
