@@ -60,40 +60,12 @@ async function main(argv) {
   );
 
   console.log("");
-  console.log("Clear out deprecated allocations from testing ...");
-  console.log("");
-
-  let gasPrice = await getGasPrice(argv.gasPrice);
-  let trx = await tvlManager.removeAssetAllocation(bytes32("daiPool"), {
-    gasPrice,
-  });
-  console.log("Remove allocation:", `https://etherscan.io/tx/${trx.hash}`);
-  await trx.wait();
-  gasPrice = await getGasPrice(argv.gasPrice);
-  trx = await tvlManager.removeAssetAllocation(bytes32("usdcPool"), {
-    gasPrice,
-  });
-  console.log("Remove allocation:", `https://etherscan.io/tx/${trx.hash}`);
-  await trx.wait();
-  gasPrice = await getGasPrice(argv.gasPrice);
-  trx = await tvlManager.removeAssetAllocation(bytes32("usdtPool"), {
-    gasPrice,
-  });
-  console.log("Remove allocation:", `https://etherscan.io/tx/${trx.hash}`);
-  await trx.wait();
-  console.log(
-    "Asset allocations (should be []):",
-    await tvlManager.getAssetAllocationIds()
-  );
-  console.log("... done.");
-
-  console.log("");
   console.log("Registering ...");
   console.log("");
   // gasPrice = await getGasPrice(argv.gasPrice);
-  // let trx = ...
+  // let trx = await tvlManager.addAssetAllocation(...)
   // console.log(
-  //   "Deploy:",
+  //   "Register allocation:",
   //   `https://etherscan.io/tx/${trx.hash}`
   // );
   // await trx.wait()
