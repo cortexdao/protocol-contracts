@@ -147,7 +147,7 @@ contract AddressRegistry is
     }
 
     /**
-     * @notice Get the address for the AssetAllocationRegistry,
+     * @notice Get the address for the TVLManager,
      *         aka the "Chainlink Registry", as it is used by
      *         Chainlink nodes to compute the deployed value of the
      *         APY.Finance system.

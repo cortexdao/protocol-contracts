@@ -8,7 +8,7 @@ import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/ITVLManager.sol";
 
 /**
- * @title APY Asset Allocation Registry
+ * @title TVL Manager
  * @author APY.Finance
  * @notice This contract allows registration of asset allocations
  *         expected to arise from movement of capital through
@@ -18,7 +18,11 @@ import "./interfaces/ITVLManager.sol";
  *         can then be pulled by external systems to compute the
  *         TVL of the APY.Finance system.
  */
-contract AssetAllocationRegistry is Ownable, ITVLManager, IAssetAllocation {
+contract TVLManager is
+    Ownable,
+    ITVLManager,
+    IAssetAllocation
+{
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
     address public manager;
@@ -187,7 +191,7 @@ contract AssetAllocationRegistry is Ownable, ITVLManager, IAssetAllocation {
      *         without modifying the internal state of the contract.
      * @dev The execution is via static call, meaning no state changes can arise.
      * @param data a struct holding the target and data of the static call
-     * See IAssetAllocationRegistry.Data.
+     * See ITVLManager.Data.
      */
     function executeView(Data memory data)
         public

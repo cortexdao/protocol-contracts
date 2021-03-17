@@ -10,7 +10,7 @@ import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAddressRegistry.sol";
 import "./interfaces/IDetailedERC20.sol";
 import "./interfaces/IAccountFactory.sol";
-import "./interfaces/IAssetAllocationRegistry.sol";
+import "./interfaces/ITVLManager.sol";
 import "./PoolTokenV2.sol";
 import "./MetaPoolToken.sol";
 import "./Account.sol";
@@ -56,7 +56,7 @@ import "./Account.sol";
  * UPDATING TVL
  *--------------------
  * When the APY Manager routes capital using generic execution it can also
- * register an asset allocation with the AssetAllocationRegistry. Registering
+ * register an asset allocation with the TVLManager. Registering
  * asset allocations is important for Chainlink to calculate accurate TVL
  * values.
  *
@@ -64,7 +64,7 @@ import "./Account.sol";
  * acquired by the APYAccount contract, including those from providing
  * liquidity to a new protocol. These newly acquired assets and the manner
  * in which they are held in the system must be registered with the
- * AssetAllocationRegistry in order to be used in Chainlink's computation
+ * TVLManager in order to be used in Chainlink's computation
  * of deployed TVL.
  *
  * Registration should not be done after generic execution as the TVL may
@@ -187,7 +187,7 @@ contract AccountManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
     function execute(
         bytes32 accountId,
         IExecutor.Data[] memory steps,
-        IAssetAllocationRegistry.AssetAllocation[] memory viewData
+        ITVLManager.AssetAllocation[] memory viewData
     ) public onlyOwner {
         require(getAccount[accountId] != address(0), "INVALID_ACCOUNT");
         address accountAddress = getAccount[accountId];
@@ -216,15 +216,12 @@ contract AccountManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
      *      }
      */
     function _registerAllocationData(
-        IAssetAllocationRegistry.AssetAllocation[] memory viewData
+        ITVLManager.AssetAllocation[] memory viewData
     ) internal {
-        IAssetAllocationRegistry assetAllocationRegistry =
-            IAssetAllocationRegistry(
-                addressRegistry.getAddress("chainlinkRegistry")
-            );
+        ITVLManager assetAllocationRegistry =
+            ITVLManager(addressRegistry.getAddress("chainlinkRegistry"));
         for (uint256 i = 0; i < viewData.length; i++) {
-            IAssetAllocationRegistry.AssetAllocation memory viewAllocation =
-                viewData[i];
+            ITVLManager.AssetAllocation memory viewAllocation = viewData[i];
             assetAllocationRegistry.addAssetAllocation(
                 viewAllocation.sequenceId,
                 viewAllocation.data,
