@@ -11,9 +11,9 @@ const { getGasPrice, updateDeployJsons } = require("../../utils/helpers");
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
   await hre.run("compile");
-  const NETWORK_NAME = network.name.toUpperCase();
+  const networkName = network.name.toUpperCase();
   console.log("");
-  console.log(`${NETWORK_NAME} selected`);
+  console.log(`${networkName} selected`);
   console.log("");
 
   const MANAGER_MNEMONIC = process.env.MANAGER_MNEMONIC;
@@ -24,12 +24,14 @@ async function main(argv) {
   /* TESTING on localhost only
    * may need to fund the deployer while testing
    */
-  // const [funder] = await ethers.getSigners();
-  // const fundingTrx = await funder.sendTransaction({
-  //   to: managerDeployer.address,
-  //   value: ethers.utils.parseEther("1.0"),
-  // });
-  // await fundingTrx.wait();
+  if (networkName == "LOCALHOST") {
+    const [funder] = await ethers.getSigners();
+    const fundingTrx = await funder.sendTransaction({
+      to: managerDeployer.address,
+      value: ethers.utils.parseEther("1.0"),
+    });
+    await fundingTrx.wait();
+  }
 
   const balance =
     (await ethers.provider.getBalance(managerDeployer.address)).toString() /
@@ -40,12 +42,12 @@ async function main(argv) {
   console.log("");
   console.log("Deploying generic executor ...");
   console.log("");
-  const APYGenericExecutor = await ethers.getContractFactory(
-    "APYGenericExecutor",
+  const GenericExecutor = await ethers.getContractFactory(
+    "GenericExecutor",
     managerDeployer
   );
   let gasPrice = await getGasPrice(argv.gasPrice);
-  const genericExecutor = await APYGenericExecutor.deploy({ gasPrice });
+  const genericExecutor = await GenericExecutor.deploy({ gasPrice });
   console.log(
     "Deploy:",
     `https://etherscan.io/tx/${genericExecutor.deployTransaction.hash}`
@@ -55,11 +57,11 @@ async function main(argv) {
   console.log("");
 
   const deployData = {
-    APYGenericExecutor: genericExecutor.address,
+    GenericExecutor: genericExecutor.address,
   };
-  updateDeployJsons(NETWORK_NAME, deployData);
+  updateDeployJsons(networkName, deployData);
 
-  if (["KOVAN", "MAINNET"].includes(NETWORK_NAME)) {
+  if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");
     console.log("Verifying on Etherscan ...");
     await ethers.provider.waitForTransaction(

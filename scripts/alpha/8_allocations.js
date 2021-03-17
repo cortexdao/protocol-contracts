@@ -24,37 +24,39 @@ const {
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
   await hre.run("compile");
-  const NETWORK_NAME = network.name.toUpperCase();
+  const networkName = network.name.toUpperCase();
   console.log("");
-  console.log(`${NETWORK_NAME} selected`);
+  console.log(`${networkName} selected`);
   console.log("");
 
   const TVL_MANAGER_MNEMONIC = process.env.TVL_MANAGER_MNEMONIC;
-  const managerDeployer = ethers.Wallet.fromMnemonic(
+  const tvlManagerDeployer = ethers.Wallet.fromMnemonic(
     TVL_MANAGER_MNEMONIC
   ).connect(ethers.provider);
-  console.log("Deployer address:", managerDeployer.address);
+  console.log("Deployer address:", tvlManagerDeployer.address);
   /* TESTING on localhost only
    * need to fund as there is no ETH on Mainnet for the deployer
    */
-  // const [funder] = await ethers.getSigners();
-  // const fundingTrx = await funder.sendTransaction({
-  //   to: mAptDeployer.address,
-  //   value: ethers.utils.parseEther("1.0"),
-  // });
-  // await fundingTrx.wait();
+  if (networkName == "LOCALHOST") {
+    const [funder] = await ethers.getSigners();
+    const fundingTrx = await funder.sendTransaction({
+      to: tvlManagerDeployer.address,
+      value: ethers.utils.parseEther("1.0"),
+    });
+    await fundingTrx.wait();
+  }
 
   const balance =
-    (await ethers.provider.getBalance(managerDeployer.address)).toString() /
+    (await ethers.provider.getBalance(tvlManagerDeployer.address)).toString() /
     1e18;
   console.log("ETH balance:", balance.toString());
   console.log("");
 
-  const registryAddress = getDeployedAddress("TVLManager", NETWORK_NAME);
+  const tvlManagerAddress = getDeployedAddress("TVLManager", networkName);
   const tvlManager = await ethers.getContractAt(
     "TVLManager",
-    registryAddress,
-    managerDeployer
+    tvlManagerAddress,
+    tvlManagerDeployer
   );
 
   console.log("");

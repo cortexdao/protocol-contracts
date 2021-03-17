@@ -26,9 +26,9 @@ const {
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
   await hre.run("compile");
-  const NETWORK_NAME = network.name.toUpperCase();
+  const networkName = network.name.toUpperCase();
   console.log("");
-  console.log(`${NETWORK_NAME} selected`);
+  console.log(`${networkName} selected`);
   console.log("");
 
   const MAPT_MNEMONIC = process.env.MAPT_MNEMONIC;
@@ -39,12 +39,14 @@ async function main(argv) {
   /* TESTING on localhost only
    * need to fund as there is no ETH on Mainnet for the deployer
    */
-  // const [funder] = await ethers.getSigners();
-  // const fundingTrx = await funder.sendTransaction({
-  //   to: mAptDeployer.address,
-  //   value: ethers.utils.parseEther("1.0"),
-  // });
-  // await fundingTrx.wait();
+  if (networkName == "LOCALHOST") {
+    const [funder] = await ethers.getSigners();
+    const fundingTrx = await funder.sendTransaction({
+      to: mAptDeployer.address,
+      value: ethers.utils.parseEther("1.0"),
+    });
+    await fundingTrx.wait();
+  }
 
   const balance =
     (await ethers.provider.getBalance(mAptDeployer.address)).toString() / 1e18;
@@ -59,12 +61,12 @@ async function main(argv) {
     "ProxyAdmin",
     mAptDeployer
   );
-  const APYMetaPoolToken = await ethers.getContractFactory(
-    "APYMetaPoolToken",
+  const MetaPoolToken = await ethers.getContractFactory(
+    "MetaPoolToken",
     mAptDeployer
   );
-  const APYMetaPoolTokenProxy = await ethers.getContractFactory(
-    "APYMetaPoolTokenProxy",
+  const MetaPoolTokenProxy = await ethers.getContractFactory(
+    "MetaPoolTokenProxy",
     mAptDeployer
   );
 
@@ -77,7 +79,7 @@ async function main(argv) {
     `https://etherscan.io/tx/${proxyAdmin.deployTransaction.hash}`
   );
   await proxyAdmin.deployed();
-  deploy_data["APYMetaPoolTokenProxyAdmin"] = proxyAdmin.address;
+  deploy_data["MetaPoolTokenProxyAdmin"] = proxyAdmin.address;
   console.log(`ProxyAdmin: ${chalk.green(proxyAdmin.address)}`);
   console.log("");
   assert.strictEqual(
@@ -87,20 +89,20 @@ async function main(argv) {
   );
 
   gasPrice = await getGasPrice(argv.gasPrice);
-  const logic = await APYMetaPoolToken.deploy({ gasPrice });
+  const logic = await MetaPoolToken.deploy({ gasPrice });
   console.log(
     "Deploy:",
     `https://etherscan.io/tx/${logic.deployTransaction.hash}`
   );
   await logic.deployed();
-  deploy_data["APYMetaPoolToken"] = logic.address;
+  deploy_data["MetaPoolToken"] = logic.address;
   console.log(`Implementation Logic: ${chalk.green(logic.address)}`);
   console.log("");
 
-  const tvlAggAddress = getAggregatorAddress("TVL", NETWORK_NAME);
+  const tvlAggAddress = getAggregatorAddress("TVL", networkName);
   const aggStalePeriod = 14400;
   gasPrice = await getGasPrice(argv.gasPrice);
-  const proxy = await APYMetaPoolTokenProxy.deploy(
+  const proxy = await MetaPoolTokenProxy.deploy(
     logic.address,
     proxyAdmin.address,
     tvlAggAddress,
@@ -112,7 +114,7 @@ async function main(argv) {
     `https://etherscan.io/tx/${proxy.deployTransaction.hash}`
   );
   await proxy.deployed();
-  deploy_data["APYMetaPoolTokenProxy"] = proxy.address;
+  deploy_data["MetaPoolTokenProxy"] = proxy.address;
   console.log(`Proxy: ${chalk.green(proxy.address)}`);
   console.log("");
   console.log("TVL Aggregator:", tvlAggAddress);
@@ -120,9 +122,9 @@ async function main(argv) {
   console.log("Aggregator stale period:", aggStalePeriod);
   console.log("");
 
-  updateDeployJsons(NETWORK_NAME, deploy_data);
+  updateDeployJsons(networkName, deploy_data);
 
-  if (["KOVAN", "MAINNET"].includes(NETWORK_NAME)) {
+  if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");
     console.log("Verifying on Etherscan ...");
     await ethers.provider.waitForTransaction(proxy.deployTransaction.hash, 5); // wait for Etherscan to catch up
@@ -136,7 +138,7 @@ async function main(argv) {
       ],
       // to avoid the "More than one contract was found to match the deployed bytecode."
       // with proxy contracts that only differ in constructors but have the same bytecode
-      contract: "contracts/APYMetaPoolTokenProxy.sol:APYMetaPoolTokenProxy",
+      contract: "contracts/MetaPoolTokenProxy.sol:MetaPoolTokenProxy",
     });
     await hre.run("verify:verify", {
       address: logic.address,

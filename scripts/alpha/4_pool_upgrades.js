@@ -16,9 +16,9 @@ const {
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
   await hre.run("compile");
-  const NETWORK_NAME = network.name.toUpperCase();
+  const networkName = network.name.toUpperCase();
   console.log("");
-  console.log(`${NETWORK_NAME} selected`);
+  console.log(`${networkName} selected`);
   console.log("");
 
   const POOL_MNEMONIC = process.env.POOL_MNEMONIC;
@@ -29,12 +29,14 @@ async function main(argv) {
   /* TESTING on localhost only
    * useful if running out of ETH for deployer address
    */
-  const [funder] = await ethers.getSigners();
-  const fundingTrx = await funder.sendTransaction({
-    to: poolDeployer.address,
-    value: ethers.utils.parseEther("1.0"),
-  });
-  await fundingTrx.wait();
+  if (networkName == "LOCALHOST") {
+    const [funder] = await ethers.getSigners();
+    const fundingTrx = await funder.sendTransaction({
+      to: poolDeployer.address,
+      value: ethers.utils.parseEther("1.0"),
+    });
+    await fundingTrx.wait();
+  }
 
   const balance =
     (await ethers.provider.getBalance(poolDeployer.address)).toString() / 1e18;
@@ -45,13 +47,13 @@ async function main(argv) {
   console.log("Upgrading pools ...");
   console.log("");
 
-  const poolAdminAddress = getDeployedAddress(
-    "APYPoolTokenProxyAdmin",
-    NETWORK_NAME
+  const proxyAdminAddress = getDeployedAddress(
+    "PoolTokenProxyAdmin",
+    networkName
   );
   const proxyAdmin = await ethers.getContractAt(
     "ProxyAdmin",
-    poolAdminAddress,
+    proxyAdminAddress,
     poolDeployer
   );
   assert.strictEqual(
@@ -60,12 +62,12 @@ async function main(argv) {
     "MNEMONIC needs to be set to pool deployer."
   );
 
-  const APYPoolTokenV2 = await ethers.getContractFactory(
-    "APYPoolTokenV2",
+  const PoolTokenV2 = await ethers.getContractFactory(
+    "PoolTokenV2",
     poolDeployer
   );
   let gasPrice = await getGasPrice(argv.gasPrice);
-  const logicV2 = await APYPoolTokenV2.connect(poolDeployer).deploy({
+  const logicV2 = await PoolTokenV2.connect(poolDeployer).deploy({
     gasPrice,
   });
   console.log(
@@ -76,8 +78,8 @@ async function main(argv) {
   console.log(`Pool logic V2: ${chalk.green(logicV2.address)}`);
   console.log("");
 
-  const mAPTAddress = getDeployedAddress("APYMetaPoolToken", NETWORK_NAME);
-  const initData = APYPoolTokenV2.interface.encodeFunctionData(
+  const mAPTAddress = getDeployedAddress("MetaPoolToken", networkName);
+  const initData = PoolTokenV2.interface.encodeFunctionData(
     "initializeUpgrade(address)",
     [mAPTAddress]
   );
@@ -85,8 +87,8 @@ async function main(argv) {
   const deployData = {};
   for (const symbol of ["DAI", "USDC", "USDT"]) {
     const poolAddress = getDeployedAddress(
-      symbol + "_APYPoolTokenProxy",
-      NETWORK_NAME
+      symbol + "_PoolTokenProxy",
+      networkName
     );
     console.log(`${symbol} Pool: ${chalk.green(poolAddress)}`);
 
@@ -99,11 +101,11 @@ async function main(argv) {
     console.log("... pool upgraded.");
     console.log("");
 
-    deployData[symbol + "_APYPoolToken"] = logicV2.address;
+    deployData[symbol + "_PoolToken"] = logicV2.address;
   }
-  updateDeployJsons(NETWORK_NAME, deployData);
+  updateDeployJsons(networkName, deployData);
 
-  if (["KOVAN", "MAINNET"].includes(NETWORK_NAME)) {
+  if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");
     console.log("Verifying on Etherscan ...");
     await ethers.provider.waitForTransaction(logicV2.deployTransaction.hash, 5); // wait for Etherscan to catch up

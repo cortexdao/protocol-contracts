@@ -15,47 +15,49 @@ const {
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
   await hre.run("compile");
-  const NETWORK_NAME = network.name.toUpperCase();
+  const networkName = network.name.toUpperCase();
   console.log("");
-  console.log(`${NETWORK_NAME} selected`);
+  console.log(`${networkName} selected`);
   console.log("");
 
-  const MANAGER_MNEMONIC = process.env.MANAGER_MNEMONIC;
-  const managerDeployer = ethers.Wallet.fromMnemonic(MANAGER_MNEMONIC).connect(
-    ethers.provider
-  );
-  console.log("Deployer address:", managerDeployer.address);
+  const POOL_MANAGER_MNEMONIC = process.env.POOL_MANAGER_MNEMONIC;
+  const poolManagerDeployer = ethers.Wallet.fromMnemonic(
+    POOL_MANAGER_MNEMONIC
+  ).connect(ethers.provider);
+  console.log("Deployer address:", poolManagerDeployer.address);
   /* TESTING on localhost only
    * may need to fund the deployer while testing
    */
-  // const [funder] = await ethers.getSigners();
-  // const fundingTrx = await funder.sendTransaction({
-  //   to: managerDeployer.address,
-  //   value: ethers.utils.parseEther("1.0"),
-  // });
-  // await fundingTrx.wait();
+  if (networkName == "LOCALHOST") {
+    const [funder] = await ethers.getSigners();
+    const fundingTrx = await funder.sendTransaction({
+      to: poolManagerDeployer.address,
+      value: ethers.utils.parseEther("1.0"),
+    });
+    await fundingTrx.wait();
+  }
 
   const balance =
-    (await ethers.provider.getBalance(managerDeployer.address)).toString() /
+    (await ethers.provider.getBalance(poolManagerDeployer.address)).toString() /
     1e18;
   console.log("ETH balance:", balance.toString());
   console.log("");
 
   console.log("");
-  console.log("Deploying manager ...");
+  console.log("Deploying Pool Manager ...");
   console.log("");
 
   const ProxyAdmin = await ethers.getContractFactory(
     "ProxyAdmin",
-    managerDeployer
+    poolManagerDeployer
   );
-  const APYManager = await ethers.getContractFactory(
-    "APYManager",
-    managerDeployer
+  const PoolManager = await ethers.getContractFactory(
+    "PoolManager",
+    poolManagerDeployer
   );
-  const APYManagerProxy = await ethers.getContractFactory(
-    "APYManagerProxy",
-    managerDeployer
+  const PoolManagerProxy = await ethers.getContractFactory(
+    "PoolManagerProxy",
+    poolManagerDeployer
   );
 
   let deploy_data = {};
@@ -67,28 +69,28 @@ async function main(argv) {
     `https://etherscan.io/tx/${proxyAdmin.deployTransaction.hash}`
   );
   await proxyAdmin.deployed();
-  deploy_data["APYManagerProxyAdmin"] = proxyAdmin.address;
+  deploy_data["ManagerProxyAdmin"] = proxyAdmin.address;
   console.log(`ProxyAdmin: ${chalk.green(proxyAdmin.address)}`);
   console.log("");
 
   gasPrice = await getGasPrice(argv.gasPrice);
-  const logic = await APYManager.deploy({ gasPrice });
+  const logic = await PoolManager.deploy({ gasPrice });
   console.log(
     "Deploy:",
     `https://etherscan.io/tx/${logic.deployTransaction.hash}`
   );
   await logic.deployed();
-  deploy_data["APYManager"] = logic.address;
+  deploy_data["PoolManager"] = logic.address;
   console.log(`Implementation Logic: ${logic.address}`);
   console.log("");
 
   gasPrice = await getGasPrice(argv.gasPrice);
-  const mAptAddress = getDeployedAddress("APYMetaPoolTokenProxy", NETWORK_NAME);
+  const mAptAddress = getDeployedAddress("MetaPoolTokenProxy", networkName);
   const addressRegistryAddress = getDeployedAddress(
-    "APYAddressRegistryProxy",
-    NETWORK_NAME
+    "AddressRegistryProxy",
+    networkName
   );
-  const proxy = await APYManagerProxy.deploy(
+  const proxy = await PoolManagerProxy.deploy(
     logic.address,
     proxyAdmin.address,
     mAptAddress,
@@ -100,18 +102,18 @@ async function main(argv) {
     `https://etherscan.io/tx/${proxy.deployTransaction.hash}`
   );
   await proxy.deployed();
-  deploy_data["APYManagerProxy"] = proxy.address;
+  deploy_data["PoolManagerProxy"] = proxy.address;
   console.log(`Proxy: ${proxy.address}`);
   console.log("");
 
-  updateDeployJsons(NETWORK_NAME, deploy_data);
+  updateDeployJsons(networkName, deploy_data);
 
   const MAPT_MNEMONIC = process.env.MAPT_MNEMONIC;
   const mAptDeployer = ethers.Wallet.fromMnemonic(MAPT_MNEMONIC).connect(
     ethers.provider
   );
   const mAPT = await ethers.getContractAt(
-    "APYMetaPoolToken",
+    "MetaPoolToken",
     mAptAddress,
     mAptDeployer
   );
@@ -124,30 +126,26 @@ async function main(argv) {
   await trx.wait();
   console.log("");
 
-  const ALLOCATION_REGISTRY_MNEMONIC = process.env.ALLOCATION_REGISTRY_MNEMONIC;
-  const registryDeployer = ethers.Wallet.fromMnemonic(
-    ALLOCATION_REGISTRY_MNEMONIC
+  const TVL_MANAGER_MNEMONIC = process.env.TVL_MANAGER_MNEMONIC;
+  const tvlManagerDeployer = ethers.Wallet.fromMnemonic(
+    TVL_MANAGER_MNEMONIC
   ).connect(ethers.provider);
-  const registryAddress = getDeployedAddress(
-    "APYAssetAllocationRegistry",
-    NETWORK_NAME
-  );
-  const registry = await ethers.getContractAt(
-    "APYAssetAllocationRegistry",
-    registryAddress,
-    registryDeployer
+  const tvlManagerAddress = getDeployedAddress("TVLManager", networkName);
+  const tvlManager = await ethers.getContractAt(
+    "TVLManager",
+    tvlManagerAddress,
+    tvlManagerDeployer
   );
   gasPrice = await getGasPrice(argv.gasPrice);
-  const managerAddress = getDeployedAddress("APYManagerProxy", NETWORK_NAME);
-  trx = await registry.setManager(managerAddress, { gasPrice });
+  trx = await tvlManager.setPoolManagerAddress(proxy.address, { gasPrice });
   console.log(
-    "Set manager on allocation registry:",
+    "Set pool manager on TVL manager:",
     `https://etherscan.io/tx/${trx.hash}`
   );
   await trx.wait();
   console.log("");
 
-  if (["KOVAN", "MAINNET"].includes(NETWORK_NAME)) {
+  if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");
     console.log("Verifying on Etherscan ...");
     await ethers.provider.waitForTransaction(proxy.deployTransaction.hash, 5); // wait for Etherscan to catch up
@@ -161,7 +159,7 @@ async function main(argv) {
       ],
       // to avoid the "More than one contract was found to match the deployed bytecode."
       // with proxy contracts that only differ in constructors but have the same bytecode
-      contract: "contracts/APYManagerProxy.sol:APYManagerProxy",
+      contract: "contracts/PoolManagerProxy.sol:PoolManagerProxy",
     });
     await hre.run("verify:verify", {
       address: logic.address,

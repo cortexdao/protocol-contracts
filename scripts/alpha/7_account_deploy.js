@@ -16,9 +16,9 @@ const {
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
   await hre.run("compile");
-  const NETWORK_NAME = network.name.toUpperCase();
+  const networkName = network.name.toUpperCase();
   console.log("");
-  console.log(`${NETWORK_NAME} selected`);
+  console.log(`${networkName} selected`);
   console.log("");
 
   const MANAGER_MNEMONIC = process.env.MANAGER_MNEMONIC;
@@ -29,12 +29,14 @@ async function main(argv) {
   /* TESTING on localhost only
    * may need to fund the deployer while testing
    */
-  // const [funder] = await ethers.getSigners();
-  // const fundingTrx = await funder.sendTransaction({
-  //   to: managerDeployer.address,
-  //   value: ethers.utils.parseEther("1.0"),
-  // });
-  // await fundingTrx.wait();
+  if (networkName == "LOCALHOST") {
+    const [funder] = await ethers.getSigners();
+    const fundingTrx = await funder.sendTransaction({
+      to: managerDeployer.address,
+      value: ethers.utils.parseEther("1.0"),
+    });
+    await fundingTrx.wait();
+  }
 
   const balance =
     (await ethers.provider.getBalance(managerDeployer.address)).toString() /
@@ -42,34 +44,34 @@ async function main(argv) {
   console.log("ETH balance:", balance.toString());
   console.log("");
 
-  const managerAddress = getDeployedAddress("APYManagerProxy", NETWORK_NAME);
-  const manager = await ethers.getContractAt(
-    "APYManagerV2",
-    managerAddress,
+  const accountManagerAddress = getDeployedAddress(
+    "AccountManagerProxy",
+    networkName
+  );
+  const accountManager = await ethers.getContractAt(
+    "AccountManager",
+    accountManagerAddress,
     managerDeployer
   );
-  console.log("Manager (proxy):", chalk.green(managerAddress));
-  const executorAddress = getDeployedAddress(
-    "APYGenericExecutor",
-    NETWORK_NAME
-  );
+  console.log("Manager (proxy):", chalk.green(accountManagerAddress));
+  const executorAddress = getDeployedAddress("GenericExecutor", networkName);
   console.log("Executor:", chalk.green(executorAddress));
   const accountId = bytes32("alpha");
   let gasPrice = await getGasPrice(argv.gasPrice);
-  const trx = await manager.deployAccount(accountId, executorAddress, {
+  const trx = await accountManager.deployAccount(accountId, executorAddress, {
     gasPrice,
   });
   console.log("Deploy account:", `https://etherscan.io/tx/${trx.hash}`);
   await trx.wait();
-  const accountAddress = await manager.getAccount(accountId);
+  const accountAddress = await accountManager.getAccount(accountId);
   console.log("Account:", chalk.green(accountAddress));
 
   const deployData = {
     Account: accountAddress,
   };
-  updateDeployJsons(NETWORK_NAME, deployData);
+  updateDeployJsons(networkName, deployData);
 
-  if (["KOVAN", "MAINNET"].includes(NETWORK_NAME)) {
+  if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");
     console.log("Verifying on Etherscan ...");
     await ethers.provider.waitForTransaction(trx.hash, 5); // wait for Etherscan to catch up
