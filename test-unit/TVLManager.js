@@ -10,17 +10,17 @@ const {
   bytes32,
 } = require("../utils/helpers");
 
-describe("Contract: APYAssetAllocationRegistry", () => {
+describe("Contract: TVLManager", () => {
   // signers
   let deployer;
   let manager;
   let randomUser;
 
   // contract factories
-  let APYAssetAllocationRegistry;
+  let TVLManager;
 
   // deployed contracts
-  let registry;
+  let tvlManager;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -37,35 +37,33 @@ describe("Contract: APYAssetAllocationRegistry", () => {
   before(async () => {
     [deployer, manager, randomUser] = await ethers.getSigners();
 
-    APYAssetAllocationRegistry = await ethers.getContractFactory(
-      "APYAssetAllocationRegistry"
-    );
+    TVLManager = await ethers.getContractFactory("TVLManager");
 
-    registry = await APYAssetAllocationRegistry.deploy(manager.address);
-    await registry.deployed();
+    tvlManager = await TVLManager.deploy(manager.address);
+    await tvlManager.deployed();
   });
 
   describe("Defaults", () => {
     it("Owner is set to deployer", async () => {
-      expect(await registry.owner()).to.equal(deployer.address);
+      expect(await tvlManager.owner()).to.equal(deployer.address);
     });
   });
 
   describe("Setting manager address", () => {
     it("Owner can set to valid address", async () => {
-      await registry.connect(deployer).setManagerAddress(FAKE_ADDRESS);
-      expect(await registry.manager()).to.equal(FAKE_ADDRESS);
+      await tvlManager.connect(deployer).setManagerAddress(FAKE_ADDRESS);
+      expect(await tvlManager.manager()).to.equal(FAKE_ADDRESS);
     });
 
     it("Non-owner cannot set", async () => {
       await expect(
-        registry.connect(randomUser).setManagerAddress(FAKE_ADDRESS)
+        tvlManager.connect(randomUser).setManagerAddress(FAKE_ADDRESS)
       ).to.be.revertedWith("revert Ownable: caller is not the owner");
     });
 
     it("Cannot set to zero address", async () => {
       await expect(
-        registry.connect(deployer).setManagerAddress(ZERO_ADDRESS)
+        tvlManager.connect(deployer).setManagerAddress(ZERO_ADDRESS)
       ).to.be.revertedWith("INVALID_MANAGER");
     });
   });
@@ -78,7 +76,7 @@ describe("Contract: APYAssetAllocationRegistry", () => {
         const symbol = "FOO";
         const decimals = 18;
         await expect(
-          registry
+          tvlManager
             .connect(randomUser)
             .addAssetAllocation(allocationId, data, symbol, decimals)
         ).to.be.revertedWith("PERMISSIONED_ONLY");
@@ -90,7 +88,7 @@ describe("Contract: APYAssetAllocationRegistry", () => {
         const symbol = "FOO";
         const decimals = 18;
         await expect(
-          registry
+          tvlManager
             .connect(deployer)
             .addAssetAllocation(allocationId, data, symbol, decimals)
         ).to.not.be.reverted;
@@ -102,7 +100,7 @@ describe("Contract: APYAssetAllocationRegistry", () => {
         const symbol = "FOO";
         const decimals = 18;
         await expect(
-          registry
+          tvlManager
             .connect(manager)
             .addAssetAllocation(allocationId, data, symbol, decimals)
         ).to.not.be.reverted;
@@ -113,21 +111,21 @@ describe("Contract: APYAssetAllocationRegistry", () => {
       it("Non-owner cannot call", async () => {
         const allocationId = bytes32("");
         await expect(
-          registry.connect(randomUser).removeAssetAllocation(allocationId)
+          tvlManager.connect(randomUser).removeAssetAllocation(allocationId)
         ).to.be.revertedWith("PERMISSIONED_ONLY");
       });
 
       it("Owner can call", async () => {
         const allocationId = bytes32("");
         await expect(
-          registry.connect(deployer).removeAssetAllocation(allocationId)
+          tvlManager.connect(deployer).removeAssetAllocation(allocationId)
         ).to.not.be.reverted;
       });
 
       it("Manager can call", async () => {
         const allocationId = bytes32("");
         await expect(
-          registry.connect(manager).removeAssetAllocation(allocationId)
+          tvlManager.connect(manager).removeAssetAllocation(allocationId)
         ).to.not.be.reverted;
       });
     });
@@ -138,11 +136,16 @@ describe("Contract: APYAssetAllocationRegistry", () => {
       const data = [FAKE_ADDRESS, bytes32("")];
       const symbol = "FOO";
       const decimals = 18;
-      await registry.addAssetAllocation(allocationId_1, data, symbol, decimals);
+      await tvlManager.addAssetAllocation(
+        allocationId_1,
+        data,
+        symbol,
+        decimals
+      );
 
-      expect(await registry.isAssetAllocationRegistered(allocationId_1)).to.be
+      expect(await tvlManager.isAssetAllocationRegistered(allocationId_1)).to.be
         .true;
-      expect(await registry.isAssetAllocationRegistered(allocationId_2)).to.be
+      expect(await tvlManager.isAssetAllocationRegistered(allocationId_2)).to.be
         .false;
     });
 
@@ -153,12 +156,17 @@ describe("Contract: APYAssetAllocationRegistry", () => {
         const symbol = "FOO";
         const decimals = 18;
         const allocationIds = [allocationId];
-        await registry.addAssetAllocation(allocationId, data, symbol, decimals);
+        await tvlManager.addAssetAllocation(
+          allocationId,
+          data,
+          symbol,
+          decimals
+        );
 
-        expect(await registry.getAssetAllocationIds()).to.have.members(
+        expect(await tvlManager.getAssetAllocationIds()).to.have.members(
           allocationIds
         );
-        expect(await registry.getAssetAllocationIds()).to.have.lengthOf(
+        expect(await tvlManager.getAssetAllocationIds()).to.have.lengthOf(
           allocationIds.length
         );
       });
@@ -169,19 +177,19 @@ describe("Contract: APYAssetAllocationRegistry", () => {
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
         const decimals = 18;
-        await registry.addAssetAllocation(
+        await tvlManager.addAssetAllocation(
           allocationId_1,
           data,
           symbol,
           decimals
         );
-        await registry.addAssetAllocation(
+        await tvlManager.addAssetAllocation(
           allocationId_2,
           data,
           symbol,
           decimals
         );
-        await registry.addAssetAllocation(
+        await tvlManager.addAssetAllocation(
           allocationId_1,
           data,
           symbol,
@@ -189,10 +197,10 @@ describe("Contract: APYAssetAllocationRegistry", () => {
         );
 
         const expectedAssetAllocationIds = [allocationId_1, allocationId_2];
-        expect(await registry.getAssetAllocationIds()).to.have.members(
+        expect(await tvlManager.getAssetAllocationIds()).to.have.members(
           expectedAssetAllocationIds
         );
-        expect(await registry.getAssetAllocationIds()).to.have.lengthOf(
+        expect(await tvlManager.getAssetAllocationIds()).to.have.lengthOf(
           expectedAssetAllocationIds.length
         );
       });
@@ -210,16 +218,16 @@ describe("Contract: APYAssetAllocationRegistry", () => {
         const allocationIds = deregisteredIds.concat(leftoverIds);
 
         for (const id of allocationIds) {
-          await registry.addAssetAllocation(id, data, symbol, decimals);
+          await tvlManager.addAssetAllocation(id, data, symbol, decimals);
         }
         for (const id of deregisteredIds) {
-          await registry.removeAssetAllocation(id);
+          await tvlManager.removeAssetAllocation(id);
         }
 
-        expect(await registry.getAssetAllocationIds()).to.have.members(
+        expect(await tvlManager.getAssetAllocationIds()).to.have.members(
           leftoverIds
         );
-        expect(await registry.getAssetAllocationIds()).to.have.lengthOf(
+        expect(await tvlManager.getAssetAllocationIds()).to.have.lengthOf(
           leftoverIds.length
         );
       });
@@ -232,18 +240,18 @@ describe("Contract: APYAssetAllocationRegistry", () => {
         const symbol = "FOO";
         const decimals = 18;
         for (const id of [allocationId_1, allocationId_2, allocationId_3]) {
-          await registry.addAssetAllocation(id, data, symbol, decimals);
+          await tvlManager.addAssetAllocation(id, data, symbol, decimals);
         }
 
-        await registry.removeAssetAllocation(allocationId_3);
-        expect(await registry.getAssetAllocationIds()).to.not.include(
+        await tvlManager.removeAssetAllocation(allocationId_3);
+        expect(await tvlManager.getAssetAllocationIds()).to.not.include(
           allocationId_3
         );
-        expect(await registry.getAssetAllocationIds()).to.have.lengthOf(2);
+        expect(await tvlManager.getAssetAllocationIds()).to.have.lengthOf(2);
 
-        await registry.removeAssetAllocation(allocationId_1);
-        expect(await registry.getAssetAllocationIds()).to.have.lengthOf(1);
-        expect(await registry.getAssetAllocationIds()).to.have.members([
+        await tvlManager.removeAssetAllocation(allocationId_1);
+        expect(await tvlManager.getAssetAllocationIds()).to.have.lengthOf(1);
+        expect(await tvlManager.getAssetAllocationIds()).to.have.members([
           allocationId_2,
         ]);
       });
@@ -296,9 +304,9 @@ describe("Contract: APYAssetAllocationRegistry", () => {
         .withArgs(Account)
         .returns(expectedBalance);
 
-      await registry.addAssetAllocation(allocationId, data, symbol, decimals);
+      await tvlManager.addAssetAllocation(allocationId, data, symbol, decimals);
 
-      const balance = await registry.balanceOf(allocationId);
+      const balance = await tvlManager.balanceOf(allocationId);
       expect(balance).to.equal(expectedBalance);
     });
 
@@ -316,9 +324,9 @@ describe("Contract: APYAssetAllocationRegistry", () => {
       // step execution will revert
       await peripheryContract.mock.balance.reverts();
 
-      await registry.addAssetAllocation(allocationId, data, symbol, decimals);
+      await tvlManager.addAssetAllocation(allocationId, data, symbol, decimals);
 
-      await expect(registry.balanceOf(allocationId)).to.be.reverted;
+      await expect(tvlManager.balanceOf(allocationId)).to.be.reverted;
     });
 
     it("Revert on unregistered ID", async () => {
@@ -327,9 +335,9 @@ describe("Contract: APYAssetAllocationRegistry", () => {
       const symbol = "FOO";
       const decimals = 18;
       const data = [FAKE_ADDRESS, bytes32("")];
-      await registry.addAssetAllocation(registeredId, data, symbol, decimals);
+      await tvlManager.addAssetAllocation(registeredId, data, symbol, decimals);
 
-      await expect(registry.balanceOf(unregisteredId)).to.be.revertedWith(
+      await expect(tvlManager.balanceOf(unregisteredId)).to.be.revertedWith(
         "INVALID_ALLOCATION_ID"
       );
     });
@@ -340,9 +348,9 @@ describe("Contract: APYAssetAllocationRegistry", () => {
     const data = [FAKE_ADDRESS, bytes32("")];
     const symbol = "FOO";
     const decimals = 18;
-    await registry.addAssetAllocation(allocationId, data, symbol, decimals);
+    await tvlManager.addAssetAllocation(allocationId, data, symbol, decimals);
 
-    expect(await registry.symbolOf(allocationId)).to.equal(symbol);
+    expect(await tvlManager.symbolOf(allocationId)).to.equal(symbol);
   });
 
   it("decimalsOf", async () => {
@@ -350,8 +358,8 @@ describe("Contract: APYAssetAllocationRegistry", () => {
     const data = [FAKE_ADDRESS, bytes32("")];
     const symbol = "FOO";
     const decimals = 18;
-    await registry.addAssetAllocation(allocationId, data, symbol, decimals);
+    await tvlManager.addAssetAllocation(allocationId, data, symbol, decimals);
 
-    expect(await registry.decimalsOf(allocationId)).to.equal(decimals);
+    expect(await tvlManager.decimalsOf(allocationId)).to.equal(decimals);
   });
 });
