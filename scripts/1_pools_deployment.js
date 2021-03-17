@@ -17,28 +17,26 @@ async function main() {
   console.log("");
 
   const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-  const APYPoolToken = await ethers.getContractFactory("APYPoolToken");
-  const APYPoolTokenProxy = await ethers.getContractFactory(
-    "APYPoolTokenProxy"
-  );
+  const PoolToken = await ethers.getContractFactory("PoolToken");
+  const PoolTokenProxy = await ethers.getContractFactory("PoolTokenProxy");
 
   const proxyAdmin = await ProxyAdmin.deploy();
   await proxyAdmin.deployed();
   console.log(`ProxyAdmin: ${proxyAdmin.address}`);
 
   let deploy_data = {};
-  deploy_data["APYPoolTokenProxyAdmin"] = proxyAdmin.address;
+  deploy_data["PoolTokenProxyAdmin"] = proxyAdmin.address;
 
   for (const { symbol, token, aggregator } of TOKEN_AGG_MAP[NETWORK_NAME]) {
     console.log("");
     console.log(`Deploying contracts for ${symbol}`);
     console.log(`    --> ${aggregator} Chainlink Oracle Agg`);
 
-    const logic = await APYPoolToken.deploy();
+    const logic = await PoolToken.deploy();
     await logic.deployed();
     console.log(`Implementation Logic: ${logic.address}`);
 
-    const proxy = await APYPoolTokenProxy.deploy(
+    const proxy = await PoolTokenProxy.deploy(
       logic.address,
       proxyAdmin.address,
       token,
@@ -47,10 +45,10 @@ async function main() {
     await proxy.deployed();
     console.log(`Proxy: ${proxy.address}`);
 
-    deploy_data[symbol + "_APYPoolToken"] = logic.address;
-    deploy_data[symbol + "_APYPoolTokenProxy"] = proxy.address;
+    deploy_data[symbol + "_PoolToken"] = logic.address;
+    deploy_data[symbol + "_PoolTokenProxy"] = proxy.address;
 
-    const instance = await APYPoolToken.attach(proxy.address);
+    const instance = await PoolToken.attach(proxy.address);
     await instance.lock();
     console.log(`${symbol} pool locked.`);
   }

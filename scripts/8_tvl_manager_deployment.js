@@ -38,7 +38,7 @@ async function main(argv) {
   const managerDeployer = ethers.Wallet.fromMnemonic(
     TVL_MANAGER_MNEMONIC
   ).connect(ethers.provider);
-  console.log("Deployer address:", registryDeployer.address);
+  console.log("Deployer address:", managerDeployer.address);
   /* TESTING on localhost only
    * may need to fund if ETH runs out while testing
    */
@@ -63,7 +63,7 @@ async function main(argv) {
 
   const TVLManager = await ethers.getContractFactory(
     "TVLManager",
-    registryDeployer
+    managerDeployer
   );
 
   let gasPrice = await getGasPrice(argv.gasPrice);
@@ -90,7 +90,7 @@ async function main(argv) {
   console.log("Register address for chainlink registry ...");
   console.log("");
   const addressRegistryAddress = getDeployedAddress(
-    "APYAddressRegistryProxy",
+    "AddressRegistryProxy",
     NETWORK_NAME
   );
   console.log("Address registry:", addressRegistryAddress);
@@ -99,7 +99,7 @@ async function main(argv) {
     ADDRESS_REGISTRY_MNEMONIC
   ).connect(ethers.provider);
   const addressRegistry = await ethers.getContractAt(
-    "APYAddressRegistry",
+    "AddressRegistry",
     addressRegistryAddress,
     addressRegistryDeployer
   );
@@ -190,10 +190,7 @@ async function main(argv) {
   if (["KOVAN", "MAINNET"].includes(NETWORK_NAME)) {
     console.log("");
     console.log("Verifying on Etherscan ...");
-    await ethers.provider.waitForTransaction(
-      manager.deployTransaction.hash,
-      5
-    ); // wait for Etherscan to catch up
+    await ethers.provider.waitForTransaction(manager.deployTransaction.hash, 5); // wait for Etherscan to catch up
     await hre.run("verify:verify", {
       address: manager.address,
       constructorArguments: [FAKE_ADDRESS],

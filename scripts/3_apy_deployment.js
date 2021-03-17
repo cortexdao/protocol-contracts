@@ -15,37 +15,35 @@ async function main() {
   console.log("Deployer address:", deployer);
 
   const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-  const APYGovernanceToken = await ethers.getContractFactory(
-    "APYGovernanceToken"
-  );
-  const APYGovernanceTokenProxy = await ethers.getContractFactory(
-    "APYGovernanceTokenProxy"
+  const GovernanceToken = await ethers.getContractFactory("GovernanceToken");
+  const GovernanceTokenProxy = await ethers.getContractFactory(
+    "GovernanceTokenProxy"
   );
 
   let deploy_data = {};
 
   const proxyAdmin = await ProxyAdmin.deploy();
   await proxyAdmin.deployed();
-  deploy_data["APYGovernanceTokenProxyAdmin"] = proxyAdmin.address;
+  deploy_data["GovernanceTokenProxyAdmin"] = proxyAdmin.address;
   console.log(`ProxyAdmin: ${proxyAdmin.address}`);
 
-  const logic = await APYGovernanceToken.deploy();
+  const logic = await GovernanceToken.deploy();
   await logic.deployed();
-  deploy_data["APYGovernanceToken"] = logic.address;
+  deploy_data["GovernanceToken"] = logic.address;
   console.log(`Implementation Logic: ${logic.address}`);
 
-  const proxy = await APYGovernanceTokenProxy.deploy(
+  const proxy = await GovernanceTokenProxy.deploy(
     logic.address,
     proxyAdmin.address,
     totalSupply.toString()
   );
   await proxy.deployed();
-  deploy_data["APYGovernanceTokenProxy"] = proxy.address;
+  deploy_data["GovernanceTokenProxy"] = proxy.address;
   console.log(`Proxy: ${proxy.address}`);
 
   await updateDeployJsons(NETWORK_NAME, deploy_data);
 
-  const instance = await APYGovernanceToken.attach(proxy.address);
+  const instance = await GovernanceToken.attach(proxy.address);
   console.log("Total supply:", (await instance.totalSupply()).toString());
   console.log(
     "APY balance:",

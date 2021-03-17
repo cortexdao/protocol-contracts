@@ -33,7 +33,7 @@ async function main(argv) {
   console.log("");
 
   const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-  const APYManager = await ethers.getContractFactory("APYManager");
+  const Manager = await ethers.getContractFactory("Manager");
   const TransparentUpgradeableProxy = await ethers.getContractFactory(
     "TransparentUpgradeableProxy"
   );
@@ -42,12 +42,12 @@ async function main(argv) {
 
   const proxyAdmin = await ProxyAdmin.deploy();
   await proxyAdmin.deployed();
-  deploy_data["APYManagerProxyAdmin"] = proxyAdmin.address;
+  deploy_data["ManagerProxyAdmin"] = proxyAdmin.address;
   console.log(`ProxyAdmin: ${proxyAdmin.address}`);
 
-  const logic = await APYManager.deploy();
+  const logic = await Manager.deploy();
   await logic.deployed();
-  deploy_data["APYManager"] = logic.address;
+  deploy_data["Manager"] = logic.address;
   console.log(`Implementation Logic: ${logic.address}`);
 
   const CONSTRUCTOR_ARG_ADDRESSES = require(DEPLOYS_JSON[
@@ -80,7 +80,7 @@ async function main(argv) {
     encodedArg
   );
   await proxy.deployed();
-  deploy_data["APYManagerProxy"] = proxy.address;
+  deploy_data["ManagerProxy"] = proxy.address;
   console.log(`Proxy: ${proxy.address}`);
 
   await updateDeployJsons(NETWORK_NAME, deploy_data);
@@ -89,13 +89,13 @@ async function main(argv) {
   console.log("Set address registry and pool IDs ...");
   console.log("");
   const ADDRESS_REGISTRY_ADDRESSES = require(DEPLOYS_JSON[
-    "APYAddressRegistryProxy"
+    "AddressRegistryProxy"
   ]);
   const addressRegistryAddress =
     ADDRESS_REGISTRY_ADDRESSES[CHAIN_IDS[NETWORK_NAME]];
   console.log("Address registry address:", addressRegistryAddress);
 
-  const manager = await ethers.getContractAt("APYManager", proxy.address);
+  const manager = await ethers.getContractAt("Manager", proxy.address);
   await manager.setAddressRegistry(addressRegistryAddress);
   await manager.setPoolIds([
     bytes32("daiPool"),
@@ -108,20 +108,20 @@ async function main(argv) {
   console.log("");
 
   const registry = await ethers.getContractAt(
-    "APYAddressRegistry",
+    "AddressRegistry",
     addressRegistryAddress
   );
 
   const daiPoolAddress = await registry.daiPoolAddress();
-  const daiPool = await ethers.getContractAt("APYPoolToken", daiPoolAddress);
+  const daiPool = await ethers.getContractAt("PoolToken", daiPoolAddress);
   const daiAddress = await daiPool.underlyer();
   console.log("DAI address:", daiAddress);
   const usdcPoolAddress = await registry.usdcPoolAddress();
-  const usdcPool = await ethers.getContractAt("APYPoolToken", usdcPoolAddress);
+  const usdcPool = await ethers.getContractAt("PoolToken", usdcPoolAddress);
   const usdcAddress = await usdcPool.underlyer();
   console.log("USDC address:", usdcAddress);
   const usdtPoolAddress = await registry.usdtPoolAddress();
-  const usdtPool = await ethers.getContractAt("APYPoolToken", usdtPoolAddress);
+  const usdtPool = await ethers.getContractAt("PoolToken", usdtPoolAddress);
   const usdtAddress = await usdtPool.underlyer();
   console.log("USDT address:", usdtAddress);
 

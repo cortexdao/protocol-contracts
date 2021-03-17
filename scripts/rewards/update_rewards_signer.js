@@ -5,7 +5,7 @@ const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
 const { CHAIN_IDS, DEPLOYS_JSON } = require("../../utils/constants");
 
-const DISTRIBUTOR_ADDRESS = require(DEPLOYS_JSON["APYRewardDistributor"]);
+const DISTRIBUTOR_ADDRESS = require(DEPLOYS_JSON["RewardDistributor"]);
 
 /* **************************************************
  *** increment address index to get new key ********
@@ -26,7 +26,7 @@ async function main(argv) {
   console.log("Deployer address:", deployer);
 
   const RewardDistributor = await ethers.getContractFactory(
-    "APYRewardDistributor"
+    "RewardDistributor"
   );
 
   const contractAddress = DISTRIBUTOR_ADDRESS[chainId];

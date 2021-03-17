@@ -3,7 +3,7 @@ const { ethers, network } = require("hardhat");
 const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants");
 const { updateDeployJsons } = require("../utils/helpers");
 
-const TOKEN_ADDRESS = require(DEPLOYS_JSON["APYGovernanceTokenProxy"]);
+const TOKEN_ADDRESS = require(DEPLOYS_JSON["GovernanceTokenProxy"]);
 
 async function main() {
   const NETWORK_NAME = network.name.toUpperCase();
@@ -16,7 +16,7 @@ async function main() {
   console.log("Deployer address:", deployer);
 
   const RewardDistributor = await ethers.getContractFactory(
-    "APYRewardDistributor"
+    "RewardDistributor"
   );
 
   const SIGNER_MNEMONIC = process.env.SIGNER_MNEMONIC;
@@ -32,8 +32,8 @@ async function main() {
   await rewardDistributor.deployed();
 
   const deploy_data = {};
-  deploy_data["APYRewardDistributor"] = rewardDistributor.address;
-  console.log(`APYRewardDistributor: ${rewardDistributor.address}`);
+  deploy_data["RewardDistributor"] = rewardDistributor.address;
+  console.log(`RewardDistributor: ${rewardDistributor.address}`);
   await updateDeployJsons(NETWORK_NAME, deploy_data);
 }
 

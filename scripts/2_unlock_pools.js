@@ -6,20 +6,18 @@ async function main() {
   const NETWORK_NAME = network.name.toUpperCase();
   console.log(`${NETWORK_NAME} selected`);
 
-  const APYPoolToken = await ethers.getContractFactory("APYPoolToken");
-  const APYPoolTokenProxy = await ethers.getContractFactory(
-    "APYPoolTokenProxy"
-  );
+  const PoolToken = await ethers.getContractFactory("PoolToken");
+  const PoolTokenProxy = await ethers.getContractFactory("PoolTokenProxy");
 
   // NOTE: first specify which pool, using the underlyer symbol
   for (const symbol of ["DAI", "USDC", "USDT"]) {
-    const APY_LIQUIDITY_POOL_PROXY_ADDRESSES = require(DEPLOYS_JSON[
-      symbol + "_APYPoolTokenProxy"
+    const LIQUIDITY_POOL_PROXY_ADDRESSES = require(DEPLOYS_JSON[
+      symbol + "_PoolTokenProxy"
     ]);
-    const proxy = await APYPoolTokenProxy.attach(
-      APY_LIQUIDITY_POOL_PROXY_ADDRESSES[CHAIN_IDS[NETWORK_NAME]]
+    const proxy = await PoolTokenProxy.attach(
+      LIQUIDITY_POOL_PROXY_ADDRESSES[CHAIN_IDS[NETWORK_NAME]]
     );
-    const instance = await APYPoolToken.attach(proxy.address);
+    const instance = await PoolToken.attach(proxy.address);
 
     if (await instance.paused()) {
       await instance.unlock();

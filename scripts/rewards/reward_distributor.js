@@ -43,19 +43,17 @@ async function main(argv) {
 
   const amount = tokenAmountToBigNumber(argv.amount, "18");
 
-  const APYGovernanceToken = await ethers.getContractFactory(
-    "APYGovernanceToken"
-  );
+  const GovernanceToken = await ethers.getContractFactory("GovernanceToken");
   const apyTokenAddress = getDeployedAddress(
-    "APYGovernanceTokenProxy",
+    "GovernanceTokenProxy",
     NETWORK_NAME
   );
-  const token = await APYGovernanceToken.attach(apyTokenAddress).connect(
+  const token = await GovernanceToken.attach(apyTokenAddress).connect(
     apyTokenDeployer
   );
 
   const rewardDistributorAddress = getDeployedAddress(
-    "APYRewardDistributor",
+    "RewardDistributor",
     NETWORK_NAME
   );
 
