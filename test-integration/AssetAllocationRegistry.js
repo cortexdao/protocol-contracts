@@ -35,14 +35,14 @@ const STABLE_SWAP_ADDRESS = "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7";
 const LP_TOKEN_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
 const LIQUIDITY_GAUGE_ADDRESS = "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A";
 
-describe("Contract: APYAssetAllocationRegistry", () => {
+describe("Contract: AssetAllocationRegistry", () => {
   /* signers */
   let deployer;
   let manager;
   let strategy;
 
   /* contract factories */
-  let APYAssetAllocationRegistry;
+  let AssetAllocationRegistry;
 
   /* deployed contracts */
   let registry;
@@ -62,10 +62,10 @@ describe("Contract: APYAssetAllocationRegistry", () => {
   before(async () => {
     [deployer, manager, strategy] = await ethers.getSigners();
 
-    APYAssetAllocationRegistry = await ethers.getContractFactory(
-      "APYAssetAllocationRegistry"
+    AssetAllocationRegistry = await ethers.getContractFactory(
+      "AssetAllocationRegistry"
     );
-    registry = await APYAssetAllocationRegistry.deploy(manager.address);
+    registry = await AssetAllocationRegistry.deploy(manager.address);
     await registry.deployed();
   });
 

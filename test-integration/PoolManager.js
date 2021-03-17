@@ -24,7 +24,7 @@ const ADDRESS_REGISTRY_DEPLOYER = "0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3";
 console.debugging = false;
 /* ************************ */
 
-describe("Contract: APYPoolManager", () => {
+describe("Contract: PoolManager", () => {
   // to-be-deployed contracts
   let manager;
   let allocationRegistry;
@@ -84,8 +84,8 @@ describe("Contract: APYPoolManager", () => {
     /***********************************/
     /* upgrade pools to V2 */
     /***********************************/
-    const APYPoolTokenV2 = await ethers.getContractFactory("APYPoolTokenV2");
-    const newPoolLogic = await APYPoolTokenV2.deploy();
+    const PoolTokenV2 = await ethers.getContractFactory("PoolTokenV2");
+    const newPoolLogic = await PoolTokenV2.deploy();
     const poolAdmin = await ethers.getContractAt(
       legos.apy.abis.APY_POOL_Admin,
       legos.apy.addresses.APY_POOL_Admin,
@@ -125,23 +125,21 @@ describe("Contract: APYPoolManager", () => {
     */
     const tvlAgg = await deployMockContract(deployer, []);
 
-    const APYMetaPoolTokenProxy = await ethers.getContractFactory(
-      "APYMetaPoolTokenProxy"
+    const MetaPoolTokenProxy = await ethers.getContractFactory(
+      "MetaPoolTokenProxy"
     );
     // Use the *test* contract so we can set the TVL
-    const APYMetaPoolToken = await ethers.getContractFactory(
-      "TestAPYMetaPoolToken"
-    );
+    const MetaPoolToken = await ethers.getContractFactory("TestMetaPoolToken");
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     const proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
 
-    const logic = await APYMetaPoolToken.deploy();
+    const logic = await MetaPoolToken.deploy();
     await logic.deployed();
 
     const aggStalePeriod = 14400;
-    const proxy = await APYMetaPoolTokenProxy.deploy(
+    const proxy = await MetaPoolTokenProxy.deploy(
       logic.address,
       proxyAdmin.address,
       tvlAgg.address,
@@ -149,44 +147,44 @@ describe("Contract: APYPoolManager", () => {
     );
     await proxy.deployed();
 
-    mApt = await APYMetaPoolToken.attach(proxy.address);
+    mApt = await MetaPoolToken.attach(proxy.address);
 
     /***********************************/
     /***** deploy manager  *************/
     /***********************************/
-    const APYPoolManager = await ethers.getContractFactory("APYPoolManager");
-    const APYPoolManagerProxy = await ethers.getContractFactory(
-      "APYPoolManagerProxy"
+    const PoolManager = await ethers.getContractFactory("PoolManager");
+    const PoolManagerProxy = await ethers.getContractFactory(
+      "PoolManagerProxy"
     );
 
     const managerAdmin = await ProxyAdmin.deploy();
     await managerAdmin.deployed();
-    const managerLogic = await APYPoolManager.deploy();
+    const managerLogic = await PoolManager.deploy();
     await managerLogic.deployed();
-    const managerProxy = await APYPoolManagerProxy.deploy(
+    const managerProxy = await PoolManagerProxy.deploy(
       managerLogic.address,
       managerAdmin.address,
       mApt.address,
       legos.apy.addresses.APY_ADDRESS_REGISTRY
     );
     await managerProxy.deployed();
-    manager = await APYPoolManager.attach(managerProxy.address);
+    manager = await PoolManager.attach(managerProxy.address);
 
     await mApt.setManagerAddress(manager.address);
 
     // approve manager to withdraw from pools
     daiPool = await ethers.getContractAt(
-      "APYPoolTokenV2",
+      "PoolTokenV2",
       legos.apy.addresses.APY_DAI_POOL,
       poolDeployer
     );
     usdcPool = await ethers.getContractAt(
-      "APYPoolTokenV2",
+      "PoolTokenV2",
       legos.apy.addresses.APY_USDC_POOL,
       poolDeployer
     );
     usdtPool = await ethers.getContractAt(
-      "APYPoolTokenV2",
+      "PoolTokenV2",
       legos.apy.addresses.APY_USDT_POOL,
       poolDeployer
     );
@@ -208,12 +206,10 @@ describe("Contract: APYPoolManager", () => {
     /*******************************************/
     /***** deploy asset allocation registry ****/
     /*******************************************/
-    const APYAssetAllocationRegistry = await ethers.getContractFactory(
-      "APYAssetAllocationRegistry"
+    const AssetAllocationRegistry = await ethers.getContractFactory(
+      "AssetAllocationRegistry"
     );
-    allocationRegistry = await APYAssetAllocationRegistry.deploy(
-      manager.address
-    );
+    allocationRegistry = await AssetAllocationRegistry.deploy(manager.address);
     await allocationRegistry.deployed();
     const addressRegistry = await ethers.getContractAt(
       legos.apy.abis.APY_ADDRESS_REGISTRY_Logic,

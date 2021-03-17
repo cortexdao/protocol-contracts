@@ -20,7 +20,7 @@ const link = (amount) => tokenAmountToBigNumber(amount, "18");
 console.debugging = false;
 /* ************************ */
 
-describe("Contract: APYPoolToken", () => {
+describe("Contract: PoolToken", () => {
   let deployer;
   let manager;
   let oracle;
@@ -28,12 +28,12 @@ describe("Contract: APYPoolToken", () => {
   let anotherUser;
 
   let ProxyAdmin;
-  let APYPoolTokenProxy;
-  let APYPoolToken;
-  let APYPoolTokenV2;
+  let PoolTokenProxy;
+  let PoolToken;
+  let PoolTokenV2;
 
-  let APYMetaPoolToken;
-  let APYMetaPoolTokenProxy;
+  let MetaPoolToken;
+  let MetaPoolTokenProxy;
 
   before(async () => {
     [
@@ -45,11 +45,11 @@ describe("Contract: APYPoolToken", () => {
     ] = await ethers.getSigners();
 
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    APYPoolTokenProxy = await ethers.getContractFactory("APYPoolTokenProxy");
-    APYPoolToken = await ethers.getContractFactory("TestAPYPoolToken");
-    APYPoolTokenV2 = await ethers.getContractFactory("TestAPYPoolTokenV2");
+    PoolTokenProxy = await ethers.getContractFactory("PoolTokenProxy");
+    PoolToken = await ethers.getContractFactory("TestPoolToken");
+    PoolTokenV2 = await ethers.getContractFactory("TestPoolTokenV2");
 
-    APYMetaPoolToken = await ethers.getContractFactory("APYMetaPoolToken");
+    MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
   });
 
   // for Chainlink aggregator (price feed) addresses, see the Mainnet
@@ -118,29 +118,29 @@ describe("Contract: APYPoolToken", () => {
         );
 
         ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-        APYMetaPoolTokenProxy = await ethers.getContractFactory(
-          "APYMetaPoolTokenProxy"
+        MetaPoolTokenProxy = await ethers.getContractFactory(
+          "MetaPoolTokenProxy"
         );
-        APYMetaPoolToken = await ethers.getContractFactory("APYMetaPoolToken");
+        MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
 
         const proxyAdmin = await ProxyAdmin.deploy();
         await proxyAdmin.deployed();
 
-        const mAptLogic = await APYMetaPoolToken.deploy();
+        const mAptLogic = await MetaPoolToken.deploy();
         await mAptLogic.deployed();
-        const mAptProxy = await APYMetaPoolTokenProxy.deploy(
+        const mAptProxy = await MetaPoolTokenProxy.deploy(
           mAptLogic.address,
           proxyAdmin.address,
           tvlAgg.address,
           14400
         );
         await mAptProxy.deployed();
-        mApt = await APYMetaPoolToken.attach(mAptProxy.address);
+        mApt = await MetaPoolToken.attach(mAptProxy.address);
         await mApt.connect(deployer).setManagerAddress(manager.address);
 
-        const logic = await APYPoolToken.deploy();
+        const logic = await PoolToken.deploy();
         await logic.deployed();
-        const proxy = await APYPoolTokenProxy.deploy(
+        const proxy = await PoolTokenProxy.deploy(
           logic.address,
           proxyAdmin.address,
           underlyer.address,
@@ -148,10 +148,10 @@ describe("Contract: APYPoolToken", () => {
         );
         await proxy.deployed();
 
-        const logicV2 = await APYPoolTokenV2.deploy();
+        const logicV2 = await PoolTokenV2.deploy();
         await logicV2.deployed();
 
-        const initData = APYPoolTokenV2.interface.encodeFunctionData(
+        const initData = PoolTokenV2.interface.encodeFunctionData(
           "initializeUpgrade(address)",
           [mApt.address]
         );
@@ -159,7 +159,7 @@ describe("Contract: APYPoolToken", () => {
           .connect(deployer)
           .upgradeAndCall(proxy.address, logicV2.address, initData);
 
-        poolToken = await APYPoolTokenV2.attach(proxy.address);
+        poolToken = await PoolTokenV2.attach(proxy.address);
 
         await acquireToken(
           STABLECOIN_POOLS[symbol],
@@ -253,7 +253,7 @@ describe("Contract: APYPoolToken", () => {
 
       describe("Set mAPT address", async () => {
         it("Owner can set mAPT address", async () => {
-          const newMApt = await APYMetaPoolToken.deploy();
+          const newMApt = await MetaPoolToken.deploy();
           await newMApt.deployed();
           await poolToken.connect(deployer).setMetaPoolToken(newMApt.address);
           assert.equal(await poolToken.mApt(), newMApt.address);

@@ -26,7 +26,7 @@ const usdc = (amount) => tokenAmountToBigNumber(amount, "6");
 console.debugging = false;
 /* ************************ */
 
-describe("Contract: APYMetaPoolToken", () => {
+describe("Contract: MetaPoolToken", () => {
   // accounts
   let deployer;
   let manager;
@@ -36,8 +36,8 @@ describe("Contract: APYMetaPoolToken", () => {
 
   // contract factories
   let ProxyAdmin;
-  let APYMetaPoolTokenProxy;
-  let APYMetaPoolToken;
+  let MetaPoolTokenProxy;
+  let MetaPoolToken;
 
   // deployed contracts
   let proxyAdmin;
@@ -86,23 +86,21 @@ describe("Contract: APYMetaPoolToken", () => {
     );
 
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    APYMetaPoolTokenProxy = await ethers.getContractFactory(
-      "APYMetaPoolTokenProxy"
-    );
-    APYMetaPoolToken = await ethers.getContractFactory("APYMetaPoolToken");
+    MetaPoolTokenProxy = await ethers.getContractFactory("MetaPoolTokenProxy");
+    MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
 
     proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
-    logic = await APYMetaPoolToken.deploy();
+    logic = await MetaPoolToken.deploy();
     await logic.deployed();
-    proxy = await APYMetaPoolTokenProxy.deploy(
+    proxy = await MetaPoolTokenProxy.deploy(
       logic.address,
       proxyAdmin.address,
       tvlAgg.address,
       aggStalePeriod
     );
     await proxy.deployed();
-    mApt = await APYMetaPoolToken.attach(proxy.address);
+    mApt = await MetaPoolToken.attach(proxy.address);
 
     await mApt.connect(deployer).setManagerAddress(manager.address);
   });

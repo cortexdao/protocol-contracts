@@ -24,7 +24,7 @@ const ADDRESS_REGISTRY_DEPLOYER = "0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3";
 console.debugging = false;
 /* ************************ */
 
-describe("Contract: APYAccountManager - deployAccount", () => {
+describe("Contract: AccountManager - deployAccount", () => {
   let manager;
   let executor;
 
@@ -48,30 +48,26 @@ describe("Contract: APYAccountManager - deployAccount", () => {
     [deployer, randomUser] = await ethers.getSigners();
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    const APYAccountManager = await ethers.getContractFactory(
-      "APYAccountManager"
-    );
-    const APYAccountManagerProxy = await ethers.getContractFactory(
-      "APYAccountManagerProxy"
+    const AccountManager = await ethers.getContractFactory("AccountManager");
+    const AccountManagerProxy = await ethers.getContractFactory(
+      "AccountManagerProxy"
     );
 
     const dummyContract = await deployMockContract(deployer, []);
     const proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
-    const logic = await APYAccountManager.deploy();
+    const logic = await AccountManager.deploy();
     await logic.deployed();
-    const proxy = await APYAccountManagerProxy.deploy(
+    const proxy = await AccountManagerProxy.deploy(
       logic.address,
       proxyAdmin.address,
       dummyContract.address
     );
     await proxy.deployed();
-    manager = APYAccountManager.attach(proxy.address);
+    manager = AccountManager.attach(proxy.address);
 
-    const APYGenericExecutor = await ethers.getContractFactory(
-      "APYGenericExecutor"
-    );
-    executor = await APYGenericExecutor.deploy();
+    const GenericExecutor = await ethers.getContractFactory("GenericExecutor");
+    executor = await GenericExecutor.deploy();
     await executor.deployed();
   });
 
@@ -92,12 +88,12 @@ describe("Contract: APYAccountManager - deployAccount", () => {
     ).to.not.be.reverted;
 
     const accountAddress = await manager.getAccount(accountId);
-    const account = await ethers.getContractAt("APYAccount", accountAddress);
+    const account = await ethers.getContractAt("Account", accountAddress);
     expect(await account.owner()).to.equal(manager.address);
   });
 });
 
-describe("Contract: APYAccountManager", () => {
+describe("Contract: AccountManager", () => {
   // to-be-deployed contracts
   let manager;
   let allocationRegistry;
@@ -155,8 +151,8 @@ describe("Contract: APYAccountManager", () => {
     /***********************************/
     /* upgrade pools to V2 */
     /***********************************/
-    const APYPoolTokenV2 = await ethers.getContractFactory("APYPoolTokenV2");
-    const newPoolLogic = await APYPoolTokenV2.deploy();
+    const PoolTokenV2 = await ethers.getContractFactory("PoolTokenV2");
+    const newPoolLogic = await PoolTokenV2.deploy();
     const poolAdmin = await ethers.getContractAt(
       legos.apy.abis.APY_POOL_Admin,
       legos.apy.addresses.APY_POOL_Admin,
@@ -179,39 +175,37 @@ describe("Contract: APYAccountManager", () => {
     /***********************************/
     /***** deploy manager  *************/
     /***********************************/
-    const APYAccountManager = await ethers.getContractFactory(
-      "APYAccountManager"
-    );
-    const APYAccountManagerProxy = await ethers.getContractFactory(
-      "APYAccountManagerProxy"
+    const AccountManager = await ethers.getContractFactory("AccountManager");
+    const AccountManagerProxy = await ethers.getContractFactory(
+      "AccountManagerProxy"
     );
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     const managerAdmin = await ProxyAdmin.connect(deployer).deploy();
     await managerAdmin.deployed();
-    const managerLogic = await APYAccountManager.deploy();
+    const managerLogic = await AccountManager.deploy();
     await managerLogic.deployed();
-    const managerProxy = await APYAccountManagerProxy.deploy(
+    const managerProxy = await AccountManagerProxy.deploy(
       managerLogic.address,
       managerAdmin.address,
       legos.apy.addresses.APY_ADDRESS_REGISTRY
     );
     await managerProxy.deployed();
-    manager = await APYAccountManager.attach(managerProxy.address);
+    manager = await AccountManager.attach(managerProxy.address);
 
     // approve manager to withdraw from pools
     daiPool = await ethers.getContractAt(
-      "APYPoolTokenV2",
+      "PoolTokenV2",
       legos.apy.addresses.APY_DAI_POOL,
       poolDeployer
     );
     usdcPool = await ethers.getContractAt(
-      "APYPoolTokenV2",
+      "PoolTokenV2",
       legos.apy.addresses.APY_USDC_POOL,
       poolDeployer
     );
     usdtPool = await ethers.getContractAt(
-      "APYPoolTokenV2",
+      "PoolTokenV2",
       legos.apy.addresses.APY_USDT_POOL,
       poolDeployer
     );
@@ -222,12 +216,10 @@ describe("Contract: APYAccountManager", () => {
     /*******************************************/
     /***** deploy asset allocation registry ****/
     /*******************************************/
-    const APYAssetAllocationRegistry = await ethers.getContractFactory(
-      "APYAssetAllocationRegistry"
+    const AssetAllocationRegistry = await ethers.getContractFactory(
+      "AssetAllocationRegistry"
     );
-    allocationRegistry = await APYAssetAllocationRegistry.deploy(
-      manager.address
-    );
+    allocationRegistry = await AssetAllocationRegistry.deploy(manager.address);
     await allocationRegistry.deployed();
     const addressRegistry = await ethers.getContractAt(
       legos.apy.abis.APY_ADDRESS_REGISTRY_Logic,
@@ -243,10 +235,8 @@ describe("Contract: APYAccountManager", () => {
     /* main deployments and upgrades finished 
     /*********************************************/
 
-    const APYGenericExecutor = await ethers.getContractFactory(
-      "APYGenericExecutor"
-    );
-    executor = await APYGenericExecutor.deploy();
+    const GenericExecutor = await ethers.getContractFactory("GenericExecutor");
+    executor = await GenericExecutor.deploy();
     await executor.deployed();
 
     await manager.deployAccount(accountId, executor.address);
