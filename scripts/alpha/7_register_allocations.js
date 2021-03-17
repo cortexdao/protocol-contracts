@@ -29,11 +29,11 @@ async function main(argv) {
   console.log(`${NETWORK_NAME} selected`);
   console.log("");
 
-  const ALLOCATION_REGISTRY_MNEMONIC = process.env.ALLOCATION_REGISTRY_MNEMONIC;
-  const registryDeployer = ethers.Wallet.fromMnemonic(
-    ALLOCATION_REGISTRY_MNEMONIC
+  const TVL_MANAGER_MNEMONIC = process.env.TVL_MANAGER_MNEMONIC;
+  const managerDeployer = ethers.Wallet.fromMnemonic(
+    TVL_MANAGER_MNEMONIC
   ).connect(ethers.provider);
-  console.log("Deployer address:", registryDeployer.address);
+  console.log("Deployer address:", managerDeployer.address);
   /* TESTING on localhost only
    * need to fund as there is no ETH on Mainnet for the deployer
    */
@@ -45,19 +45,16 @@ async function main(argv) {
   // await fundingTrx.wait();
 
   const balance =
-    (await ethers.provider.getBalance(registryDeployer.address)).toString() /
+    (await ethers.provider.getBalance(managerDeployer.address)).toString() /
     1e18;
   console.log("ETH balance:", balance.toString());
   console.log("");
 
-  const registryAddress = getDeployedAddress(
-    "APYAssetAllocationRegistry",
-    NETWORK_NAME
-  );
-  const registry = await ethers.getContractAt(
-    "APYAssetAllocationRegistry",
+  const registryAddress = getDeployedAddress("TVLManager", NETWORK_NAME);
+  const tvlManager = await ethers.getContractAt(
+    "TVLManager",
     registryAddress,
-    registryDeployer
+    managerDeployer
   );
 
   console.log("");
@@ -65,22 +62,26 @@ async function main(argv) {
   console.log("");
 
   let gasPrice = await getGasPrice(argv.gasPrice);
-  let trx = await registry.removeAssetAllocation(bytes32("daiPool"), {
+  let trx = await tvlManager.removeAssetAllocation(bytes32("daiPool"), {
     gasPrice,
   });
   console.log("Remove allocation:", `https://etherscan.io/tx/${trx.hash}`);
   await trx.wait();
   gasPrice = await getGasPrice(argv.gasPrice);
-  trx = await registry.removeAssetAllocation(bytes32("usdcPool"), { gasPrice });
+  trx = await tvlManager.removeAssetAllocation(bytes32("usdcPool"), {
+    gasPrice,
+  });
   console.log("Remove allocation:", `https://etherscan.io/tx/${trx.hash}`);
   await trx.wait();
   gasPrice = await getGasPrice(argv.gasPrice);
-  trx = await registry.removeAssetAllocation(bytes32("usdtPool"), { gasPrice });
+  trx = await tvlManager.removeAssetAllocation(bytes32("usdtPool"), {
+    gasPrice,
+  });
   console.log("Remove allocation:", `https://etherscan.io/tx/${trx.hash}`);
   await trx.wait();
   console.log(
     "Asset allocations (should be []):",
-    await registry.getAssetAllocationIds()
+    await tvlManager.getAssetAllocationIds()
   );
   console.log("... done.");
 
