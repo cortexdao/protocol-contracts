@@ -108,9 +108,37 @@ describe("Contract: PoolManager", () => {
     });
   });
 
-  describe.skip("Test setting pool ids", () => {
-    it("Test setting pool ids by not owner", async () => {});
-    it("Test setting pool ids successfully", async () => {});
+  describe("Setting pool IDs", () => {
+    it("Owner can set pool IDs", async () => {
+      const poolIds = [bytes32("pool1"), bytes32("pool2")];
+      await expect(manager.connect(deployer).setPoolIds(poolIds)).to.not.be
+        .reverted;
+      expect(await manager.getPoolIds()).to.have.members(poolIds);
+      expect(await manager.getPoolIds()).to.have.lengthOf(poolIds.length);
+    });
+
+    it("Non-owner cannot set", async () => {
+      const poolIds = [bytes32("pool1"), bytes32("pool2")];
+      await expect(manager.connect(randomUser).setPoolIds(poolIds)).to.be
+        .reverted;
+    });
+  });
+
+  describe("Delete pool IDs", () => {
+    beforeEach(async () => {
+      const poolIds = [bytes32("pool1"), bytes32("pool2")];
+      await manager.connect(deployer).setPoolIds(poolIds);
+    });
+
+    it("Owner can delete pool IDs", async () => {
+      await expect(manager.connect(deployer).deletePoolIds()).to.not.be
+        .reverted;
+      expect(await manager.getPoolIds()).to.have.lengthOf(0);
+    });
+
+    it("Non-owner cannot delete", async () => {
+      await expect(manager.connect(randomUser).deletePoolIds()).to.be.reverted;
+    });
   });
 
   describe("Setting admin address", () => {

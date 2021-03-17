@@ -1,13 +1,3 @@
-#!/usr/bin/env node
-/*
- * Command to run script:
- *
- * $ yarn hardhat --network <network name> run scripts/<script filename>
- *
- * Alternatively, to pass command-line arguments:
- *
- * $ HARDHAT_NETWORK=<network name> node run scripts/<script filename> --arg1=val1 --arg2=val2
- */
 const hre = require("hardhat");
 const { ethers } = hre;
 const { expect } = require("chai");

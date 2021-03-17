@@ -1,4 +1,3 @@
-require("dotenv").config();
 const { expect } = require("chai");
 const { artifacts, ethers } = require("hardhat");
 const timeMachine = require("ganache-time-traveler");

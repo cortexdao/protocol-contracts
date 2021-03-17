@@ -98,11 +98,6 @@ describe("Contract: AccountManager", () => {
     });
   });
 
-  describe.skip("Test setting pool ids", () => {
-    it("Test setting pool ids by not owner", async () => {});
-    it("Test setting pool ids successfully", async () => {});
-  });
-
   describe("Setting admin address", () => {
     it("Owner can set to valid address", async () => {
       await manager.connect(deployer).setAdminAddress(FAKE_ADDRESS);
