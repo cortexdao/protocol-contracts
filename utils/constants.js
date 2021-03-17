@@ -114,32 +114,44 @@ const TOKEN_AGG_MAP = {
   ],
 };
 
-const DEPLOYS_JSON = {
-  GovernanceTokenProxyAdmin: `${__dirname}/../deployed_addresses/GovernanceTokenProxyAdmin.json`,
-  GovernanceToken: `${__dirname}/../deployed_addresses/GovernanceToken.json`,
-  GovernanceTokenProxy: `${__dirname}/../deployed_addresses/GovernanceTokenProxy.json`,
-  MetaPoolTokenProxyAdmin: `${__dirname}/../deployed_addresses/MetaPoolTokenProxyAdmin.json`,
-  MetaPoolToken: `${__dirname}/../deployed_addresses/MetaPoolToken.json`,
-  MetaPoolTokenProxy: `${__dirname}/../deployed_addresses/MetaPoolTokenProxy.json`,
-  PoolTokenProxyAdmin: `${__dirname}/../deployed_addresses/PoolTokenProxyAdmin.json`,
-  DAI_PoolToken: `${__dirname}/../deployed_addresses/DAI_PoolToken.json`,
-  DAI_PoolTokenProxy: `${__dirname}/../deployed_addresses/DAI_PoolTokenProxy.json`,
-  USDC_PoolToken: `${__dirname}/../deployed_addresses/USDC_PoolToken.json`,
-  USDC_PoolTokenProxy: `${__dirname}/../deployed_addresses/USDC_PoolTokenProxy.json`,
-  USDT_PoolToken: `${__dirname}/../deployed_addresses/USDT_PoolToken.json`,
-  USDT_PoolTokenProxy: `${__dirname}/../deployed_addresses/USDT_PoolTokenProxy.json`,
-  RewardDistributor: `${__dirname}/../deployed_addresses/RewardDistributor.json`,
-  AddressRegistryProxyAdmin: `${__dirname}/../deployed_addresses/AddressRegistryProxyAdmin.json`,
-  AddressRegistry: `${__dirname}/../deployed_addresses/AddressRegistry.json`,
-  AddressRegistryProxy: `${__dirname}/../deployed_addresses/AddressRegistryProxy.json`,
-  ManagerProxyAdmin: `${__dirname}/../deployed_addresses/ManagerProxyAdmin.json`,
-  Manager: `${__dirname}/../deployed_addresses/Manager.json`,
-  ManagerProxy: `${__dirname}/../deployed_addresses/ManagerProxy.json`,
-  ProxyConstructorArg: `${__dirname}/../deployed_addresses/ProxyConstructorArg.json`,
-  GenericExecutor: `${__dirname}/../deployed_addresses/GenericExecutor.json`,
-  Account: `${__dirname}/../deployed_addresses/Account.json`,
-  AssetAllocationRegistry: `${__dirname}/../deployed_addresses/AssetAllocationRegistry.json`,
-};
+function _getDeploysJson(contractName) {
+  return `${__dirname}/../deployed_addresses/${contractName}.json`;
+}
+
+const CONTRACT_NAMES = [
+  "PoolTokenProxyAdmin",
+  "DAI_PoolToken",
+  "DAI_PoolTokenProxy",
+  "USDC_PoolToken",
+  "USDC_PoolTokenProxy",
+  "USDT_PoolToken",
+  "USDT_PoolTokenProxy",
+  "Account",
+  "AccountManager",
+  "AccountManagerProxy",
+  "AccountManagerProxyAdmin",
+  "AddressRegistry",
+  "AddressRegistryProxy",
+  "AddressRegistryProxyAdmin",
+  "GenericExecutor",
+  "GovernanceToken",
+  "GovernanceTokenProxy",
+  "GovernanceTokenProxyAdmin",
+  "MetaPoolToken",
+  "MetaPoolTokenProxy",
+  "MetaPoolTokenProxyAdmin",
+  "PoolManager",
+  "PoolManagerProxy",
+  "PoolManagerProxyAdmin",
+  "ProxyConstructorArg",
+  "RewardDistributor",
+  "TVLManager",
+];
+
+const DEPLOYS_JSON = {};
+for (const contractName of CONTRACT_NAMES) {
+  DEPLOYS_JSON[contractName] = _getDeploysJson(contractName);
+}
 
 module.exports = {
   DAI_WHALE,
@@ -152,4 +164,5 @@ module.exports = {
   AGG_MAP,
   TOKEN_AGG_MAP,
   DEPLOYS_JSON,
+  CONTRACT_NAMES,
 };
