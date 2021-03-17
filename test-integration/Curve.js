@@ -57,7 +57,7 @@ describe("Contract: CurvePeriphery", () => {
     const coinIndex = 0;
     const stablecoins = {};
 
-    before(async () => {
+    beforeEach(async () => {
       lpToken = await ethers.getContractAt(
         IDetailedERC20.abi,
         LP_TOKEN_ADDRESS
