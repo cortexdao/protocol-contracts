@@ -34,9 +34,9 @@ async function main(argv) {
   console.log(`${NETWORK_NAME} selected`);
   console.log("");
 
-  const ALLOCATION_REGISTRY_MNEMONIC = process.env.ALLOCATION_REGISTRY_MNEMONIC;
-  const registryDeployer = ethers.Wallet.fromMnemonic(
-    ALLOCATION_REGISTRY_MNEMONIC
+  const TVL_MANAGER_MNEMONIC = process.env.TVL_MANAGER_MNEMONIC;
+  const managerDeployer = ethers.Wallet.fromMnemonic(
+    TVL_MANAGER_MNEMONIC
   ).connect(ethers.provider);
   console.log("Deployer address:", registryDeployer.address);
   /* TESTING on localhost only
@@ -45,44 +45,44 @@ async function main(argv) {
   // if (NETWORK_NAME == "LOCALHOST") {
   //   const [funder] = await ethers.getSigners();
   //   const fundingTrx = await funder.sendTransaction({
-  //     to: registryDeployer.address,
+  //     to: managerDeployer.address,
   //     value: ethers.utils.parseEther("10.0"),
   //   });
   //   await fundingTrx.wait();
   // }
 
   let balance =
-    (await ethers.provider.getBalance(registryDeployer.address)).toString() /
+    (await ethers.provider.getBalance(managerDeployer.address)).toString() /
     1e18;
   console.log("ETH balance:", balance.toString());
   console.log("");
 
   console.log("");
-  console.log("Deploying APYAssetAllocationRegistry ...");
+  console.log("Deploying TVLManager ...");
   console.log("");
 
-  const APYAssetAllocationRegistry = await ethers.getContractFactory(
-    "APYAssetAllocationRegistry",
+  const TVLManager = await ethers.getContractFactory(
+    "TVLManager",
     registryDeployer
   );
 
   let gasPrice = await getGasPrice(argv.gasPrice);
   // since the real manager is not deployed yet, we pass in a fake address;
   // the owner/deployer can still add or remove allocations.
-  const registry = await APYAssetAllocationRegistry.deploy(FAKE_ADDRESS, {
+  const manager = await TVLManager.deploy(FAKE_ADDRESS, {
     gasPrice,
   });
   console.log(
     "Deploy:",
-    `https://etherscan.io/tx/${registry.deployTransaction.hash}`
+    `https://etherscan.io/tx/${manager.deployTransaction.hash}`
   );
-  await registry.deployed();
-  console.log("APYAssetAllocationRegistry:", chalk.green(registry.address));
+  await manager.deployed();
+  console.log("TVLManager:", chalk.green(manager.address));
   console.log("");
-  assert.strictEqual(await registry.owner(), registryDeployer.address);
+  assert.strictEqual(await manager.owner(), managerDeployer.address);
 
   const deploy_data = {
-    APYAssetAllocationRegistry: registry.address,
+    TVLManager: manager.address,
   };
   updateDeployJsons(NETWORK_NAME, deploy_data);
 
@@ -117,14 +117,14 @@ async function main(argv) {
   gasPrice = await getGasPrice(argv.gasPrice);
   let trx = await addressRegistry.registerAddress(
     bytes32("chainlinkRegistry"),
-    registry.address,
+    manager.address,
     { gasPrice }
   );
   console.log("Register address:", `https://etherscan.io/tx/${trx.hash}`);
   await trx.wait();
   assert.strictEqual(
     await addressRegistry.chainlinkRegistryAddress(),
-    registry.address,
+    manager.address,
     "Chainlink registry address is not registered correctly."
   );
   console.log("... done.");
@@ -155,7 +155,7 @@ async function main(argv) {
   const usdtAddress = getStablecoinAddress("USDT", NETWORK_NAME);
 
   gasPrice = await getGasPrice(argv.gasPrice);
-  trx = await registry.addAssetAllocation(
+  trx = await manager.addAssetAllocation(
     bytes32("daiPool"),
     [daiAddress, calldataForDai],
     "DAI",
@@ -165,7 +165,7 @@ async function main(argv) {
   console.log("Add allocation:", `https://etherscan.io/tx/${trx.hash}`);
   await trx.wait();
   gasPrice = await getGasPrice(argv.gasPrice);
-  trx = await registry.addAssetAllocation(
+  trx = await manager.addAssetAllocation(
     bytes32("usdcPool"),
     [usdcAddress, calldataForUsdc],
     "USDC",
@@ -175,7 +175,7 @@ async function main(argv) {
   console.log("Add allocation:", `https://etherscan.io/tx/${trx.hash}`);
   await trx.wait();
   gasPrice = await getGasPrice(argv.gasPrice);
-  trx = await registry.addAssetAllocation(
+  trx = await manager.addAssetAllocation(
     bytes32("usdtPool"),
     [usdtAddress, calldataForUsdt],
     "USDT",
@@ -185,17 +185,17 @@ async function main(argv) {
   console.log("Add allocation:", `https://etherscan.io/tx/${trx.hash}`);
   await trx.wait();
   console.log("... done.");
-  console.log(await registry.getAssetAllocationIds());
+  console.log(await manager.getAssetAllocationIds());
 
   if (["KOVAN", "MAINNET"].includes(NETWORK_NAME)) {
     console.log("");
     console.log("Verifying on Etherscan ...");
     await ethers.provider.waitForTransaction(
-      registry.deployTransaction.hash,
+      manager.deployTransaction.hash,
       5
     ); // wait for Etherscan to catch up
     await hre.run("verify:verify", {
-      address: registry.address,
+      address: manager.address,
       constructorArguments: [FAKE_ADDRESS],
     });
     console.log("");
