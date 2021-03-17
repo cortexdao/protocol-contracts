@@ -13,7 +13,8 @@ const {
 describe("Contract: TVLManager", () => {
   // signers
   let deployer;
-  let manager;
+  let poolManager;
+  let accountManager;
   let randomUser;
 
   // contract factories
@@ -35,11 +36,19 @@ describe("Contract: TVLManager", () => {
   });
 
   before(async () => {
-    [deployer, manager, randomUser] = await ethers.getSigners();
+    [
+      deployer,
+      poolManager,
+      accountManager,
+      randomUser,
+    ] = await ethers.getSigners();
 
     TVLManager = await ethers.getContractFactory("TVLManager");
 
-    tvlManager = await TVLManager.deploy(manager.address);
+    tvlManager = await TVLManager.deploy(
+      poolManager.address,
+      accountManager.address
+    );
     await tvlManager.deployed();
   });
 
@@ -49,21 +58,40 @@ describe("Contract: TVLManager", () => {
     });
   });
 
-  describe("Setting manager address", () => {
+  describe("Setting pool manager address", () => {
     it("Owner can set to valid address", async () => {
-      await tvlManager.connect(deployer).setManagerAddress(FAKE_ADDRESS);
-      expect(await tvlManager.manager()).to.equal(FAKE_ADDRESS);
+      await tvlManager.connect(deployer).setPoolManagerAddress(FAKE_ADDRESS);
+      expect(await tvlManager.poolManager()).to.equal(FAKE_ADDRESS);
     });
 
     it("Non-owner cannot set", async () => {
       await expect(
-        tvlManager.connect(randomUser).setManagerAddress(FAKE_ADDRESS)
+        tvlManager.connect(randomUser).setPoolManagerAddress(FAKE_ADDRESS)
       ).to.be.revertedWith("revert Ownable: caller is not the owner");
     });
 
     it("Cannot set to zero address", async () => {
       await expect(
-        tvlManager.connect(deployer).setManagerAddress(ZERO_ADDRESS)
+        tvlManager.connect(deployer).setPoolManagerAddress(ZERO_ADDRESS)
+      ).to.be.revertedWith("INVALID_MANAGER");
+    });
+  });
+
+  describe("Setting account manager address", () => {
+    it("Owner can set to valid address", async () => {
+      await tvlManager.connect(deployer).setAccountManagerAddress(FAKE_ADDRESS);
+      expect(await tvlManager.accountManager()).to.equal(FAKE_ADDRESS);
+    });
+
+    it("Non-owner cannot set", async () => {
+      await expect(
+        tvlManager.connect(randomUser).setAccountManagerAddress(FAKE_ADDRESS)
+      ).to.be.revertedWith("revert Ownable: caller is not the owner");
+    });
+
+    it("Cannot set to zero address", async () => {
+      await expect(
+        tvlManager.connect(deployer).setAccountManagerAddress(ZERO_ADDRESS)
       ).to.be.revertedWith("INVALID_MANAGER");
     });
   });
@@ -94,14 +122,26 @@ describe("Contract: TVLManager", () => {
         ).to.not.be.reverted;
       });
 
-      it("Manager can call", async () => {
+      it("Pool manager can call", async () => {
         const allocationId = bytes32("");
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
         const decimals = 18;
         await expect(
           tvlManager
-            .connect(manager)
+            .connect(poolManager)
+            .addAssetAllocation(allocationId, data, symbol, decimals)
+        ).to.not.be.reverted;
+      });
+
+      it("Account manager can call", async () => {
+        const allocationId = bytes32("");
+        const data = [FAKE_ADDRESS, bytes32("")];
+        const symbol = "FOO";
+        const decimals = 18;
+        await expect(
+          tvlManager
+            .connect(accountManager)
             .addAssetAllocation(allocationId, data, symbol, decimals)
         ).to.not.be.reverted;
       });
@@ -122,10 +162,17 @@ describe("Contract: TVLManager", () => {
         ).to.not.be.reverted;
       });
 
-      it("Manager can call", async () => {
+      it("Pool manager can call", async () => {
         const allocationId = bytes32("");
         await expect(
-          tvlManager.connect(manager).removeAssetAllocation(allocationId)
+          tvlManager.connect(poolManager).removeAssetAllocation(allocationId)
+        ).to.not.be.reverted;
+      });
+
+      it("Account manager can call", async () => {
+        const allocationId = bytes32("");
+        await expect(
+          tvlManager.connect(accountManager).removeAssetAllocation(allocationId)
         ).to.not.be.reverted;
       });
     });

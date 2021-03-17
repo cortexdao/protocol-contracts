@@ -55,7 +55,7 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
 
     /**
      * @dev Throws if non-permissioned account calls.  Access list for
-     *      now includes only the deployer (owner) and the APY Manager.
+     *      now includes the deployer (owner), pool manager, and account manager.
      */
     modifier onlyPermissioned() {
         require(
