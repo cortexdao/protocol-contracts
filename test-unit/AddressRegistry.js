@@ -9,11 +9,11 @@ const TransparentUpgradeableProxy = artifacts.require(
   "TransparentUpgradeableProxy"
 );
 const ProxyConstructorArg = artifacts.require("ProxyConstructorArg");
-const APYAddressRegistry = artifacts.require("APYAddressRegistry");
+const AddressRegistry = artifacts.require("AddressRegistry");
 
 const bytes32 = ethers.utils.formatBytes32String;
 
-contract("APYAddressRegistry", async (accounts) => {
+contract("AddressRegistry", async (accounts) => {
   const [deployer, admin, randomUser] = accounts;
 
   let proxyAdmin;
@@ -35,7 +35,7 @@ contract("APYAddressRegistry", async (accounts) => {
 
   before(async () => {
     proxyAdmin = await ProxyAdmin.new({ from: deployer });
-    logic = await APYAddressRegistry.new({ from: deployer });
+    logic = await AddressRegistry.new({ from: deployer });
     const encodedArg = await (await ProxyConstructorArg.new()).getEncodedArg(
       proxyAdmin.address
     );
@@ -47,7 +47,7 @@ contract("APYAddressRegistry", async (accounts) => {
         from: deployer,
       }
     );
-    registry = await APYAddressRegistry.at(proxy.address);
+    registry = await AddressRegistry.at(proxy.address);
   });
 
   describe("Constructor", async () => {

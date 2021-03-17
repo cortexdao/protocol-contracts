@@ -14,15 +14,15 @@ const erc20Interface = new ethers.utils.Interface(
   artifacts.require("ERC20").abi
 );
 
-describe("Contract: APYAccountManager", () => {
+describe("Contract: AccountManager", () => {
   // signers
   let deployer;
   let randomUser;
 
   // contract factories
-  let APYAccountManager;
+  let AccountManager;
   let ProxyAdmin;
-  let APYGenericExecutor;
+  let GenericExecutor;
 
   // deployed contracts
   let manager;
@@ -44,15 +44,15 @@ describe("Contract: APYAccountManager", () => {
     [deployer, randomUser] = await ethers.getSigners();
 
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    APYAccountManager = await ethers.getContractFactory("APYAccountManager");
-    const APYAccountManagerProxy = await ethers.getContractFactory(
-      "APYAccountManagerProxy"
+    AccountManager = await ethers.getContractFactory("AccountManager");
+    const AccountManagerProxy = await ethers.getContractFactory(
+      "AccountManagerProxy"
     );
-    APYGenericExecutor = await ethers.getContractFactory("APYGenericExecutor");
-    executor = await APYGenericExecutor.deploy();
+    GenericExecutor = await ethers.getContractFactory("GenericExecutor");
+    executor = await GenericExecutor.deploy();
     await executor.deployed();
 
-    const logic = await APYAccountManager.deploy();
+    const logic = await AccountManager.deploy();
     await logic.deployed();
 
     const proxyAdmin = await ProxyAdmin.deploy();
@@ -63,13 +63,13 @@ describe("Contract: APYAccountManager", () => {
       artifacts.require("IAddressRegistry").abi
     );
     await addressRegistryMock.mock.getAddress.returns(FAKE_ADDRESS);
-    const proxy = await APYAccountManagerProxy.deploy(
+    const proxy = await AccountManagerProxy.deploy(
       logic.address,
       proxyAdmin.address,
       addressRegistryMock.address
     );
     await proxy.deployed();
-    manager = await APYAccountManager.attach(proxy.address);
+    manager = await AccountManager.attach(proxy.address);
   });
 
   describe("Defaults", () => {
@@ -136,7 +136,7 @@ describe("Contract: APYAccountManager", () => {
       [spenderAddress, approvalAmount]
     );
 
-    before("Deploy APYAccount", async () => {
+    before("Deploy Account", async () => {
       // NOTE: I use a real ERC20 contract here since MockContract cannot emit events
       const ERC20 = await ethers.getContractFactory("ERC20");
       tokenA = await ERC20.deploy("TokenA", "A");
@@ -150,8 +150,8 @@ describe("Contract: APYAccountManager", () => {
       );
       await manager.deployAccount(bytes32("account1"), executor.address);
 
-      const APYAccount = await ethers.getContractFactory("APYAccount");
-      account = await APYAccount.attach(accountAddress);
+      const Account = await ethers.getContractFactory("Account");
+      account = await Account.attach(accountAddress);
     });
 
     it("Account owner is manager", async () => {

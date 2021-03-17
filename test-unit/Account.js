@@ -1,8 +1,8 @@
 const { assert } = require("chai");
 const { ethers, artifacts, contract } = require("hardhat");
 const { expectEvent, expectRevert } = require("@openzeppelin/test-helpers");
-const GenericExecutor = artifacts.require("APYGenericExecutor");
-const APYAccount = artifacts.require("APYAccount");
+const GenericExecutor = artifacts.require("GenericExecutor");
+const Account = artifacts.require("Account");
 const ERC20 = artifacts.require("ERC20");
 
 contract("Test Account", async (accounts) => {
@@ -19,7 +19,7 @@ contract("Test Account", async (accounts) => {
     TokenA = await ERC20.new("TokenA", "A");
     TokenB = await ERC20.new("TokenB", "B");
     executor = await GenericExecutor.new();
-    account = await APYAccount.new(executor.address);
+    account = await Account.new(executor.address);
   });
 
   it("Test Account Ownership", async () => {

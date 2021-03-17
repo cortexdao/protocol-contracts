@@ -7,10 +7,10 @@ const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const { erc20 } = require("../utils/helpers");
 
 const ProxyAdmin = artifacts.require("ProxyAdmin");
-const APYGovernanceTokenProxy = artifacts.require("APYGovernanceTokenProxy");
-const APYGovernanceToken = artifacts.require("APYGovernanceToken");
+const GovernanceTokenProxy = artifacts.require("GovernanceTokenProxy");
+const GovernanceToken = artifacts.require("GovernanceToken");
 
-contract("APYGovernanceToken Unit Test", async (accounts) => {
+contract("GovernanceToken Unit Test", async (accounts) => {
   const [owner, instanceAdmin, randomUser] = accounts;
 
   let proxyAdmin;
@@ -34,8 +34,8 @@ contract("APYGovernanceToken Unit Test", async (accounts) => {
 
   before(async () => {
     proxyAdmin = await ProxyAdmin.new({ from: owner });
-    logic = await APYGovernanceToken.new({ from: owner });
-    proxy = await APYGovernanceTokenProxy.new(
+    logic = await GovernanceToken.new({ from: owner });
+    proxy = await GovernanceTokenProxy.new(
       logic.address,
       proxyAdmin.address,
       totalSupply,
@@ -43,13 +43,13 @@ contract("APYGovernanceToken Unit Test", async (accounts) => {
         from: owner,
       }
     );
-    instance = await APYGovernanceToken.at(proxy.address);
+    instance = await GovernanceToken.at(proxy.address);
   });
 
   describe("Test Constructor", async () => {
     it("Test params invalid admin", async () => {
       await expectRevert.unspecified(
-        APYGovernanceTokenProxy.new(logic.address, ZERO_ADDRESS, totalSupply, {
+        GovernanceTokenProxy.new(logic.address, ZERO_ADDRESS, totalSupply, {
           from: owner,
         })
       );

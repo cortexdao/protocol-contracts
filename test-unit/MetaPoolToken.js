@@ -18,7 +18,7 @@ const usdc = (amount) => tokenAmountToBigNumber(amount, "6");
 const dai = (amount) => tokenAmountToBigNumber(amount, "18");
 const ether = (amount) => tokenAmountToBigNumber(amount, "18");
 
-describe("Contract: APYMetaPoolToken", () => {
+describe("Contract: MetaPoolToken", () => {
   // signers
   let deployer;
   let manager;
@@ -28,8 +28,8 @@ describe("Contract: APYMetaPoolToken", () => {
   // contract factories
   // have to be set async in "before"
   let ProxyAdmin;
-  let APYMetaPoolTokenProxy;
-  let APYMetaPoolToken;
+  let MetaPoolTokenProxy;
+  let MetaPoolToken;
 
   // deployed contracts
   let proxyAdmin;
@@ -58,31 +58,29 @@ describe("Contract: APYMetaPoolToken", () => {
     [deployer, manager, randomUser, anotherUser] = await ethers.getSigners();
 
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    APYMetaPoolTokenProxy = await ethers.getContractFactory(
-      "APYMetaPoolTokenProxy"
-    );
-    APYMetaPoolToken = await ethers.getContractFactory("TestAPYMetaPoolToken");
+    MetaPoolTokenProxy = await ethers.getContractFactory("MetaPoolTokenProxy");
+    MetaPoolToken = await ethers.getContractFactory("TestMetaPoolToken");
 
     tvlAggMock = await deployMockContract(deployer, AggregatorV3Interface.abi);
 
     proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
-    logic = await APYMetaPoolToken.deploy();
+    logic = await MetaPoolToken.deploy();
     await logic.deployed();
-    proxy = await APYMetaPoolTokenProxy.deploy(
+    proxy = await MetaPoolTokenProxy.deploy(
       logic.address,
       proxyAdmin.address,
       tvlAggMock.address,
       aggStalePeriod
     );
     await proxy.deployed();
-    mApt = await APYMetaPoolToken.attach(proxy.address);
+    mApt = await MetaPoolToken.attach(proxy.address);
   });
 
   describe("Constructor", async () => {
     it("Revert when logic is not a contract address", async () => {
       await expect(
-        APYMetaPoolTokenProxy.connect(deployer).deploy(
+        MetaPoolTokenProxy.connect(deployer).deploy(
           DUMMY_ADDRESS,
           proxyAdmin.address,
           DUMMY_ADDRESS,
@@ -95,7 +93,7 @@ describe("Contract: APYMetaPoolToken", () => {
 
     it("Revert when proxy admin is zero address", async () => {
       await expect(
-        APYMetaPoolTokenProxy.connect(deployer).deploy(
+        MetaPoolTokenProxy.connect(deployer).deploy(
           logic.address,
           ZERO_ADDRESS,
           DUMMY_ADDRESS,
@@ -106,7 +104,7 @@ describe("Contract: APYMetaPoolToken", () => {
 
     it("Revert when TVL aggregator is zero address", async () => {
       await expect(
-        APYMetaPoolTokenProxy.connect(deployer).deploy(
+        MetaPoolTokenProxy.connect(deployer).deploy(
           logic.address,
           DUMMY_ADDRESS,
           ZERO_ADDRESS,
@@ -117,7 +115,7 @@ describe("Contract: APYMetaPoolToken", () => {
 
     it("Revert when aggStalePeriod is zero", async () => {
       await expect(
-        APYMetaPoolTokenProxy.connect(deployer).deploy(
+        MetaPoolTokenProxy.connect(deployer).deploy(
           logic.address,
           DUMMY_ADDRESS,
           DUMMY_ADDRESS,
@@ -449,12 +447,12 @@ describe("Contract: APYMetaPoolToken", () => {
 
       // Note our local declarations shadow some existing globals
       // but their scope is limited to this `before`.
-      const APYMetaPoolToken = await ethers.getContractFactory(
-        "APYMetaPoolToken" // the *real* contract
+      const MetaPoolToken = await ethers.getContractFactory(
+        "MetaPoolToken" // the *real* contract
       );
-      const logic = await APYMetaPoolToken.deploy();
+      const logic = await MetaPoolToken.deploy();
       await logic.deployed();
-      const proxy = await APYMetaPoolTokenProxy.deploy(
+      const proxy = await MetaPoolTokenProxy.deploy(
         logic.address,
         proxyAdmin.address,
         tvlAggMock.address,
@@ -463,14 +461,14 @@ describe("Contract: APYMetaPoolToken", () => {
       await proxy.deployed();
       // Set the `mAPT` global to point to a deployed proxy with
       // the real logic, not the test one.
-      mApt = await APYMetaPoolToken.attach(proxy.address);
+      mApt = await MetaPoolToken.attach(proxy.address);
       await mApt.setManagerAddress(manager.address);
     });
 
     after(async () => {
       // re-attach to test contract for other tests
       // Note: here the variables all refer to the global scope
-      mApt = await APYMetaPoolToken.attach(proxy.address);
+      mApt = await MetaPoolToken.attach(proxy.address);
     });
 
     it("getTVL reverts on negative answer", async () => {

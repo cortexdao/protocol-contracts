@@ -7,16 +7,16 @@ const { bytes32 } = require("../utils/helpers");
 const { FAKE_ADDRESS } = require("../utils/helpers");
 const { deployMockContract } = require("@ethereum-waffle/mock-contract");
 
-describe("Contract: APYPoolManager", () => {
+describe("Contract: PoolManager", () => {
   // signers
   let deployer;
   let randomUser;
   let accounts;
 
   // contract factories
-  let APYPoolManager;
+  let PoolManager;
   let ProxyAdmin;
-  let APYGenericExecutor;
+  let GenericExecutor;
 
   // deployed contracts
   let manager;
@@ -38,15 +38,15 @@ describe("Contract: APYPoolManager", () => {
     [deployer, randomUser, ...accounts] = await ethers.getSigners();
 
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    APYPoolManager = await ethers.getContractFactory("APYPoolManager");
-    const APYPoolManagerProxy = await ethers.getContractFactory(
-      "APYPoolManagerProxy"
+    PoolManager = await ethers.getContractFactory("PoolManager");
+    const PoolManagerProxy = await ethers.getContractFactory(
+      "PoolManagerProxy"
     );
-    APYGenericExecutor = await ethers.getContractFactory("APYGenericExecutor");
-    executor = await APYGenericExecutor.deploy();
+    GenericExecutor = await ethers.getContractFactory("GenericExecutor");
+    executor = await GenericExecutor.deploy();
     await executor.deployed();
 
-    const logic = await APYPoolManager.deploy();
+    const logic = await PoolManager.deploy();
     await logic.deployed();
 
     const proxyAdmin = await ProxyAdmin.deploy();
@@ -58,14 +58,14 @@ describe("Contract: APYPoolManager", () => {
       artifacts.require("IAddressRegistry").abi
     );
     await addressRegistryMock.mock.getAddress.returns(FAKE_ADDRESS);
-    const proxy = await APYPoolManagerProxy.deploy(
+    const proxy = await PoolManagerProxy.deploy(
       logic.address,
       proxyAdmin.address,
       mAptMock.address,
       addressRegistryMock.address
     );
     await proxy.deployed();
-    manager = await APYPoolManager.attach(proxy.address);
+    manager = await PoolManager.attach(proxy.address);
   });
 
   describe("Defaults", () => {

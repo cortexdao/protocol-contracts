@@ -14,9 +14,9 @@ const {
 
 const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
-const APYMetaPoolToken = artifacts.require("APYMetaPoolToken");
+const MetaPoolToken = artifacts.require("MetaPoolToken");
 
-describe("Contract: APYPoolToken", () => {
+describe("Contract: PoolToken", () => {
   // signers
   let deployer;
   let randomUser;
@@ -24,9 +24,9 @@ describe("Contract: APYPoolToken", () => {
 
   // contract factories
   let ProxyAdmin;
-  let APYPoolTokenProxy;
-  let APYPoolToken;
-  let APYPoolTokenV2;
+  let PoolTokenProxy;
+  let PoolToken;
+  let PoolTokenV2;
 
   // mocks
   let underlyerMock;
@@ -53,9 +53,9 @@ describe("Contract: APYPoolToken", () => {
     [deployer, randomUser, anotherUser] = await ethers.getSigners();
 
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    APYPoolTokenProxy = await ethers.getContractFactory("APYPoolTokenProxy");
-    APYPoolToken = await ethers.getContractFactory("TestAPYPoolToken");
-    APYPoolTokenV2 = await ethers.getContractFactory("TestAPYPoolTokenV2");
+    PoolTokenProxy = await ethers.getContractFactory("PoolTokenProxy");
+    PoolToken = await ethers.getContractFactory("TestPoolToken");
+    PoolTokenV2 = await ethers.getContractFactory("TestPoolTokenV2");
 
     underlyerMock = await deployMockContract(deployer, IDetailedERC20.abi);
     priceAggMock = await deployMockContract(
@@ -64,9 +64,9 @@ describe("Contract: APYPoolToken", () => {
     );
     proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
-    const logic = await APYPoolToken.deploy();
+    const logic = await PoolToken.deploy();
     await logic.deployed();
-    const proxy = await APYPoolTokenProxy.deploy(
+    const proxy = await PoolTokenProxy.deploy(
       logic.address,
       proxyAdmin.address,
       underlyerMock.address,
@@ -74,25 +74,25 @@ describe("Contract: APYPoolToken", () => {
     );
     await proxy.deployed();
 
-    const logicV2 = await APYPoolTokenV2.deploy();
+    const logicV2 = await PoolTokenV2.deploy();
     await logicV2.deployed();
 
-    mAptMock = await deployMockContract(deployer, APYMetaPoolToken.abi);
-    const initData = APYPoolTokenV2.interface.encodeFunctionData(
+    mAptMock = await deployMockContract(deployer, MetaPoolToken.abi);
+    const initData = PoolTokenV2.interface.encodeFunctionData(
       "initializeUpgrade(address)",
       [mAptMock.address]
     );
     await proxyAdmin
       .connect(deployer)
       .upgradeAndCall(proxy.address, logicV2.address, initData);
-    poolToken = await APYPoolTokenV2.attach(proxy.address);
+    poolToken = await PoolTokenV2.attach(proxy.address);
   });
 
   describe("Constructor", async () => {
     it("Revert when admin address is zero ", async () => {
       const logicMock = await deployMockContract(deployer, []);
       await expect(
-        APYPoolTokenProxy.deploy(
+        PoolTokenProxy.deploy(
           logicMock.address,
           ZERO_ADDRESS,
           underlyerMock.address,
@@ -104,7 +104,7 @@ describe("Contract: APYPoolToken", () => {
     it("Revert when token address is zero", async () => {
       const logicMock = await deployMockContract(deployer, []);
       await expect(
-        APYPoolTokenProxy.deploy(
+        PoolTokenProxy.deploy(
           logicMock.address,
           proxyAdmin.address,
           ZERO_ADDRESS,
@@ -116,7 +116,7 @@ describe("Contract: APYPoolToken", () => {
     it("Revert when agg address is zero", async () => {
       const logicMock = await deployMockContract(deployer, []);
       await expect(
-        APYPoolTokenProxy.deploy(
+        PoolTokenProxy.deploy(
           logicMock.address,
           proxyAdmin.address,
           underlyerMock.address,

@@ -10,14 +10,14 @@ const {
   bytes32,
 } = require("../utils/helpers");
 
-describe("Contract: APYAssetAllocationRegistry", () => {
+describe("Contract: AssetAllocationRegistry", () => {
   // signers
   let deployer;
   let manager;
   let randomUser;
 
   // contract factories
-  let APYAssetAllocationRegistry;
+  let AssetAllocationRegistry;
 
   // deployed contracts
   let registry;
@@ -37,11 +37,11 @@ describe("Contract: APYAssetAllocationRegistry", () => {
   before(async () => {
     [deployer, manager, randomUser] = await ethers.getSigners();
 
-    APYAssetAllocationRegistry = await ethers.getContractFactory(
-      "APYAssetAllocationRegistry"
+    AssetAllocationRegistry = await ethers.getContractFactory(
+      "AssetAllocationRegistry"
     );
 
-    registry = await APYAssetAllocationRegistry.deploy(manager.address);
+    registry = await AssetAllocationRegistry.deploy(manager.address);
     await registry.deployed();
   });
 

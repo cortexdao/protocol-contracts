@@ -19,10 +19,10 @@ the following external packages:
 The C3-linearization was logically derived and then validated using
 the `surya` package:
 
-$ yarn surya dependencies APYPoolToken contracts/APYPoolToken.sol
+$ yarn surya dependencies PoolToken contracts/PoolToken.sol
 yarn run v1.22.5
-$ /Users/suh/git/apy-core/node_modules/.bin/surya dependencies APYPoolToken contracts/APYPoolToken.sol
-APYPoolToken
+$ /Users/suh/git/apy-core/node_modules/.bin/surya dependencies PoolToken contracts/PoolToken.sol
+PoolToken
   ↖ ERC20UpgradeSafe
   ↖ PausableUpgradeSafe
   ↖ ReentrancyGuardUpgradeSafe
@@ -64,7 +64,7 @@ APY.Finance APT V1
   303 AggregatorV3Interface public priceAgg;
 
 APY.Finance APT V2
-  304 APYMetaPoolToken public mApt;
+  304 MetaPoolToken public mApt;
   305 uint256 public feePeriod;
   306 uint256 public feePercentage;
   307 mapping(address => uint256) public lastDepositTime;
@@ -94,13 +94,9 @@ describe("APT V2 uses V1 storage slot positions", () => {
     [deployer, user, otherUser] = await ethers.getSigners();
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    const APYPoolTokenProxy = await ethers.getContractFactory(
-      "APYPoolTokenProxy"
-    );
-    const APYPoolToken = await ethers.getContractFactory("TestAPYPoolToken");
-    const APYPoolTokenV2 = await ethers.getContractFactory(
-      "TestAPYPoolTokenV2"
-    );
+    const PoolTokenProxy = await ethers.getContractFactory("PoolTokenProxy");
+    const PoolToken = await ethers.getContractFactory("TestPoolToken");
+    const PoolTokenV2 = await ethers.getContractFactory("TestPoolTokenV2");
 
     proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
@@ -108,9 +104,9 @@ describe("APT V2 uses V1 storage slot positions", () => {
     underlyer = await deployMockContract(deployer, []);
     mApt = await deployMockContract(deployer, []);
 
-    const logicV1 = await APYPoolToken.deploy();
+    const logicV1 = await PoolToken.deploy();
     await logicV1.deployed();
-    const proxy = await APYPoolTokenProxy.deploy(
+    const proxy = await PoolTokenProxy.deploy(
       logicV1.address,
       proxyAdmin.address,
       underlyer.address,
@@ -118,10 +114,10 @@ describe("APT V2 uses V1 storage slot positions", () => {
     );
     await proxy.deployed();
 
-    const logicV2 = await APYPoolTokenV2.deploy();
+    const logicV2 = await PoolTokenV2.deploy();
     await logicV2.deployed();
 
-    const initData = APYPoolTokenV2.interface.encodeFunctionData(
+    const initData = PoolTokenV2.interface.encodeFunctionData(
       "initializeUpgrade(address)",
       [mApt.address]
     );
@@ -129,7 +125,7 @@ describe("APT V2 uses V1 storage slot positions", () => {
       .connect(deployer)
       .upgradeAndCall(proxy.address, logicV2.address, initData);
 
-    poolToken = await APYPoolTokenV2.attach(proxy.address);
+    poolToken = await PoolTokenV2.attach(proxy.address);
 
     await poolToken.lock();
     await poolToken.testMint(deployer.address, minted);

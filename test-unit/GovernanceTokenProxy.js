@@ -1,17 +1,15 @@
 const { assert } = require("chai");
 const { ethers, artifacts, contract } = require("hardhat");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
-const APYGovernanceTokenUpgraded = artifacts.require(
-  "APYGovernanceTokenUpgraded"
-);
-const APYGovernanceTokenProxy = artifacts.require("APYGovernanceTokenProxy");
-const APYGovernanceToken = artifacts.require("APYGovernanceToken");
+const GovernanceTokenUpgraded = artifacts.require("GovernanceTokenUpgraded");
+const GovernanceTokenProxy = artifacts.require("GovernanceTokenProxy");
+const GovernanceToken = artifacts.require("GovernanceToken");
 const {
   expectRevert, // Assertions for transactions that should fail
 } = require("@openzeppelin/test-helpers");
 const { erc20 } = require("../utils/helpers");
 
-contract("APYGovernanceTokenProxy Unit Test", async (accounts) => {
+contract("GovernanceTokenProxy Unit Test", async (accounts) => {
   const [owner, randomUser] = accounts;
 
   let proxyAdmin;
@@ -23,8 +21,8 @@ contract("APYGovernanceTokenProxy Unit Test", async (accounts) => {
 
   before(async () => {
     proxyAdmin = await ProxyAdmin.new({ from: owner });
-    logic = await APYGovernanceToken.new({ from: owner });
-    proxy = await APYGovernanceTokenProxy.new(
+    logic = await GovernanceToken.new({ from: owner });
+    proxy = await GovernanceTokenProxy.new(
       logic.address,
       proxyAdmin.address,
       totalSupply,
@@ -32,7 +30,7 @@ contract("APYGovernanceTokenProxy Unit Test", async (accounts) => {
         from: owner,
       }
     );
-    instance = await APYGovernanceToken.at(proxy.address);
+    instance = await GovernanceToken.at(proxy.address);
   });
 
   describe("Test Defaults", async () => {
@@ -59,7 +57,7 @@ contract("APYGovernanceTokenProxy Unit Test", async (accounts) => {
 
   describe("Test Upgradability through proxyAdmin", async () => {
     beforeEach(async () => {
-      proxy = await APYGovernanceTokenProxy.new(
+      proxy = await GovernanceTokenProxy.new(
         logic.address,
         proxyAdmin.address,
         totalSupply,
@@ -67,12 +65,12 @@ contract("APYGovernanceTokenProxy Unit Test", async (accounts) => {
           from: owner,
         }
       );
-      instance = await APYGovernanceToken.at(proxy.address);
+      instance = await GovernanceToken.at(proxy.address);
     });
 
     it("Test Proxy Upgrade Implementation fails when not called by owner", async () => {
       // deploy new implementation
-      const newLogic = await APYGovernanceTokenUpgraded.new({ from: owner });
+      const newLogic = await GovernanceTokenUpgraded.new({ from: owner });
       await expectRevert(
         proxyAdmin.upgrade(proxy.address, newLogic.address, {
           from: randomUser,
@@ -86,18 +84,18 @@ contract("APYGovernanceTokenProxy Unit Test", async (accounts) => {
       assert.equal(typeof instance.newlyAddedVariable, "undefined");
 
       //prematurely point instance to upgraded implementation
-      instance = await APYGovernanceTokenUpgraded.at(proxy.address);
+      instance = await GovernanceTokenUpgraded.at(proxy.address);
       assert.equal(typeof instance.newlyAddedVariable, "function");
 
       //function should fail due to the proxy not pointing to the correct implementation
       await expectRevert.unspecified(instance.newlyAddedVariable.call());
 
       // create the new implementation and point the proxy to it
-      const newLogic = await APYGovernanceTokenUpgraded.new({ from: owner });
+      const newLogic = await GovernanceTokenUpgraded.new({ from: owner });
       await proxyAdmin.upgrade(proxy.address, newLogic.address, {
         from: owner,
       });
-      instance = await APYGovernanceTokenUpgraded.at(proxy.address);
+      instance = await GovernanceTokenUpgraded.at(proxy.address);
 
       const newVal = await instance.newlyAddedVariable.call();
       assert.equal(newVal, false);
@@ -111,13 +109,13 @@ contract("APYGovernanceTokenProxy Unit Test", async (accounts) => {
 
     it("Test Proxy Upgrade Implementation and Initialize when not called by admin", async () => {
       // deploy new implementation
-      const newLogic = await APYGovernanceTokenUpgraded.new({ from: owner });
+      const newLogic = await GovernanceTokenUpgraded.new({ from: owner });
       await proxyAdmin.upgrade(proxy.address, newLogic.address, {
         from: owner,
       });
 
       // point instance to upgraded implementation
-      instance = await APYGovernanceTokenUpgraded.at(proxy.address);
+      instance = await GovernanceTokenUpgraded.at(proxy.address);
 
       await expectRevert(
         instance.initializeUpgrade({ from: owner }),
@@ -127,10 +125,10 @@ contract("APYGovernanceTokenProxy Unit Test", async (accounts) => {
 
     it("Test Proxy Upgrade Implementation and Initialize fails when not owner", async () => {
       // deploy new implementation
-      const newLogic = await APYGovernanceTokenUpgraded.new({ from: owner });
+      const newLogic = await GovernanceTokenUpgraded.new({ from: owner });
       // construct init data
       const iImplementation = new ethers.utils.Interface(
-        APYGovernanceTokenUpgraded.abi
+        GovernanceTokenUpgraded.abi
       );
       const initData = iImplementation.encodeFunctionData(
         "initializeUpgrade",
@@ -150,16 +148,16 @@ contract("APYGovernanceTokenProxy Unit Test", async (accounts) => {
       assert.equal(typeof instance.newlyAddedVariable, "undefined");
 
       //prematurely point instance to upgraded implementation
-      instance = await APYGovernanceTokenUpgraded.at(proxy.address);
+      instance = await GovernanceTokenUpgraded.at(proxy.address);
       assert.equal(typeof instance.newlyAddedVariable, "function");
 
       //function should fail due to the proxy not pointing to the correct implementation
       await expectRevert.unspecified(instance.newlyAddedVariable.call());
 
       // create the new implementation and point the proxy to it
-      const newLogic = await APYGovernanceTokenUpgraded.new({ from: owner });
+      const newLogic = await GovernanceTokenUpgraded.new({ from: owner });
       const iImplementation = new ethers.utils.Interface(
-        APYGovernanceTokenUpgraded.abi
+        GovernanceTokenUpgraded.abi
       );
       const initData = iImplementation.encodeFunctionData(
         "initializeUpgrade",

@@ -1,7 +1,7 @@
 const { assert } = require("chai");
 const { ethers, artifacts, contract } = require("hardhat");
 const { expectEvent, expectRevert } = require("@openzeppelin/test-helpers");
-const GenericExecutor = artifacts.require("APYGenericExecutor");
+const GenericExecutor = artifacts.require("GenericExecutor");
 const ERC20 = artifacts.require("ERC20");
 
 contract("Test GenericExecutor", async (accounts) => {

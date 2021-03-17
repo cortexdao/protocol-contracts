@@ -13,7 +13,7 @@ const ERC20 = new ethers.utils.Interface(
     "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol:ERC20UpgradeSafe"
   ).abi
 );
-const APYRewardDistributor = artifacts.require("APYRewardDistributor");
+const RewardDistributor = artifacts.require("RewardDistributor");
 const SIGNER = "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1";
 const ROTATED_SIGNER = "0xFFcf8FDEE72ac11b5c542428B35EEF5769C409f0";
 const SIGNER_KEY =
@@ -62,7 +62,7 @@ async function generateSignature(
   return { r, s, v };
 }
 
-contract("APYRewardDistributor Unit Test", async (accounts) => {
+contract("RewardDistributor Unit Test", async (accounts) => {
   const [owner, recipient1, recipient2] = accounts;
 
   let rewardDistributor;
@@ -80,24 +80,22 @@ contract("APYRewardDistributor Unit Test", async (accounts) => {
 
   before(async () => {
     mockToken = await MockContract.new();
-    rewardDistributor = await APYRewardDistributor.new(
-      mockToken.address,
-      SIGNER,
-      { from: owner }
-    );
+    rewardDistributor = await RewardDistributor.new(mockToken.address, SIGNER, {
+      from: owner,
+    });
   });
 
   describe("Test Constructor", async () => {
     it("Test Invalid APY Address", async () => {
       await expectRevert(
-        APYRewardDistributor.new(ZERO_ADDRESS, SIGNER, { from: owner }),
+        RewardDistributor.new(ZERO_ADDRESS, SIGNER, { from: owner }),
         "Invalid APY Address"
       );
     });
 
     it("Test Invalid Signer Address", async () => {
       await expectRevert(
-        APYRewardDistributor.new(mockToken.address, ZERO_ADDRESS, {
+        RewardDistributor.new(mockToken.address, ZERO_ADDRESS, {
           from: owner,
         }),
         "Invalid Signer Address"

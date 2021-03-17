@@ -4,16 +4,14 @@ const timeMachine = require("ganache-time-traveler");
 const { expectRevert } = require("@openzeppelin/test-helpers");
 
 const ProxyAdmin = artifacts.require("ProxyAdmin");
-const APYAddressRegistryUpgraded = artifacts.require(
-  "APYAddressRegistryUpgraded"
-);
+const AddressRegistryUpgraded = artifacts.require("AddressRegistryUpgraded");
 const TransparentUpgradeableProxy = artifacts.require(
   "TransparentUpgradeableProxy"
 );
 const ProxyConstructorArg = artifacts.require("ProxyConstructorArg");
-const APYAddressRegistry = artifacts.require("APYAddressRegistry");
+const AddressRegistry = artifacts.require("AddressRegistry");
 
-contract("APYAddressRegistryProxy", async (accounts) => {
+contract("AddressRegistryProxy", async (accounts) => {
   const [deployer, randomUser] = accounts;
 
   let proxyAdmin;
@@ -35,7 +33,7 @@ contract("APYAddressRegistryProxy", async (accounts) => {
 
   before(async () => {
     proxyAdmin = await ProxyAdmin.new({ from: deployer });
-    logic = await APYAddressRegistry.new({ from: deployer });
+    logic = await AddressRegistry.new({ from: deployer });
     const encodedArg = await (await ProxyConstructorArg.new()).getEncodedArg(
       proxyAdmin.address
     );
@@ -73,7 +71,7 @@ contract("APYAddressRegistryProxy", async (accounts) => {
 
   describe("Upgradability", async () => {
     beforeEach(async () => {
-      manager = await APYAddressRegistry.at(proxy.address);
+      manager = await AddressRegistry.at(proxy.address);
     });
 
     it("Owner can upgrade logic", async () => {
@@ -81,14 +79,14 @@ contract("APYAddressRegistryProxy", async (accounts) => {
       assert.equal(typeof manager.newlyAddedVariable, "undefined");
 
       //prematurely point instance to upgraded implementation
-      manager = await APYAddressRegistryUpgraded.at(proxy.address);
+      manager = await AddressRegistryUpgraded.at(proxy.address);
       assert.equal(typeof manager.newlyAddedVariable, "function");
 
       //function should fail due to the proxy not pointing to the correct implementation
       await expectRevert.unspecified(manager.newlyAddedVariable());
 
       // create the new implementation and point the proxy to it
-      const newLogic = await APYAddressRegistryUpgraded.new({ from: deployer });
+      const newLogic = await AddressRegistryUpgraded.new({ from: deployer });
       await proxyAdmin.upgrade(proxy.address, newLogic.address, {
         from: deployer,
       });
@@ -104,7 +102,7 @@ contract("APYAddressRegistryProxy", async (accounts) => {
     });
 
     it("Revert when non-owner attempts upgrade", async () => {
-      const newLogic = await APYAddressRegistryUpgraded.new({ from: deployer });
+      const newLogic = await AddressRegistryUpgraded.new({ from: deployer });
       await expectRevert(
         proxyAdmin.upgrade(proxy.address, newLogic.address, {
           from: randomUser,
@@ -122,10 +120,10 @@ contract("APYAddressRegistryProxy", async (accounts) => {
 
     it("Revert when non-admin attempts `upgradeAndCall`", async () => {
       // deploy new implementation
-      const newLogic = await APYAddressRegistryUpgraded.new({ from: deployer });
+      const newLogic = await AddressRegistryUpgraded.new({ from: deployer });
       // construct init data
       const iImplementation = new ethers.utils.Interface(
-        APYAddressRegistryUpgraded.abi
+        AddressRegistryUpgraded.abi
       );
       const initData = iImplementation.encodeFunctionData(
         "initializeUpgrade",
@@ -145,16 +143,16 @@ contract("APYAddressRegistryProxy", async (accounts) => {
       assert.equal(typeof manager.newlyAddedVariable, "undefined");
 
       //prematurely point instance to upgraded implementation
-      manager = await APYAddressRegistryUpgraded.at(proxy.address);
+      manager = await AddressRegistryUpgraded.at(proxy.address);
       assert.equal(typeof manager.newlyAddedVariable, "function");
 
       //function should fail due to the proxy not pointing to the correct implementation
       await expectRevert.unspecified(manager.newlyAddedVariable());
 
       // create the new implementation and point the proxy to it
-      const newLogic = await APYAddressRegistryUpgraded.new({ from: deployer });
+      const newLogic = await AddressRegistryUpgraded.new({ from: deployer });
       const iImplementation = new ethers.utils.Interface(
-        APYAddressRegistryUpgraded.abi
+        AddressRegistryUpgraded.abi
       );
       const initData = iImplementation.encodeFunctionData(
         "initializeUpgrade",

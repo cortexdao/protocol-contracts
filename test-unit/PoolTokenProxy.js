@@ -2,14 +2,14 @@ const { assert } = require("chai");
 const { ethers, artifacts, contract } = require("hardhat");
 const MockContract = artifacts.require("MockContract");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
-const APYPoolTokenProxy = artifacts.require("APYPoolTokenProxy");
-const APYPoolToken = artifacts.require("APYPoolToken");
-const APYPoolTokenUpgraded = artifacts.require("APYPoolTokenUpgraded");
+const PoolTokenProxy = artifacts.require("PoolTokenProxy");
+const PoolToken = artifacts.require("PoolToken");
+const PoolTokenUpgraded = artifacts.require("PoolTokenUpgraded");
 const {
   expectRevert, // Assertions for transactions that should fail
 } = require("@openzeppelin/test-helpers");
 
-contract("APYPoolTokenProxy Unit Test", async (accounts) => {
+contract("PoolTokenProxy Unit Test", async (accounts) => {
   const [owner, randomUser] = accounts;
 
   let proxyAdmin;
@@ -24,8 +24,8 @@ contract("APYPoolTokenProxy Unit Test", async (accounts) => {
     mockToken = await MockContract.new();
     mockPriceAgg = await MockContract.new();
     proxyAdmin = await ProxyAdmin.new({ from: owner });
-    logic = await APYPoolToken.new({ from: owner });
-    proxy = await APYPoolTokenProxy.new(
+    logic = await PoolToken.new({ from: owner });
+    proxy = await PoolTokenProxy.new(
       logic.address,
       proxyAdmin.address,
       mockToken.address,
@@ -34,7 +34,7 @@ contract("APYPoolTokenProxy Unit Test", async (accounts) => {
         from: owner,
       }
     );
-    instance = await APYPoolToken.at(proxy.address);
+    instance = await PoolToken.at(proxy.address);
   });
 
   describe("Test Defaults", async () => {
@@ -62,7 +62,7 @@ contract("APYPoolTokenProxy Unit Test", async (accounts) => {
   describe("Test Upgradability through proxyAdmin", async () => {
     beforeEach(async () => {
       // reset variables
-      proxy = await APYPoolTokenProxy.new(
+      proxy = await PoolTokenProxy.new(
         logic.address,
         proxyAdmin.address,
         mockToken.address,
@@ -71,12 +71,12 @@ contract("APYPoolTokenProxy Unit Test", async (accounts) => {
           from: owner,
         }
       );
-      instance = await APYPoolToken.at(proxy.address);
+      instance = await PoolToken.at(proxy.address);
     });
 
     it("Test Proxy Upgrade Implementation fails when not called by owner", async () => {
       // deploy new implementation
-      const newLogic = await APYPoolTokenUpgraded.new({ from: owner });
+      const newLogic = await PoolTokenUpgraded.new({ from: owner });
       await expectRevert(
         proxyAdmin.upgrade(proxy.address, newLogic.address, {
           from: randomUser,
@@ -90,18 +90,18 @@ contract("APYPoolTokenProxy Unit Test", async (accounts) => {
       assert.equal(typeof instance.newlyAddedVariable, "undefined");
 
       //prematurely point instance to upgraded implementation
-      instance = await APYPoolTokenUpgraded.at(proxy.address);
+      instance = await PoolTokenUpgraded.at(proxy.address);
       assert.equal(typeof instance.newlyAddedVariable, "function");
 
       //function should fail due to the proxy not pointing to the correct implementation
       await expectRevert.unspecified(instance.newlyAddedVariable.call());
 
       // create the new implementation and point the proxy to it
-      const newLogic = await APYPoolTokenUpgraded.new({ from: owner });
+      const newLogic = await PoolTokenUpgraded.new({ from: owner });
       await proxyAdmin.upgrade(proxy.address, newLogic.address, {
         from: owner,
       });
-      instance = await APYPoolTokenUpgraded.at(proxy.address);
+      instance = await PoolTokenUpgraded.at(proxy.address);
 
       const newVal = await instance.newlyAddedVariable.call();
       assert.equal(newVal, false);
@@ -115,13 +115,13 @@ contract("APYPoolTokenProxy Unit Test", async (accounts) => {
 
     it("Test Proxy Upgrade Implementation and Initialize when not called by admin", async () => {
       // deploy new implementation
-      const newLogic = await APYPoolTokenUpgraded.new({ from: owner });
+      const newLogic = await PoolTokenUpgraded.new({ from: owner });
       await proxyAdmin.upgrade(proxy.address, newLogic.address, {
         from: owner,
       });
 
       // point instance to upgraded implementation
-      instance = await APYPoolTokenUpgraded.at(proxy.address);
+      instance = await PoolTokenUpgraded.at(proxy.address);
 
       await expectRevert(
         instance.initializeUpgrade({ from: owner }),
@@ -131,11 +131,9 @@ contract("APYPoolTokenProxy Unit Test", async (accounts) => {
 
     it("Test Proxy Upgrade Implementation and Initialize fails when not owner", async () => {
       // deploy new implementation
-      const newLogic = await APYPoolTokenUpgraded.new({ from: owner });
+      const newLogic = await PoolTokenUpgraded.new({ from: owner });
       // construct init data
-      const iImplementation = new ethers.utils.Interface(
-        APYPoolTokenUpgraded.abi
-      );
+      const iImplementation = new ethers.utils.Interface(PoolTokenUpgraded.abi);
       const initData = iImplementation.encodeFunctionData(
         "initializeUpgrade",
         []
@@ -154,17 +152,15 @@ contract("APYPoolTokenProxy Unit Test", async (accounts) => {
       assert.equal(typeof instance.newlyAddedVariable, "undefined");
 
       //prematurely point instance to upgraded implementation
-      instance = await APYPoolTokenUpgraded.at(proxy.address);
+      instance = await PoolTokenUpgraded.at(proxy.address);
       assert.equal(typeof instance.newlyAddedVariable, "function");
 
       //function should fail due to the proxy not pointing to the correct implementation
       await expectRevert.unspecified(instance.newlyAddedVariable.call());
 
       // create the new implementation and point the proxy to it
-      const newLogic = await APYPoolTokenUpgraded.new({ from: owner });
-      const iImplementation = new ethers.utils.Interface(
-        APYPoolTokenUpgraded.abi
-      );
+      const newLogic = await PoolTokenUpgraded.new({ from: owner });
+      const iImplementation = new ethers.utils.Interface(PoolTokenUpgraded.abi);
       const initData = iImplementation.encodeFunctionData(
         "initializeUpgrade",
         []
