@@ -313,9 +313,6 @@ describe("Contract: PoolManager", () => {
     });
 
     it("Transfers correct underlyer amounts and updates asset allocation registry", async () => {
-      // ETHERS contract.on() event listener doesnt seems to be working for some reason.
-      // It might be because the event is not at the top most level
-
       // pre-conditions
       expect(await daiToken.balanceOf(fundedAccountAddress)).to.equal(0);
       expect(await usdcToken.balanceOf(fundedAccountAddress)).to.equal(0);
@@ -514,13 +511,23 @@ describe("Contract: PoolManager", () => {
         ).to.be.revertedWith("Missing address");
       });
 
+      it("Revert with specified reason for insufficient allowance", async () => {
+        const amount = "10";
+        await daiToken.connect(deployer).transfer(fundedAccountAddress, amount);
+
+        await daiToken.connect(fundedAccount).approve(manager.address, 0);
+
+        await expect(
+          manager.withdrawFromAccount(accountId, [
+            { poolId: bytes32("daiPool"), amount: amount },
+          ])
+        ).to.be.revertedWith("INSUFFICIENT_ALLOWANCE");
+      });
+
       it("Transfers underlyer correctly for one pool", async () => {
         const amount = "10";
         await daiToken.connect(deployer).transfer(fundedAccountAddress, amount);
         expect(await daiToken.balanceOf(fundedAccountAddress)).to.equal(amount);
-
-        // ETHERS contract.on() event listener doesnt seems to be working for some reason.
-        // It might be because the event is not at the top most level
 
         await manager.withdrawFromAccount(accountId, [
           { poolId: bytes32("daiPool"), amount: amount },
