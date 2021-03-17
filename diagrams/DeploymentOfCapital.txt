@@ -10,7 +10,7 @@ participant APYManager#violet
 participant mAPT#hotpink
 participant APYAssetAllocationRegistry#pink
 participant APYAccount(proxy)
-participant General Executor#silver
+participant Generic Executor#silver
 
 
 # Give permission to Manager to move funds
@@ -50,13 +50,13 @@ end
 group #red Deployment
 APYManager ->APYAccount(proxy): execute(executionData)
 activate APYAccount(proxy)
-APYAccount(proxy) ->General Executor: delegateCall(executionData)
-activate General Executor #silver
-General Executor -> ]: deploy funds
-General Executor -> ]: deploy funds
-General Executor -> ]: deploy funds
-General Executor -->APYAccount(proxy):
-deactivate General Executor
+APYAccount(proxy) ->Generic Executor: delegateCall(executionData)
+activate Generic Executor #silver
+Generic Executor -> ]: deploy funds
+Generic Executor -> ]: deploy funds
+Generic Executor -> ]: deploy funds
+Generic Executor -->APYAccount(proxy):
+deactivate Generic Executor
 APYAccount(proxy) -->APYManager:
 deactivate APYAccount(proxy)
 end

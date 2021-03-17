@@ -15,12 +15,12 @@ import "./interfaces/IExecutor.sol";
  * @dev Deployed by AccountManager and delegate calls to GenericExecutor
  */
 contract Account is Ownable, IAccount {
-    address public generalExecutor;
+    address public genericExecutor;
 
     /// @notice Constructor
-    /// @param _generalExecutor the general executor all delegatecalls will be forwarded to
-    constructor(address _generalExecutor) public {
-        generalExecutor = _generalExecutor;
+    /// @param _genericExecutor the generic executor all delegatecalls will be forwarded to
+    constructor(address _genericExecutor) public {
+        genericExecutor = _genericExecutor;
     }
 
     /// @notice Executes the steps array in sequence
@@ -33,13 +33,13 @@ contract Account is Ownable, IAccount {
     {
         bytes memory data =
             abi.encodeWithSelector(
-                IExecutor(generalExecutor).execute.selector,
+                IExecutor(genericExecutor).execute.selector,
                 steps
             );
-        _delegate(generalExecutor, data, "steps execution failed");
+        _delegate(genericExecutor, data, "steps execution failed");
     }
 
-    /// @notice performs a delegate call against the generalExecutor
+    /// @notice performs a delegate call against the genericExecutor
     /// @param target the contract to delegate call to
     /// @param data the execution steps to execute within the generic executor
     /// @param errorMessage the error message to return if the delegate call fails

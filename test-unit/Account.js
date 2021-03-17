@@ -28,7 +28,7 @@ contract("Test Account", async (accounts) => {
   });
 
   it("Test Account executor", async () => {
-    const exe = await account.generalExecutor();
+    const exe = await account.genericExecutor();
     assert.equal(exe, executor.address);
   });
 
