@@ -9,6 +9,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAddressRegistry.sol";
 import "./interfaces/IDetailedERC20.sol";
+import "./interfaces/IAccountFunder.sol";
 import "./interfaces/IAccountFactory.sol";
 import "./interfaces/IAssetAllocationRegistry.sol";
 import "./APYPoolTokenV2.sol";
@@ -73,7 +74,7 @@ import "./APYAccount.sol";
  * execution allows us to conveniently leverage generic execution while
  * avoiding late updates to the TVL.
  */
-contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
+contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     using SafeMath for uint256;
     using SafeERC20 for IDetailedERC20;
 
@@ -83,18 +84,12 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
     address public proxyAdmin;
     APYMetaPoolToken public mApt;
     IAddressRegistry public addressRegistry;
-    /// @notice Accounts store assets for strategies and interact with other protocols
-    mapping(bytes32 => address) public override getAccount;
+    IAccountFactory public accountFactory;
     bytes32[] internal _poolIds;
 
     /* ------------------------------- */
 
     event AdminChanged(address);
-    event AccountDeployed(
-        bytes32 accountId,
-        address account,
-        address generalExecutor
-    );
 
     /**
      * @dev Since the proxy delegate calls to this "logic" contract, any
@@ -141,151 +136,62 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
     function initializeUpgrade() external virtual onlyAdmin {}
 
     /**
-     * @notice Create a new account to run strategies.
-     * @dev Associates an APYGenericExecutor with the account. This executor
-     * is used when the `execute` function is called for a specific account ID.
-     * @param accountId ID identifying an address for execution
-     * @param generalExecutor implementation contract for execution engine
-     */
-    function deployAccount(bytes32 accountId, address generalExecutor)
-        external
-        override
-        onlyOwner
-        returns (address)
-    {
-        APYAccount account = new APYAccount(generalExecutor);
-        getAccount[accountId] = address(account);
-        emit AccountDeployed(accountId, address(account), generalExecutor);
-        return address(account);
-    }
-
-    /**
      * @notice Fund Account contract and register an asset allocation
      * @param accountId The Account contract ID
-     * @param allocation Specifies the APYPoolToken contracts to pull from and
+     * @param poolAmounts Specifies the APYPoolToken contracts to pull from and
      * the amounts to pull.
      * See APYManager._fundAccount.
-     * @param viewData The array of asset allocations to calculate the TVL of
-     * new assets stored in the Account contract.
-     * See APYManager._registerAllocationData.
      */
     function fundAccount(
         bytes32 accountId,
-        IAccountFactory.AccountAllocation memory allocation,
-        IAssetAllocationRegistry.AssetAllocation[] memory viewData
+        IAccountFunder.PoolAmount[] memory poolAmounts
     ) external override onlyOwner {
-        _registerAllocationData(viewData);
-        _fundAccount(accountId, allocation);
+        address accountAddress = accountFactory.getAccount(accountId);
+        require(accountAddress != address(0), "INVALID_ACCOUNT");
+        (APYPoolTokenV2[] memory pools, uint256[] memory amounts) =
+            _getPoolsAndAmounts(poolAmounts);
+        _registerPoolUnderlyers(accountAddress, pools);
+        _fundAccount(accountAddress, pools, amounts);
     }
 
-    /**
-     * @notice Fund the Account contract and route capital to strategies
-     * @param accountId The Account contract ID
-     * @param allocation Specifies the APYPoolToken contracts to pull from and
-     * the amounts to pull.
-     * See APYManager._fundAccount.
-     * @param steps The generic execution sequence that will route capital
-     * from the Account to yield farming strategies.
-     * See APYManager.execute.
-     * @param viewData The array of asset allocations to calculate the TVL of
-     * new assets stored in the Account contract.
-     * See APYManager._registerAllocationData.
-     */
-    function fundAndExecute(
-        bytes32 accountId,
-        IAccountFactory.AccountAllocation memory allocation,
-        APYGenericExecutor.Data[] memory steps,
-        IAssetAllocationRegistry.AssetAllocation[] memory viewData
-    ) external override onlyOwner {
-        _registerAllocationData(viewData);
-        _fundAccount(accountId, allocation);
-        execute(accountId, steps, viewData);
-    }
-
-    /**
-     * @notice Route capital in an Account contract to yield farming strategies
-     * @param accountId The Account contract ID
-     * @param steps The generic execution sequence that will route capital
-     * from the Account to yield farming strategies.
-     *
-     * @notice Data[] example (adds DAI, USDC, and USDT to a Curve pool):
-     *      [
-     *          {
-     *              target: 0x6B175474E89094C44Da98b954EedeAC495271d0F
-     *              data: 0x... // calldata for DAI approve function
-     *          },
-     *          {
-     *              target: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
-     *              data: 0x... // calldata for USDC approve function
-     *          },
-     *          {
-     *              target: 0xdAC17F958D2ee523a2206206994597C13D831ec7
-     *              data: 0x... // calldata for USDT approve function
-     *          },
-     *          {
-     *              target: 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7,
-     *              data: 0x... // calldata for the Curve add_liquidity function
-     *          }
-     *      ]
-     *
-     * @param viewData The array of asset allocations to calculate the TVL of
-     * new assets stored in the Account contract.
-     * See APYManager._registerAllocationData.
-     */
-    function execute(
-        bytes32 accountId,
-        APYGenericExecutor.Data[] memory steps,
-        IAssetAllocationRegistry.AssetAllocation[] memory viewData
-    ) public override onlyOwner {
-        require(getAccount[accountId] != address(0), "INVALID_ACCOUNT");
-        address accountAddress = getAccount[accountId];
-        _registerAllocationData(viewData);
-        IAccount(accountAddress).execute(steps);
+    function _getPoolsAndAmounts(IAccountFunder.PoolAmount[] memory poolAmounts)
+        internal
+        view
+        returns (APYPoolTokenV2[] memory, uint256[] memory)
+    {
+        APYPoolTokenV2[] memory pools =
+            new APYPoolTokenV2[](poolAmounts.length);
+        uint256[] memory amounts = new uint256[](poolAmounts.length);
+        for (uint256 i = 0; i < poolAmounts.length; i++) {
+            amounts[i] = poolAmounts[i].amount;
+            pools[i] = APYPoolTokenV2(
+                addressRegistry.getAddress(poolAmounts[i].poolId)
+            );
+        }
+        return (pools, amounts);
     }
 
     /**
      * @notice Move capital from an Account to the APYPoolToken contracts
      * @param accountId The Account contract ID
-     * @param allocation Specifies the APYPoolToken contracts to push to and
-     * the amounts to push.
-     * See APYManager._withdrawFromAccount.
-     * @param steps The generic execution sequence that will unwind capital
-     * from yield farming strategies and store it in the Account.
-     * See APYManager.execute.
-     * @param viewData The array of asset allocations to calculate the TVL of
-     * new assets stored in the Account contract.
-     * See APYManager._registerAllocationData.
-     */
-    function executeAndWithdraw(
-        bytes32 accountId,
-        IAccountFactory.AccountAllocation memory allocation,
-        APYGenericExecutor.Data[] memory steps,
-        IAssetAllocationRegistry.AssetAllocation[] memory viewData
-    ) external override onlyOwner {
-        execute(accountId, steps, viewData);
-        _withdrawFromAccount(accountId, allocation);
-        _registerAllocationData(viewData);
-    }
-
-    /**
-     * @notice Move capital from an Account to the APYPoolToken contracts
-     * @param accountId The Account contract ID
-     * @param allocation Specifies the APYPoolToken contracts to push to and
+     * @param poolAmounts Specifies the APYPoolToken contracts to push to and
      * the amounts to push.
      * See APYManager._withdrawFromAccount.
      */
     function withdrawFromAccount(
         bytes32 accountId,
-        IAccountFactory.AccountAllocation memory allocation
+        IAccountFunder.PoolAmount[] memory poolAmounts
     ) external override onlyOwner {
-        _withdrawFromAccount(accountId, allocation);
+        address accountAddress = accountFactory.getAccount(accountId);
+        require(accountAddress != address(0), "INVALID_ACCOUNT");
+        _withdrawFromAccount(accountAddress, poolAmounts);
     }
 
     /**
-     * @notice Move capital from APYPoolToken contracts to an Account
-     * @param accountId The Account contract ID
-     * @param allocation Specifies the APYPoolToken contracts to pull from and
-     * the amounts to pull.
+     * @notice Move capital from APYPoolTokenV2 contracts to an Account
+     * @param account The Account contract ID
+     * @param pools the pools to pull from
+     * @param amounts the amounts to pull from pools
      *
      * @notice AccountAllocation example (pulls ~$1 from each pool):
      *      {
@@ -294,22 +200,14 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
      *      }
      */
     function _fundAccount(
-        bytes32 accountId,
-        IAccountFactory.AccountAllocation memory allocation
+        address account,
+        APYPoolTokenV2[] memory pools,
+        uint256[] memory amounts
     ) internal {
-        require(
-            allocation.poolIds.length == allocation.amounts.length,
-            "allocation length mismatch"
-        );
-        require(getAccount[accountId] != address(0), "INVALID_ACCOUNT");
-        address accountAddress = getAccount[accountId];
-        uint256[] memory mintAmounts = new uint256[](allocation.poolIds.length);
-        for (uint256 i = 0; i < allocation.poolIds.length; i++) {
-            uint256 poolAmount = allocation.amounts[i];
-            APYPoolTokenV2 pool =
-                APYPoolTokenV2(
-                    addressRegistry.getAddress(allocation.poolIds[i])
-                );
+        uint256[] memory mintAmounts = new uint256[](pools.length);
+        for (uint256 i = 0; i < pools.length; i++) {
+            APYPoolTokenV2 pool = pools[i];
+            uint256 poolAmount = amounts[i];
             IDetailedERC20 underlyer = pool.underlyer();
 
             uint256 tokenPrice = pool.getUnderlyerPrice();
@@ -318,25 +216,23 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
                 mApt.calculateMintAmount(poolAmount, tokenPrice, decimals);
             mintAmounts[i] = mintAmount;
 
-            underlyer.safeTransferFrom(
-                address(pool),
-                accountAddress,
-                poolAmount
-            );
+            underlyer.safeTransferFrom(address(pool), account, poolAmount);
         }
-        for (uint256 i = 0; i < allocation.poolIds.length; i++) {
-            APYPoolTokenV2 pool =
-                APYPoolTokenV2(
-                    addressRegistry.getAddress(allocation.poolIds[i])
-                );
-            mApt.mint(address(pool), mintAmounts[i]);
+        // MUST do the actual minting after calculating *all* mint amounts,
+        // otherwise due to Chainlink not updating during a transaction,
+        // the totalSupply will change while TVL doesn't.
+        //
+        // Using the pre-mint TVL and totalSupply gives the same answer
+        // as using post-mint values.
+        for (uint256 i = 0; i < pools.length; i++) {
+            mApt.mint(address(pools[i]), mintAmounts[i]);
         }
     }
 
     /**
      * @notice Move capital from an Account to the APYPoolToken contracts
-     * @param accountId The Account contract ID
-     * @param allocation Specifies the APYPoolToken contracts to push to and
+     * @param account The Account contract ID
+     * @param poolAmounts Specifies the APYPoolToken contracts to push to and
      * the amounts to push.
      *
      * @notice AccountAllocation example (pushes ~$1 to each pool from the Account):
@@ -346,23 +242,16 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
      *      }
      */
     function _withdrawFromAccount(
-        bytes32 accountId,
-        IAccountFactory.AccountAllocation memory allocation
+        address account,
+        IAccountFunder.PoolAmount[] memory poolAmounts
     ) internal {
-        require(
-            allocation.poolIds.length == allocation.amounts.length,
-            "allocation length mismatch"
-        );
-        require(getAccount[accountId] != address(0), "INVALID_ACCOUNT");
-        address accountAddress = getAccount[accountId];
-        uint256[] memory burnAmounts = new uint256[](allocation.poolIds.length);
-        for (uint256 i = 0; i < allocation.poolIds.length; i++) {
-            APYPoolTokenV2 pool =
-                APYPoolTokenV2(
-                    addressRegistry.getAddress(allocation.poolIds[i])
-                );
+        (APYPoolTokenV2[] memory pools, uint256[] memory amounts) =
+            _getPoolsAndAmounts(poolAmounts);
+        uint256[] memory burnAmounts = new uint256[](pools.length);
+        for (uint256 i = 0; i < pools.length; i++) {
+            APYPoolTokenV2 pool = pools[i];
+            uint256 amountToSend = amounts[i];
             IDetailedERC20 underlyer = pool.underlyer();
-            uint256 amountToSend = allocation.amounts[i];
 
             uint256 tokenPrice = pool.getUnderlyerPrice();
             uint8 decimals = underlyer.decimals();
@@ -370,18 +259,16 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
                 mApt.calculateMintAmount(amountToSend, tokenPrice, decimals);
             burnAmounts[i] = burnAmount;
 
-            underlyer.safeTransferFrom(
-                accountAddress,
-                address(pool),
-                amountToSend
-            );
+            underlyer.safeTransferFrom(account, address(pool), amountToSend);
         }
-        for (uint256 i = 0; i < allocation.poolIds.length; i++) {
-            APYPoolTokenV2 pool =
-                APYPoolTokenV2(
-                    addressRegistry.getAddress(allocation.poolIds[i])
-                );
-            mApt.burn(address(pool), burnAmounts[i]);
+        // MUST do the actual burning after calculating *all* burn amounts,
+        // otherwise due to Chainlink not updating during a transaction,
+        // the totalSupply will change while TVL doesn't.
+        //
+        // Using the pre-burn TVL and totalSupply gives the same answer
+        // as using post-burn values.
+        for (uint256 i = 0; i < pools.length; i++) {
+            mApt.burn(address(pools[i]), burnAmounts[i]);
         }
     }
 
@@ -390,7 +277,7 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
      * @notice When capital is routed to new protocols, asset allocations are
      * registered to return the balances of underlying assets so the TVL can be
      * computed.
-     * @param viewData The array of asset allocations to calculate the TVL of
+     * @param pools The array of asset allocations to calculate the TVL of
      * new assets stored in the Account contract.
      *
      * @notice AssetAllocation example (gets the DAI balance of the account):
@@ -405,21 +292,29 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
      *          }
      *      }
      */
-    function _registerAllocationData(
-        IAssetAllocationRegistry.AssetAllocation[] memory viewData
+    function _registerPoolUnderlyers(
+        address account,
+        APYPoolTokenV2[] memory pools
     ) internal {
         IAssetAllocationRegistry assetAllocationRegistry =
             IAssetAllocationRegistry(
                 addressRegistry.getAddress("chainlinkRegistry")
             );
-        for (uint256 i = 0; i < viewData.length; i++) {
-            IAssetAllocationRegistry.AssetAllocation memory viewAllocation =
-                viewData[i];
+        for (uint256 i = 0; i < pools.length; i++) {
+            APYPoolTokenV2 pool = pools[i];
+            IDetailedERC20 underlyer = pool.underlyer();
+            string memory symbol = underlyer.symbol();
+            bytes memory _data =
+                abi.encodeWithSignature("balanceOf(address)", account);
+            IAssetAllocationRegistry.Data memory data =
+                IAssetAllocationRegistry.Data(address(pool.underlyer()), _data);
+            bytes32 id =
+                keccak256(abi.encodePacked(address(underlyer), account));
             assetAllocationRegistry.addAssetAllocation(
-                viewAllocation.sequenceId,
-                viewAllocation.data,
-                viewAllocation.symbol,
-                viewAllocation.decimals
+                id,
+                data,
+                symbol,
+                underlyer.decimals()
             );
         }
     }
@@ -449,6 +344,11 @@ contract APYManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
     function setAddressRegistry(address _addressRegistry) public onlyOwner {
         require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistry(_addressRegistry);
+    }
+
+    function setAccountFactory(address _accountFactory) public onlyOwner {
+        require(Address.isContract(_accountFactory), "INVALID_ADDRESS");
+        accountFactory = IAccountFactory(_accountFactory);
     }
 
     /// @notice Return the list of pool IDs.

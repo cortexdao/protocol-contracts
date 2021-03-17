@@ -2,21 +2,14 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./interfaces/IExecutor.sol";
 
 /**
  * @title Contract that generically executes functions given a target contract to execute against
  * @author APY.Finance
  * @notice This contract is delegate called to by an APYAccount.sol when executing sequences
  */
-contract APYGenericExecutor is Ownable {
-    // struct representing an execution against a contracts given bytes data
-    // target is the target contract to execute against
-    // bytes data representing the encoded function signature + parameters
-    struct Data {
-        address target;
-        bytes data;
-    }
-
+contract APYGenericExecutor is Ownable, IExecutor {
     /**
      * @notice Given a Data struct with a target and bytes sequence data, executes the method on the target contract
      * @param executionSteps Data struct containing the target address to execute against and the bytes data to execute
@@ -26,6 +19,7 @@ contract APYGenericExecutor is Ownable {
     function execute(Data[] calldata executionSteps)
         external
         payable
+        override
         onlyOwner
     {
         bytes memory returnData;

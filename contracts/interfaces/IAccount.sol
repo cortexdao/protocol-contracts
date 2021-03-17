@@ -2,8 +2,8 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "../APYGenericExecutor.sol";
+import "./IExecutor.sol";
 
 interface IAccount {
-    function execute(APYGenericExecutor.Data[] memory steps) external;
+    function execute(IExecutor.Data[] memory steps) external;
 }

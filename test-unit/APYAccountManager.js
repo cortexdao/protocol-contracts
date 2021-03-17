@@ -14,13 +14,13 @@ const erc20Interface = new ethers.utils.Interface(
   artifacts.require("ERC20").abi
 );
 
-describe("Contract: APYManager", () => {
+describe("Contract: APYAccountManager", () => {
   // signers
   let deployer;
   let randomUser;
 
   // contract factories
-  let APYManager;
+  let APYAccountManager;
   let ProxyAdmin;
   let APYGenericExecutor;
 
@@ -44,51 +44,37 @@ describe("Contract: APYManager", () => {
     [deployer, randomUser] = await ethers.getSigners();
 
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    APYManager = await ethers.getContractFactory("APYManager");
-    const APYManagerProxy = await ethers.getContractFactory("APYManagerProxy");
+    APYAccountManager = await ethers.getContractFactory("APYAccountManager");
+    const APYAccountManagerProxy = await ethers.getContractFactory(
+      "APYAccountManagerProxy"
+    );
     APYGenericExecutor = await ethers.getContractFactory("APYGenericExecutor");
     executor = await APYGenericExecutor.deploy();
     await executor.deployed();
 
-    const logic = await APYManager.deploy();
+    const logic = await APYAccountManager.deploy();
     await logic.deployed();
 
     const proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
 
-    const mAptMock = await deployMockContract(deployer, []);
     const addressRegistryMock = await deployMockContract(
       deployer,
       artifacts.require("IAddressRegistry").abi
     );
     await addressRegistryMock.mock.getAddress.returns(FAKE_ADDRESS);
-    const proxy = await APYManagerProxy.deploy(
+    const proxy = await APYAccountManagerProxy.deploy(
       logic.address,
       proxyAdmin.address,
-      mAptMock.address,
       addressRegistryMock.address
     );
     await proxy.deployed();
-    manager = await APYManager.attach(proxy.address);
+    manager = await APYAccountManager.attach(proxy.address);
   });
 
   describe("Defaults", () => {
     it("Owner is set to deployer", async () => {
       expect(await manager.owner()).to.equal(deployer.address);
-    });
-  });
-
-  describe("Set metapool token", () => {
-    it("Non-owner cannot set", async () => {
-      await expect(
-        manager.connect(randomUser).setMetaPoolToken(FAKE_ADDRESS)
-      ).to.be.revertedWith("revert Ownable: caller is not the owner");
-    });
-
-    it("Owner can set", async () => {
-      const contract = await deployMockContract(deployer, []);
-      await manager.connect(deployer).setMetaPoolToken(contract.address);
-      expect(await manager.mApt()).to.equal(contract.address);
     });
   });
 
@@ -172,58 +158,6 @@ describe("Contract: APYManager", () => {
       expect(await account.owner()).to.equal(manager.address);
     });
 
-    describe("fundAccount", () => {
-      it("Non-owner cannot call", async () => {
-        await expect(
-          manager
-            .connect(randomUser)
-            .fundAccount(bytes32("account1"), [[], []], [])
-        ).to.be.revertedWith("revert Ownable: caller is not the owner");
-      });
-
-      it("Revert on invalid account", async () => {
-        await expect(
-          manager
-            .connect(deployer)
-            .fundAccount(bytes32("invalidAccount"), [[], []], [])
-        ).to.be.revertedWith("INVALID_ACCOUNT");
-      });
-
-      it("Owner can call", async () => {
-        await expect(
-          manager
-            .connect(deployer)
-            .fundAccount(bytes32("account1"), [[], []], [])
-        ).to.not.be.reverted;
-      });
-    });
-
-    describe("fundAndExecute", () => {
-      it("Non-owner cannot call", async () => {
-        await expect(
-          manager
-            .connect(randomUser)
-            .fundAndExecute(bytes32("account1"), [[], []], [], [])
-        ).to.be.revertedWith("revert Ownable: caller is not the owner");
-      });
-
-      it("Revert on invalid account", async () => {
-        await expect(
-          manager
-            .connect(deployer)
-            .fundAndExecute(bytes32("invalidAccount"), [[], []], [], [])
-        ).to.be.revertedWith("INVALID_ACCOUNT");
-      });
-
-      it("Owner can call", async () => {
-        await expect(
-          manager
-            .connect(deployer)
-            .fundAndExecute(bytes32("account1"), [[], []], [], [])
-        ).to.not.be.reverted;
-      });
-    });
-
     describe("execute", () => {
       it("Non-owner cannot call", async () => {
         await expect(
@@ -251,58 +185,6 @@ describe("Contract: APYManager", () => {
           spender: spenderAddress,
           value: approvalAmount,
         });
-      });
-    });
-
-    describe("executeAndWithdraw", () => {
-      it("Non-owner cannot call", async () => {
-        await expect(
-          manager
-            .connect(randomUser)
-            .executeAndWithdraw(bytes32("account1"), [[], []], [], [])
-        ).to.be.revertedWith("revert Ownable: caller is not the owner");
-      });
-
-      it("Revert on invalid account", async () => {
-        await expect(
-          manager
-            .connect(deployer)
-            .executeAndWithdraw(bytes32("invalidAccount"), [[], []], [], [])
-        ).to.be.revertedWith("INVALID_ACCOUNT");
-      });
-
-      it("Owner can call", async () => {
-        await expect(
-          manager
-            .connect(deployer)
-            .executeAndWithdraw(bytes32("account1"), [[], []], [], [])
-        ).to.not.be.reverted;
-      });
-    });
-
-    describe("withdrawFromAccount", () => {
-      it("Non-owner cannot call", async () => {
-        await expect(
-          manager
-            .connect(randomUser)
-            .withdrawFromAccount(bytes32("acount1"), [[], []])
-        ).to.be.revertedWith("revert Ownable: caller is not the owner");
-      });
-
-      it("Revert on invalid account", async () => {
-        await expect(
-          manager
-            .connect(deployer)
-            .withdrawFromAccount(bytes32("invalidAccount"), [[], []])
-        ).to.be.revertedWith("INVALID_ACCOUNT");
-      });
-
-      it("Owner can call", async () => {
-        await expect(
-          manager
-            .connect(deployer)
-            .withdrawFromAccount(bytes32("account1"), [[], []])
-        ).to.not.be.reverted;
       });
     });
   });

@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IAccount.sol";
-import "./APYGenericExecutor.sol";
+import "./interfaces/IExecutor.sol";
 
 /// @title APY account represents one of many accounts APYManager.sol can deploy
 /// @author APY.Finance
@@ -23,14 +23,14 @@ contract APYAccount is Ownable, IAccount {
     /// @notice Executes the steps array in sequence
     /// @dev only callable by the deployer APYManager.sol
     /// @param steps an array of APYGenericExecutor.Data that will be executed in order
-    function execute(APYGenericExecutor.Data[] memory steps)
+    function execute(IExecutor.Data[] memory steps)
         external
         override
         onlyOwner
     {
         bytes memory data =
             abi.encodeWithSelector(
-                APYGenericExecutor(generalExecutor).execute.selector,
+                IExecutor(generalExecutor).execute.selector,
                 steps
             );
         _delegate(generalExecutor, data, "steps execution failed");

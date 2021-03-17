@@ -22,7 +22,7 @@ async function impersonateAccount(account) {
       params: [address],
     });
   }
-  const signer = ethers.provider.getSigner(address);
+  const signer = await ethers.getSigner(address);
   return signer;
 }
 

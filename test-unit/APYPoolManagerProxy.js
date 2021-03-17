@@ -6,13 +6,13 @@ const timeMachine = require("ganache-time-traveler");
 const { expectRevert } = require("@openzeppelin/test-helpers");
 const { ZERO_ADDRESS, FAKE_ADDRESS } = require("../utils/helpers");
 
-describe("Contract: APYManagerProxy", () => {
+describe("Contract: APYPoolManagerProxy", () => {
   let deployer;
   let randomUser;
 
   let ProxyAdmin;
-  let APYManager;
-  let APYManagerProxy;
+  let APYPoolManager;
+  let APYPoolManagerProxy;
 
   let proxyAdmin;
   let logic;
@@ -38,14 +38,16 @@ describe("Contract: APYManagerProxy", () => {
     proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
 
-    APYManager = await ethers.getContractFactory("APYManager");
-    logic = await APYManager.deploy();
+    APYPoolManager = await ethers.getContractFactory("APYPoolManager");
+    logic = await APYPoolManager.deploy();
     await logic.deployed();
 
     const mApt = await deployMockContract(deployer, []);
     const addressRegistry = await deployMockContract(deployer, []);
-    APYManagerProxy = await ethers.getContractFactory("APYManagerProxy");
-    proxy = await APYManagerProxy.deploy(
+    APYPoolManagerProxy = await ethers.getContractFactory(
+      "APYPoolManagerProxy"
+    );
+    proxy = await APYPoolManagerProxy.deploy(
       logic.address,
       proxyAdmin.address,
       mApt.address,
@@ -75,13 +77,13 @@ describe("Contract: APYManagerProxy", () => {
   });
 
   describe("Upgradability", () => {
-    let APYManagerUpgraded;
+    let APYPoolManagerUpgraded;
 
     beforeEach(async () => {
-      APYManagerUpgraded = await ethers.getContractFactory(
-        "APYManagerUpgraded"
+      APYPoolManagerUpgraded = await ethers.getContractFactory(
+        "APYPoolManagerUpgraded"
       );
-      manager = await APYManager.attach(proxy.address);
+      manager = await APYPoolManager.attach(proxy.address);
     });
 
     it("Owner can upgrade logic", async () => {
@@ -89,14 +91,14 @@ describe("Contract: APYManagerProxy", () => {
       assert.equal(typeof manager.newlyAddedVariable, "undefined");
 
       //prematurely point instance to upgraded implementation
-      manager = await APYManagerUpgraded.attach(proxy.address);
+      manager = await APYPoolManagerUpgraded.attach(proxy.address);
       assert.equal(typeof manager.newlyAddedVariable, "function");
 
       //function should fail due to the proxy not pointing to the correct implementation
       await expectRevert.unspecified(manager.newlyAddedVariable());
 
       // create the new implementation and point the proxy to it
-      const newLogic = await APYManagerUpgraded.deploy();
+      const newLogic = await APYPoolManagerUpgraded.deploy();
       await newLogic.deployed();
       await proxyAdmin.upgrade(proxy.address, newLogic.address);
 
@@ -109,7 +111,7 @@ describe("Contract: APYManagerProxy", () => {
     });
 
     it("Revert when non-owner attempts upgrade", async () => {
-      const newLogic = await APYManagerUpgraded.deploy();
+      const newLogic = await APYPoolManagerUpgraded.deploy();
       await newLogic.deployed();
       await expectRevert(
         proxyAdmin.connect(randomUser).upgrade(proxy.address, newLogic.address),
@@ -126,10 +128,10 @@ describe("Contract: APYManagerProxy", () => {
 
     it("Revert when non-admin attempts `upgradeAndCall`", async () => {
       // deploy new implementation
-      const newLogic = await APYManagerUpgraded.deploy();
+      const newLogic = await APYPoolManagerUpgraded.deploy();
       await newLogic.deployed();
       // construct init data
-      const initData = APYManagerUpgraded.interface.encodeFunctionData(
+      const initData = APYPoolManagerUpgraded.interface.encodeFunctionData(
         "initializeUpgrade",
         []
       );
@@ -147,16 +149,16 @@ describe("Contract: APYManagerProxy", () => {
       assert.equal(typeof manager.newlyAddedVariable, "undefined");
 
       //prematurely point instance to upgraded implementation
-      manager = await APYManagerUpgraded.attach(proxy.address);
+      manager = await APYPoolManagerUpgraded.attach(proxy.address);
       assert.equal(typeof manager.newlyAddedVariable, "function");
 
       //function should fail due to the proxy not pointing to the correct implementation
       await expectRevert.unspecified(manager.newlyAddedVariable());
 
       // create the new implementation and point the proxy to it
-      const newLogic = await APYManagerUpgraded.deploy();
+      const newLogic = await APYPoolManagerUpgraded.deploy();
       await newLogic.deployed();
-      const initData = APYManagerUpgraded.interface.encodeFunctionData(
+      const initData = APYPoolManagerUpgraded.interface.encodeFunctionData(
         "initializeUpgrade",
         []
       );
@@ -179,11 +181,11 @@ describe("Contract: APYManagerProxy", () => {
   describe("initialize", () => {
     it("Cannot initialize with zero admin address", async () => {
       const dummyContract = await deployMockContract(deployer, []);
-      const logic = await APYManager.deploy();
+      const logic = await APYPoolManager.deploy();
       await logic.deployed();
 
       await expect(
-        APYManagerProxy.deploy(
+        APYPoolManagerProxy.deploy(
           logic.address,
           ZERO_ADDRESS,
           dummyContract.address,
@@ -194,11 +196,11 @@ describe("Contract: APYManagerProxy", () => {
 
     it("Cannot initialize with non-contract addresses", async () => {
       const dummyContract = await deployMockContract(deployer, []);
-      const logic = await APYManager.deploy();
+      const logic = await APYPoolManager.deploy();
       await logic.deployed();
 
       await expect(
-        APYManagerProxy.deploy(
+        APYPoolManagerProxy.deploy(
           logic.address,
           proxyAdmin.address,
           FAKE_ADDRESS,
@@ -207,7 +209,7 @@ describe("Contract: APYManagerProxy", () => {
       ).to.be.reverted;
 
       await expect(
-        APYManagerProxy.deploy(
+        APYPoolManagerProxy.deploy(
           logic.address,
           proxyAdmin.address,
           dummyContract.address,
@@ -217,19 +219,19 @@ describe("Contract: APYManagerProxy", () => {
     });
 
     it("deploy initializes correctly", async () => {
-      const logic = await APYManager.deploy();
+      const logic = await APYPoolManager.deploy();
       await logic.deployed();
 
       const mApt = await deployMockContract(deployer, []);
       const addressRegistry = await deployMockContract(deployer, []);
 
-      const proxy = await APYManagerProxy.deploy(
+      const proxy = await APYPoolManagerProxy.deploy(
         logic.address,
         proxyAdmin.address,
         mApt.address,
         addressRegistry.address
       );
-      const manager = await APYManager.attach(proxy.address);
+      const manager = await APYPoolManager.attach(proxy.address);
 
       expect(await manager.owner()).to.equal(deployer.address);
       expect(await manager.proxyAdmin()).to.equal(proxyAdmin.address);
