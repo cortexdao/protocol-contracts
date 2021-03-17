@@ -11,7 +11,7 @@ import "./interfaces/IAddressRegistry.sol";
 import "./interfaces/IDetailedERC20.sol";
 import "./interfaces/IAccountFunder.sol";
 import "./interfaces/IAccountFactory.sol";
-import "./interfaces/IAssetAllocationRegistry.sol";
+import "./interfaces/ITVLManager.sol";
 import "./APYPoolTokenV2.sol";
 import "./APYMetaPoolToken.sol";
 import "./APYAccount.sol";
@@ -57,7 +57,7 @@ import "./APYAccount.sol";
  * UPDATING TVL
  *--------------------
  * When the APY Manager routes capital using generic execution it can also
- * register an asset allocation with the AssetAllocationRegistry. Registering
+ * register an asset allocation with the TVLManager. Registering
  * asset allocations is important for Chainlink to calculate accurate TVL
  * values.
  *
@@ -65,7 +65,7 @@ import "./APYAccount.sol";
  * acquired by the APYAccount contract, including those from providing
  * liquidity to a new protocol. These newly acquired assets and the manner
  * in which they are held in the system must be registered with the
- * AssetAllocationRegistry in order to be used in Chainlink's computation
+ * TVLManager in order to be used in Chainlink's computation
  * of deployed TVL.
  *
  * Registration should not be done after generic execution as the TVL may
@@ -296,8 +296,8 @@ contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         address account,
         APYPoolTokenV2[] memory pools
     ) internal {
-        IAssetAllocationRegistry assetAllocationRegistry =
-            IAssetAllocationRegistry(
+        ITVLManager assetAllocationRegistry =
+            ITVLManager(
                 addressRegistry.getAddress("chainlinkRegistry")
             );
         for (uint256 i = 0; i < pools.length; i++) {
@@ -306,8 +306,8 @@ contract APYPoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
             string memory symbol = underlyer.symbol();
             bytes memory _data =
                 abi.encodeWithSignature("balanceOf(address)", account);
-            IAssetAllocationRegistry.Data memory data =
-                IAssetAllocationRegistry.Data(address(pool.underlyer()), _data);
+            ITVLManager.Data memory data =
+                ITVLManager.Data(address(pool.underlyer()), _data);
             bytes32 id =
                 keccak256(abi.encodePacked(address(underlyer), account));
             assetAllocationRegistry.addAssetAllocation(

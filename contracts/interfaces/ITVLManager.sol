@@ -9,7 +9,7 @@ pragma experimental ABIEncoderV2;
  * @notice These functions enable external systems to pull necessary info
  *         to compute the TVL of the APY.Finance system.
  */
-interface IAssetAllocationRegistry {
+interface ITVLManager {
     // struct representing an execution against a contract given bytes
     // target is the garget contract to execute view calls agaisnt
     // bytes data represents the encoded function signature + parameters

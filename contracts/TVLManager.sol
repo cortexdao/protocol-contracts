@@ -5,10 +5,10 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./utils/EnumerableSet.sol";
 import "./interfaces/IAssetAllocation.sol";
-import "./interfaces/IAssetAllocationRegistry.sol";
+import "./interfaces/ITVLManager.sol";
 
 /**
- * @title APY Asset Allocation Registry
+ * @title TVL Manager
  * @author APY.Finance
  * @notice This contract allows registration of asset allocations
  *         expected to arise from movement of capital through
@@ -18,9 +18,9 @@ import "./interfaces/IAssetAllocationRegistry.sol";
  *         can then be pulled by external systems to compute the
  *         TVL of the APY.Finance system.
  */
-contract APYAssetAllocationRegistry is
+contract TVLManager is
     Ownable,
-    IAssetAllocationRegistry,
+    ITVLManager,
     IAssetAllocation
 {
     using EnumerableSet for EnumerableSet.Bytes32Set;
@@ -191,7 +191,7 @@ contract APYAssetAllocationRegistry is
      *         without modifying the internal state of the contract.
      * @dev The execution is via static call, meaning no state changes can arise.
      * @param data a struct holding the target and data of the static call
-     * See IAssetAllocationRegistry.Data.
+     * See ITVLManager.Data.
      */
     function executeView(Data memory data)
         public
