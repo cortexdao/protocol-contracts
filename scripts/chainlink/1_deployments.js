@@ -123,17 +123,15 @@ async function main(argv) {
   console.log("... done.");
 
   console.log("");
-  console.log("Deploying APYAssetAllocationRegistry ...");
+  console.log("Deploying TVLManager ...");
   console.log("");
 
-  const APYAssetAllocationRegistry = await ethers.getContractFactory(
-    "APYAssetAllocationRegistry"
-  );
+  const TVLManager = await ethers.getContractFactory("TVLManager");
 
   const managerAddress = getDeployedAddress("APYManagerProxy", NETWORK_NAME);
-  const registry = await APYAssetAllocationRegistry.deploy(managerAddress);
-  await registry.deployed();
-  console.log("APYAssetAllocationRegistry:", chalk.green(registry.address));
+  const tvlManager = await TVLManager.deploy(managerAddress);
+  await tvlManager.deployed();
+  console.log("TVLManager:", chalk.green(tvlManager.address));
   console.log("");
 
   console.log("");
@@ -154,11 +152,11 @@ async function main(argv) {
   );
   trx = await addressRegistry
     .connect(addressRegistryOwner)
-    .registerAddress(bytes32("chainlinkRegistry"), registry.address);
+    .registerAddress(bytes32("chainlinkRegistry"), tvlManager.address);
   await trx.wait();
   assert.strictEqual(
     await addressRegistry.chainlinkRegistryAddress(),
-    registry.address,
+    tvlManager.address,
     "Chainlink registry address is not registered correctly."
   );
   console.log("... done.");
