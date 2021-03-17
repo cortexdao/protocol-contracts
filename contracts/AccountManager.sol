@@ -91,8 +91,19 @@ contract AccountManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
     event AccountDeployed(
         bytes32 accountId,
         address account,
-        address generalExecutor
+        address genericExecutor
     );
+
+    /**
+     * @dev Throws if called by any account other than the proxy admin.
+     */
+    modifier onlyAdmin() {
+        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
+        _;
+    }
+
+    /// @dev Allow contract to receive Ether.
+    receive() external payable {} // solhint-disable-line no-empty-blocks
 
     /**
      * @dev Since the proxy delegate calls to this "logic" contract, any
@@ -140,17 +151,17 @@ contract AccountManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
      * @dev Associates an GenericExecutor with the account. This executor
      * is used when the `execute` function is called for a specific account ID.
      * @param accountId ID identifying an address for execution
-     * @param generalExecutor implementation contract for execution engine
+     * @param genericExecutor implementation contract for execution engine
      */
-    function deployAccount(bytes32 accountId, address generalExecutor)
+    function deployAccount(bytes32 accountId, address genericExecutor)
         external
         override
         onlyOwner
         returns (address)
     {
-        Account account = new Account(generalExecutor);
+        Account account = new Account(genericExecutor);
         getAccount[accountId] = address(account);
-        emit AccountDeployed(accountId, address(account), generalExecutor);
+        emit AccountDeployed(accountId, address(account), genericExecutor);
         return address(account);
     }
 
@@ -195,6 +206,17 @@ contract AccountManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
         IAccount(accountAddress).execute(steps);
     }
 
+    function setAdminAddress(address adminAddress) public onlyOwner {
+        require(adminAddress != address(0), "INVALID_ADMIN");
+        proxyAdmin = adminAddress;
+        emit AdminChanged(adminAddress);
+    }
+
+    function setAddressRegistry(address _addressRegistry) public onlyOwner {
+        require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistry(_addressRegistry);
+    }
+
     /**
      * @notice Register a new asset allocation
      * @notice When capital is routed to new protocols, asset allocations are
@@ -229,27 +251,5 @@ contract AccountManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
                 viewAllocation.decimals
             );
         }
-    }
-
-    function setAdminAddress(address adminAddress) public onlyOwner {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-        proxyAdmin = adminAddress;
-        emit AdminChanged(adminAddress);
-    }
-
-    /**
-     * @dev Throws if called by any account other than the proxy admin.
-     */
-    modifier onlyAdmin() {
-        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
-        _;
-    }
-
-    /// @dev Allow contract to receive Ether.
-    receive() external payable {} // solhint-disable-line no-empty-blocks
-
-    function setAddressRegistry(address _addressRegistry) public onlyOwner {
-        require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistry(_addressRegistry);
     }
 }

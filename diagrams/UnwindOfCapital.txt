@@ -9,7 +9,7 @@ participant USDT#lightgreen
 participant APYManager#violet
 participant mAPT#hotpink
 participant APYStrategy(proxy)
-participant General Executor#silver
+participant Generic Executor#silver
 
 abox over APYManager#pink: Unroll Initiated
 activate APYManager #pink
@@ -18,18 +18,18 @@ activate APYManager #pink
 group #red Unroll
 APYManager ->APYStrategy(proxy): execute(executionData)
 activate APYStrategy(proxy)
-APYStrategy(proxy) ->General Executor: delegateCall(executionData)
-activate General Executor #silver
+APYStrategy(proxy) ->Generic Executor: delegateCall(executionData)
+activate Generic Executor #silver
 group #silver Enable Manager to move funds
-General Executor ->USDC: approve(APYManager, max)
-General Executor ->DAI: approve(APYManager, max)
-General Executor ->USDT: approve(APYManager, max)
+Generic Executor ->USDC: approve(APYManager, max)
+Generic Executor ->DAI: approve(APYManager, max)
+Generic Executor ->USDT: approve(APYManager, max)
 end
-General Executor -> ]: unroll funds
-General Executor -> ]: unroll funds
-General Executor -> ]: unroll funds
-General Executor -->APYStrategy(proxy):
-deactivate General Executor
+Generic Executor -> ]: unroll funds
+Generic Executor -> ]: unroll funds
+Generic Executor -> ]: unroll funds
+Generic Executor -->APYStrategy(proxy):
+deactivate Generic Executor
 APYStrategy(proxy) -->APYManager:
 deactivate APYStrategy(proxy)
 end 
