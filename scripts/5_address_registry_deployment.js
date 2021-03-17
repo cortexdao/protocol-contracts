@@ -33,9 +33,7 @@ async function main(argv) {
   console.log("");
 
   const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-  const APYAddressRegistry = await ethers.getContractFactory(
-    "APYAddressRegistry"
-  );
+  const AddressRegistry = await ethers.getContractFactory("AddressRegistry");
   const TransparentUpgradeableProxy = await ethers.getContractFactory(
     "TransparentUpgradeableProxy"
   );
@@ -44,12 +42,12 @@ async function main(argv) {
 
   const proxyAdmin = await ProxyAdmin.deploy();
   await proxyAdmin.deployed();
-  deploy_data["APYAddressRegistryProxyAdmin"] = proxyAdmin.address;
+  deploy_data["AddressRegistryProxyAdmin"] = proxyAdmin.address;
   console.log(`ProxyAdmin: ${proxyAdmin.address}`);
 
-  const logic = await APYAddressRegistry.deploy();
+  const logic = await AddressRegistry.deploy();
   await logic.deployed();
-  deploy_data["APYAddressRegistry"] = logic.address;
+  deploy_data["AddressRegistry"] = logic.address;
   console.log(`Implementation Logic: ${logic.address}`);
 
   const CONSTRUCTOR_ARG_ADDRESSES = require(DEPLOYS_JSON[
@@ -82,7 +80,7 @@ async function main(argv) {
     encodedArg
   );
   await proxy.deployed();
-  deploy_data["APYAddressRegistryProxy"] = proxy.address;
+  deploy_data["AddressRegistryProxy"] = proxy.address;
   console.log(`Proxy: ${proxy.address}`);
 
   await updateDeployJsons(NETWORK_NAME, deploy_data);
@@ -96,17 +94,17 @@ async function main(argv) {
   console.log("");
   console.log("Registering addresses ...");
   console.log("");
-  const DAI_POOL_ADDRESSES = require(DEPLOYS_JSON["DAI_APYPoolTokenProxy"]);
+  const DAI_POOL_ADDRESSES = require(DEPLOYS_JSON["DAI_PoolTokenProxy"]);
   const daiPoolAddress = DAI_POOL_ADDRESSES[CHAIN_IDS[NETWORK_NAME]];
   console.log("DAI pool address:", daiPoolAddress);
-  const USDC_POOL_ADDRESSES = require(DEPLOYS_JSON["USDC_APYPoolTokenProxy"]);
+  const USDC_POOL_ADDRESSES = require(DEPLOYS_JSON["USDC_PoolTokenProxy"]);
   const usdcPoolAddress = USDC_POOL_ADDRESSES[CHAIN_IDS[NETWORK_NAME]];
   console.log("USDC pool address:", usdcPoolAddress);
-  const USDT_POOL_ADDRESSES = require(DEPLOYS_JSON["USDT_APYPoolTokenProxy"]);
+  const USDT_POOL_ADDRESSES = require(DEPLOYS_JSON["USDT_PoolTokenProxy"]);
   const usdtPoolAddress = USDT_POOL_ADDRESSES[CHAIN_IDS[NETWORK_NAME]];
   console.log("USDT pool address:", usdtPoolAddress);
 
-  const registry = await APYAddressRegistry.attach(proxy.address);
+  const registry = await AddressRegistry.attach(proxy.address);
   await registry.registerMultipleAddresses(
     [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")],
     [daiPoolAddress, usdcPoolAddress, usdtPoolAddress]

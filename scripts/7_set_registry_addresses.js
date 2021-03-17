@@ -35,15 +35,15 @@ async function main(argv) {
   console.log("");
   console.log("Register addresses for manager and chainlink registry ...");
   console.log("");
-  const MANAGER_ADDRESSES = require(DEPLOYS_JSON["APYManagerProxy"]);
+  const MANAGER_ADDRESSES = require(DEPLOYS_JSON["ManagerProxy"]);
   const managerAddress = MANAGER_ADDRESSES[CHAIN_IDS[NETWORK_NAME]];
   console.log("Manager:", managerAddress);
-  const REGISTRY_ADDRESSES = require(DEPLOYS_JSON["APYAddressRegistryProxy"]);
+  const REGISTRY_ADDRESSES = require(DEPLOYS_JSON["AddressRegistryProxy"]);
   const addressRegistryAddress = REGISTRY_ADDRESSES[CHAIN_IDS[NETWORK_NAME]];
   console.log("Address registry:", addressRegistryAddress);
 
   const registry = await ethers.getContractAt(
-    "APYAddressRegistry",
+    "AddressRegistry",
     addressRegistryAddress
   );
   await registry.registerAddress(bytes32("manager"), managerAddress);
