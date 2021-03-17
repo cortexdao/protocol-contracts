@@ -14,8 +14,8 @@ const { assert, expect } = require("chai");
 const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants");
 const { bytes32 } = require("../utils/helpers");
 
-const PROXY_ADMIN_ADDRESSES = require(DEPLOYS_JSON["APYManagerProxyAdmin"]);
-const PROXY_ADDRESSES = require(DEPLOYS_JSON["APYManagerProxy"]);
+const PROXY_ADMIN_ADDRESSES = require(DEPLOYS_JSON["ManagerProxyAdmin"]);
+const PROXY_ADDRESSES = require(DEPLOYS_JSON["ManagerProxy"]);
 
 // eslint-disable-next-line no-unused-vars
 const main = async (argv) => {
@@ -40,7 +40,7 @@ const main = async (argv) => {
   admin = admin.connect(user);
 
   let manager = await ethers.getContractAt(
-    "APYManager",
+    "Manager",
     PROXY_ADDRESSES[CHAIN_IDS[NETWORK_NAME]]
   );
   manager = manager.connect(user);
@@ -61,7 +61,7 @@ const main = async (argv) => {
   console.log("... done.");
 
   console.log("Check logic address is set on proxy ...");
-  const MANAGER_ADDRESSES = require(DEPLOYS_JSON["APYManager"]);
+  const MANAGER_ADDRESSES = require(DEPLOYS_JSON["Manager"]);
   expect(await admin.getProxyImplementation(manager.address)).to.equal(
     MANAGER_ADDRESSES[CHAIN_IDS[NETWORK_NAME]]
   );
@@ -96,7 +96,7 @@ const main = async (argv) => {
   assert.ok(registryAddress);
   console.log("Address registry:", registryAddress);
   const registry = await ethers.getContractAt(
-    "APYAddressRegistry",
+    "AddressRegistry",
     registryAddress
   );
   assert.equal(await registry.managerAddress(), manager.address);

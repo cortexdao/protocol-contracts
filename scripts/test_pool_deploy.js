@@ -13,7 +13,7 @@ const {
   DEPLOYS_JSON,
   TOKEN_AGG_MAP,
 } = require("../utils/constants.js");
-const PROXY_ADMIN_ADDRESSES = require(DEPLOYS_JSON["APYPoolTokenProxyAdmin"]);
+const PROXY_ADMIN_ADDRESSES = require(DEPLOYS_JSON["PoolTokenProxyAdmin"]);
 
 const main = async () => {
   const NETWORK_NAME = network.name.toUpperCase();
@@ -40,10 +40,10 @@ const main = async () => {
     console.log("");
 
     const POOL_PROXY_ADDRESSES = require(DEPLOYS_JSON[
-      symbol + "_APYPoolTokenProxy"
+      symbol + "_PoolTokenProxy"
     ]);
-    const APYPoolToken = await ethers.getContractFactory("APYPoolToken");
-    let pool = await APYPoolToken.attach(
+    const PoolToken = await ethers.getContractFactory("PoolToken");
+    let pool = await PoolToken.attach(
       POOL_PROXY_ADDRESSES[CHAIN_IDS[NETWORK_NAME]]
     );
 
@@ -63,9 +63,7 @@ const main = async () => {
     admin = admin.connect(user);
     expect(await admin.getProxyAdmin(pool.address)).to.equal(admin.address);
     expect(await pool.proxyAdmin()).to.equal(admin.address);
-    const POOL_TOKEN_ADDRESSES = require(DEPLOYS_JSON[
-      symbol + "_APYPoolToken"
-    ]);
+    const POOL_TOKEN_ADDRESSES = require(DEPLOYS_JSON[symbol + "_PoolToken"]);
     expect(await admin.getProxyImplementation(pool.address)).to.equal(
       POOL_TOKEN_ADDRESSES[CHAIN_IDS[NETWORK_NAME]]
     );

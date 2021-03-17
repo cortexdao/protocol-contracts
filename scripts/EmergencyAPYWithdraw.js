@@ -2,8 +2,8 @@ require("dotenv").config();
 const { ethers, network } = require("hardhat");
 const { generateSignature } = require("./generate_signature");
 const { CHAIN_IDS, DEPLOYS_JSON } = require("../utils/constants");
-const APY_GOV_PROXY = require(DEPLOYS_JSON["APYGovernanceTokenProxy"]);
-const APY_DISTRIBUTOR_ADDR = require(DEPLOYS_JSON["APYRewardDistributor"]);
+const GOV_PROXY = require(DEPLOYS_JSON["GovernanceTokenProxy"]);
+const DISTRIBUTOR_ADDR = require(DEPLOYS_JSON["RewardDistributor"]);
 
 async function main() {
   if (!process.env.SIGNER) {
@@ -14,16 +14,16 @@ async function main() {
   const NETWORK_NAME = network.name.toUpperCase();
   console.log(`${NETWORK_NAME} selected`);
 
-  const APYGovToken = await ethers.getContractFactory("APYGovernanceToken");
-  const APYRewardDistributor = await ethers.getContractFactory(
-    "APYRewardDistributor"
+  const GovToken = await ethers.getContractFactory("GovernanceToken");
+  const RewardDistributor = await ethers.getContractFactory(
+    "RewardDistributor"
   );
 
-  const tokenInstance = await APYGovToken.attach(
-    APY_GOV_PROXY[CHAIN_IDS[NETWORK_NAME]]
+  const tokenInstance = await GovToken.attach(
+    GOV_PROXY[CHAIN_IDS[NETWORK_NAME]]
   );
-  const rewardsInstance = await APYRewardDistributor.attach(
-    APY_DISTRIBUTOR_ADDR[CHAIN_IDS[NETWORK_NAME]]
+  const rewardsInstance = await RewardDistributor.attach(
+    DISTRIBUTOR_ADDR[CHAIN_IDS[NETWORK_NAME]]
   );
 
   console.log(`APY Token Address: ${tokenInstance.address}`);
