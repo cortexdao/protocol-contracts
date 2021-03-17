@@ -312,9 +312,13 @@ describe("Contract: PoolManager", () => {
     });
 
     it("Transfers correct underlyer amounts and updates asset allocation registry", async () => {
-      const prevDaiBalance = await daiToken.balanceOf(fundedAccountAddress);
-      const prevUsdcBalance = await usdcToken.balanceOf(fundedAccountAddress);
-      const prevUsdtBalance = await usdtToken.balanceOf(fundedAccountAddress);
+      // ETHERS contract.on() event listener doesnt seems to be working for some reason.
+      // It might be because the event is not at the top most level
+
+      // pre-conditions
+      expect(await daiToken.balanceOf(fundedAccountAddress)).to.equal(0);
+      expect(await usdcToken.balanceOf(fundedAccountAddress)).to.equal(0);
+      expect(await usdtToken.balanceOf(fundedAccountAddress)).to.equal(0);
 
       // start the tests
       const daiPoolBalance = await daiToken.balanceOf(daiPool.address);
@@ -335,9 +339,9 @@ describe("Contract: PoolManager", () => {
         fundedAccountAddress
       );
 
-      expect(strategyDaiBalance.sub(prevDaiBalance)).to.equal(daiAmount);
-      expect(strategyUsdcBalance.sub(prevUsdcBalance)).to.equal(usdcAmount);
-      expect(strategyUsdtBalance.sub(prevUsdtBalance)).to.equal(usdtAmount);
+      expect(strategyDaiBalance).to.equal(daiAmount);
+      expect(strategyUsdcBalance).to.equal(usdcAmount);
+      expect(strategyUsdtBalance).to.equal(usdtAmount);
 
       expect(await daiToken.balanceOf(daiPool.address)).to.equal(
         daiPoolBalance.sub(daiAmount)
@@ -511,18 +515,17 @@ describe("Contract: PoolManager", () => {
 
       it("Transfers underlyer correctly for one pool", async () => {
         const amount = "10";
-        const prevBalance = await daiToken.balanceOf(fundedAccountAddress);
         await daiToken.connect(deployer).transfer(fundedAccountAddress, amount);
-        const newBalance = await daiToken.balanceOf(fundedAccountAddress);
-        expect(newBalance).to.equal(prevBalance.add(amount));
+        expect(await daiToken.balanceOf(fundedAccountAddress)).to.equal(amount);
+
+        // ETHERS contract.on() event listener doesnt seems to be working for some reason.
+        // It might be because the event is not at the top most level
 
         await manager.withdrawFromAccount(accountId, [
           { poolId: bytes32("daiPool"), amount: amount },
         ]);
 
-        expect(await daiToken.balanceOf(fundedAccountAddress)).to.equal(
-          prevBalance
-        );
+        expect(await daiToken.balanceOf(fundedAccountAddress)).to.equal(0);
       });
 
       it("Transfers and mints correctly for multiple pools (start from zero supply)", async () => {
