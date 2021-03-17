@@ -19,6 +19,8 @@ const {
   getStablecoinAddress,
   acquireToken,
   MAX_UINT256,
+  FAKE_ADDRESS,
+  ANOTHER_FAKE_ADDRESS,
 } = require("../utils/helpers");
 const { STABLECOIN_POOLS } = require("../utils/constants");
 
@@ -38,8 +40,7 @@ const LIQUIDITY_GAUGE_ADDRESS = "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A";
 describe("Contract: TVLManager", () => {
   /* signers */
   let deployer;
-  let manager;
-  let strategy;
+  let accountContract;
 
   /* contract factories */
   let TVLManager;
@@ -60,10 +61,10 @@ describe("Contract: TVLManager", () => {
   });
 
   before(async () => {
-    [deployer, manager, strategy] = await ethers.getSigners();
+    [deployer, accountContract] = await ethers.getSigners();
 
     TVLManager = await ethers.getContractFactory("TVLManager");
-    tvlManager = await TVLManager.deploy(manager.address);
+    tvlManager = await TVLManager.deploy(FAKE_ADDRESS, ANOTHER_FAKE_ADDRESS);
     await tvlManager.deployed();
   });
 
@@ -106,14 +107,14 @@ describe("Contract: TVLManager", () => {
 
       const amount = dai(500000);
       const sender = STABLECOIN_POOLS["DAI"];
-      await acquireToken(sender, strategy, daiToken, amount, deployer);
+      await acquireToken(sender, accountContract, daiToken, amount, deployer);
     });
 
     before("Register asset allocation", async () => {
       const calldata = CurvePeriphery.interface.encodeFunctionData(
         "getUnderlyerBalance(address,address,address,address,uint256)",
         [
-          strategy.address,
+          accountContract.address,
           stableSwap.address,
           gauge.address,
           lpToken.address,
@@ -132,12 +133,16 @@ describe("Contract: TVLManager", () => {
     it("Get underlyer balance from account holding", async () => {
       const daiAmount = dai("1000");
       const minAmount = 0;
-      await daiToken.connect(strategy).approve(stableSwap.address, MAX_UINT256);
+      await daiToken
+        .connect(accountContract)
+        .approve(stableSwap.address, MAX_UINT256);
       await stableSwap
-        .connect(strategy)
+        .connect(accountContract)
         .add_liquidity([daiAmount, "0", "0"], minAmount);
 
-      const strategyLpBalance = await lpToken.balanceOf(strategy.address);
+      const strategyLpBalance = await lpToken.balanceOf(
+        accountContract.address
+      );
       const poolBalance = await stableSwap.balances(daiIndex);
       const lpTotalSupply = await lpToken.totalSupply();
 
@@ -154,16 +159,24 @@ describe("Contract: TVLManager", () => {
     it("Get underlyer balance from gauge holding", async () => {
       const daiAmount = dai("1000");
       const minAmount = 0;
-      await daiToken.connect(strategy).approve(stableSwap.address, MAX_UINT256);
+      await daiToken
+        .connect(accountContract)
+        .approve(stableSwap.address, MAX_UINT256);
       await stableSwap
-        .connect(strategy)
+        .connect(accountContract)
         .add_liquidity([daiAmount, "0", "0"], minAmount);
 
-      await lpToken.connect(strategy).approve(gauge.address, MAX_UINT256);
-      const strategyLpBalance = await lpToken.balanceOf(strategy.address);
-      await gauge.connect(strategy)["deposit(uint256)"](strategyLpBalance);
-      expect(await lpToken.balanceOf(strategy.address)).to.equal(0);
-      const gaugeLpBalance = await gauge.balanceOf(strategy.address);
+      await lpToken
+        .connect(accountContract)
+        .approve(gauge.address, MAX_UINT256);
+      const strategyLpBalance = await lpToken.balanceOf(
+        accountContract.address
+      );
+      await gauge
+        .connect(accountContract)
+        ["deposit(uint256)"](strategyLpBalance);
+      expect(await lpToken.balanceOf(accountContract.address)).to.equal(0);
+      const gaugeLpBalance = await gauge.balanceOf(accountContract.address);
       expect(gaugeLpBalance).to.be.gt(0);
 
       const poolBalance = await stableSwap.balances(daiIndex);
@@ -182,25 +195,31 @@ describe("Contract: TVLManager", () => {
     it("Get underlyer balance from combined holdings", async () => {
       const daiAmount = dai("1000");
       const minAmount = 0;
-      await daiToken.connect(strategy).approve(stableSwap.address, MAX_UINT256);
+      await daiToken
+        .connect(accountContract)
+        .approve(stableSwap.address, MAX_UINT256);
       await stableSwap
-        .connect(strategy)
+        .connect(accountContract)
         .add_liquidity([daiAmount, "0", "0"], minAmount);
 
       // split LP tokens between strategy and gauge
-      const totalLPBalance = await lpToken.balanceOf(strategy.address);
+      const totalLPBalance = await lpToken.balanceOf(accountContract.address);
       const strategyLpBalance = totalLPBalance.div(3);
       const gaugeLpBalance = totalLPBalance.sub(strategyLpBalance);
       expect(gaugeLpBalance).to.be.gt(0);
       expect(strategyLpBalance).to.be.gt(0);
 
-      await lpToken.connect(strategy).approve(gauge.address, MAX_UINT256);
-      await gauge.connect(strategy)["deposit(uint256)"](gaugeLpBalance);
+      await lpToken
+        .connect(accountContract)
+        .approve(gauge.address, MAX_UINT256);
+      await gauge.connect(accountContract)["deposit(uint256)"](gaugeLpBalance);
 
-      expect(await lpToken.balanceOf(strategy.address)).to.equal(
+      expect(await lpToken.balanceOf(accountContract.address)).to.equal(
         strategyLpBalance
       );
-      expect(await gauge.balanceOf(strategy.address)).to.equal(gaugeLpBalance);
+      expect(await gauge.balanceOf(accountContract.address)).to.equal(
+        gaugeLpBalance
+      );
 
       const poolBalance = await stableSwap.balances(daiIndex);
       const lpTotalSupply = await lpToken.totalSupply();

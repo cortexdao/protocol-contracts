@@ -8,6 +8,7 @@ const {
   impersonateAccount,
   bytes32,
   acquireToken,
+  FAKE_ADDRESS,
 } = require("../utils/helpers");
 const { deployMockContract } = require("ethereum-waffle");
 const { STABLECOIN_POOLS } = require("../utils/constants");
@@ -207,7 +208,7 @@ describe("Contract: PoolManager", () => {
     /***** deploy asset allocation registry ****/
     /*******************************************/
     const TVLManager = await ethers.getContractFactory("TVLManager");
-    tvlManager = await TVLManager.deploy(manager.address);
+    tvlManager = await TVLManager.deploy(manager.address, FAKE_ADDRESS);
     await tvlManager.deployed();
     const addressRegistry = await ethers.getContractAt(
       legos.apy.abis.APY_ADDRESS_REGISTRY_Logic,
