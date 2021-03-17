@@ -213,13 +213,11 @@ describe("Contract: AccountManager", () => {
     await usdcPool.infiniteApprove(manager.address);
     await usdtPool.infiniteApprove(manager.address);
 
-    /*******************************************/
-    /***** deploy asset allocation registry ****/
-    /*******************************************/
-    const AssetAllocationRegistry = await ethers.getContractFactory(
-      "TVLManager"
-    );
-    tvlManager = await AssetAllocationRegistry.deploy(manager.address);
+    /*************************************/
+    /***** deploy TVL Manager ************/
+    /*************************************/
+    const TVLManager = await ethers.getContractFactory("TVLManager");
+    tvlManager = await TVLManager.deploy(manager.address);
     await tvlManager.deployed();
     const addressRegistry = await ethers.getContractAt(
       legos.apy.abis.APY_ADDRESS_REGISTRY_Logic,
@@ -291,7 +289,7 @@ describe("Contract: AccountManager", () => {
       ).to.not.be.reverted;
     });
 
-    it("Calldata executes properly and updates asset allocation registry", async () => {
+    it("Calldata executes properly and updates TVL Manager", async () => {
       const encodedBalanceOf = erc20Interface.encodeFunctionData(
         "balanceOf(address)",
         [accountAddress]
