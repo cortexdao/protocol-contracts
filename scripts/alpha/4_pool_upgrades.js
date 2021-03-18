@@ -12,6 +12,7 @@ const {
   getDeployedAddress,
   updateDeployJsons,
 } = require("../../utils/helpers");
+const { AGG_MAP } = require("../../utils/constants");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -104,6 +105,57 @@ async function main(argv) {
     deployData[symbol + "_PoolToken"] = logicV2.address;
   }
   updateDeployJsons(networkName, deployData);
+
+  console.log("");
+  console.log("Set USD aggs on pools ...");
+  console.log("");
+
+  for (const symbol of ["DAI", "USDC", "USDT"]) {
+    const poolAddress = getDeployedAddress(
+      symbol + "_PoolTokenProxy",
+      networkName
+    );
+    console.log(`${symbol} pool:`, chalk.green(poolAddress));
+    const gasPrice = await getGasPrice(argv.gasPrice);
+    const pool = await ethers.getContractAt(
+      "PoolTokenV2",
+      poolAddress,
+      poolDeployer
+    );
+    const aggAddress = AGG_MAP[networkName][`${symbol}-USD`];
+    const trx = await pool.setPriceAggregator(aggAddress, { gasPrice });
+    console.log("Set USD agg:", `https://etherscan.io/tx/${trx.hash}`);
+    await trx.wait();
+    console.log("");
+  }
+
+  console.log("");
+  console.log("Approving manager for pools ...");
+  console.log("");
+
+  const poolManagerAddress = getDeployedAddress(
+    "PoolManagerProxy",
+    networkName
+  );
+  console.log("Pool Manager:", chalk.green(poolManagerAddress));
+  console.log("");
+  for (const symbol of ["DAI", "USDC", "USDT"]) {
+    const poolAddress = getDeployedAddress(
+      symbol + "_PoolTokenProxy",
+      networkName
+    );
+    console.log(`${symbol} pool:`, chalk.green(poolAddress));
+    const gasPrice = await getGasPrice(argv.gasPrice);
+    const pool = await ethers.getContractAt(
+      "PoolTokenV2",
+      poolAddress,
+      poolDeployer
+    );
+    const trx = await pool.infiniteApprove(poolManagerAddress, { gasPrice });
+    console.log("Approve:", `https://etherscan.io/tx/${trx.hash}`);
+    await trx.wait();
+    console.log("");
+  }
 
   if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");

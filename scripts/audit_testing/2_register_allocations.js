@@ -26,7 +26,7 @@ async function main(argv) {
   console.log(`${NETWORK_NAME} selected`);
   console.log("");
 
-  const [deployer, strategy] = await ethers.getSigners();
+  const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
 
   const addressRegistryAddress = getDeployedAddress(
@@ -79,10 +79,18 @@ async function main(argv) {
    * data: a pair (address, bytes) where the bytes are encoded function
    *       calldata to be used at the target address
    */
+  const managerAddress = await addressRegistry.managerAddress();
+  let manager = await ethers.getContractAt("APYManagerV2", managerAddress);
+  const accountAddress = await manager.getAccount(bytes32("alpha"));
+
+  console.log("");
+  console.log("Funding strategy account from pools ...");
+  console.log("");
+
   const calldataForDai = CurvePeriphery.interface.encodeFunctionData(
     "getUnderlyerBalance(address,address,address,address,uint256)",
     [
-      strategy.address,
+      accountAddress,
       STABLE_SWAP_ADDRESS,
       LIQUIDITY_GAUGE_ADDRESS,
       LP_TOKEN_ADDRESS,
@@ -92,7 +100,7 @@ async function main(argv) {
   const calldataForUsdc = CurvePeriphery.interface.encodeFunctionData(
     "getUnderlyerBalance(address,address,address,address,uint256)",
     [
-      strategy.address,
+      accountAddress,
       STABLE_SWAP_ADDRESS,
       LIQUIDITY_GAUGE_ADDRESS,
       LP_TOKEN_ADDRESS,
@@ -102,7 +110,7 @@ async function main(argv) {
   const calldataForUsdt = CurvePeriphery.interface.encodeFunctionData(
     "getUnderlyerBalance(address,address,address,address,uint256)",
     [
-      strategy.address,
+      accountAddress,
       STABLE_SWAP_ADDRESS,
       LIQUIDITY_GAUGE_ADDRESS,
       LP_TOKEN_ADDRESS,
