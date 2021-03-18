@@ -30,11 +30,11 @@ async function main(argv) {
   console.log("Deployer address:", deployer.address);
 
   const addressRegistryAddress = getDeployedAddress(
-    "APYAddressRegistryProxy",
+    "AddressRegistryProxy",
     NETWORK_NAME
   );
   const addressRegistry = await ethers.getContractAt(
-    "APYAddressRegistry",
+    "AddressRegistry",
     addressRegistryAddress
   );
   const registryAddress = await addressRegistry.chainlinkRegistryAddress();

@@ -22,6 +22,7 @@ const {
   ZERO_ADDRESS,
   tokenAmountToBigNumber,
   acquireToken,
+  FAKE_ADDRESS,
 } = require("../../utils/helpers");
 const assert = require("assert");
 const chalk = require("chalk");
@@ -123,13 +124,13 @@ async function main(argv) {
   console.log("... done.");
 
   console.log("");
-  console.log("Deploying TVLManager ...");
+  console.log("Deploying TVL Manager ...");
   console.log("");
 
   const TVLManager = await ethers.getContractFactory("TVLManager");
-
-  const managerAddress = getDeployedAddress("APYManagerProxy", NETWORK_NAME);
-  const tvlManager = await TVLManager.deploy(managerAddress);
+  // don't need to set the other managers in the TVLManager constructor,
+  // as for this testing, it suffices to have the deployer add allocations
+  const tvlManager = await TVLManager.deploy(FAKE_ADDRESS, FAKE_ADDRESS);
   await tvlManager.deployed();
   console.log("TVLManager:", chalk.green(tvlManager.address));
   console.log("");
@@ -138,17 +139,16 @@ async function main(argv) {
   console.log("Registering address with AddressRegistry ...");
   console.log("");
   const addressRegistryAddress = getDeployedAddress(
-    "APYAddressRegistryProxy",
+    "AddressRegistryProxy",
     NETWORK_NAME
   );
   console.log("Address registry:", addressRegistryAddress);
   const addressRegistry = await ethers.getContractAt(
-    "APYAddressRegistry",
+    "AddressRegistry",
     addressRegistryAddress
   );
-  const addressRegistryOwnerAddress = await addressRegistry.owner();
   const addressRegistryOwner = await impersonateAccount(
-    addressRegistryOwnerAddress
+    await addressRegistry.owner()
   );
   trx = await addressRegistry
     .connect(addressRegistryOwner)
