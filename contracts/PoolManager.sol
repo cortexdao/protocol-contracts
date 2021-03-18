@@ -229,7 +229,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         address account,
         PoolTokenV2[] memory pools
     ) internal {
-        ITVLManager assetAllocationRegistry =
+        ITVLManager tvlManager =
             ITVLManager(addressRegistry.getAddress("chainlinkRegistry"));
         for (uint256 i = 0; i < pools.length; i++) {
             PoolTokenV2 pool = pools[i];
@@ -241,7 +241,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
                 ITVLManager.Data(address(pool.underlyer()), _data);
             bytes32 id =
                 keccak256(abi.encodePacked(address(underlyer), account));
-            assetAllocationRegistry.addAssetAllocation(
+            tvlManager.addAssetAllocation(
                 id,
                 data,
                 symbol,

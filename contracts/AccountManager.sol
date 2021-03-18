@@ -240,11 +240,11 @@ contract AccountManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
     function _registerAllocationData(
         ITVLManager.AssetAllocation[] memory viewData
     ) internal {
-        ITVLManager assetAllocationRegistry =
+        ITVLManager tvlManager =
             ITVLManager(addressRegistry.getAddress("chainlinkRegistry"));
         for (uint256 i = 0; i < viewData.length; i++) {
             ITVLManager.AssetAllocation memory viewAllocation = viewData[i];
-            assetAllocationRegistry.addAssetAllocation(
+            tvlManager.addAssetAllocation(
                 viewAllocation.sequenceId,
                 viewAllocation.data,
                 viewAllocation.symbol,
