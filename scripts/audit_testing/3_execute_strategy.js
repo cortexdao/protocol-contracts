@@ -36,25 +36,21 @@ async function main(argv) {
   const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
 
-  const addressRegistryAddress = getDeployedAddress(
-    "APYAddressRegistryProxy",
-    NETWORK_NAME
+  const poolManagerAddress = getDeployedAddress("PoolManager", NETWORK_NAME);
+  let poolManager = await ethers.getContractAt(
+    "PoolManager",
+    poolManagerAddress
   );
-  const addressRegistry = await ethers.getContractAt(
-    "APYAddressRegistry",
-    addressRegistryAddress
+  const poolManagerDeployer = await impersonateAccount(
+    await poolManager.owner()
   );
-
-  const managerAddress = await addressRegistry.managerAddress();
-  let manager = await ethers.getContractAt("APYManagerV2", managerAddress);
-  const managerDeployer = await impersonateAccount(await manager.owner());
-  manager = manager.connect(managerDeployer);
+  poolManager = poolManager.connect(poolManagerDeployer);
 
   console.log("");
   console.log("Funding strategy account from pools ...");
   console.log("");
 
-  const accountAddress = await manager.getAccount(bytes32("alpha"));
+  const accountAddress = await poolManager.getAccount(bytes32("alpha"));
   const ifaceERC20 = new ethers.utils.Interface(
     artifacts.require("IDetailedERC20").abi
   );
@@ -71,7 +67,7 @@ async function main(argv) {
 
   const daiAmount = tokenAmountToBigNumber("1000", "18");
 
-  await manager.fundAccount(
+  await poolManager.fundAccount(
     accountAddress,
     [[bytes32("daiPool")], [daiAmount]],
     [
@@ -121,7 +117,7 @@ async function main(argv) {
     [daiToken.address, approveStableSwap], // approve StableSwap for DAI
     [STABLE_SWAP_ADDRESS, stableSwapAddLiquidity], // deposit DAI into Curve 3pool
   ];
-  await manager.execute(accountAddress, executionSteps, []);
+  await poolManager.execute(accountAddress, executionSteps, []);
   console.log("... done.");
   console.log("");
 
@@ -147,7 +143,7 @@ async function main(argv) {
     [LP_TOKEN_ADDRESS, approveGauge], // approve LiquidityGauge for LP token
     [LIQUIDITY_GAUGE_ADDRESS, liquidityGaugeDeposit],
   ];
-  await manager.execute(accountAddress, executionSteps, []);
+  await poolManager.execute(accountAddress, executionSteps, []);
 
   const gauge = await ethers.getContractAt("IDetailedERC20", LP_TOKEN_ADDRESS);
   const gaugeBalance = await gauge.balanceOf(accountAddress);
