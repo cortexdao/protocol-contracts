@@ -1,13 +1,3 @@
-const DAI_WHALE = "0x66c57bF505A85A74609D2C83E94Aabb26d691E1F";
-const USDC_WHALE = "0x8cee3eeab46774c1CDe4F6368E3ae68BcCd760Bf";
-const USDT_WHALE = "0x1bEEf1db7FB7cF3A932Dc96CACaf9d837ddEc45F";
-
-const WHALE_ADDRESSES = {
-  DAI: DAI_WHALE,
-  USDC: USDC_WHALE,
-  USDT: USDT_WHALE,
-};
-
 const STABLECOIN_POOLS = {
   // sUSD curve pool has plenty of these stablecoins
   // https://etherscan.io/address/0xa5407eae9ba41422680e2e00537571bcc53efbfd
@@ -21,15 +11,7 @@ const CHAIN_IDS = {
   RINKEBY: "4",
   GOERLI: "5",
   KOVAN: "42",
-  LOCALHOST: "1", //should be 99, but signature claiming fails in emergency withdraw otherwise
-};
-
-const CHAIN_NAMES = {
-  1: "MAINNET",
-  4: "RINKEBY",
-  5: "GOERLI",
-  42: "KOVAN",
-  99: "LOCALHOST",
+  LOCALHOST: "1",
 };
 
 const AGG_MAP = {
@@ -163,13 +145,8 @@ for (const contractName of CONTRACT_NAMES) {
 }
 
 module.exports = {
-  DAI_WHALE,
-  USDC_WHALE,
-  USDT_WHALE,
-  WHALE_ADDRESSES,
   STABLECOIN_POOLS,
   CHAIN_IDS,
-  CHAIN_NAMES,
   AGG_MAP,
   TOKEN_AGG_MAP,
   DEPLOYS_JSON,
