@@ -241,12 +241,14 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
                 ITVLManager.Data(address(pool.underlyer()), _data);
             bytes32 id =
                 keccak256(abi.encodePacked(address(underlyer), account));
-            tvlManager.addAssetAllocation(
-                id,
-                data,
-                symbol,
-                underlyer.decimals()
-            );
+            if (!tvlManager.isDataRegistered(id)) {
+                tvlManager.addAssetAllocation(
+                    id,
+                    data,
+                    symbol,
+                    underlyer.decimals()
+                );
+            }
         }
     }
 

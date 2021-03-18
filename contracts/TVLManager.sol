@@ -24,6 +24,7 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
     address public poolManager;
     address public accountManager;
 
+    EnumerableSet.Bytes32Set private _registeredData;
     EnumerableSet.Bytes32Set private _allocationIds;
     mapping(bytes32 => Data) private _allocationData;
     mapping(bytes32 => string) private _allocationSymbols;
@@ -77,6 +78,9 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
         string calldata symbol,
         uint256 decimals
     ) external override onlyPermissioned {
+        bytes32 dataHash = keccak256(abi.encodePacked(data.target, data.data));
+        require(!isDataRegistered(dataHash), "DUPLICATE_DATA_DETECTED");
+        _registeredData.add(dataHash);
         _allocationIds.add(allocationId);
         _allocationData[allocationId] = data;
         _allocationSymbols[allocationId] = symbol;
@@ -92,10 +96,23 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
         override
         onlyPermissioned
     {
+        Data memory data = _allocationData[allocationId];
+        _registeredData.remove(
+            keccak256(abi.encodePacked(data.target, data.data))
+        );
         _allocationIds.remove(allocationId);
         delete _allocationData[allocationId];
         delete _allocationSymbols[allocationId];
         delete _allocationDecimals[allocationId];
+    }
+
+    function isDataRegistered(bytes32 data)
+        public
+        view
+        override
+        returns (bool)
+    {
+        return _registeredData.contains(data);
     }
 
     /**

@@ -34,6 +34,8 @@ interface ITVLManager {
 
     function removeAssetAllocation(bytes32 allocationId) external;
 
+    function isDataRegistered(bytes32 data) external view returns (bool);
+
     function isAssetAllocationRegistered(bytes32 allocationId)
         external
         view
