@@ -1,5 +1,6 @@
 const { expect } = require("chai");
 const { artifacts, ethers } = require("hardhat");
+const { solidityKeccak256: hash } = ethers.utils;
 const timeMachine = require("ganache-time-traveler");
 const legos = require("@apy-finance/defi-legos");
 const {
@@ -351,15 +352,15 @@ describe("Contract: PoolManager", () => {
       );
 
       // Check the manager registered the asset allocations corretly
-      const expectedDaiId = ethers.utils.solidityKeccak256(
+      const expectedDaiId = hash(
         ["address", "address"],
         [daiToken.address, fundedAccountAddress]
       );
-      const expectedUsdcId = ethers.utils.solidityKeccak256(
+      const expectedUsdcId = hash(
         ["address", "address"],
         [usdcToken.address, fundedAccountAddress]
       );
-      const expectedUsdtId = ethers.utils.solidityKeccak256(
+      const expectedUsdtId = hash(
         ["address", "address"],
         [usdtToken.address, fundedAccountAddress]
       );
