@@ -16,7 +16,7 @@ const UNISWAP_V2_ROUTER_ADDRESS = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D";
 // USDC-USDT pair
 const LP_TOKEN_ADDRESS = "0x3041cbd36888becc7bbcbc0045e3b1f144466f5f";
 
-describe.only("Contract: UniswapPeriphery", () => {
+describe("Contract: UniswapPeriphery", () => {
   // signers
   let deployer;
   let strategy;
