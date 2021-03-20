@@ -245,7 +245,6 @@ contract AccountManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
         for (uint256 i = 0; i < viewData.length; i++) {
             ITVLManager.AssetAllocation memory viewAllocation = viewData[i];
             tvlManager.addAssetAllocation(
-                viewAllocation.sequenceId,
                 viewAllocation.data,
                 viewAllocation.symbol,
                 viewAllocation.decimals

@@ -76,11 +76,8 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
         string calldata symbol,
         uint256 decimals
     ) external override onlyPermissioned {
+        require(!isAssetAllocationRegistered(data), "DUPLICATE_DATA_DETECTED");
         bytes32 dataHash = keccak256(abi.encodePacked(data.target, data.data));
-        require(
-            !isAssetAllocationRegistered(dataHash),
-            "DUPLICATE_DATA_DETECTED"
-        );
         _allocationIds.add(dataHash);
         _allocationData[dataHash] = data;
         _allocationSymbols[dataHash] = symbol;
@@ -91,12 +88,12 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
      * @notice Deregisters an allocation for use with the `balanceOf` functionality.
      * @dev Has O(n) time complexity, where n is the total size of allocation data.
      */
-    function removeAssetAllocation(bytes32 allocationId)
+    function removeAssetAllocation(Data memory data)
         external
         override
         onlyPermissioned
     {
-        Data memory data = _allocationData[allocationId];
+        require(isAssetAllocationRegistered(data), "ALLOCATION_DOES_NOT_EXIST");
         bytes32 dataHash = keccak256(abi.encodePacked(data.target, data.data));
         _allocationIds.remove(dataHash);
         delete _allocationData[dataHash];
@@ -108,13 +105,24 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
      * @notice Returns true/false indicating if allocation is registered.
      * @dev Operation is O(1) in time complexity.
      */
-    function isAssetAllocationRegistered(bytes32 allocationId)
+    function isAssetAllocationRegistered(Data memory data)
         public
         view
         override
         returns (bool)
     {
-        return _allocationIds.contains(allocationId);
+        return
+            _isAssetAllocationRegistered(
+                keccak256(abi.encodePacked(data.target, data.data))
+            );
+    }
+
+    function _isAssetAllocationRegistered(bytes32 data)
+        public
+        view
+        returns (bool)
+    {
+        return _allocationIds.contains(data);
     }
 
     /**
@@ -160,7 +168,7 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
         returns (uint256)
     {
         require(
-            isAssetAllocationRegistered(allocationId),
+            _isAssetAllocationRegistered(allocationId),
             "INVALID_ALLOCATION_ID"
         );
         Data memory data = _allocationData[allocationId];

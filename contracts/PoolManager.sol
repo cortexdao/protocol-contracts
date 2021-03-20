@@ -239,8 +239,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
                 abi.encodeWithSignature("balanceOf(address)", account);
             ITVLManager.Data memory data =
                 ITVLManager.Data(address(pool.underlyer()), _data);
-            bytes32 id = keccak256(abi.encodePacked(data.target, data.data));
-            if (!tvlManager.isAssetAllocationRegistered(id)) {
+            if (!tvlManager.isAssetAllocationRegistered(data)) {
                 tvlManager.addAssetAllocation(
                     data,
                     symbol,

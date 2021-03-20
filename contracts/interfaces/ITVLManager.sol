@@ -31,9 +31,9 @@ interface ITVLManager {
         uint256 decimals
     ) external;
 
-    function removeAssetAllocation(bytes32 allocationId) external;
+    function removeAssetAllocation(Data calldata data) external;
 
-    function isAssetAllocationRegistered(bytes32 allocationId)
+    function isAssetAllocationRegistered(Data calldata data)
         external
         view
         returns (bool);
