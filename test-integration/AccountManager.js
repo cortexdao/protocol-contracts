@@ -1,5 +1,6 @@
 const { expect } = require("chai");
 const { artifacts, ethers } = require("hardhat");
+const { solidityKeccak256: hash, solidityPack: pack } = ethers.utils;
 const timeMachine = require("ganache-time-traveler");
 const legos = require("@apy-finance/defi-legos");
 const {
@@ -323,7 +324,11 @@ describe("Contract: AccountManager", () => {
       // Check the manager registered the asset allocations corretly
       const registeredIds = await tvlManager.getAssetAllocationIds();
       expect(registeredIds.length).to.equal(1);
-      expect(registeredIds[0]).to.equal(bytes32("strat1DaiBal"));
+      const lookupId = hash(
+        ["bytes"],
+        [pack(["address", "bytes"], [daiToken.address, encodedBalanceOf])]
+      );
+      expect(registeredIds[0]).to.equal(lookupId);
 
       const registeredDaiSymbol = await tvlManager.symbolOf(registeredIds[0]);
       expect(registeredDaiSymbol).to.equal("DAI");
