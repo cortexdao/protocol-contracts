@@ -1,6 +1,7 @@
 const { expect } = require("chai");
 const hre = require("hardhat");
 const { ethers, waffle } = hre;
+const { solidityKeccak256: hash, solidityPack: pack } = ethers.utils;
 const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
 const {
@@ -226,8 +227,7 @@ describe("Contract: TVLManager", () => {
         const symbol = "FOO";
         const decimals = 18;
 
-        const packed = ethers.utils.solidityPack(["address", "bytes"], data);
-        const lookupId = ethers.utils.solidityKeccak256(["bytes"], [packed]);
+        const lookupId = hash(["bytes"], [pack(["address", "bytes"], data)]);
 
         const allocationIds = [lookupId];
         await tvlManager.addAssetAllocation(data, symbol, decimals);
@@ -251,11 +251,10 @@ describe("Contract: TVLManager", () => {
 
         const allocationIds = [];
         for (let allocation of allocationData) {
-          const packed = ethers.utils.solidityPack(
-            ["address", "bytes"],
-            allocation
+          const lookupId = hash(
+            ["bytes"],
+            [pack(["address", "bytes"], allocation)]
           );
-          const lookupId = ethers.utils.solidityKeccak256(["bytes"], [packed]);
           allocationIds.push(lookupId);
         }
 
@@ -285,11 +284,10 @@ describe("Contract: TVLManager", () => {
 
         const allocationIds = [];
         for (let allocation of allocationData) {
-          const packed = ethers.utils.solidityPack(
-            ["address", "bytes"],
-            allocation
+          const lookupId = hash(
+            ["bytes"],
+            [pack(["address", "bytes"], allocation)]
           );
-          const lookupId = ethers.utils.solidityKeccak256(["bytes"], [packed]);
           allocationIds.push(lookupId);
         }
 
@@ -359,8 +357,7 @@ describe("Contract: TVLManager", () => {
 
       await tvlManager.addAssetAllocation(data, symbol, decimals);
 
-      const packed = ethers.utils.solidityPack(["address", "bytes"], data);
-      const lookupId = ethers.utils.solidityKeccak256(["bytes"], [packed]);
+      const lookupId = hash(["bytes"], [pack(["address", "bytes"], data)]);
 
       const balance = await tvlManager.balanceOf(lookupId);
       expect(balance).to.equal(expectedBalance);
@@ -381,8 +378,7 @@ describe("Contract: TVLManager", () => {
 
       await tvlManager.addAssetAllocation(data, symbol, decimals);
 
-      const packed = ethers.utils.solidityPack(["address", "bytes"], data);
-      const lookupId = ethers.utils.solidityKeccak256(["bytes"], [packed]);
+      const lookupId = hash(["bytes"], [pack(["address", "bytes"], data)]);
 
       await expect(tvlManager.balanceOf(lookupId)).to.be.reverted;
     });
@@ -394,11 +390,10 @@ describe("Contract: TVLManager", () => {
       await tvlManager.addAssetAllocation(data, symbol, decimals);
 
       const invalidData = [FAKE_ADDRESS, bytes32("1")];
-      const packed = ethers.utils.solidityPack(
-        ["address", "bytes"],
-        invalidData
+      const lookupId = hash(
+        ["bytes"],
+        [pack(["address", "bytes"], invalidData)]
       );
-      const lookupId = ethers.utils.solidityKeccak256(["bytes"], [packed]);
 
       await expect(tvlManager.balanceOf(lookupId)).to.be.revertedWith(
         "INVALID_ALLOCATION_ID"
@@ -412,8 +407,7 @@ describe("Contract: TVLManager", () => {
     const decimals = 18;
     await tvlManager.addAssetAllocation(data, symbol, decimals);
 
-    const packed = ethers.utils.solidityPack(["address", "bytes"], data);
-    const lookupId = ethers.utils.solidityKeccak256(["bytes"], [packed]);
+    const lookupId = hash(["bytes"], [pack(["address", "bytes"], data)]);
     expect(await tvlManager.symbolOf(lookupId)).to.equal(symbol);
   });
 
@@ -423,8 +417,7 @@ describe("Contract: TVLManager", () => {
     const decimals = 18;
     await tvlManager.addAssetAllocation(data, symbol, decimals);
 
-    const packed = ethers.utils.solidityPack(["address", "bytes"], data);
-    const lookupId = ethers.utils.solidityKeccak256(["bytes"], [packed]);
+    const lookupId = hash(["bytes"], [pack(["address", "bytes"], data)]);
     expect(await tvlManager.decimalsOf(lookupId)).to.equal(decimals);
   });
 });
