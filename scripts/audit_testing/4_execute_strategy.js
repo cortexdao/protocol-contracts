@@ -16,86 +16,74 @@
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network, artifacts } = hre;
+const chalk = require("chalk");
 const {
   getDeployedAddress,
   bytes32,
   getStablecoinAddress,
   tokenAmountToBigNumber,
   MAX_UINT256,
-  impersonateAccount,
 } = require("../../utils/helpers");
+
+console.logAddress = function (contractName, contractAddress) {
+  contractName = contractName + ":";
+  contractAddress = chalk.green(contractAddress);
+  console.log.apply(this, [contractName, contractAddress]);
+};
+
+console.logDone = function () {
+  console.log("");
+  console.log.apply(this, [chalk.green("√") + " ... done."]);
+  console.log("");
+};
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
   await hre.run("compile");
-  const NETWORK_NAME = network.name.toUpperCase();
+  const networkName = network.name.toUpperCase();
   console.log("");
-  console.log(`${NETWORK_NAME} selected`);
+  console.log(`${networkName} selected`);
   console.log("");
 
   const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
 
-  const poolManagerAddress = getDeployedAddress("PoolManager", NETWORK_NAME);
-  let poolManager = await ethers.getContractAt(
-    "PoolManager",
-    poolManagerAddress
+  const addressRegistryAddress = getDeployedAddress(
+    "AddressRegistryProxy",
+    networkName
   );
-  const poolManagerDeployer = await impersonateAccount(
-    await poolManager.owner()
+  const addressRegistry = await ethers.getContractAt(
+    "AddressRegistry",
+    addressRegistryAddress
   );
-  poolManager = poolManager.connect(poolManagerDeployer);
+  const accountManagerAddress = await addressRegistry.getAddress(
+    bytes32("accountManager")
+  );
+  const accountManager = await ethers.getContractAt(
+    "AccountManager",
+    accountManagerAddress
+  );
+  console.logAddress("AccountManager", accountManagerAddress);
 
-  console.log("");
-  console.log("Funding strategy account from pools ...");
-  console.log("");
-
-  const accountAddress = await poolManager.getAccount(bytes32("alpha"));
+  const accountId = bytes32("alpha");
+  const accountAddress = await accountManager.getAccount(bytes32("alpha"));
+  console.logAddress("Strategy account", accountAddress);
   const ifaceERC20 = new ethers.utils.Interface(
     artifacts.require("IDetailedERC20").abi
   );
-  const encodedBalanceOf = ifaceERC20.encodeFunctionData("balanceOf(address)", [
-    accountAddress,
-  ]);
 
   const stablecoins = {};
   for (const symbol of ["DAI", "USDC", "USDT"]) {
-    const tokenAddress = getStablecoinAddress(symbol, NETWORK_NAME);
+    const tokenAddress = getStablecoinAddress(symbol, networkName);
     const token = await ethers.getContractAt("IDetailedERC20", tokenAddress);
     stablecoins[symbol] = token;
   }
-
   const daiAmount = tokenAmountToBigNumber("1000", "18");
-
-  await poolManager.fundAccount(
-    accountAddress,
-    [[bytes32("daiPool")], [daiAmount]],
-    [
-      [
-        bytes32("accountDaiBalance"),
-        "DAI",
-        18,
-        [stablecoins["DAI"].address, encodedBalanceOf],
-      ],
-      [
-        bytes32("accountUsdcBalance"),
-        "USDC",
-        6,
-        [stablecoins["USDC"].address, encodedBalanceOf],
-      ],
-      [
-        bytes32("accountUsdtBalance"),
-        "USDT",
-        6,
-        [stablecoins["USDT"].address, encodedBalanceOf],
-      ],
-    ]
-  );
-  console.log("... done.");
 
   console.log("");
   console.log("Executing ...");
   console.log("");
+
   // 3Pool addresses:
   const STABLE_SWAP_ADDRESS = "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7";
   const LP_TOKEN_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
@@ -117,7 +105,7 @@ async function main(argv) {
     [daiToken.address, approveStableSwap], // approve StableSwap for DAI
     [STABLE_SWAP_ADDRESS, stableSwapAddLiquidity], // deposit DAI into Curve 3pool
   ];
-  await poolManager.execute(accountAddress, executionSteps, []);
+  await accountManager.execute(accountId, executionSteps, []);
   console.log("... done.");
   console.log("");
 
@@ -143,9 +131,12 @@ async function main(argv) {
     [LP_TOKEN_ADDRESS, approveGauge], // approve LiquidityGauge for LP token
     [LIQUIDITY_GAUGE_ADDRESS, liquidityGaugeDeposit],
   ];
-  await poolManager.execute(accountAddress, executionSteps, []);
+  await accountManager.execute(accountId, executionSteps, []);
 
-  const gauge = await ethers.getContractAt("IDetailedERC20", LP_TOKEN_ADDRESS);
+  const gauge = await ethers.getContractAt(
+    "IDetailedERC20",
+    LIQUIDITY_GAUGE_ADDRESS
+  );
   const gaugeBalance = await gauge.balanceOf(accountAddress);
   console.log("Gauge balance:", gaugeBalance.toString());
 

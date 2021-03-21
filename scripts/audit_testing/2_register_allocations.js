@@ -79,7 +79,9 @@ async function main(argv) {
    * data: a pair (address, bytes) where the bytes are encoded function
    *       calldata to be used at the target address
    */
-  const accountManagerAddress = await addressRegistry.managerAddress();
+  const accountManagerAddress = await addressRegistry.getAddress(
+    bytes32("accountManager")
+  );
   let accountManager = await ethers.getContractAt(
     "AccountManager",
     accountManagerAddress
@@ -87,7 +89,7 @@ async function main(argv) {
   const accountAddress = await accountManager.getAccount(bytes32("alpha"));
 
   console.log("");
-  console.log("Funding strategy account from pools ...");
+  console.log("Register 3pool allocations for strategy account ...");
   console.log("");
 
   const calldataForDai = CurvePeriphery.interface.encodeFunctionData(

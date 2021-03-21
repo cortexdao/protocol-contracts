@@ -194,7 +194,7 @@ async function main(argv) {
   accountManager = AccountManager.attach(accountManager.address); // attach logic interface
   console.logAddress("AccountManager", accountManager.address);
   trx = await addressRegistry.registerAddress(
-    bytes32("manager"),
+    bytes32("accountManager"),
     accountManager.address
   );
   console.log("Registered Account Manager with AddressRegistry.");
@@ -217,6 +217,15 @@ async function main(argv) {
   await poolManager.deployed();
   poolManager = PoolManager.attach(poolManager.address); // attach logic interface
   console.logAddress("PoolManager", poolManager.address);
+  trx = await addressRegistry.registerAddress(
+    bytes32("poolManager"),
+    poolManager.address
+  );
+  console.log("Registered Pool Manager with AddressRegistry.");
+
+  trx = await poolManager.setAccountFactory(accountManager.address);
+  console.log("Set account factory on pool manager.");
+  await trx.wait();
 
   trx = await mApt.setManagerAddress(poolManager.address);
   await trx.wait();
