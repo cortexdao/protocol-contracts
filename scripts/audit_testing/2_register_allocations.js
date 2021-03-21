@@ -21,20 +21,20 @@ const { getDeployedAddress, bytes32 } = require("../../utils/helpers");
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
   await hre.run("compile");
-  const NETWORK_NAME = network.name.toUpperCase();
+  const networkName = network.name.toUpperCase();
   console.log("");
-  console.log(`${NETWORK_NAME} selected`);
+  console.log(`${networkName} selected`);
   console.log("");
 
   const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
 
   const addressRegistryAddress = getDeployedAddress(
-    "APYAddressRegistryProxy",
-    NETWORK_NAME
+    "AddressRegistryProxy",
+    networkName
   );
   const addressRegistry = await ethers.getContractAt(
-    "APYAddressRegistry",
+    "AddressRegistry",
     addressRegistryAddress
   );
   const registryAddress = await addressRegistry.chainlinkRegistryAddress();
@@ -79,9 +79,12 @@ async function main(argv) {
    * data: a pair (address, bytes) where the bytes are encoded function
    *       calldata to be used at the target address
    */
-  const managerAddress = await addressRegistry.managerAddress();
-  let manager = await ethers.getContractAt("APYManagerV2", managerAddress);
-  const accountAddress = await manager.getAccount(bytes32("alpha"));
+  const accountManagerAddress = await addressRegistry.managerAddress();
+  let accountManager = await ethers.getContractAt(
+    "AccountManager",
+    accountManagerAddress
+  );
+  const accountAddress = await accountManager.getAccount(bytes32("alpha"));
 
   console.log("");
   console.log("Funding strategy account from pools ...");
@@ -119,21 +122,18 @@ async function main(argv) {
   );
 
   let trx = await tvlManager.addAssetAllocation(
-    bytes32("dai"),
     [curve.address, calldataForDai],
     "DAI",
     18
   );
   await trx.wait();
   trx = await tvlManager.addAssetAllocation(
-    bytes32("usdc"),
     [curve.address, calldataForUsdc],
     "USDC",
     6
   );
   await trx.wait();
   trx = await tvlManager.addAssetAllocation(
-    bytes32("usdt"),
     [curve.address, calldataForUsdt],
     "USDT",
     6
