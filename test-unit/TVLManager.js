@@ -1,6 +1,7 @@
 const { expect } = require("chai");
 const hre = require("hardhat");
 const { ethers, waffle } = hre;
+const { solidityKeccak256: hash, solidityPack: pack } = ethers.utils;
 const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
 const {
@@ -99,116 +100,137 @@ describe("Contract: TVLManager", () => {
   describe("Token registration", () => {
     describe("addAssetAllocation", async () => {
       it("Non-owner cannot call", async () => {
-        const allocationId = bytes32("");
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
         const decimals = 18;
         await expect(
           tvlManager
             .connect(randomUser)
-            .addAssetAllocation(allocationId, data, symbol, decimals)
+            .addAssetAllocation(data, symbol, decimals)
         ).to.be.revertedWith("PERMISSIONED_ONLY");
       });
 
       it("Owner can call", async () => {
-        const allocationId = bytes32("");
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
         const decimals = 18;
         await expect(
           tvlManager
             .connect(deployer)
-            .addAssetAllocation(allocationId, data, symbol, decimals)
+            .addAssetAllocation(data, symbol, decimals)
         ).to.not.be.reverted;
       });
 
       it("Pool manager can call", async () => {
-        const allocationId = bytes32("");
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
         const decimals = 18;
         await expect(
           tvlManager
             .connect(poolManager)
-            .addAssetAllocation(allocationId, data, symbol, decimals)
+            .addAssetAllocation(data, symbol, decimals)
         ).to.not.be.reverted;
       });
 
       it("Account manager can call", async () => {
-        const allocationId = bytes32("");
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
         const decimals = 18;
         await expect(
           tvlManager
             .connect(accountManager)
-            .addAssetAllocation(allocationId, data, symbol, decimals)
+            .addAssetAllocation(data, symbol, decimals)
         ).to.not.be.reverted;
+      });
+
+      it("Fails when attempting to register the same data twice", async () => {
+        const data = [FAKE_ADDRESS, bytes32("")];
+        const symbol = "FOO";
+        const decimals = 18;
+        await tvlManager
+          .connect(accountManager)
+          .addAssetAllocation(data, symbol, decimals);
+        await expect(
+          tvlManager
+            .connect(accountManager)
+            .addAssetAllocation(data, symbol, decimals)
+        ).to.be.revertedWith("DUPLICATE_DATA_DETECTED");
       });
     });
 
     describe("deregisterTokens", async () => {
       it("Non-owner cannot call", async () => {
-        const allocationId = bytes32("");
+        const data = [FAKE_ADDRESS, bytes32("")];
         await expect(
-          tvlManager.connect(randomUser).removeAssetAllocation(allocationId)
+          tvlManager.connect(randomUser).removeAssetAllocation(data)
         ).to.be.revertedWith("PERMISSIONED_ONLY");
       });
 
       it("Owner can call", async () => {
-        const allocationId = bytes32("");
+        const data = [FAKE_ADDRESS, bytes32("")];
+        await tvlManager
+          .connect(poolManager)
+          .addAssetAllocation(data, "FOO", 18);
+
+        await expect(tvlManager.connect(deployer).removeAssetAllocation(data))
+          .to.not.be.reverted;
+      });
+
+      it("Fails to remove if allocation does not exist", async () => {
+        const data = [FAKE_ADDRESS, bytes32("")];
         await expect(
-          tvlManager.connect(deployer).removeAssetAllocation(allocationId)
-        ).to.not.be.reverted;
+          tvlManager.connect(deployer).removeAssetAllocation(data)
+        ).to.be.revertedWith("ALLOCATION_DOES_NOT_EXIST");
       });
 
       it("Pool manager can call", async () => {
-        const allocationId = bytes32("");
+        const data = [FAKE_ADDRESS, bytes32("")];
+        await tvlManager
+          .connect(poolManager)
+          .addAssetAllocation(data, "FOO", 18);
+
         await expect(
-          tvlManager.connect(poolManager).removeAssetAllocation(allocationId)
+          tvlManager.connect(poolManager).removeAssetAllocation(data)
         ).to.not.be.reverted;
       });
 
       it("Account manager can call", async () => {
-        const allocationId = bytes32("");
+        const data = [FAKE_ADDRESS, bytes32("")];
+        await tvlManager
+          .connect(poolManager)
+          .addAssetAllocation(data, "FOO", 18);
+
         await expect(
-          tvlManager.connect(accountManager).removeAssetAllocation(allocationId)
+          tvlManager.connect(accountManager).removeAssetAllocation(data)
         ).to.not.be.reverted;
       });
     });
 
     it("isAssetAllocationRegistered", async () => {
-      const allocationId_1 = bytes32("allocation 1");
-      const allocationId_2 = bytes32("allocation 2");
       const data = [FAKE_ADDRESS, bytes32("")];
       const symbol = "FOO";
       const decimals = 18;
-      await tvlManager.addAssetAllocation(
-        allocationId_1,
-        data,
-        symbol,
-        decimals
-      );
+      await tvlManager.addAssetAllocation(data, symbol, decimals);
 
-      expect(await tvlManager.isAssetAllocationRegistered(allocationId_1)).to.be
-        .true;
-      expect(await tvlManager.isAssetAllocationRegistered(allocationId_2)).to.be
-        .false;
+      expect(await tvlManager.isAssetAllocationRegistered(data)).to.be.true;
+      expect(
+        await tvlManager.isAssetAllocationRegistered([
+          FAKE_ADDRESS,
+          bytes32("1"),
+        ])
+      ).to.be.false;
     });
 
     describe("getAssetAllocationIds", () => {
       it("Retrieves single registered allocation", async () => {
-        const allocationId = bytes32("allocation 1");
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
         const decimals = 18;
-        const allocationIds = [allocationId];
-        await tvlManager.addAssetAllocation(
-          allocationId,
-          data,
-          symbol,
-          decimals
-        );
+
+        const lookupId = await tvlManager.generateDataHash(data);
+
+        const allocationIds = [lookupId];
+        await tvlManager.addAssetAllocation(data, symbol, decimals);
 
         expect(await tvlManager.getAssetAllocationIds()).to.have.members(
           allocationIds
@@ -218,58 +240,27 @@ describe("Contract: TVLManager", () => {
         );
       });
 
-      it("Does not return duplicates", async () => {
-        const allocationId_1 = bytes32("allocation 1");
-        const allocationId_2 = bytes32("allocation 2");
-        const data = [FAKE_ADDRESS, bytes32("")];
-        const symbol = "FOO";
-        const decimals = 18;
-        await tvlManager.addAssetAllocation(
-          allocationId_1,
-          data,
-          symbol,
-          decimals
-        );
-        await tvlManager.addAssetAllocation(
-          allocationId_2,
-          data,
-          symbol,
-          decimals
-        );
-        await tvlManager.addAssetAllocation(
-          allocationId_1,
-          data,
-          symbol,
-          decimals
-        );
-
-        const expectedAssetAllocationIds = [allocationId_1, allocationId_2];
-        expect(await tvlManager.getAssetAllocationIds()).to.have.members(
-          expectedAssetAllocationIds
-        );
-        expect(await tvlManager.getAssetAllocationIds()).to.have.lengthOf(
-          expectedAssetAllocationIds.length
-        );
-      });
-
       it("Does not retrieve deregistered allocations", async () => {
-        const allocationId_1 = bytes32("allocation 1");
-        const allocationId_2 = bytes32("allocation 2");
-        const allocationId_3 = bytes32("allocation 3");
-        const data = [FAKE_ADDRESS, bytes32("")];
+        const allocation1 = [FAKE_ADDRESS, bytes32("1")];
+        const allocation2 = [FAKE_ADDRESS, bytes32("2")];
+        const allocation3 = [FAKE_ADDRESS, bytes32("3")];
         const symbol = "FOO";
         const decimals = 18;
 
-        const deregisteredIds = [allocationId_1];
-        const leftoverIds = [allocationId_2, allocationId_3];
-        const allocationIds = deregisteredIds.concat(leftoverIds);
+        const allocationData = [allocation1, allocation2, allocation3];
 
-        for (const id of allocationIds) {
-          await tvlManager.addAssetAllocation(id, data, symbol, decimals);
+        const allocationIds = [];
+        for (let allocation of allocationData) {
+          const lookupId = await tvlManager.generateDataHash(allocation);
+          allocationIds.push(lookupId);
         }
-        for (const id of deregisteredIds) {
-          await tvlManager.removeAssetAllocation(id);
+
+        const leftoverIds = [allocationIds[0], allocationIds[1]];
+
+        for (const data of allocationData) {
+          await tvlManager.addAssetAllocation(data, symbol, decimals);
         }
+        await tvlManager.removeAssetAllocation(allocation3);
 
         expect(await tvlManager.getAssetAllocationIds()).to.have.members(
           leftoverIds
@@ -280,26 +271,34 @@ describe("Contract: TVLManager", () => {
       });
 
       it("Returns allocations still registered after deregistration", async () => {
-        const allocationId_1 = bytes32("allocation 1");
-        const allocationId_2 = bytes32("allocation 2");
-        const allocationId_3 = bytes32("allocation 3");
-        const data = [FAKE_ADDRESS, bytes32("")];
+        const allocation1 = [FAKE_ADDRESS, bytes32("1")];
+        const allocation2 = [FAKE_ADDRESS, bytes32("2")];
+        const allocation3 = [FAKE_ADDRESS, bytes32("3")];
         const symbol = "FOO";
         const decimals = 18;
-        for (const id of [allocationId_1, allocationId_2, allocationId_3]) {
-          await tvlManager.addAssetAllocation(id, data, symbol, decimals);
+
+        const allocationData = [allocation1, allocation2, allocation3];
+
+        const allocationIds = [];
+        for (let allocation of allocationData) {
+          const lookupId = await tvlManager.generateDataHash(allocation);
+          allocationIds.push(lookupId);
         }
 
-        await tvlManager.removeAssetAllocation(allocationId_3);
+        for (const data of allocationData) {
+          await tvlManager.addAssetAllocation(data, symbol, decimals);
+        }
+        await tvlManager.removeAssetAllocation(allocation3);
+
         expect(await tvlManager.getAssetAllocationIds()).to.not.include(
-          allocationId_3
+          allocationIds[2]
         );
         expect(await tvlManager.getAssetAllocationIds()).to.have.lengthOf(2);
 
-        await tvlManager.removeAssetAllocation(allocationId_1);
+        await tvlManager.removeAssetAllocation(allocation1);
         expect(await tvlManager.getAssetAllocationIds()).to.have.lengthOf(1);
         expect(await tvlManager.getAssetAllocationIds()).to.have.members([
-          allocationId_2,
+          allocationIds[1],
         ]);
       });
     });
@@ -335,7 +334,6 @@ describe("Contract: TVLManager", () => {
     });
 
     it("Call with address arg", async () => {
-      const allocationId = bytes32("allocation 1");
       const symbol = "FOO";
       const decimals = 18;
       const Account = FAKE_ADDRESS;
@@ -351,14 +349,15 @@ describe("Contract: TVLManager", () => {
         .withArgs(Account)
         .returns(expectedBalance);
 
-      await tvlManager.addAssetAllocation(allocationId, data, symbol, decimals);
+      await tvlManager.addAssetAllocation(data, symbol, decimals);
 
-      const balance = await tvlManager.balanceOf(allocationId);
+      const lookupId = await tvlManager.generateDataHash(data);
+
+      const balance = await tvlManager.balanceOf(lookupId);
       expect(balance).to.equal(expectedBalance);
     });
 
     it("Call that reverts", async () => {
-      const allocationId = bytes32("allocation 1");
       const symbol = "FOO";
       const decimals = 18;
       const invalidAccount = FAKE_ADDRESS;
@@ -371,42 +370,51 @@ describe("Contract: TVLManager", () => {
       // step execution will revert
       await peripheryContract.mock.balance.reverts();
 
-      await tvlManager.addAssetAllocation(allocationId, data, symbol, decimals);
+      await tvlManager.addAssetAllocation(data, symbol, decimals);
 
-      await expect(tvlManager.balanceOf(allocationId)).to.be.reverted;
+      const lookupId = await tvlManager.generateDataHash(data);
+
+      await expect(tvlManager.balanceOf(lookupId)).to.be.reverted;
     });
 
     it("Revert on unregistered ID", async () => {
-      const registeredId = bytes32("allocation 1");
-      const unregisteredId = bytes32("allocation 2");
       const symbol = "FOO";
       const decimals = 18;
       const data = [FAKE_ADDRESS, bytes32("")];
-      await tvlManager.addAssetAllocation(registeredId, data, symbol, decimals);
+      await tvlManager.addAssetAllocation(data, symbol, decimals);
 
-      await expect(tvlManager.balanceOf(unregisteredId)).to.be.revertedWith(
+      const invalidData = [FAKE_ADDRESS, bytes32("1")];
+      const lookupId = await tvlManager.generateDataHash(invalidData);
+
+      await expect(tvlManager.balanceOf(lookupId)).to.be.revertedWith(
         "INVALID_ALLOCATION_ID"
       );
     });
   });
 
   it("symbolOf", async () => {
-    const allocationId = bytes32("allocation 1");
     const data = [FAKE_ADDRESS, bytes32("")];
     const symbol = "FOO";
     const decimals = 18;
-    await tvlManager.addAssetAllocation(allocationId, data, symbol, decimals);
+    await tvlManager.addAssetAllocation(data, symbol, decimals);
 
-    expect(await tvlManager.symbolOf(allocationId)).to.equal(symbol);
+    const lookupId = await tvlManager.generateDataHash(data);
+    expect(await tvlManager.symbolOf(lookupId)).to.equal(symbol);
   });
 
   it("decimalsOf", async () => {
-    const allocationId = bytes32("allocation 1");
     const data = [FAKE_ADDRESS, bytes32("")];
     const symbol = "FOO";
     const decimals = 18;
-    await tvlManager.addAssetAllocation(allocationId, data, symbol, decimals);
+    await tvlManager.addAssetAllocation(data, symbol, decimals);
 
-    expect(await tvlManager.decimalsOf(allocationId)).to.equal(decimals);
+    const lookupId = await tvlManager.generateDataHash(data);
+    expect(await tvlManager.decimalsOf(lookupId)).to.equal(decimals);
+  });
+
+  it("generate data hash", async () => {
+    const data = [FAKE_ADDRESS, bytes32("randomDataInput")];
+    const lookupId = hash(["bytes"], [pack(["address", "bytes"], data)]);
+    expect(await tvlManager.generateDataHash(data)).to.equal(lookupId);
   });
 });

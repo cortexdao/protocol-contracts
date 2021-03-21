@@ -9,6 +9,9 @@ const {
   acquireToken,
   FAKE_ADDRESS,
 } = require("../utils/helpers");
+const erc20Interface = new ethers.utils.Interface(
+  artifacts.require("ERC20").abi
+);
 const { deployMockContract } = require("ethereum-waffle");
 const { STABLECOIN_POOLS } = require("../utils/constants");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
@@ -350,19 +353,25 @@ describe("Contract: PoolManager", () => {
         usdtPoolBalance.sub(usdtAmount)
       );
 
+      const encodedBalanceOf = erc20Interface.encodeFunctionData(
+        "balanceOf(address)",
+        [fundedAccountAddress]
+      );
+
       // Check the manager registered the asset allocations corretly
-      const expectedDaiId = ethers.utils.solidityKeccak256(
-        ["address", "address"],
-        [daiToken.address, fundedAccountAddress]
-      );
-      const expectedUsdcId = ethers.utils.solidityKeccak256(
-        ["address", "address"],
-        [usdcToken.address, fundedAccountAddress]
-      );
-      const expectedUsdtId = ethers.utils.solidityKeccak256(
-        ["address", "address"],
-        [usdtToken.address, fundedAccountAddress]
-      );
+      const expectedDaiId = await tvlManager.generateDataHash([
+        daiToken.address,
+        encodedBalanceOf,
+      ]);
+      const expectedUsdcId = await tvlManager.generateDataHash([
+        usdcToken.address,
+        encodedBalanceOf,
+      ]);
+      const expectedUsdtId = await tvlManager.generateDataHash([
+        usdtToken.address,
+        encodedBalanceOf,
+      ]);
+
       const registeredIds = await tvlManager.getAssetAllocationIds();
       expect(registeredIds.length).to.equal(3);
       expect(registeredIds[0]).to.equal(expectedDaiId);

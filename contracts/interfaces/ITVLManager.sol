@@ -26,15 +26,19 @@ interface ITVLManager {
     }
 
     function addAssetAllocation(
-        bytes32 allocationId,
         Data calldata data,
         string calldata symbol,
         uint256 decimals
     ) external;
 
-    function removeAssetAllocation(bytes32 allocationId) external;
+    function removeAssetAllocation(Data calldata data) external;
 
-    function isAssetAllocationRegistered(bytes32 allocationId)
+    function generateDataHash(Data calldata data)
+        external
+        pure
+        returns (bytes32);
+
+    function isAssetAllocationRegistered(Data calldata data)
         external
         view
         returns (bool);

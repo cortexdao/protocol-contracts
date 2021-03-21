@@ -5,7 +5,6 @@ const timeMachine = require("ganache-time-traveler");
 const {
   console,
   tokenAmountToBigNumber,
-  bytes32,
   getStablecoinAddress,
   acquireToken,
   MAX_UINT256,
@@ -66,14 +65,13 @@ describe("Contract: TVLManager", () => {
     let lpToken;
     let stableSwap;
     let gauge;
-
     let daiToken;
+    let encodedGetUnderlyerBalance;
+    let lookupId;
 
     const daiSymbol = "DAI";
     const daiDecimals = 18;
     const daiIndex = 0;
-
-    const allocationId = bytes32("1");
 
     before("Deploy and attach to contracts", async () => {
       CurvePeriphery = await ethers.getContractFactory("CurvePeriphery");
@@ -101,7 +99,7 @@ describe("Contract: TVLManager", () => {
     });
 
     before("Register asset allocation", async () => {
-      const calldata = CurvePeriphery.interface.encodeFunctionData(
+      encodedGetUnderlyerBalance = CurvePeriphery.interface.encodeFunctionData(
         "getUnderlyerBalance(address,address,address,address,uint256)",
         [
           accountContract.address,
@@ -111,13 +109,13 @@ describe("Contract: TVLManager", () => {
           daiIndex,
         ]
       );
-      const data = [curve.address, calldata];
-      await tvlManager.addAssetAllocation(
-        allocationId,
-        data,
-        daiSymbol,
-        daiDecimals
-      );
+      const data = [curve.address, encodedGetUnderlyerBalance];
+      await tvlManager.addAssetAllocation(data, daiSymbol, daiDecimals);
+
+      lookupId = await tvlManager.generateDataHash([
+        curve.address,
+        encodedGetUnderlyerBalance,
+      ]);
     });
 
     it("Get underlyer balance from account holding", async () => {
@@ -141,9 +139,7 @@ describe("Contract: TVLManager", () => {
         .div(lpTotalSupply);
       expect(expectedBalance).to.be.gt(0);
 
-      expect(await tvlManager.balanceOf(allocationId)).to.equal(
-        expectedBalance
-      );
+      expect(await tvlManager.balanceOf(lookupId)).to.equal(expectedBalance);
     });
 
     it("Get underlyer balance from gauge holding", async () => {
@@ -177,9 +173,7 @@ describe("Contract: TVLManager", () => {
         .div(lpTotalSupply);
       expect(expectedBalance).to.be.gt(0);
 
-      expect(await tvlManager.balanceOf(allocationId)).to.equal(
-        expectedBalance
-      );
+      expect(await tvlManager.balanceOf(lookupId)).to.equal(expectedBalance);
     });
 
     it("Get underlyer balance from combined holdings", async () => {
@@ -219,9 +213,7 @@ describe("Contract: TVLManager", () => {
         .div(lpTotalSupply);
       expect(expectedBalance).to.be.gt(0);
 
-      expect(await tvlManager.balanceOf(allocationId)).to.equal(
-        expectedBalance
-      );
+      expect(await tvlManager.balanceOf(lookupId)).to.equal(expectedBalance);
     });
   });
 });

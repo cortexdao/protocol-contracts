@@ -72,43 +72,63 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
      * @dev Has O(n) time complexity, where n is the total size of `data`.
      */
     function addAssetAllocation(
-        bytes32 allocationId,
         Data memory data,
         string calldata symbol,
         uint256 decimals
     ) external override onlyPermissioned {
-        _allocationIds.add(allocationId);
-        _allocationData[allocationId] = data;
-        _allocationSymbols[allocationId] = symbol;
-        _allocationDecimals[allocationId] = decimals;
+        require(!isAssetAllocationRegistered(data), "DUPLICATE_DATA_DETECTED");
+        bytes32 dataHash = generateDataHash(data);
+        _allocationIds.add(dataHash);
+        _allocationData[dataHash] = data;
+        _allocationSymbols[dataHash] = symbol;
+        _allocationDecimals[dataHash] = decimals;
     }
 
     /**
      * @notice Deregisters an allocation for use with the `balanceOf` functionality.
      * @dev Has O(n) time complexity, where n is the total size of allocation data.
      */
-    function removeAssetAllocation(bytes32 allocationId)
+    function removeAssetAllocation(Data memory data)
         external
         override
         onlyPermissioned
     {
-        _allocationIds.remove(allocationId);
-        delete _allocationData[allocationId];
-        delete _allocationSymbols[allocationId];
-        delete _allocationDecimals[allocationId];
+        require(isAssetAllocationRegistered(data), "ALLOCATION_DOES_NOT_EXIST");
+        bytes32 dataHash = generateDataHash(data);
+        _allocationIds.remove(dataHash);
+        delete _allocationData[dataHash];
+        delete _allocationSymbols[dataHash];
+        delete _allocationDecimals[dataHash];
     }
 
-    /**
+    function generateDataHash(Data memory data)
+        public
+        pure
+        override
+        returns (bytes32)
+    {
+        return keccak256(abi.encodePacked(data.target, data.data));
+    }
+
+    /**;
      * @notice Returns true/false indicating if allocation is registered.
      * @dev Operation is O(1) in time complexity.
      */
-    function isAssetAllocationRegistered(bytes32 allocationId)
+    function isAssetAllocationRegistered(Data memory data)
         public
         view
         override
         returns (bool)
     {
-        return _allocationIds.contains(allocationId);
+        return _isAssetAllocationRegistered(generateDataHash(data));
+    }
+
+    function _isAssetAllocationRegistered(bytes32 data)
+        public
+        view
+        returns (bool)
+    {
+        return _allocationIds.contains(data);
     }
 
     /**
@@ -154,7 +174,7 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
         returns (uint256)
     {
         require(
-            isAssetAllocationRegistered(allocationId),
+            _isAssetAllocationRegistered(allocationId),
             "INVALID_ALLOCATION_ID"
         );
         Data memory data = _allocationData[allocationId];
