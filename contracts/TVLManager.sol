@@ -77,7 +77,7 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
         uint256 decimals
     ) external override onlyPermissioned {
         require(!isAssetAllocationRegistered(data), "DUPLICATE_DATA_DETECTED");
-        bytes32 dataHash = keccak256(abi.encodePacked(data.target, data.data));
+        bytes32 dataHash = generateDataHash(data);
         _allocationIds.add(dataHash);
         _allocationData[dataHash] = data;
         _allocationSymbols[dataHash] = symbol;
@@ -94,14 +94,23 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
         onlyPermissioned
     {
         require(isAssetAllocationRegistered(data), "ALLOCATION_DOES_NOT_EXIST");
-        bytes32 dataHash = keccak256(abi.encodePacked(data.target, data.data));
+        bytes32 dataHash = generateDataHash(data);
         _allocationIds.remove(dataHash);
         delete _allocationData[dataHash];
         delete _allocationSymbols[dataHash];
         delete _allocationDecimals[dataHash];
     }
 
-    /**
+    function generateDataHash(Data memory data)
+        public
+        pure
+        override
+        returns (bytes32)
+    {
+        return keccak256(abi.encodePacked(data.target, data.data));
+    }
+
+    /**;
      * @notice Returns true/false indicating if allocation is registered.
      * @dev Operation is O(1) in time complexity.
      */
@@ -111,10 +120,7 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
         override
         returns (bool)
     {
-        return
-            _isAssetAllocationRegistered(
-                keccak256(abi.encodePacked(data.target, data.data))
-            );
+        return _isAssetAllocationRegistered(generateDataHash(data));
     }
 
     function _isAssetAllocationRegistered(bytes32 data)

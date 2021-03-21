@@ -420,4 +420,10 @@ describe("Contract: TVLManager", () => {
     const lookupId = hash(["bytes"], [pack(["address", "bytes"], data)]);
     expect(await tvlManager.decimalsOf(lookupId)).to.equal(decimals);
   });
+
+  it("generate data hash", async () => {
+    const data = [FAKE_ADDRESS, bytes32("randomDataInput")];
+    const lookupId = hash(["bytes"], [pack(["address", "bytes"], data)]);
+    expect(await tvlManager.generateDataHash(data)).to.equal(lookupId);
+  });
 });
