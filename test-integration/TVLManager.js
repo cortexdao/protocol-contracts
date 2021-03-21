@@ -2,7 +2,6 @@ const hre = require("hardhat");
 const { ethers } = hre;
 const { expect } = require("chai");
 const timeMachine = require("ganache-time-traveler");
-const { solidityKeccak256: hash, solidityPack: pack } = ethers.utils;
 const {
   console,
   tokenAmountToBigNumber,
@@ -113,15 +112,10 @@ describe("Contract: TVLManager", () => {
       const data = [curve.address, encodedGetUnderlyerBalance];
       await tvlManager.addAssetAllocation(data, daiSymbol, daiDecimals);
 
-      lookupId = hash(
-        ["bytes"],
-        [
-          pack(
-            ["address", "bytes"],
-            [curve.address, encodedGetUnderlyerBalance]
-          ),
-        ]
-      );
+      lookupId = await tvlManager.generateDataHash([
+        curve.address,
+        encodedGetUnderlyerBalance,
+      ]);
     });
 
     it("Get underlyer balance from account holding", async () => {

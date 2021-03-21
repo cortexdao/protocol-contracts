@@ -1,6 +1,5 @@
 const { expect } = require("chai");
 const { artifacts, ethers } = require("hardhat");
-const { solidityKeccak256: hash, solidityPack: pack } = ethers.utils;
 const timeMachine = require("ganache-time-traveler");
 const legos = require("@apy-finance/defi-legos");
 const {
@@ -360,18 +359,19 @@ describe("Contract: PoolManager", () => {
       );
 
       // Check the manager registered the asset allocations corretly
-      const expectedDaiId = hash(
-        ["bytes"],
-        [pack(["address", "bytes"], [daiToken.address, encodedBalanceOf])]
-      );
-      const expectedUsdcId = hash(
-        ["bytes"],
-        [pack(["address", "bytes"], [usdcToken.address, encodedBalanceOf])]
-      );
-      const expectedUsdtId = hash(
-        ["bytes"],
-        [pack(["address", "bytes"], [usdtToken.address, encodedBalanceOf])]
-      );
+      const expectedDaiId = await tvlManager.generateDataHash([
+        daiToken.address,
+        encodedBalanceOf,
+      ]);
+      const expectedUsdcId = await tvlManager.generateDataHash([
+        usdcToken.address,
+        encodedBalanceOf,
+      ]);
+      const expectedUsdtId = await tvlManager.generateDataHash([
+        usdtToken.address,
+        encodedBalanceOf,
+      ]);
+
       const registeredIds = await tvlManager.getAssetAllocationIds();
       expect(registeredIds.length).to.equal(3);
       expect(registeredIds[0]).to.equal(expectedDaiId);
