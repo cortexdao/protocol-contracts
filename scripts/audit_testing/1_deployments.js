@@ -16,37 +16,23 @@
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = hre;
+const assert = require("assert");
 const {
   ZERO_ADDRESS,
   tokenAmountToBigNumber,
   acquireToken,
-} = require("../../utils/helpers");
-const assert = require("assert");
-const chalk = require("chalk");
-const {
   getDeployedAddress,
   bytes32,
   impersonateAccount,
 } = require("../../utils/helpers");
 const { AGG_MAP } = require("../../utils/constants");
+const { console } = require("./utils");
 
 const NODE_ADDRESS = "0xAD702b65733aC8BcBA2be6d9Da94d5b7CE25C0bb";
 const LINK_ADDRESS = "0x514910771AF9Ca656af840dff83E8264EcF986CA";
 // Aave lending pool
 // https://etherscan.io/address/0x3dfd23a6c5e8bbcfc9581d2e864a68feb6a076d3
 const WHALE_ADDRESS = "0x3dfd23A6c5E8BbcFc9581d2E864a68feb6a076d3";
-
-console.logAddress = function (contractName, contractAddress) {
-  contractName = contractName + ":";
-  contractAddress = chalk.green(contractAddress);
-  console.log.apply(this, [contractName, contractAddress]);
-};
-
-console.logDone = function () {
-  console.log("");
-  console.log.apply(this, [chalk.green("√") + " ... done."]);
-  console.log("");
-};
 
 async function main(argv) {
   await hre.run("compile");

@@ -16,7 +16,7 @@
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const { getDeployedAddress, bytes32 } = require("../../utils/helpers");
+const { getStrategyAccountInfo, getTvlManager } = require("./utils");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -29,16 +29,7 @@ async function main(argv) {
   const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
 
-  const addressRegistryAddress = getDeployedAddress(
-    "AddressRegistryProxy",
-    networkName
-  );
-  const addressRegistry = await ethers.getContractAt(
-    "AddressRegistry",
-    addressRegistryAddress
-  );
-  const registryAddress = await addressRegistry.chainlinkRegistryAddress();
-  const tvlManager = await ethers.getContractAt("TVLManager", registryAddress);
+  const tvlManager = await getTvlManager(networkName);
 
   console.log("");
   console.log("Registering ...");
@@ -79,14 +70,7 @@ async function main(argv) {
    * data: a pair (address, bytes) where the bytes are encoded function
    *       calldata to be used at the target address
    */
-  const accountManagerAddress = await addressRegistry.getAddress(
-    bytes32("accountManager")
-  );
-  let accountManager = await ethers.getContractAt(
-    "AccountManager",
-    accountManagerAddress
-  );
-  const accountAddress = await accountManager.getAccount(bytes32("alpha"));
+  const [, accountAddress] = await getStrategyAccountInfo(networkName);
 
   console.log("");
   console.log("Register 3pool allocations for strategy account ...");

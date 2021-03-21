@@ -74,13 +74,18 @@ async function main(argv) {
     stablecoins[symbol] = token;
   }
 
-  const daiAmount = tokenAmountToBigNumber("1000", "18");
+  const daiAmount = tokenAmountToBigNumber("1000000", "18"); // 1MM DAI
+  const usdcAmount = tokenAmountToBigNumber("5000000", "6"); // 5MM USDC
 
   const accountId = bytes32("alpha");
   await poolManager.fundAccount(accountId, [
     {
       poolId: bytes32("daiPool"),
       amount: daiAmount,
+    },
+    {
+      poolId: bytes32("usdcPool"),
+      amount: usdcAmount,
     },
   ]);
   console.log("... done.");

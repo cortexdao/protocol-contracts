@@ -16,26 +16,13 @@
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network, artifacts } = hre;
-const chalk = require("chalk");
+const { tokenAmountToBigNumber, MAX_UINT256 } = require("../../utils/helpers");
 const {
-  getDeployedAddress,
-  bytes32,
-  getStablecoinAddress,
-  tokenAmountToBigNumber,
-  MAX_UINT256,
-} = require("../../utils/helpers");
-
-console.logAddress = function (contractName, contractAddress) {
-  contractName = contractName + ":";
-  contractAddress = chalk.green(contractAddress);
-  console.log.apply(this, [contractName, contractAddress]);
-};
-
-console.logDone = function () {
-  console.log("");
-  console.log.apply(this, [chalk.green("√") + " ... done."]);
-  console.log("");
-};
+  getAccountManager,
+  getStrategyAccountInfo,
+  getStablecoins,
+} = require("./utils");
+const { console } = require("./utils");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -48,53 +35,39 @@ async function main(argv) {
   const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
 
-  const addressRegistryAddress = getDeployedAddress(
-    "AddressRegistryProxy",
-    networkName
-  );
-  const addressRegistry = await ethers.getContractAt(
-    "AddressRegistry",
-    addressRegistryAddress
-  );
-  const accountManagerAddress = await addressRegistry.getAddress(
-    bytes32("accountManager")
-  );
-  const accountManager = await ethers.getContractAt(
-    "AccountManager",
-    accountManagerAddress
-  );
-  console.logAddress("AccountManager", accountManagerAddress);
+  const accountManager = await getAccountManager(networkName);
+  console.logAddress("AccountManager", accountManager.address);
 
-  const accountId = bytes32("alpha");
-  const accountAddress = await accountManager.getAccount(bytes32("alpha"));
+  const [accountId, accountAddress] = await getStrategyAccountInfo(networkName);
   console.logAddress("Strategy account", accountAddress);
-  const ifaceERC20 = new ethers.utils.Interface(
-    artifacts.require("IDetailedERC20").abi
-  );
 
-  const stablecoins = {};
-  for (const symbol of ["DAI", "USDC", "USDT"]) {
-    const tokenAddress = getStablecoinAddress(symbol, networkName);
-    const token = await ethers.getContractAt("IDetailedERC20", tokenAddress);
-    stablecoins[symbol] = token;
-  }
-  const daiAmount = tokenAmountToBigNumber("1000", "18");
+  const stablecoins = await getStablecoins(networkName);
 
   console.log("");
   console.log("Executing ...");
   console.log("");
 
+  const ifaceERC20 = new ethers.utils.Interface(
+    artifacts.require("IDetailedERC20").abi
+  );
+  const ifaceStableSwap = new ethers.utils.Interface(
+    artifacts.require("IStableSwap").abi
+  );
+  const ifaceLiquidityGauge = new ethers.utils.Interface(
+    artifacts.require("ILiquidityGauge").abi
+  );
+
   // 3Pool addresses:
   const STABLE_SWAP_ADDRESS = "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7";
   const LP_TOKEN_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
   const LIQUIDITY_GAUGE_ADDRESS = "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A";
-  const ifaceStableSwap = new ethers.utils.Interface(
-    artifacts.require("IStableSwap").abi
-  );
+
+  // deposit into liquidity pool
   const approveStableSwap = ifaceERC20.encodeFunctionData(
     "approve(address,uint256)",
     [STABLE_SWAP_ADDRESS, MAX_UINT256]
   );
+  const daiAmount = tokenAmountToBigNumber("1000", "18");
   const stableSwapAddLiquidity = ifaceStableSwap.encodeFunctionData(
     "add_liquidity(uint256[3],uint256)",
     [[daiAmount, 0, 0], 0]
@@ -108,6 +81,7 @@ async function main(argv) {
   await accountManager.execute(accountId, executionSteps, []);
   console.logDone();
 
+  // stake LP tokens in the gauge
   const lpToken = await ethers.getContractAt(
     "IDetailedERC20",
     LP_TOKEN_ADDRESS
@@ -115,9 +89,6 @@ async function main(argv) {
   const lpBalance = await lpToken.balanceOf(accountAddress);
   console.log("LP balance:", lpBalance.toString());
 
-  const ifaceLiquidityGauge = new ethers.utils.Interface(
-    artifacts.require("ILiquidityGauge").abi
-  );
   const approveGauge = ifaceERC20.encodeFunctionData(
     "approve(address,uint256)",
     [LIQUIDITY_GAUGE_ADDRESS, MAX_UINT256]
