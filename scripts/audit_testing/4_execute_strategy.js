@@ -106,8 +106,7 @@ async function main(argv) {
     [STABLE_SWAP_ADDRESS, stableSwapAddLiquidity], // deposit DAI into Curve 3pool
   ];
   await accountManager.execute(accountId, executionSteps, []);
-  console.log("... done.");
-  console.log("");
+  console.logDone();
 
   const lpToken = await ethers.getContractAt(
     "IDetailedERC20",
@@ -116,14 +115,14 @@ async function main(argv) {
   const lpBalance = await lpToken.balanceOf(accountAddress);
   console.log("LP balance:", lpBalance.toString());
 
-  const ifaceLiquidityGague = new ethers.utils.Interface(
+  const ifaceLiquidityGauge = new ethers.utils.Interface(
     artifacts.require("ILiquidityGauge").abi
   );
   const approveGauge = ifaceERC20.encodeFunctionData(
     "approve(address,uint256)",
     [LIQUIDITY_GAUGE_ADDRESS, MAX_UINT256]
   );
-  const liquidityGaugeDeposit = ifaceLiquidityGague.encodeFunctionData(
+  const liquidityGaugeDeposit = ifaceLiquidityGauge.encodeFunctionData(
     "deposit(uint256)",
     [lpBalance]
   );
