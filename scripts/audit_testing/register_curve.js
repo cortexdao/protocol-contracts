@@ -64,11 +64,10 @@ async function main(argv) {
    *
    * The data required in an allocation is:
    *
-   * allocationId (bytes32): a unique identifier across all allocations
-   * symbol (string): the token symbol
-   * decimals (uint256): the token decimals
    * data: a pair (address, bytes) where the bytes are encoded function
    *       calldata to be used at the target address
+   * symbol (string): the token symbol
+   * decimals (uint256): the token decimals
    */
   const [, accountAddress] = await getStrategyAccountInfo(networkName);
 
