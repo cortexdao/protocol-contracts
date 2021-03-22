@@ -16,25 +16,13 @@
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = hre;
-const chalk = require("chalk");
 const {
   getDeployedAddress,
   bytes32,
   getStablecoinAddress,
   tokenAmountToBigNumber,
 } = require("../../utils/helpers");
-
-console.logAddress = function (contractName, contractAddress) {
-  contractName = contractName + ":";
-  contractAddress = chalk.green(contractAddress);
-  console.log.apply(this, [contractName, contractAddress]);
-};
-
-console.logDone = function () {
-  console.log("");
-  console.log.apply(this, [chalk.green("√") + " ... done."]);
-  console.log("");
-};
+const { console } = require("./utils");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {

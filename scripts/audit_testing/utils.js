@@ -5,6 +5,7 @@ const {
   getDeployedAddress,
   getStablecoinAddress,
   bytes32,
+  console,
 } = require("../../utils/helpers");
 
 console.logAddress = function (contractName, contractAddress) {
