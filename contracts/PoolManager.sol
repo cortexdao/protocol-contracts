@@ -31,7 +31,7 @@ import "./Account.sol";
  * Account contract to the PoolToken contracts.
  *
  * When funding an account, the Pool Manager simultaneously register the account
- * with the TVLManager for the undelerying token pool to ensure the TVL is properly updated
+ * with the TVL Manager for the undelerying token pool to ensure the TVL is properly updated
  */
 contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     using SafeMath for uint256;
