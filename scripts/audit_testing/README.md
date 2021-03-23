@@ -84,26 +84,48 @@ The data required in an allocation is:
 - symbol (string): the token symbol
 - decimals (uint256): the token decimals
 
-Curve 3pool example:
+The general approach we have taken is to deploy one or more periphery contracts for each protocol. This is necessary in most cases as the tokens being held are not priced in the market but represent underlyers that _are_ priced. Thus the primary use of a periphery contract is to return the balance for a particular asset allocation, e.g. the DAI underlyer balance for a Curve LP token.
 
-- register expected asset allocations from Curve 3pool strategy:  
+Sample scripts have been provided for the following:
+
+- Aave lending pool:  
+  `make audit_testing step=register_aave`
+- Uniswap:  
+  `make audit_testing step=register_uniswap`
+- Curve 3pool:  
   `make audit_testing step=register_curve`
+
+These examples are of varying complexity.
+
+The Aave protocol mints aTokens 1-1 (par) in exchange for the underlyer being lent. Depositing 100 DAI results in 100 aDAI. The aDAI is interest-bearing and the resulting amount of DAI upon withdrawal is simply the accumulated amount of aDAI. Thus, strictly speaking, no periphery contract is needed to track the amount of DAI for Aave since we could simply target the aToken address with the appropriate `balanceOf` for the asset allocation, but for the purpose of illustration, we have one that simply takes in the aToken and account addresses and returns `aToken.balanceOf(account)`.
+
+The Uniswap example requires computing the underlyer amount from the LP token amount and total supply.
+
+The Curve example is similar to Uniswap but also requires obtaining balances from the liquidity gauge, aka staking contract.
 
 ### Execute strategy
 
 The APY.Finance system is able to able to interact with any DeFi protocol through the use of "generic execution". Simply put, off-chain scripts use encoded function calldata passed into the Account Manager's `execute` function.
 
-- execute Curve 3pool strategy:  
-  `make audit_testing step=execute_curve`
+As with registration, examples are provided:
+
+- `make audit_testing step=execute_aave`
+- `make audit_testing step=execute_uniswap`
+- `make audit_testing step=execute_curve`
 
 ### Liquidate strategy
 
-- withdraw from Curve 3pool strategy:  
-  `make audit_testing step=liquidate_curve`
+The example scripts will remove liquidity from the protocol.
+
+- `make audit_testing step=liquidate_aave`
+- `make audit_testing step=liquidate_uniswap`
+- `make audit_testing step=liquidate_curve`
 
 ### Withdraw from account to pools
 
-- withdraw from Curve 3pool strategy:  
+Similar to funding an account, the pool manager's `withdrawFromAccount` function takes in an ID and pool distribution.
+
+- withdraw funds from strategy account to pools
   `make audit_testing step=withdraw`
 
 ### User operations
