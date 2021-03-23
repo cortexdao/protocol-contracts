@@ -72,7 +72,6 @@ async function getStrategyAccountInfo(networkName) {
   const accountId = bytes32("alpha");
   const accountManager = await getAccountManager(networkName);
   const accountAddress = await accountManager.getAccount(bytes32("alpha"));
-  console.logAddress("Strategy account", accountAddress);
   return [accountId, accountAddress];
 }
 

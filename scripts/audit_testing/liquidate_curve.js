@@ -16,7 +16,6 @@
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network, artifacts } = hre;
-const { tokenAmountToBigNumber, MAX_UINT256 } = require("../../utils/helpers");
 const {
   getAccountManager,
   getStrategyAccountInfo,
@@ -47,9 +46,6 @@ async function main(argv) {
   console.log("Executing ...");
   console.log("");
 
-  const ifaceERC20 = new ethers.utils.Interface(
-    artifacts.require("IDetailedERC20").abi
-  );
   const ifaceStableSwap = new ethers.utils.Interface(
     artifacts.require("IStableSwap").abi
   );
@@ -62,33 +58,6 @@ async function main(argv) {
   const LP_TOKEN_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
   const LIQUIDITY_GAUGE_ADDRESS = "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A";
 
-  // deposit into liquidity pool
-  const lpToken = await ethers.getContractAt(
-    "IDetailedERC20",
-    LP_TOKEN_ADDRESS
-  );
-  let lpBalance = await lpToken.balanceOf(accountAddress);
-  console.log("LP balance (before):", lpBalance.toString());
-  const approveStableSwap = ifaceERC20.encodeFunctionData(
-    "approve(address,uint256)",
-    [STABLE_SWAP_ADDRESS, MAX_UINT256]
-  );
-  const daiAmount = tokenAmountToBigNumber("1000", "18");
-  const stableSwapAddLiquidity = ifaceStableSwap.encodeFunctionData(
-    "add_liquidity(uint256[3],uint256)",
-    [[daiAmount, 0, 0], 0]
-  );
-  const daiToken = stablecoins["DAI"];
-
-  let executionSteps = [
-    [daiToken.address, approveStableSwap], // approve StableSwap for DAI
-    [STABLE_SWAP_ADDRESS, stableSwapAddLiquidity], // deposit DAI into Curve 3pool
-  ];
-  await accountManager.execute(accountId, executionSteps, []);
-
-  lpBalance = await lpToken.balanceOf(accountAddress);
-  console.log("LP balance (after):", lpBalance.toString());
-
   // stake LP tokens in the gauge
   const gauge = await ethers.getContractAt(
     "IDetailedERC20",
@@ -96,23 +65,39 @@ async function main(argv) {
   );
   let gaugeBalance = await gauge.balanceOf(accountAddress);
   console.log("Gauge balance (before):", gaugeBalance.toString());
-
-  const approveGauge = ifaceERC20.encodeFunctionData(
-    "approve(address,uint256)",
-    [LIQUIDITY_GAUGE_ADDRESS, MAX_UINT256]
+  const liquidityGaugeWithdraw = ifaceLiquidityGauge.encodeFunctionData(
+    "withdraw(uint256)",
+    [gaugeBalance]
   );
-  const liquidityGaugeDeposit = ifaceLiquidityGauge.encodeFunctionData(
-    "deposit(uint256)",
-    [lpBalance]
-  );
-  executionSteps = [
-    [LP_TOKEN_ADDRESS, approveGauge], // approve LiquidityGauge for LP token
-    [LIQUIDITY_GAUGE_ADDRESS, liquidityGaugeDeposit],
-  ];
+  let executionSteps = [[LIQUIDITY_GAUGE_ADDRESS, liquidityGaugeWithdraw]];
   await accountManager.execute(accountId, executionSteps, []);
 
   gaugeBalance = await gauge.balanceOf(accountAddress);
   console.log("Gauge balance (after):", gaugeBalance.toString());
+
+  // deposit into liquidity pool
+  const lpToken = await ethers.getContractAt(
+    "IDetailedERC20",
+    LP_TOKEN_ADDRESS
+  );
+  let lpBalance = await lpToken.balanceOf(accountAddress);
+  console.log("LP balance (before):", lpBalance.toString());
+  const stableSwapRemoveLiquidity = ifaceStableSwap.encodeFunctionData(
+    "remove_liquidity(uint256,uint256[3])",
+    [lpBalance, [0, 0, 0]]
+  );
+
+  executionSteps = [
+    [STABLE_SWAP_ADDRESS, stableSwapRemoveLiquidity], // deposit DAI into Curve 3pool
+  ];
+  await accountManager.execute(accountId, executionSteps, []);
+
+  lpBalance = await lpToken.balanceOf(accountAddress);
+  console.log("LP balance (after):", lpBalance.toString());
+
+  const daiToken = stablecoins["DAI"];
+  const daiBalance = await daiToken.balanceOf(accountAddress);
+  console.log("DAI balance:", daiBalance.toString());
 
   console.logDone();
 
