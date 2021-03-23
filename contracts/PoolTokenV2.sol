@@ -33,7 +33,7 @@ import "./MetaPoolToken.sol";
  *         The pool's total value is comprised of the value of its balance
  *         of the underlying stablecoin and also the value of its balance
  *         of mAPT, an internal token used by the system to track how much
- *         is owed to the pool.  Every time the Manager withdraws funds
+ *         is owed to the pool.  Every time the PoolManager withdraws funds
  *         from the pool, mAPT is issued to the pool.
  *
  *         Upon redemption of APT (withdrawal), the user will get back
