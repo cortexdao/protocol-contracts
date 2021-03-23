@@ -310,10 +310,11 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         _withdrawFromAccount(accountAddress, pools, amounts);
     }
 
-    /**
-     * @dev Revert if pool manager doesn't have enough allowance to transfer
-     *      the pool's underlyer from the given account.
-     */
+    /// @notice helper function to check if the pool manager has sufficient allowance to transfer
+    /// the pool's underlyer from the provided account
+    /// @param account the address of the account to check
+    /// @param pools the list of pools to transfer funds to; used for retrieving the underlyer
+    /// @param amounts the list of allowance amounts the manager needs to have in order to successfully transfer from an account
     function _checkManagerAllowances(
         address account,
         PoolTokenV2[] memory pools,
@@ -327,10 +328,10 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     }
 
     /**
-     * @notice Move capital from an Account to the PoolToken contracts
-     * @param account The Account contract ID
-     * @param pools the pools to pull from
-     * @param amounts the amounts to pull from pools
+     * @notice Move capital from an Account back to the PoolToken contracts
+     * @param account account that funds are being withdrawn from
+     * @param pools a list of pools to place recovered funds back into
+     * @param amounts a list of amounts to send from the account to the pools
      *
      */
     function _withdrawFromAccount(

@@ -80,7 +80,7 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
     /// @dev only permissed accounts can call.
     /// New ids are uniquely determined by the provided data struct; no duplicates are allowed
     /// @param data the data struct containing the target address and the bytes lookup data that will be registered
-    /// @param symbol the symbol to register for the asset allocation
+    /// @param symbol the token symbol to register for the asset allocation
     /// @param decimals the decimals to register for the new asset allocation
     function addAssetAllocation(
         Data memory data,
