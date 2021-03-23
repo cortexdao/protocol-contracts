@@ -10,7 +10,7 @@ pragma experimental ABIEncoderV2;
  *         to compute the TVL of the APY.Finance system.
  */
 interface ITVLManager {
-    // struct representing an execution against a contract given bytes
+    // struct representing a view call execution against a target contract given bytes
     // target is the target contract to execute view calls against
     // bytes data represents the encoded function signature + parameters
     struct Data {
@@ -18,8 +18,11 @@ interface ITVLManager {
         bytes data;
     }
 
+    // struct representing the relevant pieces of data that need to be provided when registering an asset allocation
+    // symbol is the symbol of the token that the resulting view call execution will need to be evaluated as
+    // decimals is the number of decimals that the resulting view call execution will need to be evaluated as
+    // data is the struct representing the view call execution
     struct AssetAllocation {
-        bytes32 sequenceId;
         string symbol;
         uint256 decimals;
         Data data;

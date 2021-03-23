@@ -15,7 +15,7 @@ import "./interfaces/ITVLManager.sol";
 /// the TVL can be properly computed.
 /// @dev It is imperative that this manager has the most up to date asset
 /// allocations registered. Any assets in the system that have been deployed,
-/// but are not registered can have devastating and catastrophic effects on the TVL
+/// but are not registered can have devastating and catastrophic effects on the TVL.
 contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 

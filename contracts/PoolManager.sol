@@ -19,8 +19,7 @@ import "./Account.sol";
 /**
  * @title Pool Manager
  * @author APY.Finance
- * @notice This is the pool manager logic contract for use with the
- * manager proxy contract.
+ * @notice This is the pool manager logic contract for use with the pool manager proxy contract.
  *
  * The Pool Manager orchestrates the movement of capital within the APY system
  * between the PoolTokens and Accounts.

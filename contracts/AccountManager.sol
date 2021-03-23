@@ -18,60 +18,19 @@ import "./Account.sol";
 /**
  * @title APY Manager
  * @author APY.Finance
- * @notice This is the manager logic contract for use with the
- * manager proxy contract.
+ * @notice This is the manager logic contract for use with the account manager proxy contract.
  *
- *--------------------
- * MANAGING CAPITAL
- *--------------------
- * The APY Manager orchestrates the movement of capital within the APY system.
- * This movement of capital occurs in two major ways:
+ * The Account manager orchestrates the movement of capital within the APY system between the Accounts
+ * and various DeFi protocols: curve, uniswap, sushiswap, etc
  *
- * - Capital transferred to and from APYPoolToken contracts and the
- *   APYAccount contract with the following functions:
+ * When moving capital from an account to enter various positions, the Account Manager simultaneously
+ * registers view execution data with the TVL Manager. This is to ensure the TVL is properly updated
+ * and all funds moved are accounted for.
  *
- *   - fundAccount
- *   - fundAndExecute
- *   - withdrawFromAccount
- *   - executeAndWithdraw
- *
- * - Capital routed to and from other protocols using generic execution with
- *   the following functions:
- *
- *   - execute
- *   - fundAndExecute
- *   - executeAndWithdraw
- *
- * Transferring from the APYPoolToken contracts to the Account contract stages
- * capital for deployment to yield farming strategies.  Capital unwound from
- * yield farming strategies for user withdrawals is transferred from the
- * Account contract to the APYPoolToken contracts.
- *
- * Routing capital to yield farming strategies using generic execution assumes
- * capital has been staged in the Account contract. Generic execution is also
- * used to unwind capital from yield farming strategies in preperation for
- * user withdrawal.
- *
- *--------------------
- * UPDATING TVL
- *--------------------
- * When the APY Manager routes capital using generic execution it can also
- * register an asset allocation with the TVLManager. Registering
- * asset allocations is important for Chainlink to calculate accurate TVL
- * values.
- *
- * The flexibility of generic execution means previously unused assets may be
- * acquired by the APYAccount contract, including those from providing
- * liquidity to a new protocol. These newly acquired assets and the manner
- * in which they are held in the system must be registered with the
- * TVLManager in order to be used in Chainlink's computation
- * of deployed TVL.
- *
- * Registration should not be done after generic execution as the TVL may
- * then be updated before the registered asset allocations are picked up by
- * Chainlink. Providing the option to register allocations atomically with
- * execution allows us to conveniently leverage generic execution while
- * avoiding late updates to the TVL.
+ * It is imperative that when calling execute() against a deployed Account, the AccountManager
+ * is provided the most up to date asset allocations. Any assets in the system that have been
+ * deployed, but are not registered with the TVL Manager can have devastating and catastrophic
+ * effects on the TVL.
  */
 contract AccountManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
     using SafeMath for uint256;
@@ -117,6 +76,8 @@ contract AccountManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
      * repeatedly.
      *
      * Our proxy deployment will call this as part of the constructor.
+     * @param adminAddress the admin proxy to initialize with
+     * @param _addressRegistry the address registry to initialize with
      */
     function initialize(address adminAddress, address _addressRegistry)
         external
@@ -147,11 +108,10 @@ contract AccountManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
     function initializeUpgrade() external virtual onlyAdmin {}
 
     /**
-     * @notice Create a new account to run strategies.
-     * @dev Associates an GenericExecutor with the account. This executor
-     * is used when the `execute` function is called for a specific account ID.
-     * @param accountId ID identifying an address for execution
-     * @param genericExecutor implementation contract for execution engine
+     * @notice Creates a new account that wil be used to enter other positions.
+     * @dev only callable by owner
+     * @param accountId id of the Account moving funds
+     * @param genericExecutor implementation contract for execution engine the account will use
      */
     function deployAccount(bytes32 accountId, address genericExecutor)
         external
@@ -165,36 +125,11 @@ contract AccountManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
         return address(account);
     }
 
-    /**
-     * @notice Route capital in an Account contract to yield farming strategies
-     * @param accountId The Account contract ID
-     * @param steps The generic execution sequence that will route capital
-     * from the Account to yield farming strategies.
-     *
-     * @notice Data[] example (adds DAI, USDC, and USDT to a Curve pool):
-     *      [
-     *          {
-     *              target: 0x6B175474E89094C44Da98b954EedeAC495271d0F
-     *              data: 0x... // calldata for DAI approve function
-     *          },
-     *          {
-     *              target: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
-     *              data: 0x... // calldata for USDC approve function
-     *          },
-     *          {
-     *              target: 0xdAC17F958D2ee523a2206206994597C13D831ec7
-     *              data: 0x... // calldata for USDT approve function
-     *          },
-     *          {
-     *              target: 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7,
-     *              data: 0x... // calldata for the Curve add_liquidity function
-     *          }
-     *      ]
-     *
-     * @param viewData The array of asset allocations to calculate the TVL of
-     * new assets stored in the Account contract.
-     * See APYManager._registerAllocationData.
-     */
+    /// @notice Routes capital in an Account to enter or exit various positions
+    /// @dev only callable by owner
+    /// @param accountId id of the Account moving funds
+    /// @param steps list of Data execution steps containing both the target contract and bytecode to execute
+    /// @param viewData list of AssetAllocation view data that need to be registered with the TVL manager when entering positions
     function execute(
         bytes32 accountId,
         IExecutor.Data[] memory steps,
@@ -206,37 +141,26 @@ contract AccountManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
         IAccount(accountAddress).execute(steps);
     }
 
+    /// @notice Sets the proxy admin address of the pool manager proxy
+    /// @dev only callable by owner
+    /// @param address the new proxy admin address of the pool manager
     function setAdminAddress(address adminAddress) public onlyOwner {
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
         emit AdminChanged(adminAddress);
     }
 
+    /// @notice Sets the address registry
+    /// @dev only callable by owner
+    /// @param _addressRegistry the new address registry to update to
     function setAddressRegistry(address _addressRegistry) public onlyOwner {
         require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistry(_addressRegistry);
     }
 
-    /**
-     * @notice Register a new asset allocation
-     * @notice When capital is routed to new protocols, asset allocations are
-     * registered to return the balances of underlying assets so the TVL can be
-     * computed.
-     * @param viewData The array of asset allocations to calculate the TVL of
-     * new assets stored in the Account contract.
-     *
-     * @notice AssetAllocation example (gets the DAI balance of the account):
-     *      {
-     *          sequenceId: "daiBalance",
-     *          symbol: "DAI",
-     *          decimals: 18,
-     *          data: {
-     *             target: 0x6B175474E89094C44Da98b954EedeAC495271d0F,
-     *             data: 0x... // calldata for balanceOf function with account
-     *                         // address encoded as parameter
-     *          }
-     *      }
-     */
+    /// @notice Helper function to register an account's lookup view method in the TVL manager when entering positions.
+    /// Ensures the TVL manager remains up to date when funds are moved.
+    /// @param viewData list of AssetAllocation view data to be registered with the TVL manager
     function _registerAllocationData(
         ITVLManager.AssetAllocation[] memory viewData
     ) internal {
