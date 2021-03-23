@@ -16,29 +16,20 @@
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const { getDeployedAddress, bytes32 } = require("../../utils/helpers");
+const { getStrategyAccountInfo, getTvlManager } = require("./utils");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
   await hre.run("compile");
-  const NETWORK_NAME = network.name.toUpperCase();
+  const networkName = network.name.toUpperCase();
   console.log("");
-  console.log(`${NETWORK_NAME} selected`);
+  console.log(`${networkName} selected`);
   console.log("");
 
   const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
 
-  const addressRegistryAddress = getDeployedAddress(
-    "APYAddressRegistryProxy",
-    NETWORK_NAME
-  );
-  const addressRegistry = await ethers.getContractAt(
-    "APYAddressRegistry",
-    addressRegistryAddress
-  );
-  const registryAddress = await addressRegistry.chainlinkRegistryAddress();
-  const tvlManager = await ethers.getContractAt("TVLManager", registryAddress);
+  const tvlManager = await getTvlManager(networkName);
 
   console.log("");
   console.log("Registering ...");
@@ -60,31 +51,10 @@ async function main(argv) {
   const LP_TOKEN_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
   const LIQUIDITY_GAUGE_ADDRESS = "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A";
 
-  /*  Asset Allocations:
-   *
-   * Each asset allocation is a token placed in a particular way within
-   * the APY.Finance system. The same token may have multiple allocations
-   * managed in differing ways, whether they are held by different
-   * contracts or subject to different holding periods.
-   *
-   * Each asset allocation must be registered with TVLManager,
-   * in order for the Chainlink nodes to include it within their TVL
-   * computation.
-   *
-   * The data required in an allocation is:
-   *
-   * allocationId (bytes32): a unique identifier across all allocations
-   * symbol (string): the token symbol
-   * decimals (uint256): the token decimals
-   * data: a pair (address, bytes) where the bytes are encoded function
-   *       calldata to be used at the target address
-   */
-  const managerAddress = await addressRegistry.managerAddress();
-  let manager = await ethers.getContractAt("APYManagerV2", managerAddress);
-  const accountAddress = await manager.getAccount(bytes32("alpha"));
+  const [, accountAddress] = await getStrategyAccountInfo(networkName);
 
   console.log("");
-  console.log("Funding strategy account from pools ...");
+  console.log("Register 3pool allocations for strategy account ...");
   console.log("");
 
   const calldataForDai = CurvePeriphery.interface.encodeFunctionData(
@@ -119,21 +89,18 @@ async function main(argv) {
   );
 
   let trx = await tvlManager.addAssetAllocation(
-    bytes32("dai"),
     [curve.address, calldataForDai],
     "DAI",
     18
   );
   await trx.wait();
   trx = await tvlManager.addAssetAllocation(
-    bytes32("usdc"),
     [curve.address, calldataForUsdc],
     "USDC",
     6
   );
   await trx.wait();
   trx = await tvlManager.addAssetAllocation(
-    bytes32("usdt"),
     [curve.address, calldataForUsdt],
     "USDT",
     6

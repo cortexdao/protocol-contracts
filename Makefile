@@ -158,3 +158,17 @@ CI_tests:
 	yarn test:unit
 	yarn test:integration
 	make test_chainlink
+
+# have to use ganache since `eth_subscribe` is buggy in hardhat
+# and is required for Chainlink usage
+.PHONY: fork_mainnet
+fork_mainnet:
+	@MNEMONIC='' yarn fork:mainnet
+
+.PHONY: audit_testing
+audit_testing:
+	@if test -z $(step); then\
+	  echo "'step' argument is required, e.g. make audit_testing step=deploy" ;\
+	  exit 1 ;\
+    fi ;\
+	HARDHAT_NETWORK=localhost node scripts/audit_testing/"${step}".js

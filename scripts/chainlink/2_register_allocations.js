@@ -16,7 +16,7 @@
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const { getDeployedAddress, bytes32 } = require("../../utils/helpers");
+const { getDeployedAddress } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -111,21 +111,18 @@ async function main(argv) {
   );
 
   let trx = await tvlManager.addAssetAllocation(
-    bytes32("dai"),
     [curve.address, calldataForDai],
     "DAI",
     18
   );
   await trx.wait();
   trx = await tvlManager.addAssetAllocation(
-    bytes32("usdc"),
     [curve.address, calldataForUsdc],
     "USDC",
     6
   );
   await trx.wait();
   trx = await tvlManager.addAssetAllocation(
-    bytes32("usdt"),
     [curve.address, calldataForUsdt],
     "USDT",
     6

@@ -16,37 +16,23 @@
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = hre;
+const assert = require("assert");
 const {
   ZERO_ADDRESS,
   tokenAmountToBigNumber,
   acquireToken,
-} = require("../../utils/helpers");
-const assert = require("assert");
-const chalk = require("chalk");
-const {
   getDeployedAddress,
   bytes32,
   impersonateAccount,
 } = require("../../utils/helpers");
 const { AGG_MAP } = require("../../utils/constants");
+const { console } = require("./utils");
 
 const NODE_ADDRESS = "0xAD702b65733aC8BcBA2be6d9Da94d5b7CE25C0bb";
 const LINK_ADDRESS = "0x514910771AF9Ca656af840dff83E8264EcF986CA";
 // Aave lending pool
 // https://etherscan.io/address/0x3dfd23a6c5e8bbcfc9581d2e864a68feb6a076d3
 const WHALE_ADDRESS = "0x3dfd23A6c5E8BbcFc9581d2E864a68feb6a076d3";
-
-console.logAddress = function (contractName, contractAddress) {
-  contractName = contractName + ":";
-  contractAddress = chalk.green(contractAddress);
-  console.log.apply(this, [contractName, contractAddress]);
-};
-
-console.logDone = function () {
-  console.log("");
-  console.log.apply(this, [chalk.green("√") + " ... done."]);
-  console.log("");
-};
 
 async function main(argv) {
   await hre.run("compile");
@@ -65,11 +51,11 @@ async function main(argv) {
   const nonce = await ethers.provider.getTransactionCount(deployer.address);
   console.log("Deployer nonce:", nonce);
   console.log("");
-  // assert.strictEqual(
-  //   nonce,
-  //   0,
-  //   "Nonce must be zero as we rely on deterministic contract addresses."
-  // );
+  assert.strictEqual(
+    nonce,
+    0,
+    "Nonce must be zero as we rely on deterministic contract addresses."
+  );
 
   console.log("Deploying FluxAggregator ...");
 
@@ -131,6 +117,19 @@ async function main(argv) {
   await trx.wait();
   console.logDone();
 
+  const addressRegistryAddress = getDeployedAddress(
+    "AddressRegistryProxy",
+    networkName
+  );
+  let addressRegistry = await ethers.getContractAt(
+    "AddressRegistry",
+    addressRegistryAddress
+  );
+  const addressRegistryDeployer = await impersonateAccount(
+    await addressRegistry.owner()
+  );
+  addressRegistry = addressRegistry.connect(addressRegistryDeployer);
+
   // Note: in prod deployment, separate admins are deployed for contracts
   console.log("Deploying ProxyAdmin ...");
   const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
@@ -172,10 +171,6 @@ async function main(argv) {
   const accountManagerLogic = await AccountManager.deploy();
   await accountManagerLogic.deployed();
 
-  const addressRegistryAddress = getDeployedAddress(
-    "AddressRegistryProxy",
-    networkName
-  );
   let accountManager = await AccountManagerProxy.deploy(
     accountManagerLogic.address,
     proxyAdmin.address,
@@ -184,6 +179,11 @@ async function main(argv) {
   await accountManager.deployed();
   accountManager = AccountManager.attach(accountManager.address); // attach logic interface
   console.logAddress("AccountManager", accountManager.address);
+  trx = await addressRegistry.registerAddress(
+    bytes32("accountManager"),
+    accountManager.address
+  );
+  console.log("Registered Account Manager with AddressRegistry.");
   console.logDone();
 
   console.log("Deploying Pool Manager ...");
@@ -203,6 +203,15 @@ async function main(argv) {
   await poolManager.deployed();
   poolManager = PoolManager.attach(poolManager.address); // attach logic interface
   console.logAddress("PoolManager", poolManager.address);
+  trx = await addressRegistry.registerAddress(
+    bytes32("poolManager"),
+    poolManager.address
+  );
+  console.log("Registered Pool Manager with AddressRegistry.");
+
+  trx = await poolManager.setAccountFactory(accountManager.address);
+  console.log("Set account factory on pool manager.");
+  await trx.wait();
 
   trx = await mApt.setManagerAddress(poolManager.address);
   await trx.wait();
@@ -219,20 +228,12 @@ async function main(argv) {
   );
   await tvlManager.deployed();
   console.logAddress("TVLManager", tvlManager.address);
-  console.logDone();
-
-  console.log("Registering TVL Manager with AddressRegistry ...");
-  const addressRegistry = await ethers.getContractAt(
-    "AddressRegistry",
-    addressRegistryAddress
+  trx = await addressRegistry.registerAddress(
+    bytes32("chainlinkRegistry"),
+    tvlManager.address
   );
-  const addressRegistryDeployer = await impersonateAccount(
-    await addressRegistry.owner()
-  );
-  trx = await addressRegistry
-    .connect(addressRegistryDeployer)
-    .registerAddress(bytes32("chainlinkRegistry"), tvlManager.address);
   await trx.wait();
+  console.log("Registered TVL Manager with AddressRegistry.");
   console.logDone();
 
   console.log("Upgrading pools ...");
@@ -254,6 +255,7 @@ async function main(argv) {
   );
 
   for (const symbol of ["DAI", "USDC", "USDT"]) {
+    console.log(`- ${symbol}:`);
     const poolAddress = getDeployedAddress(
       symbol + "_PoolTokenProxy",
       networkName
@@ -263,7 +265,7 @@ async function main(argv) {
       .connect(poolDeployer)
       .upgradeAndCall(poolAddress, poolLogicV2.address, initData);
     await trx.wait();
-    console.log(`${symbol} pool upgraded.`);
+    console.log("  Pool upgraded.");
 
     const pool = await ethers.getContractAt(
       "PoolTokenV2",
@@ -271,11 +273,11 @@ async function main(argv) {
       poolDeployer
     );
     trx = await pool.infiniteApprove(poolManager.address);
-    console.log("Manager given infinite approval for pool.");
+    console.log("  Approve pool manager.");
     await trx.wait();
     const aggAddress = AGG_MAP[networkName][`${symbol}-USD`];
     trx = await pool.setPriceAggregator(aggAddress);
-    console.log("USD agg set.");
+    console.log("  USD agg set.");
     await trx.wait();
   }
   console.logDone();
