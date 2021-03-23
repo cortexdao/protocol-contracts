@@ -12,6 +12,7 @@ This framework will allow a tester to:
 The admin operations are:
 
 - fund a strategy account using tokens from APY.Finance stablecoin pools
+- register asset allocations for TVL computation
 - deposit strategy funds into a DeFi protocol
 - withdraw fund from a DeFi protocol
 - push funds to the APY.Finance stablecoin pools
@@ -41,22 +42,55 @@ Other user operations that are typically done through the webste, such as stakin
 - start chainlink node (in another terminal):  
   `make up`  
   (the first time, this will build the TVL adaptor image, which can take more than 5 minutes...)
-- deploy the upgraded APY.Finance system locally:  
+- deploy the upgraded APY.Finance system locally (in 3rd terminal):  
   `make audit_testing step=deploy`
 
 At this point, everything should be good-to-go but here are a few key things you may want to do:
 
-### Fund strategy accounts
+### Fund strategy account
+
+As part of the deployment, a strategy account has already been provisioned with ID `bytes32("alpha")`. As demonstrated in the sample scripts, the account ID is always used for funding or execution as part of a safety mechanism.
 
 - fund the deployed strategy account with stablecoins:  
   `make audit_testing step=fund`
 
+The above script will fund the account with 1 million DAI and 5 million USDC. The pool choices and amounts can be adjusted in this portion of the script:
+
+```javascript
+await poolManager.fundAccount(accountId, [
+  {
+    poolId: bytes32("daiPool"),
+    amount: daiAmount,
+  },
+  {
+    poolId: bytes32("usdcPool"),
+    amount: usdcAmount,
+  },
+]);
+```
+
 ### Register asset allocations
+
+Each asset allocation is a token placed in a particular way within the APY.Finance system. The same token may have multiple allocations
+managed in differing ways, whether they are held by different contracts or subject to different holding periods.
+
+Each asset allocation must be registered with the TVL Manager, in order for Chainlink nodes to include it within the TVL computation.
+
+The data required in an allocation is:
+
+- data: a struct with address and bytes fields where the bytes are encoded function
+  calldata to be used at the target address
+- symbol (string): the token symbol
+- decimals (uint256): the token decimals
+
+Curve 3pool example:
 
 - register expected asset allocations from Curve 3pool strategy:  
   `make audit_testing step=register_curve`
 
 ### Execute strategy
+
+The APY.Finance system is able to able to interact with any DeFi protocol through the use of "generic execution". Simply put, off-chain scripts use encoded function calldata passed into the Account Manager's `execute` function.
 
 - execute Curve 3pool strategy:  
   `make audit_testing step=execute_curve`
@@ -65,6 +99,11 @@ At this point, everything should be good-to-go but here are a few key things you
 
 - withdraw from Curve 3pool strategy:  
   `make audit_testing step=withdraw_curve`
+
+### Push funds to pools
+
+- withdraw from Curve 3pool strategy:  
+  `make audit_testing step=push_to_pools`
 
 ### User operations
 
@@ -82,14 +121,10 @@ These scripts let you engage in user actions, e.g. depositing into APY.Finance.
 
 The scripts being run are located in `scripts/audit_testing` (same location as this README). Some of the scripts can take command-line arguments, but to do so, they will have to be run outside of the `make` command, e.g. `HARDHAT_NETWORK=localhost scripts/audit_testing/user_deposit.js --amount=100`.
 
-### User operations
-
-deposit/remove from stablecoin pools
-
 ## Chainlink TVL adapter
 
-Further info: [APY.Finance Chainlink doc](../chainlink.md)
-
-## Asset allocation registration
+Further info: [APY.Finance Chainlink doc](../../chainlink.md)
 
 ## Generic execution
+
+Further info:

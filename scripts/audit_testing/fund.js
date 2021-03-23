@@ -17,12 +17,11 @@ const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = hre;
 const {
-  getDeployedAddress,
   bytes32,
   getStablecoinAddress,
   tokenAmountToBigNumber,
 } = require("../../utils/helpers");
-const { console } = require("./utils");
+const { console, getAddressRegistry } = require("./utils");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -35,14 +34,7 @@ async function main(argv) {
   const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
 
-  const addressRegistryAddress = getDeployedAddress(
-    "AddressRegistryProxy",
-    networkName
-  );
-  const addressRegistry = await ethers.getContractAt(
-    "AddressRegistry",
-    addressRegistryAddress
-  );
+  const addressRegistry = await getAddressRegistry(networkName);
   const poolManagerAddress = await addressRegistry.getAddress(
     bytes32("poolManager")
   );

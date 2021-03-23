@@ -51,24 +51,6 @@ async function main(argv) {
   const LP_TOKEN_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
   const LIQUIDITY_GAUGE_ADDRESS = "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A";
 
-  /*  Asset Allocations:
-   *
-   * Each asset allocation is a token placed in a particular way within
-   * the APY.Finance system. The same token may have multiple allocations
-   * managed in differing ways, whether they are held by different
-   * contracts or subject to different holding periods.
-   *
-   * Each asset allocation must be registered with TVLManager,
-   * in order for the Chainlink nodes to include it within their TVL
-   * computation.
-   *
-   * The data required in an allocation is:
-   *
-   * data: a pair (address, bytes) where the bytes are encoded function
-   *       calldata to be used at the target address
-   * symbol (string): the token symbol
-   * decimals (uint256): the token decimals
-   */
   const [, accountAddress] = await getStrategyAccountInfo(networkName);
 
   console.log("");
