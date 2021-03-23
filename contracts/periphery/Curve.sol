@@ -13,6 +13,11 @@ interface IStableSwap {
     function add_liquidity(uint256[3] memory amounts, uint256 min_mint_amount)
         external;
 
+    /// @dev the number of coins is hard-coded in curve contracts
+    // solhint-disable-next-line
+    function remove_liquidity(uint256 _amount, uint256[3] memory min_amounts)
+        external;
+
     /// @dev For newest curve pools like aave; older pools refer to a private `token` variable.
     // function lp_token() external view returns (address); // solhint-disable-line func-name-mixedcase
 }
@@ -22,6 +27,8 @@ interface ILiquidityGauge {
     function deposit(uint256 _value) external;
 
     function deposit(uint256 _value, address _addr) external;
+
+    function withdraw(uint256 _value) external;
 
     function balanceOf(address account) external view returns (uint256);
 }
