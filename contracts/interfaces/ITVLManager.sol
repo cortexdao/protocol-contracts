@@ -11,7 +11,7 @@ pragma experimental ABIEncoderV2;
  */
 interface ITVLManager {
     // struct representing an execution against a contract given bytes
-    // target is the garget contract to execute view calls agaisnt
+    // target is the target contract to execute view calls against
     // bytes data represents the encoded function signature + parameters
     struct Data {
         address target;
