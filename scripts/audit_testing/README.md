@@ -14,8 +14,8 @@ The admin operations are:
 - fund a strategy account using tokens from APY.Finance stablecoin pools
 - register asset allocations for TVL computation
 - deposit strategy funds into a DeFi protocol
-- withdraw fund from a DeFi protocol
-- push funds to the APY.Finance stablecoin pools
+- liquidate funds from a DeFi protocol
+- withdraw funds to the APY.Finance stablecoin pools
 
 The user operations are:
 
@@ -38,7 +38,8 @@ Other user operations that are typically done through the webste, such as stakin
 - install javascript dependencies:  
   `yarn`
 - run forked Mainnet:  
-  `make forked_mainnet`
+  `make forked_mainnet`  
+  **NOTE:** this requires `INFURA_API_KEY` be set as an env variable.
 - start chainlink node (in another terminal):  
   `make up`  
   (the first time, this will build the TVL adaptor image, which can take more than 5 minutes...)
@@ -95,15 +96,15 @@ The APY.Finance system is able to able to interact with any DeFi protocol throug
 - execute Curve 3pool strategy:  
   `make audit_testing step=execute_curve`
 
-### Withdraw from strategy
+### Liquidate strategy
 
 - withdraw from Curve 3pool strategy:  
-  `make audit_testing step=withdraw_curve`
+  `make audit_testing step=liquidate_curve`
 
-### Push funds to pools
+### Withdraw from account to pools
 
 - withdraw from Curve 3pool strategy:  
-  `make audit_testing step=push_to_pools`
+  `make audit_testing step=withdraw`
 
 ### User operations
 
@@ -114,12 +115,12 @@ These scripts let you engage in user actions, e.g. depositing into APY.Finance.
 - withdraw from APY stablecoin pool:  
   `HARDHAT_NETWORK=localhost scripts/audit_testing/user_withdraw.js --amount 125 --pool=usdc`
 
-### Check
+### Check deployed TVL
+
+The deployed TVL may take some time to update after an account has been funded or pushed funds to the pools. Note that after any transfer between pool(s) and account, the TVL must be updated by Chainlink before any further transfers in or out of pools are allowed (there is an explicit check in the mAPT token to revert any `getTVL` call until the Chainlink update has happened).
 
 - check deployed TVL:  
   `make audit_testing step=check_tvl`
-
-The scripts being run are located in `scripts/audit_testing` (same location as this README). Some of the scripts can take command-line arguments, but to do so, they will have to be run outside of the `make` command, e.g. `HARDHAT_NETWORK=localhost scripts/audit_testing/user_deposit.js --amount=100`.
 
 ## Chainlink TVL adapter
 
@@ -128,3 +129,10 @@ Further info: [APY.Finance Chainlink doc](../../chainlink.md)
 ## Generic execution
 
 Further info:
+
+## Error/Revert messages
+
+- `ProviderError: VM Exception while processing transaction: revert No data present`  
+  Only happens when no TVL has been submitted to the FluxAggregator yet. Usually happens when attempting an operation too soon after starting the Chainlink node.
+- `ProviderError: VM Exception while processing transaction: revert CHAINLINK_STALE_DATA`  
+  Likely means that the TVL has not updated since funds were transferred between the account and the pool(s). Waiting until the TVL updates will likely resolve the issue.
