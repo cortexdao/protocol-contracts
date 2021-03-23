@@ -128,7 +128,20 @@ Further info: [APY.Finance Chainlink doc](../../chainlink.md)
 
 ## Generic execution
 
-Further info:
+When constructing encoded function calldata thats passed into the Account Manager's execute function, the data is constructed with both the executable bytecode and the target address the bytecode will be executed against. The executable bytecode is the function signature + the function parameters encoded.
+
+For example consider an approval made against the DAI ERC20 contract that allows `0xD95C560b7662cB209725941bd9828644Bbf19Cb1` to move the max uint256 funds.
+
+```
+[
+  '0x6b175474e89094c44da98b954eedeac495271d0f'
+  '0x095ea7b3000000000000000000000000d95c560b7662cb209725941bd9828644bbf19cb1ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+]
+```
+
+When passed into the AccountManager's `execute()` targeting a deployed account, the result is the deployed account giving the allowance of max uint256 to `0xD95C560b7662cB209725941bd9828644Bbf19Cb1`
+
+Note: the same scheme is used for registering look up data within the TVL Manager.
 
 ## Error/Revert messages
 
