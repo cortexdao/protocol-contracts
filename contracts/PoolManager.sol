@@ -17,62 +17,22 @@ import "./MetaPoolToken.sol";
 import "./Account.sol";
 
 /**
- * @title APY Manager
+ * @title Pool Manager
  * @author APY.Finance
- * @notice This is the manager logic contract for use with the
+ * @notice This is the pool manager logic contract for use with the
  * manager proxy contract.
  *
- *--------------------
- * MANAGING CAPITAL
- *--------------------
- * The APY Manager orchestrates the movement of capital within the APY system.
- * This movement of capital occurs in two major ways:
+ * The Pool Manager orchestrates the movement of capital within the APY system
+ * between the PoolTokens and Accounts.
  *
- * - Capital transferred to and from APYPoolToken contracts and the
- *   APYAccount contract with the following functions:
+ * Transferring from the PoolToken contracts to the Account contract stages
+ * capital for deployment before yield farming strategies are executed.
  *
- *   - fundAccount
- *   - fundAndExecute
- *   - withdrawFromAccount
- *   - executeAndWithdraw
+ * Capital unwound from yield farming strategies for user withdrawals is transferred from the
+ * Account contract to the PoolToken contracts.
  *
- * - Capital routed to and from other protocols using generic execution with
- *   the following functions:
- *
- *   - execute
- *   - fundAndExecute
- *   - executeAndWithdraw
- *
- * Transferring from the APYPoolToken contracts to the Account contract stages
- * capital for deployment to yield farming strategies.  Capital unwound from
- * yield farming strategies for user withdrawals is transferred from the
- * Account contract to the APYPoolToken contracts.
- *
- * Routing capital to yield farming strategies using generic execution assumes
- * capital has been staged in the Account contract. Generic execution is also
- * used to unwind capital from yield farming strategies in preperation for
- * user withdrawal.
- *
- *--------------------
- * UPDATING TVL
- *--------------------
- * When the APY Manager routes capital using generic execution it can also
- * register an asset allocation with the TVLManager. Registering
- * asset allocations is important for Chainlink to calculate accurate TVL
- * values.
- *
- * The flexibility of generic execution means previously unused assets may be
- * acquired by the APYAccount contract, including those from providing
- * liquidity to a new protocol. These newly acquired assets and the manner
- * in which they are held in the system must be registered with the
- * TVLManager in order to be used in Chainlink's computation
- * of deployed TVL.
- *
- * Registration should not be done after generic execution as the TVL may
- * then be updated before the registered asset allocations are picked up by
- * Chainlink. Providing the option to register allocations atomically with
- * execution allows us to conveniently leverage generic execution while
- * avoiding late updates to the TVL.
+ * When funding an account, the Pool Manager simultaneously register the account
+ * with the TVLManager for the undelerying token pool to ensure the TVL is properly updated
  */
 contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     using SafeMath for uint256;
@@ -103,6 +63,9 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
      * repeatedly.
      *
      * Our proxy deployment will call this as part of the constructor.
+     * @param adminAddress the admin proxy to initialize with
+     * @param _mApt the metapool token to initialize with
+     * @param _addressRegistry the address registry to initialize with
      */
     function initialize(
         address adminAddress,
@@ -143,6 +106,9 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         _;
     }
 
+    /// @notice Sets the proxy admin address of the pool manager proxy
+    /// @dev only callable by owner
+    /// @param address the new proxy admin address of the pool manager
     function setAdminAddress(address adminAddress) public onlyOwner {
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
@@ -152,27 +118,35 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     /// @dev Allow contract to receive Ether.
     receive() external payable {} // solhint-disable-line no-empty-blocks
 
+    /// @notice Sets the metapool token address
+    /// @dev only callable by owner
+    /// @param address the address of the metapool token
     function setMetaPoolToken(address payable _mApt) public onlyOwner {
         require(Address.isContract(_mApt), "INVALID_ADDRESS");
         mApt = MetaPoolToken(_mApt);
     }
 
+    /// @notice Sets the address registry
+    /// @dev only callable by owner
+    /// @param address the address of the registry
     function setAddressRegistry(address _addressRegistry) public onlyOwner {
         require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistry(_addressRegistry);
     }
 
+    /// @notice Sets the new account factory
+    /// @dev only callable by owner
+    /// @param address the address of the account factory
     function setAccountFactory(address _accountFactory) public onlyOwner {
         require(Address.isContract(_accountFactory), "INVALID_ADDRESS");
         accountFactory = IAccountFactory(_accountFactory);
     }
 
     /**
-     * @notice Fund Account contract and register an asset allocation
-     * @param accountId The Account contract ID
-     * @param poolAmounts Specifies the PoolToken contracts to pull from and
-     * the amounts to pull.
-     *
+     * @notice Funds Account and register an asset allocation
+     * @dev only callable by owner. Also registers the pool underlyer for the account being funded
+     * @param accountId id of the Account being funded
+     * @param poolAmounts a list of PoolAmount structs denoting the pools id and amounts that will be used to fund the account
      * @notice PoolAmount example (pulls ~$1 from each pool to the Account):
      *      [
      *          { poolId: "daiPool", amount: "1000000000000" },
@@ -208,23 +182,9 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         return (pools, amounts);
     }
 
-    /**
-     * @notice Register each pool underlyer's allocation for the given account
-     *         so that the TVL computation will pick up the account's balance.
-     * @param account the address holding the transferred underlyers
-     * @param pools pools whose underlyers need to be registered
-     * @notice AssetAllocation example (gets the DAI balance of the account):
-     *      {
-     *          sequenceId: "daiBalance",
-     *          symbol: "DAI",
-     *          decimals: 18,
-     *          data: {
-     *             target: 0x6B175474E89094C44Da98b954EedeAC495271d0F,
-     *             data: 0x... // calldata for balanceOf function with account
-     *                         // address encoded as parameter
-     *          }
-     *      }
-     */
+    /// @notice Helper function to register a pool's underlyer balanceOf method for an account, when the account is funded
+    /// @param account the address of the account that will be registered with the balanceOf method
+    /// @param pools a list of pools that need their underlyer balanceOf method registered with the provided account being funded
     function _registerPoolUnderlyers(
         address account,
         PoolTokenV2[] memory pools
@@ -250,10 +210,10 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     }
 
     /**
-     * @notice Move capital from PoolTokenV2 contracts to an Account
-     * @param account The Account contract ID
-     * @param pools the pools to pull from
-     * @param amounts the amounts to pull from pools
+     * @notice Helper function move capital from PoolToken contracts to an Account
+     * @param account the address to move funds to
+     * @param pools a list of pools to pull funds from
+     * @param amounts a list of fund amounts to pull from pools
      */
     function _fundAccount(
         address account,
@@ -286,11 +246,10 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     }
 
     /**
-     * @notice Move capital from an Account to the PoolToken contracts
-     * @param accountId The Account contract ID
-     * @param poolAmounts Specifies the PoolToken contracts to push to and
-     * the amounts to push.
-     *
+     * @notice Moves capital from an Account to the PoolToken contracts
+     * @dev only callable by owner
+     * @param accountId the account id to withdraw funds from
+     * @param poolAmounts a list of PoolAmount structs denoting the pools id and amounts that will deposited back into the pools
      * @notice PoolAmount example (pushes ~$1 to each pool from the Account):
      *      [
      *          { poolId: "daiPool", amount: "1000000000000" },
@@ -364,15 +323,21 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         }
     }
 
-    /// @notice Return the list of pool IDs.
+    /// @notice Returns a list of all the pool ids
+    /// @return bytes32 list of pool ids
     function getPoolIds() public view returns (bytes32[] memory) {
         return _poolIds;
     }
 
+    /// @notice Sets a list of pool ids
+    /// @dev only callable by owner. overwrites prior list of pool ids
+    /// @param poolIds the new list of pool ids
     function setPoolIds(bytes32[] memory poolIds) public onlyOwner {
         _poolIds = poolIds;
     }
 
+    /// @notice Removes the list of pool ids
+    /// @dev only callable by owner. removes all pool ids
     function deletePoolIds() external onlyOwner {
         delete _poolIds;
     }
