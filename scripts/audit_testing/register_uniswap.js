@@ -36,68 +36,38 @@ async function main(argv) {
   console.log("");
 
   console.log("");
-  console.log("Curve 3pool");
+  console.log("Uniswap");
   console.log("");
-  const CurvePeriphery = await ethers.getContractFactory("CurvePeriphery");
-  const curve = await CurvePeriphery.deploy();
-  await curve.deployed();
+  const UniswapPeriphery = await ethers.getContractFactory("UniswapPeriphery");
+  const uniswap = await UniswapPeriphery.deploy();
+  await uniswap.deployed();
 
-  // 3Pool addresses:
-  const STABLE_SWAP_ADDRESS = "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7";
-  const LP_TOKEN_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
-  const LIQUIDITY_GAUGE_ADDRESS = "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A";
+  // USDC-USDT pair
+  const LP_TOKEN_ADDRESS = "0x3041cbd36888becc7bbcbc0045e3b1f144466f5f";
 
   const [, accountAddress] = await getStrategyAccountInfo(networkName);
 
   console.log("");
-  console.log("Register 3pool allocations for strategy account ...");
+  console.log("Register Uniswap allocations for strategy account ...");
   console.log("");
 
-  const calldataForDai = CurvePeriphery.interface.encodeFunctionData(
-    "getUnderlyerBalance(address,address,address,address,uint256)",
-    [
-      accountAddress,
-      STABLE_SWAP_ADDRESS,
-      LIQUIDITY_GAUGE_ADDRESS,
-      LP_TOKEN_ADDRESS,
-      0,
-    ]
+  const calldataForUsdc = UniswapPeriphery.interface.encodeFunctionData(
+    "getUnderlyerBalance(address,address,uint256)",
+    [accountAddress, LP_TOKEN_ADDRESS, 0]
   );
-  const calldataForUsdc = CurvePeriphery.interface.encodeFunctionData(
-    "getUnderlyerBalance(address,address,address,address,uint256)",
-    [
-      accountAddress,
-      STABLE_SWAP_ADDRESS,
-      LIQUIDITY_GAUGE_ADDRESS,
-      LP_TOKEN_ADDRESS,
-      1,
-    ]
-  );
-  const calldataForUsdt = CurvePeriphery.interface.encodeFunctionData(
-    "getUnderlyerBalance(address,address,address,address,uint256)",
-    [
-      accountAddress,
-      STABLE_SWAP_ADDRESS,
-      LIQUIDITY_GAUGE_ADDRESS,
-      LP_TOKEN_ADDRESS,
-      2,
-    ]
+  const calldataForUsdt = UniswapPeriphery.interface.encodeFunctionData(
+    "getUnderlyerBalance(address,address,uint256)",
+    [accountAddress, LP_TOKEN_ADDRESS, 1]
   );
 
   let trx = await tvlManager.addAssetAllocation(
-    [curve.address, calldataForDai],
-    "DAI",
-    18
-  );
-  await trx.wait();
-  trx = await tvlManager.addAssetAllocation(
-    [curve.address, calldataForUsdc],
+    [uniswap.address, calldataForUsdc],
     "USDC",
     6
   );
   await trx.wait();
   trx = await tvlManager.addAssetAllocation(
-    [curve.address, calldataForUsdt],
+    [uniswap.address, calldataForUsdt],
     "USDT",
     6
   );

@@ -16,11 +16,7 @@
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = hre;
-const {
-  bytes32,
-  getStablecoinAddress,
-  tokenAmountToBigNumber,
-} = require("../../utils/helpers");
+const { bytes32, tokenAmountToBigNumber } = require("../../utils/helpers");
 const { console, getAddressRegistry } = require("./utils");
 
 // eslint-disable-next-line no-unused-vars
@@ -47,15 +43,9 @@ async function main(argv) {
   console.log("Funding strategy account from pools ...");
   console.log("");
 
-  const stablecoins = {};
-  for (const symbol of ["DAI", "USDC", "USDT"]) {
-    const tokenAddress = getStablecoinAddress(symbol, networkName);
-    const token = await ethers.getContractAt("IDetailedERC20", tokenAddress);
-    stablecoins[symbol] = token;
-  }
-
   const daiAmount = tokenAmountToBigNumber("1000000", "18"); // 1MM DAI
   const usdcAmount = tokenAmountToBigNumber("5000000", "6"); // 5MM USDC
+  const tetherAmount = tokenAmountToBigNumber("2000000", "6"); // 2MM Tether
 
   const accountId = bytes32("alpha");
   await poolManager.fundAccount(accountId, [
@@ -66,6 +56,10 @@ async function main(argv) {
     {
       poolId: bytes32("usdcPool"),
       amount: usdcAmount,
+    },
+    {
+      poolId: bytes32("usdtPool"),
+      amount: tetherAmount,
     },
   ]);
   console.log("... done.");

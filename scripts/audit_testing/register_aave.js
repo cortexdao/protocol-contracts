@@ -35,10 +35,6 @@ async function main(argv) {
   console.log("Registering ...");
   console.log("");
 
-  /****************************************/
-  /********** CURVE FINANCE ***************/
-  /****************************************/
-
   console.log("");
   console.log("Aave lending pool");
   console.log("");
