@@ -1,5 +1,28 @@
 # Auditor Testing Framework
 
+The framework is comprised of the scripts in the `scripts/audit_testing` directory, the dockerized Chainlink setup, and relevant commands in the `Makefile` located in the root directory of the repo.
+
+This framework will allow a tester to:
+
+- startup a local Ethereum node on port 8545, forking Mainnet state and configured for use with the scripts
+- start a Chainlink node on port 6688, running the configured job to call the TVL adaptor based on polling and value deviation
+- deploy the new and upgraded smart contracts of the APY.Finance system
+- interact with the APY.Finance system as an admin running the platform and as a user doing normal operations
+
+The admin operations are:
+
+- fund a strategy account using tokens from APY.Finance stablecoin pools
+- deposit strategy funds into a DeFi protocol
+- withdraw fund from a DeFi protocol
+- push funds to the APY.Finance stablecoin pools
+
+The user operations are:
+
+- deposit into the APY.Finance stablecoin pools
+- withdraw from the APY.Finance stablecoin pools
+
+Other user operations that are typically done through the webste, such as staking LP tokens or claiming rewards, are not intended to be covered by the framework.
+
 ## Requirements
 
 - Docker: [Mac](https://www.docker.com/docker-mac) | [Ubuntu](https://www.docker.com/docker-ubuntu)\
@@ -64,6 +87,8 @@ The scripts being run are located in `scripts/audit_testing` (same location as t
 deposit/remove from stablecoin pools
 
 ## Chainlink TVL adapter
+
+Further info: [APY.Finance Chainlink doc](../chainlink.md)
 
 ## Asset allocation registration
 
