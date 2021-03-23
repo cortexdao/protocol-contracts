@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 interface IExecutor {
     // struct representing an execution against a contracts given bytes data
     // target is the target contract to execute against
-    // bytes data representing the encoded function signature + parameters
+    // bytes data representing the encoded function signature + function parameters
     struct Data {
         address target;
         bytes data;

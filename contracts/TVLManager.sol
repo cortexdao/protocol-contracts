@@ -9,8 +9,13 @@ import "./interfaces/ITVLManager.sol";
 
 /// @title TVL Manager
 /// @author APY.Finance
-/// @notice Deployed assets can exist across various platforms within the defi ecosystem: pools, accounts, defi protocols, etc. This contract tracks deployed capital by registering the look up functions so that the TVL can be properly computed.
-/// @dev It is imperative that this manager has the most up to date asset allocations registered. Any assets in the system that have been deployed, but are not registered can have devastating and catastrophic effects on the TVL
+/// @notice Deployed assets can exist across various platforms within the
+/// defi ecosystem: pools, accounts, defi protocols, etc. This contract
+/// tracks deployed capital by registering the look up functions so that
+/// the TVL can be properly computed.
+/// @dev It is imperative that this manager has the most up to date asset
+/// allocations registered. Any assets in the system that have been deployed,
+/// but are not registered can have devastating and catastrophic effects on the TVL
 contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
@@ -59,7 +64,8 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
         emit AccountManagerChanged(_manager);
     }
 
-    /// @dev Reverts if non-permissed account calls. Permissioned accounts are: owner, pool manager, and account manager
+    /// @dev Reverts if non-permissed account calls.
+    /// Permissioned accounts are: owner, pool manager, and account manager
     modifier onlyPermissioned() {
         require(
             msg.sender == owner() ||
@@ -71,7 +77,8 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
     }
 
     /// @notice Registers a new asset allocation
-    /// @dev only permissed accounts can call. New ids are uniquely determined by the provided data struct; no duplicates are allowed
+    /// @dev only permissed accounts can call.
+    /// New ids are uniquely determined by the provided data struct; no duplicates are allowed
     /// @param data the data struct containing the target address and the bytes lookup data that will be registered
     /// @param symbol the symbol to register for the asset allocation
     /// @param decimals the decimals to register for the new asset allocation

@@ -7,11 +7,11 @@ import "./interfaces/IExecutor.sol";
 /**
  * @title Contract that generically executes functions given a target contract to execute against
  * @author APY.Finance
- * @notice This contract is delegate called to by an APYAccount.sol when executing sequences
+ * @notice This contract is delegate called to by an Account when executing sequences
  */
 contract GenericExecutor is Ownable, IExecutor {
     /**
-     * @notice Given a Data struct with a target and bytes sequence data, executes the method on the target contract
+     * @notice Given a Data struct with a target contract and bytes sequence data, executes the bytes data against the target contract
      * @param executionSteps Data struct containing the target address to execute against and the bytes data to execute
      * @dev Given the generic functionality of this contract, only owner can call this method to prevent situations where
      *      malicious actors from causing this contract to self destruct by delegating to another contract
@@ -33,10 +33,10 @@ contract GenericExecutor is Ownable, IExecutor {
 
     /**
      * @notice performs a call() against a target contract
-     * @param target the bytes data will be executed against
-     * @param data the bytes data representing the encoded function signature + parameters
-     * @return returns bytes memory represneting the returned data from the target.call()
-     * @dev will bubble up revert messages
+     * @dev bubbles up revert messages
+     * @param target the contract the bytes data will be executed against
+     * @param data the bytes data representing the encoded function signature + function parameters
+     * @return returns bytes memory representing the returned data from the target.call()
      */
     function _call(address target, bytes memory data)
         private
