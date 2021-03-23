@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 const hre = require("hardhat");
 const { ethers, network } = hre;
 const { argv } = require("yargs");

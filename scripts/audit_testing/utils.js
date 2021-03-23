@@ -86,8 +86,17 @@ async function getStablecoins(networkName) {
   return stablecoins;
 }
 
+async function getApyPool(networkName, symbol) {
+  const addressRegistry = await getAddressRegistry(networkName);
+  const poolId = bytes32(symbol.toLowerCase() + "Pool");
+  const poolAddress = await addressRegistry.getAddress(poolId);
+  const pool = await ethers.getContractAt("PoolTokenV2", poolAddress);
+  return pool;
+}
+
 module.exports = {
   console,
+  getApyPool,
   getStablecoins,
   getAddressRegistry,
   getAccountManager,
