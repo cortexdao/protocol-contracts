@@ -215,7 +215,7 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
     /// @notice Executes data's bytes look up data against data's target address
     /// @dev execution is a static call
     /// @param data the data hash containing the target address and the bytes lookup data to execute
-    /// @return returns return data from the executed contract
+    /// @return returnData returns return data from the executed contract
     function executeView(Data memory data)
         public
         view

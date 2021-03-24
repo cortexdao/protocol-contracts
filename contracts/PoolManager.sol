@@ -107,7 +107,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
 
     /// @notice Sets the proxy admin address of the pool manager proxy
     /// @dev only callable by owner
-    /// @param address the new proxy admin address of the pool manager
+    /// @param adminAddress the new proxy admin address of the pool manager
     function setAdminAddress(address adminAddress) public onlyOwner {
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
@@ -119,7 +119,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
 
     /// @notice Sets the metapool token address
     /// @dev only callable by owner
-    /// @param address the address of the metapool token
+    /// @param _mApt the address of the metapool token
     function setMetaPoolToken(address payable _mApt) public onlyOwner {
         require(Address.isContract(_mApt), "INVALID_ADDRESS");
         mApt = MetaPoolToken(_mApt);
@@ -127,7 +127,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
 
     /// @notice Sets the address registry
     /// @dev only callable by owner
-    /// @param address the address of the registry
+    /// @param _addressRegistry the address of the registry
     function setAddressRegistry(address _addressRegistry) public onlyOwner {
         require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistry(_addressRegistry);
@@ -135,7 +135,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
 
     /// @notice Sets the new account factory
     /// @dev only callable by owner
-    /// @param address the address of the account factory
+    /// @param _accountFactory the address of the account factory
     function setAccountFactory(address _accountFactory) public onlyOwner {
         require(Address.isContract(_accountFactory), "INVALID_ADDRESS");
         accountFactory = IAccountFactory(_accountFactory);
