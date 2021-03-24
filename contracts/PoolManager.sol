@@ -230,7 +230,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         PoolTokenV2[] memory pools
     ) internal {
         ITVLManager tvlManager =
-            ITVLManager(addressRegistry.getAddress("chainlinkRegistry"));
+            ITVLManager(addressRegistry.getAddress("tvlManager"));
         for (uint256 i = 0; i < pools.length; i++) {
             PoolTokenV2 pool = pools[i];
             IDetailedERC20 underlyer = pool.underlyer();
