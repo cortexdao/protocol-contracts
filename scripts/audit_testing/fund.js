@@ -31,9 +31,7 @@ async function main(argv) {
   console.log("Deployer address:", deployer.address);
 
   const addressRegistry = await getAddressRegistry(networkName);
-  const poolManagerAddress = await addressRegistry.getAddress(
-    bytes32("poolManager")
-  );
+  const poolManagerAddress = await addressRegistry.poolManagerAddress();
   const poolManager = await ethers.getContractAt(
     "PoolManager",
     poolManagerAddress

@@ -20,6 +20,7 @@ const {
   getGasPrice,
   updateDeployJsons,
   getDeployedAddress,
+  bytes32,
 } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
@@ -95,13 +96,18 @@ async function main(argv) {
   console.log("");
 
   gasPrice = await getGasPrice(argv.gasPrice);
-  const trx = await proxyAdmin.upgrade(proxy.address, logic.address, {
+  let trx = await proxyAdmin.upgrade(proxy.address, logic.address, {
     gasPrice,
   });
   console.log(
     "Upgrade:",
     `https://etherscan.io/tx/${logic.deployTransaction.hash}`
   );
+  await trx.wait();
+  const addressRegistry = AddressRegistryV2.attach(proxy.address);
+  trx = await addressRegistry.deleteAddress(bytes32("manager"));
+  await trx.wait();
+  trx = await addressRegistry.deleteAddress(bytes32("chainlinkRegistry"));
   await trx.wait();
 
   updateDeployJsons(networkName, deploy_data);

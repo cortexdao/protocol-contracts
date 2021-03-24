@@ -117,6 +117,7 @@ async function main(argv) {
   await trx.wait();
   console.logDone();
 
+  console.log("Upgrading AddressRegistry ...");
   const addressRegistryAddress = getDeployedAddress(
     "AddressRegistryProxy",
     networkName
@@ -128,7 +129,43 @@ async function main(argv) {
   const addressRegistryDeployer = await impersonateAccount(
     await addressRegistry.owner()
   );
-  addressRegistry = addressRegistry.connect(addressRegistryDeployer);
+  trx = await deployer.sendTransaction({
+    to: addressRegistryDeployer.address,
+    value: ethers.utils.parseEther("1.0"),
+  });
+  await trx.wait();
+
+  const addressRegistryAdminAddress = getDeployedAddress(
+    "AddressRegistryProxyAdmin",
+    networkName
+  );
+  const addressRegistryAdmin = await ethers.getContractAt(
+    "ProxyAdmin",
+    addressRegistryAdminAddress,
+    addressRegistryDeployer
+  );
+  const AddressRegistryV2 = await ethers.getContractFactory(
+    "AddressRegistryV2",
+    addressRegistryDeployer
+  );
+  const addressRegistryLogic = await AddressRegistryV2.deploy();
+  await addressRegistryLogic.deployed();
+  const addressRegistryProxyAddress = getDeployedAddress(
+    "AddressRegistryProxy",
+    networkName
+  );
+  trx = await addressRegistryAdmin.upgrade(
+    addressRegistryProxyAddress,
+    addressRegistryLogic.address
+  );
+  await trx.wait();
+  addressRegistry = AddressRegistryV2.attach(
+    addressRegistryProxyAddress,
+    addressRegistryDeployer
+  );
+  await addressRegistry.deleteAddress(bytes32("manager"));
+  await addressRegistry.deleteAddress(bytes32("chainlinkRegistry"));
+  console.logDone();
 
   // Note: in prod deployment, separate admins are deployed for contracts
   console.log("Deploying ProxyAdmin ...");

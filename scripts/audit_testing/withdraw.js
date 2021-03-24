@@ -27,7 +27,6 @@ const {
   getPoolManager,
   getAccountManager,
   getStablecoins,
-  getApyPool,
 } = require("./utils");
 
 // eslint-disable-next-line no-unused-vars
@@ -41,7 +40,7 @@ async function main(argv) {
   const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
 
-  const [accountId, accountAddress] = await getStrategyAccountInfo(networkName);
+  const [accountId] = await getStrategyAccountInfo(networkName);
   const accountManager = await getAccountManager(networkName);
   const poolManager = await getPoolManager(networkName);
 
@@ -51,18 +50,8 @@ async function main(argv) {
 
   const stablecoins = await getStablecoins(networkName);
 
-  const daiAmount = tokenAmountToBigNumber("999000", "18"); // 1MM DAI
+  const daiAmount = tokenAmountToBigNumber("990000", "18"); // 1MM DAI
   const usdcAmount = tokenAmountToBigNumber("4990000", "6"); // 5MM USDC
-  const daiPool = await getApyPool(networkName, "DAI");
-  const usdcPool = await getApyPool(networkName, "USDC");
-  console.log(
-    "Deployed value (DAI):",
-    (await daiPool.getDeployedValue()).toString()
-  );
-  console.log(
-    "Deployed value (USDC):",
-    (await usdcPool.getDeployedValue()).toString()
-  );
 
   const ifaceERC20 = new ethers.utils.Interface(
     artifacts.require("IDetailedERC20").abi
@@ -71,8 +60,6 @@ async function main(argv) {
     "approve(address,uint256)",
     [poolManager.address, MAX_UINT256]
   );
-  console.log(await stablecoins["DAI"].balanceOf(accountAddress));
-  console.log(await stablecoins["USDC"].balanceOf(accountAddress));
   const executionSteps = [
     [stablecoins["DAI"].address, approveManager],
     [stablecoins["USDC"].address, approveManager],

@@ -26,7 +26,7 @@ async function getAddressRegistry(networkName) {
     networkName
   );
   const addressRegistry = await ethers.getContractAt(
-    "AddressRegistry",
+    "AddressRegistryV2",
     addressRegistryAddress
   );
   return addressRegistry;
@@ -34,9 +34,7 @@ async function getAddressRegistry(networkName) {
 
 async function getPoolManager(networkName) {
   const addressRegistry = await getAddressRegistry(networkName);
-  const poolManagerAddress = await addressRegistry.getAddress(
-    bytes32("poolManager")
-  );
+  const poolManagerAddress = await addressRegistry.poolManagerAddress();
   const poolManager = await ethers.getContractAt(
     "PoolManager",
     poolManagerAddress
@@ -46,9 +44,7 @@ async function getPoolManager(networkName) {
 
 async function getAccountManager(networkName) {
   const addressRegistry = await getAddressRegistry(networkName);
-  const accountManagerAddress = await addressRegistry.getAddress(
-    bytes32("accountManager")
-  );
+  const accountManagerAddress = await addressRegistry.accountManagerAddress();
   const accountManager = await ethers.getContractAt(
     "AccountManager",
     accountManagerAddress
@@ -58,9 +54,7 @@ async function getAccountManager(networkName) {
 
 async function getTvlManager(networkName) {
   const addressRegistry = await getAddressRegistry(networkName);
-  const tvlManagerAddress = await addressRegistry.getAddress(
-    bytes32("chainlinkRegistry")
-  );
+  const tvlManagerAddress = await addressRegistry.tvlManagerAddress();
   const tvlManager = await ethers.getContractAt(
     "TVLManager",
     tvlManagerAddress
