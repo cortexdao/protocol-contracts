@@ -12,13 +12,13 @@ MSG_FILE='.git/COMMIT_EDITMSG'
 # define the expected format of message
 SUMMARY_MAX=50
 BODY_MAX=72
-E_SUMMARY_MSG="Violation: summary length exceeds $SUMMARY_MAX chars"
+E_SUMMARY_MSG="❌ Violation: summary length exceeds $SUMMARY_MAX chars"
 E_SUMMARY=1 
-E_SEPARATOR_MSG="Violation: no blank line separates summary from body"
+E_SEPARATOR_MSG="❌ Violation: no blank line separates summary from body"
 E_SEPARATOR=2
-E_BODY_MSG="Violation: body width exceeds $BODY_MAX chars"
+E_BODY_MSG="❌ Violation: body width exceeds $BODY_MAX chars"
 E_BODY=3 
-E_ONLY_COMMENTS_MSG="Error: message contains only comments"
+E_ONLY_COMMENTS_MSG="❌ Error: message contains only comments"
 E_ONLY_COMMENTS=4
 
 RETVAL=0
@@ -47,14 +47,14 @@ if [ "$num_lines" -gt 1 ]; then
 fi
 
 if [ "$num_lines" -gt 2 ]; then
-    tail -n +3 clean_msg_file.tmp | while read line; do
+    while read line; do
         num_chars=`echo $line | wc -m`
         if [ $num_chars -gt $BODY_MAX ]; then
             echo "$E_BODY_MSG"
             RETVAL=$E_BODY
             break
         fi
-    done
+    done < <(tail -n +3 clean_msg_file.tmp)
 fi
 
 

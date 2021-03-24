@@ -5,9 +5,6 @@ node_modules/
 cache/
 artifacts/*
 
-# Deployment
-deployments/localhost/
-
 # Solidity coverage files
 coverage.json
 coverage/
@@ -17,6 +14,7 @@ coverage/
 
 # env files
 .env
+/alpha.env
 
 # npm
 .npmrc
@@ -37,3 +35,5 @@ subgraph/build
 # vim
 *.swp
 
+# cloned chainlink repo
+/chainlink-tvl-adapter

@@ -1,0 +1,56 @@
+title Unwinding of Capital
+
+participant USDCPool#steelblue
+participant DAIPool#yellow
+participant USDTPool#lightgreen
+participant USDC#steelblue
+participant DAI#yellow
+participant USDT#lightgreen
+participant APYManager#violet
+participant mAPT#hotpink
+participant APYStrategy(proxy)
+participant Generic Executor#silver
+
+abox over APYManager#pink: Unroll Initiated
+activate APYManager #pink
+
+#Unroll funds
+group #red Unroll
+APYManager ->APYStrategy(proxy): execute(executionData)
+activate APYStrategy(proxy)
+APYStrategy(proxy) ->Generic Executor: delegateCall(executionData)
+activate Generic Executor #silver
+group #silver Enable Manager to move funds
+Generic Executor ->USDC: approve(APYManager, max)
+Generic Executor ->DAI: approve(APYManager, max)
+Generic Executor ->USDT: approve(APYManager, max)
+end
+Generic Executor -> ]: unroll funds
+Generic Executor -> ]: unroll funds
+Generic Executor -> ]: unroll funds
+Generic Executor -->APYStrategy(proxy):
+deactivate Generic Executor
+APYStrategy(proxy) -->APYManager:
+deactivate APYStrategy(proxy)
+end 
+
+# Pull funds for deployment
+group #steelblue USDC Funds:
+APYManager -> USDC: transferFrom(APYStrategy, USDCPool, amount)
+APYManager ->mAPT: burn(USDCPool, amount)
+abox over APYStrategy(proxy)#steelblue: USDC relinquished
+end
+group #yellow DAI Funds:
+APYManager -> DAI: transferFrom(APYStrategy, DAIPool, amount)
+APYManager ->mAPT: burn(DAIPool, amount)
+abox over APYStrategy(proxy)#yellow: DAI relinquished
+end 
+group #lightgreen USDT Funds:
+APYManager -> USDT: transferFrom(APYStrategy, USDTPool, amount)
+APYManager ->mAPT: burn(USDTPool, amount)
+abox over APYStrategy(proxy)#lightgreen: USDT relinquished
+end
+
+
+abox over APYManager#pink: Funds Unrolled
+deactivate APYManager

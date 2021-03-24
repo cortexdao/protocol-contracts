@@ -1,0 +1,50 @@
+[
+  {
+    "strategy": "yDAI_yUSDC_yUSDT_yTUSD",
+    "DAI": 10,
+    "USDC": 5,
+    "USDT": 5
+  },
+  {
+    "strategy": "cDAI_cUSDC_cUSDT",
+    "DAI": 2,
+    "USDC": 2,
+    "USDT": 0
+  },
+  {
+    "strategy": "cDAI_cUSDC",
+    "DAI": 0,
+    "USDC": 15,
+    "USDT": 0
+  },
+  {
+    "strategy": "Aave",
+    "DAI": 0,
+    "USDC": 2,
+    "USDT": 0
+  },
+  {
+    "strategy": "DUSD",
+    "DAI": 0,
+    "USDC": 2,
+    "USDT": 0
+  },
+  {
+    "strategy": "sUSD",
+    "DAI": 0,
+    "USDC": 2,
+    "USDT": 0
+  },
+  {
+    "strategy": "DODO",
+    "DAI": 0,
+    "USDC": 10,
+    "USDT": 10
+  },
+  {
+    "strategy": "MITH",
+    "DAI": 10,
+    "USDC": 5,
+    "USDT": 5
+  }
+]

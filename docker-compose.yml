@@ -1,0 +1,53 @@
+version: '3.9' # optional since v1.27.0
+services:
+  db:
+    image: postgres
+    ports:
+      - '5432:5432'
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    volumes:
+      - 'db-data:/var/lib/postgresql/data'
+    tty: true
+
+  node:
+    image: smartcontract/chainlink:0.9.4
+    entrypoint: >
+      bash -c "while !</dev/tcp/db/5432; do sleep 1; done;
+      chainlink local import /docker/keystore.json &&
+      chainlink local n -p /docker/password -a /docker/api"
+    ports:
+      - '6688:6688'
+    depends_on:
+      - db
+    env_file:
+      - ./docker/chainlink.env
+    volumes:
+      - 'node-data:/chainlink'
+      - './docker:/docker'
+    tty: true
+    stdin_open: true
+    extra_hosts:
+      - 'dockerhost:$DOCKERHOST'
+
+  adapter:
+    build:
+      context: ./chainlink-tvl-adapter/
+      args:
+        - name=apy-finance
+        - adapter=composite/apy-finance
+    ports:
+      - '8080:8080'
+    environment:
+      - RPC_URL=http://dockerhost:8545
+      # - RPC_URL=https://mainnet.infura.io/v3/85b3b7f350b448c58c7e36709521f6da
+      - REGISTRY_ADDRESS=0x7ec81b7035e91f8435bdeb2787dcbd51116ad303
+      - DATA_PROVIDER=coingecko
+    tty: true
+    stdin_open: true
+    extra_hosts:
+      - 'dockerhost:$DOCKERHOST'
+
+volumes:
+  db-data:
+  node-data:

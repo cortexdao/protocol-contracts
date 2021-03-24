@@ -1,0 +1,65 @@
+title Deployment of Capital
+
+participant USDCPool#steelblue
+participant DAIPool#yellow
+participant USDTPool#lightgreen
+participant USDC#steelblue
+participant DAI#yellow
+participant USDT#lightgreen
+participant APYManager#violet
+participant mAPT#hotpink
+participant APYAssetAllocationRegistry#pink
+participant APYAccount(proxy)
+participant Generic Executor#silver
+
+
+# Give permission to Manager to move funds
+group Setup Manager approval to move funds
+USDCPool -> USDC: approve(Manager, max)
+DAIPool -> DAI: approve(Manager, max)
+USDTPool -> USDT: approve(Manager, max)
+end
+
+abox over APYManager#pink: Deployment Initiated
+activate APYManager #pink
+
+APYManager -> ]: deploy APYAccount proxy
+
+# Register Account Positions
+APYManager ->APYAssetAllocationRegistry: addAssetAllocation(...)
+
+
+# Pull funds for deployment
+group #steelblue USDC Funds:
+APYManager -> USDC: transferFrom(USDCPool, APYAccount, amount)
+APYManager ->mAPT: mint(USDCPool, amount)
+abox over APYAccount(proxy)#steelblue: USDC aquired
+end
+group #yellow DAI Funds:
+APYManager -> DAI: transferFrom(DAIPool, APYAccount, amount)
+APYManager ->mAPT: mint(DAIPool, amount)
+abox over APYAccount(proxy)#yellow: DAI aquired
+end 
+group #lightgreen USDT Funds:
+APYManager -> USDT: transferFrom(USDTPool, APYAccount, amount)
+APYManager ->mAPT: mint(USDTPool, amount)
+abox over APYAccount(proxy)#lightgreen: USDT aquired
+end
+
+#Deploy funds
+group #red Deployment
+APYManager ->APYAccount(proxy): execute(executionData)
+activate APYAccount(proxy)
+APYAccount(proxy) ->Generic Executor: delegateCall(executionData)
+activate Generic Executor #silver
+Generic Executor -> ]: deploy funds
+Generic Executor -> ]: deploy funds
+Generic Executor -> ]: deploy funds
+Generic Executor -->APYAccount(proxy):
+deactivate Generic Executor
+APYAccount(proxy) -->APYManager:
+deactivate APYAccount(proxy)
+end
+
+abox over APYManager#pink: Funds Deployed
+deactivate APYManager

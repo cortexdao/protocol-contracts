@@ -1,0 +1,46 @@
+title Chainlink TVL Adapter
+
+participant ChainlinkNode#lightblue
+participant APYAssetAllocationRegistry#pink
+participant ERC20#yellow
+participant APYPeripheryContract
+participant DeFiProtocol
+database PriceFeed-1#lightgray
+database PriceFeed-2#lightgray
+database PriceFeed-3#lightgray
+participant FluxAggregator#lightblue
+
+ChainlinkNode -> APYAssetAllocationRegistry: getAssetAllocationIds()
+
+//Loop through Ids to price
+loop#lightblue Loop over Allocation Ids
+activate ChainlinkNode
+ChainlinkNode ->APYAssetAllocationRegistry: symbolOf(id)
+ChainlinkNode ->APYAssetAllocationRegistry: decimalsOf(id)
+ChainlinkNode ->APYAssetAllocationRegistry: balanceOf(id)
+activate APYAssetAllocationRegistry
+alt #yellow Protocol
+APYAssetAllocationRegistry -> ERC20: balanceOf(account)
+else Periphery
+APYAssetAllocationRegistry -> APYPeripheryContract: balanceOf(account)
+activate APYPeripheryContract
+APYPeripheryContract ->DeFiProtocol: call() 
+APYPeripheryContract ->DeFiProtocol: call()
+APYPeripheryContract ->DeFiProtocol: call()
+APYPeripheryContract -->APYAssetAllocationRegistry:
+deactivate APYPeripheryContract
+end
+APYAssetAllocationRegistry -->ChainlinkNode:
+deactivate APYAssetAllocationRegistry
+
+// Price Asset
+par#lightgreen PriceFeed-1
+ChainlinkNode ->PriceFeed-1: look up price using symbol
+thread PriceFeed-2
+ChainlinkNode ->PriceFeed-2: look up price using symbol
+thread PriceFeed-3
+ChainlinkNode ->PriceFeed-3: look up price using symbol
+end
+end
+abox over ChainlinkNode#Pink: Compute TVL
+ChainlinkNode -> FluxAggregator: submit(TVL)

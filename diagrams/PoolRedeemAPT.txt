@@ -1,0 +1,22 @@
+title Redeem APT for UnderlyingERC20
+
+actor User
+participant APYPool#violet
+participant UnderlyingERC20#yellow
+participant APYMetaPoolToken#pink
+participant FluxAggregator(ERC20)#lightblue
+participant FluxAggregator(TVL)#turquoise
+
+
+User ->APYPool: redeem(aptAmt)
+activate APYPool#lightgrey
+APYPool ->FluxAggregator(ERC20): lastRoundData(); price the UnderlyingERC20
+APYPool ->APYMetaPoolToken: getDeployedValue()
+activate APYMetaPoolToken
+APYMetaPoolToken ->FluxAggregator(TVL): lastRoundData(); price the TVL
+APYMetaPoolToken -->APYPool: 
+deactivate APYMetaPoolToken
+APYPool ->APYPool: burn(User, aptAmt)
+APYPool ->UnderlyingERC20: transfer(User, redeemUnderlyerAmt)
+APYPool -->User: 
+deactivate APYPool

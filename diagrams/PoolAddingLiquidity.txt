@@ -1,0 +1,23 @@
+title Pool Adding Liquidity
+
+actor User
+participant APYPool#violet
+participant UnderlyingERC20#yellow
+participant APYMetaPoolToken#pink
+participant FluxAggregator(ERC20)#lightblue
+participant FluxAggregator(TVL)#turquoise
+
+
+User ->APYPool: addLiquidity(depositAmt)
+activate APYPool#lightgrey
+APYPool ->UnderlyingERC20: allowance(User, APYPool) >= depositAmount
+APYPool ->FluxAggregator(ERC20): lastRoundData(); price the UnderlyingERC20
+APYPool ->APYMetaPoolToken: getDeployedValue()
+activate APYMetaPoolToken
+APYMetaPoolToken ->FluxAggregator(TVL): lastRoundData(); price the TVL
+APYMetaPoolToken -->APYPool: 
+deactivate APYMetaPoolToken
+APYPool ->APYPool: mint(User, mintAmount)
+APYPool ->UnderlyingERC20: transferFrom(User, this, depositAmt)
+APYPool -->User: 
+deactivate APYPool
