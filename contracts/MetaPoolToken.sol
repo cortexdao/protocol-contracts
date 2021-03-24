@@ -100,7 +100,7 @@ contract MetaPoolToken is
         __Ownable_init_unchained();
         __ReentrancyGuard_init_unchained();
         __Pausable_init_unchained();
-        __ERC20_init_unchained("MetaPool Token", "mAPT");
+        __ERC20_init_unchained("APY MetaPool Token", "mAPT");
 
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
