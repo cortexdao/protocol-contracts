@@ -16,11 +16,11 @@ import "./MetaPoolToken.sol";
 import "./Account.sol";
 
 /**
- * @title APY Manager
+ * @title Account Manager
  * @author APY.Finance
  * @notice This is the manager logic contract for use with the account manager proxy contract.
  *
- * The Account manager orchestrates the movement of capital within the APY system between the Accounts
+ * The Account Manager orchestrates the movement of capital within the APY system between the Accounts
  * and various DeFi protocols: curve, uniswap, sushiswap, etc
  *
  * When moving capital from an account to enter various positions, the Account Manager simultaneously
