@@ -107,6 +107,8 @@ async function main(argv) {
 
   updateDeployJsons(networkName, deploy_data);
 
+  // TODO: update address registry
+
   if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");
     console.log("Verifying on Etherscan ...");
