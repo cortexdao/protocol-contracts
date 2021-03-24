@@ -229,7 +229,7 @@ async function main(argv) {
   await tvlManager.deployed();
   console.logAddress("TVLManager", tvlManager.address);
   trx = await addressRegistry.registerAddress(
-    bytes32("chainlinkRegistry"),
+    bytes32("tvlManager"),
     tvlManager.address
   );
   await trx.wait();
