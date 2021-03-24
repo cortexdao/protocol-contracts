@@ -2,6 +2,14 @@
 pragma solidity 0.6.11;
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
 
+/**
+ * @title Interface for APY.Finance liquidity pools
+ * @author APY.Finance
+ * @notice Liquidity pools accept deposits and withdrawals of a single token.
+ *         APT is minted and burned to track an account's stake in the pool.
+ *         A Chainlink price aggregator is also set so the total value of the
+ *         pool can be computed.
+ */
 interface ILiquidityPool {
     event DepositedAPT(
         address indexed sender,
@@ -26,7 +34,15 @@ interface ILiquidityPool {
     event AdminChanged(address);
     event PriceAggregatorChanged(address agg);
 
+    /**
+     * @notice Mint corresponding amount of APT tokens for deposited stablecoin.
+     * @param depositAmount Amount to deposit of the underlying stablecoin
+     */
     function addLiquidity(uint256 amount) external;
 
+    /**
+     * @notice Redeems APT amount for its underlying stablecoin amount.
+     * @param aptAmount The amount of APT tokens to redeem
+     */
     function redeem(uint256 tokenAmount) external;
 }

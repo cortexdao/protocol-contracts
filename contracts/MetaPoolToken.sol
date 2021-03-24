@@ -12,33 +12,35 @@ import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/IMintable.sol";
 
 /**
- * @title APY Meta Pool Token
+ * @title Meta Pool Token
  * @author APY.Finance
  * @notice This token is used to keep track of the capital that has been
- * pulled from the APYPoolToken contracts.
+ * pulled from the PoolToken contracts.
  *
- * When the APYManager pulls capital from the APYPoolToken contracts to
+ * When the PoolManager pulls capital from the PoolToken contracts to
  * deploy to yield farming strategies, it will mint mAPT and transfer it to
- * the APYPoolToken contracts. The ratio of the mAPT held by each APYPoolToken
+ * the PoolToken contracts. The ratio of the mAPT held by each PoolToken
  * to the total supply of mAPT determines the amount of the TVL dedicated to
- * APYPoolToken.
+ * PoolToken.
  *
  * DEPLOY CAPITAL TO YIELD FARMING STRATEGIES
- * Tracks the share of deployed TVL owned by an APYPoolToken using mAPT.
+ * Tracks the share of deployed TVL owned by an PoolToken using mAPT.
  *
- * +--------------+   APYManagerV2.fundAccount   +--------------+
- * | APYPoolToken | ---------------------------> | APYManagerV2 |
- * +--------------+     APYMetaPoolToken.mint    +--------------+
- *                  <---------------------------
+ * +-------------+   PoolManager.fundAccount   +-------------+
+ * |             |---------------------------->|             |
+ * | PoolTokenV2 |     MetaPoolToken.mint      | PoolManager |
+ * |             |<----------------------------|             |
+ * +-------------+                             +-------------+
  *
  *
  * WITHDRAW CAPITAL FROM YIELD FARMING STRATEGIES
- * Uses mAPT to calculate the amount of capital returned to the APYPoolToken.
+ * Uses mAPT to calculate the amount of capital returned to the PoolToken.
  *
- * +--------------+   APYManagerV2.withdrawFromAccount   +--------------+
- * | APYPoolToken | <----------------------------------- | APYManagerV2 |
- * +--------------+        APYMetaPoolToken.burn         +--------------+
- *                  ----------------------------------->
+ * +-------------+    PoolManager.withdrawFromAccount   +-------------+
+ * |             |<-------------------------------------|             |
+ * | PoolTokenV2 |          MetaPoolToken.burn          | PoolManager |
+ * |             |------------------------------------->|             |
+ * +-------------+                                      +-------------+
  */
 contract MetaPoolToken is
     Initializable,
@@ -98,7 +100,7 @@ contract MetaPoolToken is
         __Ownable_init_unchained();
         __ReentrancyGuard_init_unchained();
         __Pausable_init_unchained();
-        __ERC20_init_unchained("APY MetaPool Token", "mAPT");
+        __ERC20_init_unchained("MetaPool Token", "mAPT");
 
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
@@ -149,7 +151,7 @@ contract MetaPoolToken is
     }
 
     /**
-     * @dev Throws if called by any account other than the APYManager.
+     * @dev Throws if called by any account other than the PoolManager.
      */
     modifier onlyManager() {
         require(msg.sender == manager, "MANAGER_ONLY");
@@ -189,7 +191,7 @@ contract MetaPoolToken is
     }
 
     /**
-     * @notice Get the USD value of all assets being managed by the APYManager,
+     * @notice Get the USD value of all assets being managed by the AccountManager,
      *         i.e. the "deployed capital".  This is the same as the total value
      *         represented by the total mAPT supply.
      *
