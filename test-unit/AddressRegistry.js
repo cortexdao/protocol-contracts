@@ -189,7 +189,7 @@ contract("AddressRegistry", async (accounts) => {
       await expect(registry.getAddress(DUMMY_NAME)).to.be.revertedWith(
         "Missing address"
       );
-      expect(await registry.idList()).to.have.lengthOf(1);
+      expect(await registry.getIds()).to.have.lengthOf(1);
 
       await registry.deleteAddress(ANOTHER_NAME, {
         from: deployer,
@@ -197,7 +197,7 @@ contract("AddressRegistry", async (accounts) => {
       await expect(registry.getAddress(ANOTHER_NAME)).to.be.revertedWith(
         "Missing address"
       );
-      expect(await registry.idList()).to.have.lengthOf(0);
+      expect(await registry.getIds()).to.have.lengthOf(0);
     });
 
     it("Revert when non-owner attempts to delete", async () => {
@@ -215,17 +215,20 @@ contract("AddressRegistry", async (accounts) => {
     const DUMMY_ADDRESS = web3.utils.toChecksumAddress(
       "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
-    const managerAddress = web3.utils.toChecksumAddress(
+    const tvlManagerAddress = web3.utils.toChecksumAddress(
       "0x1AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
-    const chainlinkRegistryAddress = web3.utils.toChecksumAddress(
+    const poolManagerAddress = web3.utils.toChecksumAddress(
       "0x2AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
-    const daiPoolAddress = web3.utils.toChecksumAddress(
+    const accountManagerAddress = web3.utils.toChecksumAddress(
       "0x3AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
+    const daiPoolAddress = web3.utils.toChecksumAddress(
+      "0x5AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+    );
     const usdcPoolAddress = web3.utils.toChecksumAddress(
-      "0x4AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+      "0x5AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
     const usdtPoolAddress = web3.utils.toChecksumAddress(
       "0x5AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
@@ -233,16 +236,18 @@ contract("AddressRegistry", async (accounts) => {
     beforeEach("Prep addresses", async () => {
       const names = [
         DUMMY_NAME,
-        bytes32("manager"),
-        bytes32("chainlinkRegistry"),
+        bytes32("tvlManager"),
+        bytes32("poolManager"),
+        bytes32("accountManager"),
         bytes32("daiPool"),
         bytes32("usdcPool"),
         bytes32("usdtPool"),
       ];
       const addresses = [
         DUMMY_ADDRESS,
-        managerAddress,
-        chainlinkRegistryAddress,
+        tvlManagerAddress,
+        poolManagerAddress,
+        accountManagerAddress,
         daiPoolAddress,
         usdcPoolAddress,
         usdtPoolAddress,
@@ -253,8 +258,9 @@ contract("AddressRegistry", async (accounts) => {
     it("ID list is populated", async () => {
       assert.deepEqual(await registry.getIds({ from: randomUser }), [
         DUMMY_NAME,
-        bytes32("manager"),
-        bytes32("chainlinkRegistry"),
+        bytes32("tvlManager"),
+        bytes32("poolManager"),
+        bytes32("accountManager"),
         bytes32("daiPool"),
         bytes32("usdcPool"),
         bytes32("usdtPool"),
@@ -277,17 +283,31 @@ contract("AddressRegistry", async (accounts) => {
       );
     });
 
-    it("User can retrieve manager", async () => {
+    it("User can retrieve tvl manager", async () => {
       assert.equal(
-        await registry.managerAddress({ from: randomUser }),
-        managerAddress
+        await registry.tvlManagerAddress({ from: randomUser }),
+        tvlManagerAddress
+      );
+    });
+
+    it("User can retrieve pool manager", async () => {
+      assert.equal(
+        await registry.poolManagerAddress({ from: randomUser }),
+        poolManagerAddress
+      );
+    });
+
+    it("User can retrieve account manager", async () => {
+      assert.equal(
+        await registry.accountManagerAddress({ from: randomUser }),
+        accountManagerAddress
       );
     });
 
     it("User can retrieve Chainlink registry", async () => {
       assert.equal(
         await registry.chainlinkRegistryAddress({ from: randomUser }),
-        chainlinkRegistryAddress
+        tvlManagerAddress
       );
     });
 

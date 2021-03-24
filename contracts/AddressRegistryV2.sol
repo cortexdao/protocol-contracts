@@ -156,30 +156,42 @@ contract AddressRegistryV2 is
         }
     }
 
-    /// @notice Return the list of identifiers.
-    function idList() external view returns (bytes32[] memory) {
-        return _idList;
-    }
-
     /**
-     * @notice Get the address for the APY Manager.
+     * @notice Get the address for the Account Manager.
      * @dev Not just a helper function, this makes explicit a key ID
      *      for the system.
      */
-    function managerAddress() public view returns (address) {
-        return getAddress("manager");
+    function accountManagerAddress() public view returns (address) {
+        return getAddress("accountManager");
     }
 
     /**
-     * @notice Get the address for the TVLManager,
-     *         aka the "Chainlink Registry", as it is used by
+     * @notice Get the address for the Pool Manager.
+     * @dev Not just a helper function, this makes explicit a key ID
+     *      for the system.
+     */
+    function poolManagerAddress() public view returns (address) {
+        return getAddress("poolManager");
+    }
+
+    /**
+     * @notice Get the address for the TVL Manager.
+     * @dev Not just a helper function, this makes explicit a key ID
+     *      for the system.
+     */
+    function tvlManagerAddress() public view returns (address) {
+        return getAddress("tvlManager");
+    }
+
+    /**
+     * @notice An alias for the TVL Manager.  This is used by
      *         Chainlink nodes to compute the deployed value of the
      *         APY.Finance system.
      * @dev Not just a helper function, this makes explicit a key ID
      *      for the system.
      */
     function chainlinkRegistryAddress() public view returns (address) {
-        return getAddress("chainlinkRegistry");
+        return tvlManagerAddress();
     }
 
     /**
