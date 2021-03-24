@@ -36,13 +36,13 @@ interface ILiquidityPool {
 
     /**
      * @notice Mint corresponding amount of APT tokens for deposited stablecoin.
-     * @param depositAmount Amount to deposit of the underlying stablecoin
+     * @param amount Amount to deposit of the underlying stablecoin
      */
     function addLiquidity(uint256 amount) external;
 
     /**
      * @notice Redeems APT amount for its underlying stablecoin amount.
-     * @param aptAmount The amount of APT tokens to redeem
+     * @param tokenAmount The amount of APT tokens to redeem
      */
     function redeem(uint256 tokenAmount) external;
 }

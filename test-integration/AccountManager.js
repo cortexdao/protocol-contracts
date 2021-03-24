@@ -305,14 +305,7 @@ describe("Contract: AccountManager", () => {
       await manager.execute(
         accountId,
         [[daiToken.address, encodedApprove]],
-        [
-          [
-            bytes32("strat1DaiBal"),
-            "DAI",
-            18,
-            [daiToken.address, encodedBalanceOf],
-          ],
-        ]
+        [["DAI", 18, [daiToken.address, encodedBalanceOf]]]
       );
 
       const daiAllowance = await daiToken.allowance(

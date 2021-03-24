@@ -143,7 +143,7 @@ contract AccountManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
 
     /// @notice Sets the proxy admin address of the pool manager proxy
     /// @dev only callable by owner
-    /// @param address the new proxy admin address of the pool manager
+    /// @param adminAddress the new proxy admin address of the pool manager
     function setAdminAddress(address adminAddress) public onlyOwner {
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
