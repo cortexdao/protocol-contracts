@@ -142,6 +142,8 @@ async function main(argv) {
   await trx.wait();
   console.log("");
 
+  // TODO: update address registry
+
   if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");
     console.log("Verifying on Etherscan ...");

@@ -218,7 +218,7 @@ describe("Contract: PoolManager", () => {
       addressRegistryDeployer
     );
     await addressRegistry.registerAddress(
-      bytes32("chainlinkRegistry"),
+      bytes32("tvlManager"),
       tvlManager.address
     );
 

@@ -1,4 +1,4 @@
-const { assert } = require("chai");
+const { assert, expect } = require("chai");
 const { artifacts, contract, ethers, web3 } = require("hardhat");
 const { expectRevert } = require("@openzeppelin/test-helpers");
 const timeMachine = require("ganache-time-traveler");
@@ -10,6 +10,7 @@ const TransparentUpgradeableProxy = artifacts.require(
 );
 const ProxyConstructorArg = artifacts.require("ProxyConstructorArg");
 const AddressRegistry = artifacts.require("AddressRegistry");
+const AddressRegistryV2 = artifacts.require("AddressRegistryV2");
 
 const bytes32 = ethers.utils.formatBytes32String;
 
@@ -17,8 +18,6 @@ contract("AddressRegistry", async (accounts) => {
   const [deployer, admin, randomUser] = accounts;
 
   let proxyAdmin;
-  let logic;
-  let proxy;
   let registry;
 
   // use EVM snapshots for test isolation
@@ -35,11 +34,11 @@ contract("AddressRegistry", async (accounts) => {
 
   before(async () => {
     proxyAdmin = await ProxyAdmin.new({ from: deployer });
-    logic = await AddressRegistry.new({ from: deployer });
+    const logic = await AddressRegistry.new({ from: deployer });
     const encodedArg = await (await ProxyConstructorArg.new()).getEncodedArg(
       proxyAdmin.address
     );
-    proxy = await TransparentUpgradeableProxy.new(
+    const proxy = await TransparentUpgradeableProxy.new(
       logic.address,
       proxyAdmin.address,
       encodedArg,
@@ -47,30 +46,22 @@ contract("AddressRegistry", async (accounts) => {
         from: deployer,
       }
     );
-    registry = await AddressRegistry.at(proxy.address);
-  });
 
-  describe("Constructor", async () => {
-    it("Revert when proxy admin is zero address", async () => {
-      const encodedArg = await (await ProxyConstructorArg.new()).getEncodedArg(
-        ZERO_ADDRESS
-      );
-      await expectRevert.unspecified(
-        TransparentUpgradeableProxy.new(
-          logic.address,
-          ZERO_ADDRESS,
-          encodedArg,
-          {
-            from: deployer,
-          }
-        )
-      );
+    const logicV2 = await AddressRegistryV2.new({ from: deployer });
+    await proxyAdmin.upgrade(proxy.address, logicV2.address, {
+      from: deployer,
     });
+
+    registry = await AddressRegistryV2.at(proxy.address);
   });
 
   describe("Defaults", async () => {
     it("Owner is set to deployer", async () => {
       assert.equal(await registry.owner(), deployer);
+    });
+
+    it("Admin is set to proxy admin", async () => {
+      assert.equal(await registry.proxyAdmin(), proxyAdmin.address);
     });
 
     it("Revert when ETH is sent", async () => {
@@ -171,39 +162,92 @@ contract("AddressRegistry", async (accounts) => {
     });
   });
 
+  describe("Delete addresses", async () => {
+    const DUMMY_NAME = bytes32("dummyName");
+    const DUMMY_ADDRESS = web3.utils.toChecksumAddress(
+      "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+    );
+    const ANOTHER_NAME = bytes32("anotherName");
+    const ANOTHER_ADDRESS = web3.utils.toChecksumAddress(
+      "0xBAADC0FFEEBAADC0FFEEBAADC0FFEEBAADC0FFEE"
+    );
+
+    beforeEach(async () => {
+      await registry.registerMultipleAddresses(
+        [DUMMY_NAME, ANOTHER_NAME],
+        [DUMMY_ADDRESS, ANOTHER_ADDRESS],
+        {
+          from: deployer,
+        }
+      );
+    });
+
+    it("Owner can delete address", async () => {
+      await registry.deleteAddress(DUMMY_NAME, {
+        from: deployer,
+      });
+      await expect(registry.getAddress(DUMMY_NAME)).to.be.revertedWith(
+        "Missing address"
+      );
+      expect(await registry.getIds()).to.have.lengthOf(1);
+
+      await registry.deleteAddress(ANOTHER_NAME, {
+        from: deployer,
+      });
+      await expect(registry.getAddress(ANOTHER_NAME)).to.be.revertedWith(
+        "Missing address"
+      );
+      expect(await registry.getIds()).to.have.lengthOf(0);
+    });
+
+    it("Revert when non-owner attempts to delete", async () => {
+      await expectRevert(
+        registry.deleteAddress(DUMMY_NAME, {
+          from: randomUser,
+        }),
+        "Ownable: caller is not the owner"
+      );
+    });
+  });
+
   describe("Retrieve addresses", async () => {
     const DUMMY_NAME = bytes32("dummyName");
     const DUMMY_ADDRESS = web3.utils.toChecksumAddress(
       "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
-    const managerAddress = web3.utils.toChecksumAddress(
+    const tvlManagerAddress = web3.utils.toChecksumAddress(
       "0x1AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
-    const chainlinkRegistryAddress = web3.utils.toChecksumAddress(
+    const poolManagerAddress = web3.utils.toChecksumAddress(
       "0x2AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
-    const daiPoolAddress = web3.utils.toChecksumAddress(
+    const accountManagerAddress = web3.utils.toChecksumAddress(
       "0x3AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
+    const daiPoolAddress = web3.utils.toChecksumAddress(
+      "0x5AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+    );
     const usdcPoolAddress = web3.utils.toChecksumAddress(
-      "0x4AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+      "0x5AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
     const usdtPoolAddress = web3.utils.toChecksumAddress(
       "0x5AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
-    before("Prep addresses", async () => {
+    beforeEach("Prep addresses", async () => {
       const names = [
         DUMMY_NAME,
-        bytes32("manager"),
-        bytes32("chainlinkRegistry"),
+        bytes32("tvlManager"),
+        bytes32("poolManager"),
+        bytes32("accountManager"),
         bytes32("daiPool"),
         bytes32("usdcPool"),
         bytes32("usdtPool"),
       ];
       const addresses = [
         DUMMY_ADDRESS,
-        managerAddress,
-        chainlinkRegistryAddress,
+        tvlManagerAddress,
+        poolManagerAddress,
+        accountManagerAddress,
         daiPoolAddress,
         usdcPoolAddress,
         usdtPoolAddress,
@@ -214,8 +258,9 @@ contract("AddressRegistry", async (accounts) => {
     it("ID list is populated", async () => {
       assert.deepEqual(await registry.getIds({ from: randomUser }), [
         DUMMY_NAME,
-        bytes32("manager"),
-        bytes32("chainlinkRegistry"),
+        bytes32("tvlManager"),
+        bytes32("poolManager"),
+        bytes32("accountManager"),
         bytes32("daiPool"),
         bytes32("usdcPool"),
         bytes32("usdtPool"),
@@ -238,17 +283,31 @@ contract("AddressRegistry", async (accounts) => {
       );
     });
 
-    it("User can retrieve manager", async () => {
+    it("User can retrieve tvl manager", async () => {
       assert.equal(
-        await registry.managerAddress({ from: randomUser }),
-        managerAddress
+        await registry.tvlManagerAddress({ from: randomUser }),
+        tvlManagerAddress
+      );
+    });
+
+    it("User can retrieve pool manager", async () => {
+      assert.equal(
+        await registry.poolManagerAddress({ from: randomUser }),
+        poolManagerAddress
+      );
+    });
+
+    it("User can retrieve account manager", async () => {
+      assert.equal(
+        await registry.accountManagerAddress({ from: randomUser }),
+        accountManagerAddress
       );
     });
 
     it("User can retrieve Chainlink registry", async () => {
       assert.equal(
         await registry.chainlinkRegistryAddress({ from: randomUser }),
-        chainlinkRegistryAddress
+        tvlManagerAddress
       );
     });
 

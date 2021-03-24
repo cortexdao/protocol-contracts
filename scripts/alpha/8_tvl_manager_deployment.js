@@ -22,7 +22,7 @@ const {
   updateDeployJsons,
   getDeployedAddress,
   bytes32,
-} = require("../utils/helpers");
+} = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -124,7 +124,7 @@ async function main(argv) {
 
   gasPrice = await getGasPrice(argv.gasPrice);
   let trx = await addressRegistry.registerAddress(
-    bytes32("chainlinkRegistry"),
+    bytes32("tvlManager"),
     tvlManager.address,
     { gasPrice }
   );

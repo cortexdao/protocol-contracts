@@ -105,6 +105,9 @@ contract PoolTokenV2 is
      * `initializer` modifier protects this function from being called
      * repeatedly.  It should be called during the deployment so that
      * it cannot be called by someone else later.
+     *
+     * NOTE: this function is copied from the V1 contract and has already
+     * been called during V1 deployment.  It is included here for clarity.
      */
     function initialize(
         address adminAddress,

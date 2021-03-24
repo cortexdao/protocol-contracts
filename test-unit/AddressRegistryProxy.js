@@ -1,7 +1,8 @@
-const { assert } = require("chai");
+const { assert, expect } = require("chai");
 const { ethers, artifacts, contract } = require("hardhat");
 const timeMachine = require("ganache-time-traveler");
 const { expectRevert } = require("@openzeppelin/test-helpers");
+const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const AddressRegistryUpgraded = artifacts.require("AddressRegistryUpgraded");
@@ -174,6 +175,40 @@ contract("AddressRegistryProxy", async (accounts) => {
         }),
         newLogic.address
       );
+    });
+  });
+
+  describe("initialize", () => {
+    it("Cannot initialize with zero admin address", async () => {
+      const encodedArg = await (await ProxyConstructorArg.new()).getEncodedArg(
+        ZERO_ADDRESS
+      );
+      await expect(
+        TransparentUpgradeableProxy.new(
+          logic.address,
+          proxyAdmin.address,
+          encodedArg,
+          {
+            from: deployer,
+          }
+        )
+      ).to.be.reverted;
+    });
+
+    it("deploy initializes correctly", async () => {
+      const encodedArg = await (await ProxyConstructorArg.new()).getEncodedArg(
+        proxyAdmin.address
+      );
+      const proxy = await TransparentUpgradeableProxy.new(
+        logic.address,
+        proxyAdmin.address,
+        encodedArg,
+        { from: deployer }
+      );
+      const registry = await AddressRegistry.at(proxy.address);
+
+      expect(await registry.owner()).to.equal(deployer);
+      expect(await registry.proxyAdmin()).to.equal(proxyAdmin.address);
     });
   });
 });
