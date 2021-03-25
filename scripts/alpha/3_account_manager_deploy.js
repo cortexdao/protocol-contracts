@@ -11,6 +11,7 @@ const {
   getDeployedAddress,
   getGasPrice,
   updateDeployJsons,
+  bytes32,
 } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
@@ -111,9 +112,39 @@ async function main(argv) {
   gasUsed = gasUsed.add(receipt.gasUsed);
 
   updateDeployJsons(networkName, deploy_data);
-  console.log("Total gas used:", gasUsed.toString());
 
-  // TODO: update address registry
+  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
+  const addressRegistryDeployer = ethers.Wallet.fromMnemonic(
+    ADDRESS_REGISTRY_MNEMONIC
+  ).connect(ethers.provider);
+  /* TESTING on localhost only
+   * need to fund as there is no ETH on Mainnet for the deployer
+   */
+  if (networkName == "LOCALHOST") {
+    const [funder] = await ethers.getSigners();
+    const fundingTrx = await funder.sendTransaction({
+      to: addressRegistryDeployer.address,
+      value: ethers.utils.parseEther("1.0"),
+    });
+    await fundingTrx.wait();
+  }
+
+  const addressRegistry = await ethers.getContractAt(
+    "AddressRegistryV2",
+    addressRegistryAddress,
+    addressRegistryDeployer
+  );
+  const trx = await addressRegistry.registerAddress(
+    bytes32("accountManager"),
+    proxy.address
+  );
+  console.log(
+    "Update address registry:",
+    `https://etherscan.io/tx/${trx.hash}`
+  );
+  receipt = await trx.wait();
+  gasUsed = gasUsed.add(receipt.gasUsed);
+  console.log("Total gas used:", gasUsed.toString());
 
   if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");
