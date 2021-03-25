@@ -102,10 +102,7 @@ async function main(argv) {
   let trx = await proxyAdmin.upgrade(proxy.address, logic.address, {
     gasPrice,
   });
-  console.log(
-    "Upgrade:",
-    `https://etherscan.io/tx/${logic.deployTransaction.hash}`
-  );
+  console.log("Upgrade:", `https://etherscan.io/tx/${trx.hash}`);
   receipt = await trx.wait();
   gasUsed = gasUsed.add(receipt.gasUsed);
   const addressRegistry = AddressRegistryV2.attach(proxy.address);
@@ -122,7 +119,7 @@ async function main(argv) {
   if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");
     console.log("Verifying on Etherscan ...");
-    await ethers.provider.waitForTransaction(proxy.deployTransaction.hash, 5); // wait for Etherscan to catch up
+    await ethers.provider.waitForTransaction(logic.deployTransaction.hash, 5); // wait for Etherscan to catch up
     await hre.run("verify:verify", {
       address: logic.address,
     });
