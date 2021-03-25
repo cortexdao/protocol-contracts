@@ -16,7 +16,6 @@ const { argv } = require("yargs").option("gasPrice", {
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
 const { BigNumber } = ethers;
-const assert = require("assert");
 const chalk = require("chalk");
 const {
   getGasPrice,
@@ -133,11 +132,6 @@ async function main(argv) {
   );
   console.log("Register address:", `https://etherscan.io/tx/${trx.hash}`);
   receipt = await trx.wait();
-  assert.strictEqual(
-    await addressRegistry.chainlinkRegistryAddress(),
-    tvlManager.address,
-    "Chainlink registry address is not registered correctly."
-  );
   console.log("... done.");
   console.log("Total gas used:", gasUsed.toString());
 
