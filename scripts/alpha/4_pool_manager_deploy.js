@@ -137,7 +137,11 @@ async function main(argv) {
     networkName
   );
   gasPrice = await getGasPrice(argv.gasPrice);
-  const poolManager = await ethers.getContractAt("PoolManager", proxy.address);
+  const poolManager = await ethers.getContractAt(
+    "PoolManager",
+    proxy.address,
+    poolManagerDeployer
+  );
   trx = await poolManager.setAccountFactory(accountManagerAddress, {
     gasPrice,
   });

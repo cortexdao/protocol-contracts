@@ -17,26 +17,27 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  const MANAGER_MNEMONIC = process.env.MANAGER_MNEMONIC;
-  const managerDeployer = ethers.Wallet.fromMnemonic(MANAGER_MNEMONIC).connect(
-    ethers.provider
-  );
-  console.log("Deployer address:", managerDeployer.address);
+  const ACCOUNT_MANAGER_MNEMONIC = process.env.ACCOUNT_MANAGER_MNEMONIC;
+  const accountManagerDeployer = ethers.Wallet.fromMnemonic(
+    ACCOUNT_MANAGER_MNEMONIC
+  ).connect(ethers.provider);
+  console.log("Deployer address:", accountManagerDeployer.address);
   /* TESTING on localhost only
    * may need to fund the deployer while testing
    */
   if (networkName == "LOCALHOST") {
     const [funder] = await ethers.getSigners();
     const fundingTrx = await funder.sendTransaction({
-      to: managerDeployer.address,
+      to: accountManagerDeployer.address,
       value: ethers.utils.parseEther("1.0"),
     });
     await fundingTrx.wait();
   }
 
   const balance =
-    (await ethers.provider.getBalance(managerDeployer.address)).toString() /
-    1e18;
+    (
+      await ethers.provider.getBalance(accountManagerDeployer.address)
+    ).toString() / 1e18;
   console.log("ETH balance:", balance.toString());
   console.log("");
 
@@ -48,7 +49,7 @@ async function main(argv) {
 
   const GenericExecutor = await ethers.getContractFactory(
     "GenericExecutor",
-    managerDeployer
+    accountManagerDeployer
   );
   let gasPrice = await getGasPrice(argv.gasPrice);
   const genericExecutor = await GenericExecutor.deploy({ gasPrice });
