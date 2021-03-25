@@ -19,7 +19,6 @@
     "compile": "hardhat compile",
     "test:unit": "hardhat test test-unit/*",
     "test:integration": "ENABLE_FORKING=true hardhat test test-integration/*",
-    "defi-legos": "populate -m apy,centre,maker,tether | grep -i error",
     "lint": "solhint contracts/**/*.sol contracts/*.sol",
     "coverage": "hardhat coverage --network coverage --testfiles \"test-unit/*.js\"",
     "ganache": "ganache-cli",
@@ -51,7 +50,6 @@
   },
   "homepage": "https://github.com/apy-finance/apy-core/README.md",
   "devDependencies": {
-    "@apy-finance/defi-legos": "^2.1.2",
     "@gnosis.pm/mock-contract": "^4.0.0",
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-etherscan": "^2.1.1",

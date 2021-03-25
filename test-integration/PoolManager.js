@@ -1,13 +1,13 @@
 const { expect } = require("chai");
 const { artifacts, ethers } = require("hardhat");
 const timeMachine = require("ganache-time-traveler");
-const legos = require("@apy-finance/defi-legos");
 const {
   tokenAmountToBigNumber,
   impersonateAccount,
   bytes32,
   acquireToken,
   FAKE_ADDRESS,
+  getStablecoinAddress,
 } = require("../utils/helpers");
 const erc20Interface = new ethers.utils.Interface(
   artifacts.require("ERC20").abi
@@ -18,8 +18,17 @@ const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
 
+// Mainnet addresses
+const DAI_TOKEN = getStablecoinAddress("DAI", "MAINNET");
+const USDC_TOKEN = getStablecoinAddress("USDC", "MAINNET");
+const USDT_TOKEN = getStablecoinAddress("USDT", "MAINNET");
 const POOL_DEPLOYER = "0x6EAF0ab3455787bA10089800dB91F11fDf6370BE";
 const ADDRESS_REGISTRY_DEPLOYER = "0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3";
+const APY_POOL_ADMIN = "0x7965283631253DfCb71Db63a60C656DEDF76234f";
+const APY_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
+const APY_DAI_POOL = "0x75CE0E501E2E6776FCAAA514F394A88A772A8970";
+const APY_USDC_POOL = "0xe18b0365D5D09F394f84eE56ed29DD2d8D6Fba5f";
+const APY_USDT_POOL = "0xeA9c5a2717D5Ab75afaAC340151e73a7e37d99A7";
 
 /* ************************ */
 /* set DEBUG log level here */
@@ -90,23 +99,14 @@ describe("Contract: PoolManager", () => {
     const PoolTokenV2 = await ethers.getContractFactory("PoolTokenV2");
     const newPoolLogic = await PoolTokenV2.deploy();
     const poolAdmin = await ethers.getContractAt(
-      legos.apy.abis.APY_POOL_Admin,
-      legos.apy.addresses.APY_POOL_Admin,
+      "ProxyAdmin",
+      APY_POOL_ADMIN,
       poolDeployer
     );
 
-    await poolAdmin.upgrade(
-      legos.apy.addresses.APY_DAI_POOL,
-      newPoolLogic.address
-    );
-    await poolAdmin.upgrade(
-      legos.apy.addresses.APY_USDC_POOL,
-      newPoolLogic.address
-    );
-    await poolAdmin.upgrade(
-      legos.apy.addresses.APY_USDT_POOL,
-      newPoolLogic.address
-    );
+    await poolAdmin.upgrade(APY_DAI_POOL, newPoolLogic.address);
+    await poolAdmin.upgrade(APY_USDC_POOL, newPoolLogic.address);
+    await poolAdmin.upgrade(APY_USDT_POOL, newPoolLogic.address);
 
     /***********************/
     /***** deploy mAPT *****/
@@ -168,7 +168,7 @@ describe("Contract: PoolManager", () => {
       managerLogic.address,
       managerAdmin.address,
       mApt.address,
-      legos.apy.addresses.APY_ADDRESS_REGISTRY
+      APY_ADDRESS_REGISTRY
     );
     await managerProxy.deployed();
     manager = await PoolManager.attach(managerProxy.address);
@@ -178,17 +178,17 @@ describe("Contract: PoolManager", () => {
     // approve manager to withdraw from pools
     daiPool = await ethers.getContractAt(
       "PoolTokenV2",
-      legos.apy.addresses.APY_DAI_POOL,
+      APY_DAI_POOL,
       poolDeployer
     );
     usdcPool = await ethers.getContractAt(
       "PoolTokenV2",
-      legos.apy.addresses.APY_USDC_POOL,
+      APY_USDC_POOL,
       poolDeployer
     );
     usdtPool = await ethers.getContractAt(
       "PoolTokenV2",
-      legos.apy.addresses.APY_USDT_POOL,
+      APY_USDT_POOL,
       poolDeployer
     );
     await daiPool.infiniteApprove(manager.address);
@@ -213,8 +213,8 @@ describe("Contract: PoolManager", () => {
     tvlManager = await TVLManager.deploy(manager.address, FAKE_ADDRESS);
     await tvlManager.deployed();
     const addressRegistry = await ethers.getContractAt(
-      legos.apy.abis.APY_ADDRESS_REGISTRY_Logic,
-      legos.apy.addresses.APY_ADDRESS_REGISTRY,
+      "AddressRegistry",
+      APY_ADDRESS_REGISTRY,
       addressRegistryDeployer
     );
     await addressRegistry.registerAddress(
@@ -226,18 +226,9 @@ describe("Contract: PoolManager", () => {
     /* main deployments and upgrades finished 
     /*********************************************/
 
-    daiToken = await ethers.getContractAt(
-      legos.maker.abis.DAI,
-      legos.maker.addresses.DAI
-    );
-    usdcToken = await ethers.getContractAt(
-      legos.centre.abis.USDC_Logic,
-      legos.centre.addresses.USDC
-    );
-    usdtToken = await ethers.getContractAt(
-      legos.tether.abis.USDT,
-      legos.tether.addresses.USDT
-    );
+    daiToken = await ethers.getContractAt("IDetailedERC20", DAI_TOKEN);
+    usdcToken = await ethers.getContractAt("IDetailedERC20", USDC_TOKEN);
+    usdtToken = await ethers.getContractAt("IDetailedERC20", USDT_TOKEN);
     await acquireToken(
       STABLECOIN_POOLS["DAI"],
       deployer,
