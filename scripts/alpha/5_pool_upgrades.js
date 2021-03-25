@@ -78,7 +78,7 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${logicV2.deployTransaction.hash}`
   );
-  await logicV2.deployed();
+  await logicV2.deployTransaction.wait();
   console.log(`Pool logic V2: ${chalk.green(logicV2.address)}`);
   console.log("");
 

@@ -87,7 +87,7 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${tvlManager.deployTransaction.hash}`
   );
-  await tvlManager.deployed();
+  await tvlManager.deployTransaction.wait();
   console.log("TVLManager:", chalk.green(tvlManager.address));
   console.log("");
   // assert.strictEqual(await tvlManager.owner(), tvlManagerDeployer.address);

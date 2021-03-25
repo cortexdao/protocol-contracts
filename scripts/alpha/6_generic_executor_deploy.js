@@ -56,7 +56,7 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${genericExecutor.deployTransaction.hash}`
   );
-  await genericExecutor.deployed();
+  await genericExecutor.deployTransaction.wait();
   console.log("Generic Executor", chalk.green(genericExecutor.address));
   console.log("");
 

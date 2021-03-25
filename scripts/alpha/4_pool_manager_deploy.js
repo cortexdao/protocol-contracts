@@ -70,7 +70,7 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${proxyAdmin.deployTransaction.hash}`
   );
-  await proxyAdmin.deployed();
+  await proxyAdmin.deployTransaction.wait();
   deploy_data["ManagerProxyAdmin"] = proxyAdmin.address;
   console.log(`ProxyAdmin: ${chalk.green(proxyAdmin.address)}`);
   console.log("");
@@ -81,7 +81,7 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${logic.deployTransaction.hash}`
   );
-  await logic.deployed();
+  await logic.deployTransaction.wait();
   deploy_data["PoolManager"] = logic.address;
   console.log(`Implementation Logic: ${logic.address}`);
   console.log("");
@@ -103,7 +103,7 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${proxy.deployTransaction.hash}`
   );
-  await proxy.deployed();
+  await proxy.deployTransaction.wait();
   deploy_data["PoolManagerProxy"] = proxy.address;
   console.log(`Proxy: ${proxy.address}`);
   console.log("");
