@@ -15,11 +15,7 @@ const { argv } = require("yargs").option("gasPrice", {
 });
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const {
-  getGasPrice,
-  getDeployedAddress,
-  bytes32,
-} = require("../../utils/helpers");
+const { getDeployedAddress } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -53,6 +49,7 @@ async function main(argv) {
   console.log("");
 
   const tvlManagerAddress = getDeployedAddress("TVLManager", networkName);
+  // eslint-disable-next-line no-unused-vars
   const tvlManager = await ethers.getContractAt(
     "TVLManager",
     tvlManagerAddress,
@@ -62,6 +59,7 @@ async function main(argv) {
   console.log("");
   console.log("Registering ...");
   console.log("");
+
   // gasPrice = await getGasPrice(argv.gasPrice);
   // let trx = await tvlManager.addAssetAllocation(...)
   // console.log(

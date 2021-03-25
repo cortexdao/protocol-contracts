@@ -15,6 +15,7 @@ const { argv } = require("yargs").option("gasPrice", {
 });
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
+const { BigNumber } = ethers;
 const assert = require("assert");
 const chalk = require("chalk");
 const {
@@ -58,6 +59,8 @@ async function main(argv) {
   console.log("");
   console.log("Deploying TVLManager ...");
   console.log("");
+
+  let gasUsed = BigNumber.from("0");
 
   const TVLManager = await ethers.getContractFactory(
     "TVLManager",

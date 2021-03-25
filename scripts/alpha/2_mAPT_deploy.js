@@ -15,6 +15,7 @@ const { argv } = require("yargs").option("gasPrice", {
 });
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
+const { BigNumber } = ethers;
 const assert = require("assert");
 const chalk = require("chalk");
 const {
@@ -71,6 +72,7 @@ async function main(argv) {
   );
 
   let deploy_data = {};
+  let gasUsed = BigNumber.from("0");
 
   let gasPrice = await getGasPrice(argv.gasPrice);
   const proxyAdmin = await ProxyAdmin.deploy({ gasPrice });
@@ -78,15 +80,11 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${proxyAdmin.deployTransaction.hash}`
   );
-  await proxyAdmin.deployed();
+  let receipt = await proxyAdmin.deployTransaction.wait();
   deploy_data["MetaPoolTokenProxyAdmin"] = proxyAdmin.address;
   console.log(`ProxyAdmin: ${chalk.green(proxyAdmin.address)}`);
   console.log("");
-  assert.strictEqual(
-    await proxyAdmin.owner(),
-    mAptDeployer.address,
-    "Owner must be mAPT deployer"
-  );
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
   gasPrice = await getGasPrice(argv.gasPrice);
   const logic = await MetaPoolToken.deploy({ gasPrice });
@@ -94,10 +92,11 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${logic.deployTransaction.hash}`
   );
-  await logic.deployed();
+  receipt = await logic.deployTransaction.wait();
   deploy_data["MetaPoolToken"] = logic.address;
   console.log(`Implementation Logic: ${chalk.green(logic.address)}`);
   console.log("");
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
   const tvlAggAddress = getAggregatorAddress("TVL", networkName);
   const aggStalePeriod = 14400;
@@ -113,7 +112,7 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${proxy.deployTransaction.hash}`
   );
-  await proxy.deployed();
+  receipt = await proxy.deployTransaction.wait();
   deploy_data["MetaPoolTokenProxy"] = proxy.address;
   console.log(`Proxy: ${chalk.green(proxy.address)}`);
   console.log("");
@@ -121,8 +120,10 @@ async function main(argv) {
   console.log("");
   console.log("Aggregator stale period:", aggStalePeriod);
   console.log("");
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
   updateDeployJsons(networkName, deploy_data);
+  console.log("Total gas used:", gasUsed.toString());
 
   if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");

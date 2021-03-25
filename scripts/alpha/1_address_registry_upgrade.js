@@ -22,6 +22,7 @@ const {
   getDeployedAddress,
   bytes32,
 } = require("../../utils/helpers");
+const { BigNumber } = ethers;
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -83,6 +84,7 @@ async function main(argv) {
   );
 
   let deploy_data = {};
+  let gasUsed = BigNumber.from("0");
 
   let gasPrice = await getGasPrice(argv.gasPrice);
   const logic = await AddressRegistryV2.deploy({ gasPrice });
@@ -90,10 +92,11 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${logic.deployTransaction.hash}`
   );
-  await logic.deployed();
+  let receipt = await logic.deployTransaction.wait();
   deploy_data["AddressRegistry"] = logic.address;
   console.log(`Implementation Logic: ${chalk.green(logic.address)}`);
   console.log("");
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
   gasPrice = await getGasPrice(argv.gasPrice);
   let trx = await proxyAdmin.upgrade(proxy.address, logic.address, {
@@ -103,14 +106,18 @@ async function main(argv) {
     "Upgrade:",
     `https://etherscan.io/tx/${logic.deployTransaction.hash}`
   );
-  await trx.wait();
+  receipt = await trx.wait();
+  gasUsed = gasUsed.add(receipt.gasUsed);
   const addressRegistry = AddressRegistryV2.attach(proxy.address);
   trx = await addressRegistry.deleteAddress(bytes32("manager"));
-  await trx.wait();
+  receipt = await trx.wait();
+  gasUsed = gasUsed.add(receipt.gasUsed);
   trx = await addressRegistry.deleteAddress(bytes32("chainlinkRegistry"));
-  await trx.wait();
+  receipt = await trx.wait();
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
   updateDeployJsons(networkName, deploy_data);
+  console.log("Total gas used:", gasUsed.toString());
 
   if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");

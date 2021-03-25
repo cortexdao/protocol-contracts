@@ -5,6 +5,7 @@ const { argv } = require("yargs").option("gasPrice", {
 });
 const hre = require("hardhat");
 const { ethers, network } = hre;
+const { BigNumber } = ethers;
 const assert = require("assert");
 const chalk = require("chalk");
 const {
@@ -47,6 +48,8 @@ async function main(argv) {
   console.log("");
   console.log("Upgrading pools ...");
   console.log("");
+
+  let gasUsed = BigNumber.from("0");
 
   const proxyAdminAddress = getDeployedAddress(
     "PoolTokenProxyAdmin",

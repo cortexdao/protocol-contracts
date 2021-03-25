@@ -5,6 +5,7 @@ const { argv } = require("yargs").option("gasPrice", {
 });
 const hre = require("hardhat");
 const { ethers, network } = hre;
+const { BigNumber } = ethers;
 const chalk = require("chalk");
 const {
   getGasPrice,
@@ -43,6 +44,8 @@ async function main(argv) {
     1e18;
   console.log("ETH balance:", balance.toString());
   console.log("");
+
+  let gasUsed = BigNumber.from("0");
 
   const accountManagerAddress = getDeployedAddress(
     "AccountManagerProxy",

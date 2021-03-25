@@ -5,6 +5,7 @@ const { argv } = require("yargs").option("gasPrice", {
 });
 const hre = require("hardhat");
 const { ethers, network } = hre;
+const { BigNumber } = ethers;
 const chalk = require("chalk");
 const {
   getDeployedAddress,
@@ -61,6 +62,7 @@ async function main(argv) {
   );
 
   let deploy_data = {};
+  let gasUsed = BigNumber.from("0");
 
   let gasPrice = await getGasPrice(argv.gasPrice);
   const proxyAdmin = await ProxyAdmin.deploy({ gasPrice });
