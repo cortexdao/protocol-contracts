@@ -16,7 +16,6 @@ const { argv } = require("yargs").option("gasPrice", {
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
 const { BigNumber } = ethers;
-const assert = require("assert");
 const chalk = require("chalk");
 const {
   getGasPrice,
