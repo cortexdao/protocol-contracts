@@ -56,14 +56,16 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${genericExecutor.deployTransaction.hash}`
   );
-  await genericExecutor.deployTransaction.wait();
+  let receipt = await genericExecutor.deployTransaction.wait();
   console.log("Generic Executor", chalk.green(genericExecutor.address));
   console.log("");
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
   const deployData = {
     GenericExecutor: genericExecutor.address,
   };
   updateDeployJsons(networkName, deployData);
+  console.log("Total gas used:", gasUsed.toString());
 
   if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");

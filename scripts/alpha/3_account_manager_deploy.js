@@ -71,10 +71,11 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${proxyAdmin.deployTransaction.hash}`
   );
-  await proxyAdmin.deployTransaction.wait();
+  let receipt = await proxyAdmin.deployTransaction.wait();
   deploy_data["AccountManagerProxyAdmin"] = proxyAdmin.address;
   console.log(`ProxyAdmin: ${chalk.green(proxyAdmin.address)}`);
   console.log("");
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
   gasPrice = await getGasPrice(argv.gasPrice);
   const logic = await AccountManager.deploy({ gasPrice });
@@ -82,10 +83,11 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${logic.deployTransaction.hash}`
   );
-  await logic.deployTransaction.wait();
+  receipt = await logic.deployTransaction.wait();
   deploy_data["AccountManager"] = logic.address;
   console.log(`Implementation Logic: ${logic.address}`);
   console.log("");
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
   gasPrice = await getGasPrice(argv.gasPrice);
   const addressRegistryAddress = getDeployedAddress(
@@ -102,12 +104,14 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${proxy.deployTransaction.hash}`
   );
-  await proxy.deployTransaction.wait();
+  receipt = await proxy.deployTransaction.wait();
   deploy_data["AccountManagerProxy"] = proxy.address;
   console.log(`Proxy: ${proxy.address}`);
   console.log("");
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
   updateDeployJsons(networkName, deploy_data);
+  console.log("Total gas used:", gasUsed.toString());
 
   // TODO: update address registry
 

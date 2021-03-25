@@ -65,14 +65,16 @@ async function main(argv) {
     gasPrice,
   });
   console.log("Deploy account:", `https://etherscan.io/tx/${trx.hash}`);
-  await trx.wait();
+  let receipt = await trx.wait();
   const accountAddress = await accountManager.getAccount(accountId);
   console.log("Account:", chalk.green(accountAddress));
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
   const deployData = {
     Account: accountAddress,
   };
   updateDeployJsons(networkName, deployData);
+  console.log("Total gas used:", gasUsed.toString());
 
   if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");

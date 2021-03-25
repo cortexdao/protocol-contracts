@@ -87,10 +87,10 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${tvlManager.deployTransaction.hash}`
   );
-  await tvlManager.deployTransaction.wait();
+  let receipt = await tvlManager.deployTransaction.wait();
   console.log("TVLManager:", chalk.green(tvlManager.address));
   console.log("");
-  // assert.strictEqual(await tvlManager.owner(), tvlManagerDeployer.address);
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
   const deploy_data = {
     TVLManager: tvlManager.address,
@@ -132,13 +132,14 @@ async function main(argv) {
     { gasPrice }
   );
   console.log("Register address:", `https://etherscan.io/tx/${trx.hash}`);
-  await trx.wait();
+  receipt = await trx.wait();
   assert.strictEqual(
     await addressRegistry.chainlinkRegistryAddress(),
     tvlManager.address,
     "Chainlink registry address is not registered correctly."
   );
   console.log("... done.");
+  console.log("Total gas used:", gasUsed.toString());
 
   if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");

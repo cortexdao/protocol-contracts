@@ -70,10 +70,11 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${proxyAdmin.deployTransaction.hash}`
   );
-  await proxyAdmin.deployTransaction.wait();
+  let receipt = await proxyAdmin.deployTransaction.wait();
   deploy_data["ManagerProxyAdmin"] = proxyAdmin.address;
   console.log(`ProxyAdmin: ${chalk.green(proxyAdmin.address)}`);
   console.log("");
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
   gasPrice = await getGasPrice(argv.gasPrice);
   const logic = await PoolManager.deploy({ gasPrice });
@@ -81,10 +82,11 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${logic.deployTransaction.hash}`
   );
-  await logic.deployTransaction.wait();
+  receipt = await logic.deployTransaction.wait();
   deploy_data["PoolManager"] = logic.address;
   console.log(`Implementation Logic: ${logic.address}`);
   console.log("");
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
   gasPrice = await getGasPrice(argv.gasPrice);
   const mAptAddress = getDeployedAddress("MetaPoolTokenProxy", networkName);
@@ -103,10 +105,11 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${proxy.deployTransaction.hash}`
   );
-  await proxy.deployTransaction.wait();
+  receipt = await proxy.deployTransaction.wait();
   deploy_data["PoolManagerProxy"] = proxy.address;
   console.log(`Proxy: ${proxy.address}`);
   console.log("");
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
   updateDeployJsons(networkName, deploy_data);
 
@@ -125,8 +128,9 @@ async function main(argv) {
     "Set manager address on mAPT:",
     `https://etherscan.io/tx/${trx.hash}`
   );
-  await trx.wait();
+  receipt = await trx.wait();
   console.log("");
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
   const accountManagerAddress = getDeployedAddress(
     "AccountManagerProxy",
@@ -141,8 +145,10 @@ async function main(argv) {
     "Set account factory on pool manager:",
     `https://etherscan.io/tx/${trx.hash}`
   );
-  await trx.wait();
+  receipt = await trx.wait();
   console.log("");
+  gasUsed = gasUsed.add(receipt.gasUsed);
+  console.log("Total gas used:", gasUsed.toString());
 
   // TODO: update address registry
 
