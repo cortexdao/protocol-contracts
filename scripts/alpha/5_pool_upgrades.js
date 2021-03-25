@@ -6,7 +6,6 @@ const { argv } = require("yargs").option("gasPrice", {
 const hre = require("hardhat");
 const { ethers, network } = hre;
 const { BigNumber } = ethers;
-const assert = require("assert");
 const chalk = require("chalk");
 const {
   getGasPrice,
@@ -59,11 +58,6 @@ async function main(argv) {
     "ProxyAdmin",
     proxyAdminAddress,
     poolDeployer
-  );
-  assert.strictEqual(
-    await proxyAdmin.owner(),
-    poolDeployer.address,
-    "MNEMONIC needs to be set to pool deployer."
   );
 
   const PoolTokenV2 = await ethers.getContractFactory(
@@ -130,7 +124,7 @@ async function main(argv) {
     const aggAddress = AGG_MAP[networkName][`${symbol}-USD`];
     const trx = await pool.setPriceAggregator(aggAddress, { gasPrice });
     console.log("Set USD agg:", `https://etherscan.io/tx/${trx.hash}`);
-    receipt = await trx.wait();
+    const receipt = await trx.wait();
     console.log("");
     gasUsed = gasUsed.add(receipt.gasUsed);
   }
@@ -159,7 +153,7 @@ async function main(argv) {
     );
     const trx = await pool.infiniteApprove(poolManagerAddress, { gasPrice });
     console.log("Approve:", `https://etherscan.io/tx/${trx.hash}`);
-    receipt = await trx.wait();
+    const receipt = await trx.wait();
     console.log("");
     gasUsed = gasUsed.add(receipt.gasUsed);
   }
