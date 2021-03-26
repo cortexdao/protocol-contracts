@@ -15,6 +15,8 @@ coverage/
 # env files
 .env
 /alpha.env
+/alpha.env.kovan
+/alpha.env.mainnet
 
 # npm
 .npmrc

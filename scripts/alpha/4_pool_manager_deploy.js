@@ -5,11 +5,13 @@ const { argv } = require("yargs").option("gasPrice", {
 });
 const hre = require("hardhat");
 const { ethers, network } = hre;
+const { BigNumber } = ethers;
 const chalk = require("chalk");
 const {
   getDeployedAddress,
   getGasPrice,
   updateDeployJsons,
+  bytes32,
 } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
@@ -61,6 +63,7 @@ async function main(argv) {
   );
 
   let deploy_data = {};
+  let gasUsed = BigNumber.from("0");
 
   let gasPrice = await getGasPrice(argv.gasPrice);
   const proxyAdmin = await ProxyAdmin.deploy({ gasPrice });
@@ -68,10 +71,11 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${proxyAdmin.deployTransaction.hash}`
   );
-  await proxyAdmin.deployed();
+  let receipt = await proxyAdmin.deployTransaction.wait();
   deploy_data["ManagerProxyAdmin"] = proxyAdmin.address;
   console.log(`ProxyAdmin: ${chalk.green(proxyAdmin.address)}`);
   console.log("");
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
   gasPrice = await getGasPrice(argv.gasPrice);
   const logic = await PoolManager.deploy({ gasPrice });
@@ -79,10 +83,11 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${logic.deployTransaction.hash}`
   );
-  await logic.deployed();
+  receipt = await logic.deployTransaction.wait();
   deploy_data["PoolManager"] = logic.address;
   console.log(`Implementation Logic: ${logic.address}`);
   console.log("");
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
   gasPrice = await getGasPrice(argv.gasPrice);
   const mAptAddress = getDeployedAddress("MetaPoolTokenProxy", networkName);
@@ -101,10 +106,11 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${proxy.deployTransaction.hash}`
   );
-  await proxy.deployed();
+  receipt = await proxy.deployTransaction.wait();
   deploy_data["PoolManagerProxy"] = proxy.address;
   console.log(`Proxy: ${proxy.address}`);
   console.log("");
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
   updateDeployJsons(networkName, deploy_data);
 
@@ -123,15 +129,20 @@ async function main(argv) {
     "Set manager address on mAPT:",
     `https://etherscan.io/tx/${trx.hash}`
   );
-  await trx.wait();
+  receipt = await trx.wait();
   console.log("");
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
   const accountManagerAddress = getDeployedAddress(
     "AccountManagerProxy",
     networkName
   );
   gasPrice = await getGasPrice(argv.gasPrice);
-  const poolManager = await ethers.getContractAt("PoolManager", proxy.address);
+  const poolManager = await ethers.getContractAt(
+    "PoolManager",
+    proxy.address,
+    poolManagerDeployer
+  );
   trx = await poolManager.setAccountFactory(accountManagerAddress, {
     gasPrice,
   });
@@ -139,10 +150,42 @@ async function main(argv) {
     "Set account factory on pool manager:",
     `https://etherscan.io/tx/${trx.hash}`
   );
-  await trx.wait();
+  receipt = await trx.wait();
   console.log("");
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
-  // TODO: update address registry
+  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
+  const addressRegistryDeployer = ethers.Wallet.fromMnemonic(
+    ADDRESS_REGISTRY_MNEMONIC
+  ).connect(ethers.provider);
+  /* TESTING on localhost only
+   * need to fund as there is no ETH on Mainnet for the deployer
+   */
+  if (networkName == "LOCALHOST") {
+    const [funder] = await ethers.getSigners();
+    const fundingTrx = await funder.sendTransaction({
+      to: addressRegistryDeployer.address,
+      value: ethers.utils.parseEther("1.0"),
+    });
+    await fundingTrx.wait();
+  }
+
+  const addressRegistry = await ethers.getContractAt(
+    "AddressRegistryV2",
+    addressRegistryAddress,
+    addressRegistryDeployer
+  );
+  trx = await addressRegistry.registerAddress(
+    bytes32("poolManager"),
+    proxy.address
+  );
+  console.log(
+    "Update address registry:",
+    `https://etherscan.io/tx/${trx.hash}`
+  );
+  receipt = await trx.wait();
+  gasUsed = gasUsed.add(receipt.gasUsed);
+  console.log("Total gas used:", gasUsed.toString());
 
   if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");

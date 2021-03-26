@@ -5,7 +5,7 @@ const { argv } = require("yargs").option("gasPrice", {
 });
 const hre = require("hardhat");
 const { ethers, network } = hre;
-const assert = require("assert");
+const { BigNumber } = ethers;
 const chalk = require("chalk");
 const {
   getGasPrice,
@@ -48,6 +48,8 @@ async function main(argv) {
   console.log("Upgrading pools ...");
   console.log("");
 
+  let gasUsed = BigNumber.from("0");
+
   const proxyAdminAddress = getDeployedAddress(
     "PoolTokenProxyAdmin",
     networkName
@@ -56,11 +58,6 @@ async function main(argv) {
     "ProxyAdmin",
     proxyAdminAddress,
     poolDeployer
-  );
-  assert.strictEqual(
-    await proxyAdmin.owner(),
-    poolDeployer.address,
-    "MNEMONIC needs to be set to pool deployer."
   );
 
   const PoolTokenV2 = await ethers.getContractFactory(
@@ -75,11 +72,12 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${logicV2.deployTransaction.hash}`
   );
-  await logicV2.deployed();
+  let receipt = await logicV2.deployTransaction.wait();
   console.log(`Pool logic V2: ${chalk.green(logicV2.address)}`);
   console.log("");
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
-  const mAPTAddress = getDeployedAddress("MetaPoolToken", networkName);
+  const mAPTAddress = getDeployedAddress("MetaPoolTokenProxy", networkName);
   const initData = PoolTokenV2.interface.encodeFunctionData(
     "initializeUpgrade(address)",
     [mAPTAddress]
@@ -98,9 +96,10 @@ async function main(argv) {
       .connect(poolDeployer)
       .upgradeAndCall(poolAddress, logicV2.address, initData, { gasPrice });
     console.log("Upgrade:", `https://etherscan.io/tx/${trx.hash}`);
-    await trx.wait();
+    receipt = await trx.wait();
     console.log("... pool upgraded.");
     console.log("");
+    gasUsed = gasUsed.add(receipt.gasUsed);
 
     deployData[symbol + "_PoolToken"] = logicV2.address;
   }
@@ -125,8 +124,9 @@ async function main(argv) {
     const aggAddress = AGG_MAP[networkName][`${symbol}-USD`];
     const trx = await pool.setPriceAggregator(aggAddress, { gasPrice });
     console.log("Set USD agg:", `https://etherscan.io/tx/${trx.hash}`);
-    await trx.wait();
+    const receipt = await trx.wait();
     console.log("");
+    gasUsed = gasUsed.add(receipt.gasUsed);
   }
 
   console.log("");
@@ -153,9 +153,11 @@ async function main(argv) {
     );
     const trx = await pool.infiniteApprove(poolManagerAddress, { gasPrice });
     console.log("Approve:", `https://etherscan.io/tx/${trx.hash}`);
-    await trx.wait();
+    const receipt = await trx.wait();
     console.log("");
+    gasUsed = gasUsed.add(receipt.gasUsed);
   }
+  console.log("Total gas used:", gasUsed.toString());
 
   if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");

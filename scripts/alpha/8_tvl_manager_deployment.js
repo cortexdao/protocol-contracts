@@ -15,7 +15,7 @@ const { argv } = require("yargs").option("gasPrice", {
 });
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const assert = require("assert");
+const { BigNumber } = ethers;
 const chalk = require("chalk");
 const {
   getGasPrice,
@@ -59,6 +59,8 @@ async function main(argv) {
   console.log("Deploying TVLManager ...");
   console.log("");
 
+  let gasUsed = BigNumber.from("0");
+
   const TVLManager = await ethers.getContractFactory(
     "TVLManager",
     tvlManagerDeployer
@@ -84,10 +86,10 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${tvlManager.deployTransaction.hash}`
   );
-  await tvlManager.deployed();
+  let receipt = await tvlManager.deployTransaction.wait();
   console.log("TVLManager:", chalk.green(tvlManager.address));
   console.log("");
-  // assert.strictEqual(await tvlManager.owner(), tvlManagerDeployer.address);
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
   const deploy_data = {
     TVLManager: tvlManager.address,
@@ -129,13 +131,9 @@ async function main(argv) {
     { gasPrice }
   );
   console.log("Register address:", `https://etherscan.io/tx/${trx.hash}`);
-  await trx.wait();
-  assert.strictEqual(
-    await addressRegistry.chainlinkRegistryAddress(),
-    tvlManager.address,
-    "Chainlink registry address is not registered correctly."
-  );
+  receipt = await trx.wait();
   console.log("... done.");
+  console.log("Total gas used:", gasUsed.toString());
 
   if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");

@@ -5,6 +5,7 @@ const { argv } = require("yargs").option("gasPrice", {
 });
 const hre = require("hardhat");
 const { ethers, network } = hre;
+const { BigNumber } = ethers;
 const chalk = require("chalk");
 const { getGasPrice, updateDeployJsons } = require("../../utils/helpers");
 
@@ -16,35 +17,39 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  const MANAGER_MNEMONIC = process.env.MANAGER_MNEMONIC;
-  const managerDeployer = ethers.Wallet.fromMnemonic(MANAGER_MNEMONIC).connect(
-    ethers.provider
-  );
-  console.log("Deployer address:", managerDeployer.address);
+  const ACCOUNT_MANAGER_MNEMONIC = process.env.ACCOUNT_MANAGER_MNEMONIC;
+  const accountManagerDeployer = ethers.Wallet.fromMnemonic(
+    ACCOUNT_MANAGER_MNEMONIC
+  ).connect(ethers.provider);
+  console.log("Deployer address:", accountManagerDeployer.address);
   /* TESTING on localhost only
    * may need to fund the deployer while testing
    */
   if (networkName == "LOCALHOST") {
     const [funder] = await ethers.getSigners();
     const fundingTrx = await funder.sendTransaction({
-      to: managerDeployer.address,
+      to: accountManagerDeployer.address,
       value: ethers.utils.parseEther("1.0"),
     });
     await fundingTrx.wait();
   }
 
   const balance =
-    (await ethers.provider.getBalance(managerDeployer.address)).toString() /
-    1e18;
+    (
+      await ethers.provider.getBalance(accountManagerDeployer.address)
+    ).toString() / 1e18;
   console.log("ETH balance:", balance.toString());
   console.log("");
 
   console.log("");
   console.log("Deploying generic executor ...");
   console.log("");
+
+  let gasUsed = BigNumber.from("0");
+
   const GenericExecutor = await ethers.getContractFactory(
     "GenericExecutor",
-    managerDeployer
+    accountManagerDeployer
   );
   let gasPrice = await getGasPrice(argv.gasPrice);
   const genericExecutor = await GenericExecutor.deploy({ gasPrice });
@@ -52,14 +57,16 @@ async function main(argv) {
     "Deploy:",
     `https://etherscan.io/tx/${genericExecutor.deployTransaction.hash}`
   );
-  await genericExecutor.deployed();
+  let receipt = await genericExecutor.deployTransaction.wait();
   console.log("Generic Executor", chalk.green(genericExecutor.address));
   console.log("");
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
   const deployData = {
     GenericExecutor: genericExecutor.address,
   };
   updateDeployJsons(networkName, deployData);
+  console.log("Total gas used:", gasUsed.toString());
 
   if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");
