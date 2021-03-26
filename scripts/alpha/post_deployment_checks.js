@@ -21,6 +21,7 @@ const {
   getDeployedAddress,
   bytes32,
   MAX_UINT256,
+  ZERO_ADDRESS,
 } = require("../../utils/helpers");
 
 console.logDone = function () {
@@ -139,6 +140,7 @@ async function main(argv) {
 
   console.log("Check pools upgrade ...");
   for (let poolId of ["daiPool", "usdcPool", "usdtPool"]) {
+    console.log("- " + poolId);
     poolId = bytes32(poolId);
     const poolAddress = await addressRegistry.getAddress(poolId);
     const pool = await ethers.getContractAt("PoolTokenV2", poolAddress);
@@ -162,9 +164,19 @@ async function main(argv) {
     expect(await pool.getUnderlyerPrice()).to.be.lt("110000000");
     expect(await pool.getUnderlyerPrice()).to.be.gt("90000000");
 
-    // check agg addresses?
-    console.logDone();
+    // TODO: check agg addresses?
   }
+  console.logDone();
+
+  console.log(
+    "Check account deployed with correct ID and set with executor ..."
+  );
+  const accountAddress = await accountManager.getAccount(bytes32("alpha"));
+  expect(accountAddress).to.not.equal(ZERO_ADDRESS);
+  const accountContract = await ethers.getContractAt("Account", accountAddress);
+  const executorAddress = getDeployedAddress("GenericExecutor", networkName);
+  expect(await accountContract.genericExecutor()).to.equal(executorAddress);
+  console.logDone();
 }
 
 if (!module.parent) {

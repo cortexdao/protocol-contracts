@@ -81,7 +81,6 @@ async function main(argv) {
     console.log("");
     console.log("Verifying on Etherscan ...");
     await ethers.provider.waitForTransaction(trx.hash, 5); // wait for Etherscan to catch up
-    const executorAddress = getDeployedAddress("GenericExecutor", networkName);
     await hre.run("verify:verify", {
       address: accountAddress,
       constructorArguments: [executorAddress],
