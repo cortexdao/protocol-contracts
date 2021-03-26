@@ -142,7 +142,11 @@ async function main(argv) {
     poolId = bytes32(poolId);
     const poolAddress = await addressRegistry.getAddress(poolId);
     const pool = await ethers.getContractAt("PoolTokenV2", poolAddress);
-    expect(await pool.mApt()).to.equal(mApt.address); // check the pools are V2
+
+    // sanity-check; also checks if we are using V2 contracts
+    expect(await pool.mApt()).to.equal(mApt.address);
+
+    // check pool manager allowances
     const underlyerAddress = await pool.underlyer();
     const underlyer = await ethers.getContractAt(
       "IDetailedERC20",
@@ -153,6 +157,13 @@ async function main(argv) {
       poolManager.address
     );
     expect(allowance).to.equal(MAX_UINT256);
+
+    // check pool underlyer price is in USD
+    expect(await pool.getUnderlyerPrice()).to.be.lt("110000000");
+    expect(await pool.getUnderlyerPrice()).to.be.gt("90000000");
+
+    // check agg addresses?
+    console.logDone();
   }
 }
 
