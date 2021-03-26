@@ -25,6 +25,12 @@ export function handleDepositedAPT(event: DepositedAPT): void {
 
   const contract = PoolTokenV2.bind(poolAddress);
 
+  const priceResult = contract.try_getUnderlyerPrice();
+  let price = BigInt.fromI32(0);
+  if (!priceResult.reverted) {
+    price = priceResult.value;
+  }
+
   const ptv = new PoolTotalValue(poolAddress.toHexString() + timestamp.toString());
   ptv.timestamp = timestamp;
   ptv.poolAddress = poolAddress;
@@ -56,7 +62,8 @@ export function handleDepositedAPT(event: DepositedAPT): void {
   cashflowPoint.timestamp = timestamp;
   cashflowPoint.userAptBalance = contract.balanceOf(user);
 
-  cashflow.total = cashflow.total.minus(event.params.tokenAmount);
+  const outflow = event.params.tokenAmount.times(price);
+  cashflow.total = cashflow.total.minus(outflow);
   cashflowPoint.total = cashflow.total;
 
   cashflow.save();
@@ -70,6 +77,12 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
   const totalValue = event.params.totalEthValueLocked;
 
   const contract = PoolTokenV2.bind(poolAddress);
+
+  const priceResult = contract.try_getUnderlyerPrice();
+  let price = BigInt.fromI32(0);
+  if (!priceResult.reverted) {
+    price = priceResult.value;
+  }
 
   const ptv = new PoolTotalValue(poolAddress.toHexString() + timestamp.toString());
   ptv.timestamp = timestamp;
@@ -102,7 +115,8 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
   cashflowPoint.timestamp = timestamp;
   cashflowPoint.userAptBalance = contract.balanceOf(user);
 
-  cashflow.total = cashflow.total.plus(event.params.redeemedTokenAmount);
+  const inflow = event.params.redeemedTokenAmount.times(price);
+  cashflow.total = cashflow.total.plus(inflow);
   cashflowPoint.total = cashflow.total;
 
   cashflow.save();
