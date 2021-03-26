@@ -5,11 +5,11 @@ schema:
   file: ./schema.graphql
 dataSources:
   - kind: ethereum/contract
-    name: DAI_APYPoolToken
-    network: '{{network}}'
+    name: DAI_PoolToken
+    network: "{{network}}"
     source:
-      address: '{{dai_pool_address}}'
-      abi: APYPoolToken
+      address: "{{dai_pool_address}}"
+      abi: PoolTokenV2
       startBlock: {{startBlock}}
     mapping:
       kind: ethereum/events
@@ -24,10 +24,10 @@ dataSources:
         - User
         - Pool
       abis:
-        - name: APYPoolToken
-          file: ../artifacts/contracts/APYPoolToken.sol/APYPoolToken.json
-        - name: ERC20UpgradeSafe
-          file: ../artifacts/@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol/ERC20UpgradeSafe.json
+        - name: PoolTokenV2
+          file: ../artifacts/contracts/PoolTokenV2.sol/PoolTokenV2.json
+        - name: IDetailedERC20
+          file: ../artifacts/contracts/interfaces/IDetailedERC20.sol/IDetailedERC20.json
       eventHandlers:
         - event: DepositedAPT(indexed address,address,uint256,uint256,uint256,uint256)
           handler: handleDepositedAPT
@@ -37,11 +37,11 @@ dataSources:
           handler: handleTransfer
       file: ./src/mapping.ts
   - kind: ethereum/contract
-    name: USDC_APYPoolToken
-    network: '{{network}}'
+    name: USDC_PoolToken
+    network: "{{network}}"
     source:
-      address: '{{usdc_pool_address}}'
-      abi: APYPoolToken
+      address: "{{usdc_pool_address}}"
+      abi: PoolTokenV2
       startBlock: {{startBlock}}
     mapping:
       kind: ethereum/events
@@ -56,10 +56,10 @@ dataSources:
         - User
         - Pool
       abis:
-        - name: APYPoolToken
-          file: ../artifacts/contracts/APYPoolToken.sol/APYPoolToken.json
-        - name: ERC20UpgradeSafe
-          file: ../artifacts/@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol/ERC20UpgradeSafe.json
+        - name: PoolTokenV2
+          file: ../artifacts/contracts/PoolTokenV2.sol/PoolTokenV2.json
+        - name: IDetailedERC20
+          file: ../artifacts/contracts/interfaces/IDetailedERC20.sol/IDetailedERC20.json
       eventHandlers:
         - event: DepositedAPT(indexed address,address,uint256,uint256,uint256,uint256)
           handler: handleDepositedAPT
@@ -69,11 +69,11 @@ dataSources:
           handler: handleTransfer
       file: ./src/mapping.ts
   - kind: ethereum/contract
-    name: USDT_APYPoolToken
-    network: '{{network}}'
+    name: USDT_PoolToken
+    network: "{{network}}"
     source:
-      address: '{{usdt_pool_address}}'
-      abi: APYPoolToken
+      address: "{{usdt_pool_address}}"
+      abi: PoolTokenV2
       startBlock: {{startBlock}}
     mapping:
       kind: ethereum/events
@@ -88,10 +88,10 @@ dataSources:
         - User
         - Pool
       abis:
-        - name: APYPoolToken
-          file: ../artifacts/contracts/APYPoolToken.sol/APYPoolToken.json
-        - name: ERC20UpgradeSafe
-          file: ../artifacts/@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol/ERC20UpgradeSafe.json
+        - name: PoolTokenV2
+          file: ../artifacts/contracts/PoolTokenV2.sol/PoolTokenV2.json
+        - name: IDetailedERC20
+          file: ../artifacts/contracts/interfaces/IDetailedERC20.sol/IDetailedERC20.json
       eventHandlers:
         - event: DepositedAPT(indexed address,address,uint256,uint256,uint256,uint256)
           handler: handleDepositedAPT
@@ -101,11 +101,11 @@ dataSources:
           handler: handleTransfer
       file: ./src/mapping.ts
   - kind: ethereum/contract
-    name: APYRewardDistributor
-    network: '{{network}}'
+    name: RewardDistributor
+    network: "{{network}}"
     source:
-      address: '{{reward_distributor_address}}'
-      abi: APYRewardDistributor
+      address: "{{reward_distributor_address}}"
+      abi: RewardDistributor
       startBlock: {{startBlock}}
     mapping:
       kind: ethereum/events
@@ -114,8 +114,8 @@ dataSources:
       entities:
         - AccountClaim
       abis:
-        - name: APYRewardDistributor
-          file: ../artifacts/contracts/APYRewardDistributor.sol/APYRewardDistributor.json
+        - name: RewardDistributor
+          file: ../artifacts/contracts/RewardDistributor.sol/RewardDistributor.json
       eventHandlers:
         - event: Claimed(uint256,address,uint256)
           handler: handleClaimed

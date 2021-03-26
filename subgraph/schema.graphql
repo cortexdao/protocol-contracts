@@ -10,7 +10,7 @@ type PoolTotalValue @entity {
   id: ID!
   poolAddress: Bytes!
   timestamp: BigInt!
-  totalEthValueLocked: BigInt!
+  poolTotalValue: BigInt!
   aptSupply: BigInt!
   valuePerShare: BigDecimal
 }

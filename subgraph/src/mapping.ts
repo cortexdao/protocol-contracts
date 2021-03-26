@@ -1,11 +1,11 @@
 import {
-  APYPoolToken,
+  PoolTokenV2,
   DepositedAPT,
   RedeemedAPT,
   Transfer as TransferEvent,
-} from "../generated/DAI_APYPoolToken/APYPoolToken";
-import { ERC20UpgradeSafe } from "../generated/DAI_APYPoolToken/ERC20UpgradeSafe";
-import { Claimed } from "../generated/APYRewardDistributor/APYRewardDistributor";
+} from "../generated/DAI_PoolToken/PoolTokenV2";
+import { IDetailedERC20 } from "../generated/DAI_PoolToken/IDetailedERC20";
+import { Claimed } from "../generated/RewardDistributor/RewardDistributor";
 import {
   TotalEthValueLocked,
   PoolTotalValue,
@@ -24,7 +24,7 @@ export function handleDepositedAPT(event: DepositedAPT): void {
   const poolAddress = event.address;
   const totalPoolValue = event.params.totalEthValueLocked;
 
-  const contract = APYPoolToken.bind(poolAddress);
+  const contract = PoolTokenV2.bind(poolAddress);
 
   const ptv = new PoolTotalValue(poolAddress.toHexString() + timestamp.toString());
   ptv.timestamp = timestamp;
@@ -70,7 +70,7 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
   const poolAddress = event.address;
   const totalPoolValue = event.params.totalEthValueLocked;
 
-  const contract = APYPoolToken.bind(poolAddress);
+  const contract = PoolTokenV2.bind(poolAddress);
 
   const ptv = new PoolTotalValue(poolAddress.toHexString() + timestamp.toString());
   ptv.timestamp = timestamp;
@@ -129,13 +129,18 @@ export function handleTransfer(event: TransferEvent): void {
   transfer.value = event.params.value;
   transfer.save();
 
-  const contract = APYPoolToken.bind(poolAddress);
-  const underlyer = ERC20UpgradeSafe.bind(contract.underlyer());
+  const contract = PoolTokenV2.bind(poolAddress);
+  const underlyer = IDetailedERC20.bind(contract.underlyer());
 
-  const priceResult = contract.try_getTokenEthPrice();
+  const priceResult = contract.try_getUnderlyerPrice();
   let price = BigInt.fromI32(0);
   if (!priceResult.reverted) {
     price = priceResult.value;
+  }
+  const totalValueResult = contract.try_getPoolTotalValue();
+  let totalValue = BigInt.fromI32(0);
+  if (!totalValueResult.reverted) {
+    totalValue = totalValueResult.value;
   }
 
   const poolId = poolAddress.toHexString();
@@ -154,7 +159,7 @@ export function handleTransfer(event: TransferEvent): void {
   toUser.address = toAddress;
 
   let balance = contract.balanceOf(toAddress);
-  let result = contract.try_getAPTEthValue(balance);
+  let result = contract.try_getAPTValue(balance);
   let ethValue = BigInt.fromI32(0);
   if (!result.reverted) {
     ethValue = result.value;
@@ -170,7 +175,7 @@ export function handleTransfer(event: TransferEvent): void {
   fromUser.address = fromAddress;
 
   balance = contract.balanceOf(fromAddress);
-  result = contract.try_getAPTEthValue(balance);
+  result = contract.try_getAPTValue(balance);
   ethValue = BigInt.fromI32(0);
   if (!result.reverted) {
     ethValue = result.value;
