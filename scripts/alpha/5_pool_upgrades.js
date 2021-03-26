@@ -77,7 +77,7 @@ async function main(argv) {
   console.log("");
   gasUsed = gasUsed.add(receipt.gasUsed);
 
-  const mAPTAddress = getDeployedAddress("MetaPoolToken", networkName);
+  const mAPTAddress = getDeployedAddress("MetaPoolTokenProxy", networkName);
   const initData = PoolTokenV2.interface.encodeFunctionData(
     "initializeUpgrade(address)",
     [mAPTAddress]
