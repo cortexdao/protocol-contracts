@@ -7,7 +7,6 @@ import {
 import { IDetailedERC20 } from "../generated/DAI_PoolToken/IDetailedERC20";
 import { Claimed } from "../generated/RewardDistributor/RewardDistributor";
 import {
-  TotalEthValueLocked,
   PoolTotalValue,
   Cashflow,
   CashflowPoint,
@@ -22,18 +21,18 @@ export function handleDepositedAPT(event: DepositedAPT): void {
   const sender = event.params.sender;
   const timestamp = event.block.timestamp;
   const poolAddress = event.address;
-  const totalPoolValue = event.params.totalEthValueLocked;
+  const totalValue = event.params.totalEthValueLocked;
 
   const contract = PoolTokenV2.bind(poolAddress);
 
   const ptv = new PoolTotalValue(poolAddress.toHexString() + timestamp.toString());
   ptv.timestamp = timestamp;
   ptv.poolAddress = poolAddress;
-  ptv.poolTotalValue = totalPoolValue;
+  ptv.totalValue = totalValue;
   ptv.aptSupply = contract.totalSupply();
   if (!ptv.aptSupply.isZero())
     ptv.valuePerShare =
-      new BigDecimal(ptv.poolTotalValue) / new BigDecimal(ptv.aptSupply);
+      new BigDecimal(ptv.totalValue) / new BigDecimal(ptv.aptSupply);
   ptv.save();
 
   // Cashflow entity
@@ -68,18 +67,18 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
   const sender = event.params.sender;
   const timestamp = event.block.timestamp;
   const poolAddress = event.address;
-  const totalPoolValue = event.params.totalEthValueLocked;
+  const totalValue = event.params.totalEthValueLocked;
 
   const contract = PoolTokenV2.bind(poolAddress);
 
   const ptv = new PoolTotalValue(poolAddress.toHexString() + timestamp.toString());
   ptv.timestamp = timestamp;
   ptv.poolAddress = poolAddress;
-  ptv.poolTotalValue = totalPoolValue;
+  ptv.totalValue = totalValue;
   ptv.aptSupply = contract.totalSupply();
   if (!ptv.aptSupply.isZero())
     ptv.valuePerShare =
-      new BigDecimal(ptv.poolTotalValue) / new BigDecimal(ptv.aptSupply);
+      new BigDecimal(ptv.totalValue) / new BigDecimal(ptv.aptSupply);
   ptv.save();
 
   // Cashflow entity
@@ -149,6 +148,7 @@ export function handleTransfer(event: TransferEvent): void {
   pool.underlyerSymbol = underlyer.symbol();
   pool.underlyerDecimals = underlyer.decimals();
   pool.underlyerBalance = underlyer.balanceOf(poolAddress);
+  pool.totalValue = totalValue;
   pool.address = poolAddress;
   pool.aptSupply = contract.totalSupply();
   pool.save();

@@ -10,7 +10,7 @@ type PoolTotalValue @entity {
   id: ID!
   poolAddress: Bytes!
   timestamp: BigInt!
-  poolTotalValue: BigInt!
+  totalValue: BigInt!
   aptSupply: BigInt!
   valuePerShare: BigDecimal
 }
@@ -54,6 +54,7 @@ type Pool @entity {
   underlyerSymbol: String!
   underlyerDecimals: Int!
   underlyerBalance: BigInt!
+  totalValue: BigInt!
   aptSupply: BigInt!
 }
 
