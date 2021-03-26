@@ -22,31 +22,18 @@ export function handleDepositedAPT(event: DepositedAPT): void {
   const sender = event.params.sender;
   const timestamp = event.block.timestamp;
   const poolAddress = event.address;
-  const logIndex = event.logIndex;
-  const transactionHash = event.transaction.hash;
-
-  const tvl = new TotalEthValueLocked(
-    sender.toHexString() +
-      timestamp.toString() +
-      logIndex.toString() +
-      transactionHash.toHexString()
-  );
-  tvl.timestamp = timestamp;
-  tvl.sequenceNumber = timestamp * BigInt.fromI32(100000000) + logIndex;
-  tvl.poolAddress = poolAddress;
-  tvl.totalEthValueLocked = event.params.totalEthValueLocked;
-  tvl.save();
+  const totalPoolValue = event.params.totalEthValueLocked;
 
   const contract = APYPoolToken.bind(poolAddress);
 
   const ptv = new PoolTotalValue(poolAddress.toHexString() + timestamp.toString());
   ptv.timestamp = timestamp;
   ptv.poolAddress = poolAddress;
-  ptv.totalEthValueLocked = event.params.totalEthValueLocked;
+  ptv.poolTotalValue = totalPoolValue;
   ptv.aptSupply = contract.totalSupply();
   if (!ptv.aptSupply.isZero())
     ptv.valuePerShare =
-      new BigDecimal(ptv.totalEthValueLocked) / new BigDecimal(ptv.aptSupply);
+      new BigDecimal(ptv.poolTotalValue) / new BigDecimal(ptv.aptSupply);
   ptv.save();
 
   // Cashflow entity
@@ -81,31 +68,18 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
   const sender = event.params.sender;
   const timestamp = event.block.timestamp;
   const poolAddress = event.address;
-  const logIndex = event.logIndex;
-  const transactionHash = event.transaction.hash;
-
-  const tvl = new TotalEthValueLocked(
-    event.params.sender.toHexString() +
-      timestamp.toString() +
-      logIndex.toString() +
-      transactionHash.toHexString()
-  );
-  tvl.timestamp = event.block.timestamp;
-  tvl.sequenceNumber = timestamp * BigInt.fromI32(100000000) + logIndex;
-  tvl.poolAddress = poolAddress;
-  tvl.totalEthValueLocked = event.params.totalEthValueLocked;
-  tvl.save();
+  const totalPoolValue = event.params.totalEthValueLocked;
 
   const contract = APYPoolToken.bind(poolAddress);
 
   const ptv = new PoolTotalValue(poolAddress.toHexString() + timestamp.toString());
   ptv.timestamp = timestamp;
   ptv.poolAddress = poolAddress;
-  ptv.totalEthValueLocked = event.params.totalEthValueLocked;
+  ptv.poolTotalValue = totalPoolValue;
   ptv.aptSupply = contract.totalSupply();
   if (!ptv.aptSupply.isZero())
     ptv.valuePerShare =
-      new BigDecimal(ptv.totalEthValueLocked) / new BigDecimal(ptv.aptSupply);
+      new BigDecimal(ptv.poolTotalValue) / new BigDecimal(ptv.aptSupply);
   ptv.save();
 
   // Cashflow entity
@@ -164,8 +138,8 @@ export function handleTransfer(event: TransferEvent): void {
     price = priceResult.value;
   }
 
-  const priceId = poolAddress.toHexString();
-  const pool = Pool.load(priceId) || new Pool(priceId);
+  const poolId = poolAddress.toHexString();
+  const pool = Pool.load(poolId) || new Pool(poolId);
   pool.underlyerPrice = price;
   pool.underlyerSymbol = underlyer.symbol();
   pool.underlyerDecimals = underlyer.decimals();
