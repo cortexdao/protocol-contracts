@@ -37,6 +37,8 @@ Other user operations that are typically done through the webste, such as stakin
 
 - install javascript dependencies:  
   `yarn`
+- clone Chainlink's TVL adapter repo:  
+  `make clone_chainlink_repo`
 - run forked Mainnet:  
   `make fork_mainnet`  
   **NOTE:** this requires `INFURA_API_KEY` be set as an env variable.

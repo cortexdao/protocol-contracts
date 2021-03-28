@@ -131,9 +131,9 @@ clone_chainlink_repo:
 	@if [ ! -d "$(CHAINLINK_REPO_FOLDER)" ]; then \
 	  git clone "$(CHAINLINK_REPO_URL)" "$(CHAINLINK_REPO_FOLDER)"; \
 	else \
-      cd "$(CHAINLINK_REPO_FOLDER)"; \
-      git pull "$(CHAINLINK_REPO_URL)"; \
-	  cd -;\
+          cd "$(CHAINLINK_REPO_FOLDER)"; \
+          git pull; \
+          cd -;\
 	fi
 
 .PHONY: delete_chainlink_repo
