@@ -38,7 +38,7 @@ Other user operations that are typically done through the webste, such as stakin
 - install javascript dependencies:  
   `yarn`
 - run forked Mainnet:  
-  `make forked_mainnet`  
+  `make fork_mainnet`  
   **NOTE:** this requires `INFURA_API_KEY` be set as an env variable.
 - start chainlink node (in another terminal):  
   `make up`  
