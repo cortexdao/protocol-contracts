@@ -1,7 +1,7 @@
 title Chainlink TVL Adapter
 
 participant ChainlinkNode#lightblue
-participant APYAssetAllocationRegistry#pink
+participant TVLManager#pink
 participant ERC20#yellow
 participant APYPeripheryContract
 participant DeFiProtocol
@@ -10,28 +10,28 @@ database PriceFeed-2#lightgray
 database PriceFeed-3#lightgray
 participant FluxAggregator#lightblue
 
-ChainlinkNode -> APYAssetAllocationRegistry: getAssetAllocationIds()
+ChainlinkNode -> TVLManager: getAssetAllocationIds()
 
 //Loop through Ids to price
 loop#lightblue Loop over Allocation Ids
 activate ChainlinkNode
-ChainlinkNode ->APYAssetAllocationRegistry: symbolOf(id)
-ChainlinkNode ->APYAssetAllocationRegistry: decimalsOf(id)
-ChainlinkNode ->APYAssetAllocationRegistry: balanceOf(id)
-activate APYAssetAllocationRegistry
+ChainlinkNode ->TVLManager: symbolOf(id)
+ChainlinkNode ->TVLManager: decimalsOf(id)
+ChainlinkNode ->TVLManager: balanceOf(id)
+activate TVLManager
 alt #yellow Protocol
-APYAssetAllocationRegistry -> ERC20: balanceOf(account)
+TVLManager -> ERC20: balanceOf(account)
 else Periphery
-APYAssetAllocationRegistry -> APYPeripheryContract: balanceOf(account)
+TVLManager -> APYPeripheryContract: balanceOf(account)
 activate APYPeripheryContract
 APYPeripheryContract ->DeFiProtocol: call() 
 APYPeripheryContract ->DeFiProtocol: call()
 APYPeripheryContract ->DeFiProtocol: call()
-APYPeripheryContract -->APYAssetAllocationRegistry:
+APYPeripheryContract -->TVLManager:
 deactivate APYPeripheryContract
 end
-APYAssetAllocationRegistry -->ChainlinkNode:
-deactivate APYAssetAllocationRegistry
+TVLManager -->ChainlinkNode:
+deactivate TVLManager
 
 // Price Asset
 par#lightgreen PriceFeed-1

@@ -28,7 +28,7 @@ TODOs:
 Comments:
 
 - Hardhat node is used with mainnet forking which requires `INFURA_API_KEY` to be set in a `.env` file
-- Some test use the `defi-legos` package.  This needs to be setup after a `yarn install` with `yarn defi-legos` (this last command is a bit hacky for now; it wil have exit code 1 if there are *no* errors.)
+- Some test use the `defi-legos` package. This needs to be setup after a `yarn install` with `yarn defi-legos` (this last command is a bit hacky for now; it wil have exit code 1 if there are _no_ errors.)
 - the timeout for tests may need to be adjusted; the mocha `timeout` variable is set in `hardhat.config.js`
 
 ## Generating mnemonics
@@ -128,10 +128,14 @@ Manager (proxy): [0xfed91F1f9d7DcA3E6e4a4B83CEf1B14380AbDE79](https://etherscan.
 ![addLiquidity](https://github.com/apy-finance/apy-core/blob/develop/diagrams/PoolRedeemAPT.png?raw=true)
 ![redeem](https://github.com/apy-finance/apy-core/blob/develop/diagrams/PoolAddingLiquidity.png?raw=true)
 
-## Deployment and Unwinding of Capital
+## Pool Manager
 
-![deployment](https://github.com/apy-finance/apy-core/blob/develop/diagrams/DeploymentOfCapital.png?raw=true)
-![unroll](https://github.com/apy-finance/apy-core/blob/develop/diagrams/UnwindOfCapital.png?raw=true)
+![fund](https://github.com/apy-finance/apy-core/blob/develop/diagrams/PoolManagerFundAccount.png?raw=true)
+![withdraw](https://github.com/apy-finance/apy-core/blob/develop/diagrams/PoolManagerWithdrawAccount.png?raw=true)
+
+## Account Manager
+
+![execute](https://github.com/apy-finance/apy-core/blob/develop/diagrams/AccountManagerExecute.png?raw=true)
 
 ## Chainlink TVL Computation
 

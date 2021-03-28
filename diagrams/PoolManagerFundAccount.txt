@@ -1,0 +1,57 @@
+title Pool Manager (Fund Account)
+
+participant USDCPool#steelblue
+participant DAIPool#yellow
+participant USDTPool#lightgreen
+participant USDC#steelblue
+participant DAI#yellow
+participant USDT#lightgreen
+participant MultisigWallet#teal
+participant PoolManager#violet
+participant mAPT#hotpink
+participant TVLManager#pink
+participant AddressRegistry#pink
+participant AccountFactory#pink
+participant Account
+
+
+# Give permission to Manager to move funds
+group Setup Manager approval to move funds
+USDCPool -> USDC: approve(PoolManager, max)
+DAIPool -> DAI: approve(PoolManager, max)
+USDTPool -> USDT: approve(PoolManager, max)
+end
+
+MultisigWallet ->PoolManager: fundAccount(accountId, poolAmounts[])
+
+activate PoolManager #pink
+
+PoolManager -> AccountFactory: getAccount(accountId)
+loop#pink i < poolAmounts.length
+PoolManager -> AddressRegistry: getAddress(poolAmounts[i].poolId)
+end
+
+# Register Account Positions
+loop#pink i < pools.length
+PoolManager ->TVLManager: addAssetAllocation(data, symbol, decimals)
+end
+
+# Pull funds for deployment
+group #steelblue USDC Funds:
+PoolManager -> USDC: transferFrom(USDCPool, Account, amount)
+PoolManager ->mAPT: mint(USDCPool, amount)
+abox over Account#steelblue: USDC aquired
+end
+group #yellow DAI Funds:
+PoolManager -> DAI: transferFrom(DAIPool, Account, amount)
+PoolManager ->mAPT: mint(DAIPool, amount)
+abox over Account#yellow: DAI aquired
+end 
+group #lightgreen USDT Funds:
+PoolManager -> USDT: transferFrom(USDTPool, Account, amount)
+PoolManager ->mAPT: mint(USDTPool, amount)
+abox over Account#lightgreen: USDT aquired
+end
+
+PoolManager ->MultisigWallet:
+deactivate PoolManager
