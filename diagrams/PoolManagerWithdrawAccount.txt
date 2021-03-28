@@ -1,0 +1,57 @@
+title Pool Manager (Withdraw from Account)
+
+participant USDCPool#steelblue
+participant DAIPool#yellow
+participant USDTPool#lightgreen
+participant USDC#steelblue
+participant DAI#yellow
+participant USDT#lightgreen
+participant MultisigWallet#teal
+participant PoolManager#violet
+participant mAPT#hotpink
+participant AddressRegistry#pink
+participant AccountFactory#pink
+participant Account
+
+
+# Give permission to Manager to move funds
+group Setup Manager approval to move funds
+USDCPool -> USDC: approve(PoolManager, max)
+DAIPool -> DAI: approve(PoolManager, max)
+USDTPool -> USDT: approve(PoolManager, max)
+end
+
+MultisigWallet ->PoolManager: withdrawFromAccount(accountId, poolAmounts[])
+
+activate PoolManager #pink
+
+PoolManager -> AccountFactory: getAccount(accountId)
+loop#pink i < poolAmounts.length
+PoolManager -> AddressRegistry: getAddress(poolAmounts[i].poolId)
+end
+
+group#lightgray Check PoolManager allowance for Account
+PoolManager -> USDC: allowance(Account, PoolManager)
+PoolManager -> DAI: allowance(Account, PoolManager)
+PoolManager -> USDT: allowance(Account, PoolManager)
+end
+
+# Pull funds for deployment
+group #steelblue USDC Funds:
+PoolManager -> USDC: transferFrom(Account, USDCPool, amount)
+PoolManager ->mAPT: burn(USDCPool, amount)
+abox over Account#steelblue: USDC relinquished
+end
+group #yellow DAI Funds:
+PoolManager -> DAI: transferFrom(Account, DAIPool, amount)
+PoolManager ->mAPT: burn(DAIPool, amount)
+abox over Account#yellow: DAI relinquished
+end 
+group #lightgreen USDT Funds:
+PoolManager -> USDT: transferFrom(Account, USDTPool, amount)
+PoolManager ->mAPT: burn(USDTPool, amount)
+abox over Account#lightgreen: USDT relinquished
+end
+
+PoolManager ->MultisigWallet:
+deactivate PoolManager

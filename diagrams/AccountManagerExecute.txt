@@ -1,0 +1,33 @@
+title Account Manager (Execute)
+
+participant MultisigWallet #teal
+participant AccountManager#violet
+participant TVLManager#pink
+participant Account
+participant Generic Executor#silver
+
+MultisigWallet ->AccountManager: execute(accountId, steps[], viewData[])
+activate AccountManager #pink
+
+# Register Account Positions
+loop#pink i < viewData.length
+AccountManager ->TVLManager: addAssetAllocation(data, symbol, decimals)
+end
+
+#Deploy funds
+group#lightblue Steps Execution
+AccountManager ->Account: execute(steps)
+activate Account
+Account ->Generic Executor: delegateCall(executionData)
+activate Generic Executor #silver
+Generic Executor -> ]: call(); deploy funds
+Generic Executor -> ]: call(); deploy funds
+Generic Executor -> ]: call(); deploy funds
+Generic Executor -->Account:
+deactivate Generic Executor
+Account -->AccountManager:
+deactivate Account
+end
+AccountManager ->MultisigWallet:
+
+deactivate AccountManager
