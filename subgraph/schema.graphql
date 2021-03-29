@@ -1,11 +1,3 @@
-type TotalEthValueLocked @entity {
-  id: ID!
-  timestamp: BigInt!
-  sequenceNumber: BigInt!
-  poolAddress: Bytes!
-  totalEthValueLocked: BigInt!
-}
-
 type PoolTotalValue @entity {
   id: ID!
   poolAddress: Bytes!
