@@ -26,6 +26,8 @@ export function handleDepositedAPT(event: DepositedAPT): void {
   const totalValue = event.params.totalEthValueLocked;
 
   const contract = PoolTokenV2.bind(poolAddress);
+  const underlyer = IDetailedERC20.bind(contract.underlyer());
+
   const totalSupply = contract.totalSupply();
 
   createAndSaveApt(poolAddress, timestamp, blockNumber, totalValue, totalSupply);
@@ -49,7 +51,8 @@ export function handleDepositedAPT(event: DepositedAPT): void {
   if (!priceResult.reverted) {
     price = priceResult.value;
   }
-  const outflow = event.params.tokenAmount.times(price);
+  const decimals = underlyer.decimals() as u8;
+  const outflow = event.params.tokenAmount.times(price).div(BigInt.fromI32(10).pow(decimals));
 
   cashflow.total = cashflow.total.minus(outflow);
   cashflowPoint.total = cashflow.total;
@@ -66,6 +69,8 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
   const totalValue = event.params.totalEthValueLocked;
 
   const contract = PoolTokenV2.bind(poolAddress);
+  const underlyer = IDetailedERC20.bind(contract.underlyer());
+
   const totalSupply = contract.totalSupply();
 
   createAndSaveApt(poolAddress, timestamp, blockNumber, totalValue, totalSupply);
@@ -89,7 +94,8 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
   if (!priceResult.reverted) {
     price = priceResult.value;
   }
-  const inflow = event.params.redeemedTokenAmount.times(price);
+  const decimals = underlyer.decimals() as u8;
+  const inflow = event.params.redeemedTokenAmount.times(price).div(BigInt.fromI32(10).pow(decimals));
 
   cashflow.total = cashflow.total.plus(inflow);
   cashflowPoint.total = cashflow.total;
