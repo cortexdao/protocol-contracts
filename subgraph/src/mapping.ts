@@ -15,7 +15,7 @@ import {
   Pool,
   AccountClaim,
 } from "../generated/schema";
-import { BigDecimal, BigInt ,Bytes} from "@graphprotocol/graph-ts";
+import { BigInt ,Bytes} from "@graphprotocol/graph-ts";
 
 
 export function handleDepositedAPT(event: DepositedAPT): void {
@@ -118,8 +118,7 @@ function createAndSaveApt(
   apt.totalValue = totalValue;
   apt.totalSupply = totalSupply;
   if (!apt.totalSupply.isZero())
-    apt.price =
-      new BigDecimal(apt.totalValue) / new BigDecimal(apt.totalSupply);
+    apt.price = apt.totalValue.div(apt.totalSupply);
   apt.save();
 }
 

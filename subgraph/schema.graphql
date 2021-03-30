@@ -5,7 +5,7 @@ type Apt @entity {
   blockNumber: BigInt!
   totalValue: BigInt!
   totalSupply: BigInt!
-  price: BigDecimal
+  price: BigInt
 }
 
 type Cashflow @entity {
