@@ -1,10 +1,11 @@
-type PoolTotalValue @entity {
+type Apt @entity {
   id: ID!
   poolAddress: Bytes!
   timestamp: BigInt!
+  blockNumber: BigInt!
   totalValue: BigInt!
-  aptSupply: BigInt!
-  valuePerShare: BigDecimal
+  totalSupply: BigInt!
+  price: BigDecimal
 }
 
 type Cashflow @entity {
@@ -17,6 +18,7 @@ type Cashflow @entity {
 type CashflowPoint @entity {
   id: ID!
   timestamp: BigInt!
+  blockNumber: BigInt!
   userAddress: Bytes!
   poolAddress: Bytes!
   userAptBalance: BigInt!

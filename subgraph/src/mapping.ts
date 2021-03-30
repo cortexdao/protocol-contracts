@@ -7,7 +7,7 @@ import {
 import { IDetailedERC20 } from "../generated/DAI_PoolToken/IDetailedERC20";
 import { Claimed } from "../generated/RewardDistributor/RewardDistributor";
 import {
-  PoolTotalValue,
+  Apt,
   Cashflow,
   CashflowPoint,
   Transfer,
@@ -20,6 +20,7 @@ import { BigDecimal, BigInt } from "@graphprotocol/graph-ts";
 export function handleDepositedAPT(event: DepositedAPT): void {
   const sender = event.params.sender;
   const timestamp = event.block.timestamp;
+  const blockNumber = event.block.number;
   const poolAddress = event.address;
   const totalValue = event.params.totalEthValueLocked;
 
@@ -31,15 +32,16 @@ export function handleDepositedAPT(event: DepositedAPT): void {
     price = priceResult.value;
   }
 
-  const ptv = new PoolTotalValue(poolAddress.toHexString() + timestamp.toString());
-  ptv.timestamp = timestamp;
-  ptv.poolAddress = poolAddress;
-  ptv.totalValue = totalValue;
-  ptv.aptSupply = contract.totalSupply();
-  if (!ptv.aptSupply.isZero())
-    ptv.valuePerShare =
-      new BigDecimal(ptv.totalValue) / new BigDecimal(ptv.aptSupply);
-  ptv.save();
+  const apt = new Apt(poolAddress.toHexString() + timestamp.toString());
+  apt.timestamp = timestamp;
+  apt.blockNumber = blockNumber;
+  apt.poolAddress = poolAddress;
+  apt.totalValue = totalValue;
+  apt.totalSupply = contract.totalSupply();
+  if (!apt.totalSupply.isZero())
+    apt.price =
+      new BigDecimal(apt.totalValue) / new BigDecimal(apt.totalSupply);
+  apt.save();
 
   // Cashflow entity
   const user = sender;
@@ -60,6 +62,7 @@ export function handleDepositedAPT(event: DepositedAPT): void {
   cashflowPoint.userAddress = user;
   cashflowPoint.poolAddress = poolAddress;
   cashflowPoint.timestamp = timestamp;
+  cashflowPoint.blockNumber = blockNumber;
   cashflowPoint.userAptBalance = contract.balanceOf(user);
 
   const outflow = event.params.tokenAmount.times(price);
@@ -73,6 +76,7 @@ export function handleDepositedAPT(event: DepositedAPT): void {
 export function handleRedeemedAPT(event: RedeemedAPT): void {
   const sender = event.params.sender;
   const timestamp = event.block.timestamp;
+  const blockNumber = event.block.number;
   const poolAddress = event.address;
   const totalValue = event.params.totalEthValueLocked;
 
@@ -84,15 +88,16 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
     price = priceResult.value;
   }
 
-  const ptv = new PoolTotalValue(poolAddress.toHexString() + timestamp.toString());
-  ptv.timestamp = timestamp;
-  ptv.poolAddress = poolAddress;
-  ptv.totalValue = totalValue;
-  ptv.aptSupply = contract.totalSupply();
-  if (!ptv.aptSupply.isZero())
-    ptv.valuePerShare =
-      new BigDecimal(ptv.totalValue) / new BigDecimal(ptv.aptSupply);
-  ptv.save();
+  const apt = new Apt(poolAddress.toHexString() + timestamp.toString());
+  apt.timestamp = timestamp;
+  apt.blockNumber = blockNumber;
+  apt.poolAddress = poolAddress;
+  apt.totalValue = totalValue;
+  apt.totalSupply = contract.totalSupply();
+  if (!apt.totalSupply.isZero())
+    apt.price =
+      new BigDecimal(apt.totalValue) / new BigDecimal(apt.totalSupply);
+  apt.save();
 
   // Cashflow entity
   const user = event.params.sender;
@@ -113,6 +118,7 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
   cashflowPoint.userAddress = user;
   cashflowPoint.poolAddress = poolAddress;
   cashflowPoint.timestamp = timestamp;
+  cashflowPoint.blockNumber = blockNumber;
   cashflowPoint.userAptBalance = contract.balanceOf(user);
 
   const inflow = event.params.redeemedTokenAmount.times(price);
