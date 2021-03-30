@@ -15,7 +15,8 @@ import {
   Pool,
   AccountClaim,
 } from "../generated/schema";
-import { BigDecimal, BigInt } from "@graphprotocol/graph-ts";
+import { BigDecimal, BigInt ,Bytes} from "@graphprotocol/graph-ts";
+
 
 export function handleDepositedAPT(event: DepositedAPT): void {
   const sender = event.params.sender;
@@ -25,39 +26,17 @@ export function handleDepositedAPT(event: DepositedAPT): void {
   const totalValue = event.params.totalEthValueLocked;
 
   const contract = PoolTokenV2.bind(poolAddress);
+  const totalSupply = contract.totalSupply();
 
-  const priceResult = contract.try_getUnderlyerPrice();
-  let price = BigInt.fromI32(0);
-  if (!priceResult.reverted) {
-    price = priceResult.value;
-  }
+  createAndSaveApt(poolAddress, timestamp, blockNumber, totalValue, totalSupply);
 
-  const apt = new Apt(poolAddress.toHexString() + timestamp.toString());
-  apt.timestamp = timestamp;
-  apt.blockNumber = blockNumber;
-  apt.poolAddress = poolAddress;
-  apt.totalValue = totalValue;
-  apt.totalSupply = contract.totalSupply();
-  if (!apt.totalSupply.isZero())
-    apt.price =
-      new BigDecimal(apt.totalValue) / new BigDecimal(apt.totalSupply);
-  apt.save();
-
-  // Cashflow entity
   const user = sender;
-  const cashflowId = poolAddress.toHexString() + user.toHexString();
+  const cashflow = loadCashflow(user, poolAddress)
+
   const cashflowPointId =
     poolAddress.toHexString() +
     user.toHexString() +
     timestamp.toString();
-  let cashflow = Cashflow.load(cashflowId);
-  if (cashflow == null) {
-    cashflow = new Cashflow(cashflowId);
-    cashflow.total = BigInt.fromI32(0);
-    cashflow.userAddress = user;
-    cashflow.poolAddress = poolAddress;
-  }
-
   const cashflowPoint = new CashflowPoint(cashflowPointId);
   cashflowPoint.userAddress = user;
   cashflowPoint.poolAddress = poolAddress;
@@ -65,7 +44,13 @@ export function handleDepositedAPT(event: DepositedAPT): void {
   cashflowPoint.blockNumber = blockNumber;
   cashflowPoint.userAptBalance = contract.balanceOf(user);
 
+  const priceResult = contract.try_getUnderlyerPrice();
+  let price = BigInt.fromI32(0);
+  if (!priceResult.reverted) {
+    price = priceResult.value;
+  }
   const outflow = event.params.tokenAmount.times(price);
+
   cashflow.total = cashflow.total.minus(outflow);
   cashflowPoint.total = cashflow.total;
 
@@ -81,39 +66,17 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
   const totalValue = event.params.totalEthValueLocked;
 
   const contract = PoolTokenV2.bind(poolAddress);
+  const totalSupply = contract.totalSupply();
 
-  const priceResult = contract.try_getUnderlyerPrice();
-  let price = BigInt.fromI32(0);
-  if (!priceResult.reverted) {
-    price = priceResult.value;
-  }
+  createAndSaveApt(poolAddress, timestamp, blockNumber, totalValue, totalSupply);
 
-  const apt = new Apt(poolAddress.toHexString() + timestamp.toString());
-  apt.timestamp = timestamp;
-  apt.blockNumber = blockNumber;
-  apt.poolAddress = poolAddress;
-  apt.totalValue = totalValue;
-  apt.totalSupply = contract.totalSupply();
-  if (!apt.totalSupply.isZero())
-    apt.price =
-      new BigDecimal(apt.totalValue) / new BigDecimal(apt.totalSupply);
-  apt.save();
+  const user = sender;
+  const cashflow = loadCashflow(user, poolAddress)
 
-  // Cashflow entity
-  const user = event.params.sender;
-  const cashflowId =poolAddress.toHexString() + user.toHexString();
   const cashflowPointId =
     poolAddress.toHexString() +
     user.toHexString() +
     timestamp.toString();
-  let cashflow = Cashflow.load(cashflowId);
-  if (cashflow == null) {
-    cashflow = new Cashflow(cashflowId);
-    cashflow.total = BigInt.fromI32(0);
-    cashflow.userAddress = user;
-    cashflow.poolAddress = poolAddress;
-  }
-
   const cashflowPoint = new CashflowPoint(cashflowPointId);
   cashflowPoint.userAddress = user;
   cashflowPoint.poolAddress = poolAddress;
@@ -121,12 +84,52 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
   cashflowPoint.blockNumber = blockNumber;
   cashflowPoint.userAptBalance = contract.balanceOf(user);
 
+  const priceResult = contract.try_getUnderlyerPrice();
+  let price = BigInt.fromI32(0);
+  if (!priceResult.reverted) {
+    price = priceResult.value;
+  }
   const inflow = event.params.redeemedTokenAmount.times(price);
+
   cashflow.total = cashflow.total.plus(inflow);
   cashflowPoint.total = cashflow.total;
 
   cashflow.save();
   cashflowPoint.save();
+}
+
+function createAndSaveApt(
+  poolAddress: Bytes,
+  timestamp: BigInt,
+  blockNumber: BigInt,
+  totalValue: BigInt,
+  totalSupply: BigInt,
+) : void {
+  const apt = new Apt(poolAddress.toHexString() + timestamp.toString());
+  apt.timestamp = timestamp;
+  apt.blockNumber = blockNumber;
+  apt.poolAddress = poolAddress;
+  apt.totalValue = totalValue;
+  apt.totalSupply = totalSupply;
+  if (!apt.totalSupply.isZero())
+    apt.price =
+      new BigDecimal(apt.totalValue) / new BigDecimal(apt.totalSupply);
+  apt.save();
+}
+
+function loadCashflow(
+  user: Bytes,
+  poolAddress: Bytes,
+) : Cashflow {
+  const cashflowId = poolAddress.toHexString() + user.toHexString();
+  let cashflow = Cashflow.load(cashflowId);
+  if (cashflow == null) {
+    cashflow = new Cashflow(cashflowId);
+    cashflow.total = BigInt.fromI32(0);
+    cashflow.userAddress = user;
+    cashflow.poolAddress = poolAddress;
+  }
+  return cashflow as Cashflow;
 }
 
 export function handleTransfer(event: TransferEvent): void {
