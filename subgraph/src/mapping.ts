@@ -118,7 +118,7 @@ function createAndSaveApt(
   apt.totalValue = totalValue;
   apt.totalSupply = totalSupply;
   if (!apt.totalSupply.isZero())
-    apt.price = apt.totalValue.div(apt.totalSupply);
+    apt.price = apt.totalValue.times(BigInt.fromI32(10).pow(18 as u8)).div(apt.totalSupply);
   apt.save();
 }
 
