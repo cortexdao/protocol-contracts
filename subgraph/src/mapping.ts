@@ -23,10 +23,10 @@ export function handleDepositedAPT(event: DepositedAPT): void {
   const timestamp = event.block.timestamp;
   const blockNumber = event.block.number;
   const poolAddress = event.address;
-  const totalValue = event.params.totalEthValueLocked;
 
   const contract = PoolTokenV2.bind(poolAddress);
   const underlyer = IDetailedERC20.bind(contract.underlyer());
+  const priceAgg = AggregatorV3Interface.bind(contract.priceAgg());
   let ethUsdAgg: AggregatorV3Interface;
   if (dataSource.network() == "mainnet") {
     ethUsdAgg = AggregatorV3Interface.bind(
@@ -36,6 +36,18 @@ export function handleDepositedAPT(event: DepositedAPT): void {
     ethUsdAgg = AggregatorV3Interface.bind(
       Address.fromString("0x9326BFA02ADD2366b30bacB125260Af641031331")
     );
+  }
+
+  let totalValue = event.params.totalEthValueLocked;
+  if (priceAgg.decimals() == 18) {
+    const roundDataResult = ethUsdAgg.try_latestRoundData();
+    let ethUsdPrice = BigInt.fromI32(0);
+    if (!roundDataResult.reverted) {
+      ethUsdPrice = roundDataResult.value.value1;
+    }
+    totalValue = totalValue
+      .times(ethUsdPrice)
+      .div(BigInt.fromI32(10).pow(18 as u8));
   }
 
   const totalSupply = contract.totalSupply();
@@ -64,6 +76,14 @@ export function handleDepositedAPT(event: DepositedAPT): void {
   let price = BigInt.fromI32(0);
   if (!priceResult.reverted) {
     price = priceResult.value;
+    if (priceAgg.decimals() == 18) {
+      const roundDataResult = ethUsdAgg.try_latestRoundData();
+      let ethUsdPrice = BigInt.fromI32(0);
+      if (!roundDataResult.reverted) {
+        ethUsdPrice = roundDataResult.value.value1;
+      }
+      price = price.times(ethUsdPrice).div(BigInt.fromI32(10).pow(18 as u8));
+    }
   }
   const decimals = underlyer.decimals() as u8;
   const outflow = event.params.tokenAmount
@@ -82,10 +102,32 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
   const timestamp = event.block.timestamp;
   const blockNumber = event.block.number;
   const poolAddress = event.address;
-  const totalValue = event.params.totalEthValueLocked;
 
   const contract = PoolTokenV2.bind(poolAddress);
   const underlyer = IDetailedERC20.bind(contract.underlyer());
+  const priceAgg = AggregatorV3Interface.bind(contract.priceAgg());
+  let ethUsdAgg: AggregatorV3Interface;
+  if (dataSource.network() == "mainnet") {
+    ethUsdAgg = AggregatorV3Interface.bind(
+      Address.fromString("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419")
+    );
+  } else {
+    ethUsdAgg = AggregatorV3Interface.bind(
+      Address.fromString("0x9326BFA02ADD2366b30bacB125260Af641031331")
+    );
+  }
+
+  let totalValue = event.params.totalEthValueLocked;
+  if (priceAgg.decimals() == 18) {
+    const roundDataResult = ethUsdAgg.try_latestRoundData();
+    let ethUsdPrice = BigInt.fromI32(0);
+    if (!roundDataResult.reverted) {
+      ethUsdPrice = roundDataResult.value.value1;
+    }
+    totalValue = totalValue
+      .times(ethUsdPrice)
+      .div(BigInt.fromI32(10).pow(18 as u8));
+  }
 
   const totalSupply = contract.totalSupply();
 
@@ -113,6 +155,14 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
   let price = BigInt.fromI32(0);
   if (!priceResult.reverted) {
     price = priceResult.value;
+    if (priceAgg.decimals() == 18) {
+      const roundDataResult = ethUsdAgg.try_latestRoundData();
+      let ethUsdPrice = BigInt.fromI32(0);
+      if (!roundDataResult.reverted) {
+        ethUsdPrice = roundDataResult.value.value1;
+      }
+      price = price.times(ethUsdPrice).div(BigInt.fromI32(10).pow(18 as u8));
+    }
   }
   const decimals = underlyer.decimals() as u8;
   const inflow = event.params.redeemedTokenAmount
