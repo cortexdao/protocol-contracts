@@ -5,6 +5,7 @@ import {
   Transfer as TransferEvent,
 } from "../generated/DAI_PoolToken/PoolTokenV2";
 import { IDetailedERC20 } from "../generated/DAI_PoolToken/IDetailedERC20";
+import { AggregatorV3Interface } from "../generated/DAI_PoolToken/AggregatorV3Interface";
 import { Claimed } from "../generated/RewardDistributor/RewardDistributor";
 import {
   Apt,
@@ -15,8 +16,7 @@ import {
   Pool,
   AccountClaim,
 } from "../generated/schema";
-import { BigInt ,Bytes} from "@graphprotocol/graph-ts";
-
+import { Address, BigInt, Bytes, dataSource } from "@graphprotocol/graph-ts";
 
 export function handleDepositedAPT(event: DepositedAPT): void {
   const sender = event.params.sender;
@@ -27,18 +27,32 @@ export function handleDepositedAPT(event: DepositedAPT): void {
 
   const contract = PoolTokenV2.bind(poolAddress);
   const underlyer = IDetailedERC20.bind(contract.underlyer());
+  let ethUsdAgg: AggregatorV3Interface;
+  if (dataSource.network() == "mainnet") {
+    ethUsdAgg = AggregatorV3Interface.bind(
+      Address.fromString("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419")
+    );
+  } else {
+    ethUsdAgg = AggregatorV3Interface.bind(
+      Address.fromString("0x9326BFA02ADD2366b30bacB125260Af641031331")
+    );
+  }
 
   const totalSupply = contract.totalSupply();
 
-  createAndSaveApt(poolAddress, timestamp, blockNumber, totalValue, totalSupply);
+  createAndSaveApt(
+    poolAddress,
+    timestamp,
+    blockNumber,
+    totalValue,
+    totalSupply
+  );
 
   const user = sender;
-  const cashflow = loadCashflow(user, poolAddress)
+  const cashflow = loadCashflow(user, poolAddress);
 
   const cashflowPointId =
-    poolAddress.toHexString() +
-    user.toHexString() +
-    timestamp.toString();
+    poolAddress.toHexString() + user.toHexString() + timestamp.toString();
   const cashflowPoint = new CashflowPoint(cashflowPointId);
   cashflowPoint.userAddress = user;
   cashflowPoint.poolAddress = poolAddress;
@@ -52,7 +66,9 @@ export function handleDepositedAPT(event: DepositedAPT): void {
     price = priceResult.value;
   }
   const decimals = underlyer.decimals() as u8;
-  const outflow = event.params.tokenAmount.times(price).div(BigInt.fromI32(10).pow(decimals));
+  const outflow = event.params.tokenAmount
+    .times(price)
+    .div(BigInt.fromI32(10).pow(decimals));
 
   cashflow.total = cashflow.total.minus(outflow);
   cashflowPoint.total = cashflow.total;
@@ -73,15 +89,19 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
 
   const totalSupply = contract.totalSupply();
 
-  createAndSaveApt(poolAddress, timestamp, blockNumber, totalValue, totalSupply);
+  createAndSaveApt(
+    poolAddress,
+    timestamp,
+    blockNumber,
+    totalValue,
+    totalSupply
+  );
 
   const user = sender;
-  const cashflow = loadCashflow(user, poolAddress)
+  const cashflow = loadCashflow(user, poolAddress);
 
   const cashflowPointId =
-    poolAddress.toHexString() +
-    user.toHexString() +
-    timestamp.toString();
+    poolAddress.toHexString() + user.toHexString() + timestamp.toString();
   const cashflowPoint = new CashflowPoint(cashflowPointId);
   cashflowPoint.userAddress = user;
   cashflowPoint.poolAddress = poolAddress;
@@ -95,7 +115,9 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
     price = priceResult.value;
   }
   const decimals = underlyer.decimals() as u8;
-  const inflow = event.params.redeemedTokenAmount.times(price).div(BigInt.fromI32(10).pow(decimals));
+  const inflow = event.params.redeemedTokenAmount
+    .times(price)
+    .div(BigInt.fromI32(10).pow(decimals));
 
   cashflow.total = cashflow.total.plus(inflow);
   cashflowPoint.total = cashflow.total;
@@ -109,8 +131,8 @@ function createAndSaveApt(
   timestamp: BigInt,
   blockNumber: BigInt,
   totalValue: BigInt,
-  totalSupply: BigInt,
-) : void {
+  totalSupply: BigInt
+): void {
   const apt = new Apt(poolAddress.toHexString() + timestamp.toString());
   apt.timestamp = timestamp;
   apt.blockNumber = blockNumber;
@@ -118,14 +140,13 @@ function createAndSaveApt(
   apt.totalValue = totalValue;
   apt.totalSupply = totalSupply;
   if (!apt.totalSupply.isZero())
-    apt.price = apt.totalValue.times(BigInt.fromI32(10).pow(18 as u8)).div(apt.totalSupply);
+    apt.price = apt.totalValue
+      .times(BigInt.fromI32(10).pow(18 as u8))
+      .div(apt.totalSupply);
   apt.save();
 }
 
-function loadCashflow(
-  user: Bytes,
-  poolAddress: Bytes,
-) : Cashflow {
+function loadCashflow(user: Bytes, poolAddress: Bytes): Cashflow {
   const cashflowId = poolAddress.toHexString() + user.toHexString();
   let cashflow = Cashflow.load(cashflowId);
   if (cashflow == null) {

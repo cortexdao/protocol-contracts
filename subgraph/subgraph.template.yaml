@@ -27,6 +27,8 @@ dataSources:
           file: ../artifacts/contracts/PoolTokenV2.sol/PoolTokenV2.json
         - name: IDetailedERC20
           file: ../artifacts/contracts/interfaces/IDetailedERC20.sol/IDetailedERC20.json
+        - name: AggregatorV3Interface
+          file: ../artifacts/@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.json
       eventHandlers:
         - event: DepositedAPT(indexed address,address,uint256,uint256,uint256,uint256)
           handler: handleDepositedAPT
@@ -58,6 +60,8 @@ dataSources:
           file: ../artifacts/contracts/PoolTokenV2.sol/PoolTokenV2.json
         - name: IDetailedERC20
           file: ../artifacts/contracts/interfaces/IDetailedERC20.sol/IDetailedERC20.json
+        - name: AggregatorV3Interface
+          file: ../artifacts/@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.json
       eventHandlers:
         - event: DepositedAPT(indexed address,address,uint256,uint256,uint256,uint256)
           handler: handleDepositedAPT
@@ -89,6 +93,8 @@ dataSources:
           file: ../artifacts/contracts/PoolTokenV2.sol/PoolTokenV2.json
         - name: IDetailedERC20
           file: ../artifacts/contracts/interfaces/IDetailedERC20.sol/IDetailedERC20.json
+        - name: AggregatorV3Interface
+          file: ../artifacts/@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.json
       eventHandlers:
         - event: DepositedAPT(indexed address,address,uint256,uint256,uint256,uint256)
           handler: handleDepositedAPT
