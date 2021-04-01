@@ -32,10 +32,12 @@ export function handleDepositedAPT(event: DepositedAPT): void {
     ethUsdAgg = AggregatorV3Interface.bind(
       Address.fromString("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419")
     );
-  } else {
+  } else if (dataSource.network() == "kovan") {
     ethUsdAgg = AggregatorV3Interface.bind(
       Address.fromString("0x9326BFA02ADD2366b30bacB125260Af641031331")
     );
+  } else {
+    throw new Error("Network not recognized: must be 'mainnet' or 'kovan'.");
   }
 
   let totalValue = event.params.totalEthValueLocked;
@@ -48,6 +50,8 @@ export function handleDepositedAPT(event: DepositedAPT): void {
     totalValue = totalValue
       .times(ethUsdPrice)
       .div(BigInt.fromI32(10).pow(18 as u8));
+  } else if (priceAgg.decimals() != 8) {
+    throw new Error("Price aggregator decimals must be 18 or 8.");
   }
 
   const totalSupply = contract.totalSupply();
@@ -111,10 +115,12 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
     ethUsdAgg = AggregatorV3Interface.bind(
       Address.fromString("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419")
     );
-  } else {
+  } else if (dataSource.network() == "kovan") {
     ethUsdAgg = AggregatorV3Interface.bind(
       Address.fromString("0x9326BFA02ADD2366b30bacB125260Af641031331")
     );
+  } else {
+    throw new Error("Network not recognized: must be 'mainnet' or 'kovan'.");
   }
 
   let totalValue = event.params.totalEthValueLocked;
@@ -127,6 +133,8 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
     totalValue = totalValue
       .times(ethUsdPrice)
       .div(BigInt.fromI32(10).pow(18 as u8));
+  } else {
+    assert(priceAgg.decimals() == 8);
   }
 
   const totalSupply = contract.totalSupply();
