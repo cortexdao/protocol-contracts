@@ -11,7 +11,7 @@ import {
   createCashFlowPoint,
   loadCashflow,
 } from "../utils/entities";
-import { getEthUsdAggregator } from "../utils/chainlink";
+import { getEthUsdAggregator, getPriceFromAgg } from "../utils/chainlink";
 
 export function handleRedeemedAPT(event: RedeemedAPT): void {
   const userAddress: Address = event.params.sender;
@@ -21,33 +21,9 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
 
   const contract = PoolTokenV2.bind(poolAddress);
   const underlyer = IDetailedERC20.bind(contract.underlyer());
-  const priceAgg = AggregatorV3Interface.bind(contract.priceAgg());
+  const underlyerPriceAgg = AggregatorV3Interface.bind(contract.priceAgg());
   const ethUsdAgg: AggregatorV3Interface = getEthUsdAggregator(
     dataSource.network()
-  );
-
-  let totalValue = event.params.totalEthValueLocked;
-  if (priceAgg.decimals() == 18) {
-    const roundDataResult = ethUsdAgg.try_latestRoundData();
-    let ethUsdPrice = BigInt.fromI32(0);
-    if (!roundDataResult.reverted) {
-      ethUsdPrice = roundDataResult.value.value1;
-    }
-    totalValue = totalValue
-      .times(ethUsdPrice)
-      .div(BigInt.fromI32(10).pow(18 as u8));
-  } else if (priceAgg.decimals() != 8) {
-    throw new Error("Price aggregator decimals must be 18 or 8.");
-  }
-
-  const totalSupply = contract.totalSupply();
-
-  createAndSaveApt(
-    poolAddress,
-    timestamp,
-    blockNumber,
-    totalValue,
-    totalSupply
   );
 
   const cashflow = loadCashflow(userAddress, poolAddress);
@@ -63,27 +39,36 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
   cashflowPoint.blockNumber = blockNumber;
   cashflowPoint.userAptBalance = contract.balanceOf(userAddress);
 
-  const priceResult = contract.try_getUnderlyerPrice();
-  let price = BigInt.fromI32(0);
-  if (!priceResult.reverted) {
-    price = priceResult.value;
-    if (priceAgg.decimals() == 18) {
-      const roundDataResult = ethUsdAgg.try_latestRoundData();
-      let ethUsdPrice = BigInt.fromI32(0);
-      if (!roundDataResult.reverted) {
-        ethUsdPrice = roundDataResult.value.value1;
-      }
-      price = price.times(ethUsdPrice).div(BigInt.fromI32(10).pow(18 as u8));
-    }
-    const decimals = underlyer.decimals() as u8;
-    const inflow = event.params.redeemedTokenAmount
-      .times(price)
-      .div(BigInt.fromI32(10).pow(decimals));
-
-    cashflow.total = cashflow.total.plus(inflow);
-    cashflowPoint.total = cashflow.total;
+  let totalValue = event.params.totalEthValueLocked;
+  let underlyerPrice = getPriceFromAgg(underlyerPriceAgg);
+  if (underlyerPriceAgg.decimals() == 18) {
+    const ethUsdPrice = getPriceFromAgg(ethUsdAgg);
+    totalValue = totalValue
+      .times(ethUsdPrice)
+      .div(BigInt.fromI32(10).pow(18 as u8));
+    underlyerPrice = underlyerPrice
+      .times(ethUsdPrice)
+      .div(BigInt.fromI32(10).pow(18 as u8));
+  } else if (underlyerPriceAgg.decimals() != 8) {
+    throw new Error("Price aggregator decimals must be 18 or 8.");
   }
+  const decimals = underlyer.decimals() as u8;
+  const inflow = event.params.redeemedTokenAmount
+    .times(underlyerPrice)
+    .div(BigInt.fromI32(10).pow(decimals));
+
+  cashflow.total = cashflow.total.plus(inflow);
+  cashflowPoint.total = cashflow.total;
 
   cashflow.save();
   cashflowPoint.save();
+
+  const totalSupply = contract.totalSupply();
+  createAndSaveApt(
+    poolAddress,
+    timestamp,
+    blockNumber,
+    totalValue,
+    totalSupply
+  );
 }
