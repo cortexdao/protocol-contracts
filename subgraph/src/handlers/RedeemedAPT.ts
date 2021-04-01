@@ -1,44 +1,30 @@
 import {
   PoolTokenV2,
-  DepositedAPT,
   RedeemedAPT,
-  Transfer as TransferEvent,
 } from "../../generated/DAI_PoolToken/PoolTokenV2";
 import { IDetailedERC20 } from "../../generated/DAI_PoolToken/IDetailedERC20";
 import { AggregatorV3Interface } from "../../generated/DAI_PoolToken/AggregatorV3Interface";
+import { CashflowPoint } from "../../generated/schema";
+import { Address, BigInt, dataSource } from "@graphprotocol/graph-ts";
 import {
-  Apt,
-  Cashflow,
-  CashflowPoint,
-  Transfer,
-  User,
-  Pool,
-} from "../../generated/schema";
-import { Address, BigInt, Bytes, dataSource } from "@graphprotocol/graph-ts";
-import { createAndSaveApt } from "../utils/apt";
-import { loadCashflow } from "../utils/cashflow";
+  createAndSaveApt,
+  createCashFlowPoint,
+  loadCashflow,
+} from "../utils/entities";
+import { getEthUsdAggregator } from "../utils/chainlink";
 
 export function handleRedeemedAPT(event: RedeemedAPT): void {
-  const sender = event.params.sender;
-  const timestamp = event.block.timestamp;
-  const blockNumber = event.block.number;
-  const poolAddress = event.address;
+  const userAddress: Address = event.params.sender;
+  const timestamp: BigInt = event.block.timestamp;
+  const blockNumber: BigInt = event.block.number;
+  const poolAddress: Address = event.address;
 
   const contract = PoolTokenV2.bind(poolAddress);
   const underlyer = IDetailedERC20.bind(contract.underlyer());
   const priceAgg = AggregatorV3Interface.bind(contract.priceAgg());
-  let ethUsdAgg: AggregatorV3Interface;
-  if (dataSource.network() == "mainnet") {
-    ethUsdAgg = AggregatorV3Interface.bind(
-      Address.fromString("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419")
-    );
-  } else if (dataSource.network() == "kovan") {
-    ethUsdAgg = AggregatorV3Interface.bind(
-      Address.fromString("0x9326BFA02ADD2366b30bacB125260Af641031331")
-    );
-  } else {
-    throw new Error("Network not recognized: must be 'mainnet' or 'kovan'.");
-  }
+  const ethUsdAgg: AggregatorV3Interface = getEthUsdAggregator(
+    dataSource.network()
+  );
 
   let totalValue = event.params.totalEthValueLocked;
   if (priceAgg.decimals() == 18) {
@@ -64,17 +50,18 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
     totalSupply
   );
 
-  const user = sender;
-  const cashflow = loadCashflow(user, poolAddress);
+  const cashflow = loadCashflow(userAddress, poolAddress);
 
-  const cashflowPointId =
-    poolAddress.toHexString() + user.toHexString() + timestamp.toString();
-  const cashflowPoint = new CashflowPoint(cashflowPointId);
-  cashflowPoint.userAddress = user;
+  const cashflowPoint = createCashFlowPoint(
+    poolAddress,
+    userAddress,
+    timestamp
+  );
+  cashflowPoint.userAddress = userAddress;
   cashflowPoint.poolAddress = poolAddress;
   cashflowPoint.timestamp = timestamp;
   cashflowPoint.blockNumber = blockNumber;
-  cashflowPoint.userAptBalance = contract.balanceOf(user);
+  cashflowPoint.userAptBalance = contract.balanceOf(userAddress);
 
   const priceResult = contract.try_getUnderlyerPrice();
   let price = BigInt.fromI32(0);
@@ -88,14 +75,14 @@ export function handleRedeemedAPT(event: RedeemedAPT): void {
       }
       price = price.times(ethUsdPrice).div(BigInt.fromI32(10).pow(18 as u8));
     }
-  }
-  const decimals = underlyer.decimals() as u8;
-  const inflow = event.params.redeemedTokenAmount
-    .times(price)
-    .div(BigInt.fromI32(10).pow(decimals));
+    const decimals = underlyer.decimals() as u8;
+    const inflow = event.params.redeemedTokenAmount
+      .times(price)
+      .div(BigInt.fromI32(10).pow(decimals));
 
-  cashflow.total = cashflow.total.plus(inflow);
-  cashflowPoint.total = cashflow.total;
+    cashflow.total = cashflow.total.plus(inflow);
+    cashflowPoint.total = cashflow.total;
+  }
 
   cashflow.save();
   cashflowPoint.save();
