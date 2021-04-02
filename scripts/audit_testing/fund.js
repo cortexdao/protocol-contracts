@@ -47,21 +47,27 @@ async function main(argv) {
   const daiAmount = await daiPool.getUnderlyerAmountFromValue(
     Math.abs(daiTopUp)
   );
-  console.log(daiAmount.div(tokenAmountToBigNumber(1)).toString());
+  console.log(
+    `DAI Amount: ${daiAmount.div(tokenAmountToBigNumber(1)).toString()}`
+  );
 
   const usdcPool = await getApyPool(NETWORK_NAME, "USDC");
   const usdcTopUp = await usdcPool.getReserveTopUpValue();
   const usdcAmount = await usdcPool.getUnderlyerAmountFromValue(
     Math.abs(usdcTopUp)
   );
-  console.log(usdcAmount.div(tokenAmountToBigNumber(1)).toString());
+  console.log(
+    `USDC Amount: ${usdcAmount.div(tokenAmountToBigNumber(1)).toString()}`
+  );
 
   const usdtPool = await getApyPool(NETWORK_NAME, "USDT");
   const usdtTopUp = await usdtPool.getReserveTopUpValue();
   const usdtAmount = await usdtPool.getUnderlyerAmountFromValue(
     Math.abs(usdtTopUp)
   );
-  console.log(usdtAmount.div(tokenAmountToBigNumber(1)).toString());
+  console.log(
+    `USDT Amount: ${usdtAmount.div(tokenAmountToBigNumber(1)).toString()}`
+  );
 
   const accountId = bytes32("alpha");
   await poolManager.fundAccount(accountId, [
