@@ -16,21 +16,22 @@
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = hre;
+const { getApyPool } = require("./utils");
 const { bytes32, tokenAmountToBigNumber } = require("../../utils/helpers");
 const { console, getAddressRegistry } = require("./utils");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
   await hre.run("compile");
-  const networkName = network.name.toUpperCase();
+  const NETWORK_NAME = network.name.toUpperCase();
   console.log("");
-  console.log(`${networkName} selected`);
+  console.log(`${NETWORK_NAME} selected`);
   console.log("");
 
   const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
 
-  const addressRegistry = await getAddressRegistry(networkName);
+  const addressRegistry = await getAddressRegistry(NETWORK_NAME);
   const poolManagerAddress = await addressRegistry.poolManagerAddress();
   const poolManager = await ethers.getContractAt(
     "PoolManager",
@@ -41,9 +42,26 @@ async function main(argv) {
   console.log("Funding strategy account from pools ...");
   console.log("");
 
-  const daiAmount = tokenAmountToBigNumber("1000000", "18"); // 1MM DAI
-  const usdcAmount = tokenAmountToBigNumber("5000000", "6"); // 5MM USDC
-  const tetherAmount = tokenAmountToBigNumber("2000000", "6"); // 2MM Tether
+  const daiPool = await getApyPool(NETWORK_NAME, "DAI");
+  const daiTopUp = await daiPool.getReserveTopUpValue();
+  const daiAmount = await daiPool.getUnderlyerAmountFromValue(
+    Math.abs(daiTopUp)
+  );
+  console.log(daiAmount.div(tokenAmountToBigNumber(1)).toString());
+
+  const usdcPool = await getApyPool(NETWORK_NAME, "USDC");
+  const usdcTopUp = await usdcPool.getReserveTopUpValue();
+  const usdcAmount = await usdcPool.getUnderlyerAmountFromValue(
+    Math.abs(usdcTopUp)
+  );
+  console.log(usdcAmount.div(tokenAmountToBigNumber(1)).toString());
+
+  const usdtPool = await getApyPool(NETWORK_NAME, "USDT");
+  const usdtTopUp = await usdtPool.getReserveTopUpValue();
+  const usdtAmount = await usdtPool.getUnderlyerAmountFromValue(
+    Math.abs(usdtTopUp)
+  );
+  console.log(usdtAmount.div(tokenAmountToBigNumber(1)).toString());
 
   const accountId = bytes32("alpha");
   await poolManager.fundAccount(accountId, [
@@ -57,7 +75,7 @@ async function main(argv) {
     },
     {
       poolId: bytes32("usdtPool"),
-      amount: tetherAmount,
+      amount: usdtAmount,
     },
   ]);
   console.log("... done.");
