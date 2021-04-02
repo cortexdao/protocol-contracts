@@ -45,18 +45,18 @@ async function main(argv) {
   const usdtTopUp = await usdtPool.getReserveTopUpValue();
 
   console.log(
-    `DAI Pool Amount / Top Up: $${commify(formatUnits(daiBal, 18))}, $${commify(
+    `DAI Pool Amount / Top Up: $${commify(formatUnits(daiBal, 8))}, $${commify(
       formatUnits(daiTopUp, 8)
     )}`
   );
   console.log(
     `USDC Pool Amount / Top Up: $${commify(
-      formatUnits(usdcBal, 6)
+      formatUnits(usdcBal, 8)
     )}, $${commify(formatUnits(usdcTopUp, 8))}`
   );
   console.log(
     `USDT Pool Amount / Top Up: $${commify(
-      formatUnits(usdtBal, 6)
+      formatUnits(usdtBal, 8)
     )}, $${commify(formatUnits(usdtTopUp, 8))}`
   );
 }
