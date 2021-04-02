@@ -22,6 +22,8 @@ const {
   erc20,
   tokenAmountToBigNumber,
   undoErc20,
+  commify,
+  formatUnits,
 } = require("./unit");
 
 console.debug = function () {
@@ -53,6 +55,8 @@ module.exports = {
   getStablecoinAddress,
   getAggregatorAddress,
   tokenAmountToBigNumber,
+  commify,
+  formatUnits,
   getGasPrice,
   acquireToken,
   deployAggregator,

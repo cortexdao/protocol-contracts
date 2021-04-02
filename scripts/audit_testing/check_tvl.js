@@ -16,6 +16,7 @@
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = hre;
+const { commify, formatUnits } = require("../../utils/helpers");
 
 const AGG_ADDRESS = "0x344D5d70fc3c3097f82d1F26464aaDcEb30C6AC7";
 
@@ -37,13 +38,13 @@ async function main(argv) {
 
   const [
     roundId,
-    answer,
+    answerUSD,
     startedAt,
     updatedAt,
     answeredInRound,
   ] = await aggregator.latestRoundData();
   console.log("roundId", roundId.toString());
-  console.log("answer:", answer.toString());
+  console.log(`answer: $${commify(formatUnits(answerUSD, 8))}`);
   console.log("startedAt:", startedAt.toString());
   console.log("updatedAt:", updatedAt.toString());
   console.log("answeredInRound:", answeredInRound.toString());
