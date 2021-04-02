@@ -45,22 +45,24 @@ async function main(argv) {
 
   const symbol = (argv.pool || "DAI").toUpperCase();
   const pool = await getApyPool(networkName, symbol);
-  const stablecoins = await getStablecoins(networkName);
-  const underlyerToken = stablecoins[symbol];
-  const decimals = await underlyerToken.decimals();
+  // const stablecoins = await getStablecoins(networkName);
+  // const underlyerToken = stablecoins[symbol];
+  // const decimals = await underlyerToken.decimals();
 
   const userAptBalance = await pool.balanceOf(user.address);
   console.log(`${symbol} APT balance: ${userAptBalance}`);
 
   // this is underlyer amount to withdraw;
-  const amount = tokenAmountToBigNumber(argv.amount || "99000", decimals);
-  const aptAmount = await pool.calculateMintAmount(amount);
+  // const amount = tokenAmountToBigNumber(argv.amount || "99000", decimals);
+  // const aptAmount = await pool.calculateMintAmount(amount);
+  const amount = await pool.getUnderlyerAmount(userAptBalance);
 
   console.log("");
   console.log(`Withdrawing ${amount} from ${symbol} pool ...`);
   console.log("");
 
-  await pool.redeem(aptAmount);
+  // await pool.redeem(aptAmount);
+  await pool.redeem(userAptBalance);
 
   console.logDone();
 }

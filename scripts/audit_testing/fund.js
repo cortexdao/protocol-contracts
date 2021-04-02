@@ -19,6 +19,7 @@ const { ethers, network } = hre;
 const { getApyPool } = require("./utils");
 const { bytes32, tokenAmountToBigNumber } = require("../../utils/helpers");
 const { console, getAddressRegistry } = require("./utils");
+const { BigNumber } = require("@ethersproject/bignumber");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -42,46 +43,41 @@ async function main(argv) {
   console.log("Funding strategy account from pools ...");
   console.log("");
 
-  const daiPool = await getApyPool(NETWORK_NAME, "DAI");
-  const daiTopUp = await daiPool.getReserveTopUpValue();
-  const daiAmount = await daiPool.getUnderlyerAmountFromValue(
-    Math.abs(daiTopUp)
-  );
-  console.log(
-    `DAI Amount: ${daiAmount.div(tokenAmountToBigNumber(1)).toString()}`
-  );
-
-  const usdcPool = await getApyPool(NETWORK_NAME, "USDC");
-  const usdcTopUp = await usdcPool.getReserveTopUpValue();
-  const usdcAmount = await usdcPool.getUnderlyerAmountFromValue(
-    Math.abs(usdcTopUp)
-  );
-  console.log(
-    `USDC Amount: ${usdcAmount.div(tokenAmountToBigNumber(1)).toString()}`
-  );
-
-  const usdtPool = await getApyPool(NETWORK_NAME, "USDT");
-  const usdtTopUp = await usdtPool.getReserveTopUpValue();
-  const usdtAmount = await usdtPool.getUnderlyerAmountFromValue(
-    Math.abs(usdtTopUp)
-  );
-  console.log(
-    `USDT Amount: ${usdtAmount.div(tokenAmountToBigNumber(1)).toString()}`
-  );
+  const amounts = {};
+  for (const symbol of ["DAI", "USDC", "USDT"]) {
+    const pool = await getApyPool(NETWORK_NAME, symbol);
+    const topUpValue = await pool.getReserveTopUpValue();
+    let topUpAmount;
+    if (topUpValue.gt(0)) {
+      topUpAmount = await pool.getUnderlyerAmountFromValue(topUpValue);
+      console.log(
+        `{symbol} top-up amount: ${topUpAmount
+          .div(tokenAmountToBigNumber(1))
+          .toString()}`
+      );
+    } else {
+      topUpAmount = BigNumber.from("0");
+      console.log(
+        "Top-up value is non-positive:",
+        topUpValue.div(tokenAmountToBigNumber(1, 8)).toString()
+      );
+    }
+    amounts[symbol] = topUpAmount;
+  }
 
   const accountId = bytes32("alpha");
   await poolManager.fundAccount(accountId, [
     {
       poolId: bytes32("daiPool"),
-      amount: daiAmount,
+      amount: amounts["DAI"],
     },
     {
       poolId: bytes32("usdcPool"),
-      amount: usdcAmount,
+      amount: amounts["USDC"],
     },
     {
       poolId: bytes32("usdtPool"),
-      amount: usdtAmount,
+      amount: amounts["USDT"],
     },
   ]);
   console.log("... done.");

@@ -16,7 +16,12 @@
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const { getStrategyAccountInfo, getTvlManager } = require("./utils");
+const {
+  getStrategyAccountInfo,
+  getTvlManager,
+  getAddressRegistry,
+} = require("./utils");
+const { bytes32 } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -31,25 +36,21 @@ async function main(argv) {
 
   const tvlManager = await getTvlManager(networkName);
 
-  console.log("");
-  console.log("Registering ...");
-  console.log("");
-
-  console.log("");
-  console.log("Uniswap");
-  console.log("");
-  const UniswapPeriphery = await ethers.getContractFactory("UniswapPeriphery");
-  const uniswap = await UniswapPeriphery.deploy();
-  await uniswap.deployed();
-
   // USDC-USDT pair
   const LP_TOKEN_ADDRESS = "0x3041cbd36888becc7bbcbc0045e3b1f144466f5f";
 
   const [, accountAddress] = await getStrategyAccountInfo(networkName);
 
+  const addressRegistry = await getAddressRegistry(networkName);
+  const uniswapPeripheryAddress = await addressRegistry.getAddress(
+    bytes32("uniswapPeriphery")
+  );
+
   console.log("");
   console.log("Register Uniswap allocations for strategy account ...");
   console.log("");
+
+  const UniswapPeriphery = await ethers.getContractFactory("UniswapPeriphery");
 
   const calldataForUsdc = UniswapPeriphery.interface.encodeFunctionData(
     "getUnderlyerBalance(address,address,uint256)",
@@ -60,18 +61,17 @@ async function main(argv) {
     [accountAddress, LP_TOKEN_ADDRESS, 1]
   );
 
-  let trx = await tvlManager.addAssetAllocation(
-    [uniswap.address, calldataForUsdc],
-    "USDC",
-    6
-  );
+  let data = [uniswapPeripheryAddress, calldataForUsdc];
+  let trx = await tvlManager.addAssetAllocation(data, "USDC", 6);
   await trx.wait();
-  trx = await tvlManager.addAssetAllocation(
-    [uniswap.address, calldataForUsdt],
-    "USDT",
-    6
-  );
+  let allocationId = await tvlManager.generateDataHash(data);
+  console.log("USDC Allocation ID:", allocationId);
+
+  data = [uniswapPeripheryAddress, calldataForUsdt];
+  trx = await tvlManager.addAssetAllocation(data, "USDT", 6);
   await trx.wait();
+  allocationId = await tvlManager.generateDataHash(data);
+  console.log("USDT Allocation ID:", allocationId);
 
   console.log("... done.");
   console.log("");

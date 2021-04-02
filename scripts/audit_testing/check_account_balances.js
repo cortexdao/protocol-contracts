@@ -48,11 +48,11 @@ async function main(argv) {
 
   const usdcToken = stablecoins["USDC"];
   const accUsdcBal = await usdcToken.balanceOf(accountAddress);
-  console.log(`USDC Balance: ${commify(formatUnits(accUsdcBal, 18))}`);
+  console.log(`USDC Balance: ${commify(formatUnits(accUsdcBal, 6))}`);
 
   const usdtToken = stablecoins["USDT"];
   const accUsdtBal = await usdtToken.balanceOf(accountAddress);
-  console.log(`USDT Balance: ${commify(formatUnits(accUsdtBal, 18))}`);
+  console.log(`USDT Balance: ${commify(formatUnits(accUsdtBal, 6))}`);
 }
 
 if (!module.parent) {

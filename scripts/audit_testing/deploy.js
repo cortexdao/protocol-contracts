@@ -330,6 +330,47 @@ async function main(argv) {
   trx = await accountManager.deployAccount(accountId, executor.address);
   await trx.wait();
   console.logDone();
+
+  console.log("Deploying periphery contracts ...");
+  console.log("");
+  console.log("Aave lending pool");
+  console.log("");
+  const AavePeriphery = await ethers.getContractFactory("AavePeriphery");
+  const aave = await AavePeriphery.deploy();
+  await aave.deployed();
+  console.logAddress("Aave periphery:", aave.address);
+  trx = await addressRegistry.registerAddress(
+    bytes32("aavePeriphery"),
+    aave.address
+  );
+  await trx.wait();
+
+  console.log("");
+  console.log("Uniswap");
+  console.log("");
+  const UniswapPeriphery = await ethers.getContractFactory("UniswapPeriphery");
+  const uniswap = await UniswapPeriphery.deploy();
+  await uniswap.deployed();
+  console.logAddress("Uniswap periphery:", aave.address);
+  trx = await addressRegistry.registerAddress(
+    bytes32("uniswapPeriphery"),
+    uniswap.address
+  );
+  await trx.wait();
+
+  console.log("");
+  console.log("Curve 3pool");
+  console.log("");
+  const CurvePeriphery = await ethers.getContractFactory("CurvePeriphery");
+  const curve = await CurvePeriphery.deploy();
+  await curve.deployed();
+  console.logAddress("Curve periphery:", aave.address);
+  trx = await addressRegistry.registerAddress(
+    bytes32("curvePeriphery"),
+    curve.address
+  );
+  await trx.wait();
+  console.logDone();
 }
 
 if (!module.parent) {

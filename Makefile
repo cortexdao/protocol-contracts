@@ -172,3 +172,11 @@ audit_testing:
 	  exit 1 ;\
     fi ;\
 	HARDHAT_NETWORK=localhost node scripts/audit_testing/"${step}".js
+
+.PHONY: check_all
+check_all:
+	make audit_testing step=check_pools_reserves
+	make audit_testing step=check_tvl
+	make audit_testing step=check_account_balances
+
+
