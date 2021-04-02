@@ -16,6 +16,8 @@
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
+const CurveABI = require("../abi/curveDaoERC20");
+// const LiquidityGauge3Pool = require("../abi/liquidityGauge3Pool")
 const { getStrategyAccountInfo, getTvlManager } = require("./utils");
 
 // eslint-disable-next-line no-unused-vars
@@ -84,6 +86,22 @@ async function main(argv) {
     ]
   );
 
+  const curveERC20 = await ethers.getContractAt(
+    CurveABI,
+    "0xD533a949740bb3306d119CC777fa900bA034cd52",
+    deployer
+  );
+  const calldataForCRV = curveERC20.interface.encodeFunctionData(
+    "balanceOf(address)",
+    [accountAddress]
+  );
+
+  // const liquidityGauge3Pool = await ethers.getContractAt(
+  //   LiquidityGauge3Pool,
+  //   '0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A',
+  //   deployer
+  // )
+
   let trx = await tvlManager.addAssetAllocation(
     [curve.address, calldataForDai],
     "DAI",
@@ -100,6 +118,12 @@ async function main(argv) {
     [curve.address, calldataForUsdt],
     "USDT",
     6
+  );
+  await trx.wait();
+  trx = await tvlManager.addAssetAllocation(
+    [curveERC20.address, calldataForCRV],
+    "CRV",
+    18
   );
   await trx.wait();
 

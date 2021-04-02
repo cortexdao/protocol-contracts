@@ -51,7 +51,7 @@ async function main(argv) {
   const userBalance = await underlyerToken.balanceOf(user.address);
   console.log(`${symbol} balance: ${userBalance}`);
 
-  const amount = tokenAmountToBigNumber(argv.amount || "1000", decimals);
+  const amount = tokenAmountToBigNumber(argv.amount || "99000", decimals);
 
   const pool = await getApyPool(networkName, symbol);
 

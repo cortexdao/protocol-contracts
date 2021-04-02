@@ -53,7 +53,7 @@ async function main(argv) {
   console.log(`${symbol} APT balance: ${userAptBalance}`);
 
   // this is underlyer amount to withdraw;
-  const amount = tokenAmountToBigNumber(argv.amount || "1000", decimals);
+  const amount = tokenAmountToBigNumber(argv.amount || "99000", decimals);
   const aptAmount = await pool.calculateMintAmount(amount);
 
   console.log("");
