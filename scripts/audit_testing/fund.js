@@ -19,7 +19,6 @@ const { ethers, network } = hre;
 const { getApyPool } = require("./utils");
 const { bytes32, tokenAmountToBigNumber } = require("../../utils/helpers");
 const { console, getAddressRegistry } = require("./utils");
-const { BigNumber } = require("@ethersproject/bignumber");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -43,43 +42,34 @@ async function main(argv) {
   console.log("Funding strategy account from pools ...");
   console.log("");
 
-  const amounts = {};
+  const poolAmounts = [];
   for (const symbol of ["DAI", "USDC", "USDT"]) {
     const pool = await getApyPool(NETWORK_NAME, symbol);
     const topUpValue = await pool.getReserveTopUpValue();
     let topUpAmount;
-    if (topUpValue.gt(0)) {
-      topUpAmount = await pool.getUnderlyerAmountFromValue(topUpValue);
+    if (topUpValue.lt(0)) {
+      topUpAmount = await pool.getUnderlyerAmountFromValue(
+        Math.abs(topUpValue)
+      );
+      poolAmounts.push({
+        poolId: bytes32(`${symbol.toLowerCase()}Pool`),
+        amount: topUpAmount,
+      });
       console.log(
-        `{symbol} top-up amount: ${topUpAmount
+        `${symbol} top-up amount: ${topUpAmount
           .div(tokenAmountToBigNumber(1))
           .toString()}`
       );
     } else {
-      topUpAmount = BigNumber.from("0");
       console.log(
-        "Top-up value is non-positive:",
+        "Top-up value is positive:",
         topUpValue.div(tokenAmountToBigNumber(1, 8)).toString()
       );
     }
-    amounts[symbol] = topUpAmount;
   }
 
   const accountId = bytes32("alpha");
-  await poolManager.fundAccount(accountId, [
-    {
-      poolId: bytes32("daiPool"),
-      amount: amounts["DAI"],
-    },
-    {
-      poolId: bytes32("usdcPool"),
-      amount: amounts["USDC"],
-    },
-    {
-      poolId: bytes32("usdtPool"),
-      amount: amounts["USDT"],
-    },
-  ]);
+  await poolManager.fundAccount(accountId, poolAmounts);
   console.log("... done.");
 }
 
