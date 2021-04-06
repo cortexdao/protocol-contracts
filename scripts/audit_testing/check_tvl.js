@@ -44,7 +44,7 @@ async function main(argv) {
     answeredInRound,
   ] = await aggregator.latestRoundData();
   console.log("roundId", roundId.toString());
-  console.log(`answer: $${commify(formatUnits(answerUSD, 8))}`);
+  console.log(`answer: $ ${commify(formatUnits(answerUSD, 8))}`);
   console.log("startedAt:", startedAt.toString());
   console.log("updatedAt:", updatedAt.toString());
   console.log("answeredInRound:", answeredInRound.toString());

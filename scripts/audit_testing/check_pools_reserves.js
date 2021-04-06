@@ -33,31 +33,31 @@ async function main(argv) {
   console.log("");
 
   const daiPool = await getApyPool(NETWORK_NAME, "DAI");
-  const daiBal = await daiPool.getPoolUnderlyerValue();
+  const daiVal = await daiPool.getPoolUnderlyerValue();
   const daiTopUp = await daiPool.getReserveTopUpValue();
 
   const usdcPool = await getApyPool(NETWORK_NAME, "USDC");
-  const usdcBal = await usdcPool.getPoolUnderlyerValue();
+  const usdcVal = await usdcPool.getPoolUnderlyerValue();
   const usdcTopUp = await usdcPool.getReserveTopUpValue();
 
   const usdtPool = await getApyPool(NETWORK_NAME, "USDT");
-  const usdtBal = await usdtPool.getPoolUnderlyerValue();
+  const usdtVal = await usdtPool.getPoolUnderlyerValue();
   const usdtTopUp = await usdtPool.getReserveTopUpValue();
 
   console.log(
-    `DAI Pool Amount / Top Up: $${commify(formatUnits(daiBal, 8))}, $${commify(
+    `DAI Pool Value / Top Up: $ ${commify(formatUnits(daiVal, 8))}, $ ${commify(
       formatUnits(daiTopUp, 8)
     )}`
   );
   console.log(
-    `USDC Pool Amount / Top Up: $${commify(
-      formatUnits(usdcBal, 8)
-    )}, $${commify(formatUnits(usdcTopUp, 8))}`
+    `USDC Pool Value / Top Up: $ ${commify(
+      formatUnits(usdcVal, 8)
+    )}, $ ${commify(formatUnits(usdcTopUp, 8))}`
   );
   console.log(
-    `USDT Pool Amount / Top Up: $${commify(
-      formatUnits(usdtBal, 8)
-    )}, $${commify(formatUnits(usdtTopUp, 8))}`
+    `USDT Pool Value / Top Up: $ ${commify(
+      formatUnits(usdtVal, 8)
+    )}, $ ${commify(formatUnits(usdtTopUp, 8))}`
   );
 }
 
