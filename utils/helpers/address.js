@@ -8,6 +8,15 @@ const {
   CONTRACT_NAMES,
 } = require("../constants.js");
 
+function getChainId(networkName) {
+  networkName = networkName.toUpperCase();
+  const chainId = CHAIN_IDS[networkName];
+  if (chainId === undefined) {
+    throw new Error(`getChainId: unrecognized network name - ${networkName}`);
+  }
+  return chainId;
+}
+
 /**
  * Update the JSONs of deployed addresses based on name and network.
  *
@@ -22,7 +31,8 @@ function updateDeployJsons(network, deploy_data) {
     if (deploy_data[contract_name] === undefined) {
       continue;
     }
-    address_json[CHAIN_IDS[network]] = deploy_data[contract_name];
+    const chainId = getChainId(network);
+    address_json[chainId] = deploy_data[contract_name];
     const address_json_string = JSON.stringify(address_json, null, "  ");
     fs.writeFileSync(file_path, address_json_string, (err) => {
       if (err) throw err;
@@ -44,11 +54,7 @@ function getDeployedAddress(contractName, network) {
       `getDeployedAddress: unrecognized APY contract name - ${contractName}.`
     );
   const contractAddresses = require(DEPLOYS_JSON[contractName]);
-  const chainId = CHAIN_IDS[network.toUpperCase()];
-  if (!chainId)
-    throw new Error(
-      `getDeployedAddress: unrecognized network name - ${network}.`
-    );
+  const chainId = getChainId(network);
   const deployedAddress = contractAddresses[chainId];
   return deployedAddress;
 }
