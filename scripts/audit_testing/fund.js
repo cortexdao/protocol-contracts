@@ -45,12 +45,12 @@ async function main(argv) {
   const poolAmounts = [];
   for (const symbol of ["DAI", "USDC", "USDT"]) {
     const pool = await getApyPool(NETWORK_NAME, symbol);
-    const topUpValue = await pool.getReserveTopUpValue();
+    let topUpValue = await pool.getReserveTopUpValue();
+    // if (symbol == "DAI")
+    //   topUpValue = tokenAmountToBigNumber("500000", "8").mul("-1");
     let topUpAmount;
     if (topUpValue.lt(0)) {
-      topUpAmount = await pool.getUnderlyerAmountFromValue(
-        Math.abs(topUpValue)
-      );
+      topUpAmount = await pool.getUnderlyerAmountFromValue(topUpValue.abs());
       poolAmounts.push({
         poolId: bytes32(`${symbol.toLowerCase()}Pool`),
         amount: topUpAmount,

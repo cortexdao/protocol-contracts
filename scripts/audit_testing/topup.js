@@ -1,27 +1,89 @@
 #!/usr/bin/env node
 const hre = require("hardhat");
-const { network } = hre;
+const { artifacts, ethers, network } = hre;
+const { BigNumber } = ethers;
 
 const { program } = require("commander");
 
-const { getApyPool } = require("./utils");
+const {
+  getStrategyAccountInfo,
+  getPoolManager,
+  getStablecoins,
+  getAccountManager,
+} = require("./utils");
+const { bytes32, MAX_UINT256 } = require("../../utils/helpers");
 
 const NETWORK_NAME = network.name.toUpperCase();
 
 program.requiredOption("-p, --pool <string>", "APY stablecoin pool type");
+program.requiredOption("-a, --amount <string>", "Max amount to push");
 
 async function main(options) {
   const symbol = options.pool.toUpperCase();
   if (!["DAI", "USDC", "USDT"].includes(symbol))
     throw new Error(`'pool' parameter not recognized: ${symbol}`);
 
-  const pool = await getApyPool(NETWORK_NAME, symbol);
-  const topUpValue = await pool.getReserveTopUpValue();
-  let amount = await pool.getUnderlyerAmountFromValue(Math.abs(topUpValue));
-  if (topUpValue.lt(0)) {
-    amount = amount.mul(-1);
+  const maxAmount = BigNumber.from(options.amount);
+  if (maxAmount.lte(0)) {
+    throw new Error("Max amount should be positive.");
   }
+
+  const [accountId, accountAddress] = await getStrategyAccountInfo(
+    NETWORK_NAME
+  );
+
+  let poolId = symbol.toLowerCase() + "Pool";
+  poolId = bytes32(poolId);
+
+  const amount = await getAvailableAmount(
+    accountAddress,
+    symbol,
+    maxAmount,
+    NETWORK_NAME
+  );
+
+  const poolManager = await getPoolManager(NETWORK_NAME);
+  const accountManager = await getAccountManager(NETWORK_NAME);
+
+  const stablecoins = await getStablecoins(NETWORK_NAME);
+
+  if (
+    stablecoins[symbol].allowance(accountAddress, poolManager.address).isZero()
+  ) {
+    const ifaceERC20 = new ethers.utils.Interface(
+      artifacts.require("IDetailedERC20").abi
+    );
+    const approveManager = ifaceERC20.encodeFunctionData(
+      "approve(address,uint256)",
+      [poolManager.address, MAX_UINT256]
+    );
+    const executionSteps = [[stablecoins[symbol].address, approveManager]];
+
+    await accountManager.execute(accountId, executionSteps, []);
+  }
+
+  const poolAmounts = [
+    {
+      poolId,
+      amount,
+    },
+  ];
+  await poolManager.withdrawFromAccount(accountId, poolAmounts);
+
   return amount.toString();
+}
+
+async function getAvailableAmount(
+  accountAddress,
+  symbol,
+  maxAmount,
+  networkName
+) {
+  const stablecoins = await getStablecoins(networkName);
+  const underlyer = stablecoins[symbol.toUpperCase()];
+  let availableAmount = await underlyer.balanceOf(accountAddress);
+  availableAmount = maxAmount.lt(availableAmount) ? maxAmount : availableAmount;
+  return availableAmount;
 }
 
 if (!module.parent) {
