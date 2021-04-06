@@ -21,10 +21,6 @@ async function main(options) {
   let result;
   const metricName = options.metric.toLowerCase();
   switch (metricName) {
-    case "topup":
-    case "topup-amount":
-      result = await getTopUpAmount(pool);
-      break;
     case "total-value":
       result = await pool.getPoolTotalValue();
       break;
@@ -33,6 +29,13 @@ async function main(options) {
       break;
     case "underlyer-value":
       result = await pool.getPoolUnderlyerValue();
+      break;
+    case "topup-value":
+      result = await pool.getReserveTopUpValue();
+      break;
+    case "topup":
+    case "topup-amount":
+      result = await getTopUpAmount(pool);
       break;
     default:
       throw new Error("Unrecognized metric name.");
