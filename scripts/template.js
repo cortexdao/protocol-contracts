@@ -1,8 +1,9 @@
+#!/usr/bin/env node
 const { program } = require("commander");
 
-async function main(params) {
+async function main(options) {
   // TODO: Do your funny business
-  return params;
+  return options;
 }
 
 if (!module.parent) {
@@ -15,11 +16,13 @@ if (!module.parent) {
   const options = program.opts();
   main(options)
     .then((result) => {
+      if (!(typeof result === "string" || result instanceof Buffer)) {
+        process.exit(1);
+      }
       process.stdout.write(result);
       process.exit(0);
     })
-    .catch((error) => {
-      console.error(error);
+    .catch(() => {
       process.exit(1);
     });
 } else {
