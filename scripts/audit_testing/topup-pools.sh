@@ -2,4 +2,8 @@
 
 export HARDHAT_NETWORK=localhost
 
-node scripts/audit_testing/topup.js -p dai
+for pool in dai usdc usdc; do
+    echo "${pool} pool:"
+    echo "  Total value: " $(node scripts/audit_testing/poolMetrics.js -p ${pool} -m total-value)
+    echo "  Topup amount: "$(node scripts/audit_testing/poolMetrics.js -p ${pool} -m topup)
+done
