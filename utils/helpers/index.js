@@ -9,6 +9,7 @@ const {
   updateDeployJsons,
 } = require("./address");
 const { deployAggregator } = require("./aggregator");
+const { getAssetAllocationValue } = require("./asset_allocation");
 const { expectEventInTransaction } = require("./event");
 const { getGasPrice } = require("./gas");
 const {
@@ -61,6 +62,7 @@ module.exports = {
   acquireToken,
   deployAggregator,
   expectEventInTransaction,
+  getAssetAllocationValue,
   ZERO_ADDRESS,
   MAX_UINT256,
   FAKE_ADDRESS,
