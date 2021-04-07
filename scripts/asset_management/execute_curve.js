@@ -16,6 +16,32 @@ program.requiredOption(
   "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7"
 );
 
+program.requiredOption(
+  "-d, --daiAmount <string>",
+  "DAI amount",
+  "0"
+);
+
+async function executeCurve(stableSwapAddress, daiAmount) {
+  // deposit into liquidity pool
+  const approveStableSwap = ifaceERC20.encodeFunctionData(
+    "approve(address,uint256)",
+    [STABLE_SWAP_ADDRESS, MAX_UINT256]
+  );
+
+  const daiToken = stablecoins["DAI"];
+  const stableSwapAddLiquidity = ifaceStableSwap.encodeFunctionData(
+    "add_liquidity(uint256[3],uint256)",
+    [[daiAmount, 0, 0], 0]
+  );
+
+  let executionSteps = [
+    [daiToken.address, approveStableSwap], // approve StableSwap for DAI
+    [STABLE_SWAP_ADDRESS, stableSwapAddLiquidity], // deposit DAI into Curve 3pool
+  ];
+  await accountManager.execute(accountId, executionSteps, []);
+}
+
 // eslint-disable-next-line no-unused-vars
 async function main(options) {
   const networkName = network.name.toUpperCase();
@@ -31,25 +57,9 @@ async function main(options) {
 
   // 3Pool addresses:
   const STABLE_SWAP_ADDRESS = options.stableSwap;
+  const daiAmount = options.daiAmount;
 
-  // deposit into liquidity pool
-  const approveStableSwap = ifaceERC20.encodeFunctionData(
-    "approve(address,uint256)",
-    [STABLE_SWAP_ADDRESS, MAX_UINT256]
-  );
-
-  const daiToken = stablecoins["DAI"];
-  const daiAmount = await daiToken.balanceOf(accountAddress);
-  const stableSwapAddLiquidity = ifaceStableSwap.encodeFunctionData(
-    "add_liquidity(uint256[3],uint256)",
-    [[daiAmount, 0, 0], 0]
-  );
-
-  let executionSteps = [
-    [daiToken.address, approveStableSwap], // approve StableSwap for DAI
-    [STABLE_SWAP_ADDRESS, stableSwapAddLiquidity], // deposit DAI into Curve 3pool
-  ];
-  await accountManager.execute(accountId, executionSteps, []);
+  executeCurve(STABLE_SWAP_ADDRESS);
 }
 
 if (!module.parent) {
@@ -68,5 +78,5 @@ if (!module.parent) {
     });
 } else {
   // if importing in another script
-  module.exports = main;
+  module.exports = executeCurve;
 }
