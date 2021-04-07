@@ -15,39 +15,19 @@ program.requiredOption(
   "3Pool Address",
   "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7"
 );
-
 program.requiredOption(
-  "-d, --daiAmount <string>",
-  "DAI amount",
-  "0"
+  "-a, --amounts <items>",
+  "comma separated list of pool amounts",
+  commaSeparatedList
 );
+program.option("-m, --min <string>", "min amount required", 0);
 
-async function executeCurve(stableSwapAddress, daiAmount) {
-  // deposit into liquidity pool
-  const approveStableSwap = ifaceERC20.encodeFunctionData(
-    "approve(address,uint256)",
-    [STABLE_SWAP_ADDRESS, MAX_UINT256]
-  );
-
-  const daiToken = stablecoins["DAI"];
-  const stableSwapAddLiquidity = ifaceStableSwap.encodeFunctionData(
-    "add_liquidity(uint256[3],uint256)",
-    [[daiAmount, 0, 0], 0]
-  );
-
-  let executionSteps = [
-    [daiToken.address, approveStableSwap], // approve StableSwap for DAI
-    [STABLE_SWAP_ADDRESS, stableSwapAddLiquidity], // deposit DAI into Curve 3pool
-  ];
-  await accountManager.execute(accountId, executionSteps, []);
-}
-
-// eslint-disable-next-line no-unused-vars
-async function main(options) {
+async function executeCurve(stableSwapAddress, amountsArray, min) {
   const networkName = network.name.toUpperCase();
   const accountManager = await getAccountManager(networkName);
-  const [accountId, accountAddress] = await getStrategyAccountInfo(networkName);
+  const [accountId] = await getStrategyAccountInfo(networkName);
   const stablecoins = await getStablecoins(networkName);
+
   const ifaceERC20 = new ethers.utils.Interface(
     artifacts.require("IDetailedERC20").abi
   );
@@ -55,13 +35,33 @@ async function main(options) {
     artifacts.require("IStableSwap").abi
   );
 
-  // 3Pool addresses:
-  const STABLE_SWAP_ADDRESS = options.stableSwap;
-  const daiAmount = options.daiAmount;
+  // deposit into liquidity pool
+  const approveStableSwap = ifaceERC20.encodeFunctionData(
+    "approve(address,uint256)",
+    [stableSwapAddress, MAX_UINT256]
+  );
 
-  executeCurve(STABLE_SWAP_ADDRESS);
+  const daiToken = stablecoins["DAI"];
+  const stableSwapAddLiquidity = ifaceStableSwap.encodeFunctionData(
+    "add_liquidity(uint256[3],uint256)",
+    [amountsArray, min]
+  );
+
+  let executionSteps = [
+    [daiToken.address, approveStableSwap], // approve StableSwap for DAI
+    [stableSwapAddress, stableSwapAddLiquidity], // deposit DAI into Curve 3pool
+  ];
+  await accountManager.execute(accountId, executionSteps, []);
 }
 
+// eslint-disable-next-line no-unused-vars
+function commaSeparatedList(value, dummyPrevious) {
+  return value.split(",");
+}
+
+async function main(options) {
+  await executeCurve(options.stableSwap, options.amounts, options.min);
+}
 if (!module.parent) {
   program.parse(process.argv);
   const options = program.opts();
