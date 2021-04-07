@@ -47,9 +47,11 @@ async function main(options) {
 
   const stablecoins = await getStablecoins(NETWORK_NAME);
 
-  if (
-    stablecoins[symbol].allowance(accountAddress, poolManager.address).isZero()
-  ) {
+  const allowance = await stablecoins[symbol].allowance(
+    accountAddress,
+    poolManager.address
+  );
+  if (allowance.isZero()) {
     const ifaceERC20 = new ethers.utils.Interface(
       artifacts.require("IDetailedERC20").abi
     );
