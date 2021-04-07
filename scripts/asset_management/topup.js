@@ -43,26 +43,9 @@ async function main(options) {
   );
 
   const poolManager = await getPoolManager(NETWORK_NAME);
-  const accountManager = await getAccountManager(NETWORK_NAME);
+  await setAllowanceForManager(poolManager.address, symbol, NETWORK_NAME);
 
-  const stablecoins = await getStablecoins(NETWORK_NAME);
-
-  const allowance = await stablecoins[symbol].allowance(
-    accountAddress,
-    poolManager.address
-  );
-  if (allowance.isZero()) {
-    const ifaceERC20 = new ethers.utils.Interface(
-      artifacts.require("IDetailedERC20").abi
-    );
-    const approveManager = ifaceERC20.encodeFunctionData(
-      "approve(address,uint256)",
-      [poolManager.address, MAX_UINT256]
-    );
-    const executionSteps = [[stablecoins[symbol].address, approveManager]];
-
-    await accountManager.execute(accountId, executionSteps, []);
-  }
+  if (amount.eq("0")) return "0";
 
   const poolAmounts = [
     {
@@ -86,6 +69,29 @@ async function getAvailableAmount(
   let availableAmount = await underlyer.balanceOf(accountAddress);
   availableAmount = maxAmount.lt(availableAmount) ? maxAmount : availableAmount;
   return availableAmount;
+}
+
+async function setAllowanceForManager(poolManagerAddress, symbol, networkName) {
+  const [accountId, accountAddress] = await getStrategyAccountInfo(networkName);
+  const stablecoins = await getStablecoins(networkName);
+  const accountManager = await getAccountManager(networkName);
+
+  const allowance = await stablecoins[symbol].allowance(
+    accountAddress,
+    poolManagerAddress
+  );
+  if (allowance.isZero()) {
+    const ifaceERC20 = new ethers.utils.Interface(
+      artifacts.require("IDetailedERC20").abi
+    );
+    const approveManager = ifaceERC20.encodeFunctionData(
+      "approve(address,uint256)",
+      [poolManagerAddress, MAX_UINT256]
+    );
+    const executionSteps = [[stablecoins[symbol].address, approveManager]];
+
+    await accountManager.execute(accountId, executionSteps, []);
+  }
 }
 
 if (!module.parent) {
