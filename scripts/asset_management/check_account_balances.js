@@ -4,7 +4,6 @@ const { network, ethers } = hre;
 const { program } = require("commander");
 const { commify, formatUnits } = require("../../utils/helpers");
 const { getStrategyAccountInfo } = require("./utils");
-const { console } = require("./utils");
 
 program.requiredOption(
   "-t, --tokenAddresses <items>",
@@ -20,6 +19,7 @@ program.requiredOption(
 
 // eslint-disable-next-line no-unused-vars
 async function checkBalances(addresses) {
+  const balances = {};
   const NETWORK_NAME = network.name.toUpperCase();
   const [, accountAddress] = await getStrategyAccountInfo(NETWORK_NAME);
   for (let i = 0; i < addresses.length; i++) {
@@ -27,10 +27,9 @@ async function checkBalances(addresses) {
     const sym = await token.symbol();
     const balance = await token.balanceOf(accountAddress);
     const decimals = await token.decimals();
-    console.log(
-      `${sym} Balance: ${commify(formatUnits(balance, decimals))}, ${balance}`
-    );
+    balances[sym] = { balance: balance, decimal: decimals };
   }
+  return balances;
 }
 
 // eslint-disable-next-line no-unused-vars
@@ -39,7 +38,18 @@ function commaSeparatedList(value, dummyPrevious) {
 }
 
 async function main(options) {
-  await checkBalances(options.tokenAddresses);
+  const results = await checkBalances(options.tokenAddresses);
+  const keys = Object.keys(results);
+  for (let i = 0; i < keys.length; i++) {
+    const data = results[keys[i]];
+    const balance = data.balance;
+    const decimals = data.decimals;
+    console.log(
+      `${keys[i]} Balance: ${commify(
+        formatUnits(balance, decimals)
+      )}, ${balance}`
+    );
+  }
 }
 if (!module.parent) {
   program.parse(process.argv);
