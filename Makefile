@@ -177,8 +177,20 @@ audit_testing:
 
 .PHONY: check_all
 check_all:
+	make check_pools_reserves
+	make check_tvl
+	make check_account_balances
+
+.PHONY: check_pools_reserves
+check_pools_reserves:
 	HARDHAT_NETWORK=localhost node $(AM_SCRIPTS_FOLDER)/check_pools_reserves.js
+
+.PHONY: check_tvl
+check_tvl:
 	HARDHAT_NETWORK=localhost node $(AM_SCRIPTS_FOLDER)/check_tvl.js
+
+.PHONY: check_account_balances
+check_account_balances:
 	HARDHAT_NETWORK=localhost node $(AM_SCRIPTS_FOLDER)/check_account_balances.js
 
 .PHONY: deploy
