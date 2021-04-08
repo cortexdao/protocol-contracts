@@ -26,7 +26,7 @@ program.requiredOption(
 async function executeStaking(lpTokenAddress, gaugeAddress, lpTokenAmount) {
   const networkName = network.name.toUpperCase();
   const accountManager = await getAccountManager(networkName);
-  const [accountId, accountAddress] = await getStrategyAccountInfo(networkName);
+  const [accountId] = await getStrategyAccountInfo(networkName);
 
   const ifaceERC20 = new ethers.utils.Interface(
     artifacts.require("IDetailedERC20").abi
@@ -36,16 +36,6 @@ async function executeStaking(lpTokenAddress, gaugeAddress, lpTokenAmount) {
   );
 
   // deposit into liquidity pool
-  const lpToken = await ethers.getContractAt("IDetailedERC20", lpTokenAddress);
-
-  let lpBalance = await lpToken.balanceOf(accountAddress);
-  console.log("LP balance (before):", lpBalance.toString());
-
-  // stake LP tokens in the gauge
-  const gauge = await ethers.getContractAt("IDetailedERC20", gaugeAddress);
-  let gaugeBalance = await gauge.balanceOf(accountAddress);
-  console.log("Gauge balance (before):", gaugeBalance.toString());
-
   const approveGauge = ifaceERC20.encodeFunctionData(
     "approve(address,uint256)",
     [gaugeAddress, MAX_UINT256]
