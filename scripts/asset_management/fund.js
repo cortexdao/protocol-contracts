@@ -13,24 +13,39 @@
  *
  * $ MNEMONIC='' yarn fork:mainnet
  */
-const { argv } = require("yargs");
+const { program } = require("commander");
 const hre = require("hardhat");
 const { ethers, network } = hre;
-const { getApyPool } = require("./utils");
-const { bytes32, tokenAmountToBigNumber } = require("../../utils/helpers");
-const { console, getAddressRegistry } = require("./utils");
+const { getStrategyAccountInfo } = require("./utils");
+const { bytes32 } = require("../../utils/helpers");
+const { getAddressRegistry } = require("./utils");
+const { BigNumber } = ethers;
+const _ = require("lodash");
 
-// eslint-disable-next-line no-unused-vars
-async function main(argv) {
-  await hre.run("compile");
-  const NETWORK_NAME = network.name.toUpperCase();
-  console.log("");
-  console.log(`${NETWORK_NAME} selected`);
-  console.log("");
+class RuntimeError extends Error {
+  constructor(message, exitStatus) {
+    super(message);
+    this.name = "RuntimeError";
+    this.exitStatus = exitStatus;
+  }
+}
 
-  const [deployer] = await ethers.getSigners();
-  console.log("Deployer address:", deployer.address);
+const NETWORK_NAME = network.name.toUpperCase();
 
+program.requiredOption("-p, --pools <string...>", "APY stablecoin pool type");
+program.requiredOption("-a, --amounts <string...>", "funding amounts in wei");
+
+async function main(options) {
+  const symbols = options.pools;
+  const amounts = options.amounts;
+  const result = await fundAccount(symbols, amounts);
+  return result.toString();
+}
+
+async function fundAccount(symbols, amounts) {
+  if (symbols.length != amounts.length) {
+    throw new RuntimeError("Must include amount for each symbol.");
+  }
   const addressRegistry = await getAddressRegistry(NETWORK_NAME);
   const poolManagerAddress = await addressRegistry.poolManagerAddress();
   const poolManager = await ethers.getContractAt(
@@ -38,58 +53,36 @@ async function main(argv) {
     poolManagerAddress
   );
 
-  console.log("");
-  console.log("Funding strategy account from pools ...");
-  console.log("");
+  let poolAmounts = _.zip(symbols, amounts).map(([symbol, amount]) => {
+    return {
+      poolId: getPoolId(symbol),
+      amount: BigNumber.from(amount),
+    };
+  });
+  poolAmounts = _.filter(poolAmounts, (p) => p.amount.gt("0"));
 
-  const poolAmounts = [];
-  for (const [symbol, decimals] of [
-    ["DAI", 18],
-    ["USDC", 6],
-    ["USDT", 6],
-  ]) {
-    const pool = await getApyPool(NETWORK_NAME, symbol);
-    let topUpValue = await pool.getReserveTopUpValue();
-    // if (symbol == "USDC")
-    //   topUpValue = tokenAmountToBigNumber("25000000", "8").mul("-1");
-    let topUpAmount;
-    if (topUpValue.lt(0)) {
-      topUpAmount = await pool.getUnderlyerAmountFromValue(topUpValue.abs());
-      poolAmounts.push({
-        poolId: bytes32(`${symbol.toLowerCase()}Pool`),
-        amount: topUpAmount,
-      });
-      console.log(
-        `${symbol} top-up amount (tokens): ${topUpAmount
-          .div(tokenAmountToBigNumber(1, decimals))
-          .toString()}`
-      );
-    } else {
-      console.log(
-        "Top-up value is positive: $ ",
-        topUpValue.div(tokenAmountToBigNumber(1, 8)).toString()
-      );
-    }
-  }
-
-  const accountId = bytes32("alpha");
+  const [accountId] = await getStrategyAccountInfo(NETWORK_NAME);
   await poolManager.fundAccount(accountId, poolAmounts);
-  console.log("... done.");
 }
 
+const getPoolId = (symbol) => bytes32(`${symbol.toLowerCase()}Pool`);
+
 if (!module.parent) {
-  main(argv)
-    .then(() => {
-      console.log("");
-      console.log("Execution successful.");
-      console.log("");
+  program.parse(process.argv);
+  const options = program.opts();
+  main(options)
+    .then((result) => {
+      if (!(typeof result === "string" || result instanceof Buffer)) {
+        process.exit(1);
+      }
+      process.stdout.write(result);
       process.exit(0);
     })
     .catch((error) => {
-      console.error(error);
-      console.log("");
-      process.exit(1);
+      const exitStatus = error.exitStatus || 1;
+      process.exit(exitStatus);
     });
 } else {
-  module.exports = main;
+  // if importing in another script
+  module.exports = fundAccount;
 }
