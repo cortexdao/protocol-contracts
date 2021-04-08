@@ -52,13 +52,13 @@ async function main(options) {
     const balance = data.balance;
     if (invalidERC20s.includes(keys[i])) {
       console.log(
-        `${keys[i]} Balance: ${commify(formatUnits(balance, 18))}, ${balance}`
+        `${keys[i]} Balance: $${commify(formatUnits(balance, 18))}, ${balance}`
       );
     } else {
-      const decimals = data.decimals;
+      const decimal = data.decimal;
       console.log(
-        `${keys[i]} Balance: ${commify(
-          formatUnits(balance, decimals)
+        `${keys[i]} Balance: $${commify(
+          formatUnits(balance, decimal)
         )}, ${balance}`
       );
     }
