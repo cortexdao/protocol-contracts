@@ -8,18 +8,26 @@ const { getApyPool } = require("./utils");
 
 const NETWORK_NAME = network.name.toUpperCase();
 
+class RuntimeError extends Error {
+  constructor(message, exitStatus) {
+    super(message);
+    this.name = "RuntimeError";
+    this.exitStatus = exitStatus || 1;
+  }
+}
+
 program.requiredOption("-p, --pool <string>", "APY stablecoin pool type");
 program.requiredOption("-m, --metric <string>", "metric name");
 
-async function main(options) {
-  const symbol = options.pool.toLowerCase();
+async function poolMetrics(symbol, metricName) {
+  symbol = symbol.toLowerCase();
   if (!["dai", "usdc", "usdt"].includes(symbol))
-    throw new Error(`'pool' parameter not recognized: ${symbol}`);
+    throw new RuntimeError(`'pool' parameter not recognized: ${symbol}`, 2);
 
   const pool = await getApyPool(NETWORK_NAME, symbol);
 
   let result;
-  const metricName = options.metric.toLowerCase();
+  metricName = metricName.toLowerCase();
   switch (metricName) {
     case "total-value":
       result = await pool.getPoolTotalValue();
@@ -38,15 +46,22 @@ async function main(options) {
       result = await getTopUpAmount(pool);
       break;
     default:
-      throw new Error("Unrecognized metric name.");
+      throw new RuntimeError("Unrecognized metric name.", 3);
   }
 
+  return result;
+}
+
+async function main(options) {
+  const symbol = options.pool.toLowerCase();
+  const metricName = options.metric.toLowerCase();
+  const result = await poolMetrics(symbol, metricName);
   return result.toString();
 }
 
 async function getTopUpAmount(pool) {
   const topUpValue = await pool.getReserveTopUpValue();
-  let amount = await pool.getUnderlyerAmountFromValue(Math.abs(topUpValue));
+  let amount = await pool.getUnderlyerAmountFromValue(topUpValue.abs());
   if (topUpValue.lt(0)) {
     amount = amount.mul(-1);
   }
@@ -64,9 +79,10 @@ if (!module.parent) {
       process.stdout.write(result);
       process.exit(0);
     })
-    .catch(() => {
-      process.exit(1);
+    .catch((error) => {
+      const exitStatus = error.exitStatus || 1;
+      process.exit(exitStatus);
     });
 } else {
-  module.exports = main;
+  module.exports = poolMetrics;
 }

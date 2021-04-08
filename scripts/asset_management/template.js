@@ -1,6 +1,14 @@
 #!/usr/bin/env node
 const { program } = require("commander");
 
+class RuntimeError extends Error {
+  constructor(message, exitStatus) {
+    super(message);
+    this.name = "RuntimeError";
+    this.exitStatus = exitStatus;
+  }
+}
+
 async function main(options) {
   // TODO: Do your funny business
   return options;
@@ -22,8 +30,9 @@ if (!module.parent) {
       process.stdout.write(result);
       process.exit(0);
     })
-    .catch(() => {
-      process.exit(1);
+    .catch((error) => {
+      const exitStatus = error.exitStatus || 1;
+      process.exit(exitStatus);
     });
 } else {
   // if importing in another script

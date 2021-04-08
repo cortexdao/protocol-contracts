@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 const hre = require("hardhat");
 const { artifacts, ethers, network } = hre;
-const { BigNumber } = ethers;
+const _ = require("lodash");
 
 const { program } = require("commander");
 
@@ -12,50 +12,86 @@ const {
   getAccountManager,
 } = require("./utils");
 const { bytes32, MAX_UINT256 } = require("../../utils/helpers");
+const { BigNumber } = ethers;
 
 const NETWORK_NAME = network.name.toUpperCase();
 
-program.requiredOption("-p, --pool <string>", "APY stablecoin pool type");
-program.requiredOption("-a, --amount <string>", "Max amount to push");
+class RuntimeError extends Error {
+  constructor(message, exitStatus) {
+    super(message);
+    this.name = "RuntimeError";
+    this.exitStatus = exitStatus;
+  }
+}
 
-async function main(options) {
-  const symbol = options.pool.toUpperCase();
-  if (!["DAI", "USDC", "USDT"].includes(symbol))
-    throw new Error(`'pool' parameter not recognized: ${symbol}`);
+program
+  .requiredOption("-p, --pools <string...>", "APY stablecoin pool type")
+  .requiredOption("-a, --amounts <string...>", "Max amounts to push");
 
-  const maxAmount = BigNumber.from(options.amount);
-  if (maxAmount.lte(0)) {
-    throw new Error("Max amount should be positive.");
+async function topUpPools(symbols, maxAmounts) {
+  symbols = symbols.map((s) => s.toUpperCase());
+  maxAmounts = maxAmounts.map((a) => BigNumber.from(a.replace(/^'|'$/g, "")));
+  for (const symbol of symbols) {
+    if (!["DAI", "USDC", "USDT"].includes(symbol))
+      throw new RuntimeError(`'pool' parameter not recognized: ${symbol}`, 2);
   }
 
   const [accountId, accountAddress] = await getStrategyAccountInfo(
     NETWORK_NAME
   );
 
-  let poolId = symbol.toLowerCase() + "Pool";
-  poolId = bytes32(poolId);
+  const poolManager = await getPoolManager(NETWORK_NAME);
 
+  const amounts = await Promise.all(
+    _.zip(symbols, maxAmounts).map(([symbol, maxAmount]) =>
+      getAvailableAmountAndSetAllowance(
+        accountAddress,
+        symbol,
+        maxAmount,
+        poolManager.address,
+        NETWORK_NAME
+      )
+    )
+  );
+
+  const poolIds = symbols.map((s) => bytes32(s.toLowerCase() + "Pool"));
+  let poolAmounts = _.zip(poolIds, amounts).map(([poolId, amount]) => {
+    return {
+      poolId,
+      amount,
+    };
+  });
+  poolAmounts = _.filter(poolAmounts, (p) => p.amount.gt("0"));
+
+  await poolManager.withdrawFromAccount(accountId, poolAmounts);
+
+  return amounts.map((a) => a.toString()).join(" ");
+}
+
+async function main(options) {
+  const symbols = options.pools;
+  const maxAmounts = options.amounts;
+  const result = await topUpPools(symbols, maxAmounts);
+  return result.toString();
+}
+
+async function getAvailableAmountAndSetAllowance(
+  accountAddress,
+  symbol,
+  maxAmount,
+  poolManagerAddress,
+  networkName
+) {
   const amount = await getAvailableAmount(
     accountAddress,
     symbol,
     maxAmount,
-    NETWORK_NAME
+    networkName
   );
 
-  const poolManager = await getPoolManager(NETWORK_NAME);
-  await setAllowanceForManager(poolManager.address, symbol, NETWORK_NAME);
+  await setAllowanceForManager(poolManagerAddress, symbol, networkName);
 
-  if (amount.eq("0")) return "0";
-
-  const poolAmounts = [
-    {
-      poolId,
-      amount,
-    },
-  ];
-  await poolManager.withdrawFromAccount(accountId, poolAmounts);
-
-  return amount.toString();
+  return amount;
 }
 
 async function getAvailableAmount(
@@ -64,6 +100,8 @@ async function getAvailableAmount(
   maxAmount,
   networkName
 ) {
+  if (maxAmount.lte("0")) return BigNumber.from("0");
+
   const stablecoins = await getStablecoins(networkName);
   const underlyer = stablecoins[symbol.toUpperCase()];
   let availableAmount = await underlyer.balanceOf(accountAddress);
@@ -105,9 +143,10 @@ if (!module.parent) {
       process.stdout.write(result);
       process.exit(0);
     })
-    .catch(() => {
-      process.exit(1);
+    .catch((error) => {
+      const exitStatus = error.exitStatus || 1;
+      process.exit(exitStatus);
     });
 } else {
-  module.exports = main;
+  module.exports = topUpPools;
 }

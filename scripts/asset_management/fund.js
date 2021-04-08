@@ -51,7 +51,7 @@ async function main(argv) {
     const pool = await getApyPool(NETWORK_NAME, symbol);
     let topUpValue = await pool.getReserveTopUpValue();
     // if (symbol == "USDC")
-    //   topUpValue = tokenAmountToBigNumber("500000", "8").mul("-1");
+    //   topUpValue = tokenAmountToBigNumber("25000000", "8").mul("-1");
     let topUpAmount;
     if (topUpValue.lt(0)) {
       topUpAmount = await pool.getUnderlyerAmountFromValue(topUpValue.abs());
