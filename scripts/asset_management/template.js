@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-const { program } = require("commander");
+const { program, Option } = require("commander");
 
 class RuntimeError extends Error {
   constructor(message, exitStatus) {
@@ -9,17 +9,32 @@ class RuntimeError extends Error {
   }
 }
 
+program.option("-p, --pizza-type <type>", "flavour of pizza", "default pizza");
+program.requiredOption("-c, --cheese <type>", "pizza must have cheese");
+program.option("-t, --toppings <string...>", "a variadic option");
+program.addOption(
+  new Option("-d, --drink <size>", "drink size").choices([
+    "small",
+    "medium",
+    "large",
+  ])
+);
+
+async function importedFunction(pizzaType, cheese, toppings, drink) {
+  // Code here
+}
+
 async function main(options) {
-  // TODO: Do your funny business
-  return options;
+  const pizzaType = options.pizzaType;
+  const cheese = options.cheese;
+  const toppings = options.toppings;
+  const drink = options.drink;
+  const result = await importedFunction(pizzaType, cheese, toppings, drink);
+  return result.toString();
 }
 
 if (!module.parent) {
   // If running in command line
-  program.version("0.0.1");
-  program.option("-a, --always <string>", "some description", "default value");
-  program.option("-b, --beating <string>", "some description", "default value");
-  program.option("-c, --chads <string>", "some description", "default value");
   program.parse(process.argv);
   const options = program.opts();
   main(options)
@@ -36,5 +51,5 @@ if (!module.parent) {
     });
 } else {
   // if importing in another script
-  module.exports = main;
+  module.exports = importedFunction;
 }
