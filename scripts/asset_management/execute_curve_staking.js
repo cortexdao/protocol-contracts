@@ -1,45 +1,32 @@
 #!/usr/bin/env node
-/**
- * Command to run script:
- *
- * $ HARDHAT_NETWORK=localhost node scripts/1_deployments.js
- *
- * You can modify the script to handle command-line args and retrieve them
- * through the `argv` object.  Values are passed like so:
- *
- * $ HARDHAT_NETWORK=localhost node scripts/1_deployments.js --arg1=val1 --arg2=val2
- *
- * Remember, you should have started the forked mainnet locally in another terminal:
- *
- * $ MNEMONIC='' yarn fork:mainnet
- */
-const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network, artifacts } = hre;
 const { MAX_UINT256 } = require("../../utils/helpers");
+const { program } = require("commander");
+
 const { getAccountManager, getStrategyAccountInfo } = require("./utils");
-const { console } = require("./utils");
+
+program.requiredOption(
+  "-t, --liquidityToken <string>",
+  "Liquidity Token Address",
+  "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
+);
+program.requiredOption(
+  "-g, --liquidityGauge <string>",
+  "Liquidity Gauge Address",
+  "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A"
+);
+program.requiredOption(
+  "-a, --liquidityTokenAmt <string>",
+  "Liquidity Token Amount",
+  0
+);
 
 // eslint-disable-next-line no-unused-vars
-async function main(argv) {
-  await hre.run("compile");
+async function executeStaking(lpTokenAddress, gaugeAddress, lpTokenAmount) {
   const networkName = network.name.toUpperCase();
-  console.log("");
-  console.log(`${networkName} selected`);
-  console.log("");
-
-  const [deployer] = await ethers.getSigners();
-  console.log("Deployer address:", deployer.address);
-
   const accountManager = await getAccountManager(networkName);
-  console.logAddress("AccountManager", accountManager.address);
-
   const [accountId, accountAddress] = await getStrategyAccountInfo(networkName);
-  console.logAddress("Strategy account", accountAddress);
-
-  console.log("");
-  console.log("Executing ...");
-  console.log("");
 
   const ifaceERC20 = new ethers.utils.Interface(
     artifacts.require("IDetailedERC20").abi
@@ -48,64 +35,54 @@ async function main(argv) {
     artifacts.require("ILiquidityGauge").abi
   );
 
-  // 3Pool addresses:
-  const LP_TOKEN_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
-  const LIQUIDITY_GAUGE_ADDRESS = "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A";
-
   // deposit into liquidity pool
-  const lpToken = await ethers.getContractAt(
-    "IDetailedERC20",
-    LP_TOKEN_ADDRESS
-  );
+  const lpToken = await ethers.getContractAt("IDetailedERC20", lpTokenAddress);
 
   let lpBalance = await lpToken.balanceOf(accountAddress);
   console.log("LP balance (before):", lpBalance.toString());
 
   // stake LP tokens in the gauge
-  const gauge = await ethers.getContractAt(
-    "IDetailedERC20",
-    LIQUIDITY_GAUGE_ADDRESS
-  );
+  const gauge = await ethers.getContractAt("IDetailedERC20", gaugeAddress);
   let gaugeBalance = await gauge.balanceOf(accountAddress);
   console.log("Gauge balance (before):", gaugeBalance.toString());
 
   const approveGauge = ifaceERC20.encodeFunctionData(
     "approve(address,uint256)",
-    [LIQUIDITY_GAUGE_ADDRESS, MAX_UINT256]
+    [gaugeAddress, MAX_UINT256]
   );
   const liquidityGaugeDeposit = ifaceLiquidityGauge.encodeFunctionData(
     "deposit(uint256)",
-    [lpBalance]
+    [lpTokenAmount]
   );
   let executionSteps = [
-    [LP_TOKEN_ADDRESS, approveGauge], // approve LiquidityGauge for LP token
-    [LIQUIDITY_GAUGE_ADDRESS, liquidityGaugeDeposit],
+    [lpTokenAddress, approveGauge], // approve LiquidityGauge for LP token
+    [gaugeAddress, liquidityGaugeDeposit],
   ];
   await accountManager.execute(accountId, executionSteps, []);
-
-  lpBalance = await lpToken.balanceOf(accountAddress);
-  console.log("LP balance (after):", lpBalance.toString());
-  gaugeBalance = await gauge.balanceOf(accountAddress);
-  console.log("Gauge balance (after):", gaugeBalance.toString());
-
-  console.logDone();
-
-  /****************************************/
 }
 
+async function main(options) {
+  await executeStaking(
+    options.liquidityToken,
+    options.liquidityGauge,
+    options.liquidityTokenAmt
+  );
+}
 if (!module.parent) {
-  main(argv)
-    .then(() => {
-      console.log("");
-      console.log("Execution successful.");
-      console.log("");
+  program.parse(process.argv);
+  const options = program.opts();
+  main(options)
+    .then((result) => {
+      if (!(typeof result === "string" || result instanceof Buffer)) {
+        process.exit(1);
+      }
+      process.stdout.write(result);
       process.exit(0);
     })
-    .catch((error) => {
-      console.error(error);
-      console.log("");
+    .catch(() => {
       process.exit(1);
     });
 } else {
-  module.exports = main;
+  // if importing in another script
+  module.exports = executeStaking;
 }
