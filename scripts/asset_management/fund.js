@@ -43,10 +43,14 @@ async function main(argv) {
   console.log("");
 
   const poolAmounts = [];
-  for (const symbol of ["DAI", "USDC", "USDT"]) {
+  for (const [symbol, decimals] of [
+    ["DAI", 18],
+    ["USDC", 6],
+    ["USDT", 6],
+  ]) {
     const pool = await getApyPool(NETWORK_NAME, symbol);
     let topUpValue = await pool.getReserveTopUpValue();
-    // if (symbol == "DAI")
+    // if (symbol == "USDC")
     //   topUpValue = tokenAmountToBigNumber("500000", "8").mul("-1");
     let topUpAmount;
     if (topUpValue.lt(0)) {
@@ -56,13 +60,13 @@ async function main(argv) {
         amount: topUpAmount,
       });
       console.log(
-        `${symbol} top-up amount: ${topUpAmount
-          .div(tokenAmountToBigNumber(1))
+        `${symbol} top-up amount (tokens): ${topUpAmount
+          .div(tokenAmountToBigNumber(1, decimals))
           .toString()}`
       );
     } else {
       console.log(
-        "Top-up value is positive:",
+        "Top-up value is positive: $ ",
         topUpValue.div(tokenAmountToBigNumber(1, 8)).toString()
       );
     }
