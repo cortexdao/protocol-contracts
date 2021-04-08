@@ -199,7 +199,11 @@ deploy:
 
 .PHONY: fund
 fund:
-	HARDHAT_NETWORK=localhost node $(AM_SCRIPTS_FOLDER)/fund.js
+	./$(AM_SCRIPTS_FOLDER)/fund-account.sh
+
+.PHONY: topup
+topup:
+	./$(AM_SCRIPTS_FOLDER)/topup-pools.sh
 
 .PHONY: register
 register:
