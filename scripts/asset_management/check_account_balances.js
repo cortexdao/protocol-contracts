@@ -14,8 +14,11 @@ program.requiredOption(
     "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", //USDC
     "0xdAC17F958D2ee523a2206206994597C13D831ec7", //USDT
     "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490", //3Crv
+    "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A", //3Crv lp token
   ]
 );
+
+const invalidERC20s = ["0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A"];
 
 // eslint-disable-next-line no-unused-vars
 async function checkBalances(addresses) {
@@ -24,10 +27,14 @@ async function checkBalances(addresses) {
   const [, accountAddress] = await getStrategyAccountInfo(NETWORK_NAME);
   for (let i = 0; i < addresses.length; i++) {
     const token = await ethers.getContractAt("IDetailedERC20", addresses[i]);
-    const sym = await token.symbol();
     const balance = await token.balanceOf(accountAddress);
-    const decimals = await token.decimals();
-    balances[sym] = { balance: balance, decimal: decimals };
+    if (invalidERC20s.includes(addresses[i])) {
+      balances[addresses[i]] = { balance: balance };
+    } else {
+      const sym = await token.symbol();
+      const decimals = await token.decimals();
+      balances[sym] = { balance: balance, decimal: decimals };
+    }
   }
   return balances;
 }
@@ -43,12 +50,18 @@ async function main(options) {
   for (let i = 0; i < keys.length; i++) {
     const data = results[keys[i]];
     const balance = data.balance;
-    const decimals = data.decimals;
-    console.log(
-      `${keys[i]} Balance: ${commify(
-        formatUnits(balance, decimals)
-      )}, ${balance}`
-    );
+    if (invalidERC20s.includes(keys[i])) {
+      console.log(
+        `${keys[i]} Balance: ${commify(formatUnits(balance, 18))}, ${balance}`
+      );
+    } else {
+      const decimals = data.decimals;
+      console.log(
+        `${keys[i]} Balance: ${commify(
+          formatUnits(balance, decimals)
+        )}, ${balance}`
+      );
+    }
   }
 }
 if (!module.parent) {
