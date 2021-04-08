@@ -1,76 +1,51 @@
 #!/usr/bin/env node
-/**
- * Command to run script:
- *
- * $ HARDHAT_NETWORK=localhost node scripts/1_deployments.js
- *
- * You can modify the script to handle command-line args and retrieve them
- * through the `argv` object.  Values are passed like so:
- *
- * $ HARDHAT_NETWORK=localhost node scripts/1_deployments.js --arg1=val1 --arg2=val2
- *
- * Remember, you should have started the forked mainnet locally in another terminal:
- *
- * $ MNEMONIC='' yarn fork:mainnet
- */
-const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network, artifacts } = hre;
 const { MAX_UINT256 } = require("../../utils/helpers");
+const { program } = require("commander");
+
 const {
   getAccountManager,
   getStrategyAccountInfo,
   getStablecoins,
 } = require("./utils");
-const { console } = require("./utils");
+
+program.requiredOption(
+  "-a, --tokenASymbol <string>",
+  "Token A Symbol",
+  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+);
+program.requiredOption(
+  "-b, --tokenBSymbol <string>",
+  "Token B Symbol",
+  "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+);
+program.requiredOption("-x, --tokenAAmount <string>", "Token A Amount", 0);
+program.requiredOption("-y, --tokenBAmount <string>", "Token B Amount", 0);
+
+const UNISWAP_V2_ROUTER_ADDRESS = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D";
 
 // eslint-disable-next-line no-unused-vars
-async function main(argv) {
-  await hre.run("compile");
+async function executeUniswap(
+  tokenASymbol,
+  tokenBSymbol,
+  tokenAAmount,
+  tokenBAmount
+) {
   const networkName = network.name.toUpperCase();
-  console.log("");
-  console.log(`${networkName} selected`);
-  console.log("");
-
-  const [deployer] = await ethers.getSigners();
-  console.log("Deployer address:", deployer.address);
-
   const accountManager = await getAccountManager(networkName);
-  console.logAddress("AccountManager", accountManager.address);
-
   const [accountId, accountAddress] = await getStrategyAccountInfo(networkName);
-  console.logAddress("Strategy account", accountAddress);
-
   const stablecoins = await getStablecoins(networkName);
-
-  console.log("");
-  console.log("Executing ...");
-  console.log("");
+  const tokenA = stablecoins[tokenASymbol];
+  const tokenB = stablecoins[tokenBSymbol];
 
   const ifaceERC20 = new ethers.utils.Interface(
     artifacts.require("IDetailedERC20").abi
   );
+
   const ifaceUniswapRouter = new ethers.utils.Interface(
     artifacts.require("IUniswapV2Router").abi
   );
-
-  const UNISWAP_V2_ROUTER_ADDRESS =
-    "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D";
-  // USDC-USDT pair
-  const LP_TOKEN_ADDRESS = "0x3041cbd36888becc7bbcbc0045e3b1f144466f5f";
-
-  // deposit into liquidity pool
-  const usdcToken = stablecoins["USDC"];
-  const usdtToken = stablecoins["USDT"];
-  const usdcAmount = await usdcToken.balanceOf(accountAddress);
-  const usdtAmount = await usdtToken.balanceOf(accountAddress);
-
-  const lpToken = await ethers.getContractAt(
-    "IDetailedERC20",
-    LP_TOKEN_ADDRESS
-  );
-  let lpTokenBalance = await lpToken.balanceOf(accountAddress);
-  console.log("LP token balance (before):", lpTokenBalance.toString());
 
   const approveRouter = ifaceERC20.encodeFunctionData(
     "approve(address,uint256)",
@@ -79,10 +54,10 @@ async function main(argv) {
   const uniswapAddLiquidity = ifaceUniswapRouter.encodeFunctionData(
     "addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256)",
     [
-      usdcToken.address,
-      usdtToken.address,
-      usdcAmount,
-      usdtAmount,
+      tokenA.address,
+      tokenB.address,
+      tokenAAmount,
+      tokenBAmount,
       1,
       1,
       accountAddress,
@@ -91,33 +66,35 @@ async function main(argv) {
   );
 
   let executionSteps = [
-    [usdcToken.address, approveRouter],
-    [usdtToken.address, approveRouter],
+    [tokenA.address, approveRouter],
+    [tokenB.address, approveRouter],
     [UNISWAP_V2_ROUTER_ADDRESS, uniswapAddLiquidity],
   ];
   await accountManager.execute(accountId, executionSteps, []);
-
-  lpTokenBalance = await lpToken.balanceOf(accountAddress);
-  console.log("LP token balance (after):", lpTokenBalance.toString());
-
-  console.logDone();
-
-  /****************************************/
+}
+async function main(options) {
+  await executeUniswap(
+    options.tokenASymbol,
+    options.tokenBSymbol,
+    options.tokenAAmount,
+    options.tokenBAmount
+  );
 }
 
 if (!module.parent) {
-  main(argv)
-    .then(() => {
-      console.log("");
-      console.log("Execution successful.");
-      console.log("");
+  program.parse(process.argv);
+  const options = program.opts();
+  main(options)
+    .then((result) => {
+      if (!(typeof result === "string" || result instanceof Buffer)) {
+        process.exit(1);
+      }
+      process.stdout.write(result);
       process.exit(0);
     })
-    .catch((error) => {
-      console.error(error);
-      console.log("");
+    .catch(() => {
       process.exit(1);
     });
 } else {
-  module.exports = main;
+  module.exports = executeUniswap;
 }

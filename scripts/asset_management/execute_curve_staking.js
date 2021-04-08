@@ -73,6 +73,5 @@ if (!module.parent) {
       process.exit(1);
     });
 } else {
-  // if importing in another script
   module.exports = executeStaking;
 }
