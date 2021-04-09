@@ -1,54 +1,55 @@
 #!/usr/bin/env node
-/**
- * Command to run script:
- *
- * $ HARDHAT_NETWORK=localhost node scripts/1_deployments.js
- *
- * You can modify the script to handle command-line args and retrieve them
- * through the `argv` object.  Values are passed like so:
- *
- * $ HARDHAT_NETWORK=localhost node scripts/1_deployments.js --arg1=val1 --arg2=val2
- *
- * Remember, you should have started the forked mainnet locally in another terminal:
- *
- * $ MNEMONIC='' yarn fork:mainnet
- */
-const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network, artifacts } = hre;
+const { MAX_UINT256 } = require("../../utils/helpers");
+const { program } = require("commander");
+
 const {
   getAccountManager,
   getStrategyAccountInfo,
   getTvlManager,
   getStablecoins,
 } = require("./utils");
-const { console } = require("./utils");
-const { MAX_UINT256 } = require("../../utils/helpers");
 const { getAssetAllocationValue } = require("./get_assetallocation_value");
-const { commify, formatUnits } = require("../../utils/helpers");
+
+program.requiredOption(
+  "-p, --lendingPool <string>",
+  "Aave Lending Pool",
+  "0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9"
+);
+
+program.requiredOption(
+  "-l, --lpTokenAddress <string>",
+  "liquidity token address",
+  "0x028171bCA77440897B824Ca71D1c56caC55b68A3"
+);
+
+program.requiredOption(
+  "-i, --assetAllocationId <string>",
+  "asset allocation id",
+  "0x25dabd4989b405009f11566b2f49654e3b07db8da50c16d42fb2832e5cf3ce32"
+);
+
+program.requiredOption("-s, --tokenSymbol <string>", "token symbol", "DAI");
+
+program.requiredOption(
+  "-a, --tokenAmount <string>",
+  "liquidity token amount",
+  0
+);
 
 // eslint-disable-next-line no-unused-vars
-async function main(argv) {
-  await hre.run("compile");
+async function liquidateAave(
+  lendingPool,
+  lpTokenAddress,
+  assetAlloId,
+  tokenSymbol,
+  tokenAmount
+) {
   const networkName = network.name.toUpperCase();
-  console.log("");
-  console.log(`${networkName} selected`);
-  console.log("");
-
-  const [deployer] = await ethers.getSigners();
-  console.log("Deployer address:", deployer.address);
-
   const accountManager = await getAccountManager(networkName);
-  console.logAddress("AccountManager", accountManager.address);
-
   const [accountId, accountAddress] = await getStrategyAccountInfo(networkName);
-  console.logAddress("Strategy account", accountAddress);
-
   const stablecoins = await getStablecoins(networkName);
-
-  console.log("");
-  console.log("Executing ...");
-  console.log("");
 
   const ifaceERC20 = new ethers.utils.Interface(
     artifacts.require("IDetailedERC20").abi
@@ -57,68 +58,58 @@ async function main(argv) {
     artifacts.require("IAaveLendingPool").abi
   );
 
-  // Aave interest-bearing DAI token
-  const ADAI_ADDRESS = "0x028171bCA77440897B824Ca71D1c56caC55b68A3";
-  const AAVE_LENDING_POOL_ADDRESS =
-    "0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9";
-
-  const daiToken = stablecoins["DAI"];
-
+  const token = stablecoins[tokenSymbol.toUpperCase()];
   const tvlManager = await getTvlManager(networkName);
-
-  const assetAlloId =
-    "0x25dabd4989b405009f11566b2f49654e3b07db8da50c16d42fb2832e5cf3ce32";
   const balance = await tvlManager.balanceOf(assetAlloId);
   const symbol = await tvlManager.symbolOf(assetAlloId);
   const decimals = await tvlManager.decimalsOf(assetAlloId);
-
   const assetAllocations = [{ balance, symbol, decimals }];
+  console.log(assetAllocations);
   const value = await getAssetAllocationValue(assetAllocations);
-  console.log(`Asset value: $${commify(formatUnits(value, 0))}`);
-
-  const aDaiToken = await ethers.getContractAt("IDetailedERC20", ADAI_ADDRESS);
-  let aDaiBalance = await aDaiToken.balanceOf(accountAddress);
-  console.log("aDAI balance (before):", aDaiBalance.toString());
-
-  //const amount = argv.amount || value;
-  const amount = argv.amount || "3000000";
-  const aDaiAmount = ethers.BigNumber.from(amount).mul(aDaiBalance).div(value);
+  console.log("here");
+  const aAmount = ethers.BigNumber.from(tokenAmount)
+    .mul(tokenAmount)
+    .div(value);
 
   const approveLendingPool = ifaceERC20.encodeFunctionData(
     "approve(address,uint256)",
-    [AAVE_LENDING_POOL_ADDRESS, MAX_UINT256]
+    [lendingPool, MAX_UINT256]
   );
   const lendingPoolWithdraw = ifaceLendingPool.encodeFunctionData(
     "withdraw(address,uint256,address)",
-    [daiToken.address, aDaiAmount, accountAddress]
+    [token.address, aAmount, accountAddress]
   );
   let executionSteps = [
-    [ADAI_ADDRESS, approveLendingPool],
-    [AAVE_LENDING_POOL_ADDRESS, lendingPoolWithdraw],
+    [lpTokenAddress, approveLendingPool],
+    [lendingPool, lendingPoolWithdraw],
   ];
   await accountManager.execute(accountId, executionSteps, []);
+}
 
-  aDaiBalance = await aDaiToken.balanceOf(accountAddress);
-  console.log("aDAI balance (after):", aDaiBalance.toString());
-
-  console.logDone();
-
-  /****************************************/
+async function main(options) {
+  await liquidateAave(
+    options.lendingPool,
+    options.lpTokenAddress,
+    options.assetAllocationId,
+    options.tokenSymbol,
+    options.tokenAmount
+  );
 }
 
 if (!module.parent) {
-  main(argv)
-    .then(() => {
-      console.log("");
-      console.log("Execution successful.");
-      console.log("");
+  program.parse(process.argv);
+  const options = program.opts();
+  main(options)
+    .then((result) => {
+      if (!(typeof result === "string" || result instanceof Buffer)) {
+        process.exit(1);
+      }
+      process.stdout.write(result);
       process.exit(0);
     })
-    .catch((error) => {
-      console.error(error);
-      console.log("");
+    .catch(() => {
       process.exit(1);
     });
 } else {
-  module.exports = main;
+  module.exports = liquidateAave;
 }
