@@ -66,7 +66,7 @@ async function main(options) {
     options.functionArgs
   );
 
-  console.log(allocationId);
+  return allocationId;
 }
 
 if (!module.parent) {
