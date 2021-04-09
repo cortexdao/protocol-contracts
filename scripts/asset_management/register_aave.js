@@ -23,8 +23,6 @@ const aTokens = {
   },
 };
 
-program.requiredOption("-a, --atoken <string>", "aToken symbol", "aDAI");
-
 async function registerAave(aTokenSymbol) {
   const networkName = network.name.toUpperCase();
   const addressRegistry = await getAddressRegistry(networkName);
@@ -53,6 +51,7 @@ async function main(options) {
 }
 
 if (!module.parent) {
+  program.requiredOption("-a, --atoken <string>", "aToken symbol", "aDAI");
   program.parse(process.argv);
   const options = program.opts();
   main(options)
