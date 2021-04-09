@@ -1,14 +1,14 @@
-const hre = require("hardhat");
-const { ethers } = hre;
-const { BigNumber: BN } = ethers;
+const { Decimal } = require("decimal.js");
 const coingecko = require("./coingecko");
 
 const priceTotalValue = (allocations, quote, data) => {
-  return allocations.reduce((acc, t) => {
-    const val = BN.from(data[t.symbol].quote[quote].price);
-    const coins = BN.from(t.balance).div(BN.from(BN.from(10).pow(t.decimals)));
-    return coins.mul(val).add(acc);
-  }, BN.from(0));
+  return allocations
+    .reduce((acc, t) => {
+      const val = data[t.symbol].quote[quote].price;
+      const coins = new Decimal(t.balance.toString()).div(10 ** t.decimals);
+      return acc.add(coins.mul(val));
+    }, new Decimal(0))
+    .toNumber();
 };
 
 const getAssetAllocationValue = async (allocations) => {
