@@ -2,7 +2,8 @@
 const { network } = require("hardhat");
 const { program } = require("commander");
 const registerAllocation = require("./register_allocation");
-const { getStrategyAccountInfo } = require("./utils");
+const { getAddressRegistry, getStrategyAccountInfo } = require("./utils");
+const { bytes32 } = require("../../utils/helpers");
 
 const aTokens = {
   aDAI: {
@@ -26,11 +27,15 @@ program.requiredOption("-a, --atoken <string>", "aToken symbol", "aDAI");
 
 async function registerAave(aTokenSymbol) {
   const networkName = network.name.toUpperCase();
+  const addressRegistry = await getAddressRegistry(networkName);
+  const aavePeripheryAddress = await addressRegistry.getAddress(
+    bytes32("aavePeriphery")
+  );
 
   const [, accountAddress] = await getStrategyAccountInfo(networkName);
 
   const allocationId = await registerAllocation(
-    aTokens[aTokenSymbol].address,
+    aavePeripheryAddress,
     "AavePeriphery",
     "getUnderlyerBalance",
     aTokens[aTokenSymbol].symbol,
