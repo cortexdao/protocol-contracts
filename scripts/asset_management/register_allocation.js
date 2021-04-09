@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-const hre = require("hardhat");
-const { ethers, network } = hre;
+const { ethers, network } = require("hardhat");
 const { program } = require("commander");
 const { getTvlManager } = require("./utils");
 
