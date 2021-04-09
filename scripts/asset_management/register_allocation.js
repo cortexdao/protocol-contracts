@@ -56,7 +56,6 @@ async function registerAllocation(
   return allocationId;
 }
 
-// eslint-disable-next-line no-unused-vars
 async function main(options) {
   const allocationId = await registerAllocation(
     options.address,
