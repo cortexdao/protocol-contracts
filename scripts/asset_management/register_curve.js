@@ -30,8 +30,6 @@ const pools = {
   },
 };
 
-program.requiredOption("-p, --pool <string>", "Curve pool symbol", "3pool");
-
 async function registerCurve(pool) {
   const networkName = network.name.toUpperCase();
   const addressRegistry = await getAddressRegistry(networkName);
@@ -70,6 +68,7 @@ async function main(options) {
 }
 
 if (!module.parent) {
+  program.requiredOption("-p, --pool <string>", "Curve pool symbol", "3pool");
   program.parse(process.argv);
   const options = program.opts();
   main(options)
