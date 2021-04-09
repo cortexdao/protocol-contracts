@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-const hre = require("hardhat");
-const { ethers, network } = hre;
+const { ethers, network } = require("hardhat");
 const { program } = require("commander");
 const { getTvlManager } = require("./utils");
 
@@ -57,7 +56,6 @@ async function registerAllocation(
   return allocationId;
 }
 
-// eslint-disable-next-line no-unused-vars
 async function main(options) {
   const allocationId = await registerAllocation(
     options.address,
@@ -68,7 +66,7 @@ async function main(options) {
     options.functionArgs
   );
 
-  console.log(allocationId);
+  return allocationId;
 }
 
 if (!module.parent) {
