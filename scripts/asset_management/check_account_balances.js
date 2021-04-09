@@ -16,6 +16,7 @@ program.requiredOption(
     "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490", //3Crv
     "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A", //3Crv lp token
     "0x3041CbD36888bECc7bbCBc0045E3B1f144466f5f", //USDC/USDT Pair LP
+    "0x028171bCA77440897B824Ca71D1c56caC55b68A3", //ADAI
   ]
 );
 
@@ -53,12 +54,12 @@ async function main(options) {
     const balance = data.balance;
     if (invalidERC20s.includes(keys[i])) {
       console.log(
-        `${keys[i]} Balance: $${commify(formatUnits(balance, 18))}, ${balance}`
+        `${keys[i]} Balance: ${commify(formatUnits(balance, 18))}, ${balance}`
       );
     } else {
       const decimal = data.decimal;
       console.log(
-        `${keys[i]} Balance: $${commify(
+        `${keys[i]} Balance: ${commify(
           formatUnits(balance, decimal)
         )}, ${balance}`
       );
