@@ -6,7 +6,7 @@ const { program } = require("commander");
 const { getAccountManager, getStrategyAccountInfo } = require("./utils");
 
 // eslint-disable-next-line no-unused-vars
-async function liquidateCurve(gaugeAddress, gaugeAmount) {
+async function liquidateCurveStaking(gaugeAddress, gaugeAmount) {
   const networkName = network.name.toUpperCase();
   const accountManager = await getAccountManager(networkName);
   const [accountId] = await getStrategyAccountInfo(networkName);
@@ -25,7 +25,7 @@ async function liquidateCurve(gaugeAddress, gaugeAmount) {
 }
 
 async function main(options) {
-  await liquidateCurve(options.gaugeAddress, options.gaugeAmount);
+  await liquidateCurveStaking(options.gaugeAddress, options.gaugeAmount);
 }
 
 if (!module.parent) {
@@ -49,5 +49,5 @@ if (!module.parent) {
       process.exit(1);
     });
 } else {
-  module.exports = liquidateCurve;
+  module.exports = liquidateCurveStaking;
 }
