@@ -64,12 +64,17 @@ async function liquidateAave(
   const symbol = await tvlManager.symbolOf(assetAlloId);
   const decimals = await tvlManager.decimalsOf(assetAlloId);
   const assetAllocations = [{ balance, symbol, decimals }];
-  console.log(assetAllocations);
   const value = await getAssetAllocationValue(assetAllocations);
-  console.log("here");
-  const aAmount = ethers.BigNumber.from(tokenAmount)
-    .mul(tokenAmount)
-    .div(value);
+
+  console.log(`assetAllocationValue: ${value}`);
+
+  const lpToken = await ethers.getContractAt("IDetailedERC20", lpTokenAddress);
+  const lpTokenBal = await lpToken.balanceOf(accountAddress);
+  console.log(`lpTokenBal: ${lpTokenBal.toString()}`);
+
+  const aAmount = ethers.BigNumber.from(tokenAmount);
+
+  console.log(`aAmount: ${aAmount.toString()}`);
 
   const approveLendingPool = ifaceERC20.encodeFunctionData(
     "approve(address,uint256)",
@@ -83,7 +88,8 @@ async function liquidateAave(
     [lpTokenAddress, approveLendingPool],
     [lendingPool, lendingPoolWithdraw],
   ];
-  await accountManager.execute(accountId, executionSteps, []);
+  const trx = await accountManager.execute(accountId, executionSteps, []);
+  await trx.wait();
 }
 
 async function main(options) {

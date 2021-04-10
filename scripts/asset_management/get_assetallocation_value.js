@@ -1,14 +1,20 @@
-const { Decimal } = require("decimal.js");
+const hre = require("hardhat");
+const { ethers } = hre;
+const { BigNumber: BN } = ethers;
 const coingecko = require("./coingecko");
 
 const priceTotalValue = (allocations, quote, data) => {
-  return allocations
-    .reduce((acc, t) => {
-      const val = data[t.symbol].quote[quote].price;
-      const coins = new Decimal(t.balance.toString()).div(10 ** t.decimals);
-      return acc.add(coins.mul(val));
-    }, new Decimal(0))
-    .toNumber();
+  console.log(allocations);
+  const returnVal = allocations.reduce((acc, t) => {
+    const val = BN.from(data[t.symbol].quote[quote].price);
+    console.log(`coin val: ${val.toString()}`);
+    const coins = BN.from(t.balance).div(BN.from(BN.from(10).pow(t.decimals)));
+    console.log(`num coins: ${coins.toString()}`);
+    const abc = coins.mul(val).add(acc);
+    return abc;
+  }, BN.from(0));
+  console.log(`total coin val: ${returnVal.toString()}`);
+  return returnVal;
 };
 
 const getAssetAllocationValue = async (allocations) => {
@@ -27,6 +33,7 @@ const getAssetAllocationValue = async (allocations) => {
   });
 
   const payload = Object.fromEntries(payloadEntries);
+  console.log(JSON.stringify(payload));
   const value = priceTotalValue(allocations, quote, payload);
 
   return value;
