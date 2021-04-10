@@ -7,10 +7,8 @@ const { program } = require("commander");
 const {
   getAccountManager,
   getStrategyAccountInfo,
-  getTvlManager,
   getStablecoins,
 } = require("./utils");
-const { getAssetAllocationValue } = require("./get_assetallocation_value");
 
 program.requiredOption(
   "-p, --lendingPool <string>",
@@ -22,12 +20,6 @@ program.requiredOption(
   "-l, --lpTokenAddress <string>",
   "liquidity token address",
   "0x028171bCA77440897B824Ca71D1c56caC55b68A3"
-);
-
-program.requiredOption(
-  "-i, --assetAllocationId <string>",
-  "asset allocation id",
-  "0x25dabd4989b405009f11566b2f49654e3b07db8da50c16d42fb2832e5cf3ce32"
 );
 
 program.requiredOption("-s, --tokenSymbol <string>", "token symbol", "DAI");
@@ -42,7 +34,6 @@ program.requiredOption(
 async function liquidateAave(
   lendingPool,
   lpTokenAddress,
-  assetAlloId,
   tokenSymbol,
   tokenAmount
 ) {
@@ -59,23 +50,7 @@ async function liquidateAave(
   );
 
   const token = stablecoins[tokenSymbol.toUpperCase()];
-  const tvlManager = await getTvlManager(networkName);
-  const balance = await tvlManager.balanceOf(assetAlloId);
-  const symbol = await tvlManager.symbolOf(assetAlloId);
-  const decimals = await tvlManager.decimalsOf(assetAlloId);
-  const assetAllocations = [{ balance, symbol, decimals }];
-  const value = await getAssetAllocationValue(assetAllocations);
-
-  console.log(`assetAllocationValue: ${value}`);
-
-  const lpToken = await ethers.getContractAt("IDetailedERC20", lpTokenAddress);
-  const lpTokenBal = await lpToken.balanceOf(accountAddress);
-  console.log(`lpTokenBal: ${lpTokenBal.toString()}`);
-
   const aAmount = ethers.BigNumber.from(tokenAmount);
-
-  console.log(`aAmount: ${aAmount.toString()}`);
-
   const approveLendingPool = ifaceERC20.encodeFunctionData(
     "approve(address,uint256)",
     [lendingPool, MAX_UINT256]
@@ -96,7 +71,6 @@ async function main(options) {
   await liquidateAave(
     options.lendingPool,
     options.lpTokenAddress,
-    options.assetAllocationId,
     options.tokenSymbol,
     options.tokenAmount
   );
