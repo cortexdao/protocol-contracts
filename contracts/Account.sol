@@ -3,6 +3,9 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import {
+    Address as AddressNonUpgradeable
+} from "@openzeppelin/contracts/utils/Address.sol";
 import "./interfaces/IAccount.sol";
 import "./interfaces/IExecutor.sol";
 
@@ -15,6 +18,8 @@ import "./interfaces/IExecutor.sol";
  * @dev Deployed by AccountManager and delegate calls to GenericExecutor
  */
 contract Account is Ownable, IAccount {
+    using AddressNonUpgradeable for address;
+
     address public genericExecutor;
 
     /// @notice Constructor
@@ -36,35 +41,6 @@ contract Account is Ownable, IAccount {
                 IExecutor(genericExecutor).execute.selector,
                 steps
             );
-        _delegate(genericExecutor, data, "steps execution failed");
-    }
-
-    /// @notice performs a delegate call against the genericExecutor
-    /// @param target the contract to delegate call to
-    /// @param data the execution steps to execute within the generic executor
-    /// @param errorMessage the error message to return if the delegate call fails
-    function _delegate(
-        address target,
-        bytes memory data,
-        string memory errorMessage
-    ) private returns (bytes memory) {
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory returndata) = target.delegatecall(data);
-        if (success) {
-            return returndata;
-        } else {
-            // Look for revert reason and bubble it up if present
-            if (returndata.length > 0) {
-                // The easiest way to bubble the revert reason is using memory via assembly
-
-                // solhint-disable-next-line no-inline-assembly
-                assembly {
-                    let returndata_size := mload(returndata)
-                    revert(add(32, returndata), returndata_size)
-                }
-            } else {
-                revert(errorMessage);
-            }
-        }
+        genericExecutor.functionDelegateCall(data, "steps execution failed");
     }
 }
