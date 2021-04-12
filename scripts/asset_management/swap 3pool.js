@@ -90,19 +90,22 @@ async function swap3Pool(inputSymbol, outputSymbol, amount) {
 
 const getCoinIndex = (symbol) => {
   symbol = symbol.toLowerCase().trim();
+  let coinIndex;
   switch (symbol) {
     case "dai":
-      return 0;
+      coinIndex = 0;
       break;
     case "usdc":
-      return 1;
+      coinIndex = 1;
       break;
     case "usdt":
-      return 2;
+      coinIndex = 2;
       break;
     default:
       throw new RuntimeError("Symbol not recognized.", 2);
   }
+
+  return coinIndex;
 };
 
 if (!module.parent) {
