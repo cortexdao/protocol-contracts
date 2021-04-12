@@ -71,7 +71,7 @@ function isApyContractName(contractName) {
 function getStablecoinAddress(symbol, network) {
   const aggItems = TOKEN_AGG_MAP[network.toUpperCase()];
   for (const aggItem of aggItems) {
-    if (symbol == aggItem["symbol"]) {
+    if (symbol.toUpperCase() == aggItem["symbol"]) {
       return aggItem["token"];
     }
   }
