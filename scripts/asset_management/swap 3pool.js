@@ -17,10 +17,8 @@ const { program } = require("commander");
 const hre = require("hardhat");
 const { ethers, network } = hre;
 const { getStrategyAccountInfo, getAccountManager } = require("./utils");
-const { bytes32, getStablecoinAddress } = require("../../utils/helpers");
-const { getAddressRegistry } = require("./utils");
+const { getStablecoinAddress } = require("../../utils/helpers");
 const { BigNumber } = ethers;
-const _ = require("lodash");
 
 class RuntimeError extends Error {
   constructor(message, exitStatus) {
@@ -31,6 +29,21 @@ class RuntimeError extends Error {
 }
 
 const NETWORK_NAME = network.name.toUpperCase();
+
+const CURVE_3POOL_ABI = [
+  {
+    name: "exchange",
+    outputs: [],
+    inputs: [
+      { type: "int128", name: "i" },
+      { type: "int128", name: "j" },
+      { type: "uint256", name: "dx" },
+      { type: "uint256", name: "min_dy" },
+    ],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+];
 
 async function main(options) {
   const inputSymbol = options.inputSymbol;
@@ -51,18 +64,46 @@ async function swap3Pool(inputSymbol, outputSymbol, amount) {
     "IDetailedERC20",
     outputTokenAddress
   );
-  amount = BigNumber.from(amount);
+  const inputAmount = BigNumber.from(amount);
+  const minOutputAmount = BigNumber.from(0);
+  const inputIndex = getCoinIndex(inputSymbol);
+  const outputIndex = getCoinIndex(outputSymbol);
 
   const [accountId] = await getStrategyAccountInfo(NETWORK_NAME);
   const accountManager = await getAccountManager(NETWORK_NAME);
 
+  const iface = new ethers.utils.Interface(CURVE_3POOL_ABI);
+  const encodedApprove = iface.encodeFunctionData("approve(address,uint256)", [
+    CURVE_3POOL_ADDRESS,
+    inputAmount,
+  ]);
+  const encodedExchange = iface.encodeFunctionData(
+    "exchange(int128,int128,uint256,uint256)",
+    [inputIndex, outputIndex, inputAmount, minOutputAmount]
+  );
   const steps = [
-    //
+    [inputTokenAddress, encodedApprove],
+    [CURVE_3POOL_ADDRESS, encodedExchange],
   ];
   await accountManager.execute(accountId, steps, []);
 }
 
-const getPoolId = (symbol) => bytes32(`${symbol.toLowerCase()}Pool`);
+const getCoinIndex = (symbol) => {
+  symbol = symbol.toLowerCase().trim();
+  switch (symbol) {
+    case "dai":
+      return 0;
+      break;
+    case "usdc":
+      return 1;
+      break;
+    case "usdt":
+      return 2;
+      break;
+    default:
+      throw new RuntimeError("Symbol not recognized.", 2);
+  }
+};
 
 if (!module.parent) {
   program.parse(process.argv);
