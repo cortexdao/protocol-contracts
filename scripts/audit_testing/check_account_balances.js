@@ -17,8 +17,12 @@ const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = hre;
 const { commify, formatUnits } = require("../../utils/helpers");
-
-const AGG_ADDRESS = "0x344D5d70fc3c3097f82d1F26464aaDcEb30C6AC7";
+const {
+  getAccountManager,
+  getStrategyAccountInfo,
+  getStablecoins,
+} = require("./utils");
+const { console } = require("./utils");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -28,27 +32,27 @@ async function main(argv) {
   console.log(`${NETWORK_NAME} selected`);
   console.log("");
 
-  const signers = await ethers.getSigners();
-  const deployer = signers[0];
+  const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
-  console.log("");
 
-  const FluxAggregator = await ethers.getContractFactory("FluxAggregator");
-  const aggregator = await FluxAggregator.attach(AGG_ADDRESS);
+  const accountManager = await getAccountManager(NETWORK_NAME);
+  console.logAddress("AccountManager", accountManager.address);
 
-  const [
-    roundId,
-    answerUSD,
-    startedAt,
-    updatedAt,
-    answeredInRound,
-  ] = await aggregator.latestRoundData();
-  console.log("roundId", roundId.toString());
-  console.log(`answer: $ ${commify(formatUnits(answerUSD, 8))}`);
-  console.log("startedAt:", startedAt.toString());
-  console.log("updatedAt:", updatedAt.toString());
-  console.log("answeredInRound:", answeredInRound.toString());
-  console.log("");
+  const [, accountAddress] = await getStrategyAccountInfo(NETWORK_NAME);
+
+  const stablecoins = await getStablecoins(NETWORK_NAME);
+
+  const daiToken = stablecoins["DAI"];
+  const accDaiBal = await daiToken.balanceOf(accountAddress);
+  console.log(`DAI Balance: ${commify(formatUnits(accDaiBal, 18))}`);
+
+  const usdcToken = stablecoins["USDC"];
+  const accUsdcBal = await usdcToken.balanceOf(accountAddress);
+  console.log(`USDC Balance: ${commify(formatUnits(accUsdcBal, 6))}`);
+
+  const usdtToken = stablecoins["USDT"];
+  const accUsdtBal = await usdtToken.balanceOf(accountAddress);
+  console.log(`USDT Balance: ${commify(formatUnits(accUsdtBal, 6))}`);
 }
 
 if (!module.parent) {

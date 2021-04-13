@@ -12,6 +12,7 @@ CHAINLINK_REPO_URL := "git@github.com:smartcontractkit/external-adapters-js.git"
 # `git checkout apy-finance-audit-testing` also.
 # CHAINLINK_REPO_URL := "git@github.com:apy-finance/external-adapters-js.git"
 
+AM_SCRIPTS_FOLDER := scripts/asset_management
 
 .PHONY: help
 help:
@@ -172,3 +173,56 @@ audit_testing:
 	  exit 1 ;\
     fi ;\
 	HARDHAT_NETWORK=localhost node scripts/audit_testing/"${step}".js
+
+
+.PHONY: check_all
+check_all:
+	make check_pools_reserves
+	make check_tvl
+	make check_account_balances
+
+.PHONY: check_pools_reserves
+check_pools_reserves:
+	HARDHAT_NETWORK=localhost node $(AM_SCRIPTS_FOLDER)/check_pools_reserves.js
+
+.PHONY: check_tvl
+check_tvl:
+	HARDHAT_NETWORK=localhost node $(AM_SCRIPTS_FOLDER)/check_tvl.js
+
+.PHONY: check_account_balances
+check_account_balances:
+	HARDHAT_NETWORK=localhost node $(AM_SCRIPTS_FOLDER)/check_account_balances.js
+
+.PHONY: deploy
+deploy:
+	HARDHAT_NETWORK=localhost node $(AM_SCRIPTS_FOLDER)/deploy.js
+
+.PHONY: fund
+fund:
+	./$(AM_SCRIPTS_FOLDER)/fund-account.sh
+
+.PHONY: topup
+topup:
+	./$(AM_SCRIPTS_FOLDER)/topup-pools.sh
+
+.PHONY: register
+register:
+	@for script in $(AM_SCRIPTS_FOLDER)/register_*.js; do \
+		HARDHAT_NETWORK=localhost node $${script} ;\
+	done
+
+.PHONY: withdraw
+withdraw:
+	HARDHAT_NETWORK=localhost node $(AM_SCRIPTS_FOLDER)/wi†hdraw.js
+
+.PHONY: user_deposit
+user_deposit:
+	HARDHAT_NETWORK=localhost node $(AM_SCRIPTS_FOLDER)/user_deposit.js
+
+.PHONY: user_funding
+user_funding:
+	HARDHAT_NETWORK=localhost node $(AM_SCRIPTS_FOLDER)/user_funding.js
+
+.PHONY: user_withdraw
+user_withdraw:
+	HARDHAT_NETWORK=localhost node $(AM_SCRIPTS_FOLDER)/user_wi†hdraw.js

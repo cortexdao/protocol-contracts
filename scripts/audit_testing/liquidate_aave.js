@@ -19,10 +19,13 @@ const { ethers, network, artifacts } = hre;
 const {
   getAccountManager,
   getStrategyAccountInfo,
+  getTvlManager,
   getStablecoins,
 } = require("./utils");
 const { console } = require("./utils");
 const { MAX_UINT256 } = require("../../utils/helpers");
+const { getAssetAllocationValue } = require("./get_assetallocation_value");
+const { commify, formatUnits } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -61,10 +64,25 @@ async function main(argv) {
 
   const daiToken = stablecoins["DAI"];
 
-  // stake LP tokens in the gauge
+  const tvlManager = await getTvlManager(networkName);
+
+  const assetAlloId =
+    "0x25dabd4989b405009f11566b2f49654e3b07db8da50c16d42fb2832e5cf3ce32";
+  const balance = await tvlManager.balanceOf(assetAlloId);
+  const symbol = await tvlManager.symbolOf(assetAlloId);
+  const decimals = await tvlManager.decimalsOf(assetAlloId);
+
+  const assetAllocations = [{ balance, symbol, decimals }];
+  const value = await getAssetAllocationValue(assetAllocations);
+  console.log(`Asset value: $${commify(formatUnits(value, 0))}`);
+
   const aDaiToken = await ethers.getContractAt("IDetailedERC20", ADAI_ADDRESS);
   let aDaiBalance = await aDaiToken.balanceOf(accountAddress);
   console.log("aDAI balance (before):", aDaiBalance.toString());
+
+  //const amount = argv.amount || value;
+  const amount = argv.amount || "3000000";
+  const aDaiAmount = ethers.BigNumber.from(amount).mul(aDaiBalance).div(value);
 
   const approveLendingPool = ifaceERC20.encodeFunctionData(
     "approve(address,uint256)",
@@ -72,7 +90,7 @@ async function main(argv) {
   );
   const lendingPoolWithdraw = ifaceLendingPool.encodeFunctionData(
     "withdraw(address,uint256,address)",
-    [daiToken.address, aDaiBalance, accountAddress]
+    [daiToken.address, aDaiAmount, accountAddress]
   );
   let executionSteps = [
     [ADAI_ADDRESS, approveLendingPool],

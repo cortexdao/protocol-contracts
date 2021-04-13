@@ -16,9 +16,8 @@
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = hre;
+const { getApyPool } = require("./utils");
 const { commify, formatUnits } = require("../../utils/helpers");
-
-const AGG_ADDRESS = "0x344D5d70fc3c3097f82d1F26464aaDcEb30C6AC7";
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -33,22 +32,33 @@ async function main(argv) {
   console.log("Deployer address:", deployer.address);
   console.log("");
 
-  const FluxAggregator = await ethers.getContractFactory("FluxAggregator");
-  const aggregator = await FluxAggregator.attach(AGG_ADDRESS);
+  const daiPool = await getApyPool(NETWORK_NAME, "DAI");
+  const daiVal = await daiPool.getPoolUnderlyerValue();
+  const daiTopUp = await daiPool.getReserveTopUpValue();
 
-  const [
-    roundId,
-    answerUSD,
-    startedAt,
-    updatedAt,
-    answeredInRound,
-  ] = await aggregator.latestRoundData();
-  console.log("roundId", roundId.toString());
-  console.log(`answer: $ ${commify(formatUnits(answerUSD, 8))}`);
-  console.log("startedAt:", startedAt.toString());
-  console.log("updatedAt:", updatedAt.toString());
-  console.log("answeredInRound:", answeredInRound.toString());
-  console.log("");
+  const usdcPool = await getApyPool(NETWORK_NAME, "USDC");
+  const usdcVal = await usdcPool.getPoolUnderlyerValue();
+  const usdcTopUp = await usdcPool.getReserveTopUpValue();
+
+  const usdtPool = await getApyPool(NETWORK_NAME, "USDT");
+  const usdtVal = await usdtPool.getPoolUnderlyerValue();
+  const usdtTopUp = await usdtPool.getReserveTopUpValue();
+
+  console.log(
+    `DAI Pool Value / Top Up: $ ${commify(formatUnits(daiVal, 8))}, $ ${commify(
+      formatUnits(daiTopUp, 8)
+    )}`
+  );
+  console.log(
+    `USDC Pool Value / Top Up: $ ${commify(
+      formatUnits(usdcVal, 8)
+    )}, $ ${commify(formatUnits(usdcTopUp, 8))}`
+  );
+  console.log(
+    `USDT Pool Value / Top Up: $ ${commify(
+      formatUnits(usdtVal, 8)
+    )}, $ ${commify(formatUnits(usdtTopUp, 8))}`
+  );
 }
 
 if (!module.parent) {

@@ -16,7 +16,12 @@
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const { getStrategyAccountInfo, getTvlManager } = require("./utils");
+const {
+  getStrategyAccountInfo,
+  getTvlManager,
+  getAddressRegistry,
+} = require("./utils");
+const { bytes32 } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -31,37 +36,31 @@ async function main(argv) {
 
   const tvlManager = await getTvlManager(networkName);
 
-  console.log("");
-  console.log("Registering ...");
-  console.log("");
-
-  console.log("");
-  console.log("Aave lending pool");
-  console.log("");
-  const AavePeriphery = await ethers.getContractFactory("AavePeriphery");
-  const aave = await AavePeriphery.deploy();
-  await aave.deployed();
-
   // Aave interest-bearing DAI token
   const ADAI_ADDRESS = "0x028171bCA77440897B824Ca71D1c56caC55b68A3";
+
+  const addressRegistry = await getAddressRegistry(networkName);
+  const aavePeripheryAddress = await addressRegistry.getAddress(
+    bytes32("aavePeriphery")
+  );
 
   const [, accountAddress] = await getStrategyAccountInfo(networkName);
 
   console.log("");
-  console.log("Register aave allocations for strategy account ...");
+  console.log("Register aave allocation for strategy account ...");
   console.log("");
 
+  const AavePeriphery = await ethers.getContractFactory("AavePeriphery");
   const calldataForDai = AavePeriphery.interface.encodeFunctionData(
     "getUnderlyerBalance(address,address)",
     [accountAddress, ADAI_ADDRESS]
   );
 
-  let trx = await tvlManager.addAssetAllocation(
-    [aave.address, calldataForDai],
-    "DAI",
-    18
-  );
+  const data = [aavePeripheryAddress, calldataForDai];
+  let trx = await tvlManager.addAssetAllocation(data, "DAI", 18);
   await trx.wait();
+  const allocationId = await tvlManager.generateDataHash(data);
+  console.log("Allocation ID:", allocationId);
 
   console.log("... done.");
   console.log("");

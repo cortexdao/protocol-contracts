@@ -16,7 +16,7 @@
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network, artifacts } = hre;
-const { tokenAmountToBigNumber, MAX_UINT256 } = require("../../utils/helpers");
+const { MAX_UINT256 } = require("../../utils/helpers");
 const {
   getAccountManager,
   getStrategyAccountInfo,
@@ -61,7 +61,7 @@ async function main(argv) {
 
   // deposit into liquidity pool
   const daiToken = stablecoins["DAI"];
-  const daiAmount = tokenAmountToBigNumber("1000", "18");
+  const daiAmount = await daiToken.balanceOf(accountAddress);
 
   const aDaiToken = await ethers.getContractAt("IDetailedERC20", ADAI_ADDRESS);
   let aDaiBalance = await aDaiToken.balanceOf(accountAddress);
