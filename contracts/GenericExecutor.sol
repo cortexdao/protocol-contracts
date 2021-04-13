@@ -2,6 +2,9 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/access/Ownable.sol";
+import {
+    Address as AddressNonUpgradeable
+} from "@openzeppelin/contracts/utils/Address.sol";
 import "./interfaces/IExecutor.sol";
 
 /**
@@ -10,6 +13,8 @@ import "./interfaces/IExecutor.sol";
  * @notice This contract is delegate called to by an Account when executing sequences
  */
 contract GenericExecutor is Ownable, IExecutor {
+    using AddressNonUpgradeable for address;
+
     /**
      * @notice Given a Data struct with a target contract and bytes sequence data, executes the bytes data against the target contract
      * @param executionSteps Data struct containing the target address to execute against and the bytes data to execute
@@ -22,12 +27,8 @@ contract GenericExecutor is Ownable, IExecutor {
         override
         onlyOwner
     {
-        bytes memory returnData;
         for (uint256 i = 0; i < executionSteps.length; i++) {
-            returnData = _call(
-                executionSteps[i].target,
-                executionSteps[i].data
-            );
+            executionSteps[i].target.functionCall(executionSteps[i].data);
         }
     }
 
