@@ -205,6 +205,10 @@ fund:
 topup:
 	./$(AM_SCRIPTS_FOLDER)/topup-pools.sh
 
+.PHONY: swap_stable
+swap_stable:
+	HARDHAT_NETWORK=localhost node $(AM_SCRIPTS_FOLDER)/swap_3pool.js -i $(in) -o $(out) -a $(amount)
+
 .PHONY: register
 register:
 	@for script in $(AM_SCRIPTS_FOLDER)/register_*.js; do \

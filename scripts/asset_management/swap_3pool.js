@@ -37,8 +37,8 @@ const CURVE_3POOL_ABI = [
     name: "exchange",
     outputs: [],
     inputs: [
-      { type: "uint256", name: "i" },
-      { type: "uint256", name: "j" },
+      { type: "int128", name: "i" },
+      { type: "int128", name: "j" },
       { type: "uint256", name: "dx" },
       { type: "uint256", name: "min_dy" },
     ],
@@ -82,9 +82,10 @@ async function swap3Pool(inputSymbol, outputSymbol, amount) {
     "approve(address,uint256)",
     [CURVE_3POOL_ADDRESS, inputAmount]
   );
+  const exchangeArgs = [inputIndex, outputIndex, inputAmount, minOutputAmount];
   const encodedExchange = iface3pool.encodeFunctionData(
-    "exchange(uint256,uint256,uint256,uint256)",
-    [inputIndex, outputIndex, inputAmount, minOutputAmount]
+    "exchange(int128,int128,uint256,uint256)",
+    exchangeArgs
   );
   const steps = [
     [inputTokenAddress, encodedApprove],
@@ -138,7 +139,6 @@ if (!module.parent) {
       process.exit(0);
     })
     .catch((error) => {
-      console.log(error);
       const exitStatus = error.exitStatus || 1;
       process.exit(exitStatus);
     });
