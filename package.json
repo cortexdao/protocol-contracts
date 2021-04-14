@@ -2,11 +2,7 @@
   "name": "@apy-finance/apy-core",
   "version": "6.1.0",
   "description": "",
-  "keywords": [
-    "ethereum",
-    "solidity",
-    "defi"
-  ],
+  "keywords": ["ethereum", "solidity", "defi"],
   "files": [
     "contracts",
     "artifacts",
@@ -34,7 +30,7 @@
   "lint-staged": {
     "contracts/**/*.sol": "solhint -w 0",
     "*.js": "eslint --cache --fix",
-    "*.{js,css,md}": "prettier --write"
+    "*.{js,sol,css,md}": "prettier --write"
   },
   "repository": {
     "type": "git",
@@ -68,6 +64,7 @@
     "husky": "4.0.10",
     "lint-staged": "^10.2.11",
     "prettier": "2.1.2",
+    "prettier-plugin-solidity": "^1.0.0-beta.8",
     "solhint": "^3.2.0",
     "solidity-coverage": "^0.7.10"
   },
