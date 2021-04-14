@@ -31,7 +31,6 @@ describe("Contract: MetaPoolToken", () => {
   let deployer;
   let manager;
   let randomUser;
-  let anotherUser;
   let oracle;
 
   // contract factories
@@ -61,13 +60,7 @@ describe("Contract: MetaPoolToken", () => {
   });
 
   before(async () => {
-    [
-      deployer,
-      manager,
-      oracle,
-      randomUser,
-      anotherUser,
-    ] = await ethers.getSigners();
+    [deployer, manager, oracle, randomUser] = await ethers.getSigners();
 
     const paymentAmount = link("1");
     const maxSubmissionValue = tokenAmountToBigNumber("1", "20");
@@ -103,53 +96,6 @@ describe("Contract: MetaPoolToken", () => {
     mApt = await MetaPoolToken.attach(proxy.address);
 
     await mApt.connect(deployer).setManagerAddress(manager.address);
-  });
-
-  describe("Minting and burning", async () => {
-    it("Manager can mint", async () => {
-      const mintAmount = tokenAmountToBigNumber("100");
-      await expect(mApt.connect(manager).mint(randomUser.address, mintAmount))
-        .to.not.be.reverted;
-      expect(await mApt.balanceOf(randomUser.address)).to.equal(mintAmount);
-    });
-
-    it("Manager can burn", async () => {
-      const mintAmount = tokenAmountToBigNumber("100");
-      const burnAmount = tokenAmountToBigNumber("90");
-      await mApt.connect(manager).mint(randomUser.address, mintAmount);
-
-      await expect(mApt.connect(manager).burn(randomUser.address, burnAmount))
-        .to.not.be.reverted;
-      expect(await mApt.balanceOf(randomUser.address)).to.equal(
-        mintAmount.sub(burnAmount)
-      );
-    });
-
-    it("Revert when non-manager attempts to mint", async () => {
-      await expect(
-        mApt
-          .connect(randomUser)
-          .mint(anotherUser.address, tokenAmountToBigNumber("1"))
-      ).to.be.revertedWith("MANAGER_ONLY");
-      await expect(
-        mApt
-          .connect(deployer)
-          .mint(anotherUser.address, tokenAmountToBigNumber("1"))
-      ).to.be.revertedWith("MANAGER_ONLY");
-    });
-
-    it("Revert when non-manager attempts to burn", async () => {
-      await expect(
-        mApt
-          .connect(randomUser)
-          .burn(anotherUser.address, tokenAmountToBigNumber("1"))
-      ).to.be.revertedWith("MANAGER_ONLY");
-      await expect(
-        mApt
-          .connect(deployer)
-          .mint(anotherUser.address, tokenAmountToBigNumber("1"))
-      ).to.be.revertedWith("MANAGER_ONLY");
-    });
   });
 
   describe("getDeployedValue", async () => {
@@ -190,7 +136,7 @@ describe("Contract: MetaPoolToken", () => {
 
       await mApt
         .connect(manager)
-        .mint(anotherUser.address, tokenAmountToBigNumber(100));
+        .mint(randomUser.address, tokenAmountToBigNumber(100));
 
       await tvlAgg.connect(oracle).submit(1, 0);
 
@@ -228,7 +174,7 @@ describe("Contract: MetaPoolToken", () => {
       let tvl = usdcUsdPrice.mul(usdcAmount).div(usdc(1));
 
       const totalSupply = tokenAmountToBigNumber(21);
-      await mApt.connect(manager).mint(anotherUser.address, totalSupply);
+      await mApt.connect(manager).mint(randomUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
 
       let mintAmount = await mApt.calculateMintAmount(
@@ -255,7 +201,7 @@ describe("Contract: MetaPoolToken", () => {
       const tvl = usdcUsdPrice.mul(usdcAmount).div(usdc(1));
 
       const totalSupply = tokenAmountToBigNumber(21);
-      await mApt.connect(manager).mint(anotherUser.address, totalSupply);
+      await mApt.connect(manager).mint(randomUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
 
       let poolAmount = await mApt.calculatePoolAmount(
@@ -291,7 +237,7 @@ describe("Contract: MetaPoolToken", () => {
       let mAptAmount = tokenAmountToBigNumber(10);
       let expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
       let expectedPoolAmount = expectedPoolValue.mul(usdc(1)).div(usdcUsdPrice);
-      await mApt.connect(manager).mint(anotherUser.address, totalSupply);
+      await mApt.connect(manager).mint(randomUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
 
       let poolAmount = await mApt.calculatePoolAmount(
