@@ -233,6 +233,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         for (uint256 i = 0; i < pools.length; i++) {
             PoolTokenV2 pool = pools[i];
             uint256 poolAmount = amounts[i];
+            require(poolAmount > 0, "INVALID_AMOUNT");
             IDetailedERC20 underlyer = pool.underlyer();
 
             uint256 tokenPrice = pool.getUnderlyerPrice();
@@ -312,6 +313,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         for (uint256 i = 0; i < pools.length; i++) {
             PoolTokenV2 pool = pools[i];
             uint256 amountToSend = amounts[i];
+            require(amountToSend > 0, "INVALID_AMOUNT");
             IDetailedERC20 underlyer = pool.underlyer();
 
             uint256 tokenPrice = pool.getUnderlyerPrice();
