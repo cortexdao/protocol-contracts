@@ -295,7 +295,13 @@ describe("Contract: PoolManager", () => {
         .be.reverted;
     });
 
-    it("Unregistered pool fails", async () => {
+    it("Revert on invalid account", async () => {
+      await expect(
+        manager.connect(deployer).fundAccount(bytes32("invalidAccount"), [])
+      ).to.be.revertedWith("INVALID_ACCOUNT");
+    });
+
+    it("Revert on unregistered pool", async () => {
       await expect(
         manager.fundAccount(accountId, [
           { poolId: bytes32("daiPool"), amount: 10 },
@@ -303,6 +309,14 @@ describe("Contract: PoolManager", () => {
           { poolId: bytes32("usdtPool"), amount: 10 },
         ])
       ).to.be.revertedWith("Missing address");
+    });
+
+    it("Revert on zero amount", async () => {
+      await expect(
+        manager
+          .connect(deployer)
+          .fundAccount(accountId, [{ poolId: bytes32("usdcPool"), amount: 0 }])
+      ).to.be.revertedWith("INVALID_AMOUNT");
     });
 
     it("Transfers correct underlyer amounts and updates asset allocation registry", async () => {
@@ -502,12 +516,30 @@ describe("Contract: PoolManager", () => {
         ).to.not.be.reverted;
       });
 
-      it("Unregistered pool fails", async () => {
+      it("Revert on invalid account", async () => {
+        await expect(
+          manager
+            .connect(deployer)
+            .withdrawFromAccount(bytes32("invalidAccount"), [])
+        ).to.be.revertedWith("INVALID_ACCOUNT");
+      });
+
+      it("Revert on unregistered pool", async () => {
         await expect(
           manager.withdrawFromAccount(accountId, [
             { poolId: bytes32("invalidPool"), amount: 10 },
           ])
         ).to.be.revertedWith("Missing address");
+      });
+
+      it("Revert on zero amount", async () => {
+        await expect(
+          manager
+            .connect(deployer)
+            .withdrawFromAccount(accountId, [
+              { poolId: bytes32("usdcPool"), amount: 0 },
+            ])
+        ).to.be.revertedWith("INVALID_AMOUNT");
       });
 
       it("Revert with specified reason for insufficient allowance", async () => {
