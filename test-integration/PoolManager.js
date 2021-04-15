@@ -556,7 +556,7 @@ describe("Contract: PoolManager", () => {
       });
 
       it("Transfers underlyer correctly for one pool", async () => {
-        const amount = "10";
+        const amount = tokenAmountToBigNumber("10", 18);
         await daiToken.connect(deployer).transfer(fundedAccountAddress, amount);
         expect(await daiToken.balanceOf(fundedAccountAddress)).to.equal(amount);
 
