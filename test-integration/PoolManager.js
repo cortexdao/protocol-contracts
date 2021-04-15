@@ -560,6 +560,14 @@ describe("Contract: PoolManager", () => {
         await daiToken.connect(deployer).transfer(fundedAccountAddress, amount);
         expect(await daiToken.balanceOf(fundedAccountAddress)).to.equal(amount);
 
+        // now mint so withdraw can burn tokens
+        const mintAmount = await getMintAmount(daiPool, amount);
+        await mApt.connect(managerSigner).mint(daiPool.address, mintAmount);
+
+        // adjust the TVL appropriately, as there is no Chainlink to update it
+        const tvl = await daiPool.getValueFromUnderlyerAmount(amount);
+        await mApt.setTVL(tvl);
+
         await manager.withdrawFromAccount(accountId, [
           { poolId: bytes32("daiPool"), amount: amount },
         ]);
