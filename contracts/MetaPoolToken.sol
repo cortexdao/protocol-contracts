@@ -171,6 +171,7 @@ contract MetaPoolToken is
      * @param amount mint amount
      */
     function mint(address account, uint256 amount) public override onlyManager {
+        require(amount > 0, "INVALID_MINT_AMOUNT");
         lastMintOrBurn = block.timestamp; // solhint-disable-line not-rely-on-time
         _mint(account, amount);
         emit Mint(account, amount);
@@ -185,6 +186,7 @@ contract MetaPoolToken is
      * @param amount burn amount
      */
     function burn(address account, uint256 amount) public override onlyManager {
+        require(amount > 0, "INVALID_BURN_AMOUNT");
         lastMintOrBurn = block.timestamp; // solhint-disable-line not-rely-on-time
         _burn(account, amount);
         emit Burn(account, amount);

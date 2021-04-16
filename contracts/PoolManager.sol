@@ -19,19 +19,19 @@ import "./Account.sol";
 /**
  * @title Pool Manager
  * @author APY.Finance
- * @notice This is the pool manager logic contract for use with the pool manager proxy contract.
+ * @notice The pool manager logic contract for use with the pool manager proxy contract.
  *
  * The Pool Manager orchestrates the movement of capital within the APY system
- * between the PoolTokens and Accounts.
+ * between pools (PoolTokenV2 contracts) and strategy accounts (Account contracts).
  *
- * Transferring from the PoolToken contracts to the Account contract stages
- * capital for deployment before yield farming strategies are executed.
+ * Transferring from a PoolToken to an Account stages capital in preparation
+ * for executing yield farming strategies.
  *
- * Capital unwound from yield farming strategies for user withdrawals is transferred from the
- * Account contract to the PoolToken contracts.
+ * Capital is unwound from yield farming strategies for user withdrawals by transferring
+ * from Accounts to PoolTokens.
  *
- * When funding an account, the Pool Manager simultaneously register the account
- * with the TVL Manager for the undelerying token pool to ensure the TVL is properly updated
+ * When funding an account from a pool, the Pool Manager simultaneously register the asset
+ * allocation with the TVL Manager to ensure the TVL is properly updated.
  */
 contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     using SafeMath for uint256;
@@ -105,9 +105,11 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         _;
     }
 
-    /// @notice Sets the proxy admin address of the pool manager proxy
-    /// @dev only callable by owner
-    /// @param adminAddress the new proxy admin address of the pool manager
+    /**
+     * @notice Sets the proxy admin address of the pool manager proxy
+     * @dev only callable by owner
+     * @param adminAddress the new proxy admin address of the pool manager
+     */
     function setAdminAddress(address adminAddress) public onlyOwner {
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
@@ -117,25 +119,31 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     /// @dev Allow contract to receive Ether.
     receive() external payable {} // solhint-disable-line no-empty-blocks
 
-    /// @notice Sets the metapool token address
-    /// @dev only callable by owner
-    /// @param _mApt the address of the metapool token
+    /**
+     * @notice Sets the metapool token address
+     * @dev only callable by owner
+     * @param _mApt the address of the metapool token
+     */
     function setMetaPoolToken(address payable _mApt) public onlyOwner {
         require(Address.isContract(_mApt), "INVALID_ADDRESS");
         mApt = MetaPoolToken(_mApt);
     }
 
-    /// @notice Sets the address registry
-    /// @dev only callable by owner
-    /// @param _addressRegistry the address of the registry
+    /**
+     * @notice Sets the address registry
+     * @dev only callable by owner
+     * @param _addressRegistry the address of the registry
+     */
     function setAddressRegistry(address _addressRegistry) public onlyOwner {
         require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistry(_addressRegistry);
     }
 
-    /// @notice Sets the new account factory
-    /// @dev only callable by owner
-    /// @param _accountFactory the address of the account factory
+    /**
+     * @notice Sets the new account factory
+     * @dev only callable by owner
+     * @param _accountFactory the address of the account factory
+     */
     function setAccountFactory(address _accountFactory) public onlyOwner {
         require(Address.isContract(_accountFactory), "INVALID_ADDRESS");
         accountFactory = IAccountFactory(_accountFactory);
@@ -145,7 +153,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
      * @notice Funds Account and register an asset allocation
      * @dev only callable by owner. Also registers the pool underlyer for the account being funded
      * @param accountId id of the Account being funded
-     * @param poolAmounts a list of PoolAmount structs denoting the pools id and amounts that will be used to fund the account
+     * @param poolAmounts a list of PoolAmount structs denoting the pools id and amounts used to fund the account
      * @notice PoolAmount example (pulls ~$1 from each pool to the Account):
      *      [
      *          { poolId: "daiPool", amount: "1000000000000" },
@@ -181,9 +189,11 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         return (pools, amounts);
     }
 
-    /// @notice Helper function to register a pool's underlyer balanceOf method for an account, when the account is funded
-    /// @param account the address of the account that will be registered with the balanceOf method
-    /// @param pools a list of pools that need their underlyer balanceOf method registered with the provided account being funded
+    /**
+     * @notice Register an asset allocation for the account with each pool underlyer
+     * @param account address of the registered account
+     * @param pools list of pools whose underlyers will be registered
+     */
     function _registerPoolUnderlyers(
         address account,
         PoolTokenV2[] memory pools
@@ -223,6 +233,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         for (uint256 i = 0; i < pools.length; i++) {
             PoolTokenV2 pool = pools[i];
             uint256 poolAmount = amounts[i];
+            require(poolAmount > 0, "INVALID_AMOUNT");
             IDetailedERC20 underlyer = pool.underlyer();
 
             uint256 tokenPrice = pool.getUnderlyerPrice();
@@ -248,7 +259,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
      * @notice Moves capital from an Account to the PoolToken contracts
      * @dev only callable by owner
      * @param accountId the account id to withdraw funds from
-     * @param poolAmounts a list of PoolAmount structs denoting the pools id and amounts that will deposited back into the pools
+     * @param poolAmounts list of PoolAmount structs denoting pool IDs and pool deposit amounts
      * @notice PoolAmount example (pushes ~$1 to each pool from the Account):
      *      [
      *          { poolId: "daiPool", amount: "1000000000000" },
@@ -268,11 +279,12 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         _withdrawFromAccount(accountAddress, pools, amounts);
     }
 
-    /// @notice helper function to check if the pool manager has sufficient allowance to transfer
-    /// the pool's underlyer from the provided account
-    /// @param account the address of the account to check
-    /// @param pools the list of pools to transfer funds to; used for retrieving the underlyer
-    /// @param amounts the list of allowance amounts the manager needs to have in order to successfully transfer from an account
+    /**
+     * @notice Check if pool manager has sufficient allowance to transfer pool underlyer from account
+     * @param account the address of the account to check
+     * @param pools list of pools to transfer funds to; used for retrieving the underlyer
+     * @param amounts list of required minimal allowances needed by the manager
+     */
     function _checkManagerAllowances(
         address account,
         PoolTokenV2[] memory pools,
@@ -301,6 +313,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         for (uint256 i = 0; i < pools.length; i++) {
             PoolTokenV2 pool = pools[i];
             uint256 amountToSend = amounts[i];
+            require(amountToSend > 0, "INVALID_AMOUNT");
             IDetailedERC20 underlyer = pool.underlyer();
 
             uint256 tokenPrice = pool.getUnderlyerPrice();
@@ -322,21 +335,27 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         }
     }
 
-    /// @notice Returns a list of all the pool ids
-    /// @return bytes32 list of pool ids
+    /**
+     * @notice Returns a list of all the pool ids
+     * @return bytes32 list of pool ids
+     */
     function getPoolIds() public view returns (bytes32[] memory) {
         return _poolIds;
     }
 
-    /// @notice Sets a list of pool ids
-    /// @dev only callable by owner. overwrites prior list of pool ids
-    /// @param poolIds the new list of pool ids
+    /**
+     * @notice Sets a list of pool ids
+     * @dev only callable by owner; overwrites prior list of pool ids
+     * @param poolIds the new list of pool ids
+     */
     function setPoolIds(bytes32[] memory poolIds) public onlyOwner {
         _poolIds = poolIds;
     }
 
-    /// @notice Removes the list of pool ids
-    /// @dev only callable by owner. removes all pool ids
+    /**
+     * @notice Removes the list of pool ids
+     * @dev only callable by owner; removes all pool ids
+     */
     function deletePoolIds() external onlyOwner {
         delete _poolIds;
     }

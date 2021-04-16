@@ -271,6 +271,18 @@ describe("Contract: MetaPoolToken", () => {
           .mint(anotherUser.address, tokenAmountToBigNumber("1"))
       ).to.be.revertedWith("MANAGER_ONLY");
     });
+
+    it("Revert when minting zero", async () => {
+      await expect(
+        mApt.connect(manager).mint(randomUser.address, 0)
+      ).to.be.revertedWith("INVALID_MINT_AMOUNT");
+    });
+
+    it("Revert when burning zero", async () => {
+      await expect(
+        mApt.connect(manager).burn(randomUser.address, 0)
+      ).to.be.revertedWith("INVALID_BURN_AMOUNT");
+    });
   });
 
   describe("getDeployedValue", async () => {

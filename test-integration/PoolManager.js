@@ -295,7 +295,13 @@ describe("Contract: PoolManager", () => {
         .be.reverted;
     });
 
-    it("Unregistered pool fails", async () => {
+    it("Revert on invalid account", async () => {
+      await expect(
+        manager.connect(deployer).fundAccount(bytes32("invalidAccount"), [])
+      ).to.be.revertedWith("INVALID_ACCOUNT");
+    });
+
+    it("Revert on unregistered pool", async () => {
       await expect(
         manager.fundAccount(accountId, [
           { poolId: bytes32("daiPool"), amount: 10 },
@@ -303,6 +309,14 @@ describe("Contract: PoolManager", () => {
           { poolId: bytes32("usdtPool"), amount: 10 },
         ])
       ).to.be.revertedWith("Missing address");
+    });
+
+    it("Revert on zero amount", async () => {
+      await expect(
+        manager
+          .connect(deployer)
+          .fundAccount(accountId, [{ poolId: bytes32("usdcPool"), amount: 0 }])
+      ).to.be.revertedWith("INVALID_AMOUNT");
     });
 
     it("Transfers correct underlyer amounts and updates asset allocation registry", async () => {
@@ -502,12 +516,30 @@ describe("Contract: PoolManager", () => {
         ).to.not.be.reverted;
       });
 
-      it("Unregistered pool fails", async () => {
+      it("Revert on invalid account", async () => {
+        await expect(
+          manager
+            .connect(deployer)
+            .withdrawFromAccount(bytes32("invalidAccount"), [])
+        ).to.be.revertedWith("INVALID_ACCOUNT");
+      });
+
+      it("Revert on unregistered pool", async () => {
         await expect(
           manager.withdrawFromAccount(accountId, [
             { poolId: bytes32("invalidPool"), amount: 10 },
           ])
         ).to.be.revertedWith("Missing address");
+      });
+
+      it("Revert on zero amount", async () => {
+        await expect(
+          manager
+            .connect(deployer)
+            .withdrawFromAccount(accountId, [
+              { poolId: bytes32("usdcPool"), amount: 0 },
+            ])
+        ).to.be.revertedWith("INVALID_AMOUNT");
       });
 
       it("Revert with specified reason for insufficient allowance", async () => {
@@ -524,9 +556,17 @@ describe("Contract: PoolManager", () => {
       });
 
       it("Transfers underlyer correctly for one pool", async () => {
-        const amount = "10";
+        const amount = tokenAmountToBigNumber("10", 18);
         await daiToken.connect(deployer).transfer(fundedAccountAddress, amount);
         expect(await daiToken.balanceOf(fundedAccountAddress)).to.equal(amount);
+
+        // now mint so withdraw can burn tokens
+        const mintAmount = await getMintAmount(daiPool, amount);
+        await mApt.connect(managerSigner).mint(daiPool.address, mintAmount);
+
+        // adjust the TVL appropriately, as there is no Chainlink to update it
+        const tvl = await daiPool.getValueFromUnderlyerAmount(amount);
+        await mApt.setTVL(tvl);
 
         await manager.withdrawFromAccount(accountId, [
           { poolId: bytes32("daiPool"), amount: amount },
