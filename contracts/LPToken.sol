@@ -46,9 +46,9 @@ contract LPToken is ERC721 {
         undeployedCapital[tokenId].amount += amount;
 
         PoolTokenV2(poolAddress).underlyer.transferFrom(
-            amount,
             msg.sender,
-            poolAddress
+            poolAddress,
+            amount
         );
     }
 
