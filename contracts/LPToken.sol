@@ -61,6 +61,7 @@ contract LPToken is ERC721 {
         // order in which users deposit next *might* effect their share amount
         totalShares += newShares;
         _shares[tokenId] += newShares;
+        undeployedCapital[tokenId] = UndeployedCapital(0, 0, address(0));
     }
 
     function _pendingShares(uint256 tokenId) internal returns (uint256) {
