@@ -28,16 +28,16 @@ contract LPToken is ERC721 {
     }
 
     modifier updateShares(uint256 tokenId) {
-        if (
-            lastDeposit.lastDeploymentId + 1 <= _accountManager.lastDeploymentId
-        ) {
-            uint256 newShares = _lastDepositShareAmount();
+        uint256 newShares = _lastDepositShareAmount();
+
+        if (newShares > 0) {
             lastDeposit[tokenId] = Deposit(0, 0, address(0));
 
             // order in which users deposit next *might* effect their share amount
             totalShares += newShares;
             _shares[tokenId] += newShares;
         }
+
         _;
     }
 
@@ -46,9 +46,11 @@ contract LPToken is ERC721 {
         uint256 amount,
         address poolAddress
     ) external updateShares(tokenId) {
+        require(_exists(tokenId), "TOKEN_DOES_NOT_EXIST");
         require(msg.sender == ownerOf(tokenId), "NOT_OWNER_OF_TOKEN_ID");
+        require(amount > 0, "ZERO_AMOUNT_DEPOSITED");
 
-        if (lastDeposit[tokenId].lastDeploymentId == 0) {
+        if (lastDeposit[tokenId].tokenAddress == address(0)) {
             lastDeposit[tokenId] = Deposit(
                 _accountManager.lastDeploymentId,
                 amount,
