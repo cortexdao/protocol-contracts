@@ -39,7 +39,7 @@ contract LPToken is ERC721 {
 
         // if there is any earmarked capital for a finished deployment,
         // issue shares and re-init period data
-        if (!_hasEarmarkedCapital(tokenId)) {
+        if (_hasEarmarkedCapital(tokenId)) {
             _issueShares(tokenId);
             _resetEarmarkedCapital(tokenId, poolAddress);
         }
@@ -63,8 +63,8 @@ contract LPToken is ERC721 {
         return _shares[tokenId].add(_pendingShares(tokenId));
     }
 
-    function _issueShares(uint256 tokenId, address poolAddress) internal {
-        uint256 newShares = _pendingShares(tokenId, poolAddress);
+    function _issueShares(uint256 tokenId) internal {
+        uint256 newShares = _pendingShares(tokenId);
         newlyIssuedShares += newShares;
         _shares[tokenId] += newShares;
     }
