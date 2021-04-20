@@ -7,7 +7,7 @@ import {AccountManager} from "./AccountManager.sol";
 import {PoolTokenV2} from "./PoolTokenV2.sol";
 
 contract LPToken is ERC721 {
-    struct Deposit {
+    struct UndeployedCapital {
         uint256 lastDeploymentId;
         uint256 amount;
         address tokenAddress;
@@ -19,7 +19,7 @@ contract LPToken is ERC721 {
     mapping(uint256 => uint256) private _shares;
 
     /// @notice Token ID to deposits
-    mapping(uint256 => Deposit) public lastDeposit;
+    mapping(uint256 => UndeployedCapital) public undeployedCapital;
 
     uint256 public totalShares;
 
@@ -27,40 +27,25 @@ contract LPToken is ERC721 {
         _accountManager = accountManager;
     }
 
-    modifier updateShares(uint256 tokenId) {
-        if (
-            lastDeposit.lastDeploymentId + 1 <= _accountManager.lastDeploymentId
-        ) {
-            uint256 newShares = _lastDepositShareAmount();
-            lastDeposit[tokenId] = Deposit(0, 0, address(0));
-
-            // order in which users deposit next *might* effect their share amount
-            totalShares += newShares;
-            _shares[tokenId] += newShares;
-        }
-        _;
-    }
-
     function deposit(
         uint256 tokenId,
         uint256 amount,
         address poolAddress
-    ) external updateShares(tokenId) {
+    ) external {
         require(msg.sender == ownerOf(tokenId), "NOT_OWNER_OF_TOKEN_ID");
 
-        if (lastDeposit[tokenId].lastDeploymentId == 0) {
-            lastDeposit[tokenId] = Deposit(
+        _issueShares(tokenId);
+
+        if (undeployedCapital[tokenId].lastDeploymentId == 0) {
+            undeployedCapital[tokenId] = UndeployedCapital(
                 _accountManager.lastDeploymentId,
-                amount,
+                0,
                 address(PoolTokenV2(poolAddress).underlyer)
             );
-
-            // Increase the deposit amount if a new deposit is made before a deployment
-        } else {
-            lastDeposit[tokenId].amount += amount;
         }
+        undeployedCapital[tokenId].amount += amount;
 
-        PoolTokenV2(poolAddress).underlyer.transfer(
+        PoolTokenV2(poolAddress).underlyer.transferFrom(
             amount,
             msg.sender,
             poolAddress
@@ -68,36 +53,42 @@ contract LPToken is ERC721 {
     }
 
     function shares(uint256 tokenId) external {
-        return _shares[tokenId].add(_lastDepositShareAmount(tokenId));
+        return _shares[tokenId].add(_pendingShares(tokenId));
     }
 
-    function _lastDepositShareAmount(uint256 tokenId)
-        private
-        returns (uint256)
-    {
-        bool hasBeenDeployed =
-            lastDeposit[tokenId].lastDeploymentId + 1 <=
-                _accountManager.lastDeploymentId;
-        if (!hasBeenDeployed) {
+    function _issueShares(uint256 tokenId) internal {
+        uint256 newShares = _pendingShares(tokenId);
+        // order in which users deposit next *might* effect their share amount
+        totalShares += newShares;
+        _shares[tokenId] += newShares;
+    }
+
+    function _pendingShares(uint256 tokenId) internal returns (uint256) {
+        if (!_hasUndeployedCapital(tokenId)) {
             return 0;
         }
 
-        uint256 tvl =
-            _accountManager
-                .deployments(lastDeposit[tokenId].lastDeploymentId + 1)
-                .tvl;
-        uint256 prices =
-            _accountManager
-                .deployments(lastDeposit[tokenId].lastDeploymentId + 1)
-                .prices;
-        uint256 decimals = IERC20(lastDeposit[tokenId].tokenAddress).decimals();
+        uint256 currentDeploymentId =
+            undeployedCapital[tokenId].lastDeploymentId + 1;
+        Deployment currentDeployment =
+            _accountManager.deployments(currentDeploymentId);
+        uint256 tvl = currentDeployment.tvl;
+        uint256 prices = currentDeployment.prices;
+        uint256 decimals =
+            IERC20(undeployedCapital[tokenId].tokenAddress).decimals();
 
         return
-            lastDeposit[tokenId]
+            undeployedCapital[tokenId]
                 .amount
-                .mul(prices[lastDeposit[tokenId].tokenAddress])
+                .mul(prices[undeployedCapital[tokenId].tokenAddress])
                 .mul(10**(18 - decimals))
                 .mul(totalShares ? totalShares : 1)
                 .div(tvl);
+    }
+
+    function _hasUndeployedCapital(tokenId) internal returns (bool) {
+        return
+            undeployedCapital[tokenId].lastDeploymentId + 1 <=
+            _accountManager.lastDeploymentId;
     }
 }
