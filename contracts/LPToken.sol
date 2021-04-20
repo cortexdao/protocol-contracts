@@ -3,7 +3,7 @@ pragma solidity 0.6.11;
 
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {AccountManager, Deployment} from "./AccountManager.sol";
+import {PoolManager, Deployment} from "./PoolManager.sol";
 import {PoolTokenV2} from "./PoolTokenV2.sol";
 
 contract LPToken is ERC721 {
@@ -13,7 +13,7 @@ contract LPToken is ERC721 {
         address tokenAddress;
     }
 
-    AccountManager private _accountManager;
+    PoolManager private _poolManager;
 
     /// @notice Token ID to shares
     mapping(uint256 => uint256) private _shares;
@@ -25,8 +25,8 @@ contract LPToken is ERC721 {
     /// @notice total issued so far during current pre-deployment period
     uint256 public newlyIssuedShares;
 
-    constructor(AccountManager accountManager) public {
-        _accountManager = accountManager;
+    constructor(PoolManager poolManager) public {
+        _poolManager = poolManager;
         totalShares = 1;
     }
 
@@ -75,7 +75,7 @@ contract LPToken is ERC721 {
         // if we issued shares to close out the deployment period, we need
         // to set the undeployed capital to the next period.
         address underlyerAddress = address(PoolTokenV2(poolAddress).underlyer);
-        uint256 closingDeploymentId = _accountManager.lastDeploymentId + 1;
+        uint256 closingDeploymentId = _poolManager.lastDeploymentId + 1;
         undeployedCapital[tokenId] = UndeployedCapital(
             closingDeploymentId,
             0,
@@ -91,7 +91,7 @@ contract LPToken is ERC721 {
         uint256 currentDeploymentId =
             undeployedCapital[tokenId].lastDeploymentId + 1;
         Deployment currentDeployment =
-            _accountManager.deployments(currentDeploymentId);
+            _poolManager.deployments(currentDeploymentId);
         uint256 tvl = currentDeployment.tvl;
         uint256 prices = currentDeployment.prices;
         uint256 decimals =
@@ -109,6 +109,6 @@ contract LPToken is ERC721 {
     function _hasEarmarkedCapital(tokenId) internal returns (bool) {
         return
             undeployedCapital[tokenId].closingDeploymentId <=
-            _accountManager.lastDeploymentId;
+            _poolManager.lastDeploymentId;
     }
 }
