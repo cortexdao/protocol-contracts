@@ -41,7 +41,7 @@ contract LPToken is ERC721 {
         // issue shares and re-init period data
         if (_hasEarmarkedCapital(tokenId)) {
             _issueShares(tokenId);
-            _resetEarmarkedCapital(tokenId, poolAddress);
+            _resetUndeployedCapital(tokenId, poolAddress);
         }
         // add deposit to current period's undeployed amount
         undeployedCapital[tokenId].amount += amount;
@@ -69,20 +69,7 @@ contract LPToken is ERC721 {
         _shares[tokenId] += newShares;
     }
 
-    function _resetEarmarkedCapital(uint256 tokenId, address poolAddress)
-        internal
-    {
-        // if we issued shares to close out the deployment period, we need
-        // to set the undeployed capital to the next period.
-        address underlyerAddress = address(PoolTokenV2(poolAddress).underlyer);
-        uint256 closingDeploymentId = _poolManager.lastDeploymentId + 1;
-        undeployedCapital[tokenId] = UndeployedCapital(
-            closingDeploymentId,
-            0,
-            underlyerAddress
-        );
-    }
-
+    /// @dev Return the number of shares not yet issued for a past deployment
     function _pendingShares(uint256 tokenId) internal returns (uint256) {
         if (!_hasEarmarkedCapital(tokenId)) {
             return 0;
@@ -106,9 +93,25 @@ contract LPToken is ERC721 {
                 .div(tvl);
     }
 
+    /// @dev Check if user capital has been accounted for in a past deployment
     function _hasEarmarkedCapital(tokenId) internal returns (bool) {
         return
             undeployedCapital[tokenId].closingDeploymentId <=
             _poolManager.lastDeploymentId;
+    }
+
+    /// @dev Reset the struct used for tracking capital in a deployment period
+    function _resetUndeployedCapital(uint256 tokenId, address poolAddress)
+        internal
+    {
+        // if we issued shares to close out the deployment period, we need
+        // to set the undeployed capital to the next period.
+        address underlyerAddress = address(PoolTokenV2(poolAddress).underlyer);
+        uint256 closingDeploymentId = _poolManager.lastDeploymentId + 1;
+        undeployedCapital[tokenId] = UndeployedCapital(
+            closingDeploymentId,
+            0,
+            underlyerAddress
+        );
     }
 }
