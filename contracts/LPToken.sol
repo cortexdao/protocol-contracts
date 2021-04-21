@@ -7,6 +7,8 @@ import {PoolManager, Deployment} from "./PoolManager.sol";
 import {PoolTokenV2} from "./PoolTokenV2.sol";
 
 contract LPToken is ERC721 {
+    using SafeMath for uint256;
+
     struct UndeployedCapital {
         uint256 closingDeploymentId;
         uint256 amount;
@@ -20,10 +22,11 @@ contract LPToken is ERC721 {
     /// @notice Token ID to deposits
     mapping(uint256 => UndeployedCapital) public undeployedCapital;
 
-    /// @notice total shares issued up to last deployment
-    uint256 public totalShares;
-    /// @notice total issued so far during current pre-deployment period
-    uint256 public newlyIssuedShares;
+    /// @notice total number of shares at time of deployment
+    mapping(uint256 => uint256) public deploymentToTotalShares;
+
+    /// @notice deployment ID to total deposited for deployment
+    mapping(uint256 => uint256) public deploymentToTotalDeposited;
 
     constructor(PoolManager poolManager) public {
         _poolManager = poolManager;
@@ -43,8 +46,7 @@ contract LPToken is ERC721 {
             _issueShares(tokenId);
             _resetUndeployedCapital(tokenId, poolAddress);
         }
-        // add deposit to current period's undeployed amount
-        undeployedCapital[tokenId].amount += amount;
+        _updateUndeployedCapital(tokenId, amount);
 
         PoolTokenV2(poolAddress).underlyer.transferFrom(
             msg.sender,
@@ -65,7 +67,6 @@ contract LPToken is ERC721 {
 
     function _issueShares(uint256 tokenId) internal {
         uint256 newShares = _pendingShares(tokenId);
-        newlyIssuedShares += newShares;
         _shares[tokenId] += newShares;
     }
 
@@ -75,15 +76,16 @@ contract LPToken is ERC721 {
             return 0;
         }
 
-        uint256 currentDeploymentId =
-            undeployedCapital[tokenId].lastDeploymentId + 1;
-        Deployment currentDeployment =
-            _poolManager.deployments(currentDeploymentId);
-        uint256 tvl = currentDeployment.tvl;
-        uint256 prices = currentDeployment.prices;
+        uint256 closingDeploymentId =
+            undeployedCapital[tokenId].closingDeploymentId;
+        Deployment closingDeployment =
+            _poolManager.deployments(closingDeploymentId);
+        uint256 tvl = closingDeployment.tvl;
+        uint256 prices = closingDeployment.prices;
         uint256 decimals =
             IERC20(undeployedCapital[tokenId].tokenAddress).decimals();
 
+        uint256 totalShares = deploymentToTotalShares[closingDeploymentId];
         return
             undeployedCapital[tokenId]
                 .amount
@@ -113,5 +115,35 @@ contract LPToken is ERC721 {
             0,
             underlyerAddress
         );
+    }
+
+    function _updateUndeployedCapital(uint256 tokenId, uint256 amount)
+        internal
+    {
+        // add deposit to current period's undeployed amount
+        undeployedCapital[tokenId].amount = undeployedCapital[tokenId]
+            .amount
+            .add(amount);
+        uint256 closingDeploymentId =
+            undeployedCapital[tokenId].closingDeploymentId;
+        deploymentToTotalDeposited[
+            closingDeploymentId
+        ] = deploymentToTotalDeposited[closingDeploymentId].add(amount);
+    }
+
+    /**
+     * @notice Return total number of shares issued for deployment
+     * @dev Calculation is structured to use previous deployment TVL and total shares
+     *      so that this can be used to track current pre-deployment issued shares.
+     */
+    function _totalIssuedShares(uint256 deploymentId)
+        internal
+        returns (uint256)
+    {
+        uint256 prevDeploymentId = deploymentId - 1;
+        uint256 tvl = _poolManager.deployments(prevDeploymentId);
+        uint256 totalShares = deploymentToTotalShares[prevDeploymentId];
+        uint256 totalDeposited = deploymentToTotalDeposited[deploymentId];
+        return totalDeposited.mul(totalShares).div(tvl);
     }
 }
