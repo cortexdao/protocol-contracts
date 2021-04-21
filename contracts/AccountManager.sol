@@ -36,12 +36,6 @@ contract AccountManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
     using SafeMath for uint256;
     using SafeERC20 for IDetailedERC20;
 
-    struct Deployment {
-        uint256 timestamp;
-        uint256 tvl;
-        mapping(address => uint256) prices;
-    }
-
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
@@ -49,10 +43,6 @@ contract AccountManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
     IAddressRegistry public addressRegistry;
     /// @notice Accounts store assets for strategies and interact with other protocols
     mapping(bytes32 => address) public override getAccount;
-    /// @notice Track TVLs and prices at deployment
-    mapping(uint256 => Deployment) public deployments;
-    /// @notice Track most recent deployment
-    uint256 public lastDeploymentId;
 
     /* ------------------------------- */
 

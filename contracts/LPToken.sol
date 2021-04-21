@@ -8,6 +8,7 @@ import {PoolTokenV2} from "./PoolTokenV2.sol";
 
 contract LPToken is ERC721 {
     using SafeMath for uint256;
+    using SafeERC20 for IERC20;
 
     struct UndeployedCapital {
         uint256 closingDeploymentId;

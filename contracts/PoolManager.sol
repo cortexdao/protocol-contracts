@@ -37,6 +37,12 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     using SafeMath for uint256;
     using SafeERC20 for IDetailedERC20;
 
+    struct Deployment {
+        uint256 timestamp;
+        uint256 tvl;
+        mapping(address => uint256) prices;
+    }
+
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
@@ -45,6 +51,11 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     IAddressRegistry public addressRegistry;
     IAccountFactory public accountFactory;
     bytes32[] internal _poolIds;
+
+    /// @notice Track TVLs and prices at deployment
+    mapping(uint256 => Deployment) public deployments;
+    /// @notice Track most recent deployment
+    uint256 public lastDeploymentId;
 
     /* ------------------------------- */
 
