@@ -60,7 +60,7 @@
     "ethers": "^5.0.24",
     "ganache-cli": "^6.10.2",
     "ganache-time-traveler": "^1.0.15",
-    "hardhat": "^2.1.1",
+    "hardhat": "^2.2.0",
     "husky": "4.0.10",
     "lint-staged": "^10.2.11",
     "prettier": "2.1.2",
