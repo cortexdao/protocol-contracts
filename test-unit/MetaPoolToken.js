@@ -486,7 +486,6 @@ describe("Contract: MetaPoolToken", () => {
     it("getTVL reverts on negative answer", async () => {
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
       const invalidPrice = -1;
-      // setting the mock mines a block and advances time by 1 sec
       await tvlAggMock.mock.latestRoundData.returns(
         0,
         invalidPrice,
@@ -510,20 +509,6 @@ describe("Contract: MetaPoolToken", () => {
 
       await ethers.provider.send("evm_increaseTime", [aggStalePeriod / 2]);
       await ethers.provider.send("evm_mine");
-      await expect(mApt.getTVL()).to.be.revertedWith("CHAINLINK_STALE_DATA");
-    });
-
-    it("getTVL reverts when update is before last mint/burn", async () => {
-      await mApt.connect(manager).mint(deployer.address, 1);
-      const mintTime = (await ethers.provider.getBlock()).timestamp;
-      let updatedAt = mintTime + 1;
-      await tvlAggMock.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
-      await expect(mApt.getTVL()).to.not.be.reverted;
-
-      await mApt.connect(manager).burn(deployer.address, 1);
-      const burnTime = (await ethers.provider.getBlock()).timestamp;
-      updatedAt = burnTime - 1;
-      await tvlAggMock.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
       await expect(mApt.getTVL()).to.be.revertedWith("CHAINLINK_STALE_DATA");
     });
   });

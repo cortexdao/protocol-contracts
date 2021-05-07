@@ -64,8 +64,6 @@ contract MetaPoolToken is
     AggregatorV3Interface public tvlAgg;
     /// @notice seconds within which aggregator should be updated
     uint256 public aggStalePeriod;
-    /// @notice used to guard against non-updated TVL
-    uint256 public lastMintOrBurn;
 
     /* ------------------------------- */
 
@@ -164,38 +162,34 @@ contract MetaPoolToken is
 
     /**
      * @notice Mint specified amount of mAPT to the given account.
-     * @dev Only the manager can call this.  The timestamp is saved so that
-     *      `getTVL` can revert if the Chainlink aggregator hasn't updated since
-     *       mint was called.
+     * @dev Only the manager can call this.
      * @param account address to mint to
      * @param amount mint amount
      */
     function mint(address account, uint256 amount) public override onlyManager {
         require(amount > 0, "INVALID_MINT_AMOUNT");
-        lastMintOrBurn = block.timestamp; // solhint-disable-line not-rely-on-time
         _mint(account, amount);
         emit Mint(account, amount);
     }
 
     /**
      * @notice Burn specified amount of mAPT from the given account.
-     * @dev Only the manager can call this.  The timestamp is saved so that
-     *      `getTVL` can revert if the Chainlink aggregator hasn't updated since
-     *       burn was called.
+     * @dev Only the manager can call this.
      * @param account address to burn from
      * @param amount burn amount
      */
     function burn(address account, uint256 amount) public override onlyManager {
         require(amount > 0, "INVALID_BURN_AMOUNT");
-        lastMintOrBurn = block.timestamp; // solhint-disable-line not-rely-on-time
         _burn(account, amount);
         emit Burn(account, amount);
     }
 
     /**
-     * @notice Get the USD value of all assets being managed by the AccountManager,
-     *         i.e. the "deployed capital".  This is the same as the total value
-     *         represented by the total mAPT supply.
+     * @notice Get the USD value of all assets in the system, not just those
+     *         being managed by the AccountManager but also the pool underlyers.
+     *
+     *         Note this is NOT the same as the total value represented by the
+     *         total mAPT supply, i.e. the "deployed capital".
      *
      * @dev Chainlink nodes read from the TVLManager, pull the
      *      prices from market feeds, and submits the calculated total value
@@ -203,7 +197,7 @@ contract MetaPoolToken is
      *
      *      USD prices have 8 decimals.
      *
-     * @return the USD value of the deployed capital
+     * @return "Total Value Locked", the USD value of all APY Finance assets.
      */
     function getTVL() public view virtual returns (uint256) {
         // possible revert with "No data present" but this can
@@ -219,10 +213,6 @@ contract MetaPoolToken is
      *
      *         1. Require time since last update is not greater than `aggStalePeriod`.
      *
-     *         2. Require update took place after last change in mAPT supply
-     *            (mint or burn), as it is necessary pulled deployed value always
-     *            reflects the newly acquired/disposed of funds from pools.
-     *
      * @param updatedAt update time for Chainlink round
      */
     function validateNotStale(uint256 updatedAt) private view {
@@ -231,7 +221,6 @@ contract MetaPoolToken is
             block.timestamp.sub(updatedAt) < aggStalePeriod,
             "CHAINLINK_STALE_DATA"
         );
-        require(updatedAt > lastMintOrBurn, "CHAINLINK_STALE_DATA");
         // solhint-enable not-rely-on-time
     }
 
