@@ -64,6 +64,8 @@ contract MetaPoolToken is
     AggregatorV3Interface public tvlAgg;
     /// @notice seconds within which aggregator should be updated
     uint256 public aggStalePeriod;
+    /// @notice seconds duration for which `getTVL` is locked
+    uint256 public tvlLockPeriod;
 
     /* ------------------------------- */
 
@@ -222,6 +224,10 @@ contract MetaPoolToken is
             "CHAINLINK_STALE_DATA"
         );
         // solhint-enable not-rely-on-time
+    }
+
+    function lockTVL(uint256 lockPeriod) public onlyOwner {
+        tvlLockPeriod = lockPeriod;
     }
 
     /** @notice Calculate mAPT amount to be minted for given pool's underlyer amount.
