@@ -64,7 +64,7 @@ contract MetaPoolToken is
     AggregatorV3Interface public tvlAgg;
     /// @notice seconds within which aggregator should be updated
     uint256 public aggStalePeriod;
-    /// @notice last timestamp for locking `getTVL`
+    /// @notice last block number for locking `getTVL`
     uint256 public tvlLockEnd;
 
     /* ------------------------------- */
@@ -202,8 +202,7 @@ contract MetaPoolToken is
      * @return "Total Value Locked", the USD value of all APY Finance assets.
      */
     function getTVL() public view virtual returns (uint256) {
-        // solhint-disable-next-line not-rely-on-time
-        require(block.timestamp > tvlLockEnd, "TVL_LOCKED");
+        require(block.number > tvlLockEnd, "TVL_LOCKED");
         // possible revert with "No data present" but this can
         // only happen if there has never been a successful round.
         (, int256 answer, , uint256 updatedAt, ) = tvlAgg.latestRoundData();
@@ -228,9 +227,12 @@ contract MetaPoolToken is
         // solhint-enable not-rely-on-time
     }
 
+    /**
+     * @notice Locks `getTVL` for given number of blocks
+     * @param lockPeriod number of blocks to lock TVL for
+     */
     function lockTVL(uint256 lockPeriod) public onlyOwner {
-        // solhint-disable-next-line not-rely-on-time
-        tvlLockEnd = block.timestamp.add(lockPeriod);
+        tvlLockEnd = block.number.add(lockPeriod);
     }
 
     /** @notice Calculate mAPT amount to be minted for given pool's underlyer amount.

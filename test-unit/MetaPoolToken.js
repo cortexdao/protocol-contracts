@@ -230,9 +230,9 @@ describe.only("Contract: MetaPoolToken", () => {
       const lockPeriod = 100;
       await mApt.connect(deployer).lockTVL(lockPeriod);
 
-      const now = (await ethers.provider.getBlock()).timestamp;
-      const lockEnd = now + lockPeriod;
-      expect(await mApt.tvlLockEnd()).to.equal(lockEnd);
+      const currentBlock = (await ethers.provider.getBlock()).number;
+      const expectedLockEnd = currentBlock + lockPeriod;
+      expect(await mApt.tvlLockEnd()).to.equal(expectedLockEnd);
     });
 
     it("Revert when non-owner attempts to lock", async () => {
