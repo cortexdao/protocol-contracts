@@ -88,7 +88,7 @@ describe("Contract: PoolToken", () => {
     poolToken = await PoolTokenV2.attach(proxy.address);
   });
 
-  describe("Constructor", async () => {
+  describe("Constructor", () => {
     it("Revert when admin address is zero ", async () => {
       const logicMock = await deployMockContract(deployer, []);
       await expect(
@@ -126,7 +126,7 @@ describe("Contract: PoolToken", () => {
     });
   });
 
-  describe("Defaults", async () => {
+  describe("Defaults", () => {
     it("Owner set to deployer", async () => {
       assert.equal(await poolToken.owner(), deployer.address);
     });
@@ -166,7 +166,7 @@ describe("Contract: PoolToken", () => {
     });
   });
 
-  describe("Set admin address", async () => {
+  describe("Set admin address", () => {
     it("Owner can set admin", async () => {
       await poolToken.connect(deployer).setAdminAddress(FAKE_ADDRESS);
       assert.equal(await poolToken.proxyAdmin(), FAKE_ADDRESS);
@@ -184,7 +184,7 @@ describe("Contract: PoolToken", () => {
     });
   });
 
-  describe("Set price aggregator address", async () => {
+  describe("Set price aggregator address", () => {
     it("Revert when agg address is zero", async () => {
       await expect(
         poolToken.setPriceAggregator(ZERO_ADDRESS)
@@ -211,7 +211,7 @@ describe("Contract: PoolToken", () => {
     });
   });
 
-  describe("Set mAPT address", async () => {
+  describe("Set mAPT address", () => {
     it("Owner can set mAPT address", async () => {
       const mockContract = await deployMockContract(deployer, []);
       const mockContractAddress = mockContract.address;
@@ -233,7 +233,7 @@ describe("Contract: PoolToken", () => {
     });
   });
 
-  describe("getUnderlyerPrice", async () => {
+  describe("getUnderlyerPrice", () => {
     it("Revert when price agg returns non-positive price", async () => {
       await priceAggMock.mock.latestRoundData.returns(0, 0, 0, 0, 0);
       await expect(poolToken.getUnderlyerPrice()).to.be.revertedWith(
@@ -328,7 +328,7 @@ describe("Contract: PoolToken", () => {
     });
   });
 
-  describe("Set feePeriod", async () => {
+  describe("Set feePeriod", () => {
     it("Owner can set", async () => {
       const newFeePeriod = 12 * 60 * 60;
       await expect(poolToken.connect(deployer).setFeePeriod(newFeePeriod)).to
@@ -341,7 +341,7 @@ describe("Contract: PoolToken", () => {
     });
   });
 
-  describe("Set feePercentage", async () => {
+  describe("Set feePercentage", () => {
     it("Owner can set", async () => {
       const newFeePercentage = 12;
       await expect(
@@ -356,7 +356,7 @@ describe("Contract: PoolToken", () => {
     });
   });
 
-  describe("Set reservePercentage", async () => {
+  describe("Set reservePercentage", () => {
     it("Owner can set", async () => {
       const newPercentage = 10;
       await expect(

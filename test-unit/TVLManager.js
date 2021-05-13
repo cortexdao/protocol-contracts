@@ -158,7 +158,7 @@ describe("Contract: TVLManager", () => {
       });
     });
 
-    describe("deregisterTokens", async () => {
+    describe("deregisterTokens", () => {
       it("Non-owner cannot call", async () => {
         const data = [FAKE_ADDRESS, bytes32("")];
         await expect(
@@ -304,7 +304,7 @@ describe("Contract: TVLManager", () => {
     });
   });
 
-  describe("balanceOf", async () => {
+  describe("balanceOf", () => {
     let peripheryContract;
     let peripheryAbi;
 
