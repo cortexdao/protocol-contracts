@@ -36,6 +36,7 @@ subgraph/build
 
 # vim
 *.swp
+*.swo
 
 # cloned chainlink repo
 /chainlink-tvl-adapter
