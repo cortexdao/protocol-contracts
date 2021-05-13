@@ -1,11 +1,10 @@
 const { expect } = require("chai");
 const hre = require("hardhat");
-const { ethers, waffle } = hre;
+const { ethers, waffle, artifacts } = hre;
 const { solidityKeccak256: hash, solidityPack: pack } = ethers.utils;
 const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
 const {
-  ZERO_ADDRESS,
   FAKE_ADDRESS,
   tokenAmountToBigNumber,
   bytes32,
@@ -14,6 +13,7 @@ const {
 describe("Contract: TVLManager", () => {
   // signers
   let deployer;
+  let addressRegistry;
   let poolManager;
   let accountManager;
   let randomUser;
@@ -44,56 +44,24 @@ describe("Contract: TVLManager", () => {
       randomUser,
     ] = await ethers.getSigners();
 
-    TVLManager = await ethers.getContractFactory("TVLManager");
-
-    tvlManager = await TVLManager.deploy(
-      poolManager.address,
+    addressRegistry = await deployMockContract(
+      deployer,
+      artifacts.require("AddressRegistryV2").abi
+    );
+    await addressRegistry.mock.poolManagerAddress.returns(poolManager.address);
+    await addressRegistry.mock.accountManagerAddress.returns(
       accountManager.address
     );
+
+    TVLManager = await ethers.getContractFactory("TVLManager");
+
+    tvlManager = await TVLManager.deploy(addressRegistry.address);
     await tvlManager.deployed();
   });
 
   describe("Defaults", () => {
     it("Owner is set to deployer", async () => {
       expect(await tvlManager.owner()).to.equal(deployer.address);
-    });
-  });
-
-  describe("Setting pool manager address", () => {
-    it("Owner can set to valid address", async () => {
-      await tvlManager.connect(deployer).setPoolManagerAddress(FAKE_ADDRESS);
-      expect(await tvlManager.poolManager()).to.equal(FAKE_ADDRESS);
-    });
-
-    it("Non-owner cannot set", async () => {
-      await expect(
-        tvlManager.connect(randomUser).setPoolManagerAddress(FAKE_ADDRESS)
-      ).to.be.revertedWith("revert Ownable: caller is not the owner");
-    });
-
-    it("Cannot set to zero address", async () => {
-      await expect(
-        tvlManager.connect(deployer).setPoolManagerAddress(ZERO_ADDRESS)
-      ).to.be.revertedWith("INVALID_MANAGER");
-    });
-  });
-
-  describe("Setting account manager address", () => {
-    it("Owner can set to valid address", async () => {
-      await tvlManager.connect(deployer).setAccountManagerAddress(FAKE_ADDRESS);
-      expect(await tvlManager.accountManager()).to.equal(FAKE_ADDRESS);
-    });
-
-    it("Non-owner cannot set", async () => {
-      await expect(
-        tvlManager.connect(randomUser).setAccountManagerAddress(FAKE_ADDRESS)
-      ).to.be.revertedWith("revert Ownable: caller is not the owner");
-    });
-
-    it("Cannot set to zero address", async () => {
-      await expect(
-        tvlManager.connect(deployer).setAccountManagerAddress(ZERO_ADDRESS)
-      ).to.be.revertedWith("INVALID_MANAGER");
     });
   });
 

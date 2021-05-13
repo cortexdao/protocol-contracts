@@ -3,9 +3,11 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "./utils/EnumerableSet.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/ITVLManager.sol";
+import "./AddressRegistryV2.sol";
 
 /// @title TVL Manager
 /// @author APY.Finance
@@ -19,8 +21,7 @@ import "./interfaces/ITVLManager.sol";
 contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
-    address public poolManager;
-    address public accountManager;
+    AddressRegistryV2 public addressRegistry;
 
     // all registered allocation ids
     EnumerableSet.Bytes32Set private _allocationIds;
@@ -35,33 +36,9 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
     event AccountManagerChanged(address);
 
     /// @notice Constructor TVLManager
-    /// @param poolManagerAddress the pool manager allowed to register new asset allocations
-    /// @param accountManagerAddress the account manager allowed to register new asset allocations
-    constructor(address poolManagerAddress, address accountManagerAddress)
-        public
-    {
-        require(poolManagerAddress != address(0), "INVALID_MANAGER");
-        require(accountManagerAddress != address(0), "INVALID_MANAGER");
-        setPoolManagerAddress(poolManagerAddress);
-        setAccountManagerAddress(accountManagerAddress);
-    }
-
-    /// @notice Sets the pool manager address
-    /// @dev only owner can call, 0x0 addresss is disallowed
-    /// @param _manager the new pool manager
-    function setPoolManagerAddress(address _manager) public onlyOwner {
-        require(_manager != address(0), "INVALID_MANAGER");
-        poolManager = _manager;
-        emit PoolManagerChanged(_manager);
-    }
-
-    /// @notice Sets the account manager address
-    /// @dev only owner can call, 0x0 address is disallowed
-    /// @param _manager the new account manager
-    function setAccountManagerAddress(address _manager) public onlyOwner {
-        require(_manager != address(0), "INVALID_MANAGER");
-        accountManager = _manager;
-        emit AccountManagerChanged(_manager);
+    /// @param _addressRegistry the address registry to initialize with
+    constructor(address _addressRegistry) public {
+        _setAddressRegistry(_addressRegistry);
     }
 
     /// @dev Reverts if non-permissed account calls.
@@ -69,8 +46,8 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
     modifier onlyPermissioned() {
         require(
             msg.sender == owner() ||
-                msg.sender == poolManager ||
-                msg.sender == accountManager,
+                msg.sender == addressRegistry.poolManagerAddress() ||
+                msg.sender == addressRegistry.accountManagerAddress(),
             "PERMISSIONED_ONLY"
         );
         _;
@@ -247,5 +224,19 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
                 revert("STATIC_CALL_FAILED");
             }
         }
+    }
+
+    /**
+     * @notice Sets the address registry
+     * @dev only callable by owner
+     * @param _addressRegistry the address of the registry
+     */
+    function setAddressRegistry(address _addressRegistry) public onlyOwner {
+        _setAddressRegistry(_addressRegistry);
+    }
+
+    function _setAddressRegistry(address _addressRegistry) internal {
+        require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
+        addressRegistry = AddressRegistryV2(_addressRegistry);
     }
 }
