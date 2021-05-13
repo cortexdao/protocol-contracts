@@ -533,5 +533,25 @@ describe.only("Contract: MetaPoolToken", () => {
       await ethers.provider.send("evm_mine");
       await expect(mApt.getTVL()).to.be.revertedWith("CHAINLINK_STALE_DATA");
     });
+
+    it("Revert when calling `getTVL` and it's locked", async () => {
+      const lockPeriod = 10;
+      await mApt.lockTVL(lockPeriod);
+      await expect(mApt.getTVL()).to.be.revertedWith("TVL_LOCKED");
+    });
+
+    it("Call `getTVL` succeeds after lock period", async () => {
+      const updatedAt = (await ethers.provider.getBlock()).timestamp;
+      await tvlAggMock.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
+      const lockPeriod = 2;
+      // set tvlBlockEnd to 2 blocks ahead
+      await mApt.lockTVL(lockPeriod);
+
+      await timeMachine.advanceBlock();
+      await timeMachine.advanceBlock();
+      await expect(mApt.getTVL()).to.be.revertedWith("TVL_LOCKED");
+      await timeMachine.advanceBlock();
+      await expect(mApt.getTVL()).to.not.be.reverted;
+    });
   });
 });
