@@ -202,7 +202,7 @@ contract MetaPoolToken is
      * @return "Total Value Locked", the USD value of all APY Finance assets.
      */
     function getTVL() public view virtual returns (uint256) {
-        require(block.number > tvlLockEnd, "TVL_LOCKED");
+        require(block.number >= tvlLockEnd, "TVL_LOCKED");
         // possible revert with "No data present" but this can
         // only happen if there has never been a successful round.
         (, int256 answer, , uint256 updatedAt, ) = tvlAgg.latestRoundData();
