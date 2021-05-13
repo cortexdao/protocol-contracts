@@ -75,9 +75,6 @@ async function main(argv) {
     apyTokenDeployer
   );
 
-  let gasPrice = await getGasPrice(argv.gasPrice);
-  console.log("");
-
   if (argv.dryRun) {
     console.log("");
     console.log("Doing a dry run ...");
@@ -97,6 +94,7 @@ async function main(argv) {
     gasEstimate = gasEstimate.add(
       await token.estimateGas.transfer(UNISWAP_STAKING_ADDRESS, amount)
     );
+    const gasPrice = await getGasPrice(argv.gasPrice);
     const ethCost = gasEstimate.mul(gasPrice).toString() / 1e18;
     console.log("Estimated ETH cost:", ethCost.toString());
 
@@ -106,12 +104,19 @@ async function main(argv) {
     console.log("Current ETH balance for token deployer:", balance.toString());
     console.log("");
   } else if (argv.fund) {
+    let gasPrice = await getGasPrice(argv.gasPrice);
+    console.log("");
+
     const bTx = await token.transfer(BALANCER_STAKING_ADDRESS, amount, {
       gasPrice: gasPrice,
     });
     console.log("Etherscan:", `https://etherscan.io/tx/${bTx.hash}`);
     await bTx.wait();
     console.log(`Transferred ${amount} tokens to ${BALANCER_STAKING_ADDRESS}`);
+
+    // retrieve gas price again, in case it has moved
+    gasPrice = await getGasPrice(argv.gasPrice);
+    console.log("");
 
     const uTx = await token.transfer(UNISWAP_STAKING_ADDRESS, amount, {
       gasPrice: gasPrice,
@@ -129,16 +134,12 @@ async function main(argv) {
     await ethers.getContractAt(UNIPOOL_ABI, UNISWAP_STAKING_ADDRESS)
   ).connect(stakingDeployer);
 
-  // retrieve gas price again, in case it has moved
-  gasPrice = await getGasPrice(argv.gasPrice);
-  console.log("");
-
   if (argv.dryRun) {
     let gasEstimate = await balancerpool.estimateGas.notifyRewardAmount(amount);
     gasEstimate = gasEstimate.add(
       await unipool.estimateGas.notifyRewardAmount(amount)
     );
-
+    const gasPrice = await getGasPrice(argv.gasPrice);
     const ethCost = gasEstimate.mul(gasPrice).toString() / 1e18;
     console.log("Estimated ETH cost:", ethCost.toString());
 
@@ -162,12 +163,20 @@ async function main(argv) {
     console.log("Uniswap period finish:", uniFinishDate.toUTCString());
     console.log("Uniswap period finish:", uniFinishDate.toLocaleString());
   } else if (argv.update) {
+    // retrieve gas price again, in case it has moved
+    let gasPrice = await getGasPrice(argv.gasPrice);
+    console.log("");
+
     const bNotifyTx = await balancerpool.notifyRewardAmount(amount, {
       gasPrice: gasPrice,
     });
     console.log("Etherscan:", `https://etherscan.io/tx/${bNotifyTx.hash}`);
     await bNotifyTx.wait();
     console.log("Called `notifyRewardAmount` on Balancerpool.");
+
+    // retrieve gas price again, in case it has moved
+    gasPrice = await getGasPrice(argv.gasPrice);
+    console.log("");
 
     const uNotifyTx = await unipool.notifyRewardAmount(amount, {
       gasPrice: gasPrice,
