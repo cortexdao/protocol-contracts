@@ -18,7 +18,7 @@ const usdc = (amount) => tokenAmountToBigNumber(amount, "6");
 const dai = (amount) => tokenAmountToBigNumber(amount, "18");
 const ether = (amount) => tokenAmountToBigNumber(amount, "18");
 
-describe("Contract: MetaPoolToken", () => {
+describe.only("Contract: MetaPoolToken", () => {
   // signers
   let deployer;
   let manager;
@@ -77,7 +77,7 @@ describe("Contract: MetaPoolToken", () => {
     mApt = await MetaPoolToken.attach(proxy.address);
   });
 
-  describe("Constructor", async () => {
+  describe("Constructor", () => {
     it("Revert when logic is not a contract address", async () => {
       await expect(
         MetaPoolTokenProxy.connect(deployer).deploy(
@@ -126,7 +126,7 @@ describe("Contract: MetaPoolToken", () => {
     });
   });
 
-  describe("Defaults", async () => {
+  describe("Defaults", () => {
     it("Owner is set to deployer", async () => {
       expect(await mApt.owner()).to.equal(deployer.address);
     });
@@ -160,9 +160,13 @@ describe("Contract: MetaPoolToken", () => {
     it("aggStalePeriod set to correct value", async () => {
       expect(await mApt.aggStalePeriod()).to.equal(aggStalePeriod);
     });
+
+    it("TVL lock period is zero", async () => {
+      expect(await mApt.tvlLockEnd()).to.equal(0);
+    });
   });
 
-  describe("Set admin address", async () => {
+  describe("Set admin address", () => {
     it("Owner can set to valid address", async () => {
       await mApt.connect(deployer).setAdminAddress(randomUser.address);
       expect(await mApt.proxyAdmin()).to.equal(randomUser.address);
@@ -181,7 +185,7 @@ describe("Contract: MetaPoolToken", () => {
     });
   });
 
-  describe("Set TVL aggregator address", async () => {
+  describe("Set TVL aggregator address", () => {
     it("Owner can set to valid address", async () => {
       await mApt.connect(deployer).setTvlAggregator(DUMMY_ADDRESS);
       assert.equal(await mApt.tvlAgg(), DUMMY_ADDRESS);
@@ -200,7 +204,7 @@ describe("Contract: MetaPoolToken", () => {
     });
   });
 
-  describe("Set aggregator staleness period", async () => {
+  describe("Set aggregator staleness period", () => {
     it("Owner can set to valid value", async () => {
       const newPeriod = 360;
       expect(await mApt.aggStalePeriod()).to.not.equal(newPeriod);
@@ -221,7 +225,25 @@ describe("Contract: MetaPoolToken", () => {
     });
   });
 
-  describe("Minting and burning", async () => {
+  describe("Lock TVL for given period", () => {
+    it("Owner can set", async () => {
+      const lockPeriod = 100;
+      await mApt.connect(deployer).lockTVL(lockPeriod);
+
+      const currentBlock = (await ethers.provider.getBlock()).number;
+      const expectedLockEnd = currentBlock + lockPeriod;
+      expect(await mApt.tvlLockEnd()).to.equal(expectedLockEnd);
+    });
+
+    it("Revert when non-owner attempts to lock", async () => {
+      const lockPeriod = 100;
+      await expect(
+        mApt.connect(randomUser).lockTVL(lockPeriod)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
+
+  describe("Minting and burning", () => {
     before(async () => {
       await mApt.connect(deployer).setManagerAddress(manager.address);
     });
@@ -285,7 +307,7 @@ describe("Contract: MetaPoolToken", () => {
     });
   });
 
-  describe("getDeployedValue", async () => {
+  describe("getDeployedValue", () => {
     before(async () => {
       await mApt.connect(deployer).setManagerAddress(manager.address);
     });
@@ -317,7 +339,7 @@ describe("Contract: MetaPoolToken", () => {
     });
   });
 
-  describe("Calculations", async () => {
+  describe("Calculations", () => {
     before(async () => {
       await mApt.connect(deployer).setManagerAddress(manager.address);
     });
@@ -510,6 +532,37 @@ describe("Contract: MetaPoolToken", () => {
       await ethers.provider.send("evm_increaseTime", [aggStalePeriod / 2]);
       await ethers.provider.send("evm_mine");
       await expect(mApt.getTVL()).to.be.revertedWith("CHAINLINK_STALE_DATA");
+    });
+
+    it("Revert when calling `getTVL` and it's locked", async () => {
+      const lockPeriod = 10;
+      await mApt.lockTVL(lockPeriod);
+      await expect(mApt.getTVL()).to.be.revertedWith("TVL_LOCKED");
+    });
+
+    it("Call `getTVL` succeeds after lock period", async () => {
+      const updatedAt = (await ethers.provider.getBlock()).timestamp;
+      await tvlAggMock.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
+      const lockPeriod = 2;
+      // set tvlBlockEnd to 2 blocks ahead
+      await mApt.lockTVL(lockPeriod);
+
+      await timeMachine.advanceBlock();
+      await expect(mApt.getTVL()).to.be.revertedWith("TVL_LOCKED");
+      await timeMachine.advanceBlock();
+      await expect(mApt.getTVL()).to.not.be.reverted;
+    });
+
+    it("Call `getTVL` succeeds after unlock", async () => {
+      const updatedAt = (await ethers.provider.getBlock()).timestamp;
+      await tvlAggMock.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
+      const lockPeriod = 100;
+      await mApt.lockTVL(lockPeriod);
+
+      await expect(mApt.getTVL()).to.be.revertedWith("TVL_LOCKED");
+
+      await mApt.lockTVL(0);
+      await expect(mApt.getTVL()).to.not.be.reverted;
     });
   });
 });
