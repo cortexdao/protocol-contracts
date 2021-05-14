@@ -215,4 +215,8 @@ contract AddressRegistryV2 is
     function usdtPoolAddress() public view returns (address) {
         return getAddress("usdtPool");
     }
+
+    function mAPTAddress() public view returns (address) {
+        return getAddress("mAPT");
+    }
 }

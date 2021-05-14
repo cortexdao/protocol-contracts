@@ -53,7 +53,7 @@ describe("Contract: TVLManager", () => {
     [deployer, accountContract] = await ethers.getSigners();
 
     TVLManager = await ethers.getContractFactory("TVLManager");
-    tvlManager = await TVLManager.deploy(FAKE_ADDRESS, ANOTHER_FAKE_ADDRESS);
+    tvlManager = await TVLManager.deploy(FAKE_ADDRESS);
     await tvlManager.deployed();
   });
 
@@ -160,7 +160,7 @@ describe("Contract: TVLManager", () => {
       );
       await gauge
         .connect(accountContract)
-        ["deposit(uint256)"](strategyLpBalance);
+      ["deposit(uint256)"](strategyLpBalance);
       expect(await lpToken.balanceOf(accountContract.address)).to.equal(0);
       const gaugeLpBalance = await gauge.balanceOf(accountContract.address);
       expect(gaugeLpBalance).to.be.gt(0);
