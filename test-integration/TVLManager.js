@@ -4,12 +4,11 @@ const { expect } = require("chai");
 const timeMachine = require("ganache-time-traveler");
 const {
   console,
+  impersonateAccount,
   tokenAmountToBigNumber,
   getStablecoinAddress,
   acquireToken,
   MAX_UINT256,
-  FAKE_ADDRESS,
-  ANOTHER_FAKE_ADDRESS,
 } = require("../utils/helpers");
 const { STABLECOIN_POOLS } = require("../utils/constants");
 
@@ -25,6 +24,9 @@ console.debugging = false;
 const STABLE_SWAP_ADDRESS = "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7";
 const LP_TOKEN_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
 const LIQUIDITY_GAUGE_ADDRESS = "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A";
+const APY_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
+const APY_REGISTRY_ADMIN = "0xFbF6c940c1811C3ebc135A9c4e39E042d02435d1";
+const ADDRESS_REGISTRY_DEPLOYER = "0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3";
 
 describe("Contract: TVLManager", () => {
   /* signers */
@@ -52,8 +54,40 @@ describe("Contract: TVLManager", () => {
   before(async () => {
     [deployer, accountContract] = await ethers.getSigners();
 
+    await deployer.sendTransaction({
+      to: ADDRESS_REGISTRY_DEPLOYER,
+      value: ethers.utils.parseEther("10").toHexString(),
+    });
+    const addressRegistryDeployer = await impersonateAccount(
+      ADDRESS_REGISTRY_DEPLOYER
+    );
+
+    /*************************************/
+    /***** Upgrade Address Registry ******/
+    /*************************************/
+    const AddressRegistryV2 = await ethers.getContractFactory(
+      "AddressRegistryV2"
+    );
+    const newAddressRegistryLogic = await AddressRegistryV2.deploy();
+    const registryAdmin = await ethers.getContractAt(
+      "ProxyAdmin",
+      APY_REGISTRY_ADMIN,
+      addressRegistryDeployer
+    );
+
+    await registryAdmin.upgrade(
+      APY_ADDRESS_REGISTRY,
+      newAddressRegistryLogic.address
+    );
+
+    const addressRegistry = await ethers.getContractAt(
+      "AddressRegistryV2",
+      APY_ADDRESS_REGISTRY,
+      addressRegistryDeployer
+    );
+
     TVLManager = await ethers.getContractFactory("TVLManager");
-    tvlManager = await TVLManager.deploy(FAKE_ADDRESS);
+    tvlManager = await TVLManager.deploy(addressRegistry.address);
     await tvlManager.deployed();
   });
 
@@ -160,7 +194,7 @@ describe("Contract: TVLManager", () => {
       );
       await gauge
         .connect(accountContract)
-      ["deposit(uint256)"](strategyLpBalance);
+        ["deposit(uint256)"](strategyLpBalance);
       expect(await lpToken.balanceOf(accountContract.address)).to.equal(0);
       const gaugeLpBalance = await gauge.balanceOf(accountContract.address);
       expect(gaugeLpBalance).to.be.gt(0);
