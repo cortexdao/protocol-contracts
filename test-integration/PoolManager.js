@@ -25,6 +25,7 @@ const USDT_TOKEN = getStablecoinAddress("USDT", "MAINNET");
 const POOL_DEPLOYER = "0x6EAF0ab3455787bA10089800dB91F11fDf6370BE";
 const ADDRESS_REGISTRY_DEPLOYER = "0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3";
 const APY_POOL_ADMIN = "0x7965283631253DfCb71Db63a60C656DEDF76234f";
+const APY_REGISTRY_ADMIN = "0xFbF6c940c1811C3ebc135A9c4e39E042d02435d1";
 const APY_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
 const APY_DAI_POOL = "0x75CE0E501E2E6776FCAAA514F394A88A772A8970";
 const APY_USDC_POOL = "0xe18b0365D5D09F394f84eE56ed29DD2d8D6Fba5f";
@@ -38,9 +39,9 @@ console.debugging = false;
 
 describe("Contract: PoolManager", () => {
   // to-be-deployed contracts
-  let manager;
+  let poolManager;
   let tvlManager;
-  let mApt;
+  let mAPT;
 
   // signers
   let deployer;
@@ -108,6 +109,25 @@ describe("Contract: PoolManager", () => {
     await poolAdmin.upgrade(APY_USDC_POOL, newPoolLogic.address);
     await poolAdmin.upgrade(APY_USDT_POOL, newPoolLogic.address);
 
+    /*************************************/
+    /***** Upgrade Address Registry ******/
+    /*************************************/
+    const AddressRegistryV2 = await ethers.getContractFactory("AddressRegistryV2");
+    const newAddressRegistryLogic = await AddressRegistryV2.deploy();
+    const registryAdmin = await ethers.getContractAt(
+      "ProxyAdmin",
+      APY_REGISTRY_ADMIN,
+      addressRegistryDeployer
+    );
+
+    await registryAdmin.upgrade(APY_ADDRESS_REGISTRY, newAddressRegistryLogic.address);
+
+    const addressRegistry = await ethers.getContractAt(
+      "AddressRegistryV2",
+      APY_ADDRESS_REGISTRY,
+      addressRegistryDeployer
+    );
+
     /***********************/
     /***** deploy mAPT *****/
     /***********************/
@@ -142,15 +162,16 @@ describe("Contract: PoolManager", () => {
     await logic.deployed();
 
     const aggStalePeriod = 14400;
-    const proxy = await MetaPoolTokenProxy.deploy(
+    const mAPTProxy = await MetaPoolTokenProxy.deploy(
       logic.address,
       proxyAdmin.address,
       tvlAgg.address,
       aggStalePeriod
     );
-    await proxy.deployed();
+    await mAPTProxy.deployed();
 
-    mApt = await MetaPoolToken.attach(proxy.address);
+    mAPT = await MetaPoolToken.attach(mAPTProxy.address);
+    await addressRegistry.registerAddress(ethers.utils.formatBytes32String("mAPT"), mAPT.address)
 
     /***********************************/
     /***** deploy manager  *************/
@@ -167,13 +188,14 @@ describe("Contract: PoolManager", () => {
     const managerProxy = await PoolManagerProxy.deploy(
       managerLogic.address,
       managerAdmin.address,
-      mApt.address,
+      mAPT.address,
       APY_ADDRESS_REGISTRY
     );
     await managerProxy.deployed();
-    manager = await PoolManager.attach(managerProxy.address);
+    poolManager = await PoolManager.attach(managerProxy.address);
 
-    await mApt.setManagerAddress(manager.address);
+    await addressRegistry.registerAddress(ethers.utils.formatBytes32String("poolManager"), poolManager.address)
+    await mAPT.setManagerAddress(poolManager.address);
 
     // approve manager to withdraw from pools
     daiPool = await ethers.getContractAt(
@@ -191,9 +213,9 @@ describe("Contract: PoolManager", () => {
       APY_USDT_POOL,
       poolDeployer
     );
-    await daiPool.infiniteApprove(manager.address);
-    await usdcPool.infiniteApprove(manager.address);
-    await usdtPool.infiniteApprove(manager.address);
+    await daiPool.infiniteApprove(poolManager.address);
+    await usdcPool.infiniteApprove(poolManager.address);
+    await usdtPool.infiniteApprove(poolManager.address);
 
     // setup mock account factory
     const accountFactoryMock = await deployMockContract(
@@ -204,19 +226,15 @@ describe("Contract: PoolManager", () => {
     await accountFactoryMock.mock.getAccount
       .withArgs(accountId)
       .returns(fundedAccount.address);
-    await manager.setAccountFactory(accountFactoryMock.address);
+    await poolManager.setAccountFactory(accountFactoryMock.address);
 
     /*******************************************/
     /***** deploy asset allocation registry ****/
     /*******************************************/
     const TVLManager = await ethers.getContractFactory("TVLManager");
-    tvlManager = await TVLManager.deploy(FAKE_ADDRESS);
+    tvlManager = await TVLManager.deploy(addressRegistry.address);
     await tvlManager.deployed();
-    const addressRegistry = await ethers.getContractAt(
-      "AddressRegistry",
-      APY_ADDRESS_REGISTRY,
-      addressRegistryDeployer
-    );
+
     await addressRegistry.registerAddress(
       bytes32("tvlManager"),
       tvlManager.address
@@ -257,7 +275,7 @@ describe("Contract: PoolManager", () => {
     const underlyer = await pool.underlyer();
     const erc20 = await ethers.getContractAt(IDetailedERC20.abi, underlyer);
     const decimals = await erc20.decimals();
-    const mintAmount = await mApt.calculateMintAmount(
+    const mintAmount = await mAPT.calculateMintAmount(
       underlyerAmount,
       tokenPrice,
       decimals
@@ -277,33 +295,33 @@ describe("Contract: PoolManager", () => {
 
     /** needed for the manager to be able to mint mAPT in test setups */
     before("Setup manager for sending transactions", async () => {
-      managerSigner = await impersonateAccount(manager);
+      managerSigner = await impersonateAccount(poolManager);
       await deployer.sendTransaction({
-        to: manager.address,
+        to: poolManager.address,
         value: ethers.utils.parseEther("10").toHexString(),
       });
     });
 
     it("Non-owner cannot call", async () => {
       await expect(
-        manager.connect(randomUser).fundAccount(accountId, [])
+        poolManager.connect(randomUser).fundAccount(accountId, [])
       ).to.be.revertedWith("revert Ownable: caller is not the owner");
     });
 
     it("Owner can call", async () => {
-      await expect(manager.connect(deployer).fundAccount(accountId, [])).to.not
+      await expect(poolManager.connect(deployer).fundAccount(accountId, [])).to.not
         .be.reverted;
     });
 
     it("Revert on invalid account", async () => {
       await expect(
-        manager.connect(deployer).fundAccount(bytes32("invalidAccount"), [])
+        poolManager.connect(deployer).fundAccount(bytes32("invalidAccount"), [])
       ).to.be.revertedWith("INVALID_ACCOUNT");
     });
 
     it("Revert on unregistered pool", async () => {
       await expect(
-        manager.fundAccount(accountId, [
+        poolManager.fundAccount(accountId, [
           { poolId: bytes32("daiPool"), amount: 10 },
           { poolId: bytes32("invalidPoolId"), amount: 10 },
           { poolId: bytes32("usdtPool"), amount: 10 },
@@ -313,7 +331,7 @@ describe("Contract: PoolManager", () => {
 
     it("Revert on zero amount", async () => {
       await expect(
-        manager
+        poolManager
           .connect(deployer)
           .fundAccount(accountId, [{ poolId: bytes32("usdcPool"), amount: 0 }])
       ).to.be.revertedWith("INVALID_AMOUNT");
@@ -330,7 +348,7 @@ describe("Contract: PoolManager", () => {
       const usdcPoolBalance = await usdcToken.balanceOf(usdcPool.address);
       const usdtPoolBalance = await usdtToken.balanceOf(usdtPool.address);
 
-      await manager.fundAccount(accountId, [
+      await poolManager.fundAccount(accountId, [
         { poolId: bytes32("daiPool"), amount: daiAmount },
         { poolId: bytes32("usdcPool"), amount: usdcAmount },
         { poolId: bytes32("usdtPool"), amount: usdtAmount },
@@ -419,11 +437,11 @@ describe("Contract: PoolManager", () => {
 
     it("Mints correct mAPT amounts (start with non-zero supply)", async () => {
       // pre-conditions
-      expect(await mApt.balanceOf(daiPool.address)).to.equal("0");
-      expect(await mApt.balanceOf(usdcToken.address)).to.equal("0");
-      expect(await mApt.balanceOf(usdtToken.address)).to.equal("0");
+      expect(await mAPT.balanceOf(daiPool.address)).to.equal("0");
+      expect(await mAPT.balanceOf(usdcToken.address)).to.equal("0");
+      expect(await mAPT.balanceOf(usdtToken.address)).to.equal("0");
 
-      await mApt
+      await mAPT
         .connect(managerSigner)
         .mint(deployer.address, tokenAmountToBigNumber("100"));
 
@@ -432,41 +450,41 @@ describe("Contract: PoolManager", () => {
       const usdcPoolMintAmount = await getMintAmount(usdcPool, usdcAmount);
       const usdtPoolMintAmount = await getMintAmount(usdtPool, usdtAmount);
 
-      await manager.fundAccount(accountId, [
+      await poolManager.fundAccount(accountId, [
         { poolId: bytes32("daiPool"), amount: daiAmount },
         { poolId: bytes32("usdcPool"), amount: usdcAmount },
         { poolId: bytes32("usdtPool"), amount: usdtAmount },
       ]);
 
-      expect(await mApt.balanceOf(daiPool.address)).to.equal(daiPoolMintAmount);
-      expect(await mApt.balanceOf(usdcPool.address)).to.equal(
+      expect(await mAPT.balanceOf(daiPool.address)).to.equal(daiPoolMintAmount);
+      expect(await mAPT.balanceOf(usdcPool.address)).to.equal(
         usdcPoolMintAmount
       );
-      expect(await mApt.balanceOf(usdtPool.address)).to.equal(
+      expect(await mAPT.balanceOf(usdtPool.address)).to.equal(
         usdtPoolMintAmount
       );
     });
 
     it("Mints correct mAPT amounts (start with zero supply)", async () => {
       // pre-conditions
-      expect(await mApt.totalSupply()).to.equal(0);
+      expect(await mAPT.totalSupply()).to.equal(0);
 
       // start the test
       const daiPoolMintAmount = await getMintAmount(daiPool, daiAmount);
       const usdcPoolMintAmount = await getMintAmount(usdcPool, usdcAmount);
       const usdtPoolMintAmount = await getMintAmount(usdtPool, usdtAmount);
 
-      await manager.fundAccount(accountId, [
+      await poolManager.fundAccount(accountId, [
         { poolId: bytes32("daiPool"), amount: daiAmount },
         { poolId: bytes32("usdcPool"), amount: usdcAmount },
         { poolId: bytes32("usdtPool"), amount: usdtAmount },
       ]);
 
-      expect(await mApt.balanceOf(daiPool.address)).to.equal(daiPoolMintAmount);
-      expect(await mApt.balanceOf(usdcPool.address)).to.equal(
+      expect(await mAPT.balanceOf(daiPool.address)).to.equal(daiPoolMintAmount);
+      expect(await mAPT.balanceOf(usdcPool.address)).to.equal(
         usdcPoolMintAmount
       );
-      expect(await mApt.balanceOf(usdtPool.address)).to.equal(
+      expect(await mAPT.balanceOf(usdtPool.address)).to.equal(
         usdtPoolMintAmount
       );
     });
@@ -484,41 +502,41 @@ describe("Contract: PoolManager", () => {
 
     /** manager needs to be approved to transfer tokens from funded account */
     before("Approve manager for transfer from funded account", async () => {
-      await daiToken.connect(fundedAccount).approve(manager.address, daiAmount);
+      await daiToken.connect(fundedAccount).approve(poolManager.address, daiAmount);
       await usdcToken
         .connect(fundedAccount)
-        .approve(manager.address, usdcAmount);
+        .approve(poolManager.address, usdcAmount);
       await usdtToken
         .connect(fundedAccount)
-        .approve(manager.address, usdtAmount);
+        .approve(poolManager.address, usdtAmount);
     });
 
     /** needed for the manager to be able to mint mAPT in test setups */
     before("Setup manager for sending transactions", async () => {
-      await impersonateAccount(manager);
+      await impersonateAccount(poolManager);
       await deployer.sendTransaction({
-        to: manager.address,
+        to: poolManager.address,
         value: ethers.utils.parseEther("10").toHexString(),
       });
-      managerSigner = await ethers.provider.getSigner(manager.address);
+      managerSigner = await ethers.provider.getSigner(poolManager.address);
     });
 
     describe("withdrawFromAccount", () => {
       it("Non-owner cannot call", async () => {
         await expect(
-          manager.connect(randomUser).withdrawFromAccount(accountId, [])
+          poolManager.connect(randomUser).withdrawFromAccount(accountId, [])
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
       });
 
       it("Owner can call", async () => {
         await expect(
-          manager.connect(deployer).withdrawFromAccount(accountId, [])
+          poolManager.connect(deployer).withdrawFromAccount(accountId, [])
         ).to.not.be.reverted;
       });
 
       it("Revert on invalid account", async () => {
         await expect(
-          manager
+          poolManager
             .connect(deployer)
             .withdrawFromAccount(bytes32("invalidAccount"), [])
         ).to.be.revertedWith("INVALID_ACCOUNT");
@@ -526,7 +544,7 @@ describe("Contract: PoolManager", () => {
 
       it("Revert on unregistered pool", async () => {
         await expect(
-          manager.withdrawFromAccount(accountId, [
+          poolManager.withdrawFromAccount(accountId, [
             { poolId: bytes32("invalidPool"), amount: 10 },
           ])
         ).to.be.revertedWith("Missing address");
@@ -534,7 +552,7 @@ describe("Contract: PoolManager", () => {
 
       it("Revert on zero amount", async () => {
         await expect(
-          manager
+          poolManager
             .connect(deployer)
             .withdrawFromAccount(accountId, [
               { poolId: bytes32("usdcPool"), amount: 0 },
@@ -546,10 +564,10 @@ describe("Contract: PoolManager", () => {
         const amount = "10";
         await daiToken.connect(deployer).transfer(fundedAccountAddress, amount);
 
-        await daiToken.connect(fundedAccount).approve(manager.address, 0);
+        await daiToken.connect(fundedAccount).approve(poolManager.address, 0);
 
         await expect(
-          manager.withdrawFromAccount(accountId, [
+          poolManager.withdrawFromAccount(accountId, [
             { poolId: bytes32("daiPool"), amount: amount },
           ])
         ).to.be.revertedWith("INSUFFICIENT_ALLOWANCE");
@@ -562,13 +580,13 @@ describe("Contract: PoolManager", () => {
 
         // now mint so withdraw can burn tokens
         const mintAmount = await getMintAmount(daiPool, amount);
-        await mApt.connect(managerSigner).mint(daiPool.address, mintAmount);
+        await mAPT.connect(managerSigner).mint(daiPool.address, mintAmount);
 
         // adjust the TVL appropriately, as there is no Chainlink to update it
         const tvl = await daiPool.getValueFromUnderlyerAmount(amount);
-        await mApt.setTVL(tvl);
+        await mAPT.setTVL(tvl);
 
-        await manager.withdrawFromAccount(accountId, [
+        await poolManager.withdrawFromAccount(accountId, [
           { poolId: bytes32("daiPool"), amount: amount },
         ]);
 
@@ -576,21 +594,21 @@ describe("Contract: PoolManager", () => {
       });
 
       it("Transfers and mints correctly for multiple pools (start from zero supply)", async () => {
-        expect(await mApt.totalSupply()).to.equal(0);
-        expect(await mApt.getTVL()).to.equal(0);
+        expect(await mAPT.totalSupply()).to.equal(0);
+        expect(await mAPT.getTVL()).to.equal(0);
 
         // now mint for each pool so withdraw can burn tokens
         const daiPoolMintAmount = await getMintAmount(daiPool, daiAmount);
         const usdcPoolMintAmount = await getMintAmount(usdcPool, usdcAmount);
         const usdtPoolMintAmount = await getMintAmount(usdtPool, usdtAmount);
 
-        await mApt
+        await mAPT
           .connect(managerSigner)
           .mint(daiPool.address, daiPoolMintAmount);
-        await mApt
+        await mAPT
           .connect(managerSigner)
           .mint(usdcPool.address, usdcPoolMintAmount);
-        await mApt
+        await mAPT
           .connect(managerSigner)
           .mint(usdtPool.address, usdtPoolMintAmount);
 
@@ -613,7 +631,7 @@ describe("Contract: PoolManager", () => {
           usdtAmount
         );
         const newTvl = daiValue.add(usdcValue).add(usdtValue);
-        await mApt.setTVL(newTvl);
+        await mAPT.setTVL(newTvl);
 
         const daiWithdrawAmount = daiAmount.div(2);
         const daiPoolBurnAmount = await getMintAmount(
@@ -631,7 +649,7 @@ describe("Contract: PoolManager", () => {
           usdtWithdrawAmount
         );
 
-        await manager.withdrawFromAccount(accountId, [
+        await poolManager.withdrawFromAccount(accountId, [
           { poolId: bytes32("daiPool"), amount: daiWithdrawAmount },
           {
             poolId: bytes32("usdcPool"),
@@ -646,38 +664,38 @@ describe("Contract: PoolManager", () => {
         const allowedDeviation = 2;
 
         let expectedBalance = daiPoolMintAmount.sub(daiPoolBurnAmount);
-        let balance = await mApt.balanceOf(daiPool.address);
+        let balance = await mAPT.balanceOf(daiPool.address);
         expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
 
         expectedBalance = usdcPoolMintAmount.sub(usdcPoolBurnAmount);
-        balance = await mApt.balanceOf(usdcPool.address);
+        balance = await mAPT.balanceOf(usdcPool.address);
         expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
 
         expectedBalance = usdtPoolMintAmount.sub(usdtPoolBurnAmount);
-        balance = await mApt.balanceOf(usdtPool.address);
+        balance = await mAPT.balanceOf(usdtPool.address);
         expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
       });
 
       it("Transfers and mints correctly for multiple pools (start from non-zero supply)", async () => {
         // make mAPT total supply non-zero by minting to deployer
-        await mApt
+        await mAPT
           .connect(managerSigner)
           .mint(deployer.address, tokenAmountToBigNumber("1000000"));
         // don't forget to update the TVL!
         const tvl = tokenAmountToBigNumber("85000");
-        await mApt.setTVL(tvl);
+        await mAPT.setTVL(tvl);
 
         // now mint for each pool so withdraw can burn tokens
         const daiPoolMintAmount = await getMintAmount(daiPool, daiAmount);
         const usdcPoolMintAmount = await getMintAmount(usdcPool, usdcAmount);
         const usdtPoolMintAmount = await getMintAmount(usdtPool, usdtAmount);
-        await mApt
+        await mAPT
           .connect(managerSigner)
           .mint(daiPool.address, daiPoolMintAmount);
-        await mApt
+        await mAPT
           .connect(managerSigner)
           .mint(usdcPool.address, usdcPoolMintAmount);
-        await mApt
+        await mAPT
           .connect(managerSigner)
           .mint(usdtPool.address, usdtPoolMintAmount);
 
@@ -700,7 +718,7 @@ describe("Contract: PoolManager", () => {
           usdtAmount
         );
         const newTvl = tvl.add(daiValue).add(usdcValue).add(usdtValue);
-        await mApt.setTVL(newTvl);
+        await mAPT.setTVL(newTvl);
 
         const daiWithdrawAmount = daiAmount.div(2);
         const daiPoolBurnAmount = await getMintAmount(
@@ -718,7 +736,7 @@ describe("Contract: PoolManager", () => {
           usdtWithdrawAmount
         );
 
-        await manager.withdrawFromAccount(accountId, [
+        await poolManager.withdrawFromAccount(accountId, [
           { poolId: bytes32("daiPool"), amount: daiWithdrawAmount },
           {
             poolId: bytes32("usdcPool"),
@@ -733,15 +751,15 @@ describe("Contract: PoolManager", () => {
         const allowedDeviation = 2;
 
         let expectedBalance = daiPoolMintAmount.sub(daiPoolBurnAmount);
-        let balance = await mApt.balanceOf(daiPool.address);
+        let balance = await mAPT.balanceOf(daiPool.address);
         expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
 
         expectedBalance = usdcPoolMintAmount.sub(usdcPoolBurnAmount);
-        balance = await mApt.balanceOf(usdcPool.address);
+        balance = await mAPT.balanceOf(usdcPool.address);
         expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
 
         expectedBalance = usdtPoolMintAmount.sub(usdtPoolBurnAmount);
-        balance = await mApt.balanceOf(usdtPool.address);
+        balance = await mAPT.balanceOf(usdtPool.address);
         expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
       });
     });

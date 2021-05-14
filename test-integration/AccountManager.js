@@ -159,6 +159,8 @@ describe("Contract: AccountManager", () => {
       ADDRESS_REGISTRY_DEPLOYER
     );
 
+    const ProxyAdminFactory = await ethers.getContractFactory("ProxyAdmin");
+
     /***********************************/
     /* upgrade pools to V2 */
     /***********************************/
@@ -193,6 +195,35 @@ describe("Contract: AccountManager", () => {
       addressRegistryDeployer
     );
 
+    /*************************************/
+    /***** Deploy mAPT ******/
+    /*************************************/
+
+    const tvlAgg = await deployMockContract(deployer, []);
+
+    const MetaPoolTokenProxy = await ethers.getContractFactory(
+      "MetaPoolTokenProxy"
+    );
+    // Use the *test* contract so we can set the TVL
+    const MetaPoolToken = await ethers.getContractFactory("TestMetaPoolToken");
+    const proxyAdmin = await ProxyAdminFactory.deploy();
+    await proxyAdmin.deployed();
+
+    const logic = await MetaPoolToken.deploy();
+    await logic.deployed();
+
+    const aggStalePeriod = 14400;
+    const mAPTProxy = await MetaPoolTokenProxy.deploy(
+      logic.address,
+      proxyAdmin.address,
+      tvlAgg.address,
+      aggStalePeriod
+    );
+    await mAPTProxy.deployed();
+
+    const mAPT = await MetaPoolToken.attach(mAPTProxy.address);
+    await addressRegistry.registerAddress(ethers.utils.formatBytes32String("mAPT"), mAPT.address)
+
     /***********************************/
     /***** deploy manager  *************/
     /***********************************/
@@ -201,8 +232,7 @@ describe("Contract: AccountManager", () => {
       "AccountManagerProxy"
     );
 
-    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    const managerAdmin = await ProxyAdmin.connect(deployer).deploy();
+    const managerAdmin = await ProxyAdminFactory.connect(deployer).deploy();
     await managerAdmin.deployed();
     const accountManagerLogic = await AccountManager.deploy();
     await accountManagerLogic.deployed();
@@ -236,37 +266,6 @@ describe("Contract: AccountManager", () => {
     await usdcPool.infiniteApprove(accountManager.address);
     await usdtPool.infiniteApprove(accountManager.address);
 
-
-    /*************************************/
-    /***** Deploy mAPT ******/
-    /*************************************/
-
-    const tvlAgg = await deployMockContract(deployer, []);
-
-    const MetaPoolTokenProxy = await ethers.getContractFactory(
-      "MetaPoolTokenProxy"
-    );
-    // Use the *test* contract so we can set the TVL
-    const MetaPoolToken = await ethers.getContractFactory("TestMetaPoolToken");
-    const proxyAdmin = await ProxyAdmin.deploy();
-    await proxyAdmin.deployed();
-
-    const logic = await MetaPoolToken.deploy();
-    await logic.deployed();
-
-    const aggStalePeriod = 14400;
-    const mAPTProxy = await MetaPoolTokenProxy.deploy(
-      logic.address,
-      proxyAdmin.address,
-      tvlAgg.address,
-      aggStalePeriod
-    );
-    await mAPTProxy.deployed();
-
-    const mAPT = await MetaPoolToken.attach(mAPTProxy.address);
-    await addressRegistry.registerAddress(ethers.utils.formatBytes32String("mAPT"), mAPT.address)
-
-
     /*************************************/
     /***** Deploy Pool Manager ******/
     /*************************************/
@@ -274,7 +273,7 @@ describe("Contract: AccountManager", () => {
     const PoolManager = await ethers.getContractFactory("PoolManager")
     const PoolManagerProxy = await ethers.getContractFactory("PoolManagerProxy")
 
-    const poolManagerAdmin = await ProxyAdmin.connect(deployer).deploy()
+    const poolManagerAdmin = await ProxyAdminFactory.connect(deployer).deploy()
     await poolManagerAdmin.deployed()
     const poolManagerLogic = await PoolManager.deploy()
     await poolManagerLogic.deployed()
