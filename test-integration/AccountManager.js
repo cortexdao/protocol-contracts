@@ -179,7 +179,9 @@ describe("Contract: AccountManager", () => {
     /*************************************/
     /***** Upgrade Address Registry ******/
     /*************************************/
-    const AddressRegistryV2 = await ethers.getContractFactory("AddressRegistryV2");
+    const AddressRegistryV2 = await ethers.getContractFactory(
+      "AddressRegistryV2"
+    );
     const newAddressRegistryLogic = await AddressRegistryV2.deploy();
     const registryAdmin = await ethers.getContractAt(
       "ProxyAdmin",
@@ -187,7 +189,10 @@ describe("Contract: AccountManager", () => {
       addressRegistryDeployer
     );
 
-    await registryAdmin.upgrade(APY_ADDRESS_REGISTRY, newAddressRegistryLogic.address);
+    await registryAdmin.upgrade(
+      APY_ADDRESS_REGISTRY,
+      newAddressRegistryLogic.address
+    );
 
     const addressRegistry = await ethers.getContractAt(
       "AddressRegistryV2",
@@ -222,7 +227,10 @@ describe("Contract: AccountManager", () => {
     await mAPTProxy.deployed();
 
     const mAPT = await MetaPoolToken.attach(mAPTProxy.address);
-    await addressRegistry.registerAddress(ethers.utils.formatBytes32String("mAPT"), mAPT.address)
+    await addressRegistry.registerAddress(
+      ethers.utils.formatBytes32String("mAPT"),
+      mAPT.address
+    );
 
     /***********************************/
     /***** deploy manager  *************/
@@ -244,7 +252,10 @@ describe("Contract: AccountManager", () => {
     await accountManagerProxy.deployed();
     accountManager = await AccountManager.attach(accountManagerProxy.address);
 
-    await addressRegistry.registerAddress(ethers.utils.formatBytes32String("accountManager"), accountManager.address)
+    await addressRegistry.registerAddress(
+      ethers.utils.formatBytes32String("accountManager"),
+      accountManager.address
+    );
 
     // approve manager to withdraw from pools
     daiPool = await ethers.getContractAt(
@@ -267,25 +278,13 @@ describe("Contract: AccountManager", () => {
     await usdtPool.infiniteApprove(accountManager.address);
 
     /*************************************/
-    /***** Deploy Pool Manager ******/
+    /***** Register Pool Manager ******/
     /*************************************/
 
-    const PoolManager = await ethers.getContractFactory("PoolManager")
-    const PoolManagerProxy = await ethers.getContractFactory("PoolManagerProxy")
-
-    const poolManagerAdmin = await ProxyAdminFactory.connect(deployer).deploy()
-    await poolManagerAdmin.deployed()
-    const poolManagerLogic = await PoolManager.deploy()
-    await poolManagerLogic.deployed()
-    const poolManagerProxy = await PoolManagerProxy.deploy(
-      poolManagerLogic.address,
-      poolManagerAdmin.address,
-      mAPT.address,
-      addressRegistry.address
-    )
-    await poolManagerProxy.deployed()
-
-    await addressRegistry.registerAddress(ethers.utils.formatBytes32String("poolManager"), poolManagerProxy.address)
+    await addressRegistry.registerAddress(
+      ethers.utils.formatBytes32String("poolManager"),
+      FAKE_ADDRESS
+    );
 
     /*************************************/
     /***** deploy TVL Manager ************/
@@ -346,7 +345,11 @@ describe("Contract: AccountManager", () => {
     it("Owner can call", async () => {
       const encodedFunction = erc20Interface.encodeFunctionData("symbol()", []);
       await expect(
-        accountManager.execute(accountId, [[daiToken.address, encodedFunction]], [])
+        accountManager.execute(
+          accountId,
+          [[daiToken.address, encodedFunction]],
+          []
+        )
       ).to.not.be.reverted;
     });
 
