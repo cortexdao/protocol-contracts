@@ -48,7 +48,6 @@ describe("Contract: PoolManagerProxy", () => {
     proxy = await PoolManagerProxy.deploy(
       logic.address,
       proxyAdmin.address,
-      mApt.address,
       addressRegistry.address
     );
     await proxy.deployed();

@@ -131,12 +131,6 @@ describe("Contract: MetaPoolToken", () => {
       expect(await mApt.owner()).to.equal(deployer.address);
     });
 
-    it("Revert when ETH is sent", async () => {
-      await expect(
-        deployer.sendTransaction({ to: mApt.address, value: "10" })
-      ).to.be.revertedWith("DONT_SEND_ETHER");
-    });
-
     it("Name set to correct value", async () => {
       expect(await mApt.name()).to.equal("APY MetaPool Token");
     });

@@ -61,7 +61,6 @@ describe("Contract: PoolManager", () => {
     const proxy = await PoolManagerProxy.deploy(
       logic.address,
       proxyAdmin.address,
-      mAptMock.address,
       addressRegistryMock.address
     );
     await proxy.deployed();
@@ -74,20 +73,6 @@ describe("Contract: PoolManager", () => {
     });
   });
 
-  describe("Set metapool token", () => {
-    it("Non-owner cannot set", async () => {
-      await expect(
-        manager.connect(randomUser).setMetaPoolToken(FAKE_ADDRESS)
-      ).to.be.revertedWith("revert Ownable: caller is not the owner");
-    });
-
-    it("Owner can set", async () => {
-      const contract = await deployMockContract(deployer, []);
-      await manager.connect(deployer).setMetaPoolToken(contract.address);
-      expect(await manager.mApt()).to.equal(contract.address);
-    });
-  });
-
   describe("Set address registry", () => {
     it("Cannot set to zero address", async () => {
       await expect(
@@ -95,11 +80,6 @@ describe("Contract: PoolManager", () => {
       ).to.be.revertedWith("INVALID_ADDRESS");
     });
 
-    it("Non-owner cannot set", async () => {
-      await expect(
-        manager.connect(randomUser).setAddressRegistry(FAKE_ADDRESS)
-      ).to.be.revertedWith("revert Ownable: caller is not the owner");
-    });
 
     it("Owner can set", async () => {
       const contract = await deployMockContract(deployer, []);
