@@ -99,11 +99,6 @@ contract AddressRegistryV2 is
         return _idList;
     }
 
-    /// @dev block ETHER transfers as the registry will never need it
-    receive() external payable {
-        revert("DONT_SEND_ETHER");
-    }
-
     /**
      * @notice Register address with identifier.
      * @dev Using an existing ID will replace the old address with new.
@@ -219,5 +214,9 @@ contract AddressRegistryV2 is
      */
     function usdtPoolAddress() public view returns (address) {
         return getAddress("usdtPool");
+    }
+
+    function mAPTAddress() public view returns (address) {
+        return getAddress("mAPT");
     }
 }

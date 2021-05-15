@@ -1,5 +1,6 @@
 const hre = require("hardhat");
-const { ethers } = hre;
+const { ethers, waffle } = hre;
+const { deployMockContract } = waffle;
 const { expect } = require("chai");
 const timeMachine = require("ganache-time-traveler");
 const {
@@ -8,8 +9,6 @@ const {
   getStablecoinAddress,
   acquireToken,
   MAX_UINT256,
-  FAKE_ADDRESS,
-  ANOTHER_FAKE_ADDRESS,
 } = require("../utils/helpers");
 const { STABLECOIN_POOLS } = require("../utils/constants");
 
@@ -52,8 +51,10 @@ describe("Contract: TVLManager", () => {
   before(async () => {
     [deployer, accountContract] = await ethers.getSigners();
 
+    const addressRegistry = await deployMockContract(deployer, []);
+
     TVLManager = await ethers.getContractFactory("TVLManager");
-    tvlManager = await TVLManager.deploy(FAKE_ADDRESS, ANOTHER_FAKE_ADDRESS);
+    tvlManager = await TVLManager.deploy(addressRegistry.address);
     await tvlManager.deployed();
   });
 
