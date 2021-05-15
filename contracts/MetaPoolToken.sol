@@ -158,10 +158,6 @@ contract MetaPoolToken is
         _;
     }
 
-    receive() external payable {
-        revert("DONT_SEND_ETHER");
-    }
-
     /**
      * @notice Mint specified amount of mAPT to the given account.
      * @dev Only the manager can call this.

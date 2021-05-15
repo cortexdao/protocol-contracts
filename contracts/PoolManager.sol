@@ -41,8 +41,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     /* impl-specific storage variables */
     /* ------------------------------- */
     address public proxyAdmin;
-    MetaPoolToken public mApt;
-    IAddressRegistry public addressRegistry;
+    AddressRegistryV2 public addressRegistry;
     IAccountFactory public accountFactory;
     bytes32[] internal _poolIds;
 
@@ -63,16 +62,13 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
      *
      * Our proxy deployment will call this as part of the constructor.
      * @param adminAddress the admin proxy to initialize with
-     * @param _mApt the metapool token to initialize with
      * @param _addressRegistry the address registry to initialize with
      */
-    function initialize(
-        address adminAddress,
-        address payable _mApt,
-        address _addressRegistry
-    ) external initializer {
+    function initialize(address adminAddress, address _addressRegistry)
+        external
+        initializer
+    {
         require(adminAddress != address(0), "INVALID_ADMIN");
-        require(Address.isContract(_mApt), "INVALID_ADDRESS");
         require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
 
         // initialize ancestor storage
@@ -81,8 +77,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
 
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
-        mApt = MetaPoolToken(_mApt);
-        addressRegistry = IAddressRegistry(_addressRegistry);
+        addressRegistry = AddressRegistryV2(_addressRegistry);
     }
 
     /**
@@ -120,23 +115,13 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     receive() external payable {} // solhint-disable-line no-empty-blocks
 
     /**
-     * @notice Sets the metapool token address
-     * @dev only callable by owner
-     * @param _mApt the address of the metapool token
-     */
-    function setMetaPoolToken(address payable _mApt) public onlyOwner {
-        require(Address.isContract(_mApt), "INVALID_ADDRESS");
-        mApt = MetaPoolToken(_mApt);
-    }
-
-    /**
      * @notice Sets the address registry
      * @dev only callable by owner
      * @param _addressRegistry the address of the registry
      */
     function setAddressRegistry(address _addressRegistry) public onlyOwner {
         require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistry(_addressRegistry);
+        addressRegistry = AddressRegistryV2(_addressRegistry);
     }
 
     /**
@@ -229,6 +214,8 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         PoolTokenV2[] memory pools,
         uint256[] memory amounts
     ) internal {
+        MetaPoolToken mApt =
+            MetaPoolToken(AddressRegistryV2(addressRegistry).mAPTAddress());
         uint256[] memory mintAmounts = new uint256[](pools.length);
         for (uint256 i = 0; i < pools.length; i++) {
             PoolTokenV2 pool = pools[i];
@@ -309,6 +296,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         PoolTokenV2[] memory pools,
         uint256[] memory amounts
     ) internal {
+        MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAPTAddress());
         uint256[] memory burnAmounts = new uint256[](pools.length);
         for (uint256 i = 0; i < pools.length; i++) {
             PoolTokenV2 pool = pools[i];

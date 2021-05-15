@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
 import "./interfaces/IAssetAllocation.sol";
-import "./interfaces/IAddressRegistry.sol";
+import "./AddressRegistryV2.sol";
 import "./interfaces/IDetailedERC20.sol";
 import "./interfaces/IAccountFactory.sol";
 import "./interfaces/ITVLManager.sol";
@@ -40,7 +40,7 @@ contract AccountManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
     /* impl-specific storage variables */
     /* ------------------------------- */
     address public proxyAdmin;
-    IAddressRegistry public addressRegistry;
+    AddressRegistryV2 public addressRegistry;
     /// @notice Accounts store assets for strategies and interact with other protocols
     mapping(bytes32 => address) public override getAccount;
 
@@ -92,7 +92,7 @@ contract AccountManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
 
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
-        addressRegistry = IAddressRegistry(_addressRegistry);
+        addressRegistry = AddressRegistryV2(_addressRegistry);
     }
 
     /**
@@ -155,7 +155,7 @@ contract AccountManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
     /// @param _addressRegistry the new address registry to update to
     function setAddressRegistry(address _addressRegistry) public onlyOwner {
         require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistry(_addressRegistry);
+        addressRegistry = AddressRegistryV2(_addressRegistry);
     }
 
     /// @notice Helper function to register an account's lookup view method in the TVL manager when entering positions.
