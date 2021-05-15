@@ -154,7 +154,6 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         require(accountAddress != address(0), "INVALID_ACCOUNT");
         (PoolTokenV2[] memory pools, uint256[] memory amounts) =
             _getPoolsAndAmounts(poolAmounts);
-
         _registerPoolUnderlyers(accountAddress, pools);
         _fundAccount(accountAddress, pools, amounts);
     }
