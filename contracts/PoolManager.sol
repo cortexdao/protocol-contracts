@@ -214,8 +214,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         PoolTokenV2[] memory pools,
         uint256[] memory amounts
     ) internal {
-        MetaPoolToken mApt =
-            MetaPoolToken(AddressRegistryV2(addressRegistry).mAPTAddress());
+        MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAPTAddress());
         uint256[] memory mintAmounts = new uint256[](pools.length);
         for (uint256 i = 0; i < pools.length; i++) {
             PoolTokenV2 pool = pools[i];
