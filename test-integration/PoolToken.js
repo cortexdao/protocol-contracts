@@ -6,7 +6,6 @@ const { STABLECOIN_POOLS } = require("../utils/constants");
 const {
   acquireToken,
   console,
-  impersonateAccount,
   tokenAmountToBigNumber,
   FAKE_ADDRESS,
   expectEventInTransaction,
@@ -20,10 +19,6 @@ const link = (amount) => tokenAmountToBigNumber(amount, "18");
 /* ************************ */
 console.debugging = false;
 /* ************************ */
-
-const APY_REGISTRY_ADMIN = "0xFbF6c940c1811C3ebc135A9c4e39E042d02435d1";
-const APY_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
-const ADDRESS_REGISTRY_DEPLOYER = "0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3";
 
 describe("Contract: PoolToken", () => {
   let deployer;
@@ -39,6 +34,7 @@ describe("Contract: PoolToken", () => {
 
   let MetaPoolToken;
   let MetaPoolTokenProxy;
+  let TransparentUpgradeableProxy;
 
   before(async () => {
     [
@@ -54,6 +50,9 @@ describe("Contract: PoolToken", () => {
     PoolToken = await ethers.getContractFactory("TestPoolToken");
     PoolTokenV2 = await ethers.getContractFactory("TestPoolTokenV2");
     MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
+    TransparentUpgradeableProxy = await ethers.getContractFactory(
+      "TransparentUpgradeableProxy"
+    );
   });
 
   // for Chainlink aggregator (price feed) addresses, see the Mainnet
@@ -143,36 +142,26 @@ describe("Contract: PoolToken", () => {
         mApt = await MetaPoolToken.attach(mAptProxy.address);
         await mApt.connect(deployer).setManagerAddress(manager.address);
 
-        /*************************************/
-        /***** Upgrade Address Registry ******/
-        /*************************************/
-        await deployer.sendTransaction({
-          to: ADDRESS_REGISTRY_DEPLOYER,
-          value: ethers.utils.parseEther("10").toHexString(),
-        });
-        const addressRegistryDeployer = await impersonateAccount(
-          ADDRESS_REGISTRY_DEPLOYER
-        );
-
         const AddressRegistryV2 = await ethers.getContractFactory(
           "AddressRegistryV2"
         );
-        const newAddressRegistryLogic = await AddressRegistryV2.deploy();
-        const registryAdmin = await ethers.getContractAt(
-          "ProxyAdmin",
-          APY_REGISTRY_ADMIN,
-          addressRegistryDeployer
+        const AddressRegistryLogic = await AddressRegistryV2.deploy();
+        const addressRegistryProxyAdmin = await ProxyAdmin.deploy();
+        await addressRegistryProxyAdmin.deployed();
+
+        const encodedParamData = AddressRegistryV2.interface.encodeFunctionData(
+          "initialize(address)",
+          [addressRegistryProxyAdmin.address]
         );
 
-        await registryAdmin.upgrade(
-          APY_ADDRESS_REGISTRY,
-          newAddressRegistryLogic.address
+        const addressRegistryProxy = await TransparentUpgradeableProxy.deploy(
+          AddressRegistryLogic.address,
+          addressRegistryProxyAdmin.address,
+          encodedParamData
         );
 
-        addressRegistry = await ethers.getContractAt(
-          "AddressRegistryV2",
-          APY_ADDRESS_REGISTRY,
-          addressRegistryDeployer
+        addressRegistry = await AddressRegistryV2.attach(
+          addressRegistryProxy.address
         );
 
         await addressRegistry.registerAddress(
