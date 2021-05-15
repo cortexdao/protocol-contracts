@@ -25,7 +25,7 @@ const APY_REGISTRY_ADMIN = "0xFbF6c940c1811C3ebc135A9c4e39E042d02435d1";
 const APY_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
 const ADDRESS_REGISTRY_DEPLOYER = "0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3";
 
-describe.only("Contract: PoolToken", () => {
+describe("Contract: PoolToken", () => {
   let deployer;
   let manager;
   let oracle;
