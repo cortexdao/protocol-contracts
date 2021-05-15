@@ -408,10 +408,8 @@ describe("Contract: PoolToken", () => {
           await poolToken.connect(deployer).lockAddLiquidity();
           await poolToken.connect(deployer).unlockAddLiquidity();
 
-          // await expect(
-          await poolToken.connect(randomUser).addLiquidity(1);
-          // ).to.not.be
-          // .reverted;
+          await expect(poolToken.connect(randomUser).addLiquidity(1)).to.not.be
+            .reverted;
         });
       });
 
