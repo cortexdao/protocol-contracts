@@ -6,6 +6,7 @@ const { STABLECOIN_POOLS } = require("../utils/constants");
 const {
   acquireToken,
   console,
+  impersonateAccount,
   tokenAmountToBigNumber,
   FAKE_ADDRESS,
   expectEventInTransaction,
@@ -20,7 +21,11 @@ const link = (amount) => tokenAmountToBigNumber(amount, "18");
 console.debugging = false;
 /* ************************ */
 
-describe("Contract: PoolToken", () => {
+const APY_REGISTRY_ADMIN = "0xFbF6c940c1811C3ebc135A9c4e39E042d02435d1";
+const APY_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
+const ADDRESS_REGISTRY_DEPLOYER = "0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3";
+
+describe.only("Contract: PoolToken", () => {
   let deployer;
   let manager;
   let oracle;
@@ -48,7 +53,6 @@ describe("Contract: PoolToken", () => {
     PoolTokenProxy = await ethers.getContractFactory("PoolTokenProxy");
     PoolToken = await ethers.getContractFactory("TestPoolToken");
     PoolTokenV2 = await ethers.getContractFactory("TestPoolTokenV2");
-
     MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
   });
 
@@ -91,6 +95,7 @@ describe("Contract: PoolToken", () => {
       let tvlAgg;
       let underlyer;
       let mApt;
+      let addressRegistry;
 
       let poolToken;
 
@@ -138,6 +143,43 @@ describe("Contract: PoolToken", () => {
         mApt = await MetaPoolToken.attach(mAptProxy.address);
         await mApt.connect(deployer).setManagerAddress(manager.address);
 
+        /*************************************/
+        /***** Upgrade Address Registry ******/
+        /*************************************/
+        await deployer.sendTransaction({
+          to: ADDRESS_REGISTRY_DEPLOYER,
+          value: ethers.utils.parseEther("10").toHexString(),
+        });
+        const addressRegistryDeployer = await impersonateAccount(
+          ADDRESS_REGISTRY_DEPLOYER
+        );
+
+        const AddressRegistryV2 = await ethers.getContractFactory(
+          "AddressRegistryV2"
+        );
+        const newAddressRegistryLogic = await AddressRegistryV2.deploy();
+        const registryAdmin = await ethers.getContractAt(
+          "ProxyAdmin",
+          APY_REGISTRY_ADMIN,
+          addressRegistryDeployer
+        );
+
+        await registryAdmin.upgrade(
+          APY_ADDRESS_REGISTRY,
+          newAddressRegistryLogic.address
+        );
+
+        addressRegistry = await ethers.getContractAt(
+          "AddressRegistryV2",
+          APY_ADDRESS_REGISTRY,
+          addressRegistryDeployer
+        );
+
+        await addressRegistry.registerAddress(
+          ethers.utils.formatBytes32String("mAPT"),
+          mApt.address
+        );
+
         const logic = await PoolToken.deploy();
         await logic.deployed();
         const proxy = await PoolTokenProxy.deploy(
@@ -153,7 +195,7 @@ describe("Contract: PoolToken", () => {
 
         const initData = PoolTokenV2.interface.encodeFunctionData(
           "initializeUpgrade(address)",
-          [mApt.address]
+          [addressRegistry.address]
         );
         await proxyAdmin
           .connect(deployer)
@@ -248,27 +290,6 @@ describe("Contract: PoolToken", () => {
           await expect(setPromise)
             .to.emit(poolToken, "PriceAggregatorChanged")
             .withArgs(FAKE_ADDRESS);
-        });
-      });
-
-      describe("Set mAPT address", async () => {
-        it("Owner can set mAPT address", async () => {
-          const newMApt = await MetaPoolToken.deploy();
-          await newMApt.deployed();
-          await poolToken.connect(deployer).setMetaPoolToken(newMApt.address);
-          assert.equal(await poolToken.mApt(), newMApt.address);
-        });
-
-        it("Revert on setting to non-contract address", async () => {
-          await expect(
-            poolToken.connect(deployer).setMetaPoolToken(FAKE_ADDRESS)
-          ).to.be.reverted;
-        });
-
-        it("Revert when non-owner attempts to set address", async () => {
-          await expect(
-            poolToken.connect(randomUser).setMetaPoolToken(FAKE_ADDRESS)
-          ).to.be.revertedWith("Ownable: caller is not the owner");
         });
       });
 
@@ -387,8 +408,10 @@ describe("Contract: PoolToken", () => {
           await poolToken.connect(deployer).lockAddLiquidity();
           await poolToken.connect(deployer).unlockAddLiquidity();
 
-          await expect(poolToken.connect(randomUser).addLiquidity(1)).to.not.be
-            .reverted;
+          // await expect(
+          await poolToken.connect(randomUser).addLiquidity(1);
+          // ).to.not.be
+          // .reverted;
         });
       });
 
