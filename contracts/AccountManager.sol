@@ -84,7 +84,6 @@ contract AccountManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
         initializer
     {
         require(adminAddress != address(0), "INVALID_ADMIN");
-        require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
 
         // initialize ancestor storage
         __Context_init_unchained();
@@ -92,7 +91,7 @@ contract AccountManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
 
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
-        addressRegistry = AddressRegistryV2(_addressRegistry);
+        _setAddressRegistry(_addressRegistry);
     }
 
     /**
@@ -150,10 +149,16 @@ contract AccountManager is Initializable, OwnableUpgradeSafe, IAccountFactory {
         emit AdminChanged(adminAddress);
     }
 
-    /// @notice Sets the address registry
-    /// @dev only callable by owner
-    /// @param _addressRegistry the new address registry to update to
+    /**
+     * @notice Sets the address registry
+     * @dev only callable by owner
+     * @param _addressRegistry the address of the registry
+     */
     function setAddressRegistry(address _addressRegistry) public onlyOwner {
+        _setAddressRegistry(_addressRegistry);
+    }
+
+    function _setAddressRegistry(address _addressRegistry) internal {
         require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
         addressRegistry = AddressRegistryV2(_addressRegistry);
     }

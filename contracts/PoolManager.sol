@@ -69,7 +69,6 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         initializer
     {
         require(adminAddress != address(0), "INVALID_ADMIN");
-        require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
 
         // initialize ancestor storage
         __Context_init_unchained();
@@ -77,7 +76,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
 
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
-        addressRegistry = AddressRegistryV2(_addressRegistry);
+        _setAddressRegistry(_addressRegistry);
     }
 
     /**
@@ -120,6 +119,10 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
      * @param _addressRegistry the address of the registry
      */
     function setAddressRegistry(address _addressRegistry) public onlyOwner {
+        _setAddressRegistry(_addressRegistry);
+    }
+
+    function _setAddressRegistry(address _addressRegistry) internal {
         require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
         addressRegistry = AddressRegistryV2(_addressRegistry);
     }
