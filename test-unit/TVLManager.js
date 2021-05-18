@@ -46,7 +46,7 @@ describe("Contract: TVLManager", () => {
 
     addressRegistry = await deployMockContract(
       deployer,
-      artifacts.require("IAddressRegistry").abi
+      artifacts.require("IAddressRegistryV2").abi
     );
     await addressRegistry.mock.poolManagerAddress.returns(poolManager.address);
     await addressRegistry.mock.accountManagerAddress.returns(

@@ -14,7 +14,7 @@ const {
 
 const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
-const AddressRegistry = artifacts.require("IAddressRegistry");
+const AddressRegistry = artifacts.require("IAddressRegistryV2");
 const MetaPoolToken = artifacts.require("MetaPoolToken");
 
 describe("Contract: PoolToken", () => {

@@ -56,7 +56,7 @@ describe("Contract: PoolManager", () => {
     const mAptMock = await deployMockContract(deployer, []);
     addressRegistryMock = await deployMockContract(
       deployer,
-      artifacts.require("IAddressRegistry").abi
+      artifacts.require("IAddressRegistryV2").abi
     );
     await addressRegistryMock.mock.mAPTAddress.returns(mAptMock.address);
 
