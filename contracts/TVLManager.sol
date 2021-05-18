@@ -32,9 +32,6 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
     // ids mapped to decimals
     mapping(bytes32 => uint256) private _allocationDecimals;
 
-    event PoolManagerChanged(address);
-    event AccountManagerChanged(address);
-
     /// @notice Constructor TVLManager
     /// @param _addressRegistry the address registry to initialize with
     constructor(address _addressRegistry) public {
