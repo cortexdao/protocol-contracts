@@ -36,7 +36,7 @@ const APY_USDT_POOL = "0xeA9c5a2717D5Ab75afaAC340151e73a7e37d99A7";
 console.debugging = false;
 /* ************************ */
 
-describe.only("Contract: PoolManager", () => {
+describe("Contract: PoolManager", () => {
   // to-be-deployed contracts
   let poolManager;
   let tvlManager;
@@ -236,9 +236,10 @@ describe.only("Contract: PoolManager", () => {
       .withArgs(accountId)
       .returns(fundedAccount.address);
 
-    //TODO:
-    const addressRegistryMock = await deployMockContract(deployer, artifacts.require("AddressRegistryV2").abi)
-    await addressRegistryMock.mock.accountFactoryAddress.returns(accountFactoryMock.address)
+    await addressRegistry.registerAddress(
+      ethers.utils.formatBytes32String("accountFactory"),
+      accountFactoryMock.address
+    );
 
     /*******************************************/
     /***** deploy asset allocation registry ****/
@@ -322,7 +323,7 @@ describe.only("Contract: PoolManager", () => {
 
     it("Owner can call", async () => {
       // await expect(
-      await poolManager.connect(deployer).fundAccount(accountId, [])
+      await poolManager.connect(deployer).fundAccount(accountId, []);
       // ).to
       // .not.be.reverted;
     });
