@@ -21,6 +21,7 @@ describe("Contract: PoolManager", () => {
   // deployed contracts
   let poolManager;
   let executor;
+  let addressRegistryMock
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -53,7 +54,7 @@ describe("Contract: PoolManager", () => {
     await proxyAdmin.deployed();
 
     const mAptMock = await deployMockContract(deployer, []);
-    const addressRegistryMock = await deployMockContract(
+    addressRegistryMock = await deployMockContract(
       deployer,
       artifacts.require("AddressRegistryV2").abi
     );
@@ -142,34 +143,6 @@ describe("Contract: PoolManager", () => {
     });
   });
 
-  describe("Setting accountFactory address", () => {
-    it("Owner can set to valid address", async () => {
-      const dummyContract = await deployMockContract(deployer, []);
-      await poolManager
-        .connect(deployer)
-        .setAccountFactory(dummyContract.address);
-      expect(await poolManager.accountFactory()).to.equal(
-        dummyContract.address
-      );
-    });
-
-    it("Non-owner cannot set", async () => {
-      const dummyContract = await deployMockContract(deployer, []);
-      await expect(
-        poolManager.connect(randomUser).setAccountFactory(dummyContract.address)
-      ).to.be.revertedWith("revert Ownable: caller is not the owner");
-    });
-
-    it("Cannot set to non-contract address", async () => {
-      await expect(
-        poolManager.connect(deployer).setAccountFactory(ZERO_ADDRESS)
-      ).to.be.revertedWith("INVALID_ADDRESS");
-      await expect(
-        poolManager.connect(deployer).setAccountFactory(FAKE_ADDRESS)
-      ).to.be.revertedWith("INVALID_ADDRESS");
-    });
-  });
-
   describe("Account Funder", () => {
     let fundedAccount;
     const accountId = bytes32("account1");
@@ -184,13 +157,16 @@ describe("Contract: PoolManager", () => {
       await accountFactoryMock.mock.getAccount
         .withArgs(accountId)
         .returns(fundedAccount.address);
-      await poolManager.setAccountFactory(accountFactoryMock.address);
+
+      await addressRegistryMock.mock.accountFactoryAddress.returns(accountFactoryMock.address)
     });
 
     describe("fundAccount", () => {
       it("Owner can call", async () => {
-        await expect(poolManager.connect(deployer).fundAccount(accountId, []))
-          .to.not.be.reverted;
+        // await expect(
+        poolManager.connect(deployer).fundAccount(accountId, [])
+        // )
+        // .to.not.be.reverted;
       });
 
       it("Non-owner cannot call", async () => {

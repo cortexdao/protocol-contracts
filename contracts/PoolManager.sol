@@ -127,16 +127,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         addressRegistry = AddressRegistryV2(_addressRegistry);
     }
 
-    /**
-     * @notice Sets the new account factory
-     * @dev only callable by owner
-     * @param _accountFactory the address of the account factory
-     */
-    function setAccountFactory(address _accountFactory) public onlyOwner {
-        require(Address.isContract(_accountFactory), "INVALID_ADDRESS");
-        accountFactory = IAccountFactory(_accountFactory);
-    }
-
+    /*
     /**
      * @notice Funds Account and register an asset allocation
      * @dev only callable by owner. Also registers the pool underlyer for the account being funded
@@ -153,6 +144,8 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         bytes32 accountId,
         IAccountFunder.PoolAmount[] memory poolAmounts
     ) external override onlyOwner {
+        IAccountFactory accountFactory =
+            IAccountFactory(addressRegistry.accountFactoryAddress());
         address accountAddress = accountFactory.getAccount(accountId);
         require(accountAddress != address(0), "INVALID_ACCOUNT");
         (PoolTokenV2[] memory pools, uint256[] memory amounts) =
@@ -260,6 +253,8 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         bytes32 accountId,
         IAccountFunder.PoolAmount[] memory poolAmounts
     ) external override onlyOwner {
+        IAccountFactory accountFactory =
+            IAccountFactory(addressRegistry.accountFactoryAddress());
         address accountAddress = accountFactory.getAccount(accountId);
         require(accountAddress != address(0), "INVALID_ACCOUNT");
         (PoolTokenV2[] memory pools, uint256[] memory amounts) =

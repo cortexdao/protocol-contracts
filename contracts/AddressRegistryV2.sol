@@ -219,4 +219,8 @@ contract AddressRegistryV2 is
     function mAPTAddress() public view returns (address) {
         return getAddress("mAPT");
     }
+
+    function accountFactoryAddress() public view returns (address) {
+        return getAddress("accountFactory");
+    }
 }
