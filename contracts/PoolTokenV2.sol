@@ -14,7 +14,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/math/SignedSafeMath.s
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/ILiquidityPool.sol";
 import "./interfaces/IDetailedERC20.sol";
-import "./AddressRegistryV2.sol";
+import "./interfaces/IAddressRegistryV2.sol";
 import "./MetaPoolToken.sol";
 
 /**
@@ -82,7 +82,7 @@ contract PoolTokenV2 is
     AggregatorV3Interface public priceAgg;
 
     // V2
-    AddressRegistryV2 public addressRegistry;
+    IAddressRegistryV2 public addressRegistry;
     /// @notice seconds since last deposit during which withdrawal fee is charged
     uint256 public feePeriod;
     /// @notice percentage charged for withdrawal fee
@@ -148,7 +148,7 @@ contract PoolTokenV2 is
         onlyAdmin
     {
         require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
-        addressRegistry = AddressRegistryV2(_addressRegistry);
+        addressRegistry = IAddressRegistryV2(_addressRegistry);
         feePeriod = 1 days;
         feePercentage = 5;
         reservePercentage = 5;
@@ -174,7 +174,7 @@ contract PoolTokenV2 is
         onlyOwner
     {
         require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
-        addressRegistry = AddressRegistryV2(_addressRegistry);
+        addressRegistry = IAddressRegistryV2(_addressRegistry);
     }
 
     function setFeePeriod(uint256 _feePeriod) public onlyOwner {

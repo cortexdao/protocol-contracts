@@ -21,7 +21,7 @@ describe("Contract: PoolManager", () => {
   // deployed contracts
   let poolManager;
   let executor;
-  let addressRegistryMock
+  let addressRegistryMock;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -56,7 +56,7 @@ describe("Contract: PoolManager", () => {
     const mAptMock = await deployMockContract(deployer, []);
     addressRegistryMock = await deployMockContract(
       deployer,
-      artifacts.require("AddressRegistryV2").abi
+      artifacts.require("IAddressRegistry").abi
     );
     await addressRegistryMock.mock.mAPTAddress.returns(mAptMock.address);
 
@@ -158,13 +158,15 @@ describe("Contract: PoolManager", () => {
         .withArgs(accountId)
         .returns(fundedAccount.address);
 
-      await addressRegistryMock.mock.accountFactoryAddress.returns(accountFactoryMock.address)
+      await addressRegistryMock.mock.accountFactoryAddress.returns(
+        accountFactoryMock.address
+      );
     });
 
     describe("fundAccount", () => {
       it("Owner can call", async () => {
         // await expect(
-        poolManager.connect(deployer).fundAccount(accountId, [])
+        poolManager.connect(deployer).fundAccount(accountId, []);
         // )
         // .to.not.be.reverted;
       });

@@ -10,7 +10,7 @@ const TransparentUpgradeableProxy = artifacts.require(
 );
 const ProxyConstructorArg = artifacts.require("ProxyConstructorArg");
 const AddressRegistry = artifacts.require("AddressRegistry");
-const AddressRegistryV2 = artifacts.require("AddressRegistryV2");
+const IAddressRegistry = artifacts.require("IAddressRegistry");
 
 const bytes32 = ethers.utils.formatBytes32String;
 
@@ -47,12 +47,12 @@ contract("AddressRegistry", async (accounts) => {
       }
     );
 
-    const logicV2 = await AddressRegistryV2.new({ from: deployer });
+    const logicV2 = await IAddressRegistry.new({ from: deployer });
     await proxyAdmin.upgrade(proxy.address, logicV2.address, {
       from: deployer,
     });
 
-    registry = await AddressRegistryV2.at(proxy.address);
+    registry = await IAddressRegistry.at(proxy.address);
   });
 
   describe("Defaults", async () => {

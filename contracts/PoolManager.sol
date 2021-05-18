@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
 import "./interfaces/IAssetAllocation.sol";
-import "./interfaces/IAddressRegistry.sol";
+import "./interfaces/IAddressRegistryV2.sol";
 import "./interfaces/IDetailedERC20.sol";
 import "./interfaces/IAccountFunder.sol";
 import "./interfaces/IAccountFactory.sol";
@@ -41,7 +41,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     /* impl-specific storage variables */
     /* ------------------------------- */
     address public proxyAdmin;
-    AddressRegistryV2 public addressRegistry;
+    IAddressRegistryV2 public addressRegistry;
     IAccountFactory public accountFactory;
     bytes32[] internal _poolIds;
 
@@ -124,7 +124,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
 
     function _setAddressRegistry(address _addressRegistry) internal {
         require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
-        addressRegistry = AddressRegistryV2(_addressRegistry);
+        addressRegistry = IAddressRegistryV2(_addressRegistry);
     }
 
     /*
