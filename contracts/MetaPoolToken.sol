@@ -9,6 +9,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
+import "./interfaces/IAddressRegistryV2.sol";
 import "./interfaces/IMintable.sol";
 
 /**
@@ -59,7 +60,7 @@ contract MetaPoolToken is
     /// @notice used to protect init functions for upgrades
     address public proxyAdmin;
     /// @notice used to protect mint and burn function
-    address public manager;
+    IAddressRegistryV2 public addressRegistry;
     /// @notice Chainlink aggregator for deployed TVL
     AggregatorV3Interface public tvlAgg;
     /// @notice seconds within which aggregator should be updated
@@ -72,7 +73,6 @@ contract MetaPoolToken is
     event Mint(address acccount, uint256 amount);
     event Burn(address acccount, uint256 amount);
     event AdminChanged(address);
-    event ManagerChanged(address);
     event TvlAggregatorChanged(address agg);
 
     /**
@@ -90,6 +90,7 @@ contract MetaPoolToken is
     function initialize(
         address adminAddress,
         address _tvlAgg,
+        address _addressRegistry,
         uint256 _aggStalePeriod
     ) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");
@@ -106,6 +107,7 @@ contract MetaPoolToken is
         setAdminAddress(adminAddress);
         setTvlAggregator(_tvlAgg);
         setAggStalePeriod(_aggStalePeriod);
+        setAddressRegistry(_addressRegistry);
     }
 
     /**
@@ -123,12 +125,6 @@ contract MetaPoolToken is
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
         emit AdminChanged(adminAddress);
-    }
-
-    function setManagerAddress(address managerAddress) public onlyOwner {
-        require(managerAddress != address(0), "INVALID_MANAGER");
-        manager = managerAddress;
-        emit ManagerChanged(managerAddress);
     }
 
     function setTvlAggregator(address _tvlAgg) public onlyOwner {
@@ -154,7 +150,10 @@ contract MetaPoolToken is
      * @dev Throws if called by any account other than the PoolManager.
      */
     modifier onlyManager() {
-        require(msg.sender == manager, "MANAGER_ONLY");
+        require(
+            msg.sender == addressRegistry.poolManagerAddress(),
+            "MANAGER_ONLY"
+        );
         _;
     }
 
@@ -309,5 +308,15 @@ contract MetaPoolToken is
         if (totalSupply == 0 || balance == 0) return 0;
 
         return getTVL().mul(balance).div(totalSupply);
+    }
+
+    /**
+     * @notice Sets the address registry
+     * @dev only callable by owner
+     * @param _addressRegistry the address of the registry
+     */
+    function setAddressRegistry(address _addressRegistry) public onlyOwner {
+        require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(_addressRegistry);
     }
 }

@@ -18,7 +18,7 @@ const usdc = (amount) => tokenAmountToBigNumber(amount, "6");
 const dai = (amount) => tokenAmountToBigNumber(amount, "18");
 const ether = (amount) => tokenAmountToBigNumber(amount, "18");
 
-describe("Contract: MetaPoolToken", () => {
+describe.only("Contract: MetaPoolToken", () => {
   // signers
   let deployer;
   let manager;
@@ -40,6 +40,8 @@ describe("Contract: MetaPoolToken", () => {
   // default settings
   // mocks have to be done async in "before"
   let tvlAggMock;
+  let addressRegistryMock;
+
   const aggStalePeriod = 14400;
 
   // use EVM snapshots for test isolation
@@ -62,6 +64,11 @@ describe("Contract: MetaPoolToken", () => {
     MetaPoolToken = await ethers.getContractFactory("TestMetaPoolToken");
 
     tvlAggMock = await deployMockContract(deployer, AggregatorV3Interface.abi);
+    addressRegistryMock = await deployMockContract(
+      deployer,
+      artifacts.require("IAddressRegistryV2").abi
+    );
+    await addressRegistryMock.mock.poolManagerAddress.returns(manager.address);
 
     proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
@@ -71,6 +78,7 @@ describe("Contract: MetaPoolToken", () => {
       logic.address,
       proxyAdmin.address,
       tvlAggMock.address,
+      addressRegistryMock.address,
       aggStalePeriod
     );
     await proxy.deployed();
@@ -83,6 +91,7 @@ describe("Contract: MetaPoolToken", () => {
         MetaPoolTokenProxy.connect(deployer).deploy(
           DUMMY_ADDRESS,
           proxyAdmin.address,
+          DUMMY_ADDRESS,
           DUMMY_ADDRESS,
           120
         )
@@ -97,6 +106,7 @@ describe("Contract: MetaPoolToken", () => {
           logic.address,
           ZERO_ADDRESS,
           DUMMY_ADDRESS,
+          DUMMY_ADDRESS,
           120
         )
       ).to.be.reverted;
@@ -106,6 +116,19 @@ describe("Contract: MetaPoolToken", () => {
       await expect(
         MetaPoolTokenProxy.connect(deployer).deploy(
           logic.address,
+          DUMMY_ADDRESS,
+          ZERO_ADDRESS,
+          DUMMY_ADDRESS,
+          120
+        )
+      ).to.be.reverted;
+    });
+
+    it("Revert when TVL address registry is zero address", async () => {
+      await expect(
+        MetaPoolTokenProxy.connect(deployer).deploy(
+          logic.address,
+          DUMMY_ADDRESS,
           DUMMY_ADDRESS,
           ZERO_ADDRESS,
           120
@@ -238,10 +261,6 @@ describe("Contract: MetaPoolToken", () => {
   });
 
   describe("Minting and burning", () => {
-    before(async () => {
-      await mApt.connect(deployer).setManagerAddress(manager.address);
-    });
-
     it("Manager can mint", async () => {
       const mintAmount = tokenAmountToBigNumber("100");
       await expect(mApt.connect(manager).mint(randomUser.address, mintAmount))
@@ -302,10 +321,6 @@ describe("Contract: MetaPoolToken", () => {
   });
 
   describe("getDeployedValue", () => {
-    before(async () => {
-      await mApt.connect(deployer).setManagerAddress(manager.address);
-    });
-
     it("Return 0 if zero mAPT supply", async () => {
       expect(await mApt.totalSupply()).to.equal("0");
       expect(await mApt.getDeployedValue(FAKE_ADDRESS)).to.equal("0");
@@ -334,10 +349,6 @@ describe("Contract: MetaPoolToken", () => {
   });
 
   describe("Calculations", () => {
-    before(async () => {
-      await mApt.connect(deployer).setManagerAddress(manager.address);
-    });
-
     it("Calculate mint amount with zero deployed TVL", async () => {
       const usdcEthPrice = tokenAmountToBigNumber("1602950450000000");
       let usdcAmount = usdc(107);
@@ -484,13 +495,13 @@ describe("Contract: MetaPoolToken", () => {
         logic.address,
         proxyAdmin.address,
         tvlAggMock.address,
+        addressRegistryMock.address,
         aggStalePeriod
       );
       await proxy.deployed();
       // Set the `mAPT` global to point to a deployed proxy with
       // the real logic, not the test one.
       mApt = await MetaPoolToken.attach(proxy.address);
-      await mApt.setManagerAddress(manager.address);
     });
 
     after(async () => {

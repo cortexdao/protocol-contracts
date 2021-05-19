@@ -9,6 +9,7 @@ contract MetaPoolTokenProxy is TransparentUpgradeableProxy {
         address _logic,
         address _proxyAdmin,
         address _tvlAgg,
+        address _addressRegistry,
         uint256 _aggStalePeriod
     )
         public
@@ -16,9 +17,10 @@ contract MetaPoolTokenProxy is TransparentUpgradeableProxy {
             _logic,
             _proxyAdmin,
             abi.encodeWithSignature(
-                "initialize(address,address,uint256)",
+                "initialize(address,address,address,uint256)",
                 _proxyAdmin,
                 _tvlAgg,
+                _addressRegistry,
                 _aggStalePeriod
             )
         )
