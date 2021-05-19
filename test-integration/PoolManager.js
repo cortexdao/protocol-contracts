@@ -170,6 +170,7 @@ describe("Contract: PoolManager", () => {
       logic.address,
       proxyAdmin.address,
       tvlAgg.address,
+      addressRegistry.address,
       aggStalePeriod
     );
     await mAPTProxy.deployed();
@@ -204,7 +205,6 @@ describe("Contract: PoolManager", () => {
       ethers.utils.formatBytes32String("poolManager"),
       poolManager.address
     );
-    await mAPT.setManagerAddress(poolManager.address);
 
     // approve manager to withdraw from pools
     daiPool = await ethers.getContractAt(
