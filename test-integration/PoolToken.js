@@ -143,7 +143,7 @@ describe("Contract: PoolToken", () => {
         await mApt.connect(deployer).setManagerAddress(manager.address);
 
         const IAddressRegistry = await ethers.getContractFactory(
-          "IAddressRegistry"
+          "AddressRegistryV2"
         );
         const AddressRegistryLogic = await IAddressRegistry.deploy();
         const addressRegistryProxyAdmin = await ProxyAdmin.deploy();

@@ -112,7 +112,7 @@ describe("Contract: PoolManager", () => {
     /***** Upgrade Address Registry ******/
     /*************************************/
     const IAddressRegistry = await ethers.getContractFactory(
-      "IAddressRegistry"
+      "AddressRegistryV2"
     );
     const newAddressRegistryLogic = await IAddressRegistry.deploy();
     const registryAdmin = await ethers.getContractAt(
@@ -127,7 +127,7 @@ describe("Contract: PoolManager", () => {
     );
 
     const addressRegistry = await ethers.getContractAt(
-      "IAddressRegistry",
+      "AddressRegistryV2",
       APY_ADDRESS_REGISTRY,
       addressRegistryDeployer
     );

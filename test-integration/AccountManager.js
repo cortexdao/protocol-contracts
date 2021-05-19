@@ -179,10 +179,10 @@ describe("Contract: AccountManager", () => {
     /*************************************/
     /***** Upgrade Address Registry ******/
     /*************************************/
-    const IAddressRegistry = await ethers.getContractFactory(
-      "IAddressRegistry"
+    const AddressRegistryV2 = await ethers.getContractFactory(
+      "AddressRegistryV2"
     );
-    const newAddressRegistryLogic = await IAddressRegistry.deploy();
+    const newAddressRegistryLogic = await AddressRegistryV2.deploy();
     const registryAdmin = await ethers.getContractAt(
       "ProxyAdmin",
       APY_REGISTRY_ADMIN,
@@ -195,7 +195,7 @@ describe("Contract: AccountManager", () => {
     );
 
     const addressRegistry = await ethers.getContractAt(
-      "IAddressRegistry",
+      "AddressRegistryV2",
       APY_ADDRESS_REGISTRY,
       addressRegistryDeployer
     );
