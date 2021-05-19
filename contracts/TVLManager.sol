@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "./utils/EnumerableSet.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/ITVLManager.sol";
-import "./AddressRegistryV2.sol";
+import "./interfaces/IAddressRegistryV2.sol";
 
 /// @title TVL Manager
 /// @author APY.Finance
@@ -21,7 +21,7 @@ import "./AddressRegistryV2.sol";
 contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
-    AddressRegistryV2 public addressRegistry;
+    IAddressRegistryV2 public addressRegistry;
 
     // all registered allocation ids
     EnumerableSet.Bytes32Set private _allocationIds;
@@ -31,9 +31,6 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
     mapping(bytes32 => string) private _allocationSymbols;
     // ids mapped to decimals
     mapping(bytes32 => uint256) private _allocationDecimals;
-
-    event PoolManagerChanged(address);
-    event AccountManagerChanged(address);
 
     /// @notice Constructor TVLManager
     /// @param _addressRegistry the address registry to initialize with
@@ -237,6 +234,6 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
 
     function _setAddressRegistry(address _addressRegistry) internal {
         require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
-        addressRegistry = AddressRegistryV2(_addressRegistry);
+        addressRegistry = IAddressRegistryV2(_addressRegistry);
     }
 }

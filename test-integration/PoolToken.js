@@ -1,6 +1,7 @@
 const { assert, expect } = require("chai");
 const { ethers } = require("hardhat");
 const { AddressZero: ZERO_ADDRESS, MaxUint256: MAX_UINT256 } = ethers.constants;
+const { impersonateAccount } = require("../utils/helpers");
 const timeMachine = require("ganache-time-traveler");
 const { STABLECOIN_POOLS } = require("../utils/constants");
 const {
@@ -22,8 +23,8 @@ console.debugging = false;
 
 describe("Contract: PoolToken", () => {
   let deployer;
-  let manager;
   let oracle;
+  let poolManager;
   let randomUser;
   let anotherUser;
 
@@ -34,12 +35,13 @@ describe("Contract: PoolToken", () => {
 
   let MetaPoolToken;
   let MetaPoolTokenProxy;
+  let TransparentUpgradeableProxy;
 
   before(async () => {
     [
       deployer,
-      manager,
       oracle,
+      poolManager,
       randomUser,
       anotherUser,
     ] = await ethers.getSigners();
@@ -48,8 +50,10 @@ describe("Contract: PoolToken", () => {
     PoolTokenProxy = await ethers.getContractFactory("PoolTokenProxy");
     PoolToken = await ethers.getContractFactory("TestPoolToken");
     PoolTokenV2 = await ethers.getContractFactory("TestPoolTokenV2");
-
     MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
+    TransparentUpgradeableProxy = await ethers.getContractFactory(
+      "TransparentUpgradeableProxy"
+    );
   });
 
   // for Chainlink aggregator (price feed) addresses, see the Mainnet
@@ -91,7 +95,7 @@ describe("Contract: PoolToken", () => {
       let tvlAgg;
       let underlyer;
       let mApt;
-
+      let addressRegistry;
       let poolToken;
 
       before("Setup", async () => {
@@ -123,6 +127,33 @@ describe("Contract: PoolToken", () => {
         );
         MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
 
+        const AddressRegistryFactory = await ethers.getContractFactory(
+          "AddressRegistryV2"
+        );
+        const AddressRegistryLogic = await AddressRegistryFactory.deploy();
+        const addressRegistryProxyAdmin = await ProxyAdmin.deploy();
+        await addressRegistryProxyAdmin.deployed();
+
+        const encodedParamData = AddressRegistryFactory.interface.encodeFunctionData(
+          "initialize(address)",
+          [addressRegistryProxyAdmin.address]
+        );
+
+        const addressRegistryProxy = await TransparentUpgradeableProxy.deploy(
+          AddressRegistryLogic.address,
+          addressRegistryProxyAdmin.address,
+          encodedParamData
+        );
+
+        addressRegistry = await AddressRegistryFactory.attach(
+          addressRegistryProxy.address
+        );
+
+        await addressRegistry.registerAddress(
+          ethers.utils.formatBytes32String("poolManager"),
+          poolManager.address
+        );
+
         const proxyAdmin = await ProxyAdmin.deploy();
         await proxyAdmin.deployed();
 
@@ -132,11 +163,16 @@ describe("Contract: PoolToken", () => {
           mAptLogic.address,
           proxyAdmin.address,
           tvlAgg.address,
+          addressRegistry.address,
           14400
         );
         await mAptProxy.deployed();
         mApt = await MetaPoolToken.attach(mAptProxy.address);
-        await mApt.connect(deployer).setManagerAddress(manager.address);
+
+        await addressRegistry.registerAddress(
+          ethers.utils.formatBytes32String("mAPT"),
+          mApt.address
+        );
 
         const logic = await PoolToken.deploy();
         await logic.deployed();
@@ -153,7 +189,7 @@ describe("Contract: PoolToken", () => {
 
         const initData = PoolTokenV2.interface.encodeFunctionData(
           "initializeUpgrade(address)",
-          [mApt.address]
+          [addressRegistry.address]
         );
         await proxyAdmin
           .connect(deployer)
@@ -248,27 +284,6 @@ describe("Contract: PoolToken", () => {
           await expect(setPromise)
             .to.emit(poolToken, "PriceAggregatorChanged")
             .withArgs(FAKE_ADDRESS);
-        });
-      });
-
-      describe("Set mAPT address", async () => {
-        it("Owner can set mAPT address", async () => {
-          const newMApt = await MetaPoolToken.deploy();
-          await newMApt.deployed();
-          await poolToken.connect(deployer).setMetaPoolToken(newMApt.address);
-          assert.equal(await poolToken.mApt(), newMApt.address);
-        });
-
-        it("Revert on setting to non-contract address", async () => {
-          await expect(
-            poolToken.connect(deployer).setMetaPoolToken(FAKE_ADDRESS)
-          ).to.be.reverted;
-        });
-
-        it("Revert when non-owner attempts to set address", async () => {
-          await expect(
-            poolToken.connect(randomUser).setMetaPoolToken(FAKE_ADDRESS)
-          ).to.be.revertedWith("Ownable: caller is not the owner");
         });
       });
 
@@ -465,6 +480,7 @@ describe("Contract: PoolToken", () => {
       ];
       deployedValues.forEach(function (deployedValue) {
         describe(`deployed value: ${deployedValue}`, () => {
+          let poolManagerSigner;
           const mAptSupply = tokenAmountToBigNumber("100");
 
           async function updateTvlAgg(usdDeployedValue) {
@@ -475,9 +491,12 @@ describe("Contract: PoolToken", () => {
 
           beforeEach(async () => {
             /* these get rollbacked after each test due to snapshotting */
+            poolManagerSigner = await impersonateAccount(poolManager.address);
 
             // default to giving entire deployed value to the pool
-            await mApt.connect(manager).mint(poolToken.address, mAptSupply);
+            await mApt
+              .connect(poolManagerSigner)
+              .mint(poolToken.address, mAptSupply);
             await updateTvlAgg(deployedValue);
           });
 
@@ -595,9 +614,11 @@ describe("Contract: PoolToken", () => {
               );
 
               // transfer quarter of mAPT to another pool
-              await mApt.connect(manager).mint(FAKE_ADDRESS, mAptSupply.div(4));
               await mApt
-                .connect(manager)
+                .connect(poolManagerSigner)
+                .mint(FAKE_ADDRESS, mAptSupply.div(4));
+              await mApt
+                .connect(poolManagerSigner)
                 .burn(poolToken.address, mAptSupply.div(4));
               // must update agg so staleness check passes
               await updateTvlAgg(deployedValue);
@@ -606,9 +627,11 @@ describe("Contract: PoolToken", () => {
               );
 
               // transfer same amount again
-              await mApt.connect(manager).mint(FAKE_ADDRESS, mAptSupply.div(4));
               await mApt
-                .connect(manager)
+                .connect(poolManagerSigner)
+                .mint(FAKE_ADDRESS, mAptSupply.div(4));
+              await mApt
+                .connect(poolManagerSigner)
                 .burn(poolToken.address, mAptSupply.div(4));
               // must update agg so staleness check passes
               await updateTvlAgg(deployedValue);

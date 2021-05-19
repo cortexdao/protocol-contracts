@@ -222,6 +222,7 @@ describe("Contract: AccountManager", () => {
       logic.address,
       proxyAdmin.address,
       tvlAgg.address,
+      addressRegistry.address,
       aggStalePeriod
     );
     await mAPTProxy.deployed();

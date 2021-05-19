@@ -1,7 +1,8 @@
 const { expect } = require("chai");
-const { ethers } = require("hardhat");
+const { ethers, waffle, artifacts } = require("hardhat");
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
 const timeMachine = require("ganache-time-traveler");
+const { deployMockContract } = waffle;
 const {
   tokenAmountToBigNumber,
   FAKE_ADDRESS,
@@ -43,6 +44,7 @@ describe("Contract: MetaPoolToken", () => {
   let logic;
   let proxy;
   let mApt;
+  let addressRegistry;
 
   let tvlAgg;
   let aggStalePeriod = 14400;
@@ -82,6 +84,12 @@ describe("Contract: MetaPoolToken", () => {
     MetaPoolTokenProxy = await ethers.getContractFactory("MetaPoolTokenProxy");
     MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
 
+    addressRegistry = await deployMockContract(
+      deployer,
+      artifacts.require("IAddressRegistryV2").abi
+    );
+    await addressRegistry.mock.poolManagerAddress.returns(manager.address);
+
     proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
     logic = await MetaPoolToken.deploy();
@@ -90,12 +98,11 @@ describe("Contract: MetaPoolToken", () => {
       logic.address,
       proxyAdmin.address,
       tvlAgg.address,
+      addressRegistry.address,
       aggStalePeriod
     );
     await proxy.deployed();
     mApt = await MetaPoolToken.attach(proxy.address);
-
-    await mApt.connect(deployer).setManagerAddress(manager.address);
   });
 
   describe("getDeployedValue", async () => {

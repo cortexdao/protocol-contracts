@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
 import "./interfaces/IAssetAllocation.sol";
-import "./interfaces/IAddressRegistry.sol";
+import "./interfaces/IAddressRegistryV2.sol";
 import "./interfaces/IDetailedERC20.sol";
 import "./interfaces/IAccountFunder.sol";
 import "./interfaces/IAccountFactory.sol";
@@ -41,8 +41,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     /* impl-specific storage variables */
     /* ------------------------------- */
     address public proxyAdmin;
-    MetaPoolToken public mApt;
-    IAddressRegistry public addressRegistry;
+    IAddressRegistryV2 public addressRegistry;
     IAccountFactory public accountFactory;
     bytes32[] internal _poolIds;
 
@@ -63,17 +62,13 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
      *
      * Our proxy deployment will call this as part of the constructor.
      * @param adminAddress the admin proxy to initialize with
-     * @param _mApt the metapool token to initialize with
      * @param _addressRegistry the address registry to initialize with
      */
-    function initialize(
-        address adminAddress,
-        address payable _mApt,
-        address _addressRegistry
-    ) external initializer {
+    function initialize(address adminAddress, address _addressRegistry)
+        external
+        initializer
+    {
         require(adminAddress != address(0), "INVALID_ADMIN");
-        require(Address.isContract(_mApt), "INVALID_ADDRESS");
-        require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
 
         // initialize ancestor storage
         __Context_init_unchained();
@@ -81,8 +76,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
 
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
-        mApt = MetaPoolToken(_mApt);
-        addressRegistry = IAddressRegistry(_addressRegistry);
+        _setAddressRegistry(_addressRegistry);
     }
 
     /**
@@ -120,35 +114,20 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     receive() external payable {} // solhint-disable-line no-empty-blocks
 
     /**
-     * @notice Sets the metapool token address
-     * @dev only callable by owner
-     * @param _mApt the address of the metapool token
-     */
-    function setMetaPoolToken(address payable _mApt) public onlyOwner {
-        require(Address.isContract(_mApt), "INVALID_ADDRESS");
-        mApt = MetaPoolToken(_mApt);
-    }
-
-    /**
      * @notice Sets the address registry
      * @dev only callable by owner
      * @param _addressRegistry the address of the registry
      */
     function setAddressRegistry(address _addressRegistry) public onlyOwner {
+        _setAddressRegistry(_addressRegistry);
+    }
+
+    function _setAddressRegistry(address _addressRegistry) internal {
         require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistry(_addressRegistry);
+        addressRegistry = IAddressRegistryV2(_addressRegistry);
     }
 
-    /**
-     * @notice Sets the new account factory
-     * @dev only callable by owner
-     * @param _accountFactory the address of the account factory
-     */
-    function setAccountFactory(address _accountFactory) public onlyOwner {
-        require(Address.isContract(_accountFactory), "INVALID_ADDRESS");
-        accountFactory = IAccountFactory(_accountFactory);
-    }
-
+    /*
     /**
      * @notice Funds Account and register an asset allocation
      * @dev only callable by owner. Also registers the pool underlyer for the account being funded
@@ -165,6 +144,8 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         bytes32 accountId,
         IAccountFunder.PoolAmount[] memory poolAmounts
     ) external override onlyOwner {
+        IAccountFactory accountFactory =
+            IAccountFactory(addressRegistry.accountFactoryAddress());
         address accountAddress = accountFactory.getAccount(accountId);
         require(accountAddress != address(0), "INVALID_ACCOUNT");
         (PoolTokenV2[] memory pools, uint256[] memory amounts) =
@@ -229,6 +210,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         PoolTokenV2[] memory pools,
         uint256[] memory amounts
     ) internal {
+        MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAPTAddress());
         uint256[] memory mintAmounts = new uint256[](pools.length);
         for (uint256 i = 0; i < pools.length; i++) {
             PoolTokenV2 pool = pools[i];
@@ -271,6 +253,8 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         bytes32 accountId,
         IAccountFunder.PoolAmount[] memory poolAmounts
     ) external override onlyOwner {
+        IAccountFactory accountFactory =
+            IAccountFactory(addressRegistry.accountFactoryAddress());
         address accountAddress = accountFactory.getAccount(accountId);
         require(accountAddress != address(0), "INVALID_ACCOUNT");
         (PoolTokenV2[] memory pools, uint256[] memory amounts) =
@@ -309,6 +293,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         PoolTokenV2[] memory pools,
         uint256[] memory amounts
     ) internal {
+        MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAPTAddress());
         uint256[] memory burnAmounts = new uint256[](pools.length);
         for (uint256 i = 0; i < pools.length; i++) {
             PoolTokenV2 pool = pools[i];

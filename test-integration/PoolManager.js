@@ -6,7 +6,6 @@ const {
   impersonateAccount,
   bytes32,
   acquireToken,
-  FAKE_ADDRESS,
   getStablecoinAddress,
 } = require("../utils/helpers");
 const erc20Interface = new ethers.utils.Interface(
@@ -112,15 +111,20 @@ describe("Contract: PoolManager", () => {
     /*************************************/
     /***** Upgrade Address Registry ******/
     /*************************************/
-    const AddressRegistryV2 = await ethers.getContractFactory("AddressRegistryV2");
-    const newAddressRegistryLogic = await AddressRegistryV2.deploy();
+    const AddressRegistryFactory = await ethers.getContractFactory(
+      "AddressRegistryV2"
+    );
+    const newAddressRegistryLogic = await AddressRegistryFactory.deploy();
     const registryAdmin = await ethers.getContractAt(
       "ProxyAdmin",
       APY_REGISTRY_ADMIN,
       addressRegistryDeployer
     );
 
-    await registryAdmin.upgrade(APY_ADDRESS_REGISTRY, newAddressRegistryLogic.address);
+    await registryAdmin.upgrade(
+      APY_ADDRESS_REGISTRY,
+      newAddressRegistryLogic.address
+    );
 
     const addressRegistry = await ethers.getContractAt(
       "AddressRegistryV2",
@@ -166,12 +170,16 @@ describe("Contract: PoolManager", () => {
       logic.address,
       proxyAdmin.address,
       tvlAgg.address,
+      addressRegistry.address,
       aggStalePeriod
     );
     await mAPTProxy.deployed();
 
     mAPT = await MetaPoolToken.attach(mAPTProxy.address);
-    await addressRegistry.registerAddress(ethers.utils.formatBytes32String("mAPT"), mAPT.address)
+    await addressRegistry.registerAddress(
+      ethers.utils.formatBytes32String("mAPT"),
+      mAPT.address
+    );
 
     /***********************************/
     /***** deploy manager  *************/
@@ -188,14 +196,15 @@ describe("Contract: PoolManager", () => {
     const managerProxy = await PoolManagerProxy.deploy(
       managerLogic.address,
       managerAdmin.address,
-      mAPT.address,
       APY_ADDRESS_REGISTRY
     );
     await managerProxy.deployed();
     poolManager = await PoolManager.attach(managerProxy.address);
 
-    await addressRegistry.registerAddress(ethers.utils.formatBytes32String("poolManager"), poolManager.address)
-    await mAPT.setManagerAddress(poolManager.address);
+    await addressRegistry.registerAddress(
+      ethers.utils.formatBytes32String("poolManager"),
+      poolManager.address
+    );
 
     // approve manager to withdraw from pools
     daiPool = await ethers.getContractAt(
@@ -226,7 +235,11 @@ describe("Contract: PoolManager", () => {
     await accountFactoryMock.mock.getAccount
       .withArgs(accountId)
       .returns(fundedAccount.address);
-    await poolManager.setAccountFactory(accountFactoryMock.address);
+
+    await addressRegistry.registerAddress(
+      ethers.utils.formatBytes32String("accountFactory"),
+      accountFactoryMock.address
+    );
 
     /*******************************************/
     /***** deploy asset allocation registry ****/
@@ -309,8 +322,10 @@ describe("Contract: PoolManager", () => {
     });
 
     it("Owner can call", async () => {
-      await expect(poolManager.connect(deployer).fundAccount(accountId, [])).to.not
-        .be.reverted;
+      // await expect(
+      await poolManager.connect(deployer).fundAccount(accountId, []);
+      // ).to
+      // .not.be.reverted;
     });
 
     it("Revert on invalid account", async () => {
@@ -502,7 +517,9 @@ describe("Contract: PoolManager", () => {
 
     /** manager needs to be approved to transfer tokens from funded account */
     before("Approve manager for transfer from funded account", async () => {
-      await daiToken.connect(fundedAccount).approve(poolManager.address, daiAmount);
+      await daiToken
+        .connect(fundedAccount)
+        .approve(poolManager.address, daiAmount);
       await usdcToken
         .connect(fundedAccount)
         .approve(poolManager.address, usdcAmount);
