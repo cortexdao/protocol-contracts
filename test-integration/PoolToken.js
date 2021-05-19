@@ -142,14 +142,14 @@ describe("Contract: PoolToken", () => {
         mApt = await MetaPoolToken.attach(mAptProxy.address);
         await mApt.connect(deployer).setManagerAddress(manager.address);
 
-        const IAddressRegistry = await ethers.getContractFactory(
+        const AddressRegistryFactory = await ethers.getContractFactory(
           "AddressRegistryV2"
         );
-        const AddressRegistryLogic = await IAddressRegistry.deploy();
+        const AddressRegistryLogic = await AddressRegistryFactory.deploy();
         const addressRegistryProxyAdmin = await ProxyAdmin.deploy();
         await addressRegistryProxyAdmin.deployed();
 
-        const encodedParamData = IAddressRegistry.interface.encodeFunctionData(
+        const encodedParamData = AddressRegistryFactory.interface.encodeFunctionData(
           "initialize(address)",
           [addressRegistryProxyAdmin.address]
         );
@@ -160,7 +160,7 @@ describe("Contract: PoolToken", () => {
           encodedParamData
         );
 
-        addressRegistry = await IAddressRegistry.attach(
+        addressRegistry = await AddressRegistryFactory.attach(
           addressRegistryProxy.address
         );
 
