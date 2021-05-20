@@ -1,82 +1,38 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.11;
 
-import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/IOracleAdapter.sol";
 
-contract OracleAdapter is Initializable, OwnableUpgradeSafe, IOracleAdapter {
+contract OracleAdapter is Ownable, IOracleAdapter {
     using SafeMath for uint256;
-
-    address public proxyAdmin;
 
     mapping(address => AggregatorV3Interface) private _assetSources;
     AggregatorV3Interface private _tvlSource;
     IOracleAdapter private _fallbackOracle;
 
-    event AdminChanged(address);
     event AssetSourceUpdated(address indexed asset, address indexed source);
     event TvlSourceUpdated(address indexed source);
     event FallbackOracleUpdated(address indexed fallbackOracle);
 
     /**
-     * @dev Throws if called by any account other than the proxy admin.
-     */
-    modifier onlyAdmin() {
-        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
-        _;
-    }
-
-    /**
-     * @dev Since the proxy delegate calls to this "logic" contract, any
-     * storage set by the logic contract's constructor during deploy is
-     * disregarded and this function is needed to initialize the proxy
-     * contract's storage according to this contract's layout.
-     *
-     * Since storage is not set yet, there is no simple way to protect
-     * calling this function with owner modifiers.  Thus the OpenZeppelin
-     * `initializer` modifier protects this function from being called
-     * repeatedly.
-     *
-     * Our proxy deployment will call this as part of the constructor.
-     * @param adminAddress the admin proxy to initialize with
+     * @notice Constructor
      * @param assets the assets priced by sources
      * @param sources the source for each asset
      * @param tvlSource the source for the TVL value
      * @param fallbackOracle the fallback used in case of pricing problems
      */
-    function initialize(
-        address adminAddress,
-        address[] calldata assets,
-        address[] calldata sources,
+    constructor(
+        address[] memory assets,
+        address[] memory sources,
         address tvlSource,
         address fallbackOracle
-    ) external initializer {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-
-        // initialize ancestor storage
-        __Context_init_unchained();
-        __Ownable_init_unchained();
-
-        // initialize impl-specific storage
-        setAdminAddress(adminAddress);
-
-        _setFallbackOracle(fallbackOracle);
+    ) public {
         _setAssetSources(assets, sources);
         _setTvlSource(tvlSource);
-    }
-
-    /**
-     * @notice Sets the proxy admin address of the oracle adapter proxy
-     * @dev only callable by owner
-     * @param adminAddress the new proxy admin address of the oracle adapter
-     */
-    function setAdminAddress(address adminAddress) public onlyOwner {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-        proxyAdmin = adminAddress;
-        emit AdminChanged(adminAddress);
+        _setFallbackOracle(fallbackOracle);
     }
 
     /**
