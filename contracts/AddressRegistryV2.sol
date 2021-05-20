@@ -220,7 +220,10 @@ contract AddressRegistryV2 is
         return getAddress("mAPT");
     }
 
-    function accountFactoryAddress() public view override returns (address) {
-        return getAddress("accountFactory");
+    /**
+     * @notice Get the address for the APY.Finance LP Safe.
+     */
+    function lpSafeAddress() public view override returns (address) {
+        return getAddress("lpSafe");
     }
 }
