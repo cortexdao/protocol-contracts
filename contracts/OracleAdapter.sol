@@ -92,6 +92,14 @@ contract OracleAdapter is Initializable, OwnableUpgradeSafe, IOracleAdapter {
     }
 
     /**
+     * @notice Set or replace the TVL source
+     * @param source the TVL source address
+     */
+    function setTvlSource(address source) external onlyOwner {
+        _setTvlSource(source);
+    }
+
+    /**
      * @notice Set the fallbackOracle
      * @param fallbackOracle the fallback oracle address
      */
