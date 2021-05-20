@@ -51,5 +51,5 @@ interface IAddressRegistryV2 {
 
     function mAPTAddress() external view returns (address);
 
-    function accountFactoryAddress() external view returns (address);
+    function lpSafeAddress() external view returns (address);
 }
