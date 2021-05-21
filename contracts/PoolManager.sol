@@ -20,13 +20,13 @@ import "./MetaPoolToken.sol";
  * @notice The pool manager logic contract for use with the pool manager proxy contract.
  *
  * The Pool Manager orchestrates the movement of capital within the APY system
- * between pools (PoolTokenV2 contracts) and strategy accounts (Account contracts).
+ * between pools (PoolTokenV2 contracts) and strategy accounts, e.g. LP Safe.
  *
- * Transferring from a PoolToken to an Account stages capital in preparation
+ * Transferring from a PoolToken to an account stages capital in preparation
  * for executing yield farming strategies.
  *
  * Capital is unwound from yield farming strategies for user withdrawals by transferring
- * from Accounts to PoolTokens.
+ * from accounts to PoolTokens.
  *
  * When funding an account from a pool, the Pool Manager simultaneously register the asset
  * allocation with the TVL Manager to ensure the TVL is properly updated.
@@ -204,7 +204,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, ILpSafeFunder {
         PoolTokenV2[] memory pools,
         uint256[] memory amounts
     ) internal {
-        MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAPTAddress());
+        MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAptAddress());
         uint256[] memory mintAmounts = new uint256[](pools.length);
         for (uint256 i = 0; i < pools.length; i++) {
             PoolTokenV2 pool = pools[i];
@@ -285,7 +285,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, ILpSafeFunder {
         PoolTokenV2[] memory pools,
         uint256[] memory amounts
     ) internal {
-        MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAPTAddress());
+        MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAptAddress());
         uint256[] memory burnAmounts = new uint256[](pools.length);
         for (uint256 i = 0; i < pools.length; i++) {
             PoolTokenV2 pool = pools[i];

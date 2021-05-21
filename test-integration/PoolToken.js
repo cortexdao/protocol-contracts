@@ -170,7 +170,7 @@ describe("Contract: PoolToken", () => {
         mApt = await MetaPoolToken.attach(mAptProxy.address);
 
         await addressRegistry.registerAddress(
-          ethers.utils.formatBytes32String("mAPT"),
+          ethers.utils.formatBytes32String("mApt"),
           mApt.address
         );
 

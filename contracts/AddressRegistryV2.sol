@@ -152,15 +152,6 @@ contract AddressRegistryV2 is
     }
 
     /**
-     * @notice Get the address for the Account Manager.
-     * @dev Not just a helper function, this makes explicit a key ID
-     *      for the system.
-     */
-    function accountManagerAddress() public view override returns (address) {
-        return getAddress("accountManager");
-    }
-
-    /**
      * @notice Get the address for the Pool Manager.
      * @dev Not just a helper function, this makes explicit a key ID
      *      for the system.
@@ -216,8 +207,8 @@ contract AddressRegistryV2 is
         return getAddress("usdtPool");
     }
 
-    function mAPTAddress() public view override returns (address) {
-        return getAddress("mAPT");
+    function mAptAddress() public view override returns (address) {
+        return getAddress("mApt");
     }
 
     /**

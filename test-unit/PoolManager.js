@@ -53,7 +53,7 @@ describe("Contract: PoolManager", () => {
       deployer,
       artifacts.require("IAddressRegistryV2").abi
     );
-    await addressRegistryMock.mock.mAPTAddress.returns(mAptMock.address);
+    await addressRegistryMock.mock.mAptAddress.returns(mAptMock.address);
 
     await addressRegistryMock.mock.getAddress.returns(FAKE_ADDRESS);
     const proxy = await PoolManagerProxy.deploy(

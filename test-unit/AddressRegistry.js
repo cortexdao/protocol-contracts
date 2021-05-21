@@ -221,7 +221,7 @@ contract("AddressRegistry", async (accounts) => {
     const poolManagerAddress = web3.utils.toChecksumAddress(
       "0x2AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
-    const accountManagerAddress = web3.utils.toChecksumAddress(
+    const lpSafeAddress = web3.utils.toChecksumAddress(
       "0x3AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
     const daiPoolAddress = web3.utils.toChecksumAddress(
@@ -238,7 +238,7 @@ contract("AddressRegistry", async (accounts) => {
         DUMMY_NAME,
         bytes32("tvlManager"),
         bytes32("poolManager"),
-        bytes32("accountManager"),
+        bytes32("lpSafe"),
         bytes32("daiPool"),
         bytes32("usdcPool"),
         bytes32("usdtPool"),
@@ -247,7 +247,7 @@ contract("AddressRegistry", async (accounts) => {
         DUMMY_ADDRESS,
         tvlManagerAddress,
         poolManagerAddress,
-        accountManagerAddress,
+        lpSafeAddress,
         daiPoolAddress,
         usdcPoolAddress,
         usdtPoolAddress,
@@ -260,7 +260,7 @@ contract("AddressRegistry", async (accounts) => {
         DUMMY_NAME,
         bytes32("tvlManager"),
         bytes32("poolManager"),
-        bytes32("accountManager"),
+        bytes32("lpSafe"),
         bytes32("daiPool"),
         bytes32("usdcPool"),
         bytes32("usdtPool"),
@@ -297,10 +297,10 @@ contract("AddressRegistry", async (accounts) => {
       );
     });
 
-    it("User can retrieve account manager", async () => {
+    it("User can retrieve LP Safe", async () => {
       assert.equal(
-        await registry.accountManagerAddress({ from: randomUser }),
-        accountManagerAddress
+        await registry.lpSafeAddress({ from: randomUser }),
+        lpSafeAddress
       );
     });
 

@@ -35,8 +35,6 @@ interface IAddressRegistryV2 {
      */
     function getAddress(bytes32 id) external view returns (address);
 
-    function accountManagerAddress() external view returns (address);
-
     function poolManagerAddress() external view returns (address);
 
     function tvlManagerAddress() external view returns (address);
@@ -49,7 +47,7 @@ interface IAddressRegistryV2 {
 
     function usdtPoolAddress() external view returns (address);
 
-    function mAPTAddress() external view returns (address);
+    function mAptAddress() external view returns (address);
 
     function lpSafeAddress() external view returns (address);
 }

@@ -84,7 +84,7 @@ describe("Contract: PoolToken", () => {
       deployer,
       AddressRegistry.abi
     );
-    await addressRegistryMock.mock.mAPTAddress.returns(mAptMock.address);
+    await addressRegistryMock.mock.mAptAddress.returns(mAptMock.address);
 
     const initData = PoolTokenV2.interface.encodeFunctionData(
       "initializeUpgrade(address)",

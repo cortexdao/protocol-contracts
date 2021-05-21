@@ -441,7 +441,7 @@ contract PoolTokenV2 is
      * @return USD value
      */
     function getDeployedValue() public view virtual returns (uint256) {
-        MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAPTAddress());
+        MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAptAddress());
         return mApt.getDeployedValue(address(this));
     }
 
