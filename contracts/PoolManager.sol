@@ -9,12 +9,10 @@ import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAddressRegistryV2.sol";
 import "./interfaces/IDetailedERC20.sol";
-import "./interfaces/IAccountFunder.sol";
-import "./interfaces/IAccountFactory.sol";
+import "./interfaces/ILpSafeFunder.sol";
 import "./interfaces/ITVLManager.sol";
 import "./PoolTokenV2.sol";
 import "./MetaPoolToken.sol";
-import "./Account.sol";
 
 /**
  * @title Pool Manager
@@ -33,7 +31,7 @@ import "./Account.sol";
  * When funding an account from a pool, the Pool Manager simultaneously register the asset
  * allocation with the TVL Manager to ensure the TVL is properly updated.
  */
-contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
+contract PoolManager is Initializable, OwnableUpgradeSafe, ILpSafeFunder {
     using SafeMath for uint256;
     using SafeERC20 for IDetailedERC20;
 
@@ -42,7 +40,6 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     /* ------------------------------- */
     address public proxyAdmin;
     IAddressRegistryV2 public addressRegistry;
-    IAccountFactory public accountFactory;
     bytes32[] internal _poolIds;
 
     /* ------------------------------- */
@@ -127,34 +124,31 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         addressRegistry = IAddressRegistryV2(_addressRegistry);
     }
 
-    /*
     /**
-     * @notice Funds Account and register an asset allocation
+     * @notice Funds LP Safe account and register an asset allocation
      * @dev only callable by owner. Also registers the pool underlyer for the account being funded
-     * @param accountId id of the Account being funded
      * @param poolAmounts a list of PoolAmount structs denoting the pools id and amounts used to fund the account
-     * @notice PoolAmount example (pulls ~$1 from each pool to the Account):
+     * @notice PoolAmount example (pulls ~$1 from each pool to the account):
      *      [
      *          { poolId: "daiPool", amount: "1000000000000" },
      *          { poolId: "usdcPool", amount: "1000000" },
      *          { poolId: "usdtPool", amount: "1000000" },
      *      ]
      */
-    function fundAccount(
-        bytes32 accountId,
-        IAccountFunder.PoolAmount[] memory poolAmounts
-    ) external override onlyOwner {
-        IAccountFactory accountFactory =
-            IAccountFactory(addressRegistry.accountFactoryAddress());
-        address accountAddress = accountFactory.getAccount(accountId);
-        require(accountAddress != address(0), "INVALID_ACCOUNT");
+    function fundLpSafe(ILpSafeFunder.PoolAmount[] memory poolAmounts)
+        external
+        override
+        onlyOwner
+    {
+        address lpSafeAddress = addressRegistry.lpSafeAddress();
+        require(lpSafeAddress != address(0), "INVALID_LP_SAFE");
         (PoolTokenV2[] memory pools, uint256[] memory amounts) =
             _getPoolsAndAmounts(poolAmounts);
-        _registerPoolUnderlyers(accountAddress, pools);
-        _fundAccount(accountAddress, pools, amounts);
+        _registerPoolUnderlyers(lpSafeAddress, pools);
+        _fund(lpSafeAddress, pools, amounts);
     }
 
-    function _getPoolsAndAmounts(IAccountFunder.PoolAmount[] memory poolAmounts)
+    function _getPoolsAndAmounts(ILpSafeFunder.PoolAmount[] memory poolAmounts)
         internal
         view
         returns (PoolTokenV2[] memory, uint256[] memory)
@@ -200,12 +194,12 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     }
 
     /**
-     * @notice Helper function move capital from PoolToken contracts to an Account
+     * @notice Helper function move capital from PoolToken contracts to an account
      * @param account the address to move funds to
      * @param pools a list of pools to pull funds from
      * @param amounts a list of fund amounts to pull from pools
      */
-    function _fundAccount(
+    function _fund(
         address account,
         PoolTokenV2[] memory pools,
         uint256[] memory amounts
@@ -238,29 +232,27 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     }
 
     /**
-     * @notice Moves capital from an Account to the PoolToken contracts
+     * @notice Moves capital from LP Safe account to the PoolToken contracts
      * @dev only callable by owner
-     * @param accountId the account id to withdraw funds from
      * @param poolAmounts list of PoolAmount structs denoting pool IDs and pool deposit amounts
-     * @notice PoolAmount example (pushes ~$1 to each pool from the Account):
+     * @notice PoolAmount example (pushes ~$1 to each pool from the account):
      *      [
      *          { poolId: "daiPool", amount: "1000000000000" },
      *          { poolId: "usdcPool", amount: "1000000" },
      *          { poolId: "usdtPool", amount: "1000000" },
      *      ]
      */
-    function withdrawFromAccount(
-        bytes32 accountId,
-        IAccountFunder.PoolAmount[] memory poolAmounts
-    ) external override onlyOwner {
-        IAccountFactory accountFactory =
-            IAccountFactory(addressRegistry.accountFactoryAddress());
-        address accountAddress = accountFactory.getAccount(accountId);
-        require(accountAddress != address(0), "INVALID_ACCOUNT");
+    function withdrawFromLpSafe(ILpSafeFunder.PoolAmount[] memory poolAmounts)
+        external
+        override
+        onlyOwner
+    {
+        address lpSafeAddress = addressRegistry.lpSafeAddress();
+        require(lpSafeAddress != address(0), "INVALID_LP_SAFE");
         (PoolTokenV2[] memory pools, uint256[] memory amounts) =
             _getPoolsAndAmounts(poolAmounts);
-        _checkManagerAllowances(accountAddress, pools, amounts);
-        _withdrawFromAccount(accountAddress, pools, amounts);
+        _checkManagerAllowances(lpSafeAddress, pools, amounts);
+        _withdraw(lpSafeAddress, pools, amounts);
     }
 
     /**
@@ -282,13 +274,13 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     }
 
     /**
-     * @notice Move capital from an Account back to the PoolToken contracts
+     * @notice Move capital from an account back to the PoolToken contracts
      * @param account account that funds are being withdrawn from
      * @param pools a list of pools to place recovered funds back into
      * @param amounts a list of amounts to send from the account to the pools
      *
      */
-    function _withdrawFromAccount(
+    function _withdraw(
         address account,
         PoolTokenV2[] memory pools,
         uint256[] memory amounts

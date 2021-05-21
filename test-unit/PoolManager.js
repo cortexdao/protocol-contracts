@@ -16,11 +16,9 @@ describe("Contract: PoolManager", () => {
   // contract factories
   let PoolManager;
   let ProxyAdmin;
-  let GenericExecutor;
 
   // deployed contracts
   let poolManager;
-  let executor;
   let addressRegistryMock;
 
   // use EVM snapshots for test isolation
@@ -43,9 +41,6 @@ describe("Contract: PoolManager", () => {
     const PoolManagerProxy = await ethers.getContractFactory(
       "PoolManagerProxy"
     );
-    GenericExecutor = await ethers.getContractFactory("GenericExecutor");
-    executor = await GenericExecutor.deploy();
-    await executor.deployed();
 
     const logic = await PoolManager.deploy();
     await logic.deployed();
@@ -143,68 +138,53 @@ describe("Contract: PoolManager", () => {
     });
   });
 
-  describe("Account Funder", () => {
+  describe("LP Safe Funder", () => {
     let fundedAccount;
-    const accountId = bytes32("account1");
 
-    before("Setup mock accountFactory", async () => {
+    before("Setup mock address registry", async () => {
       fundedAccount = accounts[0];
-      const accountFactoryMock = await deployMockContract(
-        deployer,
-        artifacts.require("IAccountFactory").abi
-      );
-      await accountFactoryMock.mock.getAccount.returns(ZERO_ADDRESS);
-      await accountFactoryMock.mock.getAccount
-        .withArgs(accountId)
-        .returns(fundedAccount.address);
-
-      await addressRegistryMock.mock.accountFactoryAddress.returns(
-        accountFactoryMock.address
+      await addressRegistryMock.mock.lpSafeAddress.returns(
+        fundedAccount.address
       );
     });
 
-    describe("fundAccount", () => {
+    describe("fundLpSafe", () => {
       it("Owner can call", async () => {
-        // await expect(
-        poolManager.connect(deployer).fundAccount(accountId, []);
-        // )
-        // .to.not.be.reverted;
+        await expect(poolManager.connect(deployer).fundLpSafe([])).to.not.be
+          .reverted;
       });
 
       it("Non-owner cannot call", async () => {
         await expect(
-          poolManager.connect(randomUser).fundAccount(accountId, [])
+          poolManager.connect(randomUser).fundLpSafe([])
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
       });
 
-      it("Revert on invalid account", async () => {
+      it("Revert on unregistered LP Safe address", async () => {
+        await addressRegistryMock.mock.lpSafeAddress.returns(ZERO_ADDRESS);
         await expect(
-          poolManager
-            .connect(deployer)
-            .fundAccount(bytes32("invalidAccount"), [])
-        ).to.be.revertedWith("INVALID_ACCOUNT");
+          poolManager.connect(deployer).fundLpSafe([])
+        ).to.be.revertedWith("INVALID_LP_SAFE");
       });
     });
 
-    describe("withdrawFromAccount", () => {
+    describe("withdrawFromLpSafe", () => {
       it("Owner can call", async () => {
-        await expect(
-          poolManager.connect(deployer).withdrawFromAccount(accountId, [])
-        ).to.not.be.reverted;
+        await expect(poolManager.connect(deployer).withdrawFromLpSafe([])).to
+          .not.be.reverted;
       });
 
       it("Non-owner cannot call", async () => {
         await expect(
-          poolManager.connect(randomUser).withdrawFromAccount(accountId, [])
+          poolManager.connect(randomUser).withdrawFromLpSafe([])
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
       });
 
-      it("Revert on invalid account", async () => {
+      it("Revert on unregistered LP Safe address", async () => {
+        await addressRegistryMock.mock.lpSafeAddress.returns(ZERO_ADDRESS);
         await expect(
-          poolManager
-            .connect(deployer)
-            .withdrawFromAccount(bytes32("invalidAccount"), [])
-        ).to.be.revertedWith("INVALID_ACCOUNT");
+          poolManager.connect(deployer).withdrawFromLpSafe([])
+        ).to.be.revertedWith("INVALID_LP_SAFE");
       });
     });
   });
