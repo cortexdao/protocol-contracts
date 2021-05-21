@@ -316,11 +316,9 @@ describe("Contract: PoolManager", () => {
         .reverted;
     });
 
-    it("Revert on invalid account", async () => {
+    it("Revert on missing LP Safe address", async () => {
       await addressRegistry.deleteAddress(bytes32("lpSafe"));
-      await expect(
-        poolManager.connect(deployer).fundLpSafe([])
-      ).to.be.revertedWith("INVALID_LP_SAFE");
+      await expect(poolManager.connect(deployer).fundLpSafe([])).to.be.reverted;
     });
 
     it("Revert on unregistered pool", async () => {
@@ -539,10 +537,10 @@ describe("Contract: PoolManager", () => {
           .not.be.reverted;
       });
 
-      it("Revert on invalid account", async () => {
-        await expect(
-          poolManager.connect(deployer).withdrawFromLpSafe([])
-        ).to.be.revertedWith("INVALID_ACCOUNT");
+      it("Revert on missing LP Safe address", async () => {
+        await addressRegistry.deleteAddress(bytes32("lpSafe"));
+        await expect(poolManager.connect(deployer).withdrawFromLpSafe([])).to.be
+          .reverted;
       });
 
       it("Revert on unregistered pool", async () => {
