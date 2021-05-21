@@ -20,6 +20,7 @@ import "./interfaces/IAddressRegistryV2.sol";
 /// but are not registered can have devastating and catastrophic effects on the TVL.
 contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
     using EnumerableSet for EnumerableSet.Bytes32Set;
+    using Address for address;
 
     IAddressRegistryV2 public addressRegistry;
 
@@ -195,32 +196,7 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
         view
         returns (bytes memory returnData)
     {
-        returnData = _staticcall(data.target, data.data);
-    }
-
-    function _staticcall(address target, bytes memory data)
-        private
-        view
-        returns (bytes memory)
-    {
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory returndata) = target.staticcall(data);
-        if (success) {
-            return returndata;
-        } else {
-            // Look for revert reason and bubble it up if present
-            if (returndata.length > 0) {
-                // The easiest way to bubble the revert reason is using memory via assembly
-
-                // solhint-disable-next-line no-inline-assembly
-                assembly {
-                    let returndata_size := mload(returndata)
-                    revert(add(32, returndata), returndata_size)
-                }
-            } else {
-                revert("STATIC_CALL_FAILED");
-            }
-        }
+        returnData = data.target.functionStaticCall(data.data);
     }
 
     /**
