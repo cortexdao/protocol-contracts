@@ -143,7 +143,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, ILpSafeFunder {
         onlyOwner
     {
         address lpSafeAddress = addressRegistry.lpSafeAddress();
-        require(lpSafeAddress != address(0), "INVALID_ACCOUNT");
+        require(lpSafeAddress != address(0), "INVALID_LP_SAFE");
         (PoolTokenV2[] memory pools, uint256[] memory amounts) =
             _getPoolsAndAmounts(poolAmounts);
         _registerPoolUnderlyers(lpSafeAddress, pools);
@@ -250,7 +250,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, ILpSafeFunder {
         onlyOwner
     {
         address lpSafeAddress = addressRegistry.lpSafeAddress();
-        require(lpSafeAddress != address(0), "INVALID_ACCOUNT");
+        require(lpSafeAddress != address(0), "INVALID_LP_SAFE");
         (PoolTokenV2[] memory pools, uint256[] memory amounts) =
             _getPoolsAndAmounts(poolAmounts);
         _checkManagerAllowances(lpSafeAddress, pools, amounts);
