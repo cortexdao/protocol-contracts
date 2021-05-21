@@ -196,7 +196,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, ILpSafeFunder {
     }
 
     /**
-     * @notice Helper function move capital from PoolToken contracts to an Account
+     * @notice Helper function move capital from PoolToken contracts to an account
      * @param account the address to move funds to
      * @param pools a list of pools to pull funds from
      * @param amounts a list of fund amounts to pull from pools
