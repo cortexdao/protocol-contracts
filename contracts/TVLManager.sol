@@ -44,7 +44,7 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
         require(
             msg.sender == owner() ||
                 msg.sender == addressRegistry.poolManagerAddress() ||
-                msg.sender == addressRegistry.accountManagerAddress(),
+                msg.sender == addressRegistry.lpSafeAddress(),
             "PERMISSIONED_ONLY"
         );
         _;
