@@ -10,11 +10,9 @@ import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAddressRegistryV2.sol";
 import "./interfaces/IDetailedERC20.sol";
 import "./interfaces/ILpSafeFunder.sol";
-import "./interfaces/IAccountFactory.sol";
 import "./interfaces/ITVLManager.sol";
 import "./PoolTokenV2.sol";
 import "./MetaPoolToken.sol";
-import "./Account.sol";
 
 /**
  * @title Pool Manager
