@@ -145,6 +145,20 @@ async function main(argv) {
   receipt = await trx.wait();
   gasUsed = gasUsed.add(receipt.gasUsed);
 
+  gasPrice = await getGasPrice(argv.gasPrice);
+  const lpSafeAddress = getDeployedAddress("LpSafe", networkName);
+  trx = await addressRegistry.registerAddress(
+    bytes32("lpSafe"),
+    lpSafeAddress,
+    {
+      gasPrice,
+    }
+  );
+  console.log("Register LP Safe:", `https://etherscan.io/tx/${trx.hash}`);
+  console.log("");
+  receipt = await trx.wait();
+  gasUsed = gasUsed.add(receipt.gasUsed);
+
   updateDeployJsons(networkName, deploy_data);
   console.log("Total gas used:", gasUsed.toString());
 
