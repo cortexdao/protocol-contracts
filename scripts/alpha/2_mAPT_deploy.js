@@ -18,9 +18,11 @@ const { ethers, network } = require("hardhat");
 const { BigNumber } = ethers;
 const chalk = require("chalk");
 const {
+  bytes32,
   getGasPrice,
   updateDeployJsons,
   getAggregatorAddress,
+  getDeployedAddress,
 } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
@@ -97,6 +99,20 @@ async function main(argv) {
   console.log("");
   gasUsed = gasUsed.add(receipt.gasUsed);
 
+  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
+  const addressRegistryDeployer = ethers.Wallet.fromMnemonic(
+    ADDRESS_REGISTRY_MNEMONIC
+  ).connect(ethers.provider);
+  const addressRegistryProxyAddress = getDeployedAddress(
+    "AddressRegistryProxy",
+    networkName
+  );
+  const addressRegistry = await ethers.getContractAt(
+    "AddressRegistryV2",
+    addressRegistryProxyAddress,
+    addressRegistryDeployer
+  );
+
   const tvlAggAddress = getAggregatorAddress("TVL", networkName);
   const aggStalePeriod = 14400;
   gasPrice = await getGasPrice(argv.gasPrice);
@@ -104,6 +120,7 @@ async function main(argv) {
     logic.address,
     proxyAdmin.address,
     tvlAggAddress,
+    addressRegistry.address,
     aggStalePeriod,
     { gasPrice }
   );
@@ -114,11 +131,23 @@ async function main(argv) {
   receipt = await proxy.deployTransaction.wait();
   deploy_data["MetaPoolTokenProxy"] = proxy.address;
   console.log(`Proxy: ${chalk.green(proxy.address)}`);
-  console.log("");
   console.log("TVL Aggregator:", tvlAggAddress);
-  console.log("");
+  console.log("Address Registry:", addressRegistry.address);
   console.log("Aggregator stale period:", aggStalePeriod);
   console.log("");
+  gasUsed = gasUsed.add(receipt.gasUsed);
+
+  gasPrice = await getGasPrice(argv.gasPrice);
+  let trx = await addressRegistry.registerAddress(
+    bytes32("mApt"),
+    proxy.address,
+    {
+      gasPrice,
+    }
+  );
+  console.log("Register address:", `https://etherscan.io/tx/${trx.hash}`);
+  console.log("");
+  receipt = await trx.wait();
   gasUsed = gasUsed.add(receipt.gasUsed);
 
   updateDeployJsons(networkName, deploy_data);
