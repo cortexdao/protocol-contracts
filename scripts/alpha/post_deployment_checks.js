@@ -53,6 +53,11 @@ async function main(argv) {
   const tvlManagerDeployer = ethers.Wallet.fromMnemonic(
     TVL_MANAGER_MNEMONIC
   ).connect(ethers.provider);
+  // TODO
+  const ORACLE_ADAPTER_MNEMONIC = process.env.ORACLE_ADAPTER_MNEMONIC;
+  const oracleAdapterDeployer = ethers.Wallet.fromMnemonic(
+    ORACLE_ADAPTER_MNEMONIC
+  ).connect(ethers.provider);
 
   const addressRegistryAddress = getDeployedAddress(
     "AddressRegistryProxy",
@@ -77,6 +82,11 @@ async function main(argv) {
     "TVLManager",
     tvlManagerAddress
   );
+  const oracleAdapterAddress = getDeployedAddress("OracleAdapter", networkName);
+  const oracleAdapter = await ethers.getContractAt(
+    "OracleAdapter",
+    oracleAdapterAddress
+  );
 
   const lpSafeAddress = getDeployedAddress("LpSafe", networkName);
 
@@ -87,6 +97,8 @@ async function main(argv) {
   expect(await mApt.owner()).to.equal(mAptDeployer.address);
   expect(await poolManager.owner()).to.equal(poolManagerDeployer.address);
   expect(await tvlManager.owner()).to.equal(tvlManagerDeployer.address);
+  // TODO
+  expect(await oracleAdapter.owner()).to.equal(oracleAdapterDeployer.address);
   console.logDone();
 
   console.log("Check address registry addresses ...");
@@ -117,10 +129,19 @@ async function main(argv) {
   expect(await addressRegistry.chainlinkRegistryAddress()).to.equal(
     tvlManager.address
   );
+  // TODO
+  expect(await addressRegistry.oracleAdapterAddress()).to.equal(
+    oracleAdapter.address
+  );
   console.logDone();
 
   console.log("Check address registry set on mAPT ...");
   expect(await mApt.addressRegistry()).to.equal(addressRegistry.address);
+  console.logDone();
+
+  // TODO
+  console.log("Check oracle adapter set on mAPT ...");
+  expect(await mApt.oracleAdapter()).to.equal(oracleAdapter.address);
   console.logDone();
 
   console.log("Check address registry set on pool manager ...");
@@ -136,6 +157,8 @@ async function main(argv) {
 
     // sanity-check; also checks if we are using V2 contracts
     expect(await pool.addressRegistry()).to.equal(addressRegistry.address);
+    // TODO
+    expect(await pool.oracleAdapter()).to.equal(oracleAdapter.address);
 
     // check pool manager allowances
     const underlyerAddress = await pool.underlyer();
@@ -152,8 +175,6 @@ async function main(argv) {
     // check pool underlyer price is in USD
     expect(await pool.getUnderlyerPrice()).to.be.lt("110000000");
     expect(await pool.getUnderlyerPrice()).to.be.gt("90000000");
-
-    // TODO: check agg addresses?
   }
   console.logDone();
 }
