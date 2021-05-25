@@ -122,7 +122,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      * @notice Set the length of time before an agg value is considered stale
      * @param aggStalePeriod_ the length of time in seconds
      */
-    function _setAggStalePeriod(uint256 aggStalePeriod_) external onlyOwner {
+    function _setAggStalePeriod(uint256 aggStalePeriod_) private {
         require(aggStalePeriod_ > 0, "INVALID_STALE_PERIOD");
         aggStalePeriod = aggStalePeriod_;
         emit AggStalePeriodUpdated(aggStalePeriod_);
