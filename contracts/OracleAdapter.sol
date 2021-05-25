@@ -9,25 +9,31 @@ import "./interfaces/IOracleAdapter.sol";
 contract OracleAdapter is Ownable, IOracleAdapter {
     using SafeMath for uint256;
 
+    /// @notice seconds within which aggregator should be updated
+    uint256 public aggStalePeriod;
     mapping(address => AggregatorV3Interface) private _assetSources;
     AggregatorV3Interface private _tvlSource;
 
     event AssetSourceUpdated(address indexed asset, address indexed source);
     event TvlSourceUpdated(address indexed source);
+    event AggStalePeriodUpdated(uint256 aggStalePeriod_);
 
     /**
      * @notice Constructor
      * @param assets the assets priced by sources
      * @param sources the source for each asset
      * @param tvlSource the source for the TVL value
+     * @param aggStalePeriod_ the number of seconds until a source value is stale
      */
     constructor(
         address[] memory assets,
         address[] memory sources,
-        address tvlSource
+        address tvlSource,
+        uint256 aggStalePeriod_
     ) public {
         _setAssetSources(assets, sources);
         _setTvlSource(tvlSource);
+        _setAggStalePeriod(aggStalePeriod_);
     }
 
     /**
@@ -48,6 +54,14 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      */
     function setTvlSource(address source) external onlyOwner {
         _setTvlSource(source);
+    }
+
+    /**
+     * @notice Set the length of time before an agg value is considered stale
+     * @param aggStalePeriod_ the length of time in seconds
+     */
+    function setAggStalePeriod(uint256 aggStalePeriod_) external onlyOwner {
+        _setAggStalePeriod(aggStalePeriod_);
     }
 
     /**
@@ -105,6 +119,16 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     }
 
     /**
+     * @notice Set the length of time before an agg value is considered stale
+     * @param aggStalePeriod_ the length of time in seconds
+     */
+    function _setAggStalePeriod(uint256 aggStalePeriod_) external onlyOwner {
+        require(aggStalePeriod_ > 0, "INVALID_STALE_PERIOD");
+        aggStalePeriod = aggStalePeriod_;
+        emit AggStalePeriodUpdated(aggStalePeriod_);
+    }
+
+    /**
      * @notice Get the price from a source (aggregator)
      * @return the price from the source
      */
@@ -115,7 +139,14 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     {
         require(address(source) != address(0), "INVALID_SOURCE");
 
-        (, int256 price, , , ) = source.latestRoundData();
+        (, int256 price, , uint256 updatedAt, ) = source.latestRoundData();
+
+        // solhint-disable not-rely-on-time
+        require(
+            block.timestamp.sub(updatedAt) <= aggStalePeriod,
+            "CHAINLINK_STALE_DATA"
+        );
+        // solhint-enable not-rely-on-time
 
         if (price > 0) {
             return uint256(price);
