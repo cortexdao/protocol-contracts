@@ -79,6 +79,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
 
         uint256 price = _getPriceFromSource(source);
 
+        // Unlike TVL, a price should never be 0
         require(price > 0, "MISSING_ASSET_VALUE");
 
         return price;
@@ -89,8 +90,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      * @return the TVL
      */
     function getTVL() public view override returns (uint256) {
-        uint256 price = _getPriceFromSource(_tvlSource);
-        return price;
+        return _getPriceFromSource(_tvlSource);
     }
 
     /**
@@ -130,6 +130,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
 
     /**
      * @notice Get the price from a source (aggregator)
+     * @dev Prices and TVL values should always be positive
      * @return the price from the source
      */
     function _getPriceFromSource(AggregatorV3Interface source)
@@ -141,6 +142,8 @@ contract OracleAdapter is Ownable, IOracleAdapter {
 
         (, int256 price, , uint256 updatedAt, ) = source.latestRoundData();
 
+        require(price >= 0, "MISSING_ASSET_VALUE");
+
         // solhint-disable not-rely-on-time
         require(
             block.timestamp.sub(updatedAt) <= aggStalePeriod,
@@ -148,10 +151,6 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         );
         // solhint-enable not-rely-on-time
 
-        if (price > 0) {
-            return uint256(price);
-        } else {
-            return 0;
-        }
+        return uint256(price);
     }
 }
