@@ -11,28 +11,23 @@ contract OracleAdapter is Ownable, IOracleAdapter {
 
     mapping(address => AggregatorV3Interface) private _assetSources;
     AggregatorV3Interface private _tvlSource;
-    IOracleAdapter private _fallbackOracle;
 
     event AssetSourceUpdated(address indexed asset, address indexed source);
     event TvlSourceUpdated(address indexed source);
-    event FallbackOracleUpdated(address indexed fallbackOracle);
 
     /**
      * @notice Constructor
      * @param assets the assets priced by sources
      * @param sources the source for each asset
      * @param tvlSource the source for the TVL value
-     * @param fallbackOracle the fallback used in case of pricing problems
      */
     constructor(
         address[] memory assets,
         address[] memory sources,
-        address tvlSource,
-        address fallbackOracle
+        address tvlSource
     ) public {
         _setAssetSources(assets, sources);
         _setTvlSource(tvlSource);
-        _setFallbackOracle(fallbackOracle);
     }
 
     /**
@@ -56,14 +51,6 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     }
 
     /**
-     * @notice Set the fallbackOracle
-     * @param fallbackOracle the fallback oracle address
-     */
-    function setFallbackOracle(address fallbackOracle) external onlyOwner {
-        _setFallbackOracle(fallbackOracle);
-    }
-
-    /**
      * @notice Gets an asset price by address
      * @param asset the asset address
      * @return the asset price
@@ -78,15 +65,9 @@ contract OracleAdapter is Ownable, IOracleAdapter {
 
         uint256 price = _getPriceFromSource(source);
 
-        if (price > 0) {
-            return price;
-        } else {
-            require(
-                address(_fallbackOracle) != address(0),
-                "NO_FALLBACK_ORACLE"
-            );
-            return _fallbackOracle.getAssetPrice(asset);
-        }
+        require(price > 0, "MISSING_ASSET_VALUE");
+
+        return price;
     }
 
     /**
@@ -95,16 +76,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      */
     function getTVL() public view override returns (uint256) {
         uint256 price = _getPriceFromSource(_tvlSource);
-
-        if (price > 0) {
-            return price;
-        } else {
-            require(
-                address(_fallbackOracle) != address(0),
-                "NO_FALLBACK_ORACLE"
-            );
-            return _fallbackOracle.getTVL();
-        }
+        return price;
     }
 
     /**
@@ -133,16 +105,6 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     }
 
     /**
-     * @notice Set the fallbackOracle
-     * @param fallbackOracle the fallback oracle
-     */
-    function _setFallbackOracle(address fallbackOracle) private {
-        require(fallbackOracle != address(0), "INVALID_FALLBACK_ORACLE");
-        _fallbackOracle = IOracleAdapter(fallbackOracle);
-        emit FallbackOracleUpdated(fallbackOracle);
-    }
-
-    /**
      * @notice Get the price from a source (aggregator)
      * @return the price from the source
      */
@@ -151,14 +113,14 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         view
         returns (uint256)
     {
-        if (address(source) != address(0)) {
-            (, int256 price, , , ) = source.latestRoundData();
+        require(address(source) != address(0), "INVALID_SOURCE");
 
-            if (price > 0) {
-                return uint256(price);
-            }
+        (, int256 price, , , ) = source.latestRoundData();
+
+        if (price > 0) {
+            return uint256(price);
+        } else {
+            return 0;
         }
-
-        return 0;
     }
 }
