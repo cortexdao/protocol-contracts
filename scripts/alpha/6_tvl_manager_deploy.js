@@ -67,28 +67,21 @@ async function main(argv) {
   );
 
   let gasPrice = await getGasPrice(argv.gasPrice);
-  const poolManagerAddress = getDeployedAddress(
-    "PoolManagerProxy",
+  const addressRegistryAddress = getDeployedAddress(
+    "AddressRegistryProxy",
     networkName
   );
-  const accountManagerAddress = getDeployedAddress(
-    "AccountManagerProxy",
-    networkName
-  );
-  const tvlManager = await TVLManager.deploy(
-    poolManagerAddress,
-    accountManagerAddress,
-    {
-      gasPrice,
-    }
-  );
+  const tvlManager = await TVLManager.deploy(addressRegistryAddress, {
+    gasPrice,
+  });
   console.log(
     "Deploy:",
     `https://etherscan.io/tx/${tvlManager.deployTransaction.hash}`
   );
-  let receipt = await tvlManager.deployTransaction.wait();
   console.log("TVLManager:", chalk.green(tvlManager.address));
+  console.log("  Address registry:", addressRegistryAddress);
   console.log("");
+  let receipt = await tvlManager.deployTransaction.wait();
   gasUsed = gasUsed.add(receipt.gasUsed);
 
   const deploy_data = {
@@ -99,11 +92,6 @@ async function main(argv) {
   console.log("");
   console.log("Register address for chainlink registry ...");
   console.log("");
-  const addressRegistryAddress = getDeployedAddress(
-    "AddressRegistryProxy",
-    networkName
-  );
-  console.log("Address registry:", addressRegistryAddress);
   const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
   const addressRegistryDeployer = ethers.Wallet.fromMnemonic(
     ADDRESS_REGISTRY_MNEMONIC
@@ -113,16 +101,6 @@ async function main(argv) {
     addressRegistryAddress,
     addressRegistryDeployer
   );
-  console.log(
-    "Address Registry Deployer address:",
-    addressRegistryDeployer.address
-  );
-  balance =
-    (
-      await ethers.provider.getBalance(addressRegistryDeployer.address)
-    ).toString() / 1e18;
-  console.log("ETH balance:", balance.toString());
-  console.log("");
 
   gasPrice = await getGasPrice(argv.gasPrice);
   let trx = await addressRegistry.registerAddress(
@@ -132,7 +110,7 @@ async function main(argv) {
   );
   console.log("Register address:", `https://etherscan.io/tx/${trx.hash}`);
   receipt = await trx.wait();
-  console.log("... done.");
+  console.log("");
   console.log("Total gas used:", gasUsed.toString());
 
   if (["KOVAN", "MAINNET"].includes(networkName)) {
@@ -144,7 +122,7 @@ async function main(argv) {
     ); // wait for Etherscan to catch up
     await hre.run("verify:verify", {
       address: tvlManager.address,
-      constructorArguments: [poolManagerAddress, accountManagerAddress],
+      constructorArguments: [addressRegistryAddress],
     });
     console.log("");
   }
