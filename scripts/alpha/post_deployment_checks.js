@@ -21,7 +21,6 @@ const {
   getDeployedAddress,
   bytes32,
   MAX_UINT256,
-  ZERO_ADDRESS,
 } = require("../../utils/helpers");
 
 console.logDone = function () {
@@ -46,10 +45,6 @@ async function main(argv) {
   const mAptDeployer = ethers.Wallet.fromMnemonic(MAPT_MNEMONIC).connect(
     ethers.provider
   );
-  const ACCOUNT_MANAGER_MNEMONIC = process.env.ACCOUNT_MANAGER_MNEMONIC;
-  const accountManagerDeployer = ethers.Wallet.fromMnemonic(
-    ACCOUNT_MANAGER_MNEMONIC
-  ).connect(ethers.provider);
   const POOL_MANAGER_MNEMONIC = process.env.POOL_MANAGER_MNEMONIC;
   const poolManagerDeployer = ethers.Wallet.fromMnemonic(
     POOL_MANAGER_MNEMONIC
@@ -69,14 +64,6 @@ async function main(argv) {
   );
   const mAptAddress = getDeployedAddress("MetaPoolTokenProxy", networkName);
   const mApt = await ethers.getContractAt("MetaPoolToken", mAptAddress);
-  const accountManagerAddress = getDeployedAddress(
-    "AccountManagerProxy",
-    networkName
-  );
-  const accountManager = await ethers.getContractAt(
-    "AccountManager",
-    accountManagerAddress
-  );
   const poolManagerAddress = getDeployedAddress(
     "PoolManagerProxy",
     networkName
@@ -91,12 +78,13 @@ async function main(argv) {
     tvlManagerAddress
   );
 
+  const lpSafeAddress = getDeployedAddress("LpSafe", networkName);
+
   console.log("Check owners ...");
   expect(await addressRegistry.owner()).to.equal(
     addressRegistryDeployer.address
   );
   expect(await mApt.owner()).to.equal(mAptDeployer.address);
-  expect(await accountManager.owner()).to.equal(accountManagerDeployer.address);
   expect(await poolManager.owner()).to.equal(poolManagerDeployer.address);
   expect(await tvlManager.owner()).to.equal(tvlManagerDeployer.address);
   console.logDone();
@@ -106,19 +94,20 @@ async function main(argv) {
     await addressRegistry.getAddress(bytes32("chainlinkRegistry"));
     expect.to.fail();
   } catch (error) {
-    // Infura will revert before sending to blockchain, so we never get the revert reason
-    expect(error.message).to.equal("VM execution error.");
+    expect(error.message).to.equal(
+      "VM Exception while processing transaction: revert Missing address"
+    );
   }
   try {
     await addressRegistry.getAddress(bytes32("manager"));
     expect.to.fail();
   } catch (error) {
-    // Infura will revert before sending to blockchain, so we never get the revert reason
-    expect(error.message).to.equal("VM execution error.");
+    expect(error.message).to.equal(
+      "VM Exception while processing transaction: revert Missing address"
+    );
   }
-  expect(await addressRegistry.accountManagerAddress()).to.equal(
-    accountManager.address
-  );
+  expect(await addressRegistry.mAptAddress()).to.equal(mApt.address);
+  expect(await addressRegistry.lpSafeAddress()).to.equal(lpSafeAddress);
   expect(await addressRegistry.poolManagerAddress()).to.equal(
     poolManager.address
   );
@@ -130,12 +119,12 @@ async function main(argv) {
   );
   console.logDone();
 
-  console.log("Check pool manager address set on mAPT ...");
-  expect(await mApt.manager()).to.equal(poolManager.address);
+  console.log("Check address registry set on mAPT ...");
+  expect(await mApt.addressRegistry()).to.equal(addressRegistry.address);
   console.logDone();
 
-  console.log("Check account factory address set on pool manager ...");
-  expect(await poolManager.accountFactory()).to.equal(accountManager.address);
+  console.log("Check address registry set on pool manager ...");
+  expect(await poolManager.addressRegistry()).to.equal(addressRegistry.address);
   console.logDone();
 
   console.log("Check pools upgrade ...");
@@ -146,7 +135,7 @@ async function main(argv) {
     const pool = await ethers.getContractAt("PoolTokenV2", poolAddress);
 
     // sanity-check; also checks if we are using V2 contracts
-    expect(await pool.mApt()).to.equal(mApt.address);
+    expect(await pool.addressRegistry()).to.equal(addressRegistry.address);
 
     // check pool manager allowances
     const underlyerAddress = await pool.underlyer();
@@ -166,16 +155,6 @@ async function main(argv) {
 
     // TODO: check agg addresses?
   }
-  console.logDone();
-
-  console.log(
-    "Check account deployed with correct ID and set with executor ..."
-  );
-  const accountAddress = await accountManager.getAccount(bytes32("alpha"));
-  expect(accountAddress).to.not.equal(ZERO_ADDRESS);
-  const accountContract = await ethers.getContractAt("Account", accountAddress);
-  const executorAddress = getDeployedAddress("GenericExecutor", networkName);
-  expect(await accountContract.genericExecutor()).to.equal(executorAddress);
   console.logDone();
 }
 
