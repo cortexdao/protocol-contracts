@@ -89,7 +89,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      * @notice Get the TVL value
      * @return the TVL
      */
-    function getTVL() public view override returns (uint256) {
+    function getTvl() public view override returns (uint256) {
         return _getPriceFromSource(tvlSource);
     }
 

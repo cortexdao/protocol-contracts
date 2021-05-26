@@ -2,7 +2,6 @@ const { expect } = require("chai");
 const hre = require("hardhat");
 const { ethers, waffle, artifacts } = hre;
 const { deployMockContract } = waffle;
-const { BigNumber } = ethers;
 const timeMachine = require("ganache-time-traveler");
 const {
   tokenAmountToBigNumber,
@@ -130,6 +129,41 @@ describe.only("Contract: OracleAdapter", () => {
       await expect(
         oracleAdapter.connect(randomUser).setAggStalePeriod(14400)
       ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
+
+  describe("getTvl", () => {
+    let tvlAggMock;
+
+    before(async () => {
+      tvlAggMock = await deployMockContract(
+        deployer,
+        AggregatorV3Interface.abi
+      );
+      await oracleAdapter.setTvlSource(tvlAggMock.address);
+    });
+
+    it("getTVL reverts when update is too old", async () => {
+      const aggStalePeriod = await oracleAdapter.aggStalePeriod();
+      const updatedAt = (await ethers.provider.getBlock()).timestamp;
+
+      // setting the mock mines a block and advances time by 1 sec
+      await tvlAggMock.mock.latestRoundData.returns(
+        0,
+        tokenAmountToBigNumber(50e6, 8),
+        0,
+        updatedAt,
+        0
+      );
+      await ethers.provider.send("evm_increaseTime", [aggStalePeriod / 2]);
+      await ethers.provider.send("evm_mine");
+      await expect(oracleAdapter.getTvl()).to.not.be.reverted;
+
+      await ethers.provider.send("evm_increaseTime", [aggStalePeriod / 2]);
+      await ethers.provider.send("evm_mine");
+      await expect(oracleAdapter.getTvl()).to.be.revertedWith(
+        "CHAINLINK_STALE_DATA"
+      );
     });
   });
 });
