@@ -11,31 +11,31 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     using SafeMath for uint256;
     using Address for address;
 
-    /// @notice seconds within which aggregator should be updated
-    uint256 public aggStalePeriod;
-    mapping(address => AggregatorV3Interface) public assetSources;
-    AggregatorV3Interface public tvlSource;
+    /// @notice seconds within which source should update
+    uint256 private _stalePeriod;
+    mapping(address => AggregatorV3Interface) private _assetSources;
+    AggregatorV3Interface private _tvlSource;
 
     event AssetSourceUpdated(address indexed asset, address indexed source);
     event TvlSourceUpdated(address indexed source);
-    event AggStalePeriodUpdated(uint256 aggStalePeriod_);
+    event StalePeriodUpdated(uint256 stalePeriod);
 
     /**
      * @notice Constructor
      * @param assets the assets priced by sources
      * @param sources the source for each asset
      * @param tvlSource the source for the TVL value
-     * @param aggStalePeriod_ the number of seconds until a source value is stale
+     * @param stalePeriod the number of seconds until a source value is stale
      */
     constructor(
         address[] memory assets,
         address[] memory sources,
         address tvlSource,
-        uint256 aggStalePeriod_
+        uint256 stalePeriod
     ) public {
         _setAssetSources(assets, sources);
         _setTvlSource(tvlSource);
-        _setAggStalePeriod(aggStalePeriod_);
+        _setStalePeriod(stalePeriod);
     }
 
     /**
@@ -60,10 +60,10 @@ contract OracleAdapter is Ownable, IOracleAdapter {
 
     /**
      * @notice Set the length of time before an agg value is considered stale
-     * @param aggStalePeriod_ the length of time in seconds
+     * @param stalePeriod the length of time in seconds
      */
-    function setAggStalePeriod(uint256 aggStalePeriod_) external onlyOwner {
-        _setAggStalePeriod(aggStalePeriod_);
+    function setStalePeriod(uint256 stalePeriod) external onlyOwner {
+        _setStalePeriod(stalePeriod);
     }
 
     /**
@@ -77,7 +77,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         override
         returns (uint256)
     {
-        AggregatorV3Interface source = assetSources[asset];
+        AggregatorV3Interface source = _assetSources[asset];
         uint256 price = _getPriceFromSource(source);
 
         // Unlike TVL, a price should never be 0
@@ -90,7 +90,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      * @return the TVL
      */
     function getTvl() public view override returns (uint256) {
-        return _getPriceFromSource(tvlSource);
+        return _getPriceFromSource(_tvlSource);
     }
 
     /**
@@ -99,7 +99,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      * @param sources the array of price sources (aggregators)
      */
     function _setAssetSources(address[] memory assets, address[] memory sources)
-        private
+        internal
     {
         require(assets.length == sources.length, "INCONSISTENT_PARAMS_LENGTH");
         for (uint256 i = 0; i < assets.length; i++) {
@@ -112,9 +112,9 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      * @param asset asset token address
      * @param source the price source (aggregator)
      */
-    function _setAssetSource(address asset, address source) private {
+    function _setAssetSource(address asset, address source) internal {
         require(source.isContract(), "INVALID_SOURCE");
-        assetSources[asset] = AggregatorV3Interface(source);
+        _assetSources[asset] = AggregatorV3Interface(source);
         emit AssetSourceUpdated(asset, source);
     }
 
@@ -122,20 +122,20 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      * @notice Set the source for TVL value
      * @param source the TVL source (aggregator)
      */
-    function _setTvlSource(address source) private {
+    function _setTvlSource(address source) internal {
         require(source.isContract(), "INVALID_SOURCE");
-        tvlSource = AggregatorV3Interface(source);
+        _tvlSource = AggregatorV3Interface(source);
         emit TvlSourceUpdated(source);
     }
 
     /**
      * @notice Set the length of time before an agg value is considered stale
-     * @param aggStalePeriod_ the length of time in seconds
+     * @param stalePeriod the length of time in seconds
      */
-    function _setAggStalePeriod(uint256 aggStalePeriod_) private {
-        require(aggStalePeriod_ > 0, "INVALID_STALE_PERIOD");
-        aggStalePeriod = aggStalePeriod_;
-        emit AggStalePeriodUpdated(aggStalePeriod_);
+    function _setStalePeriod(uint256 stalePeriod) internal {
+        require(stalePeriod > 0, "INVALID_STALE_PERIOD");
+        _stalePeriod = stalePeriod;
+        emit StalePeriodUpdated(stalePeriod);
     }
 
     /**
@@ -155,11 +155,28 @@ contract OracleAdapter is Ownable, IOracleAdapter {
 
         // solhint-disable not-rely-on-time
         require(
-            block.timestamp.sub(updatedAt) <= aggStalePeriod,
+            block.timestamp.sub(updatedAt) <= _stalePeriod,
             "CHAINLINK_STALE_DATA"
         );
         // solhint-enable not-rely-on-time
 
         return uint256(price);
+    }
+
+    /// @notice Gets the address of the source for an asset address
+    /// @param asset The address of the asset
+    /// @return address The address of the source
+    function getAssetSource(address asset) external view returns (address) {
+        return address(_assetSources[asset]);
+    }
+
+    /// @notice Gets the address of the TVL source
+    /// @return address TVL source address
+    function getTvlSource() external view returns (address) {
+        return address(_tvlSource);
+    }
+
+    function getStalePeriod() external view returns (uint256) {
+        return _stalePeriod;
     }
 }
