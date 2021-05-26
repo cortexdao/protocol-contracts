@@ -267,7 +267,7 @@ describe.only("Contract: OracleAdapter", () => {
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
 
       // setting the mock mines a block and advances time by 1 sec
-      await tvlAggMock.mock.latestRoundData.returns(
+      await assetAggMock_1.mock.latestRoundData.returns(
         0,
         tokenAmountToBigNumber(50e6, 8),
         0,
@@ -276,13 +276,14 @@ describe.only("Contract: OracleAdapter", () => {
       );
       await ethers.provider.send("evm_increaseTime", [stalePeriod / 2]);
       await ethers.provider.send("evm_mine");
-      await expect(oracleAdapter.getTvl()).to.not.be.reverted;
+      await expect(oracleAdapter.getAssetPrice(assetAddress_1)).to.not.be
+        .reverted;
 
       await ethers.provider.send("evm_increaseTime", [stalePeriod / 2]);
       await ethers.provider.send("evm_mine");
-      await expect(oracleAdapter.getTvl()).to.be.revertedWith(
-        "CHAINLINK_STALE_DATA"
-      );
+      await expect(
+        oracleAdapter.getAssetPrice(assetAddress_1)
+      ).to.be.revertedWith("CHAINLINK_STALE_DATA");
     });
   });
 });
