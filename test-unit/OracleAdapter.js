@@ -112,4 +112,24 @@ describe.only("Contract: OracleAdapter", () => {
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
+
+  describe("Set aggStalePeriod", () => {
+    it("Cannot set to 0", async () => {
+      await expect(
+        oracleAdapter.connect(deployer).setAggStalePeriod(0)
+      ).to.be.revertedWith("INVALID_STALE_PERIOD");
+    });
+
+    it("Owner can set", async () => {
+      const period = 100;
+      await oracleAdapter.connect(deployer).setAggStalePeriod(period);
+      expect(await oracleAdapter.aggStalePeriod()).to.equal(period);
+    });
+
+    it("Revert when non-owner calls", async () => {
+      await expect(
+        oracleAdapter.connect(randomUser).setAggStalePeriod(14400)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
 });
