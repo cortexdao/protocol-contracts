@@ -11,8 +11,8 @@ contract OracleAdapter is Ownable, IOracleAdapter {
 
     /// @notice seconds within which aggregator should be updated
     uint256 public aggStalePeriod;
-    mapping(address => AggregatorV3Interface) private _assetSources;
-    AggregatorV3Interface private _tvlSource;
+    mapping(address => AggregatorV3Interface) public assetSources;
+    AggregatorV3Interface public tvlSource;
 
     event AssetSourceUpdated(address indexed asset, address indexed source);
     event TvlSourceUpdated(address indexed source);
@@ -75,13 +75,11 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         override
         returns (uint256)
     {
-        AggregatorV3Interface source = _assetSources[asset];
-
+        AggregatorV3Interface source = assetSources[asset];
         uint256 price = _getPriceFromSource(source);
 
         // Unlike TVL, a price should never be 0
         require(price > 0, "MISSING_ASSET_VALUE");
-
         return price;
     }
 
@@ -90,7 +88,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      * @return the TVL
      */
     function getTVL() public view override returns (uint256) {
-        return _getPriceFromSource(_tvlSource);
+        return _getPriceFromSource(tvlSource);
     }
 
     /**
@@ -103,7 +101,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     {
         require(assets.length == sources.length, "INCONSISTENT_PARAMS_LENGTH");
         for (uint256 i = 0; i < assets.length; i++) {
-            _assetSources[assets[i]] = AggregatorV3Interface(sources[i]);
+            assetSources[assets[i]] = AggregatorV3Interface(sources[i]);
             emit AssetSourceUpdated(assets[i], sources[i]);
         }
     }
@@ -114,7 +112,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      */
     function _setTvlSource(address source) private {
         require(source != address(0), "INVALID_SOURCE");
-        _tvlSource = AggregatorV3Interface(source);
+        tvlSource = AggregatorV3Interface(source);
         emit TvlSourceUpdated(source);
     }
 
@@ -134,12 +132,11 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      * @return the price from the source
      */
     function _getPriceFromSource(AggregatorV3Interface source)
-        private
+        internal
         view
         returns (uint256)
     {
         require(address(source) != address(0), "INVALID_SOURCE");
-
         (, int256 price, , uint256 updatedAt, ) = source.latestRoundData();
 
         require(price >= 0, "MISSING_ASSET_VALUE");
