@@ -2,12 +2,14 @@
 pragma solidity 0.6.11;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/IOracleAdapter.sol";
 
 contract OracleAdapter is Ownable, IOracleAdapter {
     using SafeMath for uint256;
+    using Address for address;
 
     /// @notice seconds within which aggregator should be updated
     uint256 public aggStalePeriod;
@@ -101,9 +103,19 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     {
         require(assets.length == sources.length, "INCONSISTENT_PARAMS_LENGTH");
         for (uint256 i = 0; i < assets.length; i++) {
-            assetSources[assets[i]] = AggregatorV3Interface(sources[i]);
-            emit AssetSourceUpdated(assets[i], sources[i]);
+            _setAssetSource(assets[i], sources[i]);
         }
+    }
+
+    /**
+     * @notice Set a single asset price source
+     * @param asset asset token address
+     * @param source the price source (aggregator)
+     */
+    function _setAssetSource(address asset, address source) private {
+        require(source.isContract(), "INVALID_SOURCE");
+        assetSources[asset] = AggregatorV3Interface(source);
+        emit AssetSourceUpdated(asset, source);
     }
 
     /**
@@ -111,7 +123,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      * @param source the TVL source (aggregator)
      */
     function _setTvlSource(address source) private {
-        require(source != address(0), "INVALID_SOURCE");
+        require(source.isContract(), "INVALID_SOURCE");
         tvlSource = AggregatorV3Interface(source);
         emit TvlSourceUpdated(source);
     }
@@ -136,7 +148,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         view
         returns (uint256)
     {
-        require(address(source) != address(0), "INVALID_SOURCE");
+        require(address(source).isContract(), "INVALID_SOURCE");
         (, int256 price, , uint256 updatedAt, ) = source.latestRoundData();
 
         require(price >= 0, "MISSING_ASSET_VALUE");
