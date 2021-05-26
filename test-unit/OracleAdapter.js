@@ -21,6 +21,14 @@ describe.only("Contract: OracleAdapter", () => {
   // deployed contracts
   let oracleAdapter;
 
+  // mocks and constants
+  let tvlAggMock;
+  let assetAggMock_1;
+  let assetAggMock_2;
+  const assetAddress_1 = FAKE_ADDRESS;
+  const assetAddress_2 = ANOTHER_FAKE_ADDRESS;
+  const aggStalePeriod = 86400;
+
   // use EVM snapshots for test isolation
   let snapshotId;
 
@@ -36,27 +44,73 @@ describe.only("Contract: OracleAdapter", () => {
   before(async () => {
     [deployer, randomUser] = await ethers.getSigners();
 
-    OracleAdapter = await ethers.getContractFactory("OracleAdapter");
-    const aggStalePeriod = 86400;
-    const assets = [];
-    const sources = [];
-    const tvlAgg = await deployMockContract(
-      deployer,
-      AggregatorV3Interface.abi
-    );
+    tvlAggMock = await deployMockContract(deployer, AggregatorV3Interface.abi);
+    assetAggMock_1 = await deployMockContract(deployer, []);
+    assetAggMock_2 = await deployMockContract(deployer, []);
+    const assets = [assetAddress_1, assetAddress_2];
+    const sources = [assetAggMock_1.address, assetAggMock_2.address];
 
+    OracleAdapter = await ethers.getContractFactory("OracleAdapter");
     oracleAdapter = await OracleAdapter.deploy(
       assets,
       sources,
-      tvlAgg.address,
+      tvlAggMock.address,
       aggStalePeriod
     );
     await oracleAdapter.deployed();
   });
 
+  describe("Constructor", () => {
+    it("Revert on non-contract source address", async () => {
+      const agg = await deployMockContract(deployer, []);
+      const token_1 = await deployMockContract(deployer, []);
+      const token_2 = await deployMockContract(deployer, []);
+
+      const assets = [token_1.address, token_2.address];
+      const sources = [FAKE_ADDRESS, agg.address];
+      const aggStalePeriod = 100;
+      await expect(
+        OracleAdapter.deploy(
+          assets,
+          sources,
+          tvlAggMock.address,
+          aggStalePeriod
+        )
+      ).to.be.revertedWith("INVALID_SOURCE");
+    });
+
+    it("Revert on zero aggStalePeriod", async () => {
+      const assets = [];
+      const sources = [];
+      const aggStalePeriod = 0;
+      await expect(
+        OracleAdapter.deploy(
+          assets,
+          sources,
+          tvlAggMock.address,
+          aggStalePeriod
+        )
+      ).to.be.revertedWith("INVALID_STALE_PERIOD");
+    });
+  });
+
   describe("Defaults", () => {
     it("Owner is set to deployer", async () => {
       expect(await oracleAdapter.owner()).to.equal(deployer.address);
+    });
+
+    it("Sources are set", async () => {
+      expect(await oracleAdapter.tvlSource()).to.equal(tvlAggMock.address);
+      expect(await oracleAdapter.assetSource(assetAddress_1)).to.equal(
+        assetAggMock_1.address
+      );
+      expect(await oracleAdapter.assetSource(assetAddress_2)).to.equal(
+        assetAggMock_2.address
+      );
+    });
+
+    it("aggStalePeriod is set", async () => {
+      expect(await oracleAdapter.aggStalePeriod()).to.equal(aggStalePeriod);
     });
   });
 
@@ -133,16 +187,6 @@ describe.only("Contract: OracleAdapter", () => {
   });
 
   describe("getTvl", () => {
-    let tvlAggMock;
-
-    before(async () => {
-      tvlAggMock = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
-      await oracleAdapter.setTvlSource(tvlAggMock.address);
-    });
-
     it("Allow zero TVL", async () => {
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
       // setting the mock mines a block and advances time by 1 sec
