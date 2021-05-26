@@ -143,7 +143,30 @@ describe.only("Contract: OracleAdapter", () => {
       await oracleAdapter.setTvlSource(tvlAggMock.address);
     });
 
-    it("getTVL reverts when update is too old", async () => {
+    it("Allow zero TVL", async () => {
+      const updatedAt = (await ethers.provider.getBlock()).timestamp;
+      // setting the mock mines a block and advances time by 1 sec
+      await tvlAggMock.mock.latestRoundData.returns(0, 0, 0, updatedAt, 0);
+      expect(await oracleAdapter.getTvl()).to.equal(0);
+    });
+
+    it("Revert when TVL is negative", async () => {
+      const updatedAt = (await ethers.provider.getBlock()).timestamp;
+      const invalidPrice = -1;
+      // setting the mock mines a block and advances time by 1 sec
+      await tvlAggMock.mock.latestRoundData.returns(
+        0,
+        invalidPrice,
+        0,
+        updatedAt,
+        0
+      );
+      await expect(oracleAdapter.getTvl()).to.be.revertedWith(
+        "MISSING_ASSET_VALUE"
+      );
+    });
+
+    it("Revert when update is too old", async () => {
       const aggStalePeriod = await oracleAdapter.aggStalePeriod();
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
 
