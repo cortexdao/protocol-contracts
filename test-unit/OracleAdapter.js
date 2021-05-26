@@ -10,7 +10,7 @@ const {
 } = require("../utils/helpers");
 const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
 
-describe.only("Contract: OracleAdapter", () => {
+describe("Contract: OracleAdapter", () => {
   // signers
   let deployer;
   let randomUser;
