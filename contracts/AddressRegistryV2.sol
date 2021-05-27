@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import "./interfaces/IAddressRegistry.sol";
+import "./interfaces/IAddressRegistryV2.sol";
 
 /**
  * @title APY.Finance's address registry
@@ -27,7 +27,7 @@ import "./interfaces/IAddressRegistry.sol";
 contract AddressRegistryV2 is
     Initializable,
     OwnableUpgradeSafe,
-    IAddressRegistry
+    IAddressRegistryV2
 {
     /* ------------------------------- */
     /* impl-specific storage variables */
@@ -152,20 +152,11 @@ contract AddressRegistryV2 is
     }
 
     /**
-     * @notice Get the address for the Account Manager.
-     * @dev Not just a helper function, this makes explicit a key ID
-     *      for the system.
-     */
-    function accountManagerAddress() public view returns (address) {
-        return getAddress("accountManager");
-    }
-
-    /**
      * @notice Get the address for the Pool Manager.
      * @dev Not just a helper function, this makes explicit a key ID
      *      for the system.
      */
-    function poolManagerAddress() public view returns (address) {
+    function poolManagerAddress() public view override returns (address) {
         return getAddress("poolManager");
     }
 
@@ -174,7 +165,7 @@ contract AddressRegistryV2 is
      * @dev Not just a helper function, this makes explicit a key ID
      *      for the system.
      */
-    function tvlManagerAddress() public view returns (address) {
+    function tvlManagerAddress() public view override returns (address) {
         return getAddress("tvlManager");
     }
 
@@ -185,7 +176,7 @@ contract AddressRegistryV2 is
      * @dev Not just a helper function, this makes explicit a key ID
      *      for the system.
      */
-    function chainlinkRegistryAddress() public view returns (address) {
+    function chainlinkRegistryAddress() public view override returns (address) {
         return tvlManagerAddress();
     }
 
@@ -194,7 +185,7 @@ contract AddressRegistryV2 is
      * @dev Not just a helper function, this makes explicit a key ID
      *      for the system.
      */
-    function daiPoolAddress() public view returns (address) {
+    function daiPoolAddress() public view override returns (address) {
         return getAddress("daiPool");
     }
 
@@ -203,7 +194,7 @@ contract AddressRegistryV2 is
      * @dev Not just a helper function, this makes explicit a key ID
      *      for the system.
      */
-    function usdcPoolAddress() public view returns (address) {
+    function usdcPoolAddress() public view override returns (address) {
         return getAddress("usdcPool");
     }
 
@@ -212,11 +203,18 @@ contract AddressRegistryV2 is
      * @dev Not just a helper function, this makes explicit a key ID
      *      for the system.
      */
-    function usdtPoolAddress() public view returns (address) {
+    function usdtPoolAddress() public view override returns (address) {
         return getAddress("usdtPool");
     }
 
-    function mAPTAddress() public view returns (address) {
-        return getAddress("mAPT");
+    function mAptAddress() public view override returns (address) {
+        return getAddress("mApt");
+    }
+
+    /**
+     * @notice Get the address for the APY.Finance LP Safe.
+     */
+    function lpSafeAddress() public view override returns (address) {
+        return getAddress("lpSafe");
     }
 }

@@ -18,10 +18,11 @@ const { ethers, network } = require("hardhat");
 const { BigNumber } = ethers;
 const chalk = require("chalk");
 const {
+  bytes32,
   getGasPrice,
   updateDeployJsons,
+  getAggregatorAddress,
   getDeployedAddress,
-  bytes32,
 } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
@@ -32,119 +33,111 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  const TVL_MANAGER_MNEMONIC = process.env.TVL_MANAGER_MNEMONIC;
-  const tvlManagerDeployer = ethers.Wallet.fromMnemonic(
-    TVL_MANAGER_MNEMONIC
-  ).connect(ethers.provider);
-  console.log("Deployer address:", tvlManagerDeployer.address);
+  // TODO: use different mnemonic
+  const MAPT_MNEMONIC = process.env.MAPT_MNEMONIC;
+  const adapterDeployer = ethers.Wallet.fromMnemonic(MAPT_MNEMONIC).connect(
+    ethers.provider
+  );
+  console.log("Deployer address:", adapterDeployer.address);
   /* TESTING on localhost only
-   * may need to fund if ETH runs out while testing
+   * need to fund as there is no ETH on Mainnet for the deployer
    */
   if (networkName == "LOCALHOST") {
     const [funder] = await ethers.getSigners();
     const fundingTrx = await funder.sendTransaction({
-      to: tvlManagerDeployer.address,
-      value: ethers.utils.parseEther("10.0"),
+      to: adapterDeployer.address,
+      value: ethers.utils.parseEther("1.0"),
     });
     await fundingTrx.wait();
   }
 
-  let balance =
-    (await ethers.provider.getBalance(tvlManagerDeployer.address)).toString() /
+  const balance =
+    (await ethers.provider.getBalance(adapterDeployer.address)).toString() /
     1e18;
   console.log("ETH balance:", balance.toString());
   console.log("");
 
   console.log("");
-  console.log("Deploying TVLManager ...");
+  console.log("Deploying ...");
   console.log("");
 
+  const OracleAdapter = await ethers.getContractFactory(
+    "OracleAdapter",
+    adapterDeployer
+  );
+
+  let deploy_data = {};
   let gasUsed = BigNumber.from("0");
-
-  const TVLManager = await ethers.getContractFactory(
-    "TVLManager",
-    tvlManagerDeployer
-  );
-
   let gasPrice = await getGasPrice(argv.gasPrice);
-  const poolManagerAddress = getDeployedAddress(
-    "PoolManagerProxy",
-    networkName
-  );
-  const accountManagerAddress = getDeployedAddress(
-    "AccountManagerProxy",
-    networkName
-  );
-  const tvlManager = await TVLManager.deploy(
-    poolManagerAddress,
-    accountManagerAddress,
+
+  const tvlAggAddress = getAggregatorAddress("TVL", networkName);
+  const aggStalePeriod = 14400;
+
+  const assets = [];
+  const sources = [];
+  const adapter = await OracleAdapter.deploy(
+    assets,
+    sources,
+    tvlAggAddress,
+    aggStalePeriod,
     {
       gasPrice,
     }
   );
   console.log(
     "Deploy:",
-    `https://etherscan.io/tx/${tvlManager.deployTransaction.hash}`
+    `https://etherscan.io/tx/${adapter.deployTransaction.hash}`
   );
-  let receipt = await tvlManager.deployTransaction.wait();
-  console.log("TVLManager:", chalk.green(tvlManager.address));
+  let receipt = await adapter.deployTransaction.wait();
+  deploy_data["OracleAdapter"] = adapter.address;
+  console.log(`Oracle adapter: ${chalk.green(adapter.address)}`);
+  console.log("  TVL Aggregator:", tvlAggAddress);
+  console.log("  Aggregator stale period:", aggStalePeriod);
   console.log("");
   gasUsed = gasUsed.add(receipt.gasUsed);
 
-  const deploy_data = {
-    TVLManager: tvlManager.address,
-  };
-  updateDeployJsons(networkName, deploy_data);
-
-  console.log("");
-  console.log("Register address for chainlink registry ...");
-  console.log("");
-  const addressRegistryAddress = getDeployedAddress(
-    "AddressRegistryProxy",
-    networkName
-  );
-  console.log("Address registry:", addressRegistryAddress);
   const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
   const addressRegistryDeployer = ethers.Wallet.fromMnemonic(
     ADDRESS_REGISTRY_MNEMONIC
   ).connect(ethers.provider);
+  const addressRegistryProxyAddress = getDeployedAddress(
+    "AddressRegistryProxy",
+    networkName
+  );
   const addressRegistry = await ethers.getContractAt(
-    "AddressRegistry",
-    addressRegistryAddress,
+    "AddressRegistryV2",
+    addressRegistryProxyAddress,
     addressRegistryDeployer
   );
-  console.log(
-    "Address Registry Deployer address:",
-    addressRegistryDeployer.address
-  );
-  balance =
-    (
-      await ethers.provider.getBalance(addressRegistryDeployer.address)
-    ).toString() / 1e18;
-  console.log("ETH balance:", balance.toString());
-  console.log("");
 
   gasPrice = await getGasPrice(argv.gasPrice);
   let trx = await addressRegistry.registerAddress(
-    bytes32("tvlManager"),
-    tvlManager.address,
-    { gasPrice }
+    bytes32("oracleAdapter"),
+    adapter.address,
+    {
+      gasPrice,
+    }
   );
   console.log("Register address:", `https://etherscan.io/tx/${trx.hash}`);
+  console.log("");
   receipt = await trx.wait();
-  console.log("... done.");
+  gasUsed = gasUsed.add(receipt.gasUsed);
+
+  updateDeployJsons(networkName, deploy_data);
   console.log("Total gas used:", gasUsed.toString());
 
   if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");
     console.log("Verifying on Etherscan ...");
-    await ethers.provider.waitForTransaction(
-      tvlManager.deployTransaction.hash,
-      5
-    ); // wait for Etherscan to catch up
+    await ethers.provider.waitForTransaction(adapter.deployTransaction.hash, 5); // wait for Etherscan to catch up
     await hre.run("verify:verify", {
-      address: tvlManager.address,
-      constructorArguments: [poolManagerAddress, accountManagerAddress],
+      address: adapter.address,
+      constructorArguments: [
+        assets,
+        sources,
+        tvlAggAddress,
+        aggStalePeriod.toString(),
+      ],
     });
     console.log("");
   }

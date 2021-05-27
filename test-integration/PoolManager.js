@@ -6,7 +6,6 @@ const {
   impersonateAccount,
   bytes32,
   acquireToken,
-  FAKE_ADDRESS,
   getStablecoinAddress,
 } = require("../utils/helpers");
 const erc20Interface = new ethers.utils.Interface(
@@ -14,7 +13,6 @@ const erc20Interface = new ethers.utils.Interface(
 );
 const { deployMockContract } = require("ethereum-waffle");
 const { STABLECOIN_POOLS } = require("../utils/constants");
-const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
 
@@ -45,10 +43,12 @@ describe("Contract: PoolManager", () => {
 
   // signers
   let deployer;
-  let fundedAccount; // mock for Account instance
+  let fundedAccount; // mock for LP Safe instance
   let randomUser;
 
   // existing Mainnet contracts
+  let addressRegistry;
+
   let daiPool;
   let usdcPool;
   let usdtPool;
@@ -57,9 +57,8 @@ describe("Contract: PoolManager", () => {
   let usdcToken;
   let usdtToken;
 
-  // address for mock Account instance
+  // address for mock LP Safe instance
   let fundedAccountAddress;
-  const accountId = bytes32("account1");
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -112,17 +111,22 @@ describe("Contract: PoolManager", () => {
     /*************************************/
     /***** Upgrade Address Registry ******/
     /*************************************/
-    const AddressRegistryV2 = await ethers.getContractFactory("AddressRegistryV2");
-    const newAddressRegistryLogic = await AddressRegistryV2.deploy();
+    const AddressRegistryFactory = await ethers.getContractFactory(
+      "AddressRegistryV2"
+    );
+    const newAddressRegistryLogic = await AddressRegistryFactory.deploy();
     const registryAdmin = await ethers.getContractAt(
       "ProxyAdmin",
       APY_REGISTRY_ADMIN,
       addressRegistryDeployer
     );
 
-    await registryAdmin.upgrade(APY_ADDRESS_REGISTRY, newAddressRegistryLogic.address);
+    await registryAdmin.upgrade(
+      APY_ADDRESS_REGISTRY,
+      newAddressRegistryLogic.address
+    );
 
-    const addressRegistry = await ethers.getContractAt(
+    addressRegistry = await ethers.getContractAt(
       "AddressRegistryV2",
       APY_ADDRESS_REGISTRY,
       addressRegistryDeployer
@@ -166,12 +170,16 @@ describe("Contract: PoolManager", () => {
       logic.address,
       proxyAdmin.address,
       tvlAgg.address,
+      addressRegistry.address,
       aggStalePeriod
     );
     await mAPTProxy.deployed();
 
     mAPT = await MetaPoolToken.attach(mAPTProxy.address);
-    await addressRegistry.registerAddress(ethers.utils.formatBytes32String("mAPT"), mAPT.address)
+    await addressRegistry.registerAddress(
+      ethers.utils.formatBytes32String("mApt"),
+      mAPT.address
+    );
 
     /***********************************/
     /***** deploy manager  *************/
@@ -188,14 +196,15 @@ describe("Contract: PoolManager", () => {
     const managerProxy = await PoolManagerProxy.deploy(
       managerLogic.address,
       managerAdmin.address,
-      mAPT.address,
       APY_ADDRESS_REGISTRY
     );
     await managerProxy.deployed();
     poolManager = await PoolManager.attach(managerProxy.address);
 
-    await addressRegistry.registerAddress(ethers.utils.formatBytes32String("poolManager"), poolManager.address)
-    await mAPT.setManagerAddress(poolManager.address);
+    await addressRegistry.registerAddress(
+      ethers.utils.formatBytes32String("poolManager"),
+      poolManager.address
+    );
 
     // approve manager to withdraw from pools
     daiPool = await ethers.getContractAt(
@@ -217,16 +226,10 @@ describe("Contract: PoolManager", () => {
     await usdcPool.infiniteApprove(poolManager.address);
     await usdtPool.infiniteApprove(poolManager.address);
 
-    // setup mock account factory
-    const accountFactoryMock = await deployMockContract(
-      deployer,
-      artifacts.require("IAccountFactory").abi
+    await addressRegistry.registerAddress(
+      ethers.utils.formatBytes32String("lpSafe"),
+      fundedAccountAddress
     );
-    await accountFactoryMock.mock.getAccount.returns(ZERO_ADDRESS);
-    await accountFactoryMock.mock.getAccount
-      .withArgs(accountId)
-      .returns(fundedAccount.address);
-    await poolManager.setAccountFactory(accountFactoryMock.address);
 
     /*******************************************/
     /***** deploy asset allocation registry ****/
@@ -283,7 +286,7 @@ describe("Contract: PoolManager", () => {
     return mintAmount;
   }
 
-  describe("fundAccount", () => {
+  describe("fundLpSafe", () => {
     // standard amounts we use in our tests
     const dollars = 100;
     const daiAmount = tokenAmountToBigNumber(dollars, 18);
@@ -304,24 +307,23 @@ describe("Contract: PoolManager", () => {
 
     it("Non-owner cannot call", async () => {
       await expect(
-        poolManager.connect(randomUser).fundAccount(accountId, [])
+        poolManager.connect(randomUser).fundLpSafe([])
       ).to.be.revertedWith("revert Ownable: caller is not the owner");
     });
 
     it("Owner can call", async () => {
-      await expect(poolManager.connect(deployer).fundAccount(accountId, [])).to.not
-        .be.reverted;
+      await expect(poolManager.connect(deployer).fundLpSafe([])).to.not.be
+        .reverted;
     });
 
-    it("Revert on invalid account", async () => {
-      await expect(
-        poolManager.connect(deployer).fundAccount(bytes32("invalidAccount"), [])
-      ).to.be.revertedWith("INVALID_ACCOUNT");
+    it("Revert on missing LP Safe address", async () => {
+      await addressRegistry.deleteAddress(bytes32("lpSafe"));
+      await expect(poolManager.connect(deployer).fundLpSafe([])).to.be.reverted;
     });
 
     it("Revert on unregistered pool", async () => {
       await expect(
-        poolManager.fundAccount(accountId, [
+        poolManager.fundLpSafe([
           { poolId: bytes32("daiPool"), amount: 10 },
           { poolId: bytes32("invalidPoolId"), amount: 10 },
           { poolId: bytes32("usdtPool"), amount: 10 },
@@ -333,7 +335,7 @@ describe("Contract: PoolManager", () => {
       await expect(
         poolManager
           .connect(deployer)
-          .fundAccount(accountId, [{ poolId: bytes32("usdcPool"), amount: 0 }])
+          .fundLpSafe([{ poolId: bytes32("usdcPool"), amount: 0 }])
       ).to.be.revertedWith("INVALID_AMOUNT");
     });
 
@@ -348,7 +350,7 @@ describe("Contract: PoolManager", () => {
       const usdcPoolBalance = await usdcToken.balanceOf(usdcPool.address);
       const usdtPoolBalance = await usdtToken.balanceOf(usdtPool.address);
 
-      await poolManager.fundAccount(accountId, [
+      await poolManager.fundLpSafe([
         { poolId: bytes32("daiPool"), amount: daiAmount },
         { poolId: bytes32("usdcPool"), amount: usdcAmount },
         { poolId: bytes32("usdtPool"), amount: usdtAmount },
@@ -450,7 +452,7 @@ describe("Contract: PoolManager", () => {
       const usdcPoolMintAmount = await getMintAmount(usdcPool, usdcAmount);
       const usdtPoolMintAmount = await getMintAmount(usdtPool, usdtAmount);
 
-      await poolManager.fundAccount(accountId, [
+      await poolManager.fundLpSafe([
         { poolId: bytes32("daiPool"), amount: daiAmount },
         { poolId: bytes32("usdcPool"), amount: usdcAmount },
         { poolId: bytes32("usdtPool"), amount: usdtAmount },
@@ -474,7 +476,7 @@ describe("Contract: PoolManager", () => {
       const usdcPoolMintAmount = await getMintAmount(usdcPool, usdcAmount);
       const usdtPoolMintAmount = await getMintAmount(usdtPool, usdtAmount);
 
-      await poolManager.fundAccount(accountId, [
+      await poolManager.fundLpSafe([
         { poolId: bytes32("daiPool"), amount: daiAmount },
         { poolId: bytes32("usdcPool"), amount: usdcAmount },
         { poolId: bytes32("usdtPool"), amount: usdtAmount },
@@ -502,7 +504,9 @@ describe("Contract: PoolManager", () => {
 
     /** manager needs to be approved to transfer tokens from funded account */
     before("Approve manager for transfer from funded account", async () => {
-      await daiToken.connect(fundedAccount).approve(poolManager.address, daiAmount);
+      await daiToken
+        .connect(fundedAccount)
+        .approve(poolManager.address, daiAmount);
       await usdcToken
         .connect(fundedAccount)
         .approve(poolManager.address, usdcAmount);
@@ -521,30 +525,27 @@ describe("Contract: PoolManager", () => {
       managerSigner = await ethers.provider.getSigner(poolManager.address);
     });
 
-    describe("withdrawFromAccount", () => {
+    describe("withdrawFromLpSafe", () => {
       it("Non-owner cannot call", async () => {
         await expect(
-          poolManager.connect(randomUser).withdrawFromAccount(accountId, [])
+          poolManager.connect(randomUser).withdrawFromLpSafe([])
         ).to.be.revertedWith("revert Ownable: caller is not the owner");
       });
 
       it("Owner can call", async () => {
-        await expect(
-          poolManager.connect(deployer).withdrawFromAccount(accountId, [])
-        ).to.not.be.reverted;
+        await expect(poolManager.connect(deployer).withdrawFromLpSafe([])).to
+          .not.be.reverted;
       });
 
-      it("Revert on invalid account", async () => {
-        await expect(
-          poolManager
-            .connect(deployer)
-            .withdrawFromAccount(bytes32("invalidAccount"), [])
-        ).to.be.revertedWith("INVALID_ACCOUNT");
+      it("Revert on missing LP Safe address", async () => {
+        await addressRegistry.deleteAddress(bytes32("lpSafe"));
+        await expect(poolManager.connect(deployer).withdrawFromLpSafe([])).to.be
+          .reverted;
       });
 
       it("Revert on unregistered pool", async () => {
         await expect(
-          poolManager.withdrawFromAccount(accountId, [
+          poolManager.withdrawFromLpSafe([
             { poolId: bytes32("invalidPool"), amount: 10 },
           ])
         ).to.be.revertedWith("Missing address");
@@ -554,9 +555,7 @@ describe("Contract: PoolManager", () => {
         await expect(
           poolManager
             .connect(deployer)
-            .withdrawFromAccount(accountId, [
-              { poolId: bytes32("usdcPool"), amount: 0 },
-            ])
+            .withdrawFromLpSafe([{ poolId: bytes32("usdcPool"), amount: 0 }])
         ).to.be.revertedWith("INVALID_AMOUNT");
       });
 
@@ -567,7 +566,7 @@ describe("Contract: PoolManager", () => {
         await daiToken.connect(fundedAccount).approve(poolManager.address, 0);
 
         await expect(
-          poolManager.withdrawFromAccount(accountId, [
+          poolManager.withdrawFromLpSafe([
             { poolId: bytes32("daiPool"), amount: amount },
           ])
         ).to.be.revertedWith("INSUFFICIENT_ALLOWANCE");
@@ -586,7 +585,7 @@ describe("Contract: PoolManager", () => {
         const tvl = await daiPool.getValueFromUnderlyerAmount(amount);
         await mAPT.setTVL(tvl);
 
-        await poolManager.withdrawFromAccount(accountId, [
+        await poolManager.withdrawFromLpSafe([
           { poolId: bytes32("daiPool"), amount: amount },
         ]);
 
@@ -649,7 +648,7 @@ describe("Contract: PoolManager", () => {
           usdtWithdrawAmount
         );
 
-        await poolManager.withdrawFromAccount(accountId, [
+        await poolManager.withdrawFromLpSafe([
           { poolId: bytes32("daiPool"), amount: daiWithdrawAmount },
           {
             poolId: bytes32("usdcPool"),
@@ -736,7 +735,7 @@ describe("Contract: PoolManager", () => {
           usdtWithdrawAmount
         );
 
-        await poolManager.withdrawFromAccount(accountId, [
+        await poolManager.withdrawFromLpSafe([
           { poolId: bytes32("daiPool"), amount: daiWithdrawAmount },
           {
             poolId: bytes32("usdcPool"),

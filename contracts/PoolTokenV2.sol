@@ -14,6 +14,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/math/SignedSafeMath.s
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/ILiquidityPool.sol";
 import "./interfaces/IDetailedERC20.sol";
+import "./interfaces/IAddressRegistryV2.sol";
 import "./MetaPoolToken.sol";
 
 /**
@@ -81,8 +82,7 @@ contract PoolTokenV2 is
     AggregatorV3Interface public priceAgg;
 
     // V2
-    /// @notice token tracking value owed to the pool
-    MetaPoolToken public mApt;
+    IAddressRegistryV2 public addressRegistry;
     /// @notice seconds since last deposit during which withdrawal fee is charged
     uint256 public feePeriod;
     /// @notice percentage charged for withdrawal fee
@@ -142,13 +142,13 @@ contract PoolTokenV2 is
      * this function can only be called as part of a delegate call
      * during upgrades, i.e. in ProxyAdmin's `upgradeAndCall`.
      */
-    function initializeUpgrade(address payable _mApt)
+    function initializeUpgrade(address _addressRegistry)
         external
         virtual
         onlyAdmin
     {
-        require(Address.isContract(_mApt), "INVALID_ADDRESS");
-        mApt = MetaPoolToken(_mApt);
+        require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(_addressRegistry);
         feePeriod = 1 days;
         feePercentage = 5;
         reservePercentage = 5;
@@ -169,9 +169,12 @@ contract PoolTokenV2 is
         emit PriceAggregatorChanged(address(_priceAgg));
     }
 
-    function setMetaPoolToken(address payable _mApt) public onlyOwner {
-        require(Address.isContract(_mApt), "INVALID_ADDRESS");
-        mApt = MetaPoolToken(_mApt);
+    function setAddressRegistry(address payable _addressRegistry)
+        public
+        onlyOwner
+    {
+        require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(_addressRegistry);
     }
 
     function setFeePeriod(uint256 _feePeriod) public onlyOwner {
@@ -438,6 +441,7 @@ contract PoolTokenV2 is
      * @return USD value
      */
     function getDeployedValue() public view virtual returns (uint256) {
+        MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAptAddress());
         return mApt.getDeployedValue(address(this));
     }
 

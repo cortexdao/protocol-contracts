@@ -14,6 +14,7 @@ const {
 
 const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
+const AddressRegistry = artifacts.require("IAddressRegistryV2");
 const MetaPoolToken = artifacts.require("MetaPoolToken");
 
 describe("Contract: PoolToken", () => {
@@ -31,6 +32,7 @@ describe("Contract: PoolToken", () => {
   // mocks
   let underlyerMock;
   let priceAggMock;
+  let addressRegistryMock;
   let mAptMock;
 
   // pool
@@ -78,9 +80,15 @@ describe("Contract: PoolToken", () => {
     await logicV2.deployed();
 
     mAptMock = await deployMockContract(deployer, MetaPoolToken.abi);
+    addressRegistryMock = await deployMockContract(
+      deployer,
+      AddressRegistry.abi
+    );
+    await addressRegistryMock.mock.mAptAddress.returns(mAptMock.address);
+
     const initData = PoolTokenV2.interface.encodeFunctionData(
       "initializeUpgrade(address)",
-      [mAptMock.address]
+      [addressRegistryMock.address]
     );
     await proxyAdmin
       .connect(deployer)
@@ -153,10 +161,6 @@ describe("Contract: PoolToken", () => {
       ).to.be.reverted;
     });
 
-    it("mAPT set correctly", async () => {
-      expect(await poolToken.mApt()).to.equal(mAptMock.address);
-    });
-
     it("feePeriod set to correct value", async () => {
       expect(await poolToken.feePeriod()).to.equal(24 * 60 * 60);
     });
@@ -208,28 +212,6 @@ describe("Contract: PoolToken", () => {
       await expect(setPromise)
         .to.emit(poolToken, "PriceAggregatorChanged")
         .withArgs(FAKE_ADDRESS);
-    });
-  });
-
-  describe("Set mAPT address", () => {
-    it("Owner can set mAPT address", async () => {
-      const mockContract = await deployMockContract(deployer, []);
-      const mockContractAddress = mockContract.address;
-      await poolToken.connect(deployer).setMetaPoolToken(mockContractAddress);
-      assert.equal(await poolToken.mApt(), mockContractAddress);
-    });
-
-    it("Revert on setting to non-contract address", async () => {
-      await expect(poolToken.connect(deployer).setMetaPoolToken(FAKE_ADDRESS))
-        .to.be.reverted;
-    });
-
-    it("Revert when non-owner attempts to set address", async () => {
-      const mockContract = await deployMockContract(deployer, []);
-      const mockContractAddress = mockContract.address;
-      await expect(
-        poolToken.connect(randomUser).setMetaPoolToken(mockContractAddress)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
 

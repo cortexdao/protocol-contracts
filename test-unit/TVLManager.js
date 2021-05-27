@@ -15,7 +15,7 @@ describe("Contract: TVLManager", () => {
   let deployer;
   let addressRegistry;
   let poolManager;
-  let accountManager;
+  let lpSafe;
   let randomUser;
 
   // contract factories
@@ -37,21 +37,14 @@ describe("Contract: TVLManager", () => {
   });
 
   before(async () => {
-    [
-      deployer,
-      poolManager,
-      accountManager,
-      randomUser,
-    ] = await ethers.getSigners();
+    [deployer, poolManager, lpSafe, randomUser] = await ethers.getSigners();
 
     addressRegistry = await deployMockContract(
       deployer,
-      artifacts.require("AddressRegistryV2").abi
+      artifacts.require("IAddressRegistryV2").abi
     );
     await addressRegistry.mock.poolManagerAddress.returns(poolManager.address);
-    await addressRegistry.mock.accountManagerAddress.returns(
-      accountManager.address
-    );
+    await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
 
     TVLManager = await ethers.getContractFactory("TVLManager");
 
@@ -100,14 +93,12 @@ describe("Contract: TVLManager", () => {
         ).to.not.be.reverted;
       });
 
-      it("Account manager can call", async () => {
+      it("LP Safe can call", async () => {
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
         const decimals = 18;
         await expect(
-          tvlManager
-            .connect(accountManager)
-            .addAssetAllocation(data, symbol, decimals)
+          tvlManager.connect(lpSafe).addAssetAllocation(data, symbol, decimals)
         ).to.not.be.reverted;
       });
 
@@ -116,12 +107,10 @@ describe("Contract: TVLManager", () => {
         const symbol = "FOO";
         const decimals = 18;
         await tvlManager
-          .connect(accountManager)
+          .connect(lpSafe)
           .addAssetAllocation(data, symbol, decimals);
         await expect(
-          tvlManager
-            .connect(accountManager)
-            .addAssetAllocation(data, symbol, decimals)
+          tvlManager.connect(lpSafe).addAssetAllocation(data, symbol, decimals)
         ).to.be.revertedWith("DUPLICATE_DATA_DETECTED");
       });
     });
@@ -162,15 +151,14 @@ describe("Contract: TVLManager", () => {
         ).to.not.be.reverted;
       });
 
-      it("Account manager can call", async () => {
+      it("LP Safe can call", async () => {
         const data = [FAKE_ADDRESS, bytes32("")];
         await tvlManager
           .connect(poolManager)
           .addAssetAllocation(data, "FOO", 18);
 
-        await expect(
-          tvlManager.connect(accountManager).removeAssetAllocation(data)
-        ).to.not.be.reverted;
+        await expect(tvlManager.connect(lpSafe).removeAssetAllocation(data)).to
+          .not.be.reverted;
       });
     });
 

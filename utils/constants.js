@@ -137,6 +137,7 @@ const CONTRACT_NAMES = [
   "ProxyConstructorArg",
   "RewardDistributor",
   "TVLManager",
+  "LpSafe",
 ];
 
 const DEPLOYS_JSON = {};

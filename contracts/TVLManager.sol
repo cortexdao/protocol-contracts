@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "./utils/EnumerableSet.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/ITVLManager.sol";
-import "./AddressRegistryV2.sol";
+import "./interfaces/IAddressRegistryV2.sol";
 
 /// @title TVL Manager
 /// @author APY.Finance
@@ -20,8 +20,9 @@ import "./AddressRegistryV2.sol";
 /// but are not registered can have devastating and catastrophic effects on the TVL.
 contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
     using EnumerableSet for EnumerableSet.Bytes32Set;
+    using Address for address;
 
-    AddressRegistryV2 public addressRegistry;
+    IAddressRegistryV2 public addressRegistry;
 
     // all registered allocation ids
     EnumerableSet.Bytes32Set private _allocationIds;
@@ -31,9 +32,6 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
     mapping(bytes32 => string) private _allocationSymbols;
     // ids mapped to decimals
     mapping(bytes32 => uint256) private _allocationDecimals;
-
-    event PoolManagerChanged(address);
-    event AccountManagerChanged(address);
 
     /// @notice Constructor TVLManager
     /// @param _addressRegistry the address registry to initialize with
@@ -47,7 +45,7 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
         require(
             msg.sender == owner() ||
                 msg.sender == addressRegistry.poolManagerAddress() ||
-                msg.sender == addressRegistry.accountManagerAddress(),
+                msg.sender == addressRegistry.lpSafeAddress(),
             "PERMISSIONED_ONLY"
         );
         _;
@@ -198,32 +196,7 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
         view
         returns (bytes memory returnData)
     {
-        returnData = _staticcall(data.target, data.data);
-    }
-
-    function _staticcall(address target, bytes memory data)
-        private
-        view
-        returns (bytes memory)
-    {
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory returndata) = target.staticcall(data);
-        if (success) {
-            return returndata;
-        } else {
-            // Look for revert reason and bubble it up if present
-            if (returndata.length > 0) {
-                // The easiest way to bubble the revert reason is using memory via assembly
-
-                // solhint-disable-next-line no-inline-assembly
-                assembly {
-                    let returndata_size := mload(returndata)
-                    revert(add(32, returndata), returndata_size)
-                }
-            } else {
-                revert("STATIC_CALL_FAILED");
-            }
-        }
+        returnData = data.target.functionStaticCall(data.data);
     }
 
     /**
@@ -237,6 +210,6 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
 
     function _setAddressRegistry(address _addressRegistry) internal {
         require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
-        addressRegistry = AddressRegistryV2(_addressRegistry);
+        addressRegistry = IAddressRegistryV2(_addressRegistry);
     }
 }
