@@ -12,16 +12,26 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     using Address for address;
 
     /// @notice seconds within which source should update
-    uint256 private _stalePeriod;
-    mapping(address => AggregatorV3Interface) private _assetSources;
+    uint256 private _chainlinkStalePeriod;
+    uint256 private _lockEnd;
     AggregatorV3Interface private _tvlSource;
-    bool private _isLocked;
-    uint256 private _submittedTVLValue;
-    uint256 private _submittedTVLExpiry;
+    mapping(address => AggregatorV3Interface) private _assetSources;
+    mapping(address => Value) private _submittedAssetValues;
+    Value private _submittedTvlValue;
 
     event AssetSourceUpdated(address indexed asset, address indexed source);
     event TvlSourceUpdated(address indexed source);
     event StalePeriodUpdated(uint256 stalePeriod);
+
+    modifier unlocked() {
+        require(isUnlocked(), "ORACLE_LOCKED");
+        _;
+    }
+
+    modifier locked() {
+        require(!isUnlocked(), "ORACLE_UNLOCKED");
+        _;
+    }
 
     /**
      * @notice Constructor
@@ -78,22 +88,14 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         public
         view
         override
+        unlocked
         returns (uint256)
     {
+        if (_submittedAssetValues[asset].periodEnd >= block.number) {
+            return _submittedAssetValues[asset].value;
+        }
         AggregatorV3Interface source = _assetSources[asset];
-        uint256 price = _getPriceFromSource(source);
-
-        // Unlike TVL, a price should never be 0
-        require(price > 0, "MISSING_ASSET_VALUE");
-        return price;
-    }
-
-    /**
-     * @notice Get the TVL value
-     * @return the TVL
-     */
-    function getTvl() public view override returns (uint256) {
-        return _getPriceFromSource(_tvlSource);
+        return _getPriceFromSource(source);
     }
 
     /**
@@ -137,7 +139,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      */
     function _setStalePeriod(uint256 stalePeriod) internal {
         require(stalePeriod > 0, "INVALID_STALE_PERIOD");
-        _stalePeriod = stalePeriod;
+        _chainlinkStalePeriod = stalePeriod;
         emit StalePeriodUpdated(stalePeriod);
     }
 
@@ -154,11 +156,12 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         require(address(source).isContract(), "INVALID_SOURCE");
         (, int256 price, , uint256 updatedAt, ) = source.latestRoundData();
 
-        require(price >= 0, "MISSING_ASSET_VALUE");
+        //we do not allow 0 values for chainlink
+        require(price > 0, "MISSING_ASSET_VALUE");
 
         // solhint-disable not-rely-on-time
         require(
-            block.timestamp.sub(updatedAt) <= _stalePeriod,
+            block.timestamp.sub(updatedAt) <= _chainlinkStalePeriod,
             "CHAINLINK_STALE_DATA"
         );
         // solhint-enable not-rely-on-time
@@ -180,30 +183,46 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     }
 
     function getStalePeriod() external view returns (uint256) {
-        return _stalePeriod;
+        return _chainlinkStalePeriod;
     }
 
-    function submitTVLValue(uint256 newValue, uint256 expiry)
-        external
-        override
-    {
-        require(!_isLocked, "LOCKED");
-        require(newValue > 0, "INVALID_VALUE");
-        require(expiry >= block.number, "INVALID_EXPIRY");
-        _submittedTVLValue = newValue;
-        _submittedTVLExpiry = expiry;
+    function setAssetValue(
+        address asset,
+        uint256 value,
+        uint256 period
+    ) external override locked onlyOwner {
+        // We do allow 0 values for submitted values
+        _submittedAssetValues[asset] = Value(value, block.number.add(period));
     }
 
-    function submittedTVLValue()
+    function getTvl()
         external
         view
         override
+        unlocked
         returns (uint256 value, uint256 expiry)
     {
-        return (_submittedTVLValue, _submittedTVLExpiry);
+        if (_submittedTvlValue.periodEnd >= block.number) {
+            return _submittedTvlValue.value;
+        }
+        return _getPriceFromSource(_tvlSource);
     }
 
-    function isLocked() external view override returns (bool) {
-        return _isLocked;
+    function isUnlocked() public view override returns (bool) {
+        return block.number >= _lockEnd;
+    }
+
+    function setLock(uint256 newPeriod) external onlyOwner {
+        _lockEnd = block.number.add(newPeriod);
+    }
+
+    function setTvl(uint256 value, uint256 period)
+        external
+        override
+        locked
+        onlyOwner
+    {
+        // We do allow 0 values for submitted values
+        _submittedTvlValue = Value(value, block.number.add(period));
     }
 }

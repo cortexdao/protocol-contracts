@@ -11,6 +11,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/IAddressRegistryV2.sol";
 import "./interfaces/IMintable.sol";
+import "./interfaces/IOracleAdapter.sol";
 
 /**
  * @title Meta Pool Token
@@ -198,12 +199,9 @@ contract MetaPoolToken is
      */
     function getTVL() public view virtual returns (uint256) {
         require(block.number >= tvlLockEnd, "TVL_LOCKED");
-        // possible revert with "No data present" but this can
-        // only happen if there has never been a successful round.
-        (, int256 answer, , uint256 updatedAt, ) = tvlAgg.latestRoundData();
-        require(answer >= 0, "CHAINLINK_INVALID_ANSWER");
-        validateNotStale(updatedAt);
-        return uint256(answer);
+        IOracleAdapter oracleAdapter = addressRegistry.oracleAdapter();
+        require(!oracleAdapter.isLocked(), "ORACLE_LOCKED");
+        return oracleAdapter.getTvl();
     }
 
     /**

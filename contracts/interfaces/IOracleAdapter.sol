@@ -2,13 +2,24 @@
 pragma solidity 0.6.11;
 
 interface IOracleAdapter {
-    function submitTVLValue(uint256 newValue, uint256 expiry) external;
+    struct Value {
+        uint256 value;
+        uint256 periodEnd;
+    }
 
-    function submittedTVLValue(uint256 value) external;
+    function setTvl(uint256 value, uint256 period) external;
 
-    function getAssetPrice(address asset) external view returns (uint256);
+    function setAssetValue(
+        address asset,
+        uint256 value,
+        uint256 period
+    ) external;
 
-    function getTvl() external view returns (uint256);
+    function getAssetPrice(address asset) external view returns (uint256 price);
 
-    function isLocked() external view returns (bool);
+    function getTvl() external view returns (uint256 tvl);
+
+    function isUnlocked() external view returns (bool);
+
+    function setLock(uint256 period) external view returns (bool);
 }
