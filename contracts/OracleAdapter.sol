@@ -66,12 +66,12 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     event ChainlinkStalePeriodUpdated(uint256 chainlinkStalePeriod);
 
     modifier unlocked() {
-        require(isUnlocked(), "ORACLE_LOCKED");
+        require(!isLocked(), "ORACLE_LOCKED");
         _;
     }
 
     modifier locked() {
-        require(!isUnlocked(), "ORACLE_UNLOCKED");
+        require(isLocked(), "ORACLE_UNLOCKED");
         _;
     }
 
@@ -165,8 +165,8 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     //
     //------------------------------------------------------------
 
-    function isUnlocked() public view override returns (bool) {
-        return block.number >= _lockEnd;
+    function isLocked() public view override returns (bool) {
+        return block.number < _lockEnd;
     }
 
     //------------------------------------------------------------
