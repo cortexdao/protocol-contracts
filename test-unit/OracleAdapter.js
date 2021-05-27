@@ -10,7 +10,7 @@ const {
 } = require("../utils/helpers");
 const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
 
-describe("Contract: OracleAdapter", () => {
+describe.only("Contract: OracleAdapter", () => {
   // signers
   let deployer;
   let randomUser;
@@ -226,6 +226,22 @@ describe("Contract: OracleAdapter", () => {
       await expect(oracleAdapter.getTvl()).to.be.revertedWith(
         "CHAINLINK_STALE_DATA"
       );
+    });
+
+    it("Revert when locked", async () => {
+      await oracleAdapter.setLock(1);
+      await expect(oracleAdapter.getTvl()).to.be.revertedWith("ORACLE_LOCKED");
+
+      const updatedAt = (await ethers.provider.getBlock()).timestamp;
+      // setting the mock mines a block
+      await tvlAggMock.mock.latestRoundData.returns(
+        0,
+        tokenAmountToBigNumber(50e6, 8),
+        0,
+        updatedAt,
+        0
+      );
+      await expect(oracleAdapter.getTvl()).to.not.be.reverted;
     });
   });
 
