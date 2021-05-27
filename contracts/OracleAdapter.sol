@@ -21,7 +21,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
 
     event AssetSourceUpdated(address indexed asset, address indexed source);
     event TvlSourceUpdated(address indexed source);
-    event StalePeriodUpdated(uint256 stalePeriod);
+    event ChainlinkStalePeriodUpdated(uint256 chainlinkStalePeriod);
 
     modifier unlocked() {
         require(isUnlocked(), "ORACLE_LOCKED");
@@ -38,17 +38,17 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      * @param assets the assets priced by sources
      * @param sources the source for each asset
      * @param tvlSource the source for the TVL value
-     * @param stalePeriod the number of seconds until a source value is stale
+     * @param chainlinkStalePeriod the number of seconds until a source value is stale
      */
     constructor(
         address[] memory assets,
         address[] memory sources,
         address tvlSource,
-        uint256 stalePeriod
+        uint256 chainlinkStalePeriod
     ) public {
         _setAssetSources(assets, sources);
         _setTvlSource(tvlSource);
-        _setStalePeriod(stalePeriod);
+        _setChainlinkStalePeriod(chainlinkStalePeriod);
     }
 
     /**
@@ -73,10 +73,13 @@ contract OracleAdapter is Ownable, IOracleAdapter {
 
     /**
      * @notice Set the length of time before an agg value is considered stale
-     * @param stalePeriod the length of time in seconds
+     * @param chainlinkStalePeriod the length of time in seconds
      */
-    function setStalePeriod(uint256 stalePeriod) external onlyOwner {
-        _setStalePeriod(stalePeriod);
+    function setChainlinkStalePeriod(uint256 chainlinkStalePeriod)
+        external
+        onlyOwner
+    {
+        _setChainlinkStalePeriod(chainlinkStalePeriod);
     }
 
     /**
@@ -135,12 +138,12 @@ contract OracleAdapter is Ownable, IOracleAdapter {
 
     /**
      * @notice Set the length of time before an agg value is considered stale
-     * @param stalePeriod the length of time in seconds
+     * @param chainlinkStalePeriod the length of time in seconds
      */
-    function _setStalePeriod(uint256 stalePeriod) internal {
-        require(stalePeriod > 0, "INVALID_STALE_PERIOD");
-        _chainlinkStalePeriod = stalePeriod;
-        emit StalePeriodUpdated(stalePeriod);
+    function _setChainlinkStalePeriod(uint256 chainlinkStalePeriod) internal {
+        require(chainlinkStalePeriod > 0, "INVALID_STALE_PERIOD");
+        _chainlinkStalePeriod = chainlinkStalePeriod;
+        emit ChainlinkStalePeriodUpdated(chainlinkStalePeriod);
     }
 
     /**
@@ -182,7 +185,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         return address(_tvlSource);
     }
 
-    function getStalePeriod() external view returns (uint256) {
+    function getChainlinkStalePeriod() external view returns (uint256) {
         return _chainlinkStalePeriod;
     }
 
