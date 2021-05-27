@@ -198,13 +198,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         _submittedAssetValues[asset] = Value(value, block.number.add(period));
     }
 
-    function getTvl()
-        external
-        view
-        override
-        unlocked
-        returns (uint256 value, uint256 expiry)
-    {
+    function getTvl() external view override unlocked returns (uint256) {
         if (_submittedTvlValue.periodEnd >= block.number) {
             return _submittedTvlValue.value;
         }
@@ -215,7 +209,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         return block.number >= _lockEnd;
     }
 
-    function setLock(uint256 newPeriod) external onlyOwner {
+    function setLock(uint256 newPeriod) external override onlyOwner {
         _lockEnd = block.number.add(newPeriod);
     }
 
