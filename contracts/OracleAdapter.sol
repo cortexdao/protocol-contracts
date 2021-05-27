@@ -15,6 +15,9 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     uint256 private _stalePeriod;
     mapping(address => AggregatorV3Interface) private _assetSources;
     AggregatorV3Interface private _tvlSource;
+    bool private _isLocked;
+    uint256 private _submittedTVLValue;
+    uint256 private _submittedTVLExpiry;
 
     event AssetSourceUpdated(address indexed asset, address indexed source);
     event TvlSourceUpdated(address indexed source);
@@ -178,5 +181,29 @@ contract OracleAdapter is Ownable, IOracleAdapter {
 
     function getStalePeriod() external view returns (uint256) {
         return _stalePeriod;
+    }
+
+    function submitTVLValue(uint256 newValue, uint256 expiry)
+        external
+        override
+    {
+        require(!_isLocked, "LOCKED");
+        require(newValue > 0, "INVALID_VALUE");
+        require(expiry >= block.number, "INVALID_EXPIRY");
+        _submittedTVLValue = newValue;
+        _submittedTVLExpiry = expiry;
+    }
+
+    function submittedTVLValue()
+        external
+        view
+        override
+        returns (uint256 value, uint256 expiry)
+    {
+        return (_submittedTVLValue, _submittedTVLExpiry);
+    }
+
+    function isLocked() external view override returns (bool) {
+        return _isLocked;
     }
 }
