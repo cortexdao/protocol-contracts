@@ -325,6 +325,37 @@ describe.only("Contract: OracleAdapter", () => {
       );
       await expect(oracleAdapter.getTvl()).to.not.be.reverted;
     });
+
+    it("Use manual submission when active", async () => {
+      const chainlinkValue = tokenAmountToBigNumber(110e6, 8);
+      const manualValue = tokenAmountToBigNumber(75e6, 8);
+
+      const updatedAt = (await ethers.provider.getBlock()).timestamp;
+      // setting the mock mines a block and advances time by 1 sec
+      await tvlAggMock.mock.latestRoundData.returns(
+        0,
+        chainlinkValue,
+        0,
+        updatedAt,
+        0
+      );
+      expect(await oracleAdapter.getTvl()).to.equal(chainlinkValue);
+
+      await oracleAdapter.setLock(5);
+      const activePeriod = 2;
+      await oracleAdapter.setTvl(manualValue, activePeriod); // advances 1 block
+
+      // TVL lock takes precedence over manual submission
+      await expect(oracleAdapter.getTvl()).to.be.reverted;
+
+      await oracleAdapter.setLock(0); // unlock; advances 1 block
+      // Manual submission takes precedence over Chainlink
+      expect(await oracleAdapter.getTvl()).to.equal(manualValue);
+
+      // Fallback to Chainlink when manual submission expires
+      await ethers.provider.send("evm_mine"); // advances block past expiry
+      expect(await oracleAdapter.getTvl()).to.equal(chainlinkValue);
+    });
   });
 
   describe("getAssetPrice", () => {

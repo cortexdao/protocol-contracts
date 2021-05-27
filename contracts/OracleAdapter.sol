@@ -93,8 +93,8 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         _setChainlinkStalePeriod(chainlinkStalePeriod);
     }
 
-    function setLock(uint256 newPeriod) external override onlyOwner {
-        _lockEnd = block.number.add(newPeriod);
+    function setLock(uint256 activePeriod) external override onlyOwner {
+        _lockEnd = block.number.add(activePeriod);
     }
 
     //------------------------------------------------------------
@@ -195,7 +195,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     }
 
     function getTvl() external view override unlocked returns (uint256) {
-        if (_submittedTvlValue.periodEnd >= block.number) {
+        if (block.number < _submittedTvlValue.periodEnd) {
             return _submittedTvlValue.value;
         }
         return _getPriceFromSource(_tvlSource);
