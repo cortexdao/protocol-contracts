@@ -21,5 +21,5 @@ interface IOracleAdapter {
 
     function getTvl() external view returns (uint256);
 
-    function isUnlocked() external view returns (bool);
+    function isLocked() external view returns (bool);
 }
