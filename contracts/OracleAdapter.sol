@@ -55,6 +55,41 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         _setChainlinkStalePeriod(chainlinkStalePeriod);
     }
 
+    function setLock(uint256 newPeriod) external override onlyOwner {
+        _lockEnd = block.number.add(newPeriod);
+    }
+
+    //------------------------------------------------------------
+    //
+    // MANUAL SUBMISSION SETTERS
+    //
+    //------------------------------------------------------------
+
+    function setAssetValue(
+        address asset,
+        uint256 value,
+        uint256 period
+    ) external override locked onlyOwner {
+        // We do allow 0 values for submitted values
+        _submittedAssetValues[asset] = Value(value, block.number.add(period));
+    }
+
+    function setTvl(uint256 value, uint256 period)
+        external
+        override
+        locked
+        onlyOwner
+    {
+        // We do allow 0 values for submitted values
+        _submittedTvlValue = Value(value, block.number.add(period));
+    }
+
+    //------------------------------------------------------------
+    //
+    // CHAINLINK SETTERS
+    //
+    //------------------------------------------------------------
+
     /**
      * @notice Set or replace asset price sources
      * @param assets the array of assets token addresses
@@ -86,6 +121,22 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         _setChainlinkStalePeriod(chainlinkStalePeriod);
     }
 
+    //------------------------------------------------------------
+    //
+    // GLOBAL GETTERS
+    //
+    //------------------------------------------------------------
+
+    function isUnlocked() public view override returns (bool) {
+        return block.number >= _lockEnd;
+    }
+
+    //------------------------------------------------------------
+    //
+    // ORACLE VALUE GETTERS
+    //
+    //------------------------------------------------------------
+
     /**
      * @notice Gets an asset price by address
      * @param asset the asset address
@@ -104,6 +155,42 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         AggregatorV3Interface source = _assetSources[asset];
         return _getPriceFromSource(source);
     }
+
+    function getTvl() external view override unlocked returns (uint256) {
+        if (_submittedTvlValue.periodEnd >= block.number) {
+            return _submittedTvlValue.value;
+        }
+        return _getPriceFromSource(_tvlSource);
+    }
+
+    //------------------------------------------------------------
+    //
+    // CHAINLINK GETTERS
+    //
+    //------------------------------------------------------------
+
+    /// @notice Gets the address of the source for an asset address
+    /// @param asset The address of the asset
+    /// @return address The address of the source
+    function getAssetSource(address asset) external view returns (address) {
+        return address(_assetSources[asset]);
+    }
+
+    /// @notice Gets the address of the TVL source
+    /// @return address TVL source address
+    function getTvlSource() external view returns (address) {
+        return address(_tvlSource);
+    }
+
+    function getChainlinkStalePeriod() external view returns (uint256) {
+        return _chainlinkStalePeriod;
+    }
+
+    //------------------------------------------------------------
+    //
+    // INTERNAL FUNCTIONS
+    //
+    //------------------------------------------------------------
 
     /**
      * @notice Set or replace asset price sources
@@ -174,56 +261,5 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         // solhint-enable not-rely-on-time
 
         return uint256(price);
-    }
-
-    /// @notice Gets the address of the source for an asset address
-    /// @param asset The address of the asset
-    /// @return address The address of the source
-    function getAssetSource(address asset) external view returns (address) {
-        return address(_assetSources[asset]);
-    }
-
-    /// @notice Gets the address of the TVL source
-    /// @return address TVL source address
-    function getTvlSource() external view returns (address) {
-        return address(_tvlSource);
-    }
-
-    function getChainlinkStalePeriod() external view returns (uint256) {
-        return _chainlinkStalePeriod;
-    }
-
-    function setAssetValue(
-        address asset,
-        uint256 value,
-        uint256 period
-    ) external override locked onlyOwner {
-        // We do allow 0 values for submitted values
-        _submittedAssetValues[asset] = Value(value, block.number.add(period));
-    }
-
-    function getTvl() external view override unlocked returns (uint256) {
-        if (_submittedTvlValue.periodEnd >= block.number) {
-            return _submittedTvlValue.value;
-        }
-        return _getPriceFromSource(_tvlSource);
-    }
-
-    function isUnlocked() public view override returns (bool) {
-        return block.number >= _lockEnd;
-    }
-
-    function setLock(uint256 newPeriod) external override onlyOwner {
-        _lockEnd = block.number.add(newPeriod);
-    }
-
-    function setTvl(uint256 value, uint256 period)
-        external
-        override
-        locked
-        onlyOwner
-    {
-        // We do allow 0 values for submitted values
-        _submittedTvlValue = Value(value, block.number.add(period));
     }
 }
