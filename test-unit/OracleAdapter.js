@@ -205,6 +205,69 @@ describe.only("Contract: OracleAdapter", () => {
     });
   });
 
+  describe("setTvl", () => {
+    it("Owner can set", async () => {
+      const value = 1;
+      const period = 5;
+      await oracleAdapter.setLock(2);
+      await expect(oracleAdapter.connect(deployer).setTvl(value, period)).to.not
+        .be.reverted;
+    });
+
+    it("Revert when non-owner calls", async () => {
+      const value = 1;
+      const period = 5;
+      await oracleAdapter.setLock(2);
+      await expect(
+        oracleAdapter.connect(randomUser).setTvl(value, period)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Revert when unlocked", async () => {
+      const value = 1;
+      const period = 5;
+      await oracleAdapter.setLock(0); // unlocks
+      await expect(
+        oracleAdapter.connect(deployer).setTvl(value, period)
+      ).to.be.revertedWith("ORACLE_UNLOCKED");
+    });
+  });
+
+  describe("setAssetValue", () => {
+    it("Owner can set", async () => {
+      const value = 1;
+      const period = 5;
+      await oracleAdapter.setLock(2);
+      await expect(
+        oracleAdapter
+          .connect(deployer)
+          .setAssetValue(assetAddress_1, value, period)
+      ).to.not.be.reverted;
+    });
+
+    it("Revert when non-owner calls", async () => {
+      const value = 1;
+      const period = 5;
+      await oracleAdapter.setLock(2);
+      await expect(
+        oracleAdapter
+          .connect(randomUser)
+          .setAssetValue(assetAddress_1, value, period)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Revert when unlocked", async () => {
+      const value = 1;
+      const period = 5;
+      await oracleAdapter.setLock(0); // unlocks
+      await expect(
+        oracleAdapter
+          .connect(deployer)
+          .setAssetValue(assetAddress_1, value, period)
+      ).to.be.revertedWith("ORACLE_UNLOCKED");
+    });
+  });
+
   describe("getTvl", () => {
     it("Revert when TVL is non-positive", async () => {
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
