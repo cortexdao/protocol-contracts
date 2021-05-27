@@ -187,7 +187,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         unlocked
         returns (uint256)
     {
-        if (_submittedAssetValues[asset].periodEnd >= block.number) {
+        if (block.number < _submittedAssetValues[asset].periodEnd) {
             return _submittedAssetValues[asset].value;
         }
         AggregatorV3Interface source = _assetSources[asset];

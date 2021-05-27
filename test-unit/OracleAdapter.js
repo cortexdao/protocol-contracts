@@ -10,7 +10,7 @@ const {
 } = require("../utils/helpers");
 const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
 
-describe.only("Contract: OracleAdapter", () => {
+describe("Contract: OracleAdapter", () => {
   // signers
   let deployer;
   let randomUser;
@@ -410,6 +410,47 @@ describe.only("Contract: OracleAdapter", () => {
       await expect(
         oracleAdapter.getAssetPrice(assetAddress_1)
       ).to.be.revertedWith("CHAINLINK_STALE_DATA");
+    });
+
+    it("Use manual submission when active", async () => {
+      const chainlinkValue = tokenAmountToBigNumber(1.07, 8);
+      const manualValue = tokenAmountToBigNumber(1, 8);
+
+      const updatedAt = (await ethers.provider.getBlock()).timestamp;
+      // setting the mock mines a block and advances time by 1 sec
+      await assetAggMock_1.mock.latestRoundData.returns(
+        0,
+        chainlinkValue,
+        0,
+        updatedAt,
+        0
+      );
+      expect(await oracleAdapter.getAssetPrice(assetAddress_1)).to.equal(
+        chainlinkValue
+      );
+
+      await oracleAdapter.setLock(5);
+      const activePeriod = 2;
+      await oracleAdapter.setAssetValue(
+        assetAddress_1,
+        manualValue,
+        activePeriod
+      ); // advances 1 block
+
+      // TVL lock takes precedence over manual submission
+      await expect(oracleAdapter.getAssetPrice(assetAddress_1)).to.be.reverted;
+
+      await oracleAdapter.setLock(0); // unlock; advances 1 block
+      // Manual submission takes precedence over Chainlink
+      expect(await oracleAdapter.getAssetPrice(assetAddress_1)).to.equal(
+        manualValue
+      );
+
+      // Fallback to Chainlink when manual submission expires
+      await ethers.provider.send("evm_mine"); // advances block past expiry
+      expect(await oracleAdapter.getAssetPrice(assetAddress_1)).to.equal(
+        chainlinkValue
+      );
     });
   });
 });
