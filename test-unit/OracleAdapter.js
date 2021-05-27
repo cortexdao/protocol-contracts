@@ -112,7 +112,7 @@ describe.only("Contract: OracleAdapter", () => {
     });
   });
 
-  describe("Set TVL source", () => {
+  describe("setTvlSource", () => {
     it("Cannot set to non-contract address", async () => {
       await expect(
         oracleAdapter.connect(deployer).setTvlSource(FAKE_ADDRESS)
@@ -135,7 +135,7 @@ describe.only("Contract: OracleAdapter", () => {
     });
   });
 
-  describe("Set asset sources", () => {
+  describe("setAssetSources", () => {
     it("Cannot set to non-contract address", async () => {
       const assets = [FAKE_ADDRESS];
       const sources = [ANOTHER_FAKE_ADDRESS];
@@ -166,7 +166,7 @@ describe.only("Contract: OracleAdapter", () => {
     });
   });
 
-  describe("Set stalePeriod", () => {
+  describe("setChainlinkStalePeriod", () => {
     it("Cannot set to 0", async () => {
       await expect(
         oracleAdapter.connect(deployer).setChainlinkStalePeriod(0)
@@ -183,6 +183,25 @@ describe.only("Contract: OracleAdapter", () => {
       await expect(
         oracleAdapter.connect(randomUser).setChainlinkStalePeriod(14400)
       ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
+
+  describe("setLock / isLocked", () => {
+    it("Owner can set", async () => {
+      const period = 1;
+      await oracleAdapter.connect(deployer).setLock(period);
+      expect(await oracleAdapter.isLocked()).to.be.true;
+    });
+
+    it("Revert when non-owner calls", async () => {
+      await expect(
+        oracleAdapter.connect(randomUser).setLock(0)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Can unlock", async () => {
+      await oracleAdapter.connect(deployer).setLock(0);
+      expect(await oracleAdapter.isLocked()).to.be.false;
     });
   });
 
