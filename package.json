@@ -16,7 +16,7 @@
     "test:unit": "hardhat test test-unit/*",
     "test:integration": "ENABLE_FORKING=true hardhat test test-integration/*",
     "lint": "solhint contracts/**/*.sol contracts/*.sol",
-    "coverage": "hardhat coverage --network coverage --testfiles \"test-unit/*.js\"",
+    "coverage": "hardhat coverage --network hardhat --testfiles \"test-unit/*.js\"",
     "ganache": "ganache-cli",
     "fork:mainnet": "./scripts/fork_mainnet.sh",
     "emergency:withdraw": "yarn hardhat --network localhost run scripts/EmergencyAPYWithdraw.js"
