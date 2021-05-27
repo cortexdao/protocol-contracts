@@ -11,11 +11,15 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     using SafeMath for uint256;
     using Address for address;
 
-    /// @notice seconds within which source should update
-    uint256 private _chainlinkStalePeriod;
+    /// @notice Contract is locked until this block number is passed
     uint256 private _lockEnd;
+
+    /// @notice Chainlink variables
+    uint256 private _chainlinkStalePeriod; // Duration of Chainlink heartbeat
     AggregatorV3Interface private _tvlSource;
     mapping(address => AggregatorV3Interface) private _assetSources;
+
+    /// @notice Submitted values that override Chainlink values until stale
     mapping(address => Value) private _submittedAssetValues;
     Value private _submittedTvlValue;
 
