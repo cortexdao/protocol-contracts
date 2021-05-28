@@ -13,18 +13,18 @@ import "../interfaces/IDetailedERC20.sol";
 contract TestMetaPoolToken is MetaPoolToken {
     uint256 internal _tvl;
 
-    /** @dev Used for mocking in tests.  See `getTVL`. */
-    function setTVL(uint256 tvl) public {
+    /** @dev Used for mocking in tests.  See `getTvl`. */
+    function setTvl(uint256 tvl) public {
         _tvl = tvl;
     }
 
     /**
-     * @dev Used for mocking in tests.  See `setTVL`.
+     * @dev Used for mocking in tests.  See `setTvl`.
      * Mainly intended for unit tests of the mAPT token, but this
      * is also handy for testing the PoolManager interaction with
      * pools and strategies.
      */
-    function getTVL() public view override returns (uint256) {
+    function getTvl() public view override returns (uint256) {
         return _tvl;
     }
 }
