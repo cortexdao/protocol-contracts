@@ -218,7 +218,7 @@ contract AddressRegistryV2 is
         return getAddress("lpSafe");
     }
 
-    function oracleAdapter() public view override returns (address) {
+    function oracleAdapterAddress() public view override returns (address) {
         return getAddress("oracleAdapter");
     }
 }

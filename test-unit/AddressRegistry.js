@@ -225,13 +225,16 @@ contract("AddressRegistry", async (accounts) => {
       "0x3AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
     const daiPoolAddress = web3.utils.toChecksumAddress(
-      "0x5AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+      "0x4AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
     const usdcPoolAddress = web3.utils.toChecksumAddress(
       "0x5AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
     const usdtPoolAddress = web3.utils.toChecksumAddress(
-      "0x5AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+      "0x6AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+    );
+    const oracleAdapterAddress = web3.utils.toChecksumAddress(
+      "0x7AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
     beforeEach("Prep addresses", async () => {
       const names = [
@@ -242,6 +245,7 @@ contract("AddressRegistry", async (accounts) => {
         bytes32("daiPool"),
         bytes32("usdcPool"),
         bytes32("usdtPool"),
+        bytes32("oracleAdapter"),
       ];
       const addresses = [
         DUMMY_ADDRESS,
@@ -251,6 +255,7 @@ contract("AddressRegistry", async (accounts) => {
         daiPoolAddress,
         usdcPoolAddress,
         usdtPoolAddress,
+        oracleAdapterAddress,
       ];
       await registry.registerMultipleAddresses(names, addresses);
     });
@@ -264,6 +269,7 @@ contract("AddressRegistry", async (accounts) => {
         bytes32("daiPool"),
         bytes32("usdcPool"),
         bytes32("usdtPool"),
+        bytes32("oracleAdapter"),
       ]);
     });
 
@@ -329,6 +335,13 @@ contract("AddressRegistry", async (accounts) => {
       assert.equal(
         await registry.usdtPoolAddress({ from: randomUser }),
         usdtPoolAddress
+      );
+    });
+
+    it("User can retrieve oracle adapter", async () => {
+      assert.equal(
+        await registry.oracleAdapterAddress({ from: randomUser }),
+        oracleAdapterAddress
       );
     });
   });
