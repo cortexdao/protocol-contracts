@@ -42,8 +42,6 @@ describe("Contract: MetaPoolToken", () => {
   let oracleAdapterMock;
   let addressRegistryMock;
 
-  const aggStalePeriod = 14400;
-
   // use EVM snapshots for test isolation
   let snapshotId;
 
@@ -263,6 +261,7 @@ describe("Contract: MetaPoolToken", () => {
       const usdcEthPrice = tokenAmountToBigNumber("1602950450000000");
       let usdcAmount = usdc(107);
       let usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
+      await oracleAdapterMock.mock.getTvl.returns(0);
 
       await mApt
         .connect(manager)
@@ -386,74 +385,16 @@ describe("Contract: MetaPoolToken", () => {
     });
   });
 
-  describe("getTvl and auxiliary functions", () => {
-    const usdTvl = tokenAmountToBigNumber("2510012387654321");
-
-    it("getTvl reverts when oracle adapter reverts", async () => {
-      await oracleAdapterMock.mock.getTvl.revertedWith("MISSING_ASSET_VALUE");
-      await expect(mApt.getTvl()).to.be.revertedWith("MISSING_ASSET_VALUE");
+  describe("getTvl", () => {
+    it("Call delegates to oracle adapter's getTvl", async () => {
+      const usdTvl = tokenAmountToBigNumber("25100123.87654321", "8");
+      await oracleAdapterMock.mock.getTvl.returns(usdTvl);
+      expect(await mApt.getTvl()).to.equal(usdTvl);
     });
 
-    it("getTvl reverts when update is too old", async () => {
-      const updatedAt = (await ethers.provider.getBlock()).timestamp;
-      // setting the mock mines a block and advances time by 1 sec
-      await oracleAdapterMock.mock.latestRoundData.returns(
-        0,
-        usdTvl,
-        0,
-        updatedAt,
-        0
-      );
-      await ethers.provider.send("evm_increaseTime", [aggStalePeriod / 2]);
-      await ethers.provider.send("evm_mine");
-      await expect(mApt.getTvl()).to.not.be.reverted;
-
-      await ethers.provider.send("evm_increaseTime", [aggStalePeriod / 2]);
-      await ethers.provider.send("evm_mine");
-      await expect(mApt.getTvl()).to.be.revertedWith("CHAINLINK_STALE_DATA");
-    });
-
-    it("Revert when calling `getTvl` and it's locked", async () => {
-      const lockPeriod = 10;
-      await mApt.lockTVL(lockPeriod);
-      await expect(mApt.getTvl()).to.be.revertedWith("TVL_LOCKED");
-    });
-
-    it("Call `getTvl` succeeds after lock period", async () => {
-      const updatedAt = (await ethers.provider.getBlock()).timestamp;
-      await oracleAdapterMock.mock.latestRoundData.returns(
-        0,
-        usdTvl,
-        0,
-        updatedAt,
-        0
-      );
-      const lockPeriod = 2;
-      // set tvlBlockEnd to 2 blocks ahead
-      await mApt.lockTVL(lockPeriod);
-
-      await timeMachine.advanceBlock();
-      await expect(mApt.getTvl()).to.be.revertedWith("TVL_LOCKED");
-      await timeMachine.advanceBlock();
-      await expect(mApt.getTvl()).to.not.be.reverted;
-    });
-
-    it("Call `getTvl` succeeds after unlock", async () => {
-      const updatedAt = (await ethers.provider.getBlock()).timestamp;
-      await oracleAdapterMock.mock.latestRoundData.returns(
-        0,
-        usdTvl,
-        0,
-        updatedAt,
-        0
-      );
-      const lockPeriod = 100;
-      await mApt.lockTVL(lockPeriod);
-
-      await expect(mApt.getTvl()).to.be.revertedWith("TVL_LOCKED");
-
-      await mApt.lockTVL(0);
-      await expect(mApt.getTvl()).to.not.be.reverted;
+    it("getTvl reverts with same reason as oracle adapter", async () => {
+      await oracleAdapterMock.mock.getTvl.revertsWithReason("SOMETHING_WRONG");
+      await expect(mApt.getTvl()).to.be.revertedWith("SOMETHING_WRONG");
     });
   });
 });

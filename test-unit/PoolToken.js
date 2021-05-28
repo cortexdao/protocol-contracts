@@ -669,7 +669,7 @@ describe("Contract: PoolToken", () => {
 
       await mAptMock.mock.balanceOf.returns(tokenAmountToBigNumber(10));
       await mAptMock.mock.totalSupply.returns(tokenAmountToBigNumber(1000));
-      await mAptMock.mock.getTVL.returns(tokenAmountToBigNumber(271828));
+      await mAptMock.mock.getTvl.returns(tokenAmountToBigNumber(271828));
 
       await poolToken.mint(poolToken.address, aptTotalSupply);
 
