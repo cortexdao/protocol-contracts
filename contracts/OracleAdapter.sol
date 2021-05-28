@@ -7,36 +7,126 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/IOracleAdapter.sol";
 
+/**
+ * @title Oracle Adapter
+ * @author APY.Finance
+ * @notice Acts as a gateway to oracle values and implements oracle safeguards.
+ *
+ * Oracle Safeguard Flows:
+ *
+ *      - Unlocked → No Manual Submitted Value → Use Chainlink Value (default)
+ *      - Unlocked → No Manual Submitted Value → No Chainlink Source → Reverts
+ *      - Unlocked → No Manual Submitted Value → Chainlink Value Call Reverts → Reverts
+ *      - Unlocked → No Manual Submitted Value → Chainlink Value > 24 hours → Reverts
+ *      - Unlocked → Use Manual Submitted Value (emergency)
+ *      - Locked → Reverts (nominal)
+ *
+ * @dev It is important to not that zero values are allowed for manual
+ * submission, but will result in a revert for Chainlink.
+ *
+ * This is because there are very rare situations where the TVL value can
+ * accurately be zero, such as a situation where all funds are unwound and
+ * moved back to the liquidity pools, but a zero value can also indicate a
+ * failure with Chainlink.
+ *
+ * Because accurate zero values are rare, and occur due to intentional system
+ * states where no funds are deployed, they due not need to be detected
+ * automatically by Chainlink.
+ *
+ * In addition, the impact of failing to manually set a zero value when
+ * necessary compared to the impact of an incorrect zero value from Chainlink
+ * is much lower.
+ *
+ * Failing to manually set a zero value can result in either a locked contract,
+ * which can be unlocked by setting the value, or reduced deposit/withdraw
+ * amounts. But never a loss of funds.
+ *
+ * Conversely, if Chainlink reports a zero value in error and the contract
+ * were to accept it, funds up to the amount available in the reserve pools
+ * could be lost.
+ */
 contract OracleAdapter is Ownable, IOracleAdapter {
     using SafeMath for uint256;
     using Address for address;
 
-    /// @notice seconds within which source should update
-    uint256 private _stalePeriod;
-    mapping(address => AggregatorV3Interface) private _assetSources;
+    /// @notice Contract is locked until this block number is passed
+    uint256 private _lockEnd;
+
+    /// @notice Chainlink variables
+    uint256 private _chainlinkStalePeriod; // Duration of Chainlink heartbeat
     AggregatorV3Interface private _tvlSource;
+    mapping(address => AggregatorV3Interface) private _assetSources;
+
+    /// @notice Submitted values that override Chainlink values until stale
+    mapping(address => Value) private _submittedAssetValues;
+    Value private _submittedTvlValue;
 
     event AssetSourceUpdated(address indexed asset, address indexed source);
     event TvlSourceUpdated(address indexed source);
-    event StalePeriodUpdated(uint256 stalePeriod);
+    event ChainlinkStalePeriodUpdated(uint256 chainlinkStalePeriod);
+
+    modifier unlocked() {
+        require(!isLocked(), "ORACLE_LOCKED");
+        _;
+    }
+
+    modifier locked() {
+        require(isLocked(), "ORACLE_UNLOCKED");
+        _;
+    }
 
     /**
      * @notice Constructor
      * @param assets the assets priced by sources
      * @param sources the source for each asset
      * @param tvlSource the source for the TVL value
-     * @param stalePeriod the number of seconds until a source value is stale
+     * @param chainlinkStalePeriod the number of seconds until a source value is stale
      */
     constructor(
         address[] memory assets,
         address[] memory sources,
         address tvlSource,
-        uint256 stalePeriod
+        uint256 chainlinkStalePeriod
     ) public {
         _setAssetSources(assets, sources);
         _setTvlSource(tvlSource);
-        _setStalePeriod(stalePeriod);
+        _setChainlinkStalePeriod(chainlinkStalePeriod);
     }
+
+    function setLock(uint256 activePeriod) external override onlyOwner {
+        _lockEnd = block.number.add(activePeriod);
+    }
+
+    //------------------------------------------------------------
+    //
+    // MANUAL SUBMISSION SETTERS
+    //
+    //------------------------------------------------------------
+
+    function setAssetValue(
+        address asset,
+        uint256 value,
+        uint256 period
+    ) external override locked onlyOwner {
+        // We do allow 0 values for submitted values
+        _submittedAssetValues[asset] = Value(value, block.number.add(period));
+    }
+
+    function setTvl(uint256 value, uint256 period)
+        external
+        override
+        locked
+        onlyOwner
+    {
+        // We do allow 0 values for submitted values
+        _submittedTvlValue = Value(value, block.number.add(period));
+    }
+
+    //------------------------------------------------------------
+    //
+    // CHAINLINK SETTERS
+    //
+    //------------------------------------------------------------
 
     /**
      * @notice Set or replace asset price sources
@@ -60,11 +150,30 @@ contract OracleAdapter is Ownable, IOracleAdapter {
 
     /**
      * @notice Set the length of time before an agg value is considered stale
-     * @param stalePeriod the length of time in seconds
+     * @param chainlinkStalePeriod the length of time in seconds
      */
-    function setStalePeriod(uint256 stalePeriod) external onlyOwner {
-        _setStalePeriod(stalePeriod);
+    function setChainlinkStalePeriod(uint256 chainlinkStalePeriod)
+        external
+        onlyOwner
+    {
+        _setChainlinkStalePeriod(chainlinkStalePeriod);
     }
+
+    //------------------------------------------------------------
+    //
+    // GLOBAL GETTERS
+    //
+    //------------------------------------------------------------
+
+    function isLocked() public view override returns (bool) {
+        return block.number < _lockEnd;
+    }
+
+    //------------------------------------------------------------
+    //
+    // ORACLE VALUE GETTERS
+    //
+    //------------------------------------------------------------
 
     /**
      * @notice Gets an asset price by address
@@ -75,23 +184,51 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         public
         view
         override
+        unlocked
         returns (uint256)
     {
+        if (block.number < _submittedAssetValues[asset].periodEnd) {
+            return _submittedAssetValues[asset].value;
+        }
         AggregatorV3Interface source = _assetSources[asset];
-        uint256 price = _getPriceFromSource(source);
-
-        // Unlike TVL, a price should never be 0
-        require(price > 0, "MISSING_ASSET_VALUE");
-        return price;
+        return _getPriceFromSource(source);
     }
 
-    /**
-     * @notice Get the TVL value
-     * @return the TVL
-     */
-    function getTvl() public view override returns (uint256) {
+    function getTvl() external view override unlocked returns (uint256) {
+        if (block.number < _submittedTvlValue.periodEnd) {
+            return _submittedTvlValue.value;
+        }
         return _getPriceFromSource(_tvlSource);
     }
+
+    //------------------------------------------------------------
+    //
+    // CHAINLINK GETTERS
+    //
+    //------------------------------------------------------------
+
+    /// @notice Gets the address of the source for an asset address
+    /// @param asset The address of the asset
+    /// @return address The address of the source
+    function getAssetSource(address asset) external view returns (address) {
+        return address(_assetSources[asset]);
+    }
+
+    /// @notice Gets the address of the TVL source
+    /// @return address TVL source address
+    function getTvlSource() external view returns (address) {
+        return address(_tvlSource);
+    }
+
+    function getChainlinkStalePeriod() external view returns (uint256) {
+        return _chainlinkStalePeriod;
+    }
+
+    //------------------------------------------------------------
+    //
+    // INTERNAL FUNCTIONS
+    //
+    //------------------------------------------------------------
 
     /**
      * @notice Set or replace asset price sources
@@ -130,12 +267,12 @@ contract OracleAdapter is Ownable, IOracleAdapter {
 
     /**
      * @notice Set the length of time before an agg value is considered stale
-     * @param stalePeriod the length of time in seconds
+     * @param chainlinkStalePeriod the length of time in seconds
      */
-    function _setStalePeriod(uint256 stalePeriod) internal {
-        require(stalePeriod > 0, "INVALID_STALE_PERIOD");
-        _stalePeriod = stalePeriod;
-        emit StalePeriodUpdated(stalePeriod);
+    function _setChainlinkStalePeriod(uint256 chainlinkStalePeriod) internal {
+        require(chainlinkStalePeriod > 0, "INVALID_STALE_PERIOD");
+        _chainlinkStalePeriod = chainlinkStalePeriod;
+        emit ChainlinkStalePeriodUpdated(chainlinkStalePeriod);
     }
 
     /**
@@ -151,32 +288,16 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         require(address(source).isContract(), "INVALID_SOURCE");
         (, int256 price, , uint256 updatedAt, ) = source.latestRoundData();
 
-        require(price >= 0, "MISSING_ASSET_VALUE");
+        //we do not allow 0 values for chainlink
+        require(price > 0, "MISSING_ASSET_VALUE");
 
         // solhint-disable not-rely-on-time
         require(
-            block.timestamp.sub(updatedAt) <= _stalePeriod,
+            block.timestamp.sub(updatedAt) <= _chainlinkStalePeriod,
             "CHAINLINK_STALE_DATA"
         );
         // solhint-enable not-rely-on-time
 
         return uint256(price);
-    }
-
-    /// @notice Gets the address of the source for an asset address
-    /// @param asset The address of the asset
-    /// @return address The address of the source
-    function getAssetSource(address asset) external view returns (address) {
-        return address(_assetSources[asset]);
-    }
-
-    /// @notice Gets the address of the TVL source
-    /// @return address TVL source address
-    function getTvlSource() external view returns (address) {
-        return address(_tvlSource);
-    }
-
-    function getStalePeriod() external view returns (uint256) {
-        return _stalePeriod;
     }
 }

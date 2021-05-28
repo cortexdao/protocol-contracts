@@ -106,11 +106,13 @@ describe("Contract: OracleAdapter", () => {
     });
 
     it("stalePeriod is set", async () => {
-      expect(await oracleAdapter.getStalePeriod()).to.equal(stalePeriod);
+      expect(await oracleAdapter.getChainlinkStalePeriod()).to.equal(
+        stalePeriod
+      );
     });
   });
 
-  describe("Set TVL source", () => {
+  describe("setTvlSource", () => {
     it("Cannot set to non-contract address", async () => {
       await expect(
         oracleAdapter.connect(deployer).setTvlSource(FAKE_ADDRESS)
@@ -133,7 +135,7 @@ describe("Contract: OracleAdapter", () => {
     });
   });
 
-  describe("Set asset sources", () => {
+  describe("setAssetSources", () => {
     it("Cannot set to non-contract address", async () => {
       const assets = [FAKE_ADDRESS];
       const sources = [ANOTHER_FAKE_ADDRESS];
@@ -164,52 +166,129 @@ describe("Contract: OracleAdapter", () => {
     });
   });
 
-  describe("Set stalePeriod", () => {
+  describe("setChainlinkStalePeriod", () => {
     it("Cannot set to 0", async () => {
       await expect(
-        oracleAdapter.connect(deployer).setStalePeriod(0)
+        oracleAdapter.connect(deployer).setChainlinkStalePeriod(0)
       ).to.be.revertedWith("INVALID_STALE_PERIOD");
     });
 
     it("Owner can set", async () => {
       const period = 100;
-      await oracleAdapter.connect(deployer).setStalePeriod(period);
-      expect(await oracleAdapter.getStalePeriod()).to.equal(period);
+      await oracleAdapter.connect(deployer).setChainlinkStalePeriod(period);
+      expect(await oracleAdapter.getChainlinkStalePeriod()).to.equal(period);
     });
 
     it("Revert when non-owner calls", async () => {
       await expect(
-        oracleAdapter.connect(randomUser).setStalePeriod(14400)
+        oracleAdapter.connect(randomUser).setChainlinkStalePeriod(14400)
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
 
-  describe("getTvl", () => {
-    it("Allow zero TVL", async () => {
-      const updatedAt = (await ethers.provider.getBlock()).timestamp;
-      // setting the mock mines a block and advances time by 1 sec
-      await tvlAggMock.mock.latestRoundData.returns(0, 0, 0, updatedAt, 0);
-      expect(await oracleAdapter.getTvl()).to.equal(0);
+  describe("setLock / isLocked", () => {
+    it("Owner can set", async () => {
+      const period = 1;
+      await oracleAdapter.connect(deployer).setLock(period);
+      expect(await oracleAdapter.isLocked()).to.be.true;
     });
 
-    it("Revert when TVL is negative", async () => {
+    it("Revert when non-owner calls", async () => {
+      await expect(
+        oracleAdapter.connect(randomUser).setLock(0)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Can unlock", async () => {
+      await oracleAdapter.connect(deployer).setLock(0);
+      expect(await oracleAdapter.isLocked()).to.be.false;
+    });
+  });
+
+  describe("setTvl", () => {
+    it("Owner can set", async () => {
+      const value = 1;
+      const period = 5;
+      await oracleAdapter.setLock(2);
+      await expect(oracleAdapter.connect(deployer).setTvl(value, period)).to.not
+        .be.reverted;
+    });
+
+    it("Revert when non-owner calls", async () => {
+      const value = 1;
+      const period = 5;
+      await oracleAdapter.setLock(2);
+      await expect(
+        oracleAdapter.connect(randomUser).setTvl(value, period)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Revert when unlocked", async () => {
+      const value = 1;
+      const period = 5;
+      await oracleAdapter.setLock(0); // unlocks
+      await expect(
+        oracleAdapter.connect(deployer).setTvl(value, period)
+      ).to.be.revertedWith("ORACLE_UNLOCKED");
+    });
+  });
+
+  describe("setAssetValue", () => {
+    it("Owner can set", async () => {
+      const value = 1;
+      const period = 5;
+      await oracleAdapter.setLock(2);
+      await expect(
+        oracleAdapter
+          .connect(deployer)
+          .setAssetValue(assetAddress_1, value, period)
+      ).to.not.be.reverted;
+    });
+
+    it("Revert when non-owner calls", async () => {
+      const value = 1;
+      const period = 5;
+      await oracleAdapter.setLock(2);
+      await expect(
+        oracleAdapter
+          .connect(randomUser)
+          .setAssetValue(assetAddress_1, value, period)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Revert when unlocked", async () => {
+      const value = 1;
+      const period = 5;
+      await oracleAdapter.setLock(0); // unlocks
+      await expect(
+        oracleAdapter
+          .connect(deployer)
+          .setAssetValue(assetAddress_1, value, period)
+      ).to.be.revertedWith("ORACLE_UNLOCKED");
+    });
+  });
+
+  describe("getTvl", () => {
+    it("Revert when TVL is non-positive", async () => {
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
-      const invalidPrice = -1;
+
+      let price = -1;
       // setting the mock mines a block and advances time by 1 sec
-      await tvlAggMock.mock.latestRoundData.returns(
-        0,
-        invalidPrice,
-        0,
-        updatedAt,
-        0
+      await tvlAggMock.mock.latestRoundData.returns(0, price, 0, updatedAt, 0);
+      await expect(oracleAdapter.getTvl()).to.be.revertedWith(
+        "MISSING_ASSET_VALUE"
       );
+
+      price = 0;
+      // setting the mock mines a block and advances time by 1 sec
+      await tvlAggMock.mock.latestRoundData.returns(0, price, 0, updatedAt, 0);
       await expect(oracleAdapter.getTvl()).to.be.revertedWith(
         "MISSING_ASSET_VALUE"
       );
     });
 
     it("Revert when update is too old", async () => {
-      const stalePeriod = await oracleAdapter.getStalePeriod();
+      const stalePeriod = await oracleAdapter.getChainlinkStalePeriod();
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
 
       // setting the mock mines a block and advances time by 1 sec
@@ -229,6 +308,53 @@ describe("Contract: OracleAdapter", () => {
       await expect(oracleAdapter.getTvl()).to.be.revertedWith(
         "CHAINLINK_STALE_DATA"
       );
+    });
+
+    it("Revert when locked", async () => {
+      await oracleAdapter.setLock(1);
+      await expect(oracleAdapter.getTvl()).to.be.revertedWith("ORACLE_LOCKED");
+
+      const updatedAt = (await ethers.provider.getBlock()).timestamp;
+      // setting the mock mines a block
+      await tvlAggMock.mock.latestRoundData.returns(
+        0,
+        tokenAmountToBigNumber(50e6, 8),
+        0,
+        updatedAt,
+        0
+      );
+      await expect(oracleAdapter.getTvl()).to.not.be.reverted;
+    });
+
+    it("Use manual submission when active", async () => {
+      const chainlinkValue = tokenAmountToBigNumber(110e6, 8);
+      const manualValue = tokenAmountToBigNumber(75e6, 8);
+
+      const updatedAt = (await ethers.provider.getBlock()).timestamp;
+      // setting the mock mines a block and advances time by 1 sec
+      await tvlAggMock.mock.latestRoundData.returns(
+        0,
+        chainlinkValue,
+        0,
+        updatedAt,
+        0
+      );
+      expect(await oracleAdapter.getTvl()).to.equal(chainlinkValue);
+
+      await oracleAdapter.setLock(5);
+      const activePeriod = 2;
+      await oracleAdapter.setTvl(manualValue, activePeriod); // advances 1 block
+
+      // TVL lock takes precedence over manual submission
+      await expect(oracleAdapter.getTvl()).to.be.reverted;
+
+      await oracleAdapter.setLock(0); // unlock; advances 1 block
+      // Manual submission takes precedence over Chainlink
+      expect(await oracleAdapter.getTvl()).to.equal(manualValue);
+
+      // Fallback to Chainlink when manual submission expires
+      await ethers.provider.send("evm_mine"); // advances block past expiry
+      expect(await oracleAdapter.getTvl()).to.equal(chainlinkValue);
     });
   });
 
@@ -263,7 +389,7 @@ describe("Contract: OracleAdapter", () => {
     });
 
     it("Revert when update is too old", async () => {
-      const stalePeriod = await oracleAdapter.getStalePeriod();
+      const stalePeriod = await oracleAdapter.getChainlinkStalePeriod();
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
 
       // setting the mock mines a block and advances time by 1 sec
@@ -284,6 +410,47 @@ describe("Contract: OracleAdapter", () => {
       await expect(
         oracleAdapter.getAssetPrice(assetAddress_1)
       ).to.be.revertedWith("CHAINLINK_STALE_DATA");
+    });
+
+    it("Use manual submission when active", async () => {
+      const chainlinkValue = tokenAmountToBigNumber(1.07, 8);
+      const manualValue = tokenAmountToBigNumber(1, 8);
+
+      const updatedAt = (await ethers.provider.getBlock()).timestamp;
+      // setting the mock mines a block and advances time by 1 sec
+      await assetAggMock_1.mock.latestRoundData.returns(
+        0,
+        chainlinkValue,
+        0,
+        updatedAt,
+        0
+      );
+      expect(await oracleAdapter.getAssetPrice(assetAddress_1)).to.equal(
+        chainlinkValue
+      );
+
+      await oracleAdapter.setLock(5);
+      const activePeriod = 2;
+      await oracleAdapter.setAssetValue(
+        assetAddress_1,
+        manualValue,
+        activePeriod
+      ); // advances 1 block
+
+      // TVL lock takes precedence over manual submission
+      await expect(oracleAdapter.getAssetPrice(assetAddress_1)).to.be.reverted;
+
+      await oracleAdapter.setLock(0); // unlock; advances 1 block
+      // Manual submission takes precedence over Chainlink
+      expect(await oracleAdapter.getAssetPrice(assetAddress_1)).to.equal(
+        manualValue
+      );
+
+      // Fallback to Chainlink when manual submission expires
+      await ethers.provider.send("evm_mine"); // advances block past expiry
+      expect(await oracleAdapter.getAssetPrice(assetAddress_1)).to.equal(
+        chainlinkValue
+      );
     });
   });
 });

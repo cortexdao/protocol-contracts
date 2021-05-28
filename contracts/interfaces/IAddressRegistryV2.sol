@@ -50,4 +50,6 @@ interface IAddressRegistryV2 {
     function mAptAddress() external view returns (address);
 
     function lpSafeAddress() external view returns (address);
+
+    function oracleAdapter() external view returns (address);
 }
