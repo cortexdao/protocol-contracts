@@ -307,6 +307,8 @@ describe("Contract: OracleAdapter", () => {
   });
 
   describe("getTvl", () => {
+    const usdTvl = tokenAmountToBigNumber("25100123.87654321", "8");
+
     it("Revert when TVL is non-positive", async () => {
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
 
@@ -349,18 +351,33 @@ describe("Contract: OracleAdapter", () => {
     });
 
     it("Revert when locked", async () => {
-      await oracleAdapter.setLock(1);
+      const lockPeriod = 10;
+      await oracleAdapter.setLock(lockPeriod);
+      await expect(oracleAdapter.getTvl()).to.be.revertedWith("ORACLE_LOCKED");
+    });
+
+    it("Call succeeds after lock period", async () => {
+      const updatedAt = (await ethers.provider.getBlock()).timestamp;
+      await tvlAggMock.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
+      // set tvlBlockEnd to 2 blocks ahead
+      const lockPeriod = 2;
+      await oracleAdapter.setLock(lockPeriod);
+
+      await timeMachine.advanceBlock();
+      await expect(oracleAdapter.getTvl()).to.be.revertedWith("ORACLE_LOCKED");
+      await timeMachine.advanceBlock();
+      await expect(oracleAdapter.getTvl()).to.not.be.reverted;
+    });
+
+    it("Call succeeds after unlock", async () => {
+      const updatedAt = (await ethers.provider.getBlock()).timestamp;
+      await tvlAggMock.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
+      const lockPeriod = 100;
+      await oracleAdapter.setLock(lockPeriod);
+
       await expect(oracleAdapter.getTvl()).to.be.revertedWith("ORACLE_LOCKED");
 
-      const updatedAt = (await ethers.provider.getBlock()).timestamp;
-      // setting the mock mines a block
-      await tvlAggMock.mock.latestRoundData.returns(
-        0,
-        tokenAmountToBigNumber(50e6, 8),
-        0,
-        updatedAt,
-        0
-      );
+      await oracleAdapter.setLock(0);
       await expect(oracleAdapter.getTvl()).to.not.be.reverted;
     });
 
@@ -397,6 +414,8 @@ describe("Contract: OracleAdapter", () => {
   });
 
   describe("getAssetPrice", () => {
+    const usdTvl = tokenAmountToBigNumber("25100123.87654321", "8");
+
     it("Revert when price is non-positive", async () => {
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
       let price = -1;
@@ -448,6 +467,57 @@ describe("Contract: OracleAdapter", () => {
       await expect(
         oracleAdapter.getAssetPrice(assetAddress_1)
       ).to.be.revertedWith("CHAINLINK_STALE_DATA");
+    });
+
+    it("Revert when locked", async () => {
+      const lockPeriod = 10;
+      await oracleAdapter.setLock(lockPeriod);
+      await expect(
+        oracleAdapter.getAssetPrice(assetAddress_1)
+      ).to.be.revertedWith("ORACLE_LOCKED");
+    });
+
+    it("Call succeeds after lock period", async () => {
+      const updatedAt = (await ethers.provider.getBlock()).timestamp;
+      await assetAggMock_1.mock.latestRoundData.returns(
+        0,
+        usdTvl,
+        0,
+        updatedAt,
+        0
+      );
+      // set tvlBlockEnd to 2 blocks ahead
+      const lockPeriod = 2;
+      await oracleAdapter.setLock(lockPeriod);
+
+      await timeMachine.advanceBlock();
+      await expect(
+        oracleAdapter.getAssetPrice(assetAddress_1)
+      ).to.be.revertedWith("ORACLE_LOCKED");
+      await timeMachine.advanceBlock();
+      await expect(oracleAdapter.getAssetPrice(assetAddress_1)).to.not.be
+        .reverted;
+    });
+
+    it("Call succeeds after unlock", async () => {
+      const updatedAt = (await ethers.provider.getBlock()).timestamp;
+      await assetAggMock_1.mock.latestRoundData.returns(
+        0,
+        usdTvl,
+        0,
+        updatedAt,
+        0
+      );
+      const lockPeriod = 100;
+      await oracleAdapter.setLock(lockPeriod);
+
+      await expect(
+        oracleAdapter.getAssetPrice(assetAddress_1)
+      ).to.be.revertedWith("ORACLE_LOCKED");
+
+      await oracleAdapter.setLock(0);
+      await expect(oracleAdapter.getAssetPrice(assetAddress_1)).to.not.be
+        .reverted;
     });
 
     it("Use manual submission when active", async () => {
