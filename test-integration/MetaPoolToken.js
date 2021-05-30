@@ -38,16 +38,17 @@ describe("Contract: MetaPoolToken", () => {
   let ProxyAdmin;
   let MetaPoolTokenProxy;
   let MetaPoolToken;
+  let OracleAdapter;
 
   // deployed contracts
   let proxyAdmin;
   let logic;
   let proxy;
   let mApt;
+  let oracleAdapter;
   let addressRegistry;
 
   let tvlAgg;
-  let aggStalePeriod = 14400;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -80,6 +81,9 @@ describe("Contract: MetaPoolToken", () => {
       deployer.address // ETH funder
     );
 
+    OracleAdapter = await ethers.getContractFactory("OracleAdapter");
+    oracleAdapter = await OracleAdapter.deploy([], [], tvlAgg.address, 86400);
+
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     MetaPoolTokenProxy = await ethers.getContractFactory("MetaPoolTokenProxy");
     MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
@@ -89,6 +93,9 @@ describe("Contract: MetaPoolToken", () => {
       artifacts.require("IAddressRegistryV2").abi
     );
     await addressRegistry.mock.poolManagerAddress.returns(manager.address);
+    await addressRegistry.mock.oracleAdapterAddress.returns(
+      oracleAdapter.address
+    );
 
     proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
@@ -97,9 +104,7 @@ describe("Contract: MetaPoolToken", () => {
     proxy = await MetaPoolTokenProxy.deploy(
       logic.address,
       proxyAdmin.address,
-      tvlAgg.address,
-      addressRegistry.address,
-      aggStalePeriod
+      addressRegistry.address
     );
     await proxy.deployed();
     mApt = await MetaPoolToken.attach(proxy.address);
@@ -145,7 +150,10 @@ describe("Contract: MetaPoolToken", () => {
         .connect(manager)
         .mint(randomUser.address, tokenAmountToBigNumber(100));
 
-      await tvlAgg.connect(oracle).submit(1, 0);
+      // manually set TVL to zero
+      await oracleAdapter.setLock(100);
+      await oracleAdapter.setTvl(0, 100);
+      await oracleAdapter.setLock(0);
 
       const mintAmount = await mApt.calculateMintAmount(
         usdcAmount,
