@@ -40,6 +40,7 @@ describe("Contract: PoolManager", () => {
   let poolManager;
   let tvlManager;
   let mApt;
+  let oracleAdapter;
 
   // signers
   let deployer;
@@ -132,6 +133,25 @@ describe("Contract: PoolManager", () => {
       addressRegistryDeployer
     );
 
+    /*********************************/
+    /***** deploy Oracle Adapter *****/
+    /*********************************/
+
+    const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
+    const tvlAgg = await deployMockContract(deployer, []);
+    oracleAdapter = await OracleAdapter.deploy([], [], tvlAgg.address, 86400);
+    await oracleAdapter.deployed();
+
+    await addressRegistry.registerAddress(
+      bytes32("oracleAdapter"),
+      oracleAdapter.address
+    );
+
+    // set default TVL for tests to zero
+    await oracleAdapter.setLock(10);
+    await oracleAdapter.setTvl(0, 100);
+    await oracleAdapter.setLock(0);
+
     /***********************/
     /***** deploy mAPT *****/
     /***********************/
@@ -150,20 +170,6 @@ describe("Contract: PoolManager", () => {
     As a final note, rather than dummy addresses, we deploy mocks,
     as we may add checks for contract addresses in the future.
     */
-    const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
-    const tvlAgg = await deployMockContract(deployer, []);
-    const oracleAdapter = await OracleAdapter.deploy(
-      [],
-      [],
-      tvlAgg.address,
-      86400
-    );
-    await oracleAdapter.deployed();
-
-    await addressRegistry.registerAddress(
-      bytes32("oracleAdapter"),
-      oracleAdapter.address
-    );
 
     const MetaPoolTokenProxy = await ethers.getContractFactory(
       "MetaPoolTokenProxy"
@@ -589,7 +595,9 @@ describe("Contract: PoolManager", () => {
 
         // adjust the TVL appropriately, as there is no Chainlink to update it
         const tvl = await daiPool.getValueFromUnderlyerAmount(amount);
-        await mApt.setTVL(tvl);
+        await oracleAdapter.setLock(10);
+        await oracleAdapter.setTvl(tvl, 100);
+        await oracleAdapter.setLock(0);
 
         await poolManager.withdrawFromLpSafe([
           { poolId: bytes32("daiPool"), amount: amount },
@@ -600,7 +608,7 @@ describe("Contract: PoolManager", () => {
 
       it("Transfers and mints correctly for multiple pools (start from zero supply)", async () => {
         expect(await mApt.totalSupply()).to.equal(0);
-        expect(await mApt.getTVL()).to.equal(0);
+        expect(await mApt.getTvl()).to.equal(0);
 
         // now mint for each pool so withdraw can burn tokens
         const daiPoolMintAmount = await getMintAmount(daiPool, daiAmount);
@@ -636,7 +644,9 @@ describe("Contract: PoolManager", () => {
           usdtAmount
         );
         const newTvl = daiValue.add(usdcValue).add(usdtValue);
-        await mApt.setTVL(newTvl);
+        await oracleAdapter.setLock(10);
+        await oracleAdapter.setTvl(newTvl, 100);
+        await oracleAdapter.setLock(0);
 
         const daiWithdrawAmount = daiAmount.div(2);
         const daiPoolBurnAmount = await getMintAmount(
@@ -688,7 +698,9 @@ describe("Contract: PoolManager", () => {
           .mint(deployer.address, tokenAmountToBigNumber("1000000"));
         // don't forget to update the TVL!
         const tvl = tokenAmountToBigNumber("85000");
-        await mApt.setTVL(tvl);
+        await oracleAdapter.setLock(10);
+        await oracleAdapter.setTvl(tvl, 100);
+        await oracleAdapter.setLock(0);
 
         // now mint for each pool so withdraw can burn tokens
         const daiPoolMintAmount = await getMintAmount(daiPool, daiAmount);
@@ -723,7 +735,9 @@ describe("Contract: PoolManager", () => {
           usdtAmount
         );
         const newTvl = tvl.add(daiValue).add(usdcValue).add(usdtValue);
-        await mApt.setTVL(newTvl);
+        await oracleAdapter.setLock(10);
+        await oracleAdapter.setTvl(newTvl, 100);
+        await oracleAdapter.setLock(0);
 
         const daiWithdrawAmount = daiAmount.div(2);
         const daiPoolBurnAmount = await getMintAmount(
