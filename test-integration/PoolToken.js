@@ -143,6 +143,7 @@ describe("Contract: PoolToken", () => {
           tvlAgg.address,
           86400
         );
+        await oracleAdapter.deployed();
         await addressRegistry.registerAddress(
           ethers.utils.formatBytes32String("oracleAdapter"),
           oracleAdapter.address

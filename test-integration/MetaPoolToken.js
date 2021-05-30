@@ -77,6 +77,7 @@ describe("Contract: MetaPoolToken", () => {
 
     const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
     oracleAdapter = await OracleAdapter.deploy([], [], tvlAgg.address, 86400);
+    await oracleAdapter.deployed();
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     const MetaPoolTokenProxy = await ethers.getContractFactory(
