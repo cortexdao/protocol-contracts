@@ -34,12 +34,6 @@ describe("Contract: MetaPoolToken", () => {
   let randomUser;
   let oracle;
 
-  // contract factories
-  let ProxyAdmin;
-  let MetaPoolTokenProxy;
-  let MetaPoolToken;
-  let OracleAdapter;
-
   // deployed contracts
   let proxyAdmin;
   let logic;
@@ -81,12 +75,14 @@ describe("Contract: MetaPoolToken", () => {
       deployer.address // ETH funder
     );
 
-    OracleAdapter = await ethers.getContractFactory("OracleAdapter");
+    const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
     oracleAdapter = await OracleAdapter.deploy([], [], tvlAgg.address, 86400);
 
-    ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    MetaPoolTokenProxy = await ethers.getContractFactory("MetaPoolTokenProxy");
-    MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
+    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+    const MetaPoolTokenProxy = await ethers.getContractFactory(
+      "MetaPoolTokenProxy"
+    );
+    const MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
 
     addressRegistry = await deployMockContract(
       deployer,
