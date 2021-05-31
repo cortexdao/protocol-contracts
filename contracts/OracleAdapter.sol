@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/IOracleAdapter.sol";
+import "./interfaces/IAddressRegistryV2.sol";
 
 /**
  * @title Oracle Adapter
@@ -49,17 +50,19 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     using SafeMath for uint256;
     using Address for address;
 
-    /// @dev Contract is locked until this block number is passed
-    uint256 private _lockEnd;
+    IAddressRegistryV2 public addressRegistry;
 
-    /// @dev Chainlink variables
-    uint256 private _chainlinkStalePeriod; // Duration of Chainlink heartbeat
-    AggregatorV3Interface private _tvlSource;
-    mapping(address => AggregatorV3Interface) private _assetSources;
+    /// @notice Contract is locked until this block number is passed
+    uint256 public lockEnd;
 
-    /// @dev Submitted values that override Chainlink values until stale
-    mapping(address => Value) private _submittedAssetValues;
-    Value private _submittedTvlValue;
+    /// @notice Chainlink variables
+    uint256 public chainlinkStalePeriod; // Duration of Chainlink heartbeat
+    AggregatorV3Interface public tvlSource;
+    mapping(address => AggregatorV3Interface) public assetSources;
+
+    /// @notice Submitted values that override Chainlink values until stale
+    mapping(address => Value) public submittedAssetValues;
+    Value public submittedTvlValue;
 
     event AssetSourceUpdated(address indexed asset, address indexed source);
     event TvlSourceUpdated(address indexed source);
@@ -76,11 +79,11 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     }
 
     /// @dev Reverts if non-permissed account calls.
-    /// Permissioned accounts are: owner, pool manager, and account manager
+    /// Permissioned accounts are: owner, mAPT, and account manager
     modifier onlyPermissioned() {
         require(
             msg.sender == owner() ||
-                msg.sender == addressRegistry.oracleAdapterAddress() ||
+                msg.sender == addressRegistry.mAptAddress() ||
                 msg.sender == addressRegistry.tvlManagerAddress(),
             "PERMISSIONED_ONLY"
         );
@@ -95,24 +98,34 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      * @param chainlinkStalePeriod the number of seconds until a source value is stale
      */
     constructor(
+        address _addressRegistry,
+        address tvlSource,
         address[] memory assets,
         address[] memory sources,
-        address tvlSource,
         uint256 chainlinkStalePeriod
     ) public {
-        _setAssetSources(assets, sources);
-        _setTvlSource(tvlSource);
-        _setChainlinkStalePeriod(chainlinkStalePeriod);
+        setAddressRegistry(_addressRegistry);
+        setTvlSource(tvlSource);
+        setAssetSources(assets, sources);
+        setChainlinkStalePeriod(chainlinkStalePeriod);
     }
 
     function setLock(uint256 activePeriod) external override onlyOwner {
-        _lockEnd = block.number.add(activePeriod);
+        lockEnd = block.number.add(activePeriod);
+    }
+
+    /**
+     * @notice Sets the address registry
+     * @dev only callable by owner
+     * @param _addressRegistry the address of the registry
+     */
+    function setAddressRegistry(address _addressRegistry) public onlyOwner {
+        require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(_addressRegistry);
     }
 
     //------------------------------------------------------------
-    //
     // MANUAL SUBMISSION SETTERS
-    //
     //------------------------------------------------------------
 
     function setAssetValue(
@@ -121,7 +134,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         uint256 period
     ) external override locked onlyOwner {
         // We do allow 0 values for submitted values
-        _submittedAssetValues[asset] = Value(value, block.number.add(period));
+        submittedAssetValues[asset] = Value(value, block.number.add(period));
     }
 
     function setTvl(uint256 value, uint256 period)
@@ -131,13 +144,11 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         onlyOwner
     {
         // We do allow 0 values for submitted values
-        _submittedTvlValue = Value(value, block.number.add(period));
+        submittedTvlValue = Value(value, block.number.add(period));
     }
 
     //------------------------------------------------------------
-    //
     // CHAINLINK SETTERS
-    //
     //------------------------------------------------------------
 
     /**
@@ -145,19 +156,24 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      * @param assets the array of assets token addresses
      * @param sources the array of price sources (aggregators)
      */
-    function setAssetSources(
-        address[] calldata assets,
-        address[] calldata sources
-    ) external onlyOwner {
-        _setAssetSources(assets, sources);
+    function setAssetSources(address[] memory assets, address[] memory sources)
+        public
+        onlyOwner
+    {
+        require(assets.length == sources.length, "INCONSISTENT_PARAMS_LENGTH");
+        for (uint256 i = 0; i < assets.length; i++) {
+            setAssetSource(assets[i], sources[i]);
+        }
     }
 
     /**
      * @notice Set or replace the TVL source
      * @param source the TVL source address
      */
-    function setTvlSource(address source) external onlyOwner {
-        _setTvlSource(source);
+    function setTvlSource(address source) public onlyOwner {
+        require(source.isContract(), "INVALID_SOURCE");
+        tvlSource = AggregatorV3Interface(source);
+        emit TvlSourceUpdated(source);
     }
 
     /**
@@ -165,20 +181,16 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      * @param chainlinkStalePeriod the length of time in seconds
      */
     function setChainlinkStalePeriod(uint256 chainlinkStalePeriod)
-        external
+        public
         onlyOwner
     {
-        _setChainlinkStalePeriod(chainlinkStalePeriod);
+        require(chainlinkStalePeriod > 0, "INVALID_STALE_PERIOD");
+        chainlinkStalePeriod = chainlinkStalePeriod;
+        emit ChainlinkStalePeriodUpdated(chainlinkStalePeriod);
     }
 
-    //------------------------------------------------------------
-    //
-    // GLOBAL GETTERS
-    //
-    //------------------------------------------------------------
-
     function isLocked() public view override returns (bool) {
-        return block.number < _lockEnd;
+        return block.number < lockEnd;
     }
 
     //------------------------------------------------------------
@@ -199,18 +211,18 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         unlocked
         returns (uint256)
     {
-        if (block.number < _submittedAssetValues[asset].periodEnd) {
-            return _submittedAssetValues[asset].value;
+        if (block.number < submittedAssetValues[asset].periodEnd) {
+            return submittedAssetValues[asset].value;
         }
-        AggregatorV3Interface source = _assetSources[asset];
+        AggregatorV3Interface source = assetSources[asset];
         return _getPriceFromSource(source);
     }
 
     function getTvl() external view override unlocked returns (uint256) {
-        if (block.number < _submittedTvlValue.periodEnd) {
-            return _submittedTvlValue.value;
+        if (block.number < submittedTvlValue.periodEnd) {
+            return submittedTvlValue.value;
         }
-        return _getPriceFromSource(_tvlSource);
+        return _getPriceFromSource(tvlSource);
     }
 
     //------------------------------------------------------------
@@ -223,37 +235,17 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     /// @param asset The address of the asset
     /// @return address The address of the source
     function getAssetSource(address asset) external view returns (address) {
-        return address(_assetSources[asset]);
+        return address(assetSources[asset]);
     }
 
     /// @notice Gets the address of the TVL source
     /// @return address TVL source address
     function getTvlSource() external view returns (address) {
-        return address(_tvlSource);
+        return address(tvlSource);
     }
 
     function getChainlinkStalePeriod() external view returns (uint256) {
-        return _chainlinkStalePeriod;
-    }
-
-    //------------------------------------------------------------
-    //
-    // INTERNAL FUNCTIONS
-    //
-    //------------------------------------------------------------
-
-    /**
-     * @notice Set or replace asset price sources
-     * @param assets the array of assets token addresses
-     * @param sources the array of price sources (aggregators)
-     */
-    function _setAssetSources(address[] memory assets, address[] memory sources)
-        internal
-    {
-        require(assets.length == sources.length, "INCONSISTENT_PARAMS_LENGTH");
-        for (uint256 i = 0; i < assets.length; i++) {
-            _setAssetSource(assets[i], sources[i]);
-        }
+        return chainlinkStalePeriod;
     }
 
     /**
@@ -261,30 +253,10 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      * @param asset asset token address
      * @param source the price source (aggregator)
      */
-    function _setAssetSource(address asset, address source) internal {
+    function setAssetSource(address asset, address source) public onlyOwner {
         require(source.isContract(), "INVALID_SOURCE");
-        _assetSources[asset] = AggregatorV3Interface(source);
+        assetSources[asset] = AggregatorV3Interface(source);
         emit AssetSourceUpdated(asset, source);
-    }
-
-    /**
-     * @notice Set the source for TVL value
-     * @param source the TVL source (aggregator)
-     */
-    function _setTvlSource(address source) internal {
-        require(source.isContract(), "INVALID_SOURCE");
-        _tvlSource = AggregatorV3Interface(source);
-        emit TvlSourceUpdated(source);
-    }
-
-    /**
-     * @notice Set the length of time before an agg value is considered stale
-     * @param chainlinkStalePeriod the length of time in seconds
-     */
-    function _setChainlinkStalePeriod(uint256 chainlinkStalePeriod) internal {
-        require(chainlinkStalePeriod > 0, "INVALID_STALE_PERIOD");
-        _chainlinkStalePeriod = chainlinkStalePeriod;
-        emit ChainlinkStalePeriodUpdated(chainlinkStalePeriod);
     }
 
     /**
@@ -305,7 +277,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
 
         // solhint-disable not-rely-on-time
         require(
-            block.timestamp.sub(updatedAt) <= _chainlinkStalePeriod,
+            block.timestamp.sub(updatedAt) <= chainlinkStalePeriod,
             "CHAINLINK_STALE_DATA"
         );
         // solhint-enable not-rely-on-time

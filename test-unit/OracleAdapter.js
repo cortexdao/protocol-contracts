@@ -44,6 +44,8 @@ describe("Contract: OracleAdapter", () => {
   before(async () => {
     [deployer, randomUser] = await ethers.getSigners();
 
+    const addressRegistryMock = await deployMockContract(deployer, []);
+
     tvlAggMock = await deployMockContract(deployer, AggregatorV3Interface.abi);
     assetAggMock_1 = await deployMockContract(
       deployer,
@@ -58,9 +60,10 @@ describe("Contract: OracleAdapter", () => {
 
     OracleAdapter = await ethers.getContractFactory("OracleAdapter");
     oracleAdapter = await OracleAdapter.deploy(
+      addressRegistryMock.address,
+      tvlAggMock.address,
       assets,
       sources,
-      tvlAggMock.address,
       stalePeriod
     );
     await oracleAdapter.deployed();
