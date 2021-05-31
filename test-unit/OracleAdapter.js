@@ -22,6 +22,7 @@ describe("Contract: OracleAdapter", () => {
   let oracleAdapter;
 
   // mocks and constants
+  let addressRegistryMock;
   let tvlAggMock;
   let assetAggMock_1;
   let assetAggMock_2;
@@ -44,7 +45,7 @@ describe("Contract: OracleAdapter", () => {
   before(async () => {
     [deployer, randomUser] = await ethers.getSigners();
 
-    const addressRegistryMock = await deployMockContract(deployer, []);
+    addressRegistryMock = await deployMockContract(deployer, []);
 
     tvlAggMock = await deployMockContract(deployer, AggregatorV3Interface.abi);
     assetAggMock_1 = await deployMockContract(
@@ -79,7 +80,13 @@ describe("Contract: OracleAdapter", () => {
       const sources = [FAKE_ADDRESS, agg.address];
       const stalePeriod = 100;
       await expect(
-        OracleAdapter.deploy(assets, sources, tvlAggMock.address, stalePeriod)
+        OracleAdapter.deploy(
+          addressRegistryMock.address,
+          tvlAggMock.address,
+          assets,
+          sources,
+          stalePeriod
+        )
       ).to.be.revertedWith("INVALID_SOURCE");
     });
 
@@ -88,7 +95,13 @@ describe("Contract: OracleAdapter", () => {
       const sources = [];
       const stalePeriod = 0;
       await expect(
-        OracleAdapter.deploy(assets, sources, tvlAggMock.address, stalePeriod)
+        OracleAdapter.deploy(
+          addressRegistryMock.address,
+          tvlAggMock.address,
+          assets,
+          sources,
+          stalePeriod
+        )
       ).to.be.revertedWith("INVALID_STALE_PERIOD");
     });
   });
@@ -99,19 +112,17 @@ describe("Contract: OracleAdapter", () => {
     });
 
     it("Sources are set", async () => {
-      expect(await oracleAdapter.getTvlSource()).to.equal(tvlAggMock.address);
-      expect(await oracleAdapter.getAssetSource(assetAddress_1)).to.equal(
+      expect(await oracleAdapter.tvlSource()).to.equal(tvlAggMock.address);
+      expect(await oracleAdapter.assetSources(assetAddress_1)).to.equal(
         assetAggMock_1.address
       );
-      expect(await oracleAdapter.getAssetSource(assetAddress_2)).to.equal(
+      expect(await oracleAdapter.assetSources(assetAddress_2)).to.equal(
         assetAggMock_2.address
       );
     });
 
     it("stalePeriod is set", async () => {
-      expect(await oracleAdapter.getChainlinkStalePeriod()).to.equal(
-        stalePeriod
-      );
+      expect(await oracleAdapter.chainlinkStalePeriod()).to.equal(stalePeriod);
     });
   });
 

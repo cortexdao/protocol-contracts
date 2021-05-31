@@ -66,7 +66,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
 
     event AssetSourceUpdated(address indexed asset, address indexed source);
     event TvlSourceUpdated(address indexed source);
-    event ChainlinkStalePeriodUpdated(uint256 chainlinkStalePeriod);
+    event ChainlinkStalePeriodUpdated(uint256 period);
 
     modifier unlocked() {
         require(!isLocked(), "ORACLE_LOCKED");
@@ -92,22 +92,23 @@ contract OracleAdapter is Ownable, IOracleAdapter {
 
     /**
      * @notice Constructor
+     * @param _addressRegistry the address registry
      * @param assets the assets priced by sources
      * @param sources the source for each asset
      * @param tvlSource the source for the TVL value
-     * @param chainlinkStalePeriod the number of seconds until a source value is stale
+     * @param _chainlinkStalePeriod the number of seconds until a source value is stale
      */
     constructor(
         address _addressRegistry,
         address tvlSource,
         address[] memory assets,
         address[] memory sources,
-        uint256 chainlinkStalePeriod
+        uint256 _chainlinkStalePeriod
     ) public {
         setAddressRegistry(_addressRegistry);
         setTvlSource(tvlSource);
         setAssetSources(assets, sources);
-        setChainlinkStalePeriod(chainlinkStalePeriod);
+        setChainlinkStalePeriod(_chainlinkStalePeriod);
     }
 
     function setLock(uint256 activePeriod) external override onlyOwner {
@@ -178,15 +179,15 @@ contract OracleAdapter is Ownable, IOracleAdapter {
 
     /**
      * @notice Set the length of time before an agg value is considered stale
-     * @param chainlinkStalePeriod the length of time in seconds
+     * @param _chainlinkStalePeriod the length of time in seconds
      */
-    function setChainlinkStalePeriod(uint256 chainlinkStalePeriod)
+    function setChainlinkStalePeriod(uint256 _chainlinkStalePeriod)
         public
         onlyOwner
     {
-        require(chainlinkStalePeriod > 0, "INVALID_STALE_PERIOD");
-        chainlinkStalePeriod = chainlinkStalePeriod;
-        emit ChainlinkStalePeriodUpdated(chainlinkStalePeriod);
+        require(_chainlinkStalePeriod > 0, "INVALID_STALE_PERIOD");
+        chainlinkStalePeriod = _chainlinkStalePeriod;
+        emit ChainlinkStalePeriodUpdated(_chainlinkStalePeriod);
     }
 
     function isLocked() public view override returns (bool) {
