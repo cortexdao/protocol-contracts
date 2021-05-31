@@ -9,11 +9,13 @@ const {
   ANOTHER_FAKE_ADDRESS,
 } = require("../utils/helpers");
 const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
+const IAddressRegistryV2 = artifacts.require("IAddressRegistryV2");
 
 describe("Contract: OracleAdapter", () => {
   // signers
   let deployer;
   let randomUser;
+  let accounts;
 
   // contract factories
   let OracleAdapter;
@@ -43,9 +45,12 @@ describe("Contract: OracleAdapter", () => {
   });
 
   before(async () => {
-    [deployer, randomUser] = await ethers.getSigners();
+    [deployer, randomUser, ...accounts] = await ethers.getSigners();
 
-    addressRegistryMock = await deployMockContract(deployer, []);
+    addressRegistryMock = await deployMockContract(
+      deployer,
+      IAddressRegistryV2.abi
+    );
 
     tvlAggMock = await deployMockContract(deployer, AggregatorV3Interface.abi);
     assetAggMock_1 = await deployMockContract(
@@ -199,16 +204,37 @@ describe("Contract: OracleAdapter", () => {
   });
 
   describe("setLock / isLocked", () => {
-    it("Owner can set", async () => {
-      const period = 1;
+    let mApt;
+    let tvlManager;
+    const period = 1;
+
+    beforeEach("Setup permissioned list", async () => {
+      // permissioned list is owner, mApt, tvlManager
+      [mApt, tvlManager] = accounts;
+      await addressRegistryMock.mock.mAptAddress.returns(mApt.address);
+      await addressRegistryMock.mock.tvlManagerAddress.returns(
+        tvlManager.address
+      );
+    });
+
+    it("Permissioned can set", async () => {
+      // owner
       await oracleAdapter.connect(deployer).setLock(period);
+      expect(await oracleAdapter.isLocked()).to.be.true;
+
+      // mAPT
+      await oracleAdapter.connect(mApt).setLock(period);
+      expect(await oracleAdapter.isLocked()).to.be.true;
+
+      // TVL manager
+      await oracleAdapter.connect(tvlManager).setLock(period);
       expect(await oracleAdapter.isLocked()).to.be.true;
     });
 
-    it("Revert when non-owner calls", async () => {
+    it("Revert when non-permissioned calls", async () => {
       await expect(
         oracleAdapter.connect(randomUser).setLock(0)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.revertedWith("PERMISSIONED_ONLY");
     });
 
     it("Can unlock", async () => {

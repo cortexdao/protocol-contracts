@@ -111,7 +111,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         setChainlinkStalePeriod(_chainlinkStalePeriod);
     }
 
-    function setLock(uint256 activePeriod) external override onlyOwner {
+    function setLock(uint256 activePeriod) external override onlyPermissioned {
         lockEnd = block.number.add(activePeriod);
     }
 
