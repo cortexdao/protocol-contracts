@@ -36,7 +36,7 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
     /// @notice Constructor TVLManager
     /// @param _addressRegistry the address registry to initialize with
     constructor(address _addressRegistry) public {
-        _setAddressRegistry(_addressRegistry);
+        setAddressRegistry(_addressRegistry);
     }
 
     /// @dev Reverts if non-permissed account calls.
@@ -205,10 +205,6 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
      * @param _addressRegistry the address of the registry
      */
     function setAddressRegistry(address _addressRegistry) public onlyOwner {
-        _setAddressRegistry(_addressRegistry);
-    }
-
-    function _setAddressRegistry(address _addressRegistry) internal {
         require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(_addressRegistry);
     }
