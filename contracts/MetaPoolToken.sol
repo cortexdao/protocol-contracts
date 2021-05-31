@@ -53,6 +53,7 @@ contract MetaPoolToken is
 {
     using SafeMath for uint256;
     uint256 public constant DEFAULT_MAPT_TO_UNDERLYER_FACTOR = 1000;
+    uint256 public constant DEFAULT_LOCK_PERIOD = 270; // approx num blocks in hour
 
     /* ------------------------------- */
     /* impl-specific storage variables */
@@ -142,6 +143,8 @@ contract MetaPoolToken is
      */
     function mint(address account, uint256 amount) public override onlyManager {
         require(amount > 0, "INVALID_MINT_AMOUNT");
+        IOracleAdapter oracleAdapter = _getOracleAdapter();
+        oracleAdapter.setLock(DEFAULT_LOCK_PERIOD);
         _mint(account, amount);
         emit Mint(account, amount);
     }
@@ -154,6 +157,8 @@ contract MetaPoolToken is
      */
     function burn(address account, uint256 amount) public override onlyManager {
         require(amount > 0, "INVALID_BURN_AMOUNT");
+        IOracleAdapter oracleAdapter = _getOracleAdapter();
+        oracleAdapter.setLock(DEFAULT_LOCK_PERIOD);
         _burn(account, amount);
         emit Burn(account, amount);
     }
@@ -173,10 +178,14 @@ contract MetaPoolToken is
      *
      * @return "Total Value Locked", the USD value of all APY Finance assets.
      */
-    function getTvl() public view virtual returns (uint256) {
-        address oracleAdapterAddress = addressRegistry.oracleAdapterAddress();
-        IOracleAdapter oracleAdapter = IOracleAdapter(oracleAdapterAddress);
+    function getTvl() public view returns (uint256) {
+        IOracleAdapter oracleAdapter = _getOracleAdapter();
         return oracleAdapter.getTvl();
+    }
+
+    function _getOracleAdapter() internal view returns (IOracleAdapter) {
+        address oracleAdapterAddress = addressRegistry.oracleAdapterAddress();
+        return IOracleAdapter(oracleAdapterAddress);
     }
 
     /** @notice Calculate mAPT amount to be minted for given pool's underlyer amount.
