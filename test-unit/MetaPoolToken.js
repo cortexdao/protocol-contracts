@@ -85,6 +85,9 @@ describe("Contract: MetaPoolToken", () => {
     );
     await proxy.deployed();
     mApt = await MetaPoolToken.attach(proxy.address);
+
+    // allows mAPT to mint and burn
+    await oracleAdapterMock.mock.setLock.returns();
   });
 
   describe("Constructor", () => {
