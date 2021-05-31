@@ -111,6 +111,8 @@ describe("Contract: MetaPoolToken", () => {
     );
     await proxy.deployed();
     mApt = await MetaPoolToken.attach(proxy.address);
+
+    await addressRegistry.mock.mAptAddress.returns(mApt.address);
   });
 
   describe("getDeployedValue", async () => {
@@ -137,6 +139,7 @@ describe("Contract: MetaPoolToken", () => {
       await tvlAgg.connect(oracle).submit(1, tvl);
 
       const expectedEthValue = tvl.mul(balance).div(totalSupply);
+      await oracleAdapter.setLock(0);
       expect(await mApt.getDeployedValue(FAKE_ADDRESS)).to.equal(
         expectedEthValue
       );
@@ -194,6 +197,7 @@ describe("Contract: MetaPoolToken", () => {
       const totalSupply = tokenAmountToBigNumber(21);
       await mApt.connect(manager).mint(randomUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
+      await oracleAdapter.setLock(0);
 
       let mintAmount = await mApt.calculateMintAmount(
         usdcAmount,
@@ -221,6 +225,7 @@ describe("Contract: MetaPoolToken", () => {
       const totalSupply = tokenAmountToBigNumber(21);
       await mApt.connect(manager).mint(randomUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
+      await oracleAdapter.setLock(0);
 
       let poolAmount = await mApt.calculatePoolAmount(
         totalSupply,
@@ -257,6 +262,7 @@ describe("Contract: MetaPoolToken", () => {
       let expectedPoolAmount = expectedPoolValue.mul(usdc(1)).div(usdcUsdPrice);
       await mApt.connect(manager).mint(randomUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
+      await oracleAdapter.setLock(0);
 
       let poolAmount = await mApt.calculatePoolAmount(
         mAptAmount,
