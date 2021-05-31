@@ -75,24 +75,30 @@ describe("Contract: MetaPoolToken", () => {
       deployer.address // ETH funder
     );
 
+    addressRegistry = await deployMockContract(
+      deployer,
+      artifacts.require("IAddressRegistryV2").abi
+    );
+    await addressRegistry.mock.poolManagerAddress.returns(manager.address);
+
     const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
-    oracleAdapter = await OracleAdapter.deploy([], [], tvlAgg.address, 86400);
+    oracleAdapter = await OracleAdapter.deploy(
+      addressRegistry.address,
+      tvlAgg.address,
+      [],
+      [],
+      86400
+    );
     await oracleAdapter.deployed();
+    await addressRegistry.mock.oracleAdapterAddress.returns(
+      oracleAdapter.address
+    );
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     const MetaPoolTokenProxy = await ethers.getContractFactory(
       "MetaPoolTokenProxy"
     );
     const MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
-
-    addressRegistry = await deployMockContract(
-      deployer,
-      artifacts.require("IAddressRegistryV2").abi
-    );
-    await addressRegistry.mock.poolManagerAddress.returns(manager.address);
-    await addressRegistry.mock.oracleAdapterAddress.returns(
-      oracleAdapter.address
-    );
 
     proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();

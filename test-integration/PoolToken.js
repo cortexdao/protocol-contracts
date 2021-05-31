@@ -138,9 +138,10 @@ describe("Contract: PoolToken", () => {
 
         const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
         oracleAdapter = await OracleAdapter.deploy(
-          [],
-          [],
+          addressRegistry.address,
           tvlAgg.address,
+          [],
+          [],
           86400
         );
         await oracleAdapter.deployed();

@@ -139,7 +139,13 @@ describe("Contract: PoolManager", () => {
 
     const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
     const tvlAgg = await deployMockContract(deployer, []);
-    oracleAdapter = await OracleAdapter.deploy([], [], tvlAgg.address, 86400);
+    oracleAdapter = await OracleAdapter.deploy(
+      addressRegistry.address,
+      tvlAgg.address,
+      [],
+      [],
+      86400
+    );
     await oracleAdapter.deployed();
 
     await addressRegistry.registerAddress(
