@@ -78,8 +78,8 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         _;
     }
 
-    /// @dev Reverts if non-permissed account calls.
-    /// Permissioned accounts are: owner, mAPT, and account manager
+    /// @dev Reverts if non-permissioned account calls.
+    /// Permissioned accounts are: owner, mAPT, and TVL manager
     modifier onlyPermissioned() {
         require(
             msg.sender == owner() ||
@@ -153,6 +153,16 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     //------------------------------------------------------------
 
     /**
+     * @notice Set or replace the TVL source
+     * @param source the TVL source address
+     */
+    function setTvlSource(address source) public onlyOwner {
+        require(source.isContract(), "INVALID_SOURCE");
+        tvlSource = AggregatorV3Interface(source);
+        emit TvlSourceUpdated(source);
+    }
+
+    /**
      * @notice Set or replace asset price sources
      * @param assets the array of assets token addresses
      * @param sources the array of price sources (aggregators)
@@ -168,13 +178,14 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     }
 
     /**
-     * @notice Set or replace the TVL source
-     * @param source the TVL source address
+     * @notice Set a single asset price source
+     * @param asset asset token address
+     * @param source the price source (aggregator)
      */
-    function setTvlSource(address source) public onlyOwner {
+    function setAssetSource(address asset, address source) public onlyOwner {
         require(source.isContract(), "INVALID_SOURCE");
-        tvlSource = AggregatorV3Interface(source);
-        emit TvlSourceUpdated(source);
+        assetSources[asset] = AggregatorV3Interface(source);
+        emit AssetSourceUpdated(asset, source);
     }
 
     /**
@@ -195,10 +206,15 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     }
 
     //------------------------------------------------------------
-    //
     // ORACLE VALUE GETTERS
-    //
     //------------------------------------------------------------
+
+    function getTvl() external view override unlocked returns (uint256) {
+        if (block.number < submittedTvlValue.periodEnd) {
+            return submittedTvlValue.value;
+        }
+        return _getPriceFromSource(tvlSource);
+    }
 
     /**
      * @notice Gets an asset price by address
@@ -217,47 +233,6 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         }
         AggregatorV3Interface source = assetSources[asset];
         return _getPriceFromSource(source);
-    }
-
-    function getTvl() external view override unlocked returns (uint256) {
-        if (block.number < submittedTvlValue.periodEnd) {
-            return submittedTvlValue.value;
-        }
-        return _getPriceFromSource(tvlSource);
-    }
-
-    //------------------------------------------------------------
-    //
-    // CHAINLINK GETTERS
-    //
-    //------------------------------------------------------------
-
-    /// @notice Gets the address of the source for an asset address
-    /// @param asset The address of the asset
-    /// @return address The address of the source
-    function getAssetSource(address asset) external view returns (address) {
-        return address(assetSources[asset]);
-    }
-
-    /// @notice Gets the address of the TVL source
-    /// @return address TVL source address
-    function getTvlSource() external view returns (address) {
-        return address(tvlSource);
-    }
-
-    function getChainlinkStalePeriod() external view returns (uint256) {
-        return chainlinkStalePeriod;
-    }
-
-    /**
-     * @notice Set a single asset price source
-     * @param asset asset token address
-     * @param source the price source (aggregator)
-     */
-    function setAssetSource(address asset, address source) public onlyOwner {
-        require(source.isContract(), "INVALID_SOURCE");
-        assetSources[asset] = AggregatorV3Interface(source);
-        emit AssetSourceUpdated(asset, source);
     }
 
     /**

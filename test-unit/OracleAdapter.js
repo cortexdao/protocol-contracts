@@ -136,9 +136,7 @@ describe("Contract: OracleAdapter", () => {
     it("Owner can set", async () => {
       const dummyContract = await deployMockContract(deployer, []);
       await oracleAdapter.connect(deployer).setTvlSource(dummyContract.address);
-      expect(await oracleAdapter.getTvlSource()).to.equal(
-        dummyContract.address
-      );
+      expect(await oracleAdapter.tvlSource()).to.equal(dummyContract.address);
     });
 
     it("Revert when non-owner calls", async () => {
@@ -164,7 +162,7 @@ describe("Contract: OracleAdapter", () => {
       const sources = [dummyContract.address];
 
       await oracleAdapter.connect(deployer).setAssetSources(assets, sources);
-      expect(await oracleAdapter.getAssetSource(FAKE_ADDRESS)).to.equal(
+      expect(await oracleAdapter.assetSources(FAKE_ADDRESS)).to.equal(
         dummyContract.address
       );
     });
@@ -190,7 +188,7 @@ describe("Contract: OracleAdapter", () => {
     it("Owner can set", async () => {
       const period = 100;
       await oracleAdapter.connect(deployer).setChainlinkStalePeriod(period);
-      expect(await oracleAdapter.getChainlinkStalePeriod()).to.equal(period);
+      expect(await oracleAdapter.chainlinkStalePeriod()).to.equal(period);
     });
 
     it("Revert when non-owner calls", async () => {
@@ -302,7 +300,7 @@ describe("Contract: OracleAdapter", () => {
     });
 
     it("Revert when update is too old", async () => {
-      const stalePeriod = await oracleAdapter.getChainlinkStalePeriod();
+      const stalePeriod = await oracleAdapter.chainlinkStalePeriod();
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
 
       // setting the mock mines a block and advances time by 1 sec
@@ -403,7 +401,7 @@ describe("Contract: OracleAdapter", () => {
     });
 
     it("Revert when update is too old", async () => {
-      const stalePeriod = await oracleAdapter.getChainlinkStalePeriod();
+      const stalePeriod = await oracleAdapter.chainlinkStalePeriod();
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
 
       // setting the mock mines a block and advances time by 1 sec
