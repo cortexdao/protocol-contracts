@@ -75,6 +75,18 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         _;
     }
 
+    /// @dev Reverts if non-permissed account calls.
+    /// Permissioned accounts are: owner, pool manager, and account manager
+    modifier onlyPermissioned() {
+        require(
+            msg.sender == owner() ||
+                msg.sender == addressRegistry.oracleAdapterAddress() ||
+                msg.sender == addressRegistry.tvlManagerAddress(),
+            "PERMISSIONED_ONLY"
+        );
+        _;
+    }
+
     /**
      * @notice Constructor
      * @param assets the assets priced by sources
