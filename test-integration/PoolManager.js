@@ -464,6 +464,7 @@ describe("Contract: PoolManager", () => {
       await mApt
         .connect(managerSigner)
         .mint(deployer.address, tokenAmountToBigNumber("100"));
+      await oracleAdapter.setLock(0);
 
       // start the test
       const daiPoolMintAmount = await getMintAmount(daiPool, daiAmount);
