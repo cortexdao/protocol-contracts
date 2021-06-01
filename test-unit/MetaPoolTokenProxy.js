@@ -2,7 +2,6 @@ const { assert } = require("chai");
 const { ethers, artifacts, contract } = require("hardhat");
 const timeMachine = require("ganache-time-traveler");
 const { expectRevert } = require("@openzeppelin/test-helpers");
-const { FAKE_ADDRESS } = require("../utils/helpers");
 
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const MetaPoolTokenUpgraded = artifacts.require("MetaPoolTokenUpgraded");
@@ -32,15 +31,11 @@ contract("MetaPoolTokenProxy", async (accounts) => {
   before(async () => {
     proxyAdmin = await ProxyAdmin.new({ from: deployer });
     logic = await MetaPoolToken.new({ from: deployer });
-    const fakeTvlAggAddress = FAKE_ADDRESS;
     const fakeAddressRegistryAddress = await ProxyAdmin.new({ from: deployer });
-    const aggStalePeriod = 120;
     proxy = await MetaPoolTokenProxy.new(
       logic.address,
       proxyAdmin.address,
-      fakeTvlAggAddress,
       fakeAddressRegistryAddress.address,
-      aggStalePeriod,
       {
         from: deployer,
       }

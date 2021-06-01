@@ -8,20 +8,16 @@ contract MetaPoolTokenProxy is TransparentUpgradeableProxy {
     constructor(
         address _logic,
         address _proxyAdmin,
-        address _tvlAgg,
-        address _addressRegistry,
-        uint256 _aggStalePeriod
+        address _addressRegistry
     )
         public
         TransparentUpgradeableProxy(
             _logic,
             _proxyAdmin,
             abi.encodeWithSignature(
-                "initialize(address,address,address,uint256)",
+                "initialize(address,address)",
                 _proxyAdmin,
-                _tvlAgg,
-                _addressRegistry,
-                _aggStalePeriod
+                _addressRegistry
             )
         )
     {} // solhint-disable no-empty-blocks

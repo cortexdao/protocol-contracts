@@ -39,7 +39,8 @@ describe("Contract: PoolManager", () => {
   // to-be-deployed contracts
   let poolManager;
   let tvlManager;
-  let mAPT;
+  let mApt;
+  let oracleAdapter;
 
   // signers
   let deployer;
@@ -132,6 +133,31 @@ describe("Contract: PoolManager", () => {
       addressRegistryDeployer
     );
 
+    /*********************************/
+    /***** deploy Oracle Adapter *****/
+    /*********************************/
+
+    const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
+    const tvlAgg = await deployMockContract(deployer, []);
+    oracleAdapter = await OracleAdapter.deploy(
+      addressRegistry.address,
+      tvlAgg.address,
+      [],
+      [],
+      86400
+    );
+    await oracleAdapter.deployed();
+
+    await addressRegistry.registerAddress(
+      bytes32("oracleAdapter"),
+      oracleAdapter.address
+    );
+
+    // set default TVL for tests to zero
+    await oracleAdapter.setLock(10);
+    await oracleAdapter.setTvl(0, 100);
+    await oracleAdapter.setLock(0);
+
     /***********************/
     /***** deploy mAPT *****/
     /***********************/
@@ -150,13 +176,11 @@ describe("Contract: PoolManager", () => {
     As a final note, rather than dummy addresses, we deploy mocks,
     as we may add checks for contract addresses in the future.
     */
-    const tvlAgg = await deployMockContract(deployer, []);
 
     const MetaPoolTokenProxy = await ethers.getContractFactory(
       "MetaPoolTokenProxy"
     );
-    // Use the *test* contract so we can set the TVL
-    const MetaPoolToken = await ethers.getContractFactory("TestMetaPoolToken");
+    const MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     const proxyAdmin = await ProxyAdmin.deploy();
@@ -165,21 +189,15 @@ describe("Contract: PoolManager", () => {
     const logic = await MetaPoolToken.deploy();
     await logic.deployed();
 
-    const aggStalePeriod = 14400;
-    const mAPTProxy = await MetaPoolTokenProxy.deploy(
+    const mAptProxy = await MetaPoolTokenProxy.deploy(
       logic.address,
       proxyAdmin.address,
-      tvlAgg.address,
-      addressRegistry.address,
-      aggStalePeriod
+      addressRegistry.address
     );
-    await mAPTProxy.deployed();
+    await mAptProxy.deployed();
 
-    mAPT = await MetaPoolToken.attach(mAPTProxy.address);
-    await addressRegistry.registerAddress(
-      ethers.utils.formatBytes32String("mApt"),
-      mAPT.address
-    );
+    mApt = await MetaPoolToken.attach(mAptProxy.address);
+    await addressRegistry.registerAddress(bytes32("mApt"), mApt.address);
 
     /***********************************/
     /***** deploy manager  *************/
@@ -278,7 +296,7 @@ describe("Contract: PoolManager", () => {
     const underlyer = await pool.underlyer();
     const erc20 = await ethers.getContractAt(IDetailedERC20.abi, underlyer);
     const decimals = await erc20.decimals();
-    const mintAmount = await mAPT.calculateMintAmount(
+    const mintAmount = await mApt.calculateMintAmount(
       underlyerAmount,
       tokenPrice,
       decimals
@@ -439,13 +457,14 @@ describe("Contract: PoolManager", () => {
 
     it("Mints correct mAPT amounts (start with non-zero supply)", async () => {
       // pre-conditions
-      expect(await mAPT.balanceOf(daiPool.address)).to.equal("0");
-      expect(await mAPT.balanceOf(usdcToken.address)).to.equal("0");
-      expect(await mAPT.balanceOf(usdtToken.address)).to.equal("0");
+      expect(await mApt.balanceOf(daiPool.address)).to.equal("0");
+      expect(await mApt.balanceOf(usdcToken.address)).to.equal("0");
+      expect(await mApt.balanceOf(usdtToken.address)).to.equal("0");
 
-      await mAPT
+      await mApt
         .connect(managerSigner)
         .mint(deployer.address, tokenAmountToBigNumber("100"));
+      await oracleAdapter.setLock(0);
 
       // start the test
       const daiPoolMintAmount = await getMintAmount(daiPool, daiAmount);
@@ -458,18 +477,18 @@ describe("Contract: PoolManager", () => {
         { poolId: bytes32("usdtPool"), amount: usdtAmount },
       ]);
 
-      expect(await mAPT.balanceOf(daiPool.address)).to.equal(daiPoolMintAmount);
-      expect(await mAPT.balanceOf(usdcPool.address)).to.equal(
+      expect(await mApt.balanceOf(daiPool.address)).to.equal(daiPoolMintAmount);
+      expect(await mApt.balanceOf(usdcPool.address)).to.equal(
         usdcPoolMintAmount
       );
-      expect(await mAPT.balanceOf(usdtPool.address)).to.equal(
+      expect(await mApt.balanceOf(usdtPool.address)).to.equal(
         usdtPoolMintAmount
       );
     });
 
     it("Mints correct mAPT amounts (start with zero supply)", async () => {
       // pre-conditions
-      expect(await mAPT.totalSupply()).to.equal(0);
+      expect(await mApt.totalSupply()).to.equal(0);
 
       // start the test
       const daiPoolMintAmount = await getMintAmount(daiPool, daiAmount);
@@ -482,11 +501,11 @@ describe("Contract: PoolManager", () => {
         { poolId: bytes32("usdtPool"), amount: usdtAmount },
       ]);
 
-      expect(await mAPT.balanceOf(daiPool.address)).to.equal(daiPoolMintAmount);
-      expect(await mAPT.balanceOf(usdcPool.address)).to.equal(
+      expect(await mApt.balanceOf(daiPool.address)).to.equal(daiPoolMintAmount);
+      expect(await mApt.balanceOf(usdcPool.address)).to.equal(
         usdcPoolMintAmount
       );
-      expect(await mAPT.balanceOf(usdtPool.address)).to.equal(
+      expect(await mApt.balanceOf(usdtPool.address)).to.equal(
         usdtPoolMintAmount
       );
     });
@@ -579,11 +598,13 @@ describe("Contract: PoolManager", () => {
 
         // now mint so withdraw can burn tokens
         const mintAmount = await getMintAmount(daiPool, amount);
-        await mAPT.connect(managerSigner).mint(daiPool.address, mintAmount);
+        await mApt.connect(managerSigner).mint(daiPool.address, mintAmount);
 
         // adjust the TVL appropriately, as there is no Chainlink to update it
         const tvl = await daiPool.getValueFromUnderlyerAmount(amount);
-        await mAPT.setTVL(tvl);
+        await oracleAdapter.setLock(10);
+        await oracleAdapter.setTvl(tvl, 100);
+        await oracleAdapter.setLock(0);
 
         await poolManager.withdrawFromLpSafe([
           { poolId: bytes32("daiPool"), amount: amount },
@@ -593,21 +614,21 @@ describe("Contract: PoolManager", () => {
       });
 
       it("Transfers and mints correctly for multiple pools (start from zero supply)", async () => {
-        expect(await mAPT.totalSupply()).to.equal(0);
-        expect(await mAPT.getTVL()).to.equal(0);
+        expect(await mApt.totalSupply()).to.equal(0);
+        expect(await mApt.getTvl()).to.equal(0);
 
         // now mint for each pool so withdraw can burn tokens
         const daiPoolMintAmount = await getMintAmount(daiPool, daiAmount);
         const usdcPoolMintAmount = await getMintAmount(usdcPool, usdcAmount);
         const usdtPoolMintAmount = await getMintAmount(usdtPool, usdtAmount);
 
-        await mAPT
+        await mApt
           .connect(managerSigner)
           .mint(daiPool.address, daiPoolMintAmount);
-        await mAPT
+        await mApt
           .connect(managerSigner)
           .mint(usdcPool.address, usdcPoolMintAmount);
-        await mAPT
+        await mApt
           .connect(managerSigner)
           .mint(usdtPool.address, usdtPoolMintAmount);
 
@@ -630,7 +651,9 @@ describe("Contract: PoolManager", () => {
           usdtAmount
         );
         const newTvl = daiValue.add(usdcValue).add(usdtValue);
-        await mAPT.setTVL(newTvl);
+        await oracleAdapter.setLock(10);
+        await oracleAdapter.setTvl(newTvl, 100);
+        await oracleAdapter.setLock(0);
 
         const daiWithdrawAmount = daiAmount.div(2);
         const daiPoolBurnAmount = await getMintAmount(
@@ -663,38 +686,40 @@ describe("Contract: PoolManager", () => {
         const allowedDeviation = 2;
 
         let expectedBalance = daiPoolMintAmount.sub(daiPoolBurnAmount);
-        let balance = await mAPT.balanceOf(daiPool.address);
+        let balance = await mApt.balanceOf(daiPool.address);
         expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
 
         expectedBalance = usdcPoolMintAmount.sub(usdcPoolBurnAmount);
-        balance = await mAPT.balanceOf(usdcPool.address);
+        balance = await mApt.balanceOf(usdcPool.address);
         expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
 
         expectedBalance = usdtPoolMintAmount.sub(usdtPoolBurnAmount);
-        balance = await mAPT.balanceOf(usdtPool.address);
+        balance = await mApt.balanceOf(usdtPool.address);
         expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
       });
 
       it("Transfers and mints correctly for multiple pools (start from non-zero supply)", async () => {
         // make mAPT total supply non-zero by minting to deployer
-        await mAPT
+        await mApt
           .connect(managerSigner)
           .mint(deployer.address, tokenAmountToBigNumber("1000000"));
         // don't forget to update the TVL!
         const tvl = tokenAmountToBigNumber("85000");
-        await mAPT.setTVL(tvl);
+        await oracleAdapter.setLock(10);
+        await oracleAdapter.setTvl(tvl, 100);
+        await oracleAdapter.setLock(0);
 
         // now mint for each pool so withdraw can burn tokens
         const daiPoolMintAmount = await getMintAmount(daiPool, daiAmount);
         const usdcPoolMintAmount = await getMintAmount(usdcPool, usdcAmount);
         const usdtPoolMintAmount = await getMintAmount(usdtPool, usdtAmount);
-        await mAPT
+        await mApt
           .connect(managerSigner)
           .mint(daiPool.address, daiPoolMintAmount);
-        await mAPT
+        await mApt
           .connect(managerSigner)
           .mint(usdcPool.address, usdcPoolMintAmount);
-        await mAPT
+        await mApt
           .connect(managerSigner)
           .mint(usdtPool.address, usdtPoolMintAmount);
 
@@ -717,7 +742,9 @@ describe("Contract: PoolManager", () => {
           usdtAmount
         );
         const newTvl = tvl.add(daiValue).add(usdcValue).add(usdtValue);
-        await mAPT.setTVL(newTvl);
+        await oracleAdapter.setLock(10);
+        await oracleAdapter.setTvl(newTvl, 100);
+        await oracleAdapter.setLock(0);
 
         const daiWithdrawAmount = daiAmount.div(2);
         const daiPoolBurnAmount = await getMintAmount(
@@ -750,15 +777,15 @@ describe("Contract: PoolManager", () => {
         const allowedDeviation = 2;
 
         let expectedBalance = daiPoolMintAmount.sub(daiPoolBurnAmount);
-        let balance = await mAPT.balanceOf(daiPool.address);
+        let balance = await mApt.balanceOf(daiPool.address);
         expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
 
         expectedBalance = usdcPoolMintAmount.sub(usdcPoolBurnAmount);
-        balance = await mAPT.balanceOf(usdcPool.address);
+        balance = await mApt.balanceOf(usdcPool.address);
         expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
 
         expectedBalance = usdtPoolMintAmount.sub(usdtPoolBurnAmount);
-        balance = await mAPT.balanceOf(usdtPool.address);
+        balance = await mApt.balanceOf(usdtPool.address);
         expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
       });
     });

@@ -8,9 +8,9 @@ import "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/IAddressRegistryV2.sol";
 import "./interfaces/IMintable.sol";
+import "./interfaces/IOracleAdapter.sol";
 
 /**
  * @title Meta Pool Token
@@ -53,6 +53,7 @@ contract MetaPoolToken is
 {
     using SafeMath for uint256;
     uint256 public constant DEFAULT_MAPT_TO_UNDERLYER_FACTOR = 1000;
+    uint256 public constant DEFAULT_LOCK_PERIOD = 270; // approx num blocks in hour
 
     /* ------------------------------- */
     /* impl-specific storage variables */
@@ -61,19 +62,12 @@ contract MetaPoolToken is
     address public proxyAdmin;
     /// @notice used to protect mint and burn function
     IAddressRegistryV2 public addressRegistry;
-    /// @notice Chainlink aggregator for deployed TVL
-    AggregatorV3Interface public tvlAgg;
-    /// @notice seconds within which aggregator should be updated
-    uint256 public aggStalePeriod;
-    /// @notice last block number for locking `getTVL`
-    uint256 public tvlLockEnd;
 
     /* ------------------------------- */
 
     event Mint(address acccount, uint256 amount);
     event Burn(address acccount, uint256 amount);
     event AdminChanged(address);
-    event TvlAggregatorChanged(address agg);
 
     /**
      * @dev Since the proxy delegate calls to this "logic" contract, any
@@ -87,14 +81,11 @@ contract MetaPoolToken is
      * repeatedly.  It should be called during the deployment so that
      * it cannot be called by someone else later.
      */
-    function initialize(
-        address adminAddress,
-        address _tvlAgg,
-        address _addressRegistry,
-        uint256 _aggStalePeriod
-    ) external initializer {
+    function initialize(address adminAddress, address _addressRegistry)
+        external
+        initializer
+    {
         require(adminAddress != address(0), "INVALID_ADMIN");
-        require(_tvlAgg != address(0), "INVALID_AGG");
 
         // initialize ancestor storage
         __Context_init_unchained();
@@ -105,8 +96,6 @@ contract MetaPoolToken is
 
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
-        setTvlAggregator(_tvlAgg);
-        setAggStalePeriod(_aggStalePeriod);
         setAddressRegistry(_addressRegistry);
     }
 
@@ -125,17 +114,6 @@ contract MetaPoolToken is
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
         emit AdminChanged(adminAddress);
-    }
-
-    function setTvlAggregator(address _tvlAgg) public onlyOwner {
-        require(_tvlAgg != address(0), "INVALID_AGG");
-        tvlAgg = AggregatorV3Interface(_tvlAgg);
-        emit TvlAggregatorChanged(_tvlAgg);
-    }
-
-    function setAggStalePeriod(uint256 _aggStalePeriod) public onlyOwner {
-        require(_aggStalePeriod > 0, "INVALID_STALE_PERIOD");
-        aggStalePeriod = _aggStalePeriod;
     }
 
     /**
@@ -165,6 +143,8 @@ contract MetaPoolToken is
      */
     function mint(address account, uint256 amount) public override onlyManager {
         require(amount > 0, "INVALID_MINT_AMOUNT");
+        IOracleAdapter oracleAdapter = _getOracleAdapter();
+        oracleAdapter.setLock(DEFAULT_LOCK_PERIOD);
         _mint(account, amount);
         emit Mint(account, amount);
     }
@@ -177,6 +157,8 @@ contract MetaPoolToken is
      */
     function burn(address account, uint256 amount) public override onlyManager {
         require(amount > 0, "INVALID_BURN_AMOUNT");
+        IOracleAdapter oracleAdapter = _getOracleAdapter();
+        oracleAdapter.setLock(DEFAULT_LOCK_PERIOD);
         _burn(account, amount);
         emit Burn(account, amount);
     }
@@ -196,38 +178,14 @@ contract MetaPoolToken is
      *
      * @return "Total Value Locked", the USD value of all APY Finance assets.
      */
-    function getTVL() public view virtual returns (uint256) {
-        require(block.number >= tvlLockEnd, "TVL_LOCKED");
-        // possible revert with "No data present" but this can
-        // only happen if there has never been a successful round.
-        (, int256 answer, , uint256 updatedAt, ) = tvlAgg.latestRoundData();
-        require(answer >= 0, "CHAINLINK_INVALID_ANSWER");
-        validateNotStale(updatedAt);
-        return uint256(answer);
+    function getTvl() public view returns (uint256) {
+        IOracleAdapter oracleAdapter = _getOracleAdapter();
+        return oracleAdapter.getTvl();
     }
 
-    /**
-     * @notice Checks to guard against stale data from Chainlink:
-     *
-     *         1. Require time since last update is not greater than `aggStalePeriod`.
-     *
-     * @param updatedAt update time for Chainlink round
-     */
-    function validateNotStale(uint256 updatedAt) private view {
-        // solhint-disable not-rely-on-time
-        require(
-            block.timestamp.sub(updatedAt) < aggStalePeriod,
-            "CHAINLINK_STALE_DATA"
-        );
-        // solhint-enable not-rely-on-time
-    }
-
-    /**
-     * @notice Locks `getTVL` for given number of blocks
-     * @param lockPeriod number of blocks to lock TVL for
-     */
-    function lockTVL(uint256 lockPeriod) public onlyOwner {
-        tvlLockEnd = block.number.add(lockPeriod);
+    function _getOracleAdapter() internal view returns (IOracleAdapter) {
+        address oracleAdapterAddress = addressRegistry.oracleAdapterAddress();
+        return IOracleAdapter(oracleAdapterAddress);
     }
 
     /** @notice Calculate mAPT amount to be minted for given pool's underlyer amount.
@@ -246,7 +204,7 @@ contract MetaPoolToken is
         uint256 decimals
     ) public view returns (uint256) {
         uint256 depositValue = depositAmount.mul(tokenPrice).div(10**decimals);
-        uint256 totalValue = getTVL();
+        uint256 totalValue = getTvl();
         return _calculateMintAmount(depositValue, totalValue);
     }
 
@@ -292,7 +250,7 @@ contract MetaPoolToken is
     ) public view returns (uint256) {
         if (mAptAmount == 0) return 0;
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        uint256 poolValue = mAptAmount.mul(getTVL()).div(totalSupply());
+        uint256 poolValue = mAptAmount.mul(getTvl()).div(totalSupply());
         uint256 poolAmount = poolValue.mul(10**decimals).div(tokenPrice);
         return poolAmount;
     }
@@ -307,7 +265,7 @@ contract MetaPoolToken is
         uint256 totalSupply = totalSupply();
         if (totalSupply == 0 || balance == 0) return 0;
 
-        return getTVL().mul(balance).div(totalSupply);
+        return getTvl().mul(balance).div(totalSupply);
     }
 
     /**
