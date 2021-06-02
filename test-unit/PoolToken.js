@@ -12,10 +12,10 @@ const {
   tokenAmountToBigNumber,
 } = require("../utils/helpers");
 
-const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
 const AddressRegistry = artifacts.require("IAddressRegistryV2");
 const MetaPoolToken = artifacts.require("MetaPoolToken");
+const OracleAdapter = artifacts.require("OracleAdapter");
 
 describe("Contract: PoolToken", () => {
   // signers
@@ -31,9 +31,9 @@ describe("Contract: PoolToken", () => {
 
   // mocks
   let underlyerMock;
-  let priceAggMock;
   let addressRegistryMock;
   let mAptMock;
+  let oracleAdapterMock;
 
   // pool
   let proxyAdmin;
@@ -60,10 +60,6 @@ describe("Contract: PoolToken", () => {
     PoolTokenV2 = await ethers.getContractFactory("TestPoolTokenV2");
 
     underlyerMock = await deployMockContract(deployer, IDetailedERC20.abi);
-    priceAggMock = await deployMockContract(
-      deployer,
-      AggregatorV3Interface.abi
-    );
     proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
     const logic = await PoolToken.deploy();
@@ -72,7 +68,7 @@ describe("Contract: PoolToken", () => {
       logic.address,
       proxyAdmin.address,
       underlyerMock.address,
-      priceAggMock.address
+      FAKE_ADDRESS
     );
     await proxy.deployed();
 
@@ -80,11 +76,15 @@ describe("Contract: PoolToken", () => {
     await logicV2.deployed();
 
     mAptMock = await deployMockContract(deployer, MetaPoolToken.abi);
+    oracleAdapterMock = await deployMockContract(deployer, OracleAdapter.abi);
     addressRegistryMock = await deployMockContract(
       deployer,
       AddressRegistry.abi
     );
     await addressRegistryMock.mock.mAptAddress.returns(mAptMock.address);
+    await addressRegistryMock.mock.oracleAdapterAddress.returns(
+      oracleAdapterMock.address
+    );
 
     const initData = PoolTokenV2.interface.encodeFunctionData(
       "initializeUpgrade(address)",
@@ -104,7 +104,7 @@ describe("Contract: PoolToken", () => {
           logicMock.address,
           ZERO_ADDRESS,
           underlyerMock.address,
-          priceAggMock.address
+          FAKE_ADDRESS
         )
       ).to.be.reverted;
     });
@@ -116,7 +116,7 @@ describe("Contract: PoolToken", () => {
           logicMock.address,
           proxyAdmin.address,
           ZERO_ADDRESS,
-          priceAggMock.address
+          FAKE_ADDRESS
         )
       ).to.be.reverted;
     });
@@ -188,44 +188,20 @@ describe("Contract: PoolToken", () => {
     });
   });
 
-  describe("Set price aggregator address", () => {
-    it("Revert when agg address is zero", async () => {
-      await expect(
-        poolToken.setPriceAggregator(ZERO_ADDRESS)
-      ).to.be.revertedWith("INVALID_AGG");
-    });
-
-    it("Revert when non-owner attempts to set agg", async () => {
-      await expect(
-        poolToken.connect(randomUser).setPriceAggregator(FAKE_ADDRESS)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
-    });
-
-    it("Owner can set agg", async () => {
-      const setPromise = poolToken
-        .connect(deployer)
-        .setPriceAggregator(FAKE_ADDRESS);
-
-      const priceAgg = await poolToken.priceAgg();
-
-      assert.equal(priceAgg, FAKE_ADDRESS);
-      await expect(setPromise)
-        .to.emit(poolToken, "PriceAggregatorChanged")
-        .withArgs(FAKE_ADDRESS);
-    });
-  });
-
   describe("getUnderlyerPrice", () => {
-    it("Revert when price agg returns non-positive price", async () => {
-      await priceAggMock.mock.latestRoundData.returns(0, 0, 0, 0, 0);
-      await expect(poolToken.getUnderlyerPrice()).to.be.revertedWith(
-        "UNABLE_TO_RETRIEVE_USD_PRICE"
-      );
+    it("Delegates to oracle adapter", async () => {
+      const price = tokenAmountToBigNumber("1.02", 8);
+      await oracleAdapterMock.mock.getAssetPrice.returns(price);
+      expect(await poolToken.getUnderlyerPrice()).to.equal(price);
     });
 
-    it("Returns value when price agg returns positive price", async () => {
-      await priceAggMock.mock.latestRoundData.returns(0, 100, 0, 0, 0);
-      expect(await poolToken.getUnderlyerPrice()).to.equal(100);
+    it("Reverts with same reason as oracle adapter", async () => {
+      await oracleAdapterMock.mock.getAssetPrice.revertsWithReason(
+        "SOMETHING_WRONG"
+      );
+      await expect(poolToken.getUnderlyerPrice()).to.be.revertedWith(
+        "SOMETHING_WRONG"
+      );
     });
   });
 
@@ -358,7 +334,7 @@ describe("Contract: PoolToken", () => {
       const decimals = 0;
       await underlyerMock.mock.decimals.returns(decimals);
       const price = 25;
-      await priceAggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
+      await oracleAdapterMock.mock.getAssetPrice.returns(price);
       const ethValue = 100;
       // ((10 ^ 0) * 100) / 25
       const expectedUnderlyerAmount = BigNumber.from(10 ** decimals)
@@ -379,7 +355,7 @@ describe("Contract: PoolToken", () => {
       const decimals = 1;
       await underlyerMock.mock.decimals.returns(decimals);
       const price = 2;
-      await priceAggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
+      await oracleAdapterMock.mock.getAssetPrice.returns(price);
 
       const underlyerAmount = tokenAmountToBigNumber(5, decimals);
       // 50 * 2 / 10 ^ 1
@@ -398,7 +374,7 @@ describe("Contract: PoolToken", () => {
       await underlyerMock.mock.balanceOf.returns(balance);
 
       const price = 2;
-      await priceAggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
+      await oracleAdapterMock.mock.getAssetPrice.returns(price);
 
       // 75 * 2 / 10^1
       const expectedValue = balance.mul(price).div(10 ** decimals);
@@ -437,7 +413,7 @@ describe("Contract: PoolToken", () => {
       await mAptMock.mock.getDeployedValue.returns(deployedValue);
 
       const price = 2;
-      await priceAggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
+      await oracleAdapterMock.mock.getAssetPrice.returns(price);
 
       // Underlyer ETH value: 75 * 2 / 10^1 = 15
       const underlyerValue = underlyerBalance.mul(price).div(10 ** decimals);
@@ -460,7 +436,7 @@ describe("Contract: PoolToken", () => {
       await underlyerMock.mock.balanceOf.returns(100);
 
       const price = 2;
-      await priceAggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
+      await oracleAdapterMock.mock.getAssetPrice.returns(price);
 
       const aptSupply = await poolToken.totalSupply();
       const aptAmount = tokenAmountToBigNumber(10);
@@ -483,7 +459,7 @@ describe("Contract: PoolToken", () => {
   describe("getReserveTopUpAmount", () => {
     it("Returns 0 when pool has zero total value", async () => {
       // set pool total ETH value to 0
-      await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+      await oracleAdapterMock.mock.getAssetPrice.returns(1);
       await mAptMock.mock.getDeployedValue.returns(0);
       await underlyerMock.mock.balanceOf.returns(0);
       await underlyerMock.mock.decimals.returns(6);
@@ -492,7 +468,7 @@ describe("Contract: PoolToken", () => {
     });
 
     it("Returns correctly calculated value when zero deployed value", async () => {
-      await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+      await oracleAdapterMock.mock.getAssetPrice.returns(1);
       await mAptMock.mock.getDeployedValue.returns(0);
       // set positive pool underlyer ETH value,
       // which should result in negative reserve top-up
@@ -517,7 +493,7 @@ describe("Contract: PoolToken", () => {
     });
 
     it("Returns reservePercentage of post deployed value when zero balance", async () => {
-      await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+      await oracleAdapterMock.mock.getAssetPrice.returns(1);
       await underlyerMock.mock.balanceOf.returns(0);
       const decimals = 6;
       await underlyerMock.mock.decimals.returns(decimals);
@@ -542,7 +518,7 @@ describe("Contract: PoolToken", () => {
     });
 
     it("Returns correctly calculated value when top-up is positive", async () => {
-      await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+      await oracleAdapterMock.mock.getAssetPrice.returns(1);
       const decimals = 6;
       const poolBalance = tokenAmountToBigNumber(1e10, decimals);
       await underlyerMock.mock.balanceOf.returns(poolBalance);
@@ -570,7 +546,7 @@ describe("Contract: PoolToken", () => {
     });
 
     it("Returns correctly calculated value when top-up is negative", async () => {
-      await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+      await oracleAdapterMock.mock.getAssetPrice.returns(1);
       const decimals = 0;
       const poolBalance = tokenAmountToBigNumber(2.05e18, decimals);
       await underlyerMock.mock.balanceOf.returns(poolBalance);
@@ -607,7 +583,7 @@ describe("Contract: PoolToken", () => {
       expect(await poolToken.totalSupply()).to.equal(0);
 
       await underlyerMock.mock.decimals.returns("0");
-      await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+      await oracleAdapterMock.mock.getAssetPrice.returns(1);
 
       const DEPOSIT_FACTOR = await poolToken.DEFAULT_APT_TO_UNDERLYER_FACTOR();
       const depositAmount = tokenAmountToBigNumber("123");
@@ -637,7 +613,7 @@ describe("Contract: PoolToken", () => {
       const depositAmount = tokenAmountToBigNumber("1000", decimals);
       const poolBalance = tokenAmountToBigNumber("9999", decimals);
 
-      await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+      await oracleAdapterMock.mock.getAssetPrice.returns(1);
       await underlyerMock.mock.balanceOf.returns(poolBalance);
       await underlyerMock.mock.decimals.returns(decimals);
 
@@ -657,13 +633,8 @@ describe("Contract: PoolToken", () => {
       const depositAmount = tokenAmountToBigNumber("1000", decimals);
       const poolUnderlyerBalance = tokenAmountToBigNumber("9999", decimals);
 
-      const aggMock = await deployMockContract(
-        deployer,
-        AggregatorV3Interface.abi
-      );
       const price = 1;
-      await aggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
-      await poolToken.setPriceAggregator(aggMock.address);
+      await oracleAdapterMock.mock.getAssetPrice.returns(price);
       await underlyerMock.mock.balanceOf.returns(poolUnderlyerBalance);
       await underlyerMock.mock.decimals.returns(decimals);
 
@@ -698,7 +669,7 @@ describe("Contract: PoolToken", () => {
     it("Test getUnderlyerAmount returns expected amount", async () => {
       await underlyerMock.mock.balanceOf.returns("1");
       await underlyerMock.mock.decimals.returns("1");
-      await priceAggMock.mock.latestRoundData.returns(0, 10, 0, 0, 0);
+      await oracleAdapterMock.mock.getAssetPrice.returns(10);
 
       await poolToken.mint(randomUser.address, 1);
       const underlyerAmount = await poolToken.getUnderlyerAmount("1");
@@ -725,7 +696,7 @@ describe("Contract: PoolToken", () => {
         // These get rollbacked due to snapshotting.
         // Just enough mocking to get `addLiquidity` to not revert.
         await mAptMock.mock.getDeployedValue.returns(0);
-        await priceAggMock.mock.latestRoundData.returns(0, 1, 0, 0, 0);
+        await oracleAdapterMock.mock.getAssetPrice.returns(1);
         await underlyerMock.mock.decimals.returns(6);
         await underlyerMock.mock.allowance.returns(1);
         await underlyerMock.mock.balanceOf.returns(1);
@@ -826,7 +797,7 @@ describe("Contract: PoolToken", () => {
           await mAptMock.mock.getDeployedValue.returns(deployedValue);
 
           const price = 1;
-          await priceAggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
+          await oracleAdapterMock.mock.getAssetPrice.returns(price);
 
           await underlyerMock.mock.decimals.returns(decimals);
           await underlyerMock.mock.allowance.returns(depositAmount);
@@ -1007,7 +978,7 @@ describe("Contract: PoolToken", () => {
           await mAptMock.mock.getDeployedValue.returns(deployedValue);
 
           const price = 1;
-          await priceAggMock.mock.latestRoundData.returns(0, price, 0, 0, 0);
+          await oracleAdapterMock.mock.getAssetPrice.returns(price);
 
           await underlyerMock.mock.decimals.returns(decimals);
           await underlyerMock.mock.allowance.returns(poolBalance);

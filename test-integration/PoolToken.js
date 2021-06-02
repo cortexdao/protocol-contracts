@@ -140,8 +140,8 @@ describe("Contract: PoolToken", () => {
         oracleAdapter = await OracleAdapter.deploy(
           addressRegistry.address,
           tvlAgg.address,
-          [],
-          [],
+          [tokenAddress],
+          [aggAddress],
           86400
         );
         await oracleAdapter.deployed();
@@ -261,34 +261,6 @@ describe("Contract: PoolToken", () => {
           await expect(
             poolToken.connect(randomUser).setAdminAddress(FAKE_ADDRESS)
           ).to.be.revertedWith("Ownable: caller is not the owner");
-        });
-      });
-
-      describe("Set price aggregator address", async () => {
-        it("Revert when agg address is zero", async () => {
-          await expect(
-            poolToken.setPriceAggregator(ZERO_ADDRESS)
-          ).to.be.revertedWith("INVALID_AGG");
-        });
-
-        it("Revert when non-owner attempts to set agg", async () => {
-          await expect(
-            poolToken.connect(randomUser).setPriceAggregator(FAKE_ADDRESS)
-          ).to.be.revertedWith("Ownable: caller is not the owner");
-        });
-
-        it("Owner can set agg", async () => {
-          const setPromise = poolToken
-            .connect(deployer)
-            .setPriceAggregator(FAKE_ADDRESS);
-          await setPromise;
-
-          const priceAgg = await poolToken.priceAgg();
-          assert.equal(priceAgg, FAKE_ADDRESS);
-
-          await expect(setPromise)
-            .to.emit(poolToken, "PriceAggregatorChanged")
-            .withArgs(FAKE_ADDRESS);
         });
       });
 

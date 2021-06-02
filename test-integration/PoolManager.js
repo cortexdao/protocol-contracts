@@ -7,11 +7,11 @@ const {
   bytes32,
   acquireToken,
   getStablecoinAddress,
+  getAggregatorAddress,
 } = require("../utils/helpers");
 const erc20Interface = new ethers.utils.Interface(
   artifacts.require("ERC20").abi
 );
-const { deployMockContract } = require("ethereum-waffle");
 const { STABLECOIN_POOLS } = require("../utils/constants");
 
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
@@ -105,26 +105,42 @@ describe("Contract: PoolManager", () => {
       poolDeployer
     );
 
-    await poolAdmin.upgrade(APY_DAI_POOL, newPoolLogic.address);
-    await poolAdmin.upgrade(APY_USDC_POOL, newPoolLogic.address);
-    await poolAdmin.upgrade(APY_USDT_POOL, newPoolLogic.address);
+    const initData = PoolTokenV2.interface.encodeFunctionData(
+      "initializeUpgrade(address)",
+      [APY_ADDRESS_REGISTRY]
+    );
+    await poolAdmin.upgradeAndCall(
+      APY_DAI_POOL,
+      newPoolLogic.address,
+      initData
+    );
+    await poolAdmin.upgradeAndCall(
+      APY_USDC_POOL,
+      newPoolLogic.address,
+      initData
+    );
+    await poolAdmin.upgradeAndCall(
+      APY_USDT_POOL,
+      newPoolLogic.address,
+      initData
+    );
 
     /*************************************/
     /***** Upgrade Address Registry ******/
     /*************************************/
-    const AddressRegistryFactory = await ethers.getContractFactory(
+    const AddressRegistryV2 = await ethers.getContractFactory(
       "AddressRegistryV2"
     );
-    const newAddressRegistryLogic = await AddressRegistryFactory.deploy();
-    const registryAdmin = await ethers.getContractAt(
+    const addressRegistryLogicV2 = await AddressRegistryV2.deploy();
+    const addressRegistryAdmin = await ethers.getContractAt(
       "ProxyAdmin",
       APY_REGISTRY_ADMIN,
       addressRegistryDeployer
     );
 
-    await registryAdmin.upgrade(
+    await addressRegistryAdmin.upgrade(
       APY_ADDRESS_REGISTRY,
-      newAddressRegistryLogic.address
+      addressRegistryLogicV2.address
     );
 
     addressRegistry = await ethers.getContractAt(
@@ -137,13 +153,22 @@ describe("Contract: PoolManager", () => {
     /***** deploy Oracle Adapter *****/
     /*********************************/
 
+    const network = "MAINNET";
+    const symbols = ["DAI", "USDC", "USDT"];
+
+    const tvlAggAddress = getAggregatorAddress("TVL", network);
+    const assetAddresses = symbols.map((symbol) =>
+      getStablecoinAddress(symbol, network)
+    );
+    const sourceAddresses = symbols.map((symbol) =>
+      getAggregatorAddress(`${symbol}-USD`, network)
+    );
     const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
-    const tvlAgg = await deployMockContract(deployer, []);
     oracleAdapter = await OracleAdapter.deploy(
       addressRegistry.address,
-      tvlAgg.address,
-      [],
-      [],
+      tvlAggAddress,
+      assetAddresses,
+      sourceAddresses,
       86400
     );
     await oracleAdapter.deployed();
@@ -599,6 +624,7 @@ describe("Contract: PoolManager", () => {
         // now mint so withdraw can burn tokens
         const mintAmount = await getMintAmount(daiPool, amount);
         await mApt.connect(managerSigner).mint(daiPool.address, mintAmount);
+        await oracleAdapter.setLock(0);
 
         // adjust the TVL appropriately, as there is no Chainlink to update it
         const tvl = await daiPool.getValueFromUnderlyerAmount(amount);
@@ -631,6 +657,7 @@ describe("Contract: PoolManager", () => {
         await mApt
           .connect(managerSigner)
           .mint(usdtPool.address, usdtPoolMintAmount);
+        await oracleAdapter.setLock(0);
 
         // transfer stablecoin to each pool to be able to withdraw
         await daiToken
@@ -722,6 +749,7 @@ describe("Contract: PoolManager", () => {
         await mApt
           .connect(managerSigner)
           .mint(usdtPool.address, usdtPoolMintAmount);
+        await oracleAdapter.setLock(0);
 
         // transfer stablecoin to each pool to be able to withdraw
         await daiToken
