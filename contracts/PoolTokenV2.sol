@@ -12,7 +12,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SignedSafeMath.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
-import "./interfaces/ILiquidityPool.sol";
+import "./interfaces/ILiquidityPoolV2.sol";
 import "./interfaces/IDetailedERC20.sol";
 import "./interfaces/IAddressRegistryV2.sol";
 import "./MetaPoolToken.sol";
@@ -52,18 +52,21 @@ import "./MetaPoolToken.sol";
  *         and unwind positions to free up funds.
  */
 contract PoolTokenV2 is
-    ILiquidityPool,
+    ILiquidityPoolV2,
     Initializable,
     OwnableUpgradeSafe,
     ReentrancyGuardUpgradeSafe,
     PausableUpgradeSafe,
     ERC20UpgradeSafe
 {
+    using Address for address;
     using SafeMath for uint256;
     using SignedSafeMath for int256;
     using SafeERC20 for IDetailedERC20;
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
     uint256 internal constant _MAX_INT256 = 2**255 - 1;
+
+    event AdminChanged(address);
 
     /* ------------------------------- */
     /* impl-specific storage variables */
@@ -79,9 +82,11 @@ contract PoolTokenV2 is
     /// @notice underlying stablecoin
     IDetailedERC20 public underlyer;
     /// @notice USD price feed for the stablecoin
-    AggregatorV3Interface public priceAgg;
+    // AggregatorV3Interface public priceAgg; <-- removed in V2
 
     // V2
+    /// @notice registry to fetch core platform addresses from
+    /// @dev this slot replaces the last V1 slot for the price agg
     IAddressRegistryV2 public addressRegistry;
     /// @notice seconds since last deposit during which withdrawal fee is charged
     uint256 public feePeriod;
@@ -130,7 +135,7 @@ contract PoolTokenV2 is
         addLiquidityLock = false;
         redeemLock = false;
         underlyer = _underlyer;
-        setPriceAggregator(_priceAgg);
+        // setPriceAggregator(_priceAgg);  <-- deprecated in V2.
     }
 
     /**
@@ -147,7 +152,7 @@ contract PoolTokenV2 is
         virtual
         onlyAdmin
     {
-        require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
+        require(_addressRegistry.isContract(), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(_addressRegistry);
         feePeriod = 1 days;
         feePercentage = 5;
@@ -158,15 +163,6 @@ contract PoolTokenV2 is
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
         emit AdminChanged(adminAddress);
-    }
-
-    function setPriceAggregator(AggregatorV3Interface _priceAgg)
-        public
-        onlyOwner
-    {
-        require(address(_priceAgg) != address(0), "INVALID_AGG");
-        priceAgg = _priceAgg;
-        emit PriceAggregatorChanged(address(_priceAgg));
     }
 
     function setAddressRegistry(address payable _addressRegistry)
@@ -492,9 +488,9 @@ contract PoolTokenV2 is
      * @return USD price
      */
     function getUnderlyerPrice() public view returns (uint256) {
-        (, int256 price, , , ) = priceAgg.latestRoundData();
-        require(price > 0, "UNABLE_TO_RETRIEVE_USD_PRICE");
-        return uint256(price);
+        IOracleAdapter oracleAdapter =
+            IOracleAdapter(addressRegistry.oracleAdapterAddress());
+        return oracleAdapter.getAssetPrice(address(underlyer));
     }
 
     /**
