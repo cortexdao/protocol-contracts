@@ -72,7 +72,7 @@ async function main(argv) {
     `https://etherscan.io/tx/${proxyAdmin.deployTransaction.hash}`
   );
   let receipt = await proxyAdmin.deployTransaction.wait();
-  deploy_data["ManagerProxyAdmin"] = proxyAdmin.address;
+  deploy_data["PoolManagerProxyAdmin"] = proxyAdmin.address;
   console.log(`ProxyAdmin: ${chalk.green(proxyAdmin.address)}`);
   console.log("");
   gasUsed = gasUsed.add(receipt.gasUsed);
