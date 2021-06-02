@@ -35,7 +35,7 @@ const APY_USDT_POOL = "0xeA9c5a2717D5Ab75afaAC340151e73a7e37d99A7";
 console.debugging = false;
 /* ************************ */
 
-describe.only("Contract: PoolManager", () => {
+describe("Contract: PoolManager", () => {
   // to-be-deployed contracts
   let poolManager;
   let tvlManager;
@@ -624,6 +624,7 @@ describe.only("Contract: PoolManager", () => {
         // now mint so withdraw can burn tokens
         const mintAmount = await getMintAmount(daiPool, amount);
         await mApt.connect(managerSigner).mint(daiPool.address, mintAmount);
+        await oracleAdapter.setLock(0);
 
         // adjust the TVL appropriately, as there is no Chainlink to update it
         const tvl = await daiPool.getValueFromUnderlyerAmount(amount);
@@ -656,6 +657,7 @@ describe.only("Contract: PoolManager", () => {
         await mApt
           .connect(managerSigner)
           .mint(usdtPool.address, usdtPoolMintAmount);
+        await oracleAdapter.setLock(0);
 
         // transfer stablecoin to each pool to be able to withdraw
         await daiToken
@@ -747,6 +749,7 @@ describe.only("Contract: PoolManager", () => {
         await mApt
           .connect(managerSigner)
           .mint(usdtPool.address, usdtPoolMintAmount);
+        await oracleAdapter.setLock(0);
 
         // transfer stablecoin to each pool to be able to withdraw
         await daiToken
