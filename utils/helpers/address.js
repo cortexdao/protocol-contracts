@@ -21,20 +21,20 @@ function getChainId(networkName) {
  * Update the JSONs of deployed addresses based on name and network.
  *
  * @param {string} network Network name in utils/constants.js:CHAIN_IDS
- * @param {object} deploy_data object mapping contract name to address
+ * @param {object} deployData object mapping contract name to address
  */
-function updateDeployJsons(network, deploy_data) {
-  for (let [contract_name, file_path] of Object.entries(DEPLOYS_JSON)) {
-    // go through all deploys json and update them
-    const address_json = require(file_path);
-    // skip over contracts not changed
-    if (deploy_data[contract_name] === undefined) {
-      continue;
-    }
+function updateDeployJsons(network, deployData) {
+  for (const contractName of Object.keys(deployData)) {
+    if (!isApyContractName(contractName))
+      throw new Error(
+        `updateDeployJsons: unrecognized APY contract name - ${contractName}.`
+      );
+    const filepath = DEPLOYS_JSON[contractName];
+    const addressJson = fs.existsSync(filepath) ? require(filepath) : {};
     const chainId = getChainId(network);
-    address_json[chainId] = deploy_data[contract_name];
-    const address_json_string = JSON.stringify(address_json, null, "  ");
-    fs.writeFileSync(file_path, address_json_string, (err) => {
+    addressJson[chainId] = deployData[contractName];
+    const addressJsonString = JSON.stringify(addressJson, null, "  ");
+    fs.writeFileSync(filepath, addressJsonString, (err) => {
       if (err) throw err;
     });
   }

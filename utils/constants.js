@@ -131,6 +131,7 @@ const CONTRACT_NAMES = [
   "MetaPoolToken",
   "MetaPoolTokenProxy",
   "MetaPoolTokenProxyAdmin",
+  "OracleAdapter",
   "PoolManager",
   "PoolManagerProxy",
   "PoolManagerProxyAdmin",
