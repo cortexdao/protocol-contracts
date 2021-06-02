@@ -23,6 +23,7 @@ const {
   updateDeployJsons,
   getAggregatorAddress,
   getDeployedAddress,
+  getStablecoinAddress,
 } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
@@ -35,25 +36,26 @@ async function main(argv) {
 
   // TODO: use different mnemonic
   const MAPT_MNEMONIC = process.env.MAPT_MNEMONIC;
-  const adapterDeployer = ethers.Wallet.fromMnemonic(MAPT_MNEMONIC).connect(
-    ethers.provider
-  );
-  console.log("Deployer address:", adapterDeployer.address);
+  const oracleAdapterDeployer = ethers.Wallet.fromMnemonic(
+    MAPT_MNEMONIC
+  ).connect(ethers.provider);
+  console.log("Deployer address:", oracleAdapterDeployer.address);
   /* TESTING on localhost only
    * need to fund as there is no ETH on Mainnet for the deployer
    */
   if (networkName == "LOCALHOST") {
     const [funder] = await ethers.getSigners();
     const fundingTrx = await funder.sendTransaction({
-      to: adapterDeployer.address,
+      to: oracleAdapterDeployer.address,
       value: ethers.utils.parseEther("1.0"),
     });
     await fundingTrx.wait();
   }
 
   const balance =
-    (await ethers.provider.getBalance(adapterDeployer.address)).toString() /
-    1e18;
+    (
+      await ethers.provider.getBalance(oracleAdapterDeployer.address)
+    ).toString() / 1e18;
   console.log("ETH balance:", balance.toString());
   console.log("");
 
@@ -63,22 +65,33 @@ async function main(argv) {
 
   const OracleAdapter = await ethers.getContractFactory(
     "OracleAdapter",
-    adapterDeployer
+    oracleAdapterDeployer
   );
 
   let deploy_data = {};
   let gasUsed = BigNumber.from("0");
   let gasPrice = await getGasPrice(argv.gasPrice);
 
-  const tvlAggAddress = getAggregatorAddress("TVL", networkName);
-  const aggStalePeriod = 14400;
+  const addressRegistryProxyAddress = getDeployedAddress(
+    "AddressRegistryProxy",
+    networkName
+  );
 
-  const assets = [];
-  const sources = [];
-  const adapter = await OracleAdapter.deploy(
+  const tvlAggAddress = getAggregatorAddress("TVL", "MAINNET");
+  const aggStalePeriod = 86400;
+
+  const symbols = ["DAI", "USDC", "USDT"];
+  const assets = symbols.map((symbol) =>
+    getStablecoinAddress(symbol, networkName)
+  );
+  const sources = symbols.map((symbol) =>
+    getAggregatorAddress(`${symbol}-USD`, networkName)
+  );
+  const oracleAdapter = await OracleAdapter.deploy(
+    addressRegistryProxyAddress,
+    tvlAggAddress,
     assets,
     sources,
-    tvlAggAddress,
     aggStalePeriod,
     {
       gasPrice,
@@ -86,11 +99,11 @@ async function main(argv) {
   );
   console.log(
     "Deploy:",
-    `https://etherscan.io/tx/${adapter.deployTransaction.hash}`
+    `https://etherscan.io/tx/${oracleAdapter.deployTransaction.hash}`
   );
-  let receipt = await adapter.deployTransaction.wait();
-  deploy_data["OracleAdapter"] = adapter.address;
-  console.log(`Oracle adapter: ${chalk.green(adapter.address)}`);
+  let receipt = await oracleAdapter.deployTransaction.wait();
+  deploy_data["OracleAdapter"] = oracleAdapter.address;
+  console.log(`Oracle adapter: ${chalk.green(oracleAdapter.address)}`);
   console.log("  TVL Aggregator:", tvlAggAddress);
   console.log("  Aggregator stale period:", aggStalePeriod);
   console.log("");
@@ -100,10 +113,6 @@ async function main(argv) {
   const addressRegistryDeployer = ethers.Wallet.fromMnemonic(
     ADDRESS_REGISTRY_MNEMONIC
   ).connect(ethers.provider);
-  const addressRegistryProxyAddress = getDeployedAddress(
-    "AddressRegistryProxy",
-    networkName
-  );
   const addressRegistry = await ethers.getContractAt(
     "AddressRegistryV2",
     addressRegistryProxyAddress,
@@ -113,7 +122,7 @@ async function main(argv) {
   gasPrice = await getGasPrice(argv.gasPrice);
   let trx = await addressRegistry.registerAddress(
     bytes32("oracleAdapter"),
-    adapter.address,
+    oracleAdapter.address,
     {
       gasPrice,
     }
@@ -129,13 +138,16 @@ async function main(argv) {
   if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");
     console.log("Verifying on Etherscan ...");
-    await ethers.provider.waitForTransaction(adapter.deployTransaction.hash, 5); // wait for Etherscan to catch up
+    await ethers.provider.waitForTransaction(
+      oracleAdapter.deployTransaction.hash,
+      5
+    ); // wait for Etherscan to catch up
     await hre.run("verify:verify", {
-      address: adapter.address,
+      address: oracleAdapter.address,
       constructorArguments: [
+        tvlAggAddress,
         assets,
         sources,
-        tvlAggAddress,
         aggStalePeriod.toString(),
       ],
     });
