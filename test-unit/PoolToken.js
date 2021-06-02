@@ -16,6 +16,7 @@ const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
 const AddressRegistry = artifacts.require("IAddressRegistryV2");
 const MetaPoolToken = artifacts.require("MetaPoolToken");
+const OracleAdapter = artifacts.require("OracleAdapter");
 
 describe("Contract: PoolToken", () => {
   // signers
@@ -34,6 +35,7 @@ describe("Contract: PoolToken", () => {
   let priceAggMock;
   let addressRegistryMock;
   let mAptMock;
+  let oracleAdapterMock;
 
   // pool
   let proxyAdmin;
@@ -80,11 +82,15 @@ describe("Contract: PoolToken", () => {
     await logicV2.deployed();
 
     mAptMock = await deployMockContract(deployer, MetaPoolToken.abi);
+    oracleAdapterMock = await deployMockContract(deployer, OracleAdapter.abi);
     addressRegistryMock = await deployMockContract(
       deployer,
       AddressRegistry.abi
     );
     await addressRegistryMock.mock.mAptAddress.returns(mAptMock.address);
+    await addressRegistryMock.mock.oracleAdapterAddress.returns(
+      oracleAdapterMock.address
+    );
 
     const initData = PoolTokenV2.interface.encodeFunctionData(
       "initializeUpgrade(address)",
@@ -188,44 +194,20 @@ describe("Contract: PoolToken", () => {
     });
   });
 
-  describe("Set price aggregator address", () => {
-    it("Revert when agg address is zero", async () => {
-      await expect(
-        poolToken.setPriceAggregator(ZERO_ADDRESS)
-      ).to.be.revertedWith("INVALID_AGG");
-    });
-
-    it("Revert when non-owner attempts to set agg", async () => {
-      await expect(
-        poolToken.connect(randomUser).setPriceAggregator(FAKE_ADDRESS)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
-    });
-
-    it("Owner can set agg", async () => {
-      const setPromise = poolToken
-        .connect(deployer)
-        .setPriceAggregator(FAKE_ADDRESS);
-
-      const priceAgg = await poolToken.priceAgg();
-
-      assert.equal(priceAgg, FAKE_ADDRESS);
-      await expect(setPromise)
-        .to.emit(poolToken, "PriceAggregatorChanged")
-        .withArgs(FAKE_ADDRESS);
-    });
-  });
-
   describe("getUnderlyerPrice", () => {
-    it("Revert when price agg returns non-positive price", async () => {
-      await priceAggMock.mock.latestRoundData.returns(0, 0, 0, 0, 0);
-      await expect(poolToken.getUnderlyerPrice()).to.be.revertedWith(
-        "UNABLE_TO_RETRIEVE_USD_PRICE"
-      );
+    it("Delegates to oracle adapter", async () => {
+      const price = tokenAmountToBigNumber("1.02", 8);
+      await oracleAdapterMock.mock.getAssetPrice.returns(price);
+      expect(await poolToken.getUnderlyerPrice()).to.equal(price);
     });
 
-    it("Returns value when price agg returns positive price", async () => {
-      await priceAggMock.mock.latestRoundData.returns(0, 100, 0, 0, 0);
-      expect(await poolToken.getUnderlyerPrice()).to.equal(100);
+    it("Reverts with same reason as oracle adapter", async () => {
+      await oracleAdapterMock.mock.getAssetPrice.revertsWithReason(
+        "SOMETHING_WRONG"
+      );
+      await expect(poolToken.getUnderlyerPrice()).to.be.revertedWith(
+        "SOMETHING_WRONG"
+      );
     });
   });
 
