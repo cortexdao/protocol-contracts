@@ -465,7 +465,7 @@ describe("Contract: PoolToken", () => {
             if (usdDeployedValue.isZero()) {
               await oracleAdapter.lockFor(10);
               await oracleAdapter.setTvl(0, 100);
-              await oracleAdapter.lockFor(0);
+              await oracleAdapter.unlock();
             }
             const lastRoundId = await tvlAgg.latestRound();
             const newRoundId = lastRoundId.add(1);
@@ -481,7 +481,7 @@ describe("Contract: PoolToken", () => {
               .connect(poolManagerSigner)
               .mint(poolToken.address, mAptSupply);
             await updateTvlAgg(deployedValue);
-            await oracleAdapter.lockFor(0);
+            await oracleAdapter.unlock();
           });
 
           describe("Underlyer and mAPT integration with calculations", () => {
@@ -605,7 +605,7 @@ describe("Contract: PoolToken", () => {
                 .connect(poolManagerSigner)
                 .burn(poolToken.address, mAptSupply.div(4));
               // unlock oracle adapter after mint/burn
-              await oracleAdapter.lockFor(0);
+              await oracleAdapter.unlock();
               // must update agg so staleness check passes
               await updateTvlAgg(deployedValue);
               expect(await poolToken.getDeployedValue()).to.equal(
@@ -620,7 +620,7 @@ describe("Contract: PoolToken", () => {
                 .connect(poolManagerSigner)
                 .burn(poolToken.address, mAptSupply.div(4));
               // unlock oracle adapter after mint/burn
-              await oracleAdapter.lockFor(0);
+              await oracleAdapter.unlock();
               // must update agg so staleness check passes
               await updateTvlAgg(deployedValue);
               expect(await poolToken.getDeployedValue()).to.equal(

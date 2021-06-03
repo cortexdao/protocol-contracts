@@ -119,14 +119,14 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     }
 
     function lock() external override onlyPermissioned {
-        lockEnd = block.number.add(defaultLockPeriod);
+        lockFor(defaultLockPeriod);
     }
 
     function unlock() external override onlyPermissioned {
-        lockEnd = block.number;
+        lockFor(0);
     }
 
-    function lockFor(uint256 activePeriod) external override onlyPermissioned {
+    function lockFor(uint256 activePeriod) public override onlyPermissioned {
         lockEnd = block.number.add(activePeriod);
     }
 

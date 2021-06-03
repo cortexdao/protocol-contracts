@@ -316,12 +316,12 @@ describe("Contract: OracleAdapter", () => {
 
     it("Revert when non-permissioned calls", async () => {
       await expect(
-        oracleAdapter.connect(randomUser).lockFor(0)
+        oracleAdapter.connect(randomUser).unlock()
       ).to.be.revertedWith("PERMISSIONED_ONLY");
     });
 
     it("Can unlock", async () => {
-      await oracleAdapter.connect(deployer).lockFor(0);
+      await oracleAdapter.connect(deployer).unlock();
       expect(await oracleAdapter.isLocked()).to.be.false;
     });
   });
@@ -347,7 +347,7 @@ describe("Contract: OracleAdapter", () => {
     it("Revert when unlocked", async () => {
       const value = 1;
       const period = 5;
-      await oracleAdapter.lockFor(0); // unlocks
+      await oracleAdapter.unlock(); // unlocks
       await expect(
         oracleAdapter.connect(deployer).setTvl(value, period)
       ).to.be.revertedWith("ORACLE_UNLOCKED");
@@ -380,7 +380,7 @@ describe("Contract: OracleAdapter", () => {
     it("Revert when unlocked", async () => {
       const value = 1;
       const period = 5;
-      await oracleAdapter.lockFor(0); // unlocks
+      await oracleAdapter.unlock(); // unlocks
       await expect(
         oracleAdapter
           .connect(deployer)
@@ -460,7 +460,7 @@ describe("Contract: OracleAdapter", () => {
 
       await expect(oracleAdapter.getTvl()).to.be.revertedWith("ORACLE_LOCKED");
 
-      await oracleAdapter.lockFor(0);
+      await oracleAdapter.unlock();
       await expect(oracleAdapter.getTvl()).to.not.be.reverted;
     });
 
@@ -486,7 +486,7 @@ describe("Contract: OracleAdapter", () => {
       // TVL lock takes precedence over manual submission
       await expect(oracleAdapter.getTvl()).to.be.reverted;
 
-      await oracleAdapter.lockFor(0); // unlock; advances 1 block
+      await oracleAdapter.unlock(); // unlock; advances 1 block
       // Manual submission takes precedence over Chainlink
       expect(await oracleAdapter.getTvl()).to.equal(manualValue);
 
@@ -598,7 +598,7 @@ describe("Contract: OracleAdapter", () => {
         oracleAdapter.getAssetPrice(assetAddress_1)
       ).to.be.revertedWith("ORACLE_LOCKED");
 
-      await oracleAdapter.lockFor(0);
+      await oracleAdapter.unlock();
       await expect(oracleAdapter.getAssetPrice(assetAddress_1)).to.not.be
         .reverted;
     });
@@ -631,7 +631,7 @@ describe("Contract: OracleAdapter", () => {
       // TVL lock takes precedence over manual submission
       await expect(oracleAdapter.getAssetPrice(assetAddress_1)).to.be.reverted;
 
-      await oracleAdapter.lockFor(0); // unlock; advances 1 block
+      await oracleAdapter.unlock(); // unlock; advances 1 block
       // Manual submission takes precedence over Chainlink
       expect(await oracleAdapter.getAssetPrice(assetAddress_1)).to.equal(
         manualValue
