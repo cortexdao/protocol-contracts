@@ -34,10 +34,9 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  // TODO: use different mnemonic
-  const MAPT_MNEMONIC = process.env.MAPT_MNEMONIC;
+  const ORACLE_ADAPTER_MNEMONIC = process.env.ORACLE_ADAPTER_MNEMONIC;
   const oracleAdapterDeployer = ethers.Wallet.fromMnemonic(
-    MAPT_MNEMONIC
+    ORACLE_ADAPTER_MNEMONIC
   ).connect(ethers.provider);
   console.log("Deployer address:", oracleAdapterDeployer.address);
   /* TESTING on localhost only

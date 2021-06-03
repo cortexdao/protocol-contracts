@@ -107,7 +107,7 @@ async function main(argv) {
     expect.to.fail();
   } catch (error) {
     expect(error.message).to.equal(
-      "VM Exception while processing transaction: revert Missing address"
+      "Error: VM Exception while processing transaction: revert Missing address"
     );
   }
   try {
@@ -115,7 +115,7 @@ async function main(argv) {
     expect.to.fail();
   } catch (error) {
     expect(error.message).to.equal(
-      "VM Exception while processing transaction: revert Missing address"
+      "Error: VM Exception while processing transaction: revert Missing address"
     );
   }
   expect(await addressRegistry.mAptAddress()).to.equal(mApt.address);
@@ -129,7 +129,6 @@ async function main(argv) {
   expect(await addressRegistry.chainlinkRegistryAddress()).to.equal(
     tvlManager.address
   );
-  // TODO
   expect(await addressRegistry.oracleAdapterAddress()).to.equal(
     oracleAdapter.address
   );
@@ -139,9 +138,10 @@ async function main(argv) {
   expect(await mApt.addressRegistry()).to.equal(addressRegistry.address);
   console.logDone();
 
-  // TODO
-  console.log("Check oracle adapter set on mAPT ...");
-  expect(await mApt.oracleAdapter()).to.equal(oracleAdapter.address);
+  console.log("Check address registry set on oracle adapter ...");
+  expect(await oracleAdapter.addressRegistry()).to.equal(
+    addressRegistry.address
+  );
   console.logDone();
 
   console.log("Check address registry set on pool manager ...");
@@ -157,8 +157,6 @@ async function main(argv) {
 
     // sanity-check; also checks if we are using V2 contracts
     expect(await pool.addressRegistry()).to.equal(addressRegistry.address);
-    // TODO
-    expect(await pool.oracleAdapter()).to.equal(oracleAdapter.address);
 
     // check pool manager allowances
     const underlyerAddress = await pool.underlyer();
