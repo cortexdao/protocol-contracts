@@ -155,6 +155,7 @@ test_chainlink:
 	make up_ci
 	##################
 	# run tests here
+	curl -X POST localhost:8545 --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":83}'
 	HARDHAT_NETWORK=localhost node scripts/chainlink/1_deployments.js
 	max_retry=10; counter=0 ;\
 	until HARDHAT_NETWORK=localhost node scripts/chainlink/check_agg_value.js ;\
