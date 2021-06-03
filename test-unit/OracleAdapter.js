@@ -231,32 +231,56 @@ describe("Contract: OracleAdapter", () => {
   });
 
   describe("lock", () => {
-    it("revert when non-owner calls", async () => {
-      await expect(oracleAdapter.connect(randomUser).lock()).to.be.revertedWith(
-        "caller is not the owner"
+    let mApt;
+    let tvlManager;
+
+    beforeEach("Setup permissioned list", async () => {
+      // permissioned list is owner, mApt, tvlManager
+      [mApt, tvlManager] = accounts;
+      await addressRegistryMock.mock.mAptAddress.returns(mApt.address);
+      await addressRegistryMock.mock.tvlManagerAddress.returns(
+        tvlManager.address
       );
     });
 
-    it("Owner can call", async () => {
+    it("revert when non-permissioned calls", async () => {
+      await expect(oracleAdapter.connect(randomUser).lock()).to.be.revertedWith(
+        "PERMISSIONED_ONLY"
+      );
+    });
+
+    it("Permissioned can call", async () => {
       const lockEndBefore = await oracleAdapter.lockEnd();
-      await expect(oracleAdapter.connect(deployer).lock()).to.not.be.reverted;
+      await expect(oracleAdapter.connect(mApt).lock()).to.not.be.reverted;
       const lockEndAfter = await oracleAdapter.lockEnd();
       expect(lockEndAfter.toNumber()).greaterThan(lockEndBefore.toNumber());
     });
   });
 
   describe("unlock", () => {
-    it("revert when non-owner calls", async () => {
+    let mApt;
+    let tvlManager;
+
+    beforeEach("Setup permissioned list", async () => {
+      // permissioned list is owner, mApt, tvlManager
+      [mApt, tvlManager] = accounts;
+      await addressRegistryMock.mock.mAptAddress.returns(mApt.address);
+      await addressRegistryMock.mock.tvlManagerAddress.returns(
+        tvlManager.address
+      );
+    });
+
+    it("revert when non-permissioned calls", async () => {
       await oracleAdapter.connect(deployer).lock();
       await expect(
         oracleAdapter.connect(randomUser).unlock()
-      ).to.be.revertedWith("caller is not the owner");
+      ).to.be.revertedWith("PERMISSIONED_ONLY");
     });
 
-    it("Owner can call", async () => {
+    it("Permissioned can call", async () => {
       await oracleAdapter.connect(deployer).lock();
       const lockEndBefore = await oracleAdapter.lockEnd();
-      await expect(oracleAdapter.connect(deployer).unlock()).to.not.be.reverted;
+      await expect(oracleAdapter.connect(mApt).unlock()).to.not.be.reverted;
       const lockEndAfter = await oracleAdapter.lockEnd();
       expect(lockEndAfter.toNumber()).lessThan(lockEndBefore.toNumber());
     });
