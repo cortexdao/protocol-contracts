@@ -50,6 +50,11 @@ up_detached:
 	DOCKERHOST=$(DOCKERHOST) docker-compose up -d
 	@make create_job
 
+.PHONY: up_ci
+up_ci:
+	mv docker/tvlAgg-spec-ci.json docker/tvlAgg-spec.json
+	make up_detached
+
 .PHONY: down
 down:
 	docker-compose down --volumes
@@ -129,10 +134,14 @@ create_job:
 
 .PHONY: clone_chainlink_repo
 clone_chainlink_repo:
-	git clone "$(CHAINLINK_REPO_URL)" "$(CHAINLINK_REPO_FOLDER)"
-	cd "$(CHAINLINK_REPO_FOLDER)" ; \
-	git checkout e67fe1e6444287b54726252778544e72bd338e47 ;\
-	cd -
+	@if [ ! -d "$(CHAINLINK_REPO_FOLDER)" ]; then \
+	  git clone "$(CHAINLINK_REPO_URL)" "$(CHAINLINK_REPO_FOLDER)" ;\
+	  cd "$(CHAINLINK_REPO_FOLDER)" ; \
+	  git checkout e67fe1e6444287b54726252778544e72bd338e47 ;\
+	  cd - ;\
+	else \
+	  echo "$(CHAINLINK_REPO_FOLDER) exists. To overwrite it, delete and try again." ;\
+	fi
 
 .PHONY: delete_chainlink_repo
 delete_chainlink_repo:
@@ -143,9 +152,17 @@ test_chainlink:
 	yarn fork:mainnet > /dev/null &
 	make clone_chainlink_repo
 	while !</dev/tcp/localhost/8545; do sleep 5; done
-	make up_detached
+	make up_ci
 	##################
 	# run tests here
+	HARDHAT_NETWORK=localhost node scripts/chainlink/1_deployments.js
+	max_retry=10; counter=0 ;\
+	until HARDHAT_NETWORK=localhost node scripts/chainlink/check_agg_value.js ;\
+	do \
+  	  [[ counter -eq $$max_retry ]] && exit 1 ;\
+	  echo "checking ..."; \
+   	  ((counter++)) ;\
+	done
 	##################
 	make down
 	(ps -ef | grep 'fork_mainnet' | grep -v grep | awk '{print $2}' | xargs kill -9) || true
