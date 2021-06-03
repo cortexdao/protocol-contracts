@@ -78,6 +78,7 @@ async function main(argv) {
 
   const tvlAggAddress = getAggregatorAddress("TVL", "MAINNET");
   const aggStalePeriod = 86400;
+  const defaultLockPeriod = 270;
 
   const symbols = ["DAI", "USDC", "USDT"];
   const assets = symbols.map((symbol) =>
@@ -92,6 +93,7 @@ async function main(argv) {
     assets,
     sources,
     aggStalePeriod,
+    defaultLockPeriod,
     {
       gasPrice,
     }
