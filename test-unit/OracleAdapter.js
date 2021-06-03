@@ -245,6 +245,23 @@ describe("Contract: OracleAdapter", () => {
     });
   });
 
+  describe("unlock", () => {
+    it("revert when non-owner calls", async () => {
+      await oracleAdapter.connect(deployer).lock();
+      await expect(
+        oracleAdapter.connect(randomUser).unlock()
+      ).to.be.revertedWith("caller is not the owner");
+    });
+
+    it("Owner can call", async () => {
+      await oracleAdapter.connect(deployer).lock();
+      const lockEndBefore = await oracleAdapter.lockEnd();
+      await expect(oracleAdapter.connect(deployer).unlock()).to.not.be.reverted;
+      const lockEndAfter = await oracleAdapter.lockEnd();
+      expect(lockEndAfter.toNumber()).lessThan(lockEndBefore.toNumber());
+    });
+  });
+
   describe("lockFor / isLocked", () => {
     let mApt;
     let tvlManager;
