@@ -169,6 +169,7 @@ describe("Contract: PoolManager", () => {
       tvlAggAddress,
       assetAddresses,
       sourceAddresses,
+      86400,
       86400
     );
     await oracleAdapter.deployed();
@@ -179,9 +180,9 @@ describe("Contract: PoolManager", () => {
     );
 
     // set default TVL for tests to zero
-    await oracleAdapter.setLock(10);
+    await oracleAdapter.lockFor(10);
     await oracleAdapter.setTvl(0, 100);
-    await oracleAdapter.setLock(0);
+    await oracleAdapter.unlock();
 
     /***********************/
     /***** deploy mAPT *****/
@@ -489,7 +490,7 @@ describe("Contract: PoolManager", () => {
       await mApt
         .connect(managerSigner)
         .mint(deployer.address, tokenAmountToBigNumber("100"));
-      await oracleAdapter.setLock(0);
+      await oracleAdapter.unlock();
 
       // start the test
       const daiPoolMintAmount = await getMintAmount(daiPool, daiAmount);
@@ -624,13 +625,13 @@ describe("Contract: PoolManager", () => {
         // now mint so withdraw can burn tokens
         const mintAmount = await getMintAmount(daiPool, amount);
         await mApt.connect(managerSigner).mint(daiPool.address, mintAmount);
-        await oracleAdapter.setLock(0);
+        await oracleAdapter.unlock();
 
         // adjust the TVL appropriately, as there is no Chainlink to update it
         const tvl = await daiPool.getValueFromUnderlyerAmount(amount);
-        await oracleAdapter.setLock(10);
+        await oracleAdapter.lockFor(10);
         await oracleAdapter.setTvl(tvl, 100);
-        await oracleAdapter.setLock(0);
+        await oracleAdapter.unlock();
 
         await poolManager.withdrawFromLpSafe([
           { poolId: bytes32("daiPool"), amount: amount },
@@ -657,7 +658,7 @@ describe("Contract: PoolManager", () => {
         await mApt
           .connect(managerSigner)
           .mint(usdtPool.address, usdtPoolMintAmount);
-        await oracleAdapter.setLock(0);
+        await oracleAdapter.unlock();
 
         // transfer stablecoin to each pool to be able to withdraw
         await daiToken
@@ -678,9 +679,9 @@ describe("Contract: PoolManager", () => {
           usdtAmount
         );
         const newTvl = daiValue.add(usdcValue).add(usdtValue);
-        await oracleAdapter.setLock(10);
+        await oracleAdapter.lockFor(10);
         await oracleAdapter.setTvl(newTvl, 100);
-        await oracleAdapter.setLock(0);
+        await oracleAdapter.unlock();
 
         const daiWithdrawAmount = daiAmount.div(2);
         const daiPoolBurnAmount = await getMintAmount(
@@ -732,9 +733,9 @@ describe("Contract: PoolManager", () => {
           .mint(deployer.address, tokenAmountToBigNumber("1000000"));
         // don't forget to update the TVL!
         const tvl = tokenAmountToBigNumber("85000");
-        await oracleAdapter.setLock(10);
+        await oracleAdapter.lockFor(10);
         await oracleAdapter.setTvl(tvl, 100);
-        await oracleAdapter.setLock(0);
+        await oracleAdapter.unlock();
 
         // now mint for each pool so withdraw can burn tokens
         const daiPoolMintAmount = await getMintAmount(daiPool, daiAmount);
@@ -749,7 +750,7 @@ describe("Contract: PoolManager", () => {
         await mApt
           .connect(managerSigner)
           .mint(usdtPool.address, usdtPoolMintAmount);
-        await oracleAdapter.setLock(0);
+        await oracleAdapter.unlock();
 
         // transfer stablecoin to each pool to be able to withdraw
         await daiToken
@@ -770,9 +771,9 @@ describe("Contract: PoolManager", () => {
           usdtAmount
         );
         const newTvl = tvl.add(daiValue).add(usdcValue).add(usdtValue);
-        await oracleAdapter.setLock(10);
+        await oracleAdapter.lockFor(10);
         await oracleAdapter.setTvl(newTvl, 100);
-        await oracleAdapter.setLock(0);
+        await oracleAdapter.unlock();
 
         const daiWithdrawAmount = daiAmount.div(2);
         const daiPoolBurnAmount = await getMintAmount(
