@@ -21,6 +21,8 @@ const {
   getDeployedAddress,
   bytes32,
   MAX_UINT256,
+  getStablecoinAddress,
+  getAggregatorAddress,
 } = require("../../utils/helpers");
 
 console.logDone = function () {
@@ -146,6 +148,16 @@ async function main(argv) {
 
   console.log("Check address registry set on pool manager ...");
   expect(await poolManager.addressRegistry()).to.equal(addressRegistry.address);
+  console.logDone();
+
+  console.log("Check sources set on oracle adapter ...");
+  for (const symbol of ["DAI", "USDC", "USDT"]) {
+    const asset = getStablecoinAddress(symbol, networkName);
+    const source = getAggregatorAddress(`${symbol}-USD`, networkName);
+    expect(await oracleAdapter.assetSources(asset)).to.equal(source);
+  }
+  const tvlSource = getAggregatorAddress("TVL", "MAINNET");
+  expect(await oracleAdapter.tvlSource()).to.equal(tvlSource);
   console.logDone();
 
   console.log("Check pools upgrade ...");
