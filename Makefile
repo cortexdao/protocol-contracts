@@ -123,7 +123,7 @@ ps:
 
 .PHONY: create_job
 create_job:
-	@docker-compose exec node bash -c "\
+	@docker-compose exec -T node bash -c "\
 		while !</dev/tcp/node/6688; do sleep 5; done; \
 		chainlink admin login -f /docker/api && \
 		if !(chainlink jobs list | grep -q fluxmonitor); then \
