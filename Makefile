@@ -130,7 +130,9 @@ create_job:
 .PHONY: clone_chainlink_repo
 clone_chainlink_repo:
 	git clone "$(CHAINLINK_REPO_URL)" "$(CHAINLINK_REPO_FOLDER)"
-	git checkout e67fe1e6444287b54726252778544e72bd338e47
+	cd "$(CHAINLINK_REPO_FOLDER)" ; \
+	git checkout e67fe1e6444287b54726252778544e72bd338e47 ;\
+	cd -
 
 .PHONY: delete_chainlink_repo
 delete_chainlink_repo:
