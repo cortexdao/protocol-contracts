@@ -48,12 +48,5 @@ jobs:
       if: steps.yarn-cache.outputs.cache-hit != 'true'
     - name: Lint smart contracts
       run: yarn lint
-    - name: Unit tests
-      run: yarn test:unit
-    - name: Integration tests 
-      run: |
-        yarn test:integration
-      env: 
-        INFURA_API_KEY: ${{ secrets.INFURA_API_KEY }}
     - name: Chainlink tests
       run: make test_chainlink

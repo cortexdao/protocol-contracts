@@ -150,9 +150,9 @@ delete_chainlink_repo:
 .PHONY: test_chainlink
 test_chainlink:
 	yarn fork:mainnet > /dev/null &
-	make clone_chainlink_repo
+	# make clone_chainlink_repo
 	while !</dev/tcp/localhost/8545; do sleep 5; done
-	make up_ci
+	# make up_ci
 	##################
 	# run tests here
 	curl -X POST localhost:8545 --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":83}'
