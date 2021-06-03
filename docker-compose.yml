@@ -8,7 +8,7 @@ services:
       - POSTGRES_HOST_AUTH_METHOD=trust
     volumes:
       - 'db-data:/var/lib/postgresql/data'
-    tty: true
+    # tty: true
 
   node:
     image: smartcontract/chainlink:0.9.4
@@ -25,8 +25,8 @@ services:
     volumes:
       - 'node-data:/chainlink'
       - './docker:/docker'
-    tty: true
-    stdin_open: true
+    # tty: true
+    # stdin_open: true
     extra_hosts:
       - 'dockerhost:$DOCKERHOST'
 
@@ -43,8 +43,8 @@ services:
       # - RPC_URL=https://mainnet.infura.io/v3/85b3b7f350b448c58c7e36709521f6da
       - REGISTRY_ADDRESS=0x7ec81b7035e91f8435bdeb2787dcbd51116ad303
       - DATA_PROVIDER=coingecko
-    tty: true
-    stdin_open: true
+    # tty: true
+    # stdin_open: true
     extra_hosts:
       - 'dockerhost:$DOCKERHOST'
 
