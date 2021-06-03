@@ -21,6 +21,8 @@ const {
   getDeployedAddress,
   bytes32,
   MAX_UINT256,
+  getStablecoinAddress,
+  getAggregatorAddress,
 } = require("../../utils/helpers");
 
 console.logDone = function () {
@@ -107,7 +109,7 @@ async function main(argv) {
     expect.to.fail();
   } catch (error) {
     expect(error.message).to.equal(
-      "VM Exception while processing transaction: revert Missing address"
+      "Error: VM Exception while processing transaction: revert Missing address"
     );
   }
   try {
@@ -115,7 +117,7 @@ async function main(argv) {
     expect.to.fail();
   } catch (error) {
     expect(error.message).to.equal(
-      "VM Exception while processing transaction: revert Missing address"
+      "Error: VM Exception while processing transaction: revert Missing address"
     );
   }
   expect(await addressRegistry.mAptAddress()).to.equal(mApt.address);
@@ -129,7 +131,6 @@ async function main(argv) {
   expect(await addressRegistry.chainlinkRegistryAddress()).to.equal(
     tvlManager.address
   );
-  // TODO
   expect(await addressRegistry.oracleAdapterAddress()).to.equal(
     oracleAdapter.address
   );
@@ -139,13 +140,24 @@ async function main(argv) {
   expect(await mApt.addressRegistry()).to.equal(addressRegistry.address);
   console.logDone();
 
-  // TODO
-  console.log("Check oracle adapter set on mAPT ...");
-  expect(await mApt.oracleAdapter()).to.equal(oracleAdapter.address);
+  console.log("Check address registry set on oracle adapter ...");
+  expect(await oracleAdapter.addressRegistry()).to.equal(
+    addressRegistry.address
+  );
   console.logDone();
 
   console.log("Check address registry set on pool manager ...");
   expect(await poolManager.addressRegistry()).to.equal(addressRegistry.address);
+  console.logDone();
+
+  console.log("Check sources set on oracle adapter ...");
+  for (const symbol of ["DAI", "USDC", "USDT"]) {
+    const asset = getStablecoinAddress(symbol, networkName);
+    const source = getAggregatorAddress(`${symbol}-USD`, networkName);
+    expect(await oracleAdapter.assetSources(asset)).to.equal(source);
+  }
+  const tvlSource = getAggregatorAddress("TVL", "MAINNET");
+  expect(await oracleAdapter.tvlSource()).to.equal(tvlSource);
   console.logDone();
 
   console.log("Check pools upgrade ...");
@@ -157,8 +169,6 @@ async function main(argv) {
 
     // sanity-check; also checks if we are using V2 contracts
     expect(await pool.addressRegistry()).to.equal(addressRegistry.address);
-    // TODO
-    expect(await pool.oracleAdapter()).to.equal(oracleAdapter.address);
 
     // check pool manager allowances
     const underlyerAddress = await pool.underlyer();

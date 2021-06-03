@@ -7,12 +7,7 @@ const hre = require("hardhat");
 const { ethers, network } = hre;
 const { BigNumber } = ethers;
 const chalk = require("chalk");
-const {
-  getGasPrice,
-  getDeployedAddress,
-  updateDeployJsons,
-} = require("../../utils/helpers");
-const { AGG_MAP } = require("../../utils/constants");
+const { getGasPrice, getDeployedAddress } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -48,6 +43,7 @@ async function main(argv) {
   console.log("Upgrading pools ...");
   console.log("");
 
+  let gasPrice = await getGasPrice(argv.gasPrice);
   let gasUsed = BigNumber.from("0");
 
   const proxyAdminAddress = getDeployedAddress(
@@ -64,19 +60,6 @@ async function main(argv) {
     "PoolTokenV2",
     poolDeployer
   );
-  let gasPrice = await getGasPrice(argv.gasPrice);
-  const logicV2 = await PoolTokenV2.connect(poolDeployer).deploy({
-    gasPrice,
-  });
-  console.log(
-    "Deploy:",
-    `https://etherscan.io/tx/${logicV2.deployTransaction.hash}`
-  );
-  let receipt = await logicV2.deployTransaction.wait();
-  console.log(`Pool logic V2: ${chalk.green(logicV2.address)}`);
-  console.log("");
-  gasUsed = gasUsed.add(receipt.gasUsed);
-
   const addressRegistryAddress = getDeployedAddress(
     "AddressRegistryProxy",
     networkName
@@ -86,7 +69,9 @@ async function main(argv) {
     [addressRegistryAddress]
   );
 
-  const deployData = {};
+  // logic v2 is deployed in the demo pools deployment script
+  const logicV2Address = getDeployedAddress("PoolTokenV2", networkName);
+
   for (const symbol of ["DAI", "USDC", "USDT"]) {
     const poolAddress = getDeployedAddress(
       symbol + "_PoolTokenProxy",
@@ -97,37 +82,10 @@ async function main(argv) {
     gasPrice = await getGasPrice(argv.gasPrice);
     const trx = await proxyAdmin
       .connect(poolDeployer)
-      .upgradeAndCall(poolAddress, logicV2.address, initData, { gasPrice });
+      .upgradeAndCall(poolAddress, logicV2Address, initData, { gasPrice });
     console.log("Upgrade:", `https://etherscan.io/tx/${trx.hash}`);
-    receipt = await trx.wait();
-    console.log("... pool upgraded.");
-    console.log("");
-    gasUsed = gasUsed.add(receipt.gasUsed);
-
-    deployData[symbol + "_PoolToken"] = logicV2.address;
-  }
-  updateDeployJsons(networkName, deployData);
-
-  console.log("");
-  console.log("Set USD aggs on pools ...");
-  console.log("");
-
-  for (const symbol of ["DAI", "USDC", "USDT"]) {
-    const poolAddress = getDeployedAddress(
-      symbol + "_PoolTokenProxy",
-      networkName
-    );
-    console.log(`${symbol} pool:`, chalk.green(poolAddress));
-    const gasPrice = await getGasPrice(argv.gasPrice);
-    const pool = await ethers.getContractAt(
-      "PoolTokenV2",
-      poolAddress,
-      poolDeployer
-    );
-    const aggAddress = AGG_MAP[networkName][`${symbol}-USD`];
-    const trx = await pool.setPriceAggregator(aggAddress, { gasPrice });
-    console.log("Set USD agg:", `https://etherscan.io/tx/${trx.hash}`);
     const receipt = await trx.wait();
+    console.log("... pool upgraded.");
     console.log("");
     gasUsed = gasUsed.add(receipt.gasUsed);
   }
@@ -161,16 +119,6 @@ async function main(argv) {
     gasUsed = gasUsed.add(receipt.gasUsed);
   }
   console.log("Total gas used:", gasUsed.toString());
-
-  if (["KOVAN", "MAINNET"].includes(networkName)) {
-    console.log("");
-    console.log("Verifying on Etherscan ...");
-    await ethers.provider.waitForTransaction(logicV2.deployTransaction.hash, 5); // wait for Etherscan to catch up
-    await hre.run("verify:verify", {
-      address: logicV2.address,
-    });
-    console.log("");
-  }
 }
 
 if (!module.parent) {

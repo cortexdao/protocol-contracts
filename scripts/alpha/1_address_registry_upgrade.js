@@ -83,7 +83,7 @@ async function main(argv) {
     addressRegistryDeployer
   );
 
-  let deploy_data = {};
+  let deployData = {};
   let gasUsed = BigNumber.from("0");
   let gasPrice = await getGasPrice(argv.gasPrice);
 
@@ -114,7 +114,7 @@ async function main(argv) {
     `https://etherscan.io/tx/${logic.deployTransaction.hash}`
   );
   receipt = await logic.deployTransaction.wait();
-  deploy_data["AddressRegistry"] = logic.address;
+  deployData["AddressRegistryV2"] = logic.address;
   console.log(`Implementation Logic: ${chalk.green(logic.address)}`);
   console.log("");
   gasUsed = gasUsed.add(receipt.gasUsed);
@@ -159,7 +159,7 @@ async function main(argv) {
   receipt = await trx.wait();
   gasUsed = gasUsed.add(receipt.gasUsed);
 
-  updateDeployJsons(networkName, deploy_data);
+  updateDeployJsons(networkName, deployData);
   console.log("Total gas used:", gasUsed.toString());
 
   if (["KOVAN", "MAINNET"].includes(networkName)) {
