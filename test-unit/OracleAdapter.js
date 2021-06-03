@@ -316,12 +316,12 @@ describe("Contract: OracleAdapter", () => {
 
     it("Revert when non-permissioned calls", async () => {
       await expect(
-        oracleAdapter.connect(randomUser).unlock()
+        oracleAdapter.connect(randomUser).lockFor(0)
       ).to.be.revertedWith("PERMISSIONED_ONLY");
     });
 
     it("Can unlock", async () => {
-      await oracleAdapter.connect(deployer).unlock();
+      await oracleAdapter.connect(deployer).lockFor(0);
       expect(await oracleAdapter.isLocked()).to.be.false;
     });
   });
