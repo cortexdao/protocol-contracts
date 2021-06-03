@@ -6,7 +6,7 @@ DOCKERHOST := $(shell ifconfig | grep -E "([0-9]{1,3}\.){3}[0-9]{1,3}" | grep -v
 
 # original name of repo is external-adapter-js
 CHAINLINK_REPO_FOLDER := "./chainlink-tvl-adapter"
-CHAINLINK_REPO_URL := "git@github.com:smartcontractkit/external-adapters-js.git"
+CHAINLINK_REPO_URL := "https://github.com/smartcontractkit/external-adapters-js.git"
 # Use our own repo for testing/audit until Chainlink updates their adaptor code
 # for the new IAssetAllocation changes.  If using this, should do a
 # `git checkout apy-finance-audit-testing` also.
