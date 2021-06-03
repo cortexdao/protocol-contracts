@@ -13,6 +13,7 @@ const {
   updateDeployJsons,
   getStablecoinAddress,
   getAggregatorAddress,
+  bytes32,
 } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
@@ -167,6 +168,35 @@ async function main(argv) {
     console.log("");
     gasUsed = gasUsed.add(receipt.gasUsed);
   }
+
+  console.log("");
+  console.log("Register addresses with Address Registry ...");
+  console.log("");
+  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
+  const addressRegistryDeployer = ethers.Wallet.fromMnemonic(
+    ADDRESS_REGISTRY_MNEMONIC
+  ).connect(ethers.provider);
+  const addressRegistry = await ethers.getContractAt(
+    "AddressRegistryV2",
+    addressRegistryAddress,
+    addressRegistryDeployer
+  );
+
+  for (const symbol of ["DAI", "USDC", "USDT"]) {
+    gasPrice = await getGasPrice(argv.gasPrice);
+    const poolId = bytes32(symbol.toLowerCase() + "DemoPool");
+    const poolAddress = getDeployedAddress(
+      `Demo_${symbol}_PoolTokenProxy`,
+      networkName
+    );
+    let trx = await addressRegistry.registerAddress(poolId, poolAddress, {
+      gasPrice,
+    });
+    console.log("Register address:", `https://etherscan.io/tx/${trx.hash}`);
+    receipt = await trx.wait();
+    console.log("");
+  }
+
   console.log("Total gas used:", gasUsed.toString());
 
   if (["KOVAN", "MAINNET"].includes(networkName)) {

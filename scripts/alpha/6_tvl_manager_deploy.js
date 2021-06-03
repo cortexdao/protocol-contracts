@@ -97,7 +97,7 @@ async function main(argv) {
     ADDRESS_REGISTRY_MNEMONIC
   ).connect(ethers.provider);
   const addressRegistry = await ethers.getContractAt(
-    "AddressRegistry",
+    "AddressRegistryV2",
     addressRegistryAddress,
     addressRegistryDeployer
   );

@@ -160,8 +160,10 @@ async function main(argv) {
   expect(await oracleAdapter.tvlSource()).to.equal(tvlSource);
   console.logDone();
 
-  console.log("Check pools upgrade ...");
-  for (let poolId of ["daiPool", "usdcPool", "usdtPool"]) {
+  console.log("Check demo pools ...");
+  for (let poolId of ["daiDemoPool", "usdcDemoPool", "usdtDemoPool"]) {
+    // console.log("Check pools upgrade ...");
+    // for (let poolId of ["daiPool", "usdcPool", "usdtPool"]) {
     console.log("- " + poolId);
     poolId = bytes32(poolId);
     const poolAddress = await addressRegistry.getAddress(poolId);
