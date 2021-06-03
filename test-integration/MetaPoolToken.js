@@ -87,6 +87,7 @@ describe("Contract: MetaPoolToken", () => {
       tvlAgg.address,
       [],
       [],
+      86400,
       86400
     );
     await oracleAdapter.deployed();
@@ -139,7 +140,7 @@ describe("Contract: MetaPoolToken", () => {
       await tvlAgg.connect(oracle).submit(1, tvl);
 
       const expectedEthValue = tvl.mul(balance).div(totalSupply);
-      await oracleAdapter.setLock(0);
+      await oracleAdapter.lockFor(0);
       expect(await mApt.getDeployedValue(FAKE_ADDRESS)).to.equal(
         expectedEthValue
       );
@@ -157,9 +158,9 @@ describe("Contract: MetaPoolToken", () => {
         .mint(randomUser.address, tokenAmountToBigNumber(100));
 
       // manually set TVL to zero
-      await oracleAdapter.setLock(100);
+      await oracleAdapter.lockFor(100);
       await oracleAdapter.setTvl(0, 100);
-      await oracleAdapter.setLock(0);
+      await oracleAdapter.lockFor(0);
 
       const mintAmount = await mApt.calculateMintAmount(
         usdcAmount,
@@ -197,7 +198,7 @@ describe("Contract: MetaPoolToken", () => {
       const totalSupply = tokenAmountToBigNumber(21);
       await mApt.connect(manager).mint(randomUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
-      await oracleAdapter.setLock(0);
+      await oracleAdapter.lockFor(0);
 
       let mintAmount = await mApt.calculateMintAmount(
         usdcAmount,
@@ -225,7 +226,7 @@ describe("Contract: MetaPoolToken", () => {
       const totalSupply = tokenAmountToBigNumber(21);
       await mApt.connect(manager).mint(randomUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
-      await oracleAdapter.setLock(0);
+      await oracleAdapter.lockFor(0);
 
       let poolAmount = await mApt.calculatePoolAmount(
         totalSupply,
@@ -262,7 +263,7 @@ describe("Contract: MetaPoolToken", () => {
       let expectedPoolAmount = expectedPoolValue.mul(usdc(1)).div(usdcUsdPrice);
       await mApt.connect(manager).mint(randomUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
-      await oracleAdapter.setLock(0);
+      await oracleAdapter.lockFor(0);
 
       let poolAmount = await mApt.calculatePoolAmount(
         mAptAmount,
