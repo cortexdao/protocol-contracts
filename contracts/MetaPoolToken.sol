@@ -144,7 +144,7 @@ contract MetaPoolToken is
     function mint(address account, uint256 amount) public override onlyManager {
         require(amount > 0, "INVALID_MINT_AMOUNT");
         IOracleAdapter oracleAdapter = _getOracleAdapter();
-        oracleAdapter.setLock(DEFAULT_LOCK_PERIOD);
+        oracleAdapter.lockFor(DEFAULT_LOCK_PERIOD);
         _mint(account, amount);
         emit Mint(account, amount);
     }
@@ -158,7 +158,7 @@ contract MetaPoolToken is
     function burn(address account, uint256 amount) public override onlyManager {
         require(amount > 0, "INVALID_BURN_AMOUNT");
         IOracleAdapter oracleAdapter = _getOracleAdapter();
-        oracleAdapter.setLock(DEFAULT_LOCK_PERIOD);
+        oracleAdapter.lockFor(DEFAULT_LOCK_PERIOD);
         _burn(account, amount);
         emit Burn(account, amount);
     }

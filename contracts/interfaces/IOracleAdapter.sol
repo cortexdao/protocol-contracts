@@ -15,7 +15,15 @@ interface IOracleAdapter {
         uint256 period
     ) external;
 
-    function setLock(uint256 period) external;
+    function lock() external;
+
+    function defaultLockPeriod() external returns (uint256 period);
+
+    function setDefaultLockPeriod(uint256 period) external;
+
+    function lockFor(uint256 period) external;
+
+    function unlock() external;
 
     function getAssetPrice(address asset) external view returns (uint256);
 

@@ -52,6 +52,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
 
     IAddressRegistryV2 public addressRegistry;
 
+    uint256 public override defaultLockPeriod;
     /// @notice Contract is locked until this block number is passed
     uint256 public lockEnd;
 
@@ -103,15 +104,29 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         address tvlSource,
         address[] memory assets,
         address[] memory sources,
-        uint256 _chainlinkStalePeriod
+        uint256 _chainlinkStalePeriod,
+        uint256 _defaultLockPeriod
     ) public {
         setAddressRegistry(_addressRegistry);
         setTvlSource(tvlSource);
         setAssetSources(assets, sources);
         setChainlinkStalePeriod(_chainlinkStalePeriod);
+        setDefaultLockPeriod(_defaultLockPeriod);
     }
 
-    function setLock(uint256 activePeriod) external override onlyPermissioned {
+    function setDefaultLockPeriod(uint256 newPeriod) public override onlyOwner {
+        defaultLockPeriod = newPeriod;
+    }
+
+    function lock() external override onlyOwner {
+        lockEnd = block.number.add(defaultLockPeriod);
+    }
+
+    function unlock() external override onlyOwner {
+        lockEnd = block.number;
+    }
+
+    function lockFor(uint256 activePeriod) external override onlyPermissioned {
         lockEnd = block.number.add(activePeriod);
     }
 
