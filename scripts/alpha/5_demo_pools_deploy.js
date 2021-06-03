@@ -51,23 +51,7 @@ async function main(argv) {
 
   let gasUsed = BigNumber.from("0");
 
-  const proxyAdminAddress = getDeployedAddress(
-    "PoolTokenProxyAdmin",
-    networkName
-  );
-  const proxyAdmin = await ethers.getContractAt(
-    "ProxyAdmin",
-    proxyAdminAddress,
-    poolDeployer
-  );
-
-  const logicAddress = getDeployedAddress("DAI_PoolToken", networkName);
-
-  const PoolTokenProxy = await ethers.getContractFactory(
-    "PoolTokenProxy",
-    poolDeployer
-  );
-
+  /* deploy logic v2 contract */
   const PoolTokenV2 = await ethers.getContractFactory(
     "PoolTokenV2",
     poolDeployer
@@ -85,8 +69,29 @@ async function main(argv) {
   console.log("");
   gasUsed = gasUsed.add(receipt.gasUsed);
 
-  const deployData = {};
-  deployData["PoolTokenV2"] = logicV2.address;
+  const deployData = {
+    PoolTokenV2: logicV2.address,
+  };
+  updateDeployJsons(networkName, deployData);
+
+  /* proxy deploy setup */
+  const proxyAdminAddress = getDeployedAddress(
+    "PoolTokenProxyAdmin",
+    networkName
+  );
+  const proxyAdmin = await ethers.getContractAt(
+    "ProxyAdmin",
+    proxyAdminAddress,
+    poolDeployer
+  );
+
+  // V1 pools all use same logic contract
+  const logicAddress = getDeployedAddress("DAI_PoolToken", networkName);
+
+  const PoolTokenProxy = await ethers.getContractFactory(
+    "PoolTokenProxy",
+    poolDeployer
+  );
 
   const addressRegistryAddress = getDeployedAddress(
     "AddressRegistryProxy",
@@ -108,7 +113,7 @@ async function main(argv) {
       { gasPrice }
     );
     console.log(
-      "Deploy:",
+      "Deploy V1:",
       `https://etherscan.io/tx/${proxy.deployTransaction.hash}`
     );
     receipt = await proxy.deployTransaction.wait();
@@ -124,7 +129,7 @@ async function main(argv) {
     const trx = await proxyAdmin
       .connect(poolDeployer)
       .upgradeAndCall(proxy.address, logicV2.address, initData, { gasPrice });
-    console.log("Upgrade:", `https://etherscan.io/tx/${trx.hash}`);
+    console.log("Upgrade to V2:", `https://etherscan.io/tx/${trx.hash}`);
     receipt = await trx.wait();
     console.log("... pool upgraded.");
     console.log("");
