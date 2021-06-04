@@ -10,7 +10,7 @@ const {
   bytes32,
 } = require("../utils/helpers");
 
-describe.only("Contract: TVLManager", () => {
+describe("Contract: TVLManager", () => {
   // signers
   let deployer;
   let addressRegistry;
