@@ -56,9 +56,7 @@ describe("Contract: TVLManager", () => {
       oracleAdapter.address
     );
 
-    console.log("what");
     await oracleAdapter.mock.lock.returns();
-    console.log("what");
 
     TVLManager = await ethers.getContractFactory("TVLManager");
 
