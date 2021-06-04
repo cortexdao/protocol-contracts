@@ -69,7 +69,8 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
         _allocationData[dataHash] = data;
         _allocationSymbols[dataHash] = symbol;
         _allocationDecimals[dataHash] = decimals;
-        IOracleAdapter oracleAdapter = addressRegistry.oracleAdapterAddress();
+        IOracleAdapter oracleAdapter =
+            IOracleAdapter(addressRegistry.oracleAdapterAddress());
         oracleAdapter.lock();
     }
 
@@ -87,7 +88,8 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
         delete _allocationData[dataHash];
         delete _allocationSymbols[dataHash];
         delete _allocationDecimals[dataHash];
-        IOracleAdapter oracleAdapter = addressRegistry.oracleAdapterAddress();
+        IOracleAdapter oracleAdapter =
+            IOracleAdapter(addressRegistry.oracleAdapterAddress());
         oracleAdapter.lock();
     }
 

@@ -10,12 +10,13 @@ const {
   bytes32,
 } = require("../utils/helpers");
 
-describe("Contract: TVLManager", () => {
+describe.only("Contract: TVLManager", () => {
   // signers
   let deployer;
   let addressRegistry;
   let poolManager;
   let lpSafe;
+  let oracleAdapter;
   let randomUser;
 
   // contract factories
@@ -43,8 +44,21 @@ describe("Contract: TVLManager", () => {
       deployer,
       artifacts.require("IAddressRegistryV2").abi
     );
+
+    oracleAdapter = await deployMockContract(
+      deployer,
+      artifacts.require("IOracleAdapter").abi
+    );
+
     await addressRegistry.mock.poolManagerAddress.returns(poolManager.address);
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistry.mock.oracleAdapterAddress.returns(
+      oracleAdapter.address
+    );
+
+    console.log("what");
+    await oracleAdapter.mock.lock.returns();
+    console.log("what");
 
     TVLManager = await ethers.getContractFactory("TVLManager");
 
