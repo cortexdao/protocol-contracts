@@ -394,6 +394,8 @@ describe("Contract: PoolManager", () => {
       const usdcPoolBalance = await usdcToken.balanceOf(usdcPool.address);
       const usdtPoolBalance = await usdtToken.balanceOf(usdtPool.address);
 
+      await oracleAdapter.unlock();
+
       await poolManager.fundLpSafe([
         { poolId: bytes32("daiPool"), amount: daiAmount },
         { poolId: bytes32("usdcPool"), amount: usdcAmount },
