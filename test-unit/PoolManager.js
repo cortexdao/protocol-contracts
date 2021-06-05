@@ -3,7 +3,6 @@ const hre = require("hardhat");
 const { artifacts, ethers } = hre;
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
 const timeMachine = require("ganache-time-traveler");
-const { bytes32 } = require("../utils/helpers");
 const { FAKE_ADDRESS } = require("../utils/helpers");
 const { deployMockContract } = require("@ethereum-waffle/mock-contract");
 
@@ -82,40 +81,6 @@ describe("Contract: PoolManager", () => {
       const contract = await deployMockContract(deployer, []);
       await poolManager.connect(deployer).setAddressRegistry(contract.address);
       expect(await poolManager.addressRegistry()).to.equal(contract.address);
-    });
-  });
-
-  describe("Setting pool IDs", () => {
-    it("Owner can set pool IDs", async () => {
-      const poolIds = [bytes32("pool1"), bytes32("pool2")];
-      await expect(poolManager.connect(deployer).setPoolIds(poolIds)).to.not.be
-        .reverted;
-      expect(await poolManager.getPoolIds()).to.have.members(poolIds);
-      expect(await poolManager.getPoolIds()).to.have.lengthOf(poolIds.length);
-    });
-
-    it("Non-owner cannot set", async () => {
-      const poolIds = [bytes32("pool1"), bytes32("pool2")];
-      await expect(poolManager.connect(randomUser).setPoolIds(poolIds)).to.be
-        .reverted;
-    });
-  });
-
-  describe("Delete pool IDs", () => {
-    beforeEach(async () => {
-      const poolIds = [bytes32("pool1"), bytes32("pool2")];
-      await poolManager.connect(deployer).setPoolIds(poolIds);
-    });
-
-    it("Owner can delete pool IDs", async () => {
-      await expect(poolManager.connect(deployer).deletePoolIds()).to.not.be
-        .reverted;
-      expect(await poolManager.getPoolIds()).to.have.lengthOf(0);
-    });
-
-    it("Non-owner cannot delete", async () => {
-      await expect(poolManager.connect(randomUser).deletePoolIds()).to.be
-        .reverted;
     });
   });
 
