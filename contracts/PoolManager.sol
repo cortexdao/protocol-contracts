@@ -40,7 +40,6 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, ILpSafeFunder {
     /* ------------------------------- */
     address public proxyAdmin;
     IAddressRegistryV2 public addressRegistry;
-    bytes32[] internal _poolIds;
 
     /* ------------------------------- */
 
@@ -73,7 +72,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, ILpSafeFunder {
 
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
-        _setAddressRegistry(_addressRegistry);
+        setAddressRegistry(_addressRegistry);
     }
 
     /**
@@ -116,10 +115,6 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, ILpSafeFunder {
      * @param _addressRegistry the address of the registry
      */
     function setAddressRegistry(address _addressRegistry) public onlyOwner {
-        _setAddressRegistry(_addressRegistry);
-    }
-
-    function _setAddressRegistry(address _addressRegistry) internal {
         require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(_addressRegistry);
     }
@@ -310,30 +305,5 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, ILpSafeFunder {
         for (uint256 i = 0; i < pools.length; i++) {
             mApt.burn(address(pools[i]), burnAmounts[i]);
         }
-    }
-
-    /**
-     * @notice Returns a list of all the pool ids
-     * @return bytes32 list of pool ids
-     */
-    function getPoolIds() public view returns (bytes32[] memory) {
-        return _poolIds;
-    }
-
-    /**
-     * @notice Sets a list of pool ids
-     * @dev only callable by owner; overwrites prior list of pool ids
-     * @param poolIds the new list of pool ids
-     */
-    function setPoolIds(bytes32[] memory poolIds) public onlyOwner {
-        _poolIds = poolIds;
-    }
-
-    /**
-     * @notice Removes the list of pool ids
-     * @dev only callable by owner; removes all pool ids
-     */
-    function deletePoolIds() external onlyOwner {
-        delete _poolIds;
     }
 }
