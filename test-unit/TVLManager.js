@@ -16,6 +16,7 @@ describe("Contract: TVLManager", () => {
   let addressRegistry;
   let poolManager;
   let lpSafe;
+  let oracleAdapter;
   let randomUser;
 
   // contract factories
@@ -43,8 +44,19 @@ describe("Contract: TVLManager", () => {
       deployer,
       artifacts.require("IAddressRegistryV2").abi
     );
+
+    oracleAdapter = await deployMockContract(
+      deployer,
+      artifacts.require("IOracleAdapter").abi
+    );
+
     await addressRegistry.mock.poolManagerAddress.returns(poolManager.address);
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistry.mock.oracleAdapterAddress.returns(
+      oracleAdapter.address
+    );
+
+    await oracleAdapter.mock.lock.returns();
 
     TVLManager = await ethers.getContractFactory("TVLManager");
 

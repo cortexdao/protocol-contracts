@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "./utils/EnumerableSet.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/ITVLManager.sol";
+import "./interfaces/IOracleAdapter.sol";
 import "./interfaces/IAddressRegistryV2.sol";
 
 /// @title TVL Manager
@@ -51,6 +52,12 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
         _;
     }
 
+    function lockOracleAdapter() internal {
+        IOracleAdapter oracleAdapter =
+            IOracleAdapter(addressRegistry.oracleAdapterAddress());
+        oracleAdapter.lock();
+    }
+
     /// @notice Registers a new asset allocation
     /// @dev only permissed accounts can call.
     /// New ids are uniquely determined by the provided data struct; no duplicates are allowed
@@ -68,6 +75,7 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
         _allocationData[dataHash] = data;
         _allocationSymbols[dataHash] = symbol;
         _allocationDecimals[dataHash] = decimals;
+        lockOracleAdapter();
     }
 
     /// @notice Removes an existing asset allocation
@@ -84,6 +92,7 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
         delete _allocationData[dataHash];
         delete _allocationSymbols[dataHash];
         delete _allocationDecimals[dataHash];
+        lockOracleAdapter();
     }
 
     /// @notice Generates a data hash used for uniquely identifying asset allocations

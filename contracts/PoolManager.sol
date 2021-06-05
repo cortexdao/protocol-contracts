@@ -144,8 +144,8 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, ILpSafeFunder {
         require(lpSafeAddress != address(0), "INVALID_LP_SAFE");
         (PoolTokenV2[] memory pools, uint256[] memory amounts) =
             _getPoolsAndAmounts(poolAmounts);
-        _registerPoolUnderlyers(lpSafeAddress, pools);
         _fund(lpSafeAddress, pools, amounts);
+        _registerPoolUnderlyers(lpSafeAddress, pools);
     }
 
     function _getPoolsAndAmounts(ILpSafeFunder.PoolAmount[] memory poolAmounts)

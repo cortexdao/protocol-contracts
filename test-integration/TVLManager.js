@@ -1,5 +1,5 @@
 const hre = require("hardhat");
-const { ethers, waffle } = hre;
+const { ethers, waffle, artifacts } = hre;
 const { deployMockContract } = waffle;
 const { expect } = require("chai");
 const timeMachine = require("ganache-time-traveler");
@@ -51,7 +51,21 @@ describe("Contract: TVLManager", () => {
   before(async () => {
     [deployer, lpSafe] = await ethers.getSigners();
 
-    const addressRegistry = await deployMockContract(deployer, []);
+    const addressRegistry = await deployMockContract(
+      deployer,
+      artifacts.require("IAddressRegistryV2").abi
+    );
+
+    const oracleAdapter = await deployMockContract(
+      deployer,
+      artifacts.require("IOracleAdapter").abi
+    );
+
+    await oracleAdapter.mock.lock.returns();
+
+    await addressRegistry.mock.oracleAdapterAddress.returns(
+      oracleAdapter.address
+    );
 
     TVLManager = await ethers.getContractFactory("TVLManager");
     tvlManager = await TVLManager.deploy(addressRegistry.address);
