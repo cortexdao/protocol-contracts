@@ -17,7 +17,7 @@ const AddressRegistry = artifacts.require("IAddressRegistryV2");
 const MetaPoolToken = artifacts.require("MetaPoolToken");
 const OracleAdapter = artifacts.require("OracleAdapter");
 
-describe("Contract: PoolToken", () => {
+describe("Contract: PoolTokenV2", () => {
   // signers
   let deployer;
   let randomUser;
@@ -136,29 +136,41 @@ describe("Contract: PoolToken", () => {
 
   describe("Defaults", () => {
     it("Owner set to deployer", async () => {
-      assert.equal(await poolToken.owner(), deployer.address);
+      expect(await poolToken.owner()).to.equal(deployer.address);
     });
 
     it("DEFAULT_APT_TO_UNDERLYER_FACTOR set to correct value", async () => {
-      assert.equal(await poolToken.DEFAULT_APT_TO_UNDERLYER_FACTOR(), 1000);
+      expect(await poolToken.DEFAULT_APT_TO_UNDERLYER_FACTOR()).to.equal(1000);
     });
 
     it("Name set to correct value", async () => {
-      assert.equal(await poolToken.name(), "APY Pool Token");
+      expect(await poolToken.name()).to.equal("APY Pool Token");
     });
 
     it("Symbol set to correct value", async () => {
-      assert.equal(await poolToken.symbol(), "APT");
+      expect(await poolToken.symbol()).to.equal("APT");
     });
 
     it("Decimals set to correct value", async () => {
-      assert.equal(await poolToken.decimals(), 18);
+      expect(await poolToken.decimals()).to.equal(18);
     });
 
     it("Block ether transfer", async () => {
       await expect(
         deployer.sendTransaction({ to: poolToken.address, value: "10" })
       ).to.be.reverted;
+    });
+
+    it("Underlyer is set correctly", async () => {
+      expect(await poolToken.underlyer()).to.equal(underlyerMock.address);
+    });
+
+    it("addLiquidity is unlocked", async () => {
+      expect(await poolToken.addLiquidityLock()).to.equal(false);
+    });
+
+    it("redeem is unlocked", async () => {
+      expect(await poolToken.redeemLock()).to.equal(false);
     });
 
     it("feePeriod set to correct value", async () => {
@@ -184,6 +196,29 @@ describe("Contract: PoolToken", () => {
     it("Revert when non-owner attempts to set address", async () => {
       await expect(
         poolToken.connect(randomUser).setAdminAddress(FAKE_ADDRESS)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
+
+  describe("Set address registry", () => {
+    it("Owner can set", async () => {
+      const dummyContract = await deployMockContract(deployer, []);
+      await poolToken
+        .connect(deployer)
+        .setAddressRegistry(dummyContract.address);
+      assert.equal(await poolToken.addressRegistry(), dummyContract.address);
+    });
+
+    it("Revert on non-contract address", async () => {
+      await expect(
+        poolToken.connect(deployer).setAddressRegistry(FAKE_ADDRESS)
+      ).to.be.revertedWith("INVALID_ADDRESS");
+    });
+
+    it("Revert when non-owner attempts to set", async () => {
+      const dummyContract = await deployMockContract(deployer, []);
+      await expect(
+        poolToken.connect(randomUser).setAddressRegistry(dummyContract.address)
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
@@ -660,20 +695,36 @@ describe("Contract: PoolToken", () => {
       await mAptMock.mock.getDeployedValue.returns(0);
     });
 
-    it("Test getUnderlyerAmount when divide by zero", async () => {
+    it("Revert on zero total supply", async () => {
+      expect(await poolToken.totalSupply()).to.equal(0);
       await expect(poolToken.getUnderlyerAmount(100)).to.be.revertedWith(
         "INSUFFICIENT_TOTAL_SUPPLY"
       );
     });
 
-    it("Test getUnderlyerAmount returns expected amount", async () => {
-      await underlyerMock.mock.balanceOf.returns("1");
-      await underlyerMock.mock.decimals.returns("1");
-      await oracleAdapterMock.mock.getAssetPrice.returns(10);
+    it("Always return zero on zero input", async () => {
+      expect(await poolToken.totalSupply()).to.equal(0);
+      expect(await poolToken.getUnderlyerAmount(0)).to.equal(0);
+    });
 
-      await poolToken.mint(randomUser.address, 1);
-      const underlyerAmount = await poolToken.getUnderlyerAmount("1");
-      expect(underlyerAmount).to.equal("1");
+    it("Returns expected amount", async () => {
+      const decimals = 6;
+      const underlyerBalance = tokenAmountToBigNumber(250, decimals);
+      await underlyerMock.mock.balanceOf.returns(underlyerBalance);
+      await underlyerMock.mock.decimals.returns(decimals);
+      await oracleAdapterMock.mock.getAssetPrice.returns(
+        tokenAmountToBigNumber("1.02", 8)
+      );
+
+      const aptAmount = tokenAmountToBigNumber(1, 18);
+      await poolToken.mint(randomUser.address, aptAmount);
+      const totalSupply = await poolToken.totalSupply();
+      const underlyerAmount = await poolToken.getUnderlyerAmount(aptAmount);
+
+      // deployed value is zero so total value is only from underlyer, so after
+      // price conversion result is just the APT share of underlyer balance
+      const expectedAmount = underlyerBalance.mul(aptAmount).div(totalSupply);
+      expect(underlyerAmount).to.equal(expectedAmount);
     });
   });
 
