@@ -1,3 +1,3 @@
 module.exports = {
-  skipFiles: ["interfaces", "testing", "utils"],
+  skipFiles: ["testing", "utils", "AddressRegistry.sol", "PoolToken.sol"],
 };
