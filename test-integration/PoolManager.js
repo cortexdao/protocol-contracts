@@ -903,4 +903,88 @@ describe("Contract: PoolManager", () => {
       );
     });
   });
+
+  describe("Withdrawing after funding", () => {
+    // standard amounts we use in our tests
+    const dollars = 100;
+    const daiAmount = tokenAmountToBigNumber(dollars, 18);
+    const usdcAmount = tokenAmountToBigNumber(dollars, 6);
+    const usdtAmount = tokenAmountToBigNumber(dollars, 6);
+
+    /** manager needs to be approved to transfer tokens from funded account */
+    before("Approve manager for transfer from funded account", async () => {
+      await daiToken.connect(lpSafe).approve(poolManager.address, daiAmount);
+      await usdcToken.connect(lpSafe).approve(poolManager.address, usdcAmount);
+      await usdtToken.connect(lpSafe).approve(poolManager.address, usdtAmount);
+    });
+
+    it("Full withdrawal reverts if TVL not updated", async () => {
+      let totalTransferred = tokenAmountToBigNumber(0, 18);
+      let transferAmount = daiAmount.div(2);
+      await poolManager.fundLpSafe([
+        { poolId: bytes32("daiPool"), amount: transferAmount },
+      ]);
+      totalTransferred = totalTransferred.add(transferAmount);
+
+      // adjust the tvl appropriately, as there is no chainlink to update it
+      await oracleAdapter.unlock(); // needed to get value
+      let tvl = await daiPool.getValueFromUnderlyerAmount(transferAmount);
+      await oracleAdapter.lock();
+      await oracleAdapter.setTvl(tvl, 100);
+      await oracleAdapter.unlock();
+
+      transferAmount = daiAmount.div(3);
+      await poolManager.fundLpSafe([
+        { poolId: bytes32("daiPool"), amount: transferAmount },
+      ]);
+      await oracleAdapter.unlock();
+      totalTransferred = totalTransferred.add(transferAmount);
+
+      await expect(
+        poolManager.withdrawFromLpSafe([
+          { poolId: bytes32("daiPool"), amount: totalTransferred },
+        ])
+      ).to.be.revertedWith("ERC20: burn amount exceeds balance");
+    });
+
+    it("Full withdrawal works if TVL updated", async () => {
+      expect(await mApt.balanceOf(daiPool.address)).to.equal(0);
+      const poolBalance = await daiToken.balanceOf(daiPool.address);
+
+      let totalTransferred = tokenAmountToBigNumber(0, 18);
+      let transferAmount = daiAmount.div(2);
+      await poolManager.fundLpSafe([
+        { poolId: bytes32("daiPool"), amount: transferAmount },
+      ]);
+      totalTransferred = totalTransferred.add(transferAmount);
+
+      // adjust the tvl appropriately, as there is no chainlink to update it
+      await oracleAdapter.unlock(); // needed to get value
+      let tvl = await daiPool.getValueFromUnderlyerAmount(totalTransferred);
+      await oracleAdapter.lock();
+      await oracleAdapter.setTvl(tvl, 100);
+      await oracleAdapter.unlock();
+
+      transferAmount = daiAmount.div(3);
+      await poolManager.fundLpSafe([
+        { poolId: bytes32("daiPool"), amount: transferAmount },
+      ]);
+      await oracleAdapter.unlock();
+      totalTransferred = totalTransferred.add(transferAmount);
+
+      // adjust the tvl appropriately, as there is no chainlink to update it
+      await oracleAdapter.unlock(); // needed to get value
+      tvl = await daiPool.getValueFromUnderlyerAmount(totalTransferred);
+      await oracleAdapter.lock();
+      await oracleAdapter.setTvl(tvl, 100);
+      await oracleAdapter.unlock();
+
+      await poolManager.withdrawFromLpSafe([
+        { poolId: bytes32("daiPool"), amount: totalTransferred },
+      ]);
+
+      expect(await mApt.balanceOf(daiPool.address)).to.equal(0);
+      expect(await daiToken.balanceOf(daiPool.address)).to.equal(poolBalance);
+    });
+  });
 });
