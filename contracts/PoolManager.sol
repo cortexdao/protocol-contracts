@@ -106,9 +106,6 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, ILpSafeFunder {
         emit AdminChanged(adminAddress);
     }
 
-    /// @dev Allow contract to receive Ether.
-    receive() external payable {} // solhint-disable-line no-empty-blocks
-
     /**
      * @notice Sets the address registry
      * @dev only callable by owner
