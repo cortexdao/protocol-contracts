@@ -14,9 +14,13 @@ const { argv } = require("yargs").option("gasPrice", {
   description: "Gas price in gwei; omitting uses EthGasStation value",
 });
 const hre = require("hardhat");
-const { ethers, network } = require("hardhat");
+const { ethers, network } = hre;
 const chalk = require("chalk");
-const { getDeployedAddress, bytes32 } = require("../../utils/helpers");
+const {
+  getDeployedAddress,
+  bytes32,
+  getGasPrice,
+} = require("../../utils/helpers");
 
 console.logDone = function () {
   console.log("");
@@ -24,7 +28,6 @@ console.logDone = function () {
   console.log("");
 };
 
-// eslint-disable-next-line no-unused-vars
 async function main(argv) {
   await hre.run("compile");
   const networkName = network.name.toUpperCase();
@@ -52,7 +55,6 @@ async function main(argv) {
   const tvlManagerDeployer = ethers.Wallet.fromMnemonic(
     TVL_MANAGER_MNEMONIC
   ).connect(ethers.provider);
-  // TODO
   const ORACLE_ADAPTER_MNEMONIC = process.env.ORACLE_ADAPTER_MNEMONIC;
   const oracleAdapterDeployer = ethers.Wallet.fromMnemonic(
     ORACLE_ADAPTER_MNEMONIC
@@ -97,11 +99,45 @@ async function main(argv) {
 
   const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
 
-  await addressRegistry.transferOwnership(adminSafeAddress);
-  await mApt.transferOwnership(adminSafeAddress);
-  await poolManager.transferOwnership(adminSafeAddress);
-  await tvlManager.transferOwnership(adminSafeAddress);
-  await oracleAdapter.transferOwnership(adminSafeAddress);
+  console.log("Transferring ownerships ...");
+  console.log("");
+
+  let gasPrice = await getGasPrice(argv.gasPrice);
+  let trx = await addressRegistry.transferOwnership(adminSafeAddress, {
+    gasPrice,
+  });
+  console.log("Address Registry:", `https://etherscan.io/tx/${trx.hash}`);
+  console.log("");
+  let receipt = await trx.wait();
+  let gasUsed = receipt.gasUsed;
+
+  gasPrice = await getGasPrice(argv.gasPrice);
+  trx = await mApt.transferOwnership(adminSafeAddress, { gasPrice });
+  console.log("mAPT:", `https://etherscan.io/tx/${trx.hash}`);
+  console.log("");
+  receipt = await trx.wait();
+  gasUsed = gasUsed.add(receipt.gasUsed);
+
+  gasPrice = await getGasPrice(argv.gasPrice);
+  trx = await poolManager.transferOwnership(adminSafeAddress, { gasPrice });
+  console.log("Pool Manager:", `https://etherscan.io/tx/${trx.hash}`);
+  console.log("");
+  receipt = await trx.wait();
+  gasUsed = gasUsed.add(receipt.gasUsed);
+
+  gasPrice = await getGasPrice(argv.gasPrice);
+  trx = await tvlManager.transferOwnership(adminSafeAddress, { gasPrice });
+  console.log("TVL Manager:", `https://etherscan.io/tx/${trx.hash}`);
+  console.log("");
+  receipt = await trx.wait();
+  gasUsed = gasUsed.add(receipt.gasUsed);
+
+  gasPrice = await getGasPrice(argv.gasPrice);
+  trx = await oracleAdapter.transferOwnership(adminSafeAddress, { gasPrice });
+  console.log("Oracle Adapter:", `https://etherscan.io/tx/${trx.hash}`);
+  console.log("");
+  receipt = await trx.wait();
+  gasUsed = gasUsed.add(receipt.gasUsed);
 
   for (let poolId of ["daiDemoPool", "usdcDemoPool", "usdtDemoPool"]) {
     console.log("- " + poolId);
@@ -112,9 +148,12 @@ async function main(argv) {
       poolAddress,
       poolDeployer
     );
-    await pool.transferOwnership(adminSafeAddress);
+    gasPrice = await getGasPrice(argv.gasPrice);
+    await pool.transferOwnership(adminSafeAddress, { gasPrice });
   }
   console.logDone();
+
+  console.log("Total gas used:", gasUsed.toString());
 }
 
 if (!module.parent) {
