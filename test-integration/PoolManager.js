@@ -35,7 +35,7 @@ const APY_USDT_POOL = "0xeA9c5a2717D5Ab75afaAC340151e73a7e37d99A7";
 console.debugging = false;
 /* ************************ */
 
-describe.only("Contract: PoolManager", () => {
+describe("Contract: PoolManager", () => {
   // to-be-deployed contracts
   let poolManager;
   let tvlManager;
@@ -548,9 +548,15 @@ describe.only("Contract: PoolManager", () => {
       await poolManager.fundLpSafe([
         { poolId: bytes32("daiPool"), amount: daiAmount },
       ]);
-      await oracleAdapter.unlock();
       expect(await daiToken.balanceOf(lpSafeAddress)).to.be.gt(0);
       expect(await mApt.totalSupply()).to.be.gt(0);
+
+      // adjust the TVL appropriately, as there is no Chainlink to update it
+      await oracleAdapter.unlock(); // needed to get value
+      const tvl = await daiPool.getValueFromUnderlyerAmount(daiAmount);
+      await oracleAdapter.lock();
+      await oracleAdapter.setTvl(tvl, 100);
+      await oracleAdapter.unlock();
 
       /***********************************************/
       /* Test all balances are updated appropriately */
@@ -587,11 +593,20 @@ describe.only("Contract: PoolManager", () => {
         { poolId: bytes32("usdcPool"), amount: usdcAmount },
         { poolId: bytes32("usdtPool"), amount: usdtAmount },
       ]);
-      await oracleAdapter.unlock();
       expect(await daiToken.balanceOf(lpSafeAddress)).to.be.gt(0);
       expect(await usdcToken.balanceOf(lpSafeAddress)).to.be.gt(0);
       expect(await usdtToken.balanceOf(lpSafeAddress)).to.be.gt(0);
       expect(await mApt.totalSupply()).to.be.gt(0);
+
+      // adjust the TVL appropriately, as there is no Chainlink to update it
+      await oracleAdapter.unlock(); // needed to get value
+      const daiValue = await daiPool.getValueFromUnderlyerAmount(daiAmount);
+      const usdcValue = await usdcPool.getValueFromUnderlyerAmount(usdcAmount);
+      const usdtValue = await usdtPool.getValueFromUnderlyerAmount(usdtAmount);
+      const tvl = daiValue.add(usdcValue).add(usdtValue);
+      await oracleAdapter.lock();
+      await oracleAdapter.setTvl(tvl, 100);
+      await oracleAdapter.unlock();
 
       /***********************************************/
       /* Test all balances are updated appropriately */
@@ -740,9 +755,9 @@ describe.only("Contract: PoolManager", () => {
       await poolManager.fundLpSafe([
         { poolId: bytes32("daiPool"), amount: transferAmount },
       ]);
-      await oracleAdapter.unlock();
 
       // adjust the TVL appropriately, as there is no Chainlink to update it
+      await oracleAdapter.unlock(); // needed to get value
       const tvl = await daiPool.getValueFromUnderlyerAmount(transferAmount);
       await oracleAdapter.lock();
       await oracleAdapter.setTvl(tvl, 100);
@@ -781,9 +796,9 @@ describe.only("Contract: PoolManager", () => {
         { poolId: bytes32("usdcPool"), amount: usdcTransferAmount },
         { poolId: bytes32("usdtPool"), amount: usdtTransferAmount },
       ]);
-      await oracleAdapter.unlock();
 
       // adjust the TVL appropriately, as there is no Chainlink to update it
+      await oracleAdapter.unlock(); // needed to get value
       const daiValue = await daiPool.getValueFromUnderlyerAmount(
         daiTransferAmount
       );
