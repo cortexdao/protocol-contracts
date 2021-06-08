@@ -64,6 +64,12 @@ describe("Contract: PoolManager", () => {
   // use EVM snapshots for test isolation
   let snapshotId;
 
+  // standard amounts we use in our tests
+  const dollars = 100;
+  const daiAmount = tokenAmountToBigNumber(dollars, 18);
+  const usdcAmount = tokenAmountToBigNumber(dollars, 6);
+  const usdtAmount = tokenAmountToBigNumber(dollars, 6);
+
   beforeEach(async () => {
     const snapshot = await timeMachine.takeSnapshot();
     snapshotId = snapshot["result"];
@@ -71,6 +77,13 @@ describe("Contract: PoolManager", () => {
 
   afterEach(async () => {
     await timeMachine.revertToSnapshot(snapshotId);
+  });
+
+  /** manager needs to be approved to transfer tokens from funded account */
+  before("Approve manager for transfer from funded account", async () => {
+    await daiToken.connect(lpSafe).approve(poolManager.address, daiAmount);
+    await usdcToken.connect(lpSafe).approve(poolManager.address, usdcAmount);
+    await usdtToken.connect(lpSafe).approve(poolManager.address, usdtAmount);
   });
 
   before(async () => {
@@ -690,19 +703,6 @@ describe("Contract: PoolManager", () => {
   });
 
   describe("withdrawFromLpSafe", () => {
-    // standard amounts we use in our tests
-    const dollars = 100;
-    const daiAmount = tokenAmountToBigNumber(dollars, 18);
-    const usdcAmount = tokenAmountToBigNumber(dollars, 6);
-    const usdtAmount = tokenAmountToBigNumber(dollars, 6);
-
-    /** manager needs to be approved to transfer tokens from funded account */
-    before("Approve manager for transfer from funded account", async () => {
-      await daiToken.connect(lpSafe).approve(poolManager.address, daiAmount);
-      await usdcToken.connect(lpSafe).approve(poolManager.address, usdcAmount);
-      await usdtToken.connect(lpSafe).approve(poolManager.address, usdtAmount);
-    });
-
     it("Non-owner cannot call", async () => {
       await expect(
         poolManager.connect(randomUser).withdrawFromLpSafe([])
@@ -905,19 +905,6 @@ describe("Contract: PoolManager", () => {
   });
 
   describe("Withdrawing after funding", () => {
-    // standard amounts we use in our tests
-    const dollars = 100;
-    const daiAmount = tokenAmountToBigNumber(dollars, 18);
-    const usdcAmount = tokenAmountToBigNumber(dollars, 6);
-    const usdtAmount = tokenAmountToBigNumber(dollars, 6);
-
-    /** manager needs to be approved to transfer tokens from funded account */
-    before("Approve manager for transfer from funded account", async () => {
-      await daiToken.connect(lpSafe).approve(poolManager.address, daiAmount);
-      await usdcToken.connect(lpSafe).approve(poolManager.address, usdcAmount);
-      await usdtToken.connect(lpSafe).approve(poolManager.address, usdtAmount);
-    });
-
     it("Full withdrawal reverts if TVL not updated", async () => {
       let totalTransferred = tokenAmountToBigNumber(0, 18);
       let transferAmount = daiAmount.div(2);
