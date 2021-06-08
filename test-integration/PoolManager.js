@@ -79,13 +79,6 @@ describe("Contract: PoolManager", () => {
     await timeMachine.revertToSnapshot(snapshotId);
   });
 
-  /** manager needs to be approved to transfer tokens from funded account */
-  before("Approve manager for transfer from funded account", async () => {
-    await daiToken.connect(lpSafe).approve(poolManager.address, daiAmount);
-    await usdcToken.connect(lpSafe).approve(poolManager.address, usdcAmount);
-    await usdtToken.connect(lpSafe).approve(poolManager.address, usdtAmount);
-  });
-
   before(async () => {
     [deployer, lpSafe, randomUser] = await ethers.getSigners();
     lpSafeAddress = lpSafe.address;
@@ -328,6 +321,11 @@ describe("Contract: PoolManager", () => {
       "1000",
       deployer
     );
+
+    // manager needs to be approved to transfer tokens from funded account
+    await daiToken.connect(lpSafe).approve(poolManager.address, daiAmount);
+    await usdcToken.connect(lpSafe).approve(poolManager.address, usdcAmount);
+    await usdtToken.connect(lpSafe).approve(poolManager.address, usdtAmount);
   });
 
   async function getMintAmount(pool, underlyerAmount) {
