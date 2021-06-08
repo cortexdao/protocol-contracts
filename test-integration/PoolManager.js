@@ -341,13 +341,13 @@ describe("Contract: PoolManager", () => {
     let managerSigner;
 
     /** needed for the manager to be able to mint mAPT in test setups */
-    before.skip("Setup manager for sending transactions", async () => {
-      managerSigner = await impersonateAccount(poolManager);
-      await deployer.sendTransaction({
-        to: poolManager.address,
-        value: ethers.utils.parseEther("10").toHexString(),
-      });
-    });
+    // before("Setup manager for sending transactions", async () => {
+    //   managerSigner = await impersonateAccount(poolManager);
+    //   await deployer.sendTransaction({
+    //     to: poolManager.address,
+    //     value: ethers.utils.parseEther("10").toHexString(),
+    //   });
+    // });
 
     it("Non-owner cannot call", async () => {
       await expect(
@@ -561,14 +561,14 @@ describe("Contract: PoolManager", () => {
     });
 
     /** needed for the manager to be able to mint mAPT in test setups */
-    before.skip("Setup manager for sending transactions", async () => {
-      await impersonateAccount(poolManager);
-      await deployer.sendTransaction({
-        to: poolManager.address,
-        value: ethers.utils.parseEther("10").toHexString(),
-      });
-      managerSigner = await ethers.provider.getSigner(poolManager.address);
-    });
+    // before("Setup manager for sending transactions", async () => {
+    //   await impersonateAccount(poolManager);
+    //   await deployer.sendTransaction({
+    //     to: poolManager.address,
+    //     value: ethers.utils.parseEther("10").toHexString(),
+    //   });
+    //   managerSigner = await ethers.provider.getSigner(poolManager.address);
+    // });
 
     describe("withdrawFromLpSafe", () => {
       it("Non-owner cannot call", async () => {
