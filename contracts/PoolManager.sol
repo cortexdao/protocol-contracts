@@ -75,6 +75,7 @@ contract PoolManager is
         // initialize ancestor storage
         __Context_init_unchained();
         __Ownable_init_unchained();
+        __ReentrancyGuard_init_unchained();
 
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
