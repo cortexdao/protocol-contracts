@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAddressRegistryV2.sol";
 import "./interfaces/IDetailedERC20.sol";
@@ -31,7 +32,12 @@ import "./MetaPoolToken.sol";
  * When funding an account from a pool, the Pool Manager simultaneously register the asset
  * allocation with the TVL Manager to ensure the TVL is properly updated.
  */
-contract PoolManager is Initializable, OwnableUpgradeSafe, ILpSafeFunder {
+contract PoolManager is
+    Initializable,
+    OwnableUpgradeSafe,
+    ReentrancyGuardUpgradeSafe,
+    ILpSafeFunder
+{
     using SafeMath for uint256;
     using SafeERC20 for IDetailedERC20;
 
@@ -131,6 +137,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, ILpSafeFunder {
         external
         override
         onlyOwner
+        nonReentrant
     {
         address lpSafeAddress = addressRegistry.lpSafeAddress();
         require(lpSafeAddress != address(0), "INVALID_LP_SAFE");
@@ -238,6 +245,7 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, ILpSafeFunder {
         external
         override
         onlyOwner
+        nonReentrant
     {
         address lpSafeAddress = addressRegistry.lpSafeAddress();
         require(lpSafeAddress != address(0), "INVALID_LP_SAFE");
