@@ -39,28 +39,6 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
-  const addressRegistryDeployer = ethers.Wallet.fromMnemonic(
-    ADDRESS_REGISTRY_MNEMONIC
-  ).connect(ethers.provider);
-  const MAPT_MNEMONIC = process.env.MAPT_MNEMONIC;
-  const mAptDeployer = ethers.Wallet.fromMnemonic(MAPT_MNEMONIC).connect(
-    ethers.provider
-  );
-  const POOL_MANAGER_MNEMONIC = process.env.POOL_MANAGER_MNEMONIC;
-  const poolManagerDeployer = ethers.Wallet.fromMnemonic(
-    POOL_MANAGER_MNEMONIC
-  ).connect(ethers.provider);
-  const TVL_MANAGER_MNEMONIC = process.env.TVL_MANAGER_MNEMONIC;
-  const tvlManagerDeployer = ethers.Wallet.fromMnemonic(
-    TVL_MANAGER_MNEMONIC
-  ).connect(ethers.provider);
-  // TODO
-  const ORACLE_ADAPTER_MNEMONIC = process.env.ORACLE_ADAPTER_MNEMONIC;
-  const oracleAdapterDeployer = ethers.Wallet.fromMnemonic(
-    ORACLE_ADAPTER_MNEMONIC
-  ).connect(ethers.provider);
-
   const addressRegistryAddress = getDeployedAddress(
     "AddressRegistryProxy",
     networkName
@@ -92,15 +70,14 @@ async function main(argv) {
 
   const lpSafeAddress = getDeployedAddress("LpSafe", networkName);
 
+  const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
+
   console.log("Check owners ...");
-  expect(await addressRegistry.owner()).to.equal(
-    addressRegistryDeployer.address
-  );
-  expect(await mApt.owner()).to.equal(mAptDeployer.address);
-  expect(await poolManager.owner()).to.equal(poolManagerDeployer.address);
-  expect(await tvlManager.owner()).to.equal(tvlManagerDeployer.address);
-  // TODO
-  expect(await oracleAdapter.owner()).to.equal(oracleAdapterDeployer.address);
+  expect(await addressRegistry.owner()).to.equal(adminSafeAddress);
+  expect(await mApt.owner()).to.equal(adminSafeAddress);
+  expect(await poolManager.owner()).to.equal(adminSafeAddress);
+  expect(await tvlManager.owner()).to.equal(adminSafeAddress);
+  expect(await oracleAdapter.owner()).to.equal(adminSafeAddress);
   console.logDone();
 
   console.log("Check address registry addresses ...");
