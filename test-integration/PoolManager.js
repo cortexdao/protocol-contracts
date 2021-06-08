@@ -687,6 +687,7 @@ describe.only("Contract: PoolManager", () => {
       await usdcToken.connect(lpSafe).approve(poolManager.address, usdcAmount);
       await usdtToken.connect(lpSafe).approve(poolManager.address, usdtAmount);
     });
+
     it("Non-owner cannot call", async () => {
       await expect(
         poolManager.connect(randomUser).withdrawFromLpSafe([])
@@ -700,8 +701,9 @@ describe.only("Contract: PoolManager", () => {
 
     it("Revert on missing LP Safe address", async () => {
       await addressRegistry.deleteAddress(bytes32("lpSafe"));
-      await expect(poolManager.connect(deployer).withdrawFromLpSafe([])).to.be
-        .reverted;
+      await expect(
+        poolManager.connect(deployer).withdrawFromLpSafe([])
+      ).to.be.revertedWith("Missing address");
     });
 
     it("Revert on unregistered pool", async () => {
@@ -733,179 +735,157 @@ describe.only("Contract: PoolManager", () => {
       ).to.be.revertedWith("INSUFFICIENT_ALLOWANCE");
     });
 
-    it.skip("Transfers underlyer correctly for one pool", async () => {
-      const amount = tokenAmountToBigNumber("10", 18);
-      await daiToken.connect(deployer).transfer(lpSafeAddress, amount);
-      expect(await daiToken.balanceOf(lpSafeAddress)).to.equal(amount);
-
-      // now mint so withdraw can burn tokens
-      const mintAmount = await getMintAmount(daiPool, amount);
-      await mApt.connect(managerSigner).mint(daiPool.address, mintAmount);
+    it("Updates balances correctly (single pool)", async () => {
+      const transferAmount = tokenAmountToBigNumber("10", 18);
+      await poolManager.fundLpSafe([
+        { poolId: bytes32("daiPool"), amount: transferAmount },
+      ]);
       await oracleAdapter.unlock();
 
       // adjust the TVL appropriately, as there is no Chainlink to update it
-      const tvl = await daiPool.getValueFromUnderlyerAmount(amount);
-      await oracleAdapter.lockFor(10);
+      const tvl = await daiPool.getValueFromUnderlyerAmount(transferAmount);
+      await oracleAdapter.lock();
       await oracleAdapter.setTvl(tvl, 100);
       await oracleAdapter.unlock();
 
-      await poolManager.withdrawFromLpSafe([
-        { poolId: bytes32("daiPool"), amount: amount },
-      ]);
+      const prevSafeBalance = await daiToken.balanceOf(lpSafeAddress);
+      const prevPoolBalance = await daiToken.balanceOf(daiPool.address);
+      const prevMaptBalance = await mApt.balanceOf(daiPool.address);
 
-      expect(await daiToken.balanceOf(lpSafeAddress)).to.equal(0);
-    });
-
-    it.skip("Transfers and mints correctly for multiple pools (start from zero supply)", async () => {
-      expect(await mApt.totalSupply()).to.equal(0);
-      expect(await mApt.getTvl()).to.equal(0);
-
-      // now mint for each pool so withdraw can burn tokens
-      const daiPoolMintAmount = await getMintAmount(daiPool, daiAmount);
-      const usdcPoolMintAmount = await getMintAmount(usdcPool, usdcAmount);
-      const usdtPoolMintAmount = await getMintAmount(usdtPool, usdtAmount);
-
-      await mApt
-        .connect(managerSigner)
-        .mint(daiPool.address, daiPoolMintAmount);
-      await mApt
-        .connect(managerSigner)
-        .mint(usdcPool.address, usdcPoolMintAmount);
-      await mApt
-        .connect(managerSigner)
-        .mint(usdtPool.address, usdtPoolMintAmount);
-      await oracleAdapter.unlock();
-
-      // transfer stablecoin to each pool to be able to withdraw
-      await daiToken.connect(deployer).transfer(lpSafeAddress, daiAmount);
-      await usdcToken.connect(deployer).transfer(lpSafeAddress, usdcAmount);
-      await usdtToken.connect(deployer).transfer(lpSafeAddress, usdtAmount);
-      // also adjust the TVL appropriately, as there is no Chainlink to update it
-      const daiValue = await daiPool.getValueFromUnderlyerAmount(daiAmount);
-      const usdcValue = await usdcPool.getValueFromUnderlyerAmount(usdcAmount);
-      const usdtValue = await usdtPool.getValueFromUnderlyerAmount(usdtAmount);
-      const newTvl = daiValue.add(usdcValue).add(usdtValue);
-      await oracleAdapter.lockFor(10);
-      await oracleAdapter.setTvl(newTvl, 100);
-      await oracleAdapter.unlock();
-
-      const daiWithdrawAmount = daiAmount.div(2);
-      const daiPoolBurnAmount = await getMintAmount(daiPool, daiWithdrawAmount);
-      const usdcWithdrawAmount = usdcAmount.div(5);
-      const usdcPoolBurnAmount = await getMintAmount(
-        usdcPool,
-        usdcWithdrawAmount
-      );
-      const usdtWithdrawAmount = usdtAmount;
-      const usdtPoolBurnAmount = await getMintAmount(
-        usdtPool,
-        usdtWithdrawAmount
-      );
+      const burnAmount = await getMintAmount(daiPool, transferAmount);
 
       await poolManager.withdrawFromLpSafe([
-        { poolId: bytes32("daiPool"), amount: daiWithdrawAmount },
-        {
-          poolId: bytes32("usdcPool"),
-          amount: usdcWithdrawAmount,
-        },
-        {
-          poolId: bytes32("usdtPool"),
-          amount: usdtWithdrawAmount,
-        },
+        { poolId: bytes32("daiPool"), amount: transferAmount },
       ]);
+
+      const newSafeBalance = await daiToken.balanceOf(lpSafeAddress);
+      const newPoolBalance = await daiToken.balanceOf(daiPool.address);
+      expect(prevSafeBalance.sub(newSafeBalance)).to.equal(transferAmount);
+      expect(newPoolBalance.sub(prevPoolBalance)).to.equal(transferAmount);
 
       const allowedDeviation = 2;
 
-      let expectedBalance = daiPoolMintAmount.sub(daiPoolBurnAmount);
-      let balance = await mApt.balanceOf(daiPool.address);
-      expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
-
-      expectedBalance = usdcPoolMintAmount.sub(usdcPoolBurnAmount);
-      balance = await mApt.balanceOf(usdcPool.address);
-      expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
-
-      expectedBalance = usdtPoolMintAmount.sub(usdtPoolBurnAmount);
-      balance = await mApt.balanceOf(usdtPool.address);
-      expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
+      const newMaptBalance = await mApt.balanceOf(daiPool.address);
+      const expectedMaptBalance = prevMaptBalance.sub(burnAmount);
+      expect(newMaptBalance.sub(expectedMaptBalance).abs()).lt(
+        allowedDeviation
+      );
     });
 
-    it.skip("Transfers and mints correctly for multiple pools (start from non-zero supply)", async () => {
-      // make mAPT total supply non-zero by minting to deployer
-      await mApt
-        .connect(managerSigner)
-        .mint(deployer.address, tokenAmountToBigNumber("1000000"));
-      // don't forget to update the TVL!
-      const tvl = tokenAmountToBigNumber("85000");
-      await oracleAdapter.lockFor(10);
+    it("Updates balances correctly (multiple pools)", async () => {
+      const daiTransferAmount = tokenAmountToBigNumber("10", 18);
+      const usdcTransferAmount = tokenAmountToBigNumber("25", 6);
+      const usdtTransferAmount = tokenAmountToBigNumber("8", 6);
+      await poolManager.fundLpSafe([
+        { poolId: bytes32("daiPool"), amount: daiTransferAmount },
+        { poolId: bytes32("usdcPool"), amount: usdcTransferAmount },
+        { poolId: bytes32("usdtPool"), amount: usdtTransferAmount },
+      ]);
+      await oracleAdapter.unlock();
+
+      // adjust the TVL appropriately, as there is no Chainlink to update it
+      const daiValue = await daiPool.getValueFromUnderlyerAmount(
+        daiTransferAmount
+      );
+      const usdcValue = await usdcPool.getValueFromUnderlyerAmount(
+        usdcTransferAmount
+      );
+      const usdtValue = await usdtPool.getValueFromUnderlyerAmount(
+        usdtTransferAmount
+      );
+      const tvl = daiValue.add(usdcValue).add(usdtValue);
+      await oracleAdapter.lock();
       await oracleAdapter.setTvl(tvl, 100);
       await oracleAdapter.unlock();
 
-      // now mint for each pool so withdraw can burn tokens
-      const daiPoolMintAmount = await getMintAmount(daiPool, daiAmount);
-      const usdcPoolMintAmount = await getMintAmount(usdcPool, usdcAmount);
-      const usdtPoolMintAmount = await getMintAmount(usdtPool, usdtAmount);
-      await mApt
-        .connect(managerSigner)
-        .mint(daiPool.address, daiPoolMintAmount);
-      await mApt
-        .connect(managerSigner)
-        .mint(usdcPool.address, usdcPoolMintAmount);
-      await mApt
-        .connect(managerSigner)
-        .mint(usdtPool.address, usdtPoolMintAmount);
-      await oracleAdapter.unlock();
+      // DAI
+      const prevSafeDaiBalance = await daiToken.balanceOf(lpSafeAddress);
+      const prevDaiPoolBalance = await daiToken.balanceOf(daiPool.address);
+      const prevDaiMaptBalance = await mApt.balanceOf(daiPool.address);
+      // USDC
+      const prevSafeUsdcBalance = await usdcToken.balanceOf(lpSafeAddress);
+      const prevUsdcPoolBalance = await usdcToken.balanceOf(usdcPool.address);
+      const prevUsdcMaptBalance = await mApt.balanceOf(usdcPool.address);
+      // USDT
+      const prevSafeUsdtBalance = await usdtToken.balanceOf(lpSafeAddress);
+      const prevUsdtPoolBalance = await usdtToken.balanceOf(usdtPool.address);
+      const prevUsdtMaptBalance = await mApt.balanceOf(usdtPool.address);
 
-      // transfer stablecoin to each pool to be able to withdraw
-      await daiToken.connect(deployer).transfer(lpSafeAddress, daiAmount);
-      await usdcToken.connect(deployer).transfer(lpSafeAddress, usdcAmount);
-      await usdtToken.connect(deployer).transfer(lpSafeAddress, usdtAmount);
-      // also adjust the TVL appropriately, as there is no Chainlink to update it
-      const daiValue = await daiPool.getValueFromUnderlyerAmount(daiAmount);
-      const usdcValue = await usdcPool.getValueFromUnderlyerAmount(usdcAmount);
-      const usdtValue = await usdtPool.getValueFromUnderlyerAmount(usdtAmount);
-      const newTvl = tvl.add(daiValue).add(usdcValue).add(usdtValue);
-      await oracleAdapter.lockFor(10);
-      await oracleAdapter.setTvl(newTvl, 100);
-      await oracleAdapter.unlock();
-
-      const daiWithdrawAmount = daiAmount.div(2);
-      const daiPoolBurnAmount = await getMintAmount(daiPool, daiWithdrawAmount);
-      const usdcWithdrawAmount = usdcAmount.div(5);
+      const daiPoolBurnAmount = await getMintAmount(daiPool, daiTransferAmount);
       const usdcPoolBurnAmount = await getMintAmount(
         usdcPool,
-        usdcWithdrawAmount
+        usdcTransferAmount
       );
-      const usdtWithdrawAmount = usdtAmount;
       const usdtPoolBurnAmount = await getMintAmount(
         usdtPool,
-        usdtWithdrawAmount
+        usdtTransferAmount
       );
 
       await poolManager.withdrawFromLpSafe([
-        { poolId: bytes32("daiPool"), amount: daiWithdrawAmount },
-        {
-          poolId: bytes32("usdcPool"),
-          amount: usdcWithdrawAmount,
-        },
-        {
-          poolId: bytes32("usdtPool"),
-          amount: usdtWithdrawAmount,
-        },
+        { poolId: bytes32("daiPool"), amount: daiTransferAmount },
+        { poolId: bytes32("usdcPool"), amount: usdcTransferAmount },
+        { poolId: bytes32("usdtPool"), amount: usdtTransferAmount },
       ]);
 
+      /****************************/
+      /* check underlyer balances */
+      /****************************/
+
+      // DAI
+      const newSafeDaiBalance = await daiToken.balanceOf(lpSafeAddress);
+      const newDaiPoolBalance = await daiToken.balanceOf(daiPool.address);
+      expect(prevSafeDaiBalance.sub(newSafeDaiBalance)).to.equal(
+        daiTransferAmount
+      );
+      expect(newDaiPoolBalance.sub(prevDaiPoolBalance)).to.equal(
+        daiTransferAmount
+      );
+      // USDC
+      const newSafeUsdcBalance = await usdcToken.balanceOf(lpSafeAddress);
+      const newUsdcPoolBalance = await usdcToken.balanceOf(usdcPool.address);
+      expect(prevSafeUsdcBalance.sub(newSafeUsdcBalance)).to.equal(
+        usdcTransferAmount
+      );
+      expect(newUsdcPoolBalance.sub(prevUsdcPoolBalance)).to.equal(
+        usdcTransferAmount
+      );
+      // USDT
+      const newSafeUsdtBalance = await daiToken.balanceOf(lpSafeAddress);
+      const newUsdtPoolBalance = await usdtToken.balanceOf(usdtPool.address);
+      expect(prevSafeUsdtBalance.sub(newSafeUsdtBalance)).to.equal(
+        usdtTransferAmount
+      );
+      expect(newUsdtPoolBalance.sub(prevUsdtPoolBalance)).to.equal(
+        usdtTransferAmount
+      );
+
+      /***********************/
+      /* check mAPT balances */
+      /***********************/
+
       const allowedDeviation = 2;
-
-      let expectedBalance = daiPoolMintAmount.sub(daiPoolBurnAmount);
-      let balance = await mApt.balanceOf(daiPool.address);
-      expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
-
-      expectedBalance = usdcPoolMintAmount.sub(usdcPoolBurnAmount);
-      balance = await mApt.balanceOf(usdcPool.address);
-      expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
-
-      expectedBalance = usdtPoolMintAmount.sub(usdtPoolBurnAmount);
-      balance = await mApt.balanceOf(usdtPool.address);
-      expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
+      // DAI
+      const newDaiMaptBalance = await mApt.balanceOf(daiPool.address);
+      const expectedDaiMaptBalance = prevDaiMaptBalance.sub(daiPoolBurnAmount);
+      expect(newDaiMaptBalance.sub(expectedDaiMaptBalance).abs()).lt(
+        allowedDeviation
+      );
+      // USDC
+      const newUsdcMaptBalance = await mApt.balanceOf(usdcPool.address);
+      const expectedUsdcMaptBalance = prevUsdcMaptBalance.sub(
+        usdcPoolBurnAmount
+      );
+      expect(newUsdcMaptBalance.sub(expectedUsdcMaptBalance).abs()).lt(
+        allowedDeviation
+      );
+      // USDT
+      const newUsdtMaptBalance = await mApt.balanceOf(usdtPool.address);
+      const expectedUsdtMaptBalance = prevUsdtMaptBalance.sub(
+        usdtPoolBurnAmount
+      );
+      expect(newUsdtMaptBalance.sub(expectedUsdtMaptBalance).abs()).lt(
+        allowedDeviation
+      );
     });
   });
 });
