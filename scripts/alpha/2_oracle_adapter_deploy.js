@@ -76,7 +76,13 @@ async function main(argv) {
     networkName
   );
 
-  const tvlAggAddress = getAggregatorAddress("TVL", "MAINNET");
+  let tvlAggAddress = getAggregatorAddress("TVL", "MAINNET");
+  if (networkName == "KOVAN") {
+    // there is no TVL agg on Kovan but the OracleAdapter constructor
+    // requires at least a real contract address; this is the sDEFI
+    // Kovan agg.
+    tvlAggAddress = "0x70179FB2F3A0a5b7FfB36a235599De440B0922ea";
+  }
   const aggStalePeriod = 86400;
   const defaultLockPeriod = 270;
 
@@ -150,6 +156,7 @@ async function main(argv) {
         assets,
         sources,
         aggStalePeriod.toString(),
+        defaultLockPeriod.toString(),
       ],
     });
     console.log("");

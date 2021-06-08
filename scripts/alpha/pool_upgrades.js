@@ -91,7 +91,7 @@ async function main(argv) {
   }
 
   console.log("");
-  console.log("Approving manager for pools ...");
+  console.log("Approving pool manager for pools ...");
   console.log("");
 
   const poolManagerAddress = getDeployedAddress(
@@ -118,6 +118,31 @@ async function main(argv) {
     console.log("");
     gasUsed = gasUsed.add(receipt.gasUsed);
   }
+
+  console.log("");
+  console.log("Transfer ownership to Admin Safe ...");
+  const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
+  console.log("Admin Safe:", chalk.green(adminSafeAddress));
+  for (const symbol of ["DAI", "USDC", "USDT"]) {
+    const poolAddress = getDeployedAddress(
+      symbol + "_PoolTokenProxy",
+      networkName
+    );
+    console.log(`${symbol} pool:`, chalk.green(poolAddress));
+    const gasPrice = await getGasPrice(argv.gasPrice);
+    const pool = await ethers.getContractAt(
+      "PoolTokenV2",
+      poolAddress,
+      poolDeployer
+    );
+    const trx = await pool.transferOwnership(adminSafeAddress, { gasPrice });
+    console.log("Transfer ownership:", `https://etherscan.io/tx/${trx.hash}`);
+    const receipt = await trx.wait();
+    console.log("");
+    gasUsed = gasUsed.add(receipt.gasUsed);
+  }
+  console.log("");
+
   console.log("Total gas used:", gasUsed.toString());
 }
 

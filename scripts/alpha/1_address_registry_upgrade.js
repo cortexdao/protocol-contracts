@@ -57,7 +57,7 @@ async function main(argv) {
   console.log("");
 
   console.log("");
-  console.log("Deploying ...");
+  console.log("Upgrading ...");
   console.log("");
 
   const proxyAdminAddress = getDeployedAddress(
@@ -101,7 +101,10 @@ async function main(argv) {
       gasPrice,
     }
   );
-  console.log("Remap address:", `https://etherscan.io/tx/${trx.hash}`);
+  console.log(
+    "Remap TVL manager address:",
+    `https://etherscan.io/tx/${trx.hash}`
+  );
   console.log("");
   let receipt = await trx.wait();
   gasUsed = gasUsed.add(receipt.gasUsed);
@@ -110,12 +113,12 @@ async function main(argv) {
   gasPrice = await getGasPrice(argv.gasPrice);
   const logic = await AddressRegistryV2.deploy({ gasPrice });
   console.log(
-    "Deploy:",
+    "Deploy V2 logic:",
     `https://etherscan.io/tx/${logic.deployTransaction.hash}`
   );
   receipt = await logic.deployTransaction.wait();
   deployData["AddressRegistryV2"] = logic.address;
-  console.log(`Implementation Logic: ${chalk.green(logic.address)}`);
+  console.log(`V2 logic: ${chalk.green(logic.address)}`);
   console.log("");
   gasUsed = gasUsed.add(receipt.gasUsed);
 
@@ -123,7 +126,7 @@ async function main(argv) {
   trx = await proxyAdmin.upgrade(proxy.address, logic.address, {
     gasPrice,
   });
-  console.log("Upgrade:", `https://etherscan.io/tx/${trx.hash}`);
+  console.log("Upgrade proxy:", `https://etherscan.io/tx/${trx.hash}`);
   console.log("");
   receipt = await trx.wait();
   gasUsed = gasUsed.add(receipt.gasUsed);
@@ -131,7 +134,10 @@ async function main(argv) {
   // delete deprecated identifiers
   gasPrice = await getGasPrice(argv.gasPrice);
   trx = await addressRegistry.deleteAddress(bytes32("manager"), { gasPrice });
-  console.log("Delete address:", `https://etherscan.io/tx/${trx.hash}`);
+  console.log(
+    "Delete old manager address:",
+    `https://etherscan.io/tx/${trx.hash}`
+  );
   console.log("");
   receipt = await trx.wait();
   gasUsed = gasUsed.add(receipt.gasUsed);
@@ -140,7 +146,10 @@ async function main(argv) {
   trx = await addressRegistry.deleteAddress(bytes32("chainlinkRegistry"), {
     gasPrice,
   });
-  console.log("Delete address:", `https://etherscan.io/tx/${trx.hash}`);
+  console.log(
+    "Delete chainlink registry address:",
+    `https://etherscan.io/tx/${trx.hash}`
+  );
   console.log("");
   receipt = await trx.wait();
   gasUsed = gasUsed.add(receipt.gasUsed);
