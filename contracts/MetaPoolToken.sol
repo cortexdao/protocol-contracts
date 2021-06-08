@@ -140,7 +140,12 @@ contract MetaPoolToken is
      * @param account address to mint to
      * @param amount mint amount
      */
-    function mint(address account, uint256 amount) public override onlyManager {
+    function mint(address account, uint256 amount)
+        public
+        override
+        nonReentrant
+        onlyManager
+    {
         require(amount > 0, "INVALID_MINT_AMOUNT");
         IOracleAdapter oracleAdapter = _getOracleAdapter();
         oracleAdapter.lock();
@@ -154,7 +159,12 @@ contract MetaPoolToken is
      * @param account address to burn from
      * @param amount burn amount
      */
-    function burn(address account, uint256 amount) public override onlyManager {
+    function burn(address account, uint256 amount)
+        public
+        override
+        nonReentrant
+        onlyManager
+    {
         require(amount > 0, "INVALID_BURN_AMOUNT");
         IOracleAdapter oracleAdapter = _getOracleAdapter();
         oracleAdapter.lock();
