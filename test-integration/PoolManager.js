@@ -341,7 +341,7 @@ describe("Contract: PoolManager", () => {
     let managerSigner;
 
     /** needed for the manager to be able to mint mAPT in test setups */
-    before("Setup manager for sending transactions", async () => {
+    before.skip("Setup manager for sending transactions", async () => {
       managerSigner = await impersonateAccount(poolManager);
       await deployer.sendTransaction({
         to: poolManager.address,
@@ -481,7 +481,7 @@ describe("Contract: PoolManager", () => {
       expect(registeredStratUsdtBal).equal(strategyUsdtBalance);
     });
 
-    it("Mints correct mAPT amounts (start with non-zero supply)", async () => {
+    it.only("Mints correct mAPT amounts (start with non-zero supply)", async () => {
       // pre-conditions
       expect(await mApt.balanceOf(daiPool.address)).to.equal("0");
       expect(await mApt.balanceOf(usdcToken.address)).to.equal("0");
@@ -561,7 +561,7 @@ describe("Contract: PoolManager", () => {
     });
 
     /** needed for the manager to be able to mint mAPT in test setups */
-    before("Setup manager for sending transactions", async () => {
+    before.skip("Setup manager for sending transactions", async () => {
       await impersonateAccount(poolManager);
       await deployer.sendTransaction({
         to: poolManager.address,
@@ -617,7 +617,7 @@ describe("Contract: PoolManager", () => {
         ).to.be.revertedWith("INSUFFICIENT_ALLOWANCE");
       });
 
-      it("Transfers underlyer correctly for one pool", async () => {
+      it.skip("Transfers underlyer correctly for one pool", async () => {
         const amount = tokenAmountToBigNumber("10", 18);
         await daiToken.connect(deployer).transfer(fundedAccountAddress, amount);
         expect(await daiToken.balanceOf(fundedAccountAddress)).to.equal(amount);
@@ -640,7 +640,7 @@ describe("Contract: PoolManager", () => {
         expect(await daiToken.balanceOf(fundedAccountAddress)).to.equal(0);
       });
 
-      it("Transfers and mints correctly for multiple pools (start from zero supply)", async () => {
+      it.skip("Transfers and mints correctly for multiple pools (start from zero supply)", async () => {
         expect(await mApt.totalSupply()).to.equal(0);
         expect(await mApt.getTvl()).to.equal(0);
 
@@ -726,7 +726,7 @@ describe("Contract: PoolManager", () => {
         expect(balance.sub(expectedBalance).abs()).lt(allowedDeviation);
       });
 
-      it("Transfers and mints correctly for multiple pools (start from non-zero supply)", async () => {
+      it.skip("Transfers and mints correctly for multiple pools (start from non-zero supply)", async () => {
         // make mAPT total supply non-zero by minting to deployer
         await mApt
           .connect(managerSigner)
