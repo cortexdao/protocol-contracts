@@ -481,7 +481,7 @@ describe("Contract: PoolManager", () => {
       expect(registeredStratUsdtBal).equal(strategyUsdtBalance);
     });
 
-    it.only("Mints correct mAPT amounts (start with non-zero supply)", async () => {
+    it.skip("Mints correct mAPT amounts (start with non-zero supply)", async () => {
       // pre-conditions
       expect(await mApt.balanceOf(daiPool.address)).to.equal("0");
       expect(await mApt.balanceOf(usdcToken.address)).to.equal("0");
