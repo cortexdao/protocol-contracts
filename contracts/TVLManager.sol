@@ -3,6 +3,7 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./utils/EnumerableSet.sol";
 import "./interfaces/IAssetAllocation.sol";
@@ -19,7 +20,7 @@ import "./interfaces/IAddressRegistryV2.sol";
 /// @dev It is imperative that this manager has the most up to date asset
 /// allocations registered. Any assets in the system that have been deployed,
 /// but are not registered can have devastating and catastrophic effects on the TVL.
-contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
+contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using Address for address;
 
@@ -68,7 +69,7 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
         Data memory data,
         string calldata symbol,
         uint256 decimals
-    ) external override onlyPermissioned {
+    ) external override nonReentrant onlyPermissioned {
         require(!isAssetAllocationRegistered(data), "DUPLICATE_DATA_DETECTED");
         bytes32 dataHash = generateDataHash(data);
         _allocationIds.add(dataHash);
@@ -84,6 +85,7 @@ contract TVLManager is Ownable, ITVLManager, IAssetAllocation {
     function removeAssetAllocation(Data memory data)
         external
         override
+        nonReentrant
         onlyPermissioned
     {
         require(isAssetAllocationRegistered(data), "ALLOCATION_DOES_NOT_EXIST");
