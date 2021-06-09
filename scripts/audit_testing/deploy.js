@@ -24,8 +24,9 @@ const {
   getDeployedAddress,
   bytes32,
   impersonateAccount,
+  getAggregatorAddress,
+  getStablecoinAddress,
 } = require("../../utils/helpers");
-const { AGG_MAP } = require("../../utils/constants");
 const { console } = require("./utils");
 
 const NODE_ADDRESS = "0xAD702b65733aC8BcBA2be6d9Da94d5b7CE25C0bb";
@@ -186,41 +187,47 @@ async function main(argv) {
   const mAptLogic = await MetaPoolToken.deploy();
   await mAptLogic.deployed();
 
-  const aggStalePeriod = 14400;
   let mApt = await MetaPoolTokenProxy.deploy(
     mAptLogic.address,
     proxyAdmin.address,
-    aggregator.address,
-    aggStalePeriod
+    addressRegistry.address
   );
   await mApt.deployed();
   mApt = await MetaPoolToken.attach(mApt.address); // attach logic interface
   console.logAddress("MetaPoolToken", mApt.address);
   console.logDone();
 
-  console.log("Deploying Account Manager ...");
+  console.log("");
+  console.log("Deploying OracleAdapter ...");
 
-  const AccountManager = await ethers.getContractFactory("AccountManager");
-  const AccountManagerProxy = await ethers.getContractFactory(
-    "AccountManagerProxy"
+  const aggStalePeriod = 86400;
+  const defaultLockPeriod = 270;
+
+  const symbols = ["DAI", "USDC", "USDT"];
+  const assets = symbols.map((symbol) =>
+    getStablecoinAddress(symbol, networkName)
   );
-
-  const accountManagerLogic = await AccountManager.deploy();
-  await accountManagerLogic.deployed();
-
-  let accountManager = await AccountManagerProxy.deploy(
-    accountManagerLogic.address,
-    proxyAdmin.address,
-    addressRegistryAddress
+  const sources = symbols.map((symbol) =>
+    getAggregatorAddress(`${symbol}-USD`, networkName)
   );
-  await accountManager.deployed();
-  accountManager = AccountManager.attach(accountManager.address); // attach logic interface
-  console.logAddress("AccountManager", accountManager.address);
+  console.log(aggregator.address);
+
+  const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
+  const oracleAdapter = await OracleAdapter.deploy(
+    addressRegistry.address,
+    aggregator.address,
+    assets,
+    sources,
+    aggStalePeriod,
+    defaultLockPeriod
+  );
+  await oracleAdapter.deployed();
+  console.logAddress("OracleAdapter", oracleAdapter.address);
   trx = await addressRegistry.registerAddress(
-    bytes32("accountManager"),
-    accountManager.address
+    bytes32("oracleAdapter"),
+    oracleAdapter.address
   );
-  console.log("Registered Account Manager with AddressRegistry.");
+  console.log("Registered Oracle Adapter with Address Registry.");
   console.logDone();
 
   console.log("Deploying Pool Manager ...");
@@ -244,11 +251,7 @@ async function main(argv) {
     bytes32("poolManager"),
     poolManager.address
   );
-  console.log("Registered Pool Manager with AddressRegistry.");
-
-  trx = await poolManager.setAccountFactory(accountManager.address);
-  console.log("Set account factory on pool manager.");
-  await trx.wait();
+  console.log("Registered Pool Manager with Address Registry.");
 
   trx = await mApt.setManagerAddress(poolManager.address);
   await trx.wait();
@@ -259,10 +262,7 @@ async function main(argv) {
 
   const TVLManager = await ethers.getContractFactory("TVLManager");
 
-  const tvlManager = await TVLManager.deploy(
-    poolManager.address,
-    accountManager.address
-  );
+  const tvlManager = await TVLManager.deploy(addressRegistry.address);
   await tvlManager.deployed();
   console.logAddress("TVLManager", tvlManager.address);
   trx = await addressRegistry.registerAddress(
@@ -270,7 +270,7 @@ async function main(argv) {
     tvlManager.address
   );
   await trx.wait();
-  console.log("Registered TVL Manager with AddressRegistry.");
+  console.log("Registered TVL Manager with Address Registry.");
   console.logDone();
 
   console.log("Upgrading pools ...");
@@ -288,7 +288,7 @@ async function main(argv) {
 
   let initData = PoolTokenV2.interface.encodeFunctionData(
     "initializeUpgrade(address)",
-    [mApt.address]
+    [oracleAdapter.address]
   );
 
   for (const symbol of ["DAI", "USDC", "USDT"]) {
@@ -312,23 +312,7 @@ async function main(argv) {
     trx = await pool.infiniteApprove(poolManager.address);
     console.log("  Approve pool manager.");
     await trx.wait();
-    const aggAddress = AGG_MAP[networkName][`${symbol}-USD`];
-    trx = await pool.setPriceAggregator(aggAddress);
-    console.log("  USD agg set.");
-    await trx.wait();
   }
-  console.logDone();
-
-  console.log("Deploying generic executor ...");
-  const GenericExecutor = await ethers.getContractFactory("GenericExecutor");
-  const executor = await GenericExecutor.deploy();
-  await executor.deployed();
-  console.logDone();
-
-  console.log("Deploying account ...");
-  const accountId = bytes32("alpha");
-  trx = await accountManager.deployAccount(accountId, executor.address);
-  await trx.wait();
   console.logDone();
 
   console.log("Deploying periphery contracts ...");
