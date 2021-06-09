@@ -103,6 +103,8 @@ async function main(argv) {
     [addressRegistryAddress]
   );
 
+  let trx;
+
   for (const symbol of ["DAI", "USDC", "USDT"]) {
     const underlyerAddress = getStablecoinAddress(symbol, networkName);
     const aggAddress = getAggregatorAddress(`${symbol}-USD`, networkName);
@@ -127,7 +129,7 @@ async function main(argv) {
     gasUsed = gasUsed.add(receipt.gasUsed);
 
     gasPrice = await getGasPrice(argv.gasPrice);
-    const trx = await proxyAdmin
+    trx = await proxyAdmin
       .connect(poolDeployer)
       .upgradeAndCall(proxy.address, logicV2.address, initData, { gasPrice });
     console.log("Upgrade to V2:", `https://etherscan.io/tx/${trx.hash}`);
@@ -162,7 +164,7 @@ async function main(argv) {
       poolAddress,
       poolDeployer
     );
-    const trx = await pool.infiniteApprove(poolManagerAddress, { gasPrice });
+    trx = await pool.infiniteApprove(poolManagerAddress, { gasPrice });
     console.log("Approve:", `https://etherscan.io/tx/${trx.hash}`);
     const receipt = await trx.wait();
     console.log("");
@@ -189,7 +191,7 @@ async function main(argv) {
       `Demo_${symbol}_PoolTokenProxy`,
       networkName
     );
-    let trx = await addressRegistry.registerAddress(poolId, poolAddress, {
+    trx = await addressRegistry.registerAddress(poolId, poolAddress, {
       gasPrice,
     });
     console.log("Register address:", `https://etherscan.io/tx/${trx.hash}`);
@@ -202,10 +204,30 @@ async function main(argv) {
   if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");
     console.log("Verifying on Etherscan ...");
-    await ethers.provider.waitForTransaction(logicV2.deployTransaction.hash, 5); // wait for Etherscan to catch up
+    await ethers.provider.waitForTransaction(trx.hash, 5); // wait for Etherscan to catch up
     await hre.run("verify:verify", {
       address: logicV2.address,
     });
+    for (const symbol of ["DAI", "USDC", "USDT"]) {
+      const proxyAddress = getDeployedAddress(
+        `Demo_${symbol}_PoolTokenProxy`,
+        networkName
+      );
+      const underlyerAddress = getStablecoinAddress(symbol, networkName);
+      const aggAddress = getAggregatorAddress(`${symbol}-USD`, networkName);
+      await hre.run("verify:verify", {
+        address: proxyAddress,
+        constructorArguments: [
+          logicAddress,
+          proxyAdminAddress,
+          underlyerAddress,
+          aggAddress,
+        ],
+        // to avoid the "More than one contract was found to match the deployed bytecode."
+        // with proxy contracts that only differ in constructors but have the same bytecode
+        contract: "contracts/PoolTokenProxy.sol:PoolTokenProxy",
+      });
+    }
     console.log("");
   }
 }
