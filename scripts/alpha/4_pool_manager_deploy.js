@@ -146,7 +146,7 @@ async function main(argv) {
   if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");
     console.log("Verifying on Etherscan ...");
-    await ethers.provider.waitForTransaction(proxy.deployTransaction.hash, 5); // wait for Etherscan to catch up
+    await ethers.provider.waitForTransaction(trx.hash, 5); // wait for Etherscan to catch up
     await hre.run("verify:verify", {
       address: proxy.address,
       constructorArguments: [
