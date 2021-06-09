@@ -152,6 +152,7 @@ async function main(argv) {
     await hre.run("verify:verify", {
       address: oracleAdapter.address,
       constructorArguments: [
+        addressRegistryProxyAddress,
         tvlAggAddress,
         assets,
         sources,
