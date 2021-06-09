@@ -24,8 +24,9 @@ const {
   getDeployedAddress,
   bytes32,
   impersonateAccount,
+  getAggregatorAddress,
+  getStablecoinAddress,
 } = require("../../utils/helpers");
-const { AGG_MAP } = require("../../utils/constants");
 const { console } = require("./utils");
 
 const NODE_ADDRESS = "0xAD702b65733aC8BcBA2be6d9Da94d5b7CE25C0bb";
@@ -176,25 +177,6 @@ async function main(argv) {
   console.logDone();
 
   console.log("");
-  console.log("Deploying OracleAdapter ...");
-  const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
-  const oracleAdapter = await OracleAdapter.deploy(
-    addressRegistry.address,
-    aggregator.address,
-    [],
-    [],
-    86400
-  );
-  await oracleAdapter.deployed();
-  console.logAddress("OracleAdapter", oracleAdapter.address);
-  trx = await addressRegistry.registerAddress(
-    bytes32("oracleAdapter"),
-    oracleAdapter.address
-  );
-  console.log("Registered Oracle Adapter with Address Registry.");
-  console.logDone();
-
-  console.log("");
   console.log("Deploying MetaPoolToken ...");
 
   const MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
@@ -213,11 +195,39 @@ async function main(argv) {
   await mApt.deployed();
   mApt = await MetaPoolToken.attach(mApt.address); // attach logic interface
   console.logAddress("MetaPoolToken", mApt.address);
+  console.logDone();
+
+  console.log("");
+  console.log("Deploying OracleAdapter ...");
+
+  const aggStalePeriod = 86400;
+  const defaultLockPeriod = 270;
+
+  const symbols = ["DAI", "USDC", "USDT"];
+  const assets = symbols.map((symbol) =>
+    getStablecoinAddress(symbol, networkName)
+  );
+  const sources = symbols.map((symbol) =>
+    getAggregatorAddress(`${symbol}-USD`, networkName)
+  );
+  console.log(aggregator.address);
+
+  const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
+  const oracleAdapter = await OracleAdapter.deploy(
+    addressRegistry.address,
+    aggregator.address,
+    assets,
+    sources,
+    aggStalePeriod,
+    defaultLockPeriod
+  );
+  await oracleAdapter.deployed();
+  console.logAddress("OracleAdapter", oracleAdapter.address);
   trx = await addressRegistry.registerAddress(
-    bytes32("mApt"),
+    bytes32("oracleAdapter"),
     oracleAdapter.address
   );
-  console.log("Registered MetaPoolToken with Address Registry.");
+  console.log("Registered Oracle Adapter with Address Registry.");
   console.logDone();
 
   console.log("Deploying Pool Manager ...");
@@ -241,8 +251,8 @@ async function main(argv) {
     poolManager.address
   );
   console.log("Registered Pool Manager with Address Registry.");
+  console.logDone();
 
-  console.log("");
   console.log("Deploying TVL Manager ...");
 
   const TVLManager = await ethers.getContractFactory("TVLManager");
@@ -273,7 +283,7 @@ async function main(argv) {
 
   let initData = PoolTokenV2.interface.encodeFunctionData(
     "initializeUpgrade(address)",
-    [mApt.address]
+    [oracleAdapter.address]
   );
 
   for (const symbol of ["DAI", "USDC", "USDT"]) {
@@ -296,10 +306,6 @@ async function main(argv) {
     );
     trx = await pool.infiniteApprove(poolManager.address);
     console.log("  Approve pool manager.");
-    await trx.wait();
-    const aggAddress = AGG_MAP[networkName][`${symbol}-USD`];
-    trx = await pool.setPriceAggregator(aggAddress);
-    console.log("  USD agg set.");
     await trx.wait();
   }
   console.logDone();
