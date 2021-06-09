@@ -241,7 +241,6 @@ async function main(argv) {
   let poolManager = await PoolManagerProxy.deploy(
     poolManagerLogic.address,
     proxyAdmin.address,
-    mApt.address,
     addressRegistryAddress
   );
   await poolManager.deployed();
@@ -252,10 +251,6 @@ async function main(argv) {
     poolManager.address
   );
   console.log("Registered Pool Manager with Address Registry.");
-
-  trx = await mApt.setManagerAddress(poolManager.address);
-  await trx.wait();
-  console.log("Set manager on mAPT.");
   console.logDone();
 
   console.log("Deploying TVL Manager ...");
