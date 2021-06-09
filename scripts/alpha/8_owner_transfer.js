@@ -139,8 +139,8 @@ async function main(argv) {
   receipt = await trx.wait();
   gasUsed = gasUsed.add(receipt.gasUsed);
 
-  for (let poolId of ["daiDemoPool", "usdcDemoPool", "usdtDemoPool"]) {
-    poolId = bytes32(poolId);
+  for (const poolName of ["daiDemoPool", "usdcDemoPool", "usdtDemoPool"]) {
+    const poolId = bytes32(poolName);
     const poolAddress = await addressRegistry.getAddress(poolId);
     const pool = await ethers.getContractAt(
       "PoolTokenV2",
@@ -149,7 +149,7 @@ async function main(argv) {
     );
     gasPrice = await getGasPrice(argv.gasPrice);
     const trx = await pool.transferOwnership(adminSafeAddress, { gasPrice });
-    console.log("poolId:", `https://etherscan.io/tx/${trx.hash}`);
+    console.log(`${poolName}:`, `https://etherscan.io/tx/${trx.hash}`);
     console.log("");
     receipt = await trx.wait();
     gasUsed = gasUsed.add(receipt.gasUsed);
