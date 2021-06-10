@@ -22,6 +22,7 @@ const USDC_TOKEN = getStablecoinAddress("USDC", "MAINNET");
 const USDT_TOKEN = getStablecoinAddress("USDT", "MAINNET");
 const POOL_DEPLOYER = "0x6EAF0ab3455787bA10089800dB91F11fDf6370BE";
 const ADDRESS_REGISTRY_DEPLOYER = "0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3";
+const ADMIN_SAFE = "0x1f7f8DA3eac80DBc0b4A49BC447A88585D8766C8";
 const APY_POOL_ADMIN = "0x7965283631253DfCb71Db63a60C656DEDF76234f";
 const APY_REGISTRY_ADMIN = "0xFbF6c940c1811C3ebc135A9c4e39E042d02435d1";
 const APY_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
@@ -100,6 +101,12 @@ describe("Contract: PoolManager", () => {
       ADDRESS_REGISTRY_DEPLOYER
     );
 
+    await deployer.sendTransaction({
+      to: ADMIN_SAFE,
+      value: ethers.utils.parseEther("10").toHexString(),
+    });
+    const adminSafe = await impersonateAccount(ADMIN_SAFE);
+
     /***********************************/
     /* upgrade pools to V2 */
     /***********************************/
@@ -152,7 +159,7 @@ describe("Contract: PoolManager", () => {
     addressRegistry = await ethers.getContractAt(
       "AddressRegistryV2",
       APY_ADDRESS_REGISTRY,
-      addressRegistryDeployer
+      adminSafe
     );
 
     /*********************************/
