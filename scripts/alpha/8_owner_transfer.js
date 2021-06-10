@@ -39,25 +39,20 @@ async function main(argv) {
   const addressRegistryDeployer = ethers.Wallet.fromMnemonic(
     ADDRESS_REGISTRY_MNEMONIC
   ).connect(ethers.provider);
-  const POOL_MNEMONIC = process.env.POOL_MNEMONIC;
-  const poolDeployer = ethers.Wallet.fromMnemonic(POOL_MNEMONIC).connect(
-    ethers.provider
-  );
-  const MAPT_MNEMONIC = process.env.MAPT_MNEMONIC;
-  const mAptDeployer = ethers.Wallet.fromMnemonic(MAPT_MNEMONIC).connect(
-    ethers.provider
-  );
-  const POOL_MANAGER_MNEMONIC = process.env.POOL_MANAGER_MNEMONIC;
+  const poolDeployer = ethers.Wallet.fromMnemonic(
+    ADDRESS_REGISTRY_MNEMONIC
+  ).connect(ethers.provider);
+  const mAptDeployer = ethers.Wallet.fromMnemonic(
+    ADDRESS_REGISTRY_MNEMONIC
+  ).connect(ethers.provider);
   const poolManagerDeployer = ethers.Wallet.fromMnemonic(
-    POOL_MANAGER_MNEMONIC
+    ADDRESS_REGISTRY_MNEMONIC
   ).connect(ethers.provider);
-  const TVL_MANAGER_MNEMONIC = process.env.TVL_MANAGER_MNEMONIC;
   const tvlManagerDeployer = ethers.Wallet.fromMnemonic(
-    TVL_MANAGER_MNEMONIC
+    ADDRESS_REGISTRY_MNEMONIC
   ).connect(ethers.provider);
-  const ORACLE_ADAPTER_MNEMONIC = process.env.ORACLE_ADAPTER_MNEMONIC;
   const oracleAdapterDeployer = ethers.Wallet.fromMnemonic(
-    ORACLE_ADAPTER_MNEMONIC
+    ADDRESS_REGISTRY_MNEMONIC
   ).connect(ethers.provider);
 
   const addressRegistryAddress = getDeployedAddress(

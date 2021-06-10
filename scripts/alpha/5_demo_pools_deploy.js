@@ -24,10 +24,10 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  const POOL_MNEMONIC = process.env.POOL_MNEMONIC;
-  const poolDeployer = ethers.Wallet.fromMnemonic(POOL_MNEMONIC).connect(
-    ethers.provider
-  );
+  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
+  const poolDeployer = ethers.Wallet.fromMnemonic(
+    ADDRESS_REGISTRY_MNEMONIC
+  ).connect(ethers.provider);
   console.log("Deployer address:", poolDeployer.address);
   /* TESTING on localhost only
    * useful if running out of ETH for deployer address
@@ -174,7 +174,6 @@ async function main(argv) {
   console.log("");
   console.log("Register addresses with Address Registry ...");
   console.log("");
-  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
   const addressRegistryDeployer = ethers.Wallet.fromMnemonic(
     ADDRESS_REGISTRY_MNEMONIC
   ).connect(ethers.provider);

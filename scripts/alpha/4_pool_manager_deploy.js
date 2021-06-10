@@ -22,9 +22,9 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  const POOL_MANAGER_MNEMONIC = process.env.POOL_MANAGER_MNEMONIC;
+  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
   const poolManagerDeployer = ethers.Wallet.fromMnemonic(
-    POOL_MANAGER_MNEMONIC
+    ADDRESS_REGISTRY_MNEMONIC
   ).connect(ethers.provider);
   console.log("Deployer address:", poolManagerDeployer.address);
   /* TESTING on localhost only
@@ -112,7 +112,6 @@ async function main(argv) {
 
   updateDeployJsons(networkName, deploy_data);
 
-  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
   const addressRegistryDeployer = ethers.Wallet.fromMnemonic(
     ADDRESS_REGISTRY_MNEMONIC
   ).connect(ethers.provider);

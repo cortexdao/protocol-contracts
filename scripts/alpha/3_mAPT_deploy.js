@@ -32,10 +32,10 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  const MAPT_MNEMONIC = process.env.MAPT_MNEMONIC;
-  const mAptDeployer = ethers.Wallet.fromMnemonic(MAPT_MNEMONIC).connect(
-    ethers.provider
-  );
+  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
+  const mAptDeployer = ethers.Wallet.fromMnemonic(
+    ADDRESS_REGISTRY_MNEMONIC
+  ).connect(ethers.provider);
   console.log("Deployer address:", mAptDeployer.address);
   /* TESTING on localhost only
    * need to fund as there is no ETH on Mainnet for the deployer
@@ -98,7 +98,6 @@ async function main(argv) {
   console.log("");
   gasUsed = gasUsed.add(receipt.gasUsed);
 
-  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
   const addressRegistryDeployer = ethers.Wallet.fromMnemonic(
     ADDRESS_REGISTRY_MNEMONIC
   ).connect(ethers.provider);

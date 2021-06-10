@@ -34,9 +34,9 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  const ORACLE_ADAPTER_MNEMONIC = process.env.ORACLE_ADAPTER_MNEMONIC;
+  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
   const oracleAdapterDeployer = ethers.Wallet.fromMnemonic(
-    ORACLE_ADAPTER_MNEMONIC
+    ADDRESS_REGISTRY_MNEMONIC
   ).connect(ethers.provider);
   console.log("Deployer address:", oracleAdapterDeployer.address);
   /* TESTING on localhost only
@@ -116,7 +116,6 @@ async function main(argv) {
   console.log("");
   gasUsed = gasUsed.add(receipt.gasUsed);
 
-  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
   const addressRegistryDeployer = ethers.Wallet.fromMnemonic(
     ADDRESS_REGISTRY_MNEMONIC
   ).connect(ethers.provider);
