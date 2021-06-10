@@ -83,6 +83,7 @@ async function main(argv) {
   );
 
   const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
+  console.log("Admin Safe:", adminSafeAddress);
 
   console.log("Transferring ownerships ...");
   console.log("");
