@@ -41,6 +41,11 @@ async function main(argv) {
     await fundingTrx.wait();
   }
 
+  const POOL_MNEMONIC = process.env.POOL_MNEMONIC;
+  const oldPoolDeployer = ethers.Wallet.fromMnemonic(POOL_MNEMONIC).connect(
+    ethers.provider
+  );
+
   const balance =
     (await ethers.provider.getBalance(poolDeployer.address)).toString() / 1e18;
   console.log("ETH balance:", balance.toString());
@@ -58,22 +63,23 @@ async function main(argv) {
     poolDeployer
   );
   let gasPrice = await getGasPrice(argv.gasPrice);
-  const logicV2 = await PoolTokenV2.connect(poolDeployer).deploy({
-    gasPrice,
-  });
-  console.log(
-    "Deploy:",
-    `https://etherscan.io/tx/${logicV2.deployTransaction.hash}`
-  );
-  let receipt = await logicV2.deployTransaction.wait();
-  console.log(`Pool logic V2: ${chalk.green(logicV2.address)}`);
-  console.log("");
-  gasUsed = gasUsed.add(receipt.gasUsed);
+  // const logicV2 = await PoolTokenV2.connect(poolDeployer).deploy({
+  //   gasPrice,
+  // });
+  // console.log(
+  //   "Deploy:",
+  //   `https://etherscan.io/tx/${logicV2.deployTransaction.hash}`
+  // );
+  // let receipt = await logicV2.deployTransaction.wait();
+  // console.log(`Pool logic V2: ${chalk.green(logicV2.address)}`);
+  // console.log("");
+  // gasUsed = gasUsed.add(receipt.gasUsed);
 
-  const deployData = {
-    PoolTokenV2: logicV2.address,
-  };
-  updateDeployJsons(networkName, deployData);
+  // const deployData = {
+  //   PoolTokenV2: logicV2.address,
+  // };
+  // updateDeployJsons(networkName, deployData);
+  const deployData = {};
 
   /* proxy deploy setup */
   const proxyAdminAddress = getDeployedAddress(
@@ -104,43 +110,46 @@ async function main(argv) {
   );
 
   let trx;
+  let receipt;
+  const logicV2Address = "0x2B5bc31063973920702c2BB638D4700a7A74E108";
 
-  for (const symbol of ["DAI", "USDC", "USDT"]) {
-    const underlyerAddress = getStablecoinAddress(symbol, networkName);
-    const aggAddress = getAggregatorAddress(`${symbol}-USD`, networkName);
-    const proxy = await PoolTokenProxy.deploy(
-      logicAddress,
-      proxyAdmin.address,
-      underlyerAddress,
-      aggAddress,
-      { gasPrice }
-    );
-    console.log(
-      "Deploy V1:",
-      `https://etherscan.io/tx/${proxy.deployTransaction.hash}`
-    );
-    receipt = await proxy.deployTransaction.wait();
-    console.log(`${symbol} Pool proxy: ${chalk.green(proxy.address)}`);
-    console.log("  Logic V1:", logicAddress);
-    console.log("  Proxy Admin:", proxyAdmin.address);
-    console.log("  Underlyer:", underlyerAddress);
-    console.log("  Aggregator:", aggAddress);
-    console.log("");
-    gasUsed = gasUsed.add(receipt.gasUsed);
+  // for (const symbol of ["DAI", "USDC", "USDT"]) {
+  // for (const symbol of ["USDC", "USDT"]) {
+  //   const underlyerAddress = getStablecoinAddress(symbol, networkName);
+  //   const aggAddress = getAggregatorAddress(`${symbol}-USD`, networkName);
+  //   const proxy = await PoolTokenProxy.deploy(
+  //     logicAddress,
+  //     proxyAdmin.address,
+  //     underlyerAddress,
+  //     aggAddress,
+  //     { gasPrice }
+  //   );
+  //   console.log(
+  //     "Deploy V1:",
+  //     `https://etherscan.io/tx/${proxy.deployTransaction.hash}`
+  //   );
+  //   receipt = await proxy.deployTransaction.wait();
+  //   console.log(`${symbol} Pool proxy: ${chalk.green(proxy.address)}`);
+  //   console.log("  Logic V1:", logicAddress);
+  //   console.log("  Proxy Admin:", proxyAdmin.address);
+  //   console.log("  Underlyer:", underlyerAddress);
+  //   console.log("  Aggregator:", aggAddress);
+  //   console.log("");
+  //   gasUsed = gasUsed.add(receipt.gasUsed);
 
-    gasPrice = await getGasPrice(argv.gasPrice);
-    trx = await proxyAdmin
-      .connect(poolDeployer)
-      .upgradeAndCall(proxy.address, logicV2.address, initData, { gasPrice });
-    console.log("Upgrade to V2:", `https://etherscan.io/tx/${trx.hash}`);
-    receipt = await trx.wait();
-    console.log("... pool upgraded.");
-    console.log("");
-    gasUsed = gasUsed.add(receipt.gasUsed);
+  //   gasPrice = await getGasPrice(argv.gasPrice);
+  //   trx = await proxyAdmin
+  //     .connect(oldPoolDeployer)
+  //     .upgradeAndCall(proxy.address, logicV2Address, initData, { gasPrice });
+  //   console.log("Upgrade to V2:", `https://etherscan.io/tx/${trx.hash}`);
+  //   receipt = await trx.wait();
+  //   console.log("... pool upgraded.");
+  //   console.log("");
+  //   gasUsed = gasUsed.add(receipt.gasUsed);
 
-    deployData[`Demo_${symbol}_PoolTokenProxy`] = proxy.address;
-  }
-  updateDeployJsons(networkName, deployData);
+  //   deployData[`Demo_${symbol}_PoolTokenProxy`] = proxy.address;
+  // }
+  // updateDeployJsons(networkName, deployData);
 
   console.log("");
   console.log("Approving manager for pools ...");
