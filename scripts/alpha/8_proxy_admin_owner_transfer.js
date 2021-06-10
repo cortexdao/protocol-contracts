@@ -35,9 +35,6 @@ async function main(argv) {
   const addressRegistryDeployer = ethers.Wallet.fromMnemonic(
     ADDRESS_REGISTRY_MNEMONIC
   ).connect(ethers.provider);
-  const poolDeployer = ethers.Wallet.fromMnemonic(
-    process.env.POOL_MNEMONIC
-  ).connect(ethers.provider);
   const mAptDeployer = ethers.Wallet.fromMnemonic(
     ADDRESS_REGISTRY_MNEMONIC
   ).connect(ethers.provider);
@@ -72,15 +69,6 @@ async function main(argv) {
     poolManagerProxyAdminAddress,
     poolManagerDeployer
   );
-  const poolTokenProxyAdminAddress = getDeployedAddress(
-    "PoolTokenProxyAdmin",
-    networkName
-  );
-  const poolTokenProxyAdmin = await ethers.getContractAt(
-    "ProxyAdmin",
-    poolTokenProxyAdminAddress,
-    poolDeployer
-  );
 
   const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
   console.log("Admin Safe:", adminSafeAddress);
@@ -112,15 +100,6 @@ async function main(argv) {
     gasPrice,
   });
   console.log("Pool Manager Admin:", `https://etherscan.io/tx/${trx.hash}`);
-  console.log("");
-  receipt = await trx.wait();
-  gasUsed = gasUsed.add(receipt.gasUsed);
-
-  gasPrice = await getGasPrice(argv.gasPrice);
-  trx = await poolTokenProxyAdmin.transferOwnership(adminSafeAddress, {
-    gasPrice,
-  });
-  console.log("Pool Token Admin:", `https://etherscan.io/tx/${trx.hash}`);
   console.log("");
   receipt = await trx.wait();
   gasUsed = gasUsed.add(receipt.gasUsed);
