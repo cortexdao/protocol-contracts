@@ -32,9 +32,9 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  const TVL_MANAGER_MNEMONIC = process.env.TVL_MANAGER_MNEMONIC;
+  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
   const tvlManagerDeployer = ethers.Wallet.fromMnemonic(
-    TVL_MANAGER_MNEMONIC
+    ADDRESS_REGISTRY_MNEMONIC
   ).connect(ethers.provider);
   console.log("Deployer address:", tvlManagerDeployer.address);
   /* TESTING on localhost only
@@ -92,7 +92,6 @@ async function main(argv) {
   console.log("");
   console.log("Register address for chainlink registry ...");
   console.log("");
-  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
   const addressRegistryDeployer = ethers.Wallet.fromMnemonic(
     ADDRESS_REGISTRY_MNEMONIC
   ).connect(ethers.provider);

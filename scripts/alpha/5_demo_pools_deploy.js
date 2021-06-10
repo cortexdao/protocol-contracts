@@ -24,10 +24,10 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  const POOL_MNEMONIC = process.env.POOL_MNEMONIC;
-  const poolDeployer = ethers.Wallet.fromMnemonic(POOL_MNEMONIC).connect(
-    ethers.provider
-  );
+  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
+  const poolDeployer = ethers.Wallet.fromMnemonic(
+    ADDRESS_REGISTRY_MNEMONIC
+  ).connect(ethers.provider);
   console.log("Deployer address:", poolDeployer.address);
   /* TESTING on localhost only
    * useful if running out of ETH for deployer address
@@ -40,6 +40,11 @@ async function main(argv) {
     });
     await fundingTrx.wait();
   }
+
+  const POOL_MNEMONIC = process.env.POOL_MNEMONIC;
+  const oldPoolDeployer = ethers.Wallet.fromMnemonic(POOL_MNEMONIC).connect(
+    ethers.provider
+  );
 
   const balance =
     (await ethers.provider.getBalance(poolDeployer.address)).toString() / 1e18;
@@ -130,7 +135,7 @@ async function main(argv) {
 
     gasPrice = await getGasPrice(argv.gasPrice);
     trx = await proxyAdmin
-      .connect(poolDeployer)
+      .connect(oldPoolDeployer)
       .upgradeAndCall(proxy.address, logicV2.address, initData, { gasPrice });
     console.log("Upgrade to V2:", `https://etherscan.io/tx/${trx.hash}`);
     receipt = await trx.wait();
@@ -174,7 +179,6 @@ async function main(argv) {
   console.log("");
   console.log("Register addresses with Address Registry ...");
   console.log("");
-  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
   const addressRegistryDeployer = ethers.Wallet.fromMnemonic(
     ADDRESS_REGISTRY_MNEMONIC
   ).connect(ethers.provider);

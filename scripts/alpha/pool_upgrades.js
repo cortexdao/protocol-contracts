@@ -143,6 +143,18 @@ async function main(argv) {
   }
   console.log("");
 
+  gasPrice = await getGasPrice(argv.gasPrice);
+  const trx = await proxyAdmin.transferOwnership(adminSafeAddress, {
+    gasPrice,
+  });
+  console.log(
+    "Transfer ownership (admin):",
+    `https://etherscan.io/tx/${trx.hash}`
+  );
+  console.log("");
+  const receipt = await trx.wait();
+  gasUsed = gasUsed.add(receipt.gasUsed);
+
   console.log("Total gas used:", gasUsed.toString());
 }
 
