@@ -32,7 +32,7 @@ interface IMetaPool is IERC20 {
 }
 
 /**
- * @title Periphery Contract for the Curve Frax-3Pool metapool
+ * @title Periphery Contract for a Curve metapool
  * @author APY.Finance
  * @notice This contract enables the APY.Finance system to retrieve the balance
  *         of an underlyer of a Curve LP token. The balance is used as part
@@ -40,12 +40,13 @@ interface IMetaPool is IERC20 {
  *         `getUnderlyerBalance` function is invoked indirectly when a
  *         Chainlink node calls `balanceOf` on the APYAssetAllocationRegistry.
  */
-contract Frax3CrvPeriphery {
+contract MetaPoolPeriphery {
     using SafeMath for uint256;
 
-    address public curve3Pool;
-    address public curve3PoolGauge;
-    address public curve3PoolPeriphery;
+    /// @dev all existing Curve metapools are paired with 3Pool
+    IStableSwap public curve3Pool;
+    ILiquidityGauge public curve3PoolGauge;
+    CurvePeriphery public curvePeriphery;
 
     /**
      * @notice Returns the balance of an underlying token represented by
@@ -77,14 +78,12 @@ contract Frax3CrvPeriphery {
         returns (uint256)
     {
         require(address(metaPool) != address(0), "INVALID_POOL");
-        // get the balance of 3Crv tokens
-        return metaPool.balances(1);
-
         return
-            curve3PoolPeriphery.getUnderlyerBalance(
+            curvePeriphery.getUnderlyerBalance(
                 address(metaPool),
                 curve3Pool,
                 curve3PoolGauge,
+                metaPool,
                 coin
             );
     }
