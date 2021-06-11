@@ -15,15 +15,15 @@ const IStableSwap = artifacts.require("IStableSwap");
 const ILiquidityGauge = artifacts.require("ILiquidityGauge");
 
 // 3Pool addresses:
-const STABLE_SWAP_ADDRESS = "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7";
-const LP_TOKEN_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
-const LIQUIDITY_GAUGE_ADDRESS = "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A";
+const CURVE_3POOL_ADDRESS = "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7";
+const CURVE_3POOL_TOKEN_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
+const CURVE_3POOL_GAUGE_ADDRESS = "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A";
 
 // Frax metapool addresses:
 // FRAX3CRV-f
-const METAPOOL_ADDRESS = "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B";
+const FRAX_METAPOOL_ADDRESS = "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B";
 
-describe("Contract: CurvePeriphery", () => {
+describe("Contract: FraxPeriphery", () => {
   // signers
   let deployer;
   let strategy;
@@ -64,15 +64,15 @@ describe("Contract: CurvePeriphery", () => {
     beforeEach(async () => {
       lpToken = await ethers.getContractAt(
         IDetailedERC20.abi,
-        LP_TOKEN_ADDRESS
+        CURVE_3POOL_TOKEN_ADDRESS
       );
       stableSwap = await ethers.getContractAt(
         IStableSwap.abi,
-        STABLE_SWAP_ADDRESS
+        CURVE_3POOL_ADDRESS
       );
       gauge = await ethers.getContractAt(
         ILiquidityGauge.abi,
-        LIQUIDITY_GAUGE_ADDRESS
+        CURVE_3POOL_GAUGE_ADDRESS
       );
 
       for (const symbol of ["DAI", "USDC", "USDT"]) {

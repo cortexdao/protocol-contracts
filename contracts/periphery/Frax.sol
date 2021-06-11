@@ -3,14 +3,19 @@ pragma solidity 0.6.11;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./Curve.sol";
 
-/// @notice the stablecoin pool contract
-interface IStableSwap {
+/**
+ * @notice the Curve metapool contract
+ * @dev A metapool is its own LP token
+ */
+interface IMetaPool is IERC20 {
+    /// @dev 1st coin is the protocol token, 2nd is the Curve base pool
     function balances(uint256 coin) external view returns (uint256);
 
     /// @dev the number of coins is hard-coded in curve contracts
     // solhint-disable-next-line
-    function add_liquidity(uint256[3] memory amounts, uint256 min_mint_amount)
+    function add_liquidity(uint256[2] memory amounts, uint256 min_mint_amount)
         external;
 
     /// @dev the number of coins is hard-coded in curve contracts
@@ -24,24 +29,10 @@ interface IStableSwap {
         int128 tokenIndex,
         uint256 minAmount
     ) external;
-
-    /// @dev For newest curve pools like aave; older pools refer to a private `token` variable.
-    // function lp_token() external view returns (address); // solhint-disable-line func-name-mixedcase
-}
-
-/// @notice the liquidity gauge, i.e. staking contract, for the stablecoin pool
-interface ILiquidityGauge {
-    function deposit(uint256 _value) external;
-
-    function deposit(uint256 _value, address _addr) external;
-
-    function withdraw(uint256 _value) external;
-
-    function balanceOf(address account) external view returns (uint256);
 }
 
 /**
- * @title Periphery Contract for the Curve 3pool
+ * @title Periphery Contract for the Curve Frax-3Pool metapool
  * @author APY.Finance
  * @notice This contract enables the APY.Finance system to retrieve the balance
  *         of an underlyer of a Curve LP token. The balance is used as part
@@ -52,54 +43,62 @@ interface ILiquidityGauge {
 contract Frax3CrvPeriphery {
     using SafeMath for uint256;
 
+    address public curve3Pool;
+    address public curve3PoolGauge;
+    address public curve3PoolPeriphery;
+
     /**
      * @notice Returns the balance of an underlying token represented by
      *         an account's LP token balance.
-     * @param stableSwap the liquidity pool comprised of multiple underlyers
+     * @param metaPool the liquidity pool comprised of multiple underlyers
      * @param gauge the staking contract for the LP tokens
-     * @param lpToken the LP token representing the share of the pool
      * @param coin the index indicating which underlyer
      * @return balance
      */
     function getUnderlyerBalance(
         address account,
-        IStableSwap stableSwap,
+        IMetaPool metaPool,
         ILiquidityGauge gauge,
-        IERC20 lpToken,
         uint256 coin
     ) external view returns (uint256 balance) {
-        require(address(stableSwap) != address(0), "INVALID_STABLESWAP");
+        require(address(metaPool) != address(0), "INVALID_POOL");
         require(address(gauge) != address(0), "INVALID_GAUGE");
-        require(address(lpToken) != address(0), "INVALID_LP_TOKEN");
 
-        uint256 poolBalance = getPoolBalance(stableSwap, coin);
+        uint256 poolBalance = getPoolBalance(metaPool, coin);
         (uint256 lpTokenBalance, uint256 lpTokenSupply) =
-            getLpTokenShare(account, stableSwap, gauge, lpToken);
+            getLpTokenShare(account, metaPool, gauge);
 
         balance = lpTokenBalance.mul(poolBalance).div(lpTokenSupply);
     }
 
-    function getPoolBalance(IStableSwap stableSwap, uint256 coin)
+    function getPoolBalance(IMetaPool metaPool, uint256 coin)
         public
         view
         returns (uint256)
     {
-        require(address(stableSwap) != address(0), "INVALID_STABLESWAP");
-        return stableSwap.balances(coin);
+        require(address(metaPool) != address(0), "INVALID_POOL");
+        // get the balance of 3Crv tokens
+        return metaPool.balances(1);
+
+        return
+            curve3PoolPeriphery.getUnderlyerBalance(
+                address(metaPool),
+                curve3Pool,
+                curve3PoolGauge,
+                coin
+            );
     }
 
     function getLpTokenShare(
         address account,
-        IStableSwap stableSwap,
-        ILiquidityGauge gauge,
-        IERC20 lpToken
+        IMetaPool metaPool,
+        ILiquidityGauge gauge
     ) public view returns (uint256 balance, uint256 totalSupply) {
-        require(address(stableSwap) != address(0), "INVALID_STABLESWAP");
+        require(address(metaPool) != address(0), "INVALID_POOL");
         require(address(gauge) != address(0), "INVALID_GAUGE");
-        require(address(lpToken) != address(0), "INVALID_LP_TOKEN");
 
-        totalSupply = lpToken.totalSupply();
-        balance = lpToken.balanceOf(account);
+        totalSupply = metaPool.totalSupply();
+        balance = metaPool.balanceOf(account);
         balance = balance.add(gauge.balanceOf(account));
     }
 }
