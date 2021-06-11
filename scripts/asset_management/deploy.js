@@ -195,6 +195,9 @@ async function main(argv) {
   await mApt.deployed();
   mApt = await MetaPoolToken.attach(mApt.address); // attach logic interface
   console.logAddress("MetaPoolToken", mApt.address);
+  trx = await addressRegistry.registerAddress(bytes32("mApt"), mApt.address);
+  console.log("Registered mAPT with Address Registry.");
+  console.logDone();
   console.logDone();
 
   console.log("");
@@ -283,7 +286,7 @@ async function main(argv) {
 
   let initData = PoolTokenV2.interface.encodeFunctionData(
     "initializeUpgrade(address)",
-    [oracleAdapter.address]
+    [addressRegistry.address]
   );
 
   for (const symbol of ["DAI", "USDC", "USDT"]) {
