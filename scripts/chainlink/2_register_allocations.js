@@ -17,6 +17,10 @@ const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
 const { getDeployedAddress } = require("../../utils/helpers");
+const {
+  SafeEthersSigner,
+  SafeService,
+} = require("@gnosis.pm/safe-ethers-adapters");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -28,6 +32,14 @@ async function main(argv) {
 
   const [deployer, strategy] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
+
+  const service = new SafeService(process.env.SERVICE_URL);
+  const safeSigner = await SafeEthersSigner.create(
+    process.env.LP_SAFE,
+    deployer,
+    service,
+    deployer.provider
+  );
 
   const addressRegistryAddress = getDeployedAddress(
     "AddressRegistryProxy",
@@ -110,23 +122,17 @@ async function main(argv) {
     ]
   );
 
-  let trx = await tvlManager.addAssetAllocation(
-    [curve.address, calldataForDai],
-    "DAI",
-    18
-  );
+  let trx = await tvlManager
+    .connect(safeSigner)
+    .addAssetAllocation([curve.address, calldataForDai], "DAI", 18);
   await trx.wait();
-  trx = await tvlManager.addAssetAllocation(
-    [curve.address, calldataForUsdc],
-    "USDC",
-    6
-  );
+  trx = await tvlManager
+    .connect(safeSigner)
+    .addAssetAllocation([curve.address, calldataForUsdc], "USDC", 6);
   await trx.wait();
-  trx = await tvlManager.addAssetAllocation(
-    [curve.address, calldataForUsdt],
-    "USDT",
-    6
-  );
+  trx = await tvlManager
+    .connect(safeSigner)
+    .addAssetAllocation([curve.address, calldataForUsdt], "USDT", 6);
   await trx.wait();
 
   console.log("... done.");

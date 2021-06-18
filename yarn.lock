@@ -554,6 +554,27 @@
   resolved "https://registry.npmjs.org/@gnosis.pm/mock-contract/-/mock-contract-4.0.0.tgz"
   integrity sha512-SkRq2KwPx6vo0LAjSc8JhgQstrQFXRyn2yqquIfub7r2WHi5nUbF8beeSSXsd36hvBcQxQfmOIYNYRpj9JOhrQ==
 
+"@gnosis.pm/safe-core-sdk@^0.1.1":
+  version "0.1.2"
+  resolved "https://registry.yarnpkg.com/@gnosis.pm/safe-core-sdk/-/safe-core-sdk-0.1.2.tgz#118037442b8cf766e5a2ddfbffeb90cd6dc87d91"
+  integrity sha512-tvInAfwENVG7QXWRMbXqCnZkTqPPIWzFnonU/fDRQmA5S5pKI9qIDYCjqOAwPzqRgvuItG3NxmSPynZD09771w==
+  dependencies:
+    ethereumjs-util "^7.0.10"
+
+"@gnosis.pm/safe-deployments@^1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@gnosis.pm/safe-deployments/-/safe-deployments-1.0.0.tgz#ba7ab027d8f0563e6f1e472c4073cbcc15db3e90"
+  integrity sha512-ShZMGy4LaP27HqDKDguCGC+6CfS86ceq8gBrnbJvIUNzijSAjeLyJTvjKxTkOl3hAxmyk/DjtO3/DQGE4LVE6g==
+
+"@gnosis.pm/safe-ethers-adapters@^0.1.0-alpha.1":
+  version "0.1.0-alpha.1"
+  resolved "https://registry.yarnpkg.com/@gnosis.pm/safe-ethers-adapters/-/safe-ethers-adapters-0.1.0-alpha.1.tgz#0997df2ec4a12516698183f0ef88c2d019ee3d8a"
+  integrity sha512-/VTdlxHeIySks1uVcxQTUcGPWrkD8g2IAzROVokTNzEOacfShK9FvYXbbRdnRk6YDuHAm4OrbRY2+q+vyLQPmg==
+  dependencies:
+    "@gnosis.pm/safe-core-sdk" "^0.1.1"
+    "@gnosis.pm/safe-deployments" "^1.0.0"
+    axios "^0.21.1"
+
 "@nodelib/fs.scandir@2.1.4":
   version "2.1.4"
   resolved "https://registry.npmjs.org/@nodelib/fs.scandir/-/fs.scandir-2.1.4.tgz"

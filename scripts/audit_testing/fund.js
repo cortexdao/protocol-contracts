@@ -68,8 +68,7 @@ async function main(argv) {
     }
   }
 
-  const accountId = bytes32("alpha");
-  await poolManager.fundAccount(accountId, poolAmounts);
+  await poolManager.fundLpSafe(poolAmounts);
   console.log("... done.");
 }
 
