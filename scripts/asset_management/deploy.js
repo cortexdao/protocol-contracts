@@ -140,11 +140,17 @@ async function main(argv) {
     "AddressRegistryProxyAdmin",
     networkName
   );
-  const addressRegistryAdmin = await ethers.getContractAt(
+  let addressRegistryAdmin = await ethers.getContractAt(
     "ProxyAdmin",
-    addressRegistryAdminAddress,
-    addressRegistryDeployer
+    addressRegistryAdminAddress
   );
+  const addressRegistryAdminDeployer = await impersonateAccount(
+    await addressRegistryAdmin.owner()
+  );
+  addressRegistryAdmin = addressRegistryAdmin.connect(
+    addressRegistryAdminDeployer
+  );
+
   const AddressRegistryV2 = await ethers.getContractFactory(
     "AddressRegistryV2",
     addressRegistryDeployer
