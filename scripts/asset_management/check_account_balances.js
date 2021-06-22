@@ -2,8 +2,11 @@
 const hre = require("hardhat");
 const { network, ethers } = hre;
 const { program } = require("commander");
-const { commify, formatUnits } = require("../../utils/helpers");
-const { getStrategyAccountInfo } = require("./utils");
+const {
+  commify,
+  formatUnits,
+  getDeployedAddress,
+} = require("../../utils/helpers");
 
 program.requiredOption(
   "-t, --tokenAddresses <items>",
@@ -26,10 +29,10 @@ const invalidERC20s = ["0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A"];
 async function checkBalances(addresses) {
   const balances = {};
   const NETWORK_NAME = network.name.toUpperCase();
-  const [, accountAddress] = await getStrategyAccountInfo(NETWORK_NAME);
+  const lpSafeAddress = getDeployedAddress("LpSafe", NETWORK_NAME);
   for (let i = 0; i < addresses.length; i++) {
     const token = await ethers.getContractAt("IDetailedERC20", addresses[i]);
-    const balance = await token.balanceOf(accountAddress);
+    const balance = await token.balanceOf(lpSafeAddress);
     if (invalidERC20s.includes(addresses[i])) {
       balances[addresses[i]] = { balance: balance };
     } else {
