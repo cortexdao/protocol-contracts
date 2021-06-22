@@ -60,9 +60,22 @@ async function fundAccount(symbols, amounts) {
   });
   poolAmounts = _.filter(poolAmounts, (p) => p.amount.gt("0"));
 
-  console.log(poolAmounts);
-  const trx = await poolManager.fundLpSafe(poolAmounts);
-  await trx.wait();
+  try {
+    const trx = await poolManager.fundLpSafe(poolAmounts);
+    await trx.wait();
+  } catch (error) {
+    console.log(error);
+  }
+
+  // unset manual override for zero TVL (if needed)
+  const oracleAdapterAddress = await addressRegistry.oracleAdapterAddress();
+  const oracleAdapter = await ethers.getContractAt(
+    "OracleAdapter",
+    oracleAdapterAddress
+  );
+  await oracleAdapter.lock();
+  await oracleAdapter.setTvl(1, 0);
+  await oracleAdapter.unlock();
 }
 
 const getPoolId = (symbol) => bytes32(`${symbol.toLowerCase()}Pool`);

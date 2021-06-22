@@ -223,7 +223,6 @@ async function main(argv) {
   const sources = symbols.map((symbol) =>
     getAggregatorAddress(`${symbol}-USD`, networkName)
   );
-  console.log(aggregator.address);
 
   const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
   const oracleAdapter = await OracleAdapter.deploy(
@@ -242,6 +241,11 @@ async function main(argv) {
   );
   console.log("Registered Oracle Adapter with Address Registry.");
   console.logDone();
+
+  // after funding, we need to update
+  await oracleAdapter.lock();
+  await oracleAdapter.setTvl(0, 1000);
+  await oracleAdapter.unlock();
 
   console.log("Deploying Pool Manager ...");
 
