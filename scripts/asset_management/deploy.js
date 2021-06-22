@@ -174,6 +174,11 @@ async function main(argv) {
   await addressRegistry.deleteAddress(bytes32("chainlinkRegistry"));
   console.logDone();
 
+  const lpSafeAddress = getDeployedAddress("LpSafe", networkName);
+  trx = await addressRegistry.registerAddress(bytes32("lpSafe"), lpSafeAddress);
+  console.log("Registered LP Safe with Address Registry.");
+  console.logDone();
+
   // Note: in prod deployment, separate admins are deployed for contracts
   console.log("Deploying ProxyAdmin ...");
   const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
@@ -203,7 +208,6 @@ async function main(argv) {
   console.logAddress("MetaPoolToken", mApt.address);
   trx = await addressRegistry.registerAddress(bytes32("mApt"), mApt.address);
   console.log("Registered mAPT with Address Registry.");
-  console.logDone();
   console.logDone();
 
   console.log("");

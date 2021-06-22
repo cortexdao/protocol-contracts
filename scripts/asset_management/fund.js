@@ -16,7 +16,6 @@
 const { program } = require("commander");
 const hre = require("hardhat");
 const { ethers, network } = hre;
-const { getStrategyAccountInfo } = require("./utils");
 const { bytes32 } = require("../../utils/helpers");
 const { getAddressRegistry } = require("./utils");
 const { BigNumber } = ethers;
@@ -61,8 +60,9 @@ async function fundAccount(symbols, amounts) {
   });
   poolAmounts = _.filter(poolAmounts, (p) => p.amount.gt("0"));
 
-  const [accountId] = await getStrategyAccountInfo(NETWORK_NAME);
-  await poolManager.fundAccount(accountId, poolAmounts);
+  console.log(poolAmounts);
+  const trx = await poolManager.fundLpSafe(poolAmounts);
+  await trx.wait();
 }
 
 const getPoolId = (symbol) => bytes32(`${symbol.toLowerCase()}Pool`);

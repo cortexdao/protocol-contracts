@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 export AM_SCRIPTS_FOLDER=scripts/asset_management
 export HARDHAT_NETWORK=localhost
 
