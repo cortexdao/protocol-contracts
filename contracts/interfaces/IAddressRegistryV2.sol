@@ -20,6 +20,9 @@ pragma solidity 0.6.11;
  *         each of which is logically cohesive.
  */
 interface IAddressRegistryV2 {
+    event AddressRegistered(bytes32 id, address _address);
+    event AddressDeleted(bytes32 id, address _address);
+
     /**
      * @notice Returns the list of identifiers for core components of
      *         the APY.Finance system.

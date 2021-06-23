@@ -41,7 +41,6 @@ contract AddressRegistryV2 is
     /* ------------------------------- */
 
     event AdminChanged(address);
-    event AddressRegistered(bytes32 id, address _address);
 
     /**
      * @dev Since the proxy delegate calls to this "logic" contract, any
@@ -145,7 +144,9 @@ contract AddressRegistryV2 is
                 // copy last element to slot i and shorten array
                 _idList[i] = _idList[_idList.length - 1];
                 _idList.pop();
+                address _address = _idToAddress[id];
                 delete _idToAddress[id];
+                emit AddressDeleted(id, _address);
                 break;
             }
         }

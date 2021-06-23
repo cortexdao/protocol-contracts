@@ -28,6 +28,9 @@ interface ITVLManager {
         Data data;
     }
 
+    event AssetAllocationAdded(Data data, string symbol, uint256 decimals);
+    event AssetAllocationRemoved(Data data, string symbol);
+
     function addAssetAllocation(
         Data calldata data,
         string calldata symbol,
