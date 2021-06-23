@@ -5,7 +5,7 @@ import "../PoolTokenV2.sol";
 
 /**
  * @dev Proxy contract to test internal variables and functions
- *      Should not be used other than in test files!
+ * Should not be used other than in test files!
  */
 contract TestPoolTokenV2 is PoolTokenV2 {
     function mint(address account, uint256 amount) public {

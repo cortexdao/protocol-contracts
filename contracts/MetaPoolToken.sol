@@ -57,9 +57,9 @@ contract MetaPoolToken is
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
-    /// @notice used to protect init functions for upgrades
+    /** @notice used to protect init functions for upgrades */
     address public proxyAdmin;
-    /// @notice used to protect mint and burn function
+    /** @notice used to protect mint and burn function */
     IAddressRegistryV2 public addressRegistry;
 
     /* ------------------------------- */
@@ -174,16 +174,16 @@ contract MetaPoolToken is
 
     /**
      * @notice Get the USD value of all assets in the system, not just those
-     *         being managed by the AccountManager but also the pool underlyers.
+     * being managed by the AccountManager but also the pool underlyers.
      *
-     *         Note this is NOT the same as the total value represented by the
-     *         total mAPT supply, i.e. the "deployed capital".
+     * Note this is NOT the same as the total value represented by the
+     * total mAPT supply, i.e. the "deployed capital".
      *
      * @dev Chainlink nodes read from the TVLManager, pull the
-     *      prices from market feeds, and submits the calculated total value
-     *      to an aggregator contract.
+     * prices from market feeds, and submits the calculated total value
+     * to an aggregator contract.
      *
-     *      USD prices have 8 decimals.
+     * USD prices have 8 decimals.
      *
      * @return "Total Value Locked", the USD value of all APY Finance assets.
      */
@@ -197,15 +197,16 @@ contract MetaPoolToken is
         return IOracleAdapter(oracleAdapterAddress);
     }
 
-    /** @notice Calculate mAPT amount to be minted for given pool's underlyer amount.
-     *  @param depositAmount Pool underlyer amount to be converted
-     *  @param tokenPrice Pool underlyer's USD price (in wei) per underlyer token
-     *  @param decimals Pool underlyer's number of decimals
-     *  @dev Price parameter is in units of wei per token ("big" unit), since
-     *       attempting to express wei per token bit ("small" unit) will be
-     *       fractional, requiring fixed-point representation.  This means we need
-     *       to also pass in the underlyer's number of decimals to do the appropriate
-     *       multiplication in the calculation.
+    /**
+     * @notice Calculate mAPT amount to be minted for given pool's underlyer amount.
+     * @param depositAmount Pool underlyer amount to be converted
+     * @param tokenPrice Pool underlyer's USD price (in wei) per underlyer token
+     * @param decimals Pool underlyer's number of decimals
+     * @dev Price parameter is in units of wei per token ("big" unit), since
+     * attempting to express wei per token bit ("small" unit) will be
+     * fractional, requiring fixed-point representation.  This means we need
+     * to also pass in the underlyer's number of decimals to do the appropriate
+     * multiplication in the calculation.
      */
     function calculateMintAmount(
         uint256 depositAmount,
@@ -218,15 +219,15 @@ contract MetaPoolToken is
     }
 
     /**
-     *  @dev amount of APT minted should be in same ratio to APT supply
-     *       as deposit value is to pool's total value, i.e.:
+     * @dev amount of APT minted should be in same ratio to APT supply
+     * as deposit value is to pool's total value, i.e.:
      *
-     *       mint amount / total supply
-     *       = deposit value / pool total value
+     * mint amount / total supply
+     * = deposit value / pool total value
      *
-     *       For denominators, pre or post-deposit amounts can be used.
-     *       The important thing is they are consistent, i.e. both pre-deposit
-     *       or both post-deposit.
+     * For denominators, pre or post-deposit amounts can be used.
+     * The important thing is they are consistent, i.e. both pre-deposit
+     * or both post-deposit.
      */
     function _calculateMintAmount(uint256 depositValue, uint256 totalValue)
         internal
@@ -242,15 +243,16 @@ contract MetaPoolToken is
         return depositValue.mul(totalSupply).div(totalValue);
     }
 
-    /** @notice Calculate amount in pool's underlyer token from given mAPT amount.
-     *  @param mAptAmount mAPT amount to be converted
-     *  @param tokenPrice Pool underlyer's USD price (in wei) per underlyer token
-     *  @param decimals Pool underlyer's number of decimals
-     *  @dev Price parameter is in units of wei per token ("big" unit), since
-     *       attempting to express wei per token bit ("small" unit) will be
-     *       fractional, requiring fixed-point representation.  This means we need
-     *       to also pass in the underlyer's number of decimals to do the appropriate
-     *       multiplication in the calculation.
+    /**
+     * @notice Calculate amount in pool's underlyer token from given mAPT amount.
+     * @param mAptAmount mAPT amount to be converted
+     * @param tokenPrice Pool underlyer's USD price (in wei) per underlyer token
+     * @param decimals Pool underlyer's number of decimals
+     * @dev Price parameter is in units of wei per token ("big" unit), since
+     * attempting to express wei per token bit ("small" unit) will be
+     * fractional, requiring fixed-point representation.  This means we need
+     * to also pass in the underlyer's number of decimals to do the appropriate
+     * multiplication in the calculation.
      */
     function calculatePoolAmount(
         uint256 mAptAmount,
@@ -266,7 +268,7 @@ contract MetaPoolToken is
 
     /**
      * @notice Get the USD-denominated value (in wei) of the pool's share
-     *         of the deployed capital, as tracked by the mAPT token.
+     * of the deployed capital, as tracked by the mAPT token.
      * @return uint256
      */
     function getDeployedValue(address pool) public view returns (uint256) {

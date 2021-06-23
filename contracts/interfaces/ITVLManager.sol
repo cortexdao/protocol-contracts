@@ -4,10 +4,10 @@ pragma experimental ABIEncoderV2;
 
 /**
  * @title Interface for addition and removal of asset allocations
-          for account deployments
+ * for account deployments
  * @author APY.Finance
  * @notice These functions enable external systems to pull necessary info
- *         to compute the TVL of the APY.Finance system.
+ * to compute the TVL of the APY.Finance system.
  */
 interface ITVLManager {
     // struct representing a view call execution against a target contract given bytes

@@ -56,15 +56,15 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     IAddressRegistryV2 public addressRegistry;
 
     uint256 public override defaultLockPeriod;
-    /// @notice Contract is locked until this block number is passed
+    /** @notice Contract is locked until this block number is passed */
     uint256 public lockEnd;
 
-    /// @notice Chainlink variables
+    /** @notice Chainlink variables */
     uint256 public chainlinkStalePeriod; // Duration of Chainlink heartbeat
     AggregatorV3Interface public tvlSource;
     mapping(address => AggregatorV3Interface) public assetSources;
 
-    /// @notice Submitted values that override Chainlink values until stale
+    /** @notice Submitted values that override Chainlink values until stale */
     mapping(address => Value) public submittedAssetValues;
     Value public submittedTvlValue;
 
@@ -77,8 +77,10 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         _;
     }
 
-    /// @dev Reverts if non-permissioned account calls.
-    /// Permissioned accounts are: owner, mAPT, and TVL manager
+    /**
+     * @dev Reverts if non-permissioned account calls.
+     * Permissioned accounts are: owner, mAPT, and TVL manager
+     */
     modifier onlyPermissioned() {
         require(
             msg.sender == owner() ||

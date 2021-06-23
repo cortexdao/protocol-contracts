@@ -224,9 +224,10 @@ contract PoolToken is
         emit RedeemUnlocked();
     }
 
-    /** @notice Calculate APT amount to be minted from deposit amount.
-     *  @param tokenAmt The deposit amount of stablecoin
-     *  @return The mint amount
+    /**
+     * @notice Calculate APT amount to be minted from deposit amount.
+     * @param tokenAmt The deposit amount of stablecoin
+     * @return The mint amount
      */
     function calculateMintAmount(uint256 tokenAmt)
         public
@@ -239,11 +240,11 @@ contract PoolToken is
     }
 
     /**
-     *  @dev amount of APT minted should be in same ratio to APT supply
-     *       as token amount sent is to contract's token balance, i.e.:
+     * @dev amount of APT minted should be in same ratio to APT supply
+     * as token amount sent is to contract's token balance, i.e.:
      *
-     *       mint amount / total supply (before deposit)
-     *       = token amount sent / contract token balance (before deposit)
+     * mint amount / total supply (before deposit)
+     * = token amount sent / contract token balance (before deposit)
      */
     function _calculateMintAmount(
         uint256 depositEthAmount,
