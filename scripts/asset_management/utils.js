@@ -56,7 +56,7 @@ async function getTvlManager(networkName) {
   const addressRegistry = await getAddressRegistry(networkName);
   const tvlManagerAddress = await addressRegistry.tvlManagerAddress();
   const tvlManager = await ethers.getContractAt(
-    "TVLManager",
+    "TvlManager",
     tvlManagerAddress
   );
   return tvlManager;
