@@ -4,6 +4,7 @@ pragma solidity 0.6.11;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/IOracleAdapter.sol";
 import "./interfaces/IAddressRegistryV2.sol";
@@ -16,6 +17,8 @@ import "./interfaces/IAddressRegistryV2.sol";
  * Oracle Safeguard Flows:
  *
  *      - Unlocked → No Manual Submitted Value → Use Chainlink Value (default)
+ *      - Unlocked → No Manual Submitted Value → Chainlink Value == 0 → mAPT totalSupply == 0 → Use 0
+ *      - Unlocked → No Manual Submitted Value → Chainlink Value == 0 → mAPT totalSupply > 0 → Reverts
  *      - Unlocked → No Manual Submitted Value → No Chainlink Source → Reverts
  *      - Unlocked → No Manual Submitted Value → Chainlink Value Call Reverts → Reverts
  *      - Unlocked → No Manual Submitted Value → Chainlink Value > 24 hours → Reverts
@@ -224,11 +227,26 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     // ORACLE VALUE GETTERS
     //------------------------------------------------------------
 
+    /**
+     * @notice Get the TVL
+     * @dev Zero values are considered valid if there is no mAPT minted,
+     * and therefore no PoolTokenV2 liquidity in the LP Safe.
+     * @return the TVL
+     */
     function getTvl() external view override unlocked returns (uint256) {
         if (block.number < submittedTvlValue.periodEnd) {
             return submittedTvlValue.value;
         }
-        return _getPriceFromSource(tvlSource);
+
+        uint256 price = _getPriceFromSource(tvlSource);
+
+        require(
+            price > 0 ||
+                IERC20(addressRegistry.mAptAddress()).totalSupply() == 0,
+            "INVALID_ZERO_TVL"
+        );
+
+        return price;
     }
 
     /**
@@ -246,13 +264,18 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         if (block.number < submittedAssetValues[asset].periodEnd) {
             return submittedAssetValues[asset].value;
         }
+
         AggregatorV3Interface source = assetSources[asset];
-        return _getPriceFromSource(source);
+        uint256 price = _getPriceFromSource(source);
+
+        //we do not allow 0 values for chainlink
+        require(price > 0, "MISSING_ASSET_VALUE");
+
+        return price;
     }
 
     /**
      * @notice Get the price from a source (aggregator)
-     * @dev Prices and TVL values should always be positive
      * @return the price from the source
      */
     function _getPriceFromSource(AggregatorV3Interface source)
@@ -263,8 +286,8 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         require(address(source).isContract(), "INVALID_SOURCE");
         (, int256 price, , uint256 updatedAt, ) = source.latestRoundData();
 
-        //we do not allow 0 values for chainlink
-        require(price > 0, "MISSING_ASSET_VALUE");
+        // must be negative for cast to uint
+        require(price >= 0, "NEGATIVE_VALUE");
 
         // solhint-disable not-rely-on-time
         require(
