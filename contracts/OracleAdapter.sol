@@ -153,9 +153,22 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         submittedAssetValues[asset] = Value(value, block.number.add(period));
     }
 
+    function unsetAssetValue(address asset) external override onlyOwner {
+        require(
+            submittedAssetValues[asset].periodEnd != 0,
+            "NO_ASSET_VALUE_SET"
+        );
+        submittedAssetValues[asset].periodEnd = block.number;
+    }
+
     function setTvl(uint256 value, uint256 period) external override onlyOwner {
         // We do allow 0 values for submitted values
         submittedTvlValue = Value(value, block.number.add(period));
+    }
+
+    function unsetTvl() external override onlyOwner {
+        require(submittedTvlValue.periodEnd != 0, "NO_TVL_SET");
+        submittedTvlValue.periodEnd = block.number;
     }
 
     //------------------------------------------------------------
@@ -226,7 +239,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      * @return the TVL
      */
     function getTvl() external view override unlocked returns (uint256) {
-        if (block.number < submittedTvlValue.periodEnd) {
+        if (hasTvlOverride()) {
             return submittedTvlValue.value;
         }
 
@@ -241,6 +254,10 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         return price;
     }
 
+    function hasTvlOverride() public view returns (bool) {
+        return block.number < submittedTvlValue.periodEnd;
+    }
+
     /**
      * @notice Gets an asset price by address
      * @param asset the asset address
@@ -253,7 +270,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         unlocked
         returns (uint256)
     {
-        if (block.number < submittedAssetValues[asset].periodEnd) {
+        if (hasAssetOverride(asset)) {
             return submittedAssetValues[asset].value;
         }
 
@@ -264,6 +281,10 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         require(price > 0, "MISSING_ASSET_VALUE");
 
         return price;
+    }
+
+    function hasAssetOverride(address asset) public view returns (bool) {
+        return block.number < submittedAssetValues[asset].periodEnd;
     }
 
     /**
