@@ -96,19 +96,19 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      * @param addressRegistry_ the address registry
      * @param assets the assets priced by sources
      * @param sources the source for each asset
-     * @param tvlSource the source for the TVL value
+     * @param tvlSource_ the source for the TVL value
      * @param chainlinkStalePeriod_ the number of seconds until a source value is stale
      */
     constructor(
         address addressRegistry_,
-        address tvlSource,
+        address tvlSource_,
         address[] memory assets,
         address[] memory sources,
         uint256 chainlinkStalePeriod_,
         uint256 defaultLockPeriod_
     ) public {
         setAddressRegistry(addressRegistry_);
-        setTvlSource(tvlSource);
+        setTvlSource(tvlSource_);
         setAssetSources(assets, sources);
         setChainlinkStalePeriod(chainlinkStalePeriod_);
         setDefaultLockPeriod(defaultLockPeriod_);
