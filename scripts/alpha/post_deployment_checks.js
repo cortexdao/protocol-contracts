@@ -57,9 +57,9 @@ async function main(argv) {
     "PoolManager",
     poolManagerAddress
   );
-  const tvlManagerAddress = getDeployedAddress("TVLManager", networkName);
+  const tvlManagerAddress = getDeployedAddress("TvlManager", networkName);
   const tvlManager = await ethers.getContractAt(
-    "TVLManager",
+    "TvlManager",
     tvlManagerAddress
   );
   const oracleAdapterAddress = getDeployedAddress("OracleAdapter", networkName);
