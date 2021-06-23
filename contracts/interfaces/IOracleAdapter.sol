@@ -9,11 +9,15 @@ interface IOracleAdapter {
 
     function setTvl(uint256 value, uint256 period) external;
 
+    function unsetTvl() external;
+
     function setAssetValue(
         address asset,
         uint256 value,
         uint256 period
     ) external;
+
+    function unsetAssetValue(address asset) external;
 
     function lock() external;
 

@@ -151,9 +151,22 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         submittedAssetValues[asset] = Value(value, block.number.add(period));
     }
 
+    function unsetAssetValue(address asset) external override onlyOwner {
+        require(
+            submittedAssetValues[asset].periodEnd != 0,
+            "NO_ASSET_VALUE_SET"
+        );
+        submittedAssetValues[asset].periodEnd = block.number;
+    }
+
     function setTvl(uint256 value, uint256 period) external override onlyOwner {
         // We do allow 0 values for submitted values
         submittedTvlValue = Value(value, block.number.add(period));
+    }
+
+    function unsetTvl() external override onlyOwner {
+        require(submittedTvlValue.periodEnd != 0, "NO_TVL_SET");
+        submittedTvlValue.periodEnd = block.number;
     }
 
     //------------------------------------------------------------
