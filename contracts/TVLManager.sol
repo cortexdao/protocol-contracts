@@ -39,7 +39,7 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
 
     /**
      * @notice Constructor TVLManager
-     * @param _addressRegistry the address registry to initialize with
+     * @param addressRegistry_ the address registry to initialize with
      */
     constructor(address addressRegistry_) public {
         setAddressRegistry(addressRegistry_);
