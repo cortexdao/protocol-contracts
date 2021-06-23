@@ -350,6 +350,32 @@ describe("Contract: OracleAdapter", () => {
     });
   });
 
+  describe("unsetTvl", () => {
+    it("Revert when TVL has not been set", async () => {
+      expect(await oracleAdapter.hasTvlOverride()).to.be.false;
+      await expect(oracleAdapter.connect(deployer).unsetTvl()).to.be.reverted;
+    });
+
+    it("Owner can unset", async () => {
+      const value = 1;
+      const period = 5;
+      await oracleAdapter.connect(deployer).setTvl(value, period);
+      expect(await oracleAdapter.hasTvlOverride()).to.be.true;
+
+      await expect(oracleAdapter.connect(deployer).unsetTvl()).to.not.be
+        .reverted;
+    });
+
+    it("Revert when non-owner calls", async () => {
+      const value = 1;
+      const period = 5;
+      await oracleAdapter.connect(deployer).setTvl(value, period);
+      await expect(
+        oracleAdapter.connect(randomUser).unsetTvl()
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
+
   describe("setAssetValue", () => {
     it("Owner can set", async () => {
       const value = 1;
@@ -368,6 +394,40 @@ describe("Contract: OracleAdapter", () => {
         oracleAdapter
           .connect(randomUser)
           .setAssetValue(assetAddress_1, value, period)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
+
+  describe("unsetAssetValue", () => {
+    it("Revert when asset value has not been set", async () => {
+      expect(await oracleAdapter.hasAssetOverride(assetAddress_1)).to.be.false;
+      await expect(
+        oracleAdapter.connect(deployer).unsetAssetValue(assetAddress_1)
+      ).to.be.reverted;
+    });
+
+    it("Owner can unset", async () => {
+      const value = 1;
+      const period = 5;
+      await oracleAdapter
+        .connect(deployer)
+        .setAssetValue(assetAddress_1, value, period);
+      expect(await oracleAdapter.hasAssetOverride(assetAddress_1)).to.be.true;
+
+      await expect(
+        oracleAdapter.connect(deployer).unsetAssetValue(assetAddress_1)
+      ).to.not.be.reverted;
+      expect(await oracleAdapter.hasAssetOverride(assetAddress_1)).to.be.false;
+    });
+
+    it("Revert when non-owner calls", async () => {
+      const value = 1;
+      const period = 5;
+      await oracleAdapter
+        .connect(deployer)
+        .setAssetValue(assetAddress_1, value, period);
+      await expect(
+        oracleAdapter.connect(randomUser).unsetAssetValue(assetAddress_1)
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });

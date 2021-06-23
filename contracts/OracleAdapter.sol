@@ -237,7 +237,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      * @return the TVL
      */
     function getTvl() external view override unlocked returns (uint256) {
-        if (block.number < submittedTvlValue.periodEnd) {
+        if (hasTvlOverride()) {
             return submittedTvlValue.value;
         }
 
@@ -252,6 +252,10 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         return price;
     }
 
+    function hasTvlOverride() public view returns (bool) {
+        return block.number < submittedTvlValue.periodEnd;
+    }
+
     /**
      * @notice Gets an asset price by address
      * @param asset the asset address
@@ -264,7 +268,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         unlocked
         returns (uint256)
     {
-        if (block.number < submittedAssetValues[asset].periodEnd) {
+        if (hasAssetOverride(asset)) {
             return submittedAssetValues[asset].value;
         }
 
@@ -275,6 +279,10 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         require(price > 0, "MISSING_ASSET_VALUE");
 
         return price;
+    }
+
+    function hasAssetOverride(address asset) public view returns (bool) {
+        return block.number < submittedAssetValues[asset].periodEnd;
     }
 
     /**
