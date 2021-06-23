@@ -77,11 +77,6 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         _;
     }
 
-    modifier locked() {
-        require(isLocked(), "ORACLE_UNLOCKED");
-        _;
-    }
-
     /// @dev Reverts if non-permissioned account calls.
     /// Permissioned accounts are: owner, mAPT, and TVL manager
     modifier onlyPermissioned() {
@@ -151,17 +146,12 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         address asset,
         uint256 value,
         uint256 period
-    ) external override locked onlyOwner {
+    ) external override onlyOwner {
         // We do allow 0 values for submitted values
         submittedAssetValues[asset] = Value(value, block.number.add(period));
     }
 
-    function setTvl(uint256 value, uint256 period)
-        external
-        override
-        locked
-        onlyOwner
-    {
+    function setTvl(uint256 value, uint256 period) external override onlyOwner {
         // We do allow 0 values for submitted values
         submittedTvlValue = Value(value, block.number.add(period));
     }
