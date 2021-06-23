@@ -52,6 +52,14 @@ contract PoolManager is
     event AdminChanged(address);
 
     /**
+     * @dev Throws if called by any account other than the proxy admin.
+     */
+    modifier onlyAdmin() {
+        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
+        _;
+    }
+
+    /**
      * @dev Since the proxy delegate calls to this "logic" contract, any
      * storage set by the logic contract's constructor during deploy is
      * disregarded and this function is needed to initialize the proxy
@@ -95,35 +103,6 @@ contract PoolManager is
     function initializeUpgrade() external virtual onlyAdmin {}
 
     /**
-     * @dev Throws if called by any account other than the proxy admin.
-     */
-    modifier onlyAdmin() {
-        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
-        _;
-    }
-
-    /**
-     * @notice Sets the proxy admin address of the pool manager proxy
-     * @dev only callable by owner
-     * @param adminAddress the new proxy admin address of the pool manager
-     */
-    function setAdminAddress(address adminAddress) public onlyOwner {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-        proxyAdmin = adminAddress;
-        emit AdminChanged(adminAddress);
-    }
-
-    /**
-     * @notice Sets the address registry
-     * @dev only callable by owner
-     * @param addressRegistry_ the address of the registry
-     */
-    function setAddressRegistry(address addressRegistry_) public onlyOwner {
-        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistryV2(addressRegistry_);
-    }
-
-    /**
      * @notice Funds LP Safe account and register an asset allocation
      * @dev only callable by owner. Also registers the pool underlyer for the account being funded
      * @param poolAmounts a list of PoolAmount structs denoting the pools id and amounts used to fund the account
@@ -148,20 +127,50 @@ contract PoolManager is
         _registerPoolUnderlyers(lpSafeAddress, pools);
     }
 
-    function _getPoolsAndAmounts(ILpSafeFunder.PoolAmount[] memory poolAmounts)
-        internal
-        view
-        returns (PoolTokenV2[] memory, uint256[] memory)
+    /**
+     * @notice Moves capital from LP Safe account to the PoolToken contracts
+     * @dev only callable by owner
+     * @param poolAmounts list of PoolAmount structs denoting pool IDs and pool deposit amounts
+     * @notice PoolAmount example (pushes ~$1 to each pool from the account):
+     *      [
+     *          { poolId: "daiPool", amount: "1000000000000" },
+     *          { poolId: "usdcPool", amount: "1000000" },
+     *          { poolId: "usdtPool", amount: "1000000" },
+     *      ]
+     */
+    function withdrawFromLpSafe(ILpSafeFunder.PoolAmount[] memory poolAmounts)
+        external
+        override
+        onlyOwner
+        nonReentrant
     {
-        PoolTokenV2[] memory pools = new PoolTokenV2[](poolAmounts.length);
-        uint256[] memory amounts = new uint256[](poolAmounts.length);
-        for (uint256 i = 0; i < poolAmounts.length; i++) {
-            amounts[i] = poolAmounts[i].amount;
-            pools[i] = PoolTokenV2(
-                addressRegistry.getAddress(poolAmounts[i].poolId)
-            );
-        }
-        return (pools, amounts);
+        address lpSafeAddress = addressRegistry.lpSafeAddress();
+        require(lpSafeAddress != address(0), "INVALID_LP_SAFE");
+        (PoolTokenV2[] memory pools, uint256[] memory amounts) =
+            _getPoolsAndAmounts(poolAmounts);
+        _checkManagerAllowances(lpSafeAddress, pools, amounts);
+        _withdraw(lpSafeAddress, pools, amounts);
+    }
+
+    /**
+     * @notice Sets the proxy admin address of the pool manager proxy
+     * @dev only callable by owner
+     * @param adminAddress the new proxy admin address of the pool manager
+     */
+    function setAdminAddress(address adminAddress) public onlyOwner {
+        require(adminAddress != address(0), "INVALID_ADMIN");
+        proxyAdmin = adminAddress;
+        emit AdminChanged(adminAddress);
+    }
+
+    /**
+     * @notice Sets the address registry
+     * @dev only callable by owner
+     * @param addressRegistry_ the address of the registry
+     */
+    function setAddressRegistry(address addressRegistry_) public onlyOwner {
+        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
 
     /**
@@ -232,49 +241,6 @@ contract PoolManager is
     }
 
     /**
-     * @notice Moves capital from LP Safe account to the PoolToken contracts
-     * @dev only callable by owner
-     * @param poolAmounts list of PoolAmount structs denoting pool IDs and pool deposit amounts
-     * @notice PoolAmount example (pushes ~$1 to each pool from the account):
-     *      [
-     *          { poolId: "daiPool", amount: "1000000000000" },
-     *          { poolId: "usdcPool", amount: "1000000" },
-     *          { poolId: "usdtPool", amount: "1000000" },
-     *      ]
-     */
-    function withdrawFromLpSafe(ILpSafeFunder.PoolAmount[] memory poolAmounts)
-        external
-        override
-        onlyOwner
-        nonReentrant
-    {
-        address lpSafeAddress = addressRegistry.lpSafeAddress();
-        require(lpSafeAddress != address(0), "INVALID_LP_SAFE");
-        (PoolTokenV2[] memory pools, uint256[] memory amounts) =
-            _getPoolsAndAmounts(poolAmounts);
-        _checkManagerAllowances(lpSafeAddress, pools, amounts);
-        _withdraw(lpSafeAddress, pools, amounts);
-    }
-
-    /**
-     * @notice Check if pool manager has sufficient allowance to transfer pool underlyer from account
-     * @param account the address of the account to check
-     * @param pools list of pools to transfer funds to; used for retrieving the underlyer
-     * @param amounts list of required minimal allowances needed by the manager
-     */
-    function _checkManagerAllowances(
-        address account,
-        PoolTokenV2[] memory pools,
-        uint256[] memory amounts
-    ) internal view {
-        for (uint256 i = 0; i < pools.length; i++) {
-            IDetailedERC20 underlyer = pools[i].underlyer();
-            uint256 allowance = underlyer.allowance(account, address(this));
-            require(amounts[i] <= allowance, "INSUFFICIENT_ALLOWANCE");
-        }
-    }
-
-    /**
      * @notice Move capital from an account back to the PoolToken contracts
      * @param account account that funds are being withdrawn from
      * @param pools a list of pools to place recovered funds back into
@@ -310,6 +276,40 @@ contract PoolManager is
         // as using post-burn values.
         for (uint256 i = 0; i < pools.length; i++) {
             mApt.burn(address(pools[i]), burnAmounts[i]);
+        }
+    }
+
+    function _getPoolsAndAmounts(ILpSafeFunder.PoolAmount[] memory poolAmounts)
+        internal
+        view
+        returns (PoolTokenV2[] memory, uint256[] memory)
+    {
+        PoolTokenV2[] memory pools = new PoolTokenV2[](poolAmounts.length);
+        uint256[] memory amounts = new uint256[](poolAmounts.length);
+        for (uint256 i = 0; i < poolAmounts.length; i++) {
+            amounts[i] = poolAmounts[i].amount;
+            pools[i] = PoolTokenV2(
+                addressRegistry.getAddress(poolAmounts[i].poolId)
+            );
+        }
+        return (pools, amounts);
+    }
+
+    /**
+     * @notice Check if pool manager has sufficient allowance to transfer pool underlyer from account
+     * @param account the address of the account to check
+     * @param pools list of pools to transfer funds to; used for retrieving the underlyer
+     * @param amounts list of required minimal allowances needed by the manager
+     */
+    function _checkManagerAllowances(
+        address account,
+        PoolTokenV2[] memory pools,
+        uint256[] memory amounts
+    ) internal view {
+        for (uint256 i = 0; i < pools.length; i++) {
+            IDetailedERC20 underlyer = pools[i].underlyer();
+            uint256 allowance = underlyer.allowance(account, address(this));
+            require(amounts[i] <= allowance, "INSUFFICIENT_ALLOWANCE");
         }
     }
 }
