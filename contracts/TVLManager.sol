@@ -11,15 +11,17 @@ import "./interfaces/ITVLManager.sol";
 import "./interfaces/IOracleAdapter.sol";
 import "./interfaces/IAddressRegistryV2.sol";
 
-/// @title TVL Manager
-/// @author APY.Finance
-/// @notice Deployed assets can exist across various platforms within the
-/// defi ecosystem: pools, accounts, defi protocols, etc. This contract
-/// tracks deployed capital by registering the look up functions so that
-/// the TVL can be properly computed.
-/// @dev It is imperative that this manager has the most up to date asset
-/// allocations registered. Any assets in the system that have been deployed,
-/// but are not registered can have devastating and catastrophic effects on the TVL.
+/**
+ * @title TVL Manager
+ * @author APY.Finance
+ * @notice Deployed assets can exist across various platforms within the
+ * defi ecosystem: pools, accounts, defi protocols, etc. This contract
+ * tracks deployed capital by registering the look up functions so that
+ * the TVL can be properly computed.
+ * @dev It is imperative that this manager has the most up to date asset
+ * allocations registered. Any assets in the system that have been deployed,
+ * but are not registered can have devastating and catastrophic effects on the TVL.
+ */
 contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using Address for address;
@@ -35,14 +37,18 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
     // ids mapped to decimals
     mapping(bytes32 => uint256) private allocationDecimals;
 
-    /// @notice Constructor TVLManager
-    /// @param addressRegistry_ the address registry to initialize with
+    /**
+     * @notice Constructor TVLManager
+     * @param _addressRegistry the address registry to initialize with
+     */
     constructor(address addressRegistry_) public {
         setAddressRegistry(addressRegistry_);
     }
 
-    /// @dev Reverts if non-permissed account calls.
-    /// Permissioned accounts are: owner, pool manager, and account manager
+    /**
+     * @dev Reverts if non-permissed account calls.
+     * Permissioned accounts are: owner, pool manager, and account manager
+     */
     modifier onlyPermissioned() {
         require(
             msg.sender == owner() ||
@@ -59,12 +65,14 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
         oracleAdapter.lock();
     }
 
-    /// @notice Registers a new asset allocation
-    /// @dev only permissed accounts can call.
-    /// New ids are uniquely determined by the provided data struct; no duplicates are allowed
-    /// @param data the data struct containing the target address and the bytes lookup data that will be registered
-    /// @param symbol the token symbol to register for the asset allocation
-    /// @param decimals the decimals to register for the new asset allocation
+    /**
+     * @notice Registers a new asset allocation
+     * @dev only permissed accounts can call.
+     * New ids are uniquely determined by the provided data struct; no duplicates are allowed
+     * @param data the data struct containing the target address and the bytes lookup data that will be registered
+     * @param symbol the token symbol to register for the asset allocation
+     * @param decimals the decimals to register for the new asset allocation
+     */
     function addAssetAllocation(
         Data memory data,
         string calldata symbol,
@@ -80,9 +88,11 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
         emit AssetAllocationAdded(data, symbol, decimals);
     }
 
-    /// @notice Removes an existing asset allocation
-    /// @dev only permissed accounts can call.
-    /// @param data the data struct containing the target address and bytes lookup data that will be removed
+    /**
+     * @notice Removes an existing asset allocation
+     * @dev only permissed accounts can call.
+     * @param data the data struct containing the target address and bytes lookup data that will be removed
+     */
     function removeAssetAllocation(Data memory data)
         external
         override
@@ -100,9 +110,11 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
         emit AssetAllocationRemoved(data, symbol);
     }
 
-    /// @notice Generates a data hash used for uniquely identifying asset allocations
-    /// @param data the data hash containing the target address and the bytes lookup data
-    /// @return returns the resulting bytes32 hash of the abi encode packed target address and bytes look up data
+    /**
+     * @notice Generates a data hash used for uniquely identifying asset allocations
+     * @param data the data hash containing the target address and the bytes lookup data
+     * @return returns the resulting bytes32 hash of the abi encode packed target address and bytes look up data
+     */
     function generateDataHash(Data memory data)
         public
         pure
@@ -112,9 +124,11 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
         return keccak256(abi.encodePacked(data.target, data.data));
     }
 
-    /// @notice determines if a target address and bytes lookup data has already been registered
-    /// @param data the data hash containing the target address and the bytes lookup data
-    /// @return returns true if the asset allocation is currently registered, otherwise false
+    /**
+     * @notice determines if a target address and bytes lookup data has already been registered
+     * @param data the data hash containing the target address and the bytes lookup data
+     * @return returns true if the asset allocation is currently registered, otherwise false
+     */
     function isAssetAllocationRegistered(Data memory data)
         public
         view
@@ -124,9 +138,11 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
         return _isAssetAllocationRegistered(generateDataHash(data));
     }
 
-    /// @notice helper function for isAssetallocationRegistered function
-    /// @param data the bytes32 hash
-    /// @return returns true if the asset allocation is currently registered, otherwise false
+    /**
+     * @notice helper function for isAssetallocationRegistered function
+     * @param data the bytes32 hash
+     * @return returns true if the asset allocation is currently registered, otherwise false
+     */
     function _isAssetAllocationRegistered(bytes32 data)
         public
         view
@@ -135,9 +151,11 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
         return allocationIds.contains(data);
     }
 
-    /// @notice Returns a list of all identifiers where asset allocations have been registered
-    /// @dev the list contains no duplicate identifiers
-    /// @return list of all the registered identifiers
+    /**
+     * @notice Returns a list of all identifiers where asset allocations have been registered
+     * @dev the list contains no duplicate identifiers
+     * @return list of all the registered identifiers
+     */
     function getAssetAllocationIds()
         external
         view
@@ -152,10 +170,12 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
         return allocationIds_;
     }
 
-    /// @notice Executes the bytes lookup data registered under an id
-    /// @dev The balance of an id may be aggregated from multiple contracts
-    /// @param allocationId the id to fetch the balance for
-    /// @return returns the result of the executed lookup data registered for the provided id
+    /**
+     * @notice Executes the bytes lookup data registered under an id
+     * @dev The balance of an id may be aggregated from multiple contracts
+     * @param allocationId the id to fetch the balance for
+     * @return returns the result of the executed lookup data registered for the provided id
+     */
     function balanceOf(bytes32 allocationId)
         external
         view
@@ -177,9 +197,11 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
         return _balance;
     }
 
-    /// @notice Returns the token symbol registered under an id
-    /// @param allocationId the id to fetch the token for
-    /// @return returns the result of the token symbol registered for the provided id
+    /**
+     * @notice Returns the token symbol registered under an id
+     * @param allocationId the id to fetch the token for
+     * @return returns the result of the token symbol registered for the provided id
+     */
     function symbolOf(bytes32 allocationId)
         external
         view
@@ -189,9 +211,11 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
         return allocationSymbols[allocationId];
     }
 
-    /// @notice Returns the decimals registered under an id
-    /// @param allocationId the id to fetch the decimals for
-    /// @return returns the result of the decimal value registered for the provided id
+    /**
+     * @notice Returns the decimals registered under an id
+     * @param allocationId the id to fetch the decimals for
+     * @return returns the result of the decimal value registered for the provided id
+     */
     function decimalsOf(bytes32 allocationId)
         external
         view
@@ -201,10 +225,12 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
         return allocationDecimals[allocationId];
     }
 
-    /// @notice Executes data's bytes look up data against data's target address
-    /// @dev execution is a static call
-    /// @param data the data hash containing the target address and the bytes lookup data to execute
-    /// @return returnData returns return data from the executed contract
+    /**
+     * @notice Executes data's bytes look up data against data's target address
+     * @dev execution is a static call
+     * @param data the data hash containing the target address and the bytes lookup data to execute
+     * @return returnData returns return data from the executed contract
+     */
     function executeView(Data memory data)
         public
         view

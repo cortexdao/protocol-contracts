@@ -6,9 +6,9 @@ import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.so
  * @title Interface for APY.Finance liquidity pools
  * @author APY.Finance
  * @notice Liquidity pools accept deposits and withdrawals of a single token.
- *         APT is minted and burned to track an account's stake in the pool.
- *         A Chainlink price aggregator is also set so the total value of the
- *         pool can be computed.
+ * APT is minted and burned to track an account's stake in the pool.
+ * A Chainlink price aggregator is also set so the total value of the
+ * pool can be computed.
  */
 interface ILiquidityPool {
     event DepositedAPT(

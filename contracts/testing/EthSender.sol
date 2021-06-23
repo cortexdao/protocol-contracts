@@ -3,7 +3,7 @@ pragma solidity 0.6.11;
 
 /**
  * @dev Used in testing to send ETH to contract addresses
- *      that reject ETH transfers.
+ * that reject ETH transfers.
  */
 contract EthSender {
     function send(address payable recipient) external {
