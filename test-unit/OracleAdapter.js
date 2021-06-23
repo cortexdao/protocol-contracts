@@ -10,6 +10,9 @@ const {
 } = require("../utils/helpers");
 const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
 const IAddressRegistryV2 = artifacts.require("IAddressRegistryV2");
+const IERC20 = artifacts.require(
+  "@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20"
+);
 
 describe("Contract: OracleAdapter", () => {
   // signers
@@ -25,6 +28,7 @@ describe("Contract: OracleAdapter", () => {
 
   // mocks and constants
   let addressRegistryMock;
+  let mAptMock;
   let tvlAggMock;
   let assetAggMock_1;
   let assetAggMock_2;
@@ -52,6 +56,9 @@ describe("Contract: OracleAdapter", () => {
       deployer,
       IAddressRegistryV2.abi
     );
+
+    mAptMock = await deployMockContract(deployer, IERC20.abi);
+    await addressRegistryMock.mock.mAptAddress.returns(mAptMock.address);
 
     tvlAggMock = await deployMockContract(deployer, AggregatorV3Interface.abi);
     assetAggMock_1 = await deployMockContract(
@@ -392,22 +399,35 @@ describe("Contract: OracleAdapter", () => {
   describe("getTvl", () => {
     const usdTvl = tokenAmountToBigNumber("25100123.87654321", "8");
 
-    it("Revert when TVL is non-positive", async () => {
+    it("Revert when TVL is negative", async () => {
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
 
       let price = -1;
       // setting the mock mines a block and advances time by 1 sec
       await tvlAggMock.mock.latestRoundData.returns(0, price, 0, updatedAt, 0);
-      await expect(oracleAdapter.getTvl()).to.be.revertedWith(
-        "MISSING_ASSET_VALUE"
-      );
+      await expect(oracleAdapter.getTvl()).to.be.revertedWith("NEGATIVE_VALUE");
+    });
 
-      price = 0;
+    it("Revert when TVL is zero and mAPT totalSupply is non-zero", async () => {
+      const updatedAt = (await ethers.provider.getBlock()).timestamp;
+
+      let price = 0;
+      await mAptMock.mock.totalSupply.returns(1);
       // setting the mock mines a block and advances time by 1 sec
       await tvlAggMock.mock.latestRoundData.returns(0, price, 0, updatedAt, 0);
       await expect(oracleAdapter.getTvl()).to.be.revertedWith(
-        "MISSING_ASSET_VALUE"
+        "INVALID_ZERO_TVL"
       );
+    });
+
+    it("Return 0 when TVL is zero and mAPT totalSupply is zero", async () => {
+      const updatedAt = (await ethers.provider.getBlock()).timestamp;
+
+      let price = 0;
+      await mAptMock.mock.totalSupply.returns(0);
+      // setting the mock mines a block and advances time by 1 sec
+      await tvlAggMock.mock.latestRoundData.returns(0, price, 0, updatedAt, 0);
+      expect(await oracleAdapter.getTvl()).to.be.equal(0);
     });
 
     it("Revert when update is too old", async () => {
