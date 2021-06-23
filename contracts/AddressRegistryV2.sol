@@ -106,14 +106,14 @@ contract AddressRegistryV2 is
      * Currently there is no way to remove an ID, as attempting to
      * register the zero address will revert.
      */
-    function registerAddress(bytes32 id, address _address) public onlyOwner {
-        require(_address != address(0), "Invalid address");
+    function registerAddress(bytes32 id, address address_) public onlyOwner {
+        require(address_ != address(0), "Invalid address");
         if (_idToAddress[id] == address(0)) {
             // id wasn't registered before, so add it to the list
             _idList.push(id);
         }
-        _idToAddress[id] = _address;
-        emit AddressRegistered(id, _address);
+        _idToAddress[id] = address_;
+        emit AddressRegistered(id, address_);
     }
 
     /**
@@ -126,8 +126,8 @@ contract AddressRegistryV2 is
         require(ids.length == addresses.length, "Inputs have differing length");
         for (uint256 i = 0; i < ids.length; i++) {
             bytes32 id = ids[i];
-            address _address = addresses[i];
-            registerAddress(id, _address);
+            address address_ = addresses[i];
+            registerAddress(id, address_);
         }
     }
 
@@ -135,9 +135,9 @@ contract AddressRegistryV2 is
      * @notice Retrieve the address corresponding to the identifier.
      */
     function getAddress(bytes32 id) public view override returns (address) {
-        address _address = _idToAddress[id];
-        require(_address != address(0), "Missing address");
-        return _address;
+        address address_ = _idToAddress[id];
+        require(address_ != address(0), "Missing address");
+        return address_;
     }
 
     /**
@@ -150,9 +150,9 @@ contract AddressRegistryV2 is
                 // copy last element to slot i and shorten array
                 _idList[i] = _idList[_idList.length - 1];
                 _idList.pop();
-                address _address = _idToAddress[id];
+                address address_ = _idToAddress[id];
                 delete _idToAddress[id];
-                emit AddressDeleted(id, _address);
+                emit AddressDeleted(id, address_);
                 break;
             }
         }

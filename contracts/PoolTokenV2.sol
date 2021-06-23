@@ -118,12 +118,12 @@ contract PoolTokenV2 is
      */
     function initialize(
         address adminAddress,
-        IDetailedERC20 _underlyer,
-        AggregatorV3Interface _priceAgg
+        IDetailedERC20 underlyer_,
+        AggregatorV3Interface priceAgg
     ) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");
-        require(address(_underlyer) != address(0), "INVALID_TOKEN");
-        require(address(_priceAgg) != address(0), "INVALID_AGG");
+        require(address(underlyer_) != address(0), "INVALID_TOKEN");
+        require(address(priceAgg) != address(0), "INVALID_AGG");
 
         // initialize ancestor storage
         __Context_init_unchained();
@@ -136,8 +136,8 @@ contract PoolTokenV2 is
         setAdminAddress(adminAddress);
         addLiquidityLock = false;
         redeemLock = false;
-        underlyer = _underlyer;
-        // setPriceAggregator(_priceAgg);  <-- deprecated in V2.
+        underlyer = underlyer_;
+        // setPriceAggregator(priceAgg);  <-- deprecated in V2.
     }
 
     /**
@@ -149,13 +149,13 @@ contract PoolTokenV2 is
      * this function can only be called as part of a delegate call
      * during upgrades, i.e. in ProxyAdmin's `upgradeAndCall`.
      */
-    function initializeUpgrade(address _addressRegistry)
+    function initializeUpgrade(address addressRegistry_)
         external
         virtual
         onlyAdmin
     {
-        require(_addressRegistry.isContract(), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistryV2(_addressRegistry);
+        require(addressRegistry_.isContract(), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(addressRegistry_);
         feePeriod = 1 days;
         feePercentage = 5;
         reservePercentage = 5;
@@ -167,24 +167,24 @@ contract PoolTokenV2 is
         emit AdminChanged(adminAddress);
     }
 
-    function setAddressRegistry(address payable _addressRegistry)
+    function setAddressRegistry(address payable addressRegistry_)
         public
         onlyOwner
     {
-        require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistryV2(_addressRegistry);
+        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
 
-    function setFeePeriod(uint256 _feePeriod) public onlyOwner {
-        feePeriod = _feePeriod;
+    function setFeePeriod(uint256 feePeriod_) public onlyOwner {
+        feePeriod = feePeriod_;
     }
 
-    function setFeePercentage(uint256 _feePercentage) public onlyOwner {
-        feePercentage = _feePercentage;
+    function setFeePercentage(uint256 feePercentage_) public onlyOwner {
+        feePercentage = feePercentage_;
     }
 
-    function setReservePercentage(uint256 _reservePercentage) public onlyOwner {
-        reservePercentage = _reservePercentage;
+    function setReservePercentage(uint256 reservePercentage_) public onlyOwner {
+        reservePercentage = reservePercentage_;
     }
 
     /**
