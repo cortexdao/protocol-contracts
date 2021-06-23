@@ -337,7 +337,6 @@ describe("Contract: OracleAdapter", () => {
     it("Owner can set", async () => {
       const value = 1;
       const period = 5;
-      await oracleAdapter.lockFor(2);
       await expect(oracleAdapter.connect(deployer).setTvl(value, period)).to.not
         .be.reverted;
     });
@@ -345,7 +344,6 @@ describe("Contract: OracleAdapter", () => {
     it("Revert when non-owner calls", async () => {
       const value = 1;
       const period = 5;
-      await oracleAdapter.lockFor(2);
       await expect(
         oracleAdapter.connect(randomUser).setTvl(value, period)
       ).to.be.revertedWith("Ownable: caller is not the owner");
@@ -356,7 +354,6 @@ describe("Contract: OracleAdapter", () => {
     it("Owner can set", async () => {
       const value = 1;
       const period = 5;
-      await oracleAdapter.lockFor(2);
       await expect(
         oracleAdapter
           .connect(deployer)
@@ -367,7 +364,6 @@ describe("Contract: OracleAdapter", () => {
     it("Revert when non-owner calls", async () => {
       const value = 1;
       const period = 5;
-      await oracleAdapter.lockFor(2);
       await expect(
         oracleAdapter
           .connect(randomUser)
