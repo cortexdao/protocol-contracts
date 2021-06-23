@@ -532,7 +532,7 @@ describe("Contract: OracleAdapter", () => {
       );
       await expect(
         oracleAdapter.getAssetPrice(assetAddress_1)
-      ).to.be.revertedWith("MISSING_ASSET_VALUE");
+      ).to.be.revertedWith("NEGATIVE_VALUE");
 
       price = 0;
       // setting the mock mines a block and advances time by 1 sec
