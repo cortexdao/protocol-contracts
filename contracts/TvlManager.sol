@@ -7,12 +7,12 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./utils/EnumerableSet.sol";
 import "./interfaces/IAssetAllocation.sol";
-import "./interfaces/ITVLManager.sol";
+import "./interfaces/ITvlManager.sol";
 import "./interfaces/IOracleAdapter.sol";
 import "./interfaces/IAddressRegistryV2.sol";
 
 /**
- * @title TVL Manager
+ r @title TVL Manager
  * @author APY.Finance
  * @notice Deployed assets can exist across various platforms within the
  * defi ecosystem: pools, accounts, defi protocols, etc. This contract
@@ -22,7 +22,7 @@ import "./interfaces/IAddressRegistryV2.sol";
  * allocations registered. Any assets in the system that have been deployed,
  * but are not registered can have devastating and catastrophic effects on the TVL.
  */
-contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
+contract TvlManager is Ownable, ReentrancyGuard, ITvlManager, IAssetAllocation {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using Address for address;
 
@@ -52,7 +52,7 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
     }
 
     /**
-     * @notice Constructor TVLManager
+     * @notice Constructor
      * @param addressRegistry_ the address registry to initialize with
      */
     constructor(address addressRegistry_) public {

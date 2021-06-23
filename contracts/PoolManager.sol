@@ -11,7 +11,7 @@ import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAddressRegistryV2.sol";
 import "./interfaces/IDetailedERC20.sol";
 import "./interfaces/ILpSafeFunder.sol";
-import "./interfaces/ITVLManager.sol";
+import "./interfaces/ITvlManager.sol";
 import "./PoolTokenV2.sol";
 import "./MetaPoolToken.sol";
 
@@ -182,16 +182,16 @@ contract PoolManager is
         address account,
         PoolTokenV2[] memory pools
     ) internal {
-        ITVLManager tvlManager =
-            ITVLManager(addressRegistry.getAddress("tvlManager"));
+        ITvlManager tvlManager =
+            ITvlManager(addressRegistry.getAddress("tvlManager"));
         for (uint256 i = 0; i < pools.length; i++) {
             PoolTokenV2 pool = pools[i];
             IDetailedERC20 underlyer = pool.underlyer();
             string memory symbol = underlyer.symbol();
             bytes memory _data =
                 abi.encodeWithSignature("balanceOf(address)", account);
-            ITVLManager.Data memory data =
-                ITVLManager.Data(address(pool.underlyer()), _data);
+            ITvlManager.Data memory data =
+                ITvlManager.Data(address(pool.underlyer()), _data);
             if (!tvlManager.isAssetAllocationRegistered(data)) {
                 tvlManager.addAssetAllocation(
                     data,
