@@ -69,6 +69,25 @@ contract MetaPoolToken is
     event AdminChanged(address);
 
     /**
+     * @dev Throws if called by any account other than the proxy admin.
+     */
+    modifier onlyAdmin() {
+        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
+        _;
+    }
+
+    /**
+     * @dev Throws if called by any account other than the PoolManager.
+     */
+    modifier onlyManager() {
+        require(
+            msg.sender == addressRegistry.poolManagerAddress(),
+            "MANAGER_ONLY"
+        );
+        _;
+    }
+
+    /**
      * @dev Since the proxy delegate calls to this "logic" contract, any
      * storage set by the logic contract's constructor during deploy is
      * disregarded and this function is needed to initialize the proxy
@@ -116,22 +135,13 @@ contract MetaPoolToken is
     }
 
     /**
-     * @dev Throws if called by any account other than the proxy admin.
+     * @notice Sets the address registry
+     * @dev only callable by owner
+     * @param addressRegistry_ the address of the registry
      */
-    modifier onlyAdmin() {
-        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
-        _;
-    }
-
-    /**
-     * @dev Throws if called by any account other than the PoolManager.
-     */
-    modifier onlyManager() {
-        require(
-            msg.sender == addressRegistry.poolManagerAddress(),
-            "MANAGER_ONLY"
-        );
-        _;
+    function setAddressRegistry(address addressRegistry_) public onlyOwner {
+        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
 
     /**
@@ -192,11 +202,6 @@ contract MetaPoolToken is
         return oracleAdapter.getTvl();
     }
 
-    function _getOracleAdapter() internal view returns (IOracleAdapter) {
-        address oracleAdapterAddress = addressRegistry.oracleAdapterAddress();
-        return IOracleAdapter(oracleAdapterAddress);
-    }
-
     /**
      * @notice Calculate mAPT amount to be minted for given pool's underlyer amount.
      * @param depositAmount Pool underlyer amount to be converted
@@ -216,31 +221,6 @@ contract MetaPoolToken is
         uint256 depositValue = depositAmount.mul(tokenPrice).div(10**decimals);
         uint256 totalValue = getTvl();
         return _calculateMintAmount(depositValue, totalValue);
-    }
-
-    /**
-     * @dev amount of APT minted should be in same ratio to APT supply
-     * as deposit value is to pool's total value, i.e.:
-     *
-     * mint amount / total supply
-     * = deposit value / pool total value
-     *
-     * For denominators, pre or post-deposit amounts can be used.
-     * The important thing is they are consistent, i.e. both pre-deposit
-     * or both post-deposit.
-     */
-    function _calculateMintAmount(uint256 depositValue, uint256 totalValue)
-        internal
-        view
-        returns (uint256)
-    {
-        uint256 totalSupply = totalSupply();
-
-        if (totalValue == 0 || totalSupply == 0) {
-            return depositValue.mul(DEFAULT_MAPT_TO_UNDERLYER_FACTOR);
-        }
-
-        return depositValue.mul(totalSupply).div(totalValue);
     }
 
     /**
@@ -279,13 +259,33 @@ contract MetaPoolToken is
         return getTvl().mul(balance).div(totalSupply);
     }
 
+    function _getOracleAdapter() internal view returns (IOracleAdapter) {
+        address oracleAdapterAddress = addressRegistry.oracleAdapterAddress();
+        return IOracleAdapter(oracleAdapterAddress);
+    }
+
     /**
-     * @notice Sets the address registry
-     * @dev only callable by owner
-     * @param addressRegistry_ the address of the registry
+     * @dev amount of APT minted should be in same ratio to APT supply
+     * as deposit value is to pool's total value, i.e.:
+     *
+     * mint amount / total supply
+     * = deposit value / pool total value
+     *
+     * For denominators, pre or post-deposit amounts can be used.
+     * The important thing is they are consistent, i.e. both pre-deposit
+     * or both post-deposit.
      */
-    function setAddressRegistry(address addressRegistry_) public onlyOwner {
-        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistryV2(addressRegistry_);
+    function _calculateMintAmount(uint256 depositValue, uint256 totalValue)
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 totalSupply = totalSupply();
+
+        if (totalValue == 0 || totalSupply == 0) {
+            return depositValue.mul(DEFAULT_MAPT_TO_UNDERLYER_FACTOR);
+        }
+
+        return depositValue.mul(totalSupply).div(totalValue);
     }
 }

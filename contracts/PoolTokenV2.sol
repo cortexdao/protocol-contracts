@@ -63,10 +63,9 @@ contract PoolTokenV2 is
     using SafeMath for uint256;
     using SignedSafeMath for int256;
     using SafeERC20 for IDetailedERC20;
+
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
     uint256 internal constant _MAX_INT256 = 2**255 - 1;
-
-    event AdminChanged(address);
 
     /* ------------------------------- */
     /* impl-specific storage variables */
@@ -100,6 +99,16 @@ contract PoolTokenV2 is
     uint256 public reservePercentage;
 
     /* ------------------------------- */
+
+    event AdminChanged(address);
+
+    /**
+     * @dev Throws if called by any account other than the proxy admin.
+     */
+    modifier onlyAdmin() {
+        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
+        _;
+    }
 
     /**
      * @dev Since the proxy delegate calls to this "logic" contract, any
@@ -159,40 +168,6 @@ contract PoolTokenV2 is
         feePeriod = 1 days;
         feePercentage = 5;
         reservePercentage = 5;
-    }
-
-    function setAdminAddress(address adminAddress) public onlyOwner {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-        proxyAdmin = adminAddress;
-        emit AdminChanged(adminAddress);
-    }
-
-    function setAddressRegistry(address payable addressRegistry_)
-        public
-        onlyOwner
-    {
-        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistryV2(addressRegistry_);
-    }
-
-    function setFeePeriod(uint256 feePeriod_) public onlyOwner {
-        feePeriod = feePeriod_;
-    }
-
-    function setFeePercentage(uint256 feePercentage_) public onlyOwner {
-        feePercentage = feePercentage_;
-    }
-
-    function setReservePercentage(uint256 reservePercentage_) public onlyOwner {
-        reservePercentage = reservePercentage_;
-    }
-
-    /**
-     * @dev Throws if called by any account other than the proxy admin.
-     */
-    modifier onlyAdmin() {
-        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
-        _;
     }
 
     /**
@@ -311,6 +286,55 @@ contract PoolTokenV2 is
     }
 
     /**
+     * @notice Allow `delegate` to withdraw any amount from the pool.
+     * @dev Will fail if called twice, due to usage of `safeApprove`.
+     * @param delegate Address to give infinite allowance to
+     */
+    function infiniteApprove(address delegate)
+        external
+        nonReentrant
+        whenNotPaused
+        onlyOwner
+    {
+        underlyer.safeApprove(delegate, type(uint256).max);
+    }
+
+    /**
+     * @notice Revoke given allowance from `delegate`.
+     * @dev Can be called even when the pool is locked.
+     * @param delegate Address to remove allowance from
+     */
+    function revokeApprove(address delegate) external nonReentrant onlyOwner {
+        underlyer.safeApprove(delegate, 0);
+    }
+
+    function setAdminAddress(address adminAddress) public onlyOwner {
+        require(adminAddress != address(0), "INVALID_ADMIN");
+        proxyAdmin = adminAddress;
+        emit AdminChanged(adminAddress);
+    }
+
+    function setAddressRegistry(address payable addressRegistry_)
+        public
+        onlyOwner
+    {
+        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(addressRegistry_);
+    }
+
+    function setFeePeriod(uint256 feePeriod_) public onlyOwner {
+        feePeriod = feePeriod_;
+    }
+
+    function setFeePercentage(uint256 feePercentage_) public onlyOwner {
+        feePercentage = feePercentage_;
+    }
+
+    function setReservePercentage(uint256 reservePercentage_) public onlyOwner {
+        reservePercentage = reservePercentage_;
+    }
+
+    /**
      * @notice Calculate APT amount to be minted from deposit amount.
      * @param depositAmount The deposit amount of stablecoin
      * @return The mint amount
@@ -323,31 +347,6 @@ contract PoolTokenV2 is
         uint256 depositValue = getValueFromUnderlyerAmount(depositAmount);
         uint256 poolTotalValue = getPoolTotalValue();
         return _calculateMintAmount(depositValue, poolTotalValue);
-    }
-
-    /**
-     * @dev amount of APT minted should be in same ratio to APT supply
-     * as deposit value is to pool's total value, i.e.:
-     *
-     * mint amount / total supply
-     * = deposit value / pool total value
-     *
-     * For denominators, pre or post-deposit amounts can be used.
-     * The important thing is they are consistent, i.e. both pre-deposit
-     * or both post-deposit.
-     */
-    function _calculateMintAmount(uint256 depositValue, uint256 poolTotalValue)
-        internal
-        view
-        returns (uint256)
-    {
-        uint256 totalSupply = totalSupply();
-
-        if (poolTotalValue == 0 || totalSupply == 0) {
-            return depositValue.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR);
-        }
-
-        return (depositValue.mul(totalSupply)).div(poolTotalValue);
     }
 
     /**
@@ -550,29 +549,6 @@ contract PoolTokenV2 is
     }
 
     /**
-     * @notice Allow `delegate` to withdraw any amount from the pool.
-     * @dev Will fail if called twice, due to usage of `safeApprove`.
-     * @param delegate Address to give infinite allowance to
-     */
-    function infiniteApprove(address delegate)
-        external
-        nonReentrant
-        whenNotPaused
-        onlyOwner
-    {
-        underlyer.safeApprove(delegate, type(uint256).max);
-    }
-
-    /**
-     * @notice Revoke given allowance from `delegate`.
-     * @dev Can be called even when the pool is locked.
-     * @param delegate Address to remove allowance from
-     */
-    function revokeApprove(address delegate) external nonReentrant onlyOwner {
-        underlyer.safeApprove(delegate, 0);
-    }
-
-    /**
      * @dev This hook is in-place to block inter-user APT transfers, as it
      * is one avenue that can be used by arbitrageurs to drain the
      * reserves.
@@ -587,5 +563,30 @@ contract PoolTokenV2 is
         if (from == address(0) || to == address(0)) return;
         // block transfer between users
         revert("INVALID_TRANSFER");
+    }
+
+    /**
+     * @dev amount of APT minted should be in same ratio to APT supply
+     * as deposit value is to pool's total value, i.e.:
+     *
+     * mint amount / total supply
+     * = deposit value / pool total value
+     *
+     * For denominators, pre or post-deposit amounts can be used.
+     * The important thing is they are consistent, i.e. both pre-deposit
+     * or both post-deposit.
+     */
+    function _calculateMintAmount(uint256 depositValue, uint256 poolTotalValue)
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 totalSupply = totalSupply();
+
+        if (poolTotalValue == 0 || totalSupply == 0) {
+            return depositValue.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR);
+        }
+
+        return (depositValue.mul(totalSupply)).div(poolTotalValue);
     }
 }

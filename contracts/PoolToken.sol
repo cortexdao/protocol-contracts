@@ -23,6 +23,7 @@ contract PoolToken is
 {
     using SafeMath for uint256;
     using SafeERC20 for IDetailedERC20;
+
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
 
     /* ------------------------------- */
@@ -35,6 +36,15 @@ contract PoolToken is
     AggregatorV3Interface public priceAgg;
 
     /* ------------------------------- */
+
+    modifier onlyAdmin() {
+        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
+        _;
+    }
+
+    receive() external payable {
+        revert("DONT_SEND_ETHER");
+    }
 
     function initialize(
         address adminAddress,
@@ -63,36 +73,12 @@ contract PoolToken is
     // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual onlyAdmin {}
 
-    function setAdminAddress(address adminAddress) public onlyOwner {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-        proxyAdmin = adminAddress;
-        emit AdminChanged(adminAddress);
-    }
-
-    function setPriceAggregator(AggregatorV3Interface _priceAgg)
-        public
-        onlyOwner
-    {
-        require(address(_priceAgg) != address(0), "INVALID_AGG");
-        priceAgg = _priceAgg;
-        emit PriceAggregatorChanged(address(_priceAgg));
-    }
-
-    modifier onlyAdmin() {
-        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
-        _;
-    }
-
     function lock() external onlyOwner {
         _pause();
     }
 
     function unlock() external onlyOwner {
         _unpause();
-    }
-
-    receive() external payable {
-        revert("DONT_SEND_ETHER");
     }
 
     /**
@@ -131,43 +117,6 @@ contract PoolToken is
             depositEthValue,
             getPoolTotalEthValue()
         );
-    }
-
-    function getPoolTotalEthValue() public view virtual returns (uint256) {
-        return getEthValueFromTokenAmount(underlyer.balanceOf(address(this)));
-    }
-
-    function getAPTEthValue(uint256 amount) public view returns (uint256) {
-        require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        return (amount.mul(getPoolTotalEthValue())).div(totalSupply());
-    }
-
-    function getEthValueFromTokenAmount(uint256 amount)
-        public
-        view
-        returns (uint256)
-    {
-        if (amount == 0) {
-            return 0;
-        }
-        uint256 decimals = underlyer.decimals();
-        return ((getTokenEthPrice()).mul(amount)).div(10**decimals);
-    }
-
-    function getTokenAmountFromEthValue(uint256 ethValue)
-        public
-        view
-        returns (uint256)
-    {
-        uint256 tokenEthPrice = getTokenEthPrice();
-        uint256 decimals = underlyer.decimals();
-        return ((10**decimals).mul(ethValue)).div(tokenEthPrice);
-    }
-
-    function getTokenEthPrice() public view returns (uint256) {
-        (, int256 price, , , ) = priceAgg.latestRoundData();
-        require(price > 0, "UNABLE_TO_RETRIEVE_ETH_PRICE");
-        return uint256(price);
     }
 
     /** @notice Disable deposits. */
@@ -224,6 +173,21 @@ contract PoolToken is
         emit RedeemUnlocked();
     }
 
+    function setAdminAddress(address adminAddress) public onlyOwner {
+        require(adminAddress != address(0), "INVALID_ADMIN");
+        proxyAdmin = adminAddress;
+        emit AdminChanged(adminAddress);
+    }
+
+    function setPriceAggregator(AggregatorV3Interface _priceAgg)
+        public
+        onlyOwner
+    {
+        require(address(_priceAgg) != address(0), "INVALID_AGG");
+        priceAgg = _priceAgg;
+        emit PriceAggregatorChanged(address(_priceAgg));
+    }
+
     /**
      * @notice Calculate APT amount to be minted from deposit amount.
      * @param tokenAmt The deposit amount of stablecoin
@@ -237,6 +201,56 @@ contract PoolToken is
         uint256 depositEthValue = getEthValueFromTokenAmount(tokenAmt);
         uint256 poolTotalEthValue = getPoolTotalEthValue();
         return _calculateMintAmount(depositEthValue, poolTotalEthValue);
+    }
+
+    /**
+     * @notice Get the underlying amount represented by APT amount.
+     * @param aptAmount The amount of APT tokens
+     * @return uint256 The underlying value of the APT tokens
+     */
+    function getUnderlyerAmount(uint256 aptAmount)
+        public
+        view
+        returns (uint256)
+    {
+        return getTokenAmountFromEthValue(getAPTEthValue(aptAmount));
+    }
+
+    function getPoolTotalEthValue() public view virtual returns (uint256) {
+        return getEthValueFromTokenAmount(underlyer.balanceOf(address(this)));
+    }
+
+    function getAPTEthValue(uint256 amount) public view returns (uint256) {
+        require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
+        return (amount.mul(getPoolTotalEthValue())).div(totalSupply());
+    }
+
+    function getEthValueFromTokenAmount(uint256 amount)
+        public
+        view
+        returns (uint256)
+    {
+        if (amount == 0) {
+            return 0;
+        }
+        uint256 decimals = underlyer.decimals();
+        return ((getTokenEthPrice()).mul(amount)).div(10**decimals);
+    }
+
+    function getTokenAmountFromEthValue(uint256 ethValue)
+        public
+        view
+        returns (uint256)
+    {
+        uint256 tokenEthPrice = getTokenEthPrice();
+        uint256 decimals = underlyer.decimals();
+        return ((10**decimals).mul(ethValue)).div(tokenEthPrice);
+    }
+
+    function getTokenEthPrice() public view returns (uint256) {
+        (, int256 price, , , ) = priceAgg.latestRoundData();
+        require(price > 0, "UNABLE_TO_RETRIEVE_ETH_PRICE");
+        return uint256(price);
     }
 
     /**
@@ -257,18 +271,5 @@ contract PoolToken is
         }
 
         return (depositEthAmount.mul(totalSupply)).div(totalEthAmount);
-    }
-
-    /**
-     * @notice Get the underlying amount represented by APT amount.
-     * @param aptAmount The amount of APT tokens
-     * @return uint256 The underlying value of the APT tokens
-     */
-    function getUnderlyerAmount(uint256 aptAmount)
-        public
-        view
-        returns (uint256)
-    {
-        return getTokenAmountFromEthValue(getAPTEthValue(aptAmount));
     }
 }

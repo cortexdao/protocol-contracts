@@ -11,9 +11,6 @@ contract RewardDistributor is Ownable {
     using ECDSA for bytes32;
     using SafeERC20 for IERC20;
 
-    event SignerSet(address newSigner);
-    event Claimed(uint256 nonce, address recipient, uint256 amount);
-
     struct EIP712Domain {
         string name;
         string version;
@@ -41,6 +38,9 @@ contract RewardDistributor is Ownable {
     mapping(address => uint256) public accountNonces;
     address public signer;
 
+    event SignerSet(address newSigner);
+    event Claimed(uint256 nonce, address recipient, uint256 amount);
+
     constructor(IERC20 token, address signerAddress) public {
         require(address(token) != address(0), "Invalid APY Address");
         require(signerAddress != address(0), "Invalid Signer Address");
@@ -55,6 +55,54 @@ contract RewardDistributor is Ownable {
                 verifyingContract: address(this)
             })
         );
+    }
+
+    function setSigner(address newSigner) external onlyOwner {
+        signer = newSigner;
+    }
+
+    function claim(
+        Recipient calldata recipient,
+        uint8 v,
+        bytes32 r,
+        bytes32 s // bytes calldata signature
+    ) external {
+        address signatureSigner = ecrecover(_hash(recipient), v, r, s);
+        require(signatureSigner == signer, "Invalid Signature");
+
+        require(
+            recipient.nonce == accountNonces[recipient.wallet],
+            "Nonce Mismatch"
+        );
+        require(
+            apyToken.balanceOf(address(this)) >= recipient.amount,
+            "Insufficient Funds"
+        );
+
+        accountNonces[recipient.wallet] += 1;
+        apyToken.safeTransfer(recipient.wallet, recipient.amount);
+
+        emit Claimed(recipient.nonce, recipient.wallet, recipient.amount);
+    }
+
+    function _hash(Recipient memory recipient) private returns (bytes32) {
+        return
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    DOMAIN_SEPARATOR,
+                    _hashRecipient(recipient)
+                )
+            );
+    }
+
+    function _getChainID() private view returns (uint256) {
+        uint256 id;
+        // no-inline-assembly
+        assembly {
+            id := chainid()
+        }
+        return id;
     }
 
     function _hashDomain(EIP712Domain memory eip712Domain)
@@ -88,53 +136,5 @@ contract RewardDistributor is Ownable {
                     recipient.amount
                 )
             );
-    }
-
-    function _hash(Recipient memory recipient) private returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked(
-                    "\x19\x01",
-                    DOMAIN_SEPARATOR,
-                    _hashRecipient(recipient)
-                )
-            );
-    }
-
-    function _getChainID() private view returns (uint256) {
-        uint256 id;
-        // no-inline-assembly
-        assembly {
-            id := chainid()
-        }
-        return id;
-    }
-
-    function setSigner(address newSigner) external onlyOwner {
-        signer = newSigner;
-    }
-
-    function claim(
-        Recipient calldata recipient,
-        uint8 v,
-        bytes32 r,
-        bytes32 s // bytes calldata signature
-    ) external {
-        address signatureSigner = ecrecover(_hash(recipient), v, r, s);
-        require(signatureSigner == signer, "Invalid Signature");
-
-        require(
-            recipient.nonce == accountNonces[recipient.wallet],
-            "Nonce Mismatch"
-        );
-        require(
-            apyToken.balanceOf(address(this)) >= recipient.amount,
-            "Insufficient Funds"
-        );
-
-        accountNonces[recipient.wallet] += 1;
-        apyToken.safeTransfer(recipient.wallet, recipient.amount);
-
-        emit Claimed(recipient.nonce, recipient.wallet, recipient.amount);
     }
 }

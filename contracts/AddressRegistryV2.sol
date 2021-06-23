@@ -43,6 +43,14 @@ contract AddressRegistryV2 is
     event AdminChanged(address);
 
     /**
+     * @dev Throws if called by any account other than the proxy admin.
+     */
+    modifier onlyAdmin() {
+        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
+        _;
+    }
+
+    /**
      * @dev Since the proxy delegate calls to this "logic" contract, any
      * storage set by the logic contract's constructor during deploy is
      * disregarded and this function is needed to initialize the proxy
@@ -79,25 +87,19 @@ contract AddressRegistryV2 is
     // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual onlyAdmin {}
 
-    function setAdminAddress(address adminAddress) public onlyOwner {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-        proxyAdmin = adminAddress;
-        emit AdminChanged(adminAddress);
-    }
-
     /**
-     * @dev Throws if called by any account other than the proxy admin.
+     * @dev Convenient method to register multiple addresses at once.
      */
-    modifier onlyAdmin() {
-        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
-        _;
-    }
-
-    /**
-     * @notice Returns the list of all registered identifiers.
-     */
-    function getIds() public view override returns (bytes32[] memory) {
-        return _idList;
+    function registerMultipleAddresses(
+        bytes32[] calldata ids,
+        address[] calldata addresses
+    ) external onlyOwner {
+        require(ids.length == addresses.length, "Inputs have differing length");
+        for (uint256 i = 0; i < ids.length; i++) {
+            bytes32 id = ids[i];
+            address address_ = addresses[i];
+            registerAddress(id, address_);
+        }
     }
 
     /**
@@ -117,30 +119,6 @@ contract AddressRegistryV2 is
     }
 
     /**
-     * @dev Convenient method to register multiple addresses at once.
-     */
-    function registerMultipleAddresses(
-        bytes32[] calldata ids,
-        address[] calldata addresses
-    ) external onlyOwner {
-        require(ids.length == addresses.length, "Inputs have differing length");
-        for (uint256 i = 0; i < ids.length; i++) {
-            bytes32 id = ids[i];
-            address address_ = addresses[i];
-            registerAddress(id, address_);
-        }
-    }
-
-    /**
-     * @notice Retrieve the address corresponding to the identifier.
-     */
-    function getAddress(bytes32 id) public view override returns (address) {
-        address address_ = _idToAddress[id];
-        require(address_ != address(0), "Missing address");
-        return address_;
-    }
-
-    /**
      * @dev Delete the address corresponding to the identifier.
      * Time-complexity is O(n) where n is the length of `_idList`.
      */
@@ -156,6 +134,28 @@ contract AddressRegistryV2 is
                 break;
             }
         }
+    }
+
+    function setAdminAddress(address adminAddress) public onlyOwner {
+        require(adminAddress != address(0), "INVALID_ADMIN");
+        proxyAdmin = adminAddress;
+        emit AdminChanged(adminAddress);
+    }
+
+    /**
+     * @notice Returns the list of all registered identifiers.
+     */
+    function getIds() public view override returns (bytes32[] memory) {
+        return _idList;
+    }
+
+    /**
+     * @notice Retrieve the address corresponding to the identifier.
+     */
+    function getAddress(bytes32 id) public view override returns (address) {
+        address address_ = _idToAddress[id];
+        require(address_ != address(0), "Missing address");
+        return address_;
     }
 
     /**

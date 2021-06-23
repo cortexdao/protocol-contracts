@@ -38,14 +38,6 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
     mapping(bytes32 => uint256) private allocationDecimals;
 
     /**
-     * @notice Constructor TVLManager
-     * @param addressRegistry_ the address registry to initialize with
-     */
-    constructor(address addressRegistry_) public {
-        setAddressRegistry(addressRegistry_);
-    }
-
-    /**
      * @dev Reverts if non-permissed account calls.
      * Permissioned accounts are: owner, pool manager, and account manager
      */
@@ -59,10 +51,12 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
         _;
     }
 
-    function lockOracleAdapter() internal {
-        IOracleAdapter oracleAdapter =
-            IOracleAdapter(addressRegistry.oracleAdapterAddress());
-        oracleAdapter.lock();
+    /**
+     * @notice Constructor TVLManager
+     * @param addressRegistry_ the address registry to initialize with
+     */
+    constructor(address addressRegistry_) public {
+        setAddressRegistry(addressRegistry_);
     }
 
     /**
@@ -108,66 +102,6 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
         delete allocationDecimals[dataHash];
         lockOracleAdapter();
         emit AssetAllocationRemoved(data, symbol);
-    }
-
-    /**
-     * @notice Generates a data hash used for uniquely identifying asset allocations
-     * @param data the data hash containing the target address and the bytes lookup data
-     * @return returns the resulting bytes32 hash of the abi encode packed target address and bytes look up data
-     */
-    function generateDataHash(Data memory data)
-        public
-        pure
-        override
-        returns (bytes32)
-    {
-        return keccak256(abi.encodePacked(data.target, data.data));
-    }
-
-    /**
-     * @notice determines if a target address and bytes lookup data has already been registered
-     * @param data the data hash containing the target address and the bytes lookup data
-     * @return returns true if the asset allocation is currently registered, otherwise false
-     */
-    function isAssetAllocationRegistered(Data memory data)
-        public
-        view
-        override
-        returns (bool)
-    {
-        return _isAssetAllocationRegistered(generateDataHash(data));
-    }
-
-    /**
-     * @notice helper function for isAssetallocationRegistered function
-     * @param data the bytes32 hash
-     * @return returns true if the asset allocation is currently registered, otherwise false
-     */
-    function _isAssetAllocationRegistered(bytes32 data)
-        public
-        view
-        returns (bool)
-    {
-        return allocationIds.contains(data);
-    }
-
-    /**
-     * @notice Returns a list of all identifiers where asset allocations have been registered
-     * @dev the list contains no duplicate identifiers
-     * @return list of all the registered identifiers
-     */
-    function getAssetAllocationIds()
-        external
-        view
-        override
-        returns (bytes32[] memory)
-    {
-        uint256 length = allocationIds.length();
-        bytes32[] memory allocationIds_ = new bytes32[](length);
-        for (uint256 i = 0; i < length; i++) {
-            allocationIds_[i] = allocationIds.at(i);
-        }
-        return allocationIds_;
     }
 
     /**
@@ -226,6 +160,76 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
     }
 
     /**
+     * @notice Returns a list of all identifiers where asset allocations have been registered
+     * @dev the list contains no duplicate identifiers
+     * @return list of all the registered identifiers
+     */
+    function getAssetAllocationIds()
+        external
+        view
+        override
+        returns (bytes32[] memory)
+    {
+        uint256 length = allocationIds.length();
+        bytes32[] memory allocationIds_ = new bytes32[](length);
+        for (uint256 i = 0; i < length; i++) {
+            allocationIds_[i] = allocationIds.at(i);
+        }
+        return allocationIds_;
+    }
+
+    /**
+     * @notice Generates a data hash used for uniquely identifying asset allocations
+     * @param data the data hash containing the target address and the bytes lookup data
+     * @return returns the resulting bytes32 hash of the abi encode packed target address and bytes look up data
+     */
+    function generateDataHash(Data memory data)
+        public
+        pure
+        override
+        returns (bytes32)
+    {
+        return keccak256(abi.encodePacked(data.target, data.data));
+    }
+
+    /**
+     * @notice determines if a target address and bytes lookup data has already been registered
+     * @param data the data hash containing the target address and the bytes lookup data
+     * @return returns true if the asset allocation is currently registered, otherwise false
+     */
+    function isAssetAllocationRegistered(Data memory data)
+        public
+        view
+        override
+        returns (bool)
+    {
+        return _isAssetAllocationRegistered(generateDataHash(data));
+    }
+
+    /**
+     * @notice helper function for isAssetallocationRegistered function
+     * @param data the bytes32 hash
+     * @return returns true if the asset allocation is currently registered, otherwise false
+     */
+    function _isAssetAllocationRegistered(bytes32 data)
+        public
+        view
+        returns (bool)
+    {
+        return allocationIds.contains(data);
+    }
+
+    /**
+     * @notice Sets the address registry
+     * @dev only callable by owner
+     * @param addressRegistry_ the address of the registry
+     */
+    function setAddressRegistry(address addressRegistry_) public onlyOwner {
+        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(addressRegistry_);
+    }
+
+    /**
      * @notice Executes data's bytes look up data against data's target address
      * @dev execution is a static call
      * @param data the data hash containing the target address and the bytes lookup data to execute
@@ -239,13 +243,9 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
         returnData = data.target.functionStaticCall(data.data);
     }
 
-    /**
-     * @notice Sets the address registry
-     * @dev only callable by owner
-     * @param addressRegistry_ the address of the registry
-     */
-    function setAddressRegistry(address addressRegistry_) public onlyOwner {
-        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistryV2(addressRegistry_);
+    function lockOracleAdapter() internal {
+        IOracleAdapter oracleAdapter =
+            IOracleAdapter(addressRegistry.oracleAdapterAddress());
+        oracleAdapter.lock();
     }
 }
