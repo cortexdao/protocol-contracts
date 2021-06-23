@@ -40,6 +40,8 @@ contract AddressRegistryV2 is
 
     /* ------------------------------- */
 
+    event AdminChanged(address);
+
     /**
      * @dev Since the proxy delegate calls to this "logic" contract, any
      * storage set by the logic contract's constructor during deploy is

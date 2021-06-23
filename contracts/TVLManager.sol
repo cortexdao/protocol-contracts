@@ -93,10 +93,11 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
         bytes32 dataHash = generateDataHash(data);
         _allocationIds.remove(dataHash);
         delete _allocationData[dataHash];
+        string memory symbol = _allocationSymbols[dataHash];
         delete _allocationSymbols[dataHash];
         delete _allocationDecimals[dataHash];
         lockOracleAdapter();
-        emit AssetAllocationRemoved(data);
+        emit AssetAllocationRemoved(data, symbol);
     }
 
     /// @notice Generates a data hash used for uniquely identifying asset allocations
