@@ -350,15 +350,6 @@ describe("Contract: OracleAdapter", () => {
         oracleAdapter.connect(randomUser).setTvl(value, period)
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
-
-    it("Revert when unlocked", async () => {
-      const value = 1;
-      const period = 5;
-      await oracleAdapter.unlock(); // unlocks
-      await expect(
-        oracleAdapter.connect(deployer).setTvl(value, period)
-      ).to.be.revertedWith("ORACLE_UNLOCKED");
-    });
   });
 
   describe("setAssetValue", () => {
@@ -382,17 +373,6 @@ describe("Contract: OracleAdapter", () => {
           .connect(randomUser)
           .setAssetValue(assetAddress_1, value, period)
       ).to.be.revertedWith("Ownable: caller is not the owner");
-    });
-
-    it("Revert when unlocked", async () => {
-      const value = 1;
-      const period = 5;
-      await oracleAdapter.unlock(); // unlocks
-      await expect(
-        oracleAdapter
-          .connect(deployer)
-          .setAssetValue(assetAddress_1, value, period)
-      ).to.be.revertedWith("ORACLE_UNLOCKED");
     });
   });
 
