@@ -48,10 +48,10 @@ async function main(argv) {
   console.log("ETH balance:", balance.toString());
   console.log("");
 
-  const tvlManagerAddress = getDeployedAddress("TVLManager", networkName);
+  const tvlManagerAddress = getDeployedAddress("TvlManager", networkName);
   // eslint-disable-next-line no-unused-vars
   const tvlManager = await ethers.getContractAt(
-    "TVLManager",
+    "TvlManager",
     tvlManagerAddress,
     tvlManagerDeployer
   );

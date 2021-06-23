@@ -9,7 +9,7 @@ pragma experimental ABIEncoderV2;
  * @notice These functions enable external systems to pull necessary info
  * to compute the TVL of the APY.Finance system.
  */
-interface ITVLManager {
+interface ITvlManager {
     // struct representing a view call execution against a target contract given bytes
     // target is the target contract to execute view calls against
     // bytes data represents the encoded function signature + parameters

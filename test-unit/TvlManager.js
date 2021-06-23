@@ -10,7 +10,7 @@ const {
   bytes32,
 } = require("../utils/helpers");
 
-describe("Contract: TVLManager", () => {
+describe("Contract: TvlManager", () => {
   // signers
   let deployer;
   let addressRegistry;
@@ -20,7 +20,7 @@ describe("Contract: TVLManager", () => {
   let randomUser;
 
   // contract factories
-  let TVLManager;
+  let TvlManager;
 
   // deployed contracts
   let tvlManager;
@@ -58,9 +58,9 @@ describe("Contract: TVLManager", () => {
 
     await oracleAdapter.mock.lock.returns();
 
-    TVLManager = await ethers.getContractFactory("TVLManager");
+    TvlManager = await ethers.getContractFactory("TvlManager");
 
-    tvlManager = await TVLManager.deploy(addressRegistry.address);
+    tvlManager = await TvlManager.deploy(addressRegistry.address);
     await tvlManager.deployed();
   });
 

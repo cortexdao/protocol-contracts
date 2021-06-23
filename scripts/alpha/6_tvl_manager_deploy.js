@@ -56,13 +56,13 @@ async function main(argv) {
   console.log("");
 
   console.log("");
-  console.log("Deploying TVLManager ...");
+  console.log("Deploying TvlManager ...");
   console.log("");
 
   let gasUsed = BigNumber.from("0");
 
-  const TVLManager = await ethers.getContractFactory(
-    "TVLManager",
+  const TvlManager = await ethers.getContractFactory(
+    "TvlManager",
     tvlManagerDeployer
   );
 
@@ -71,21 +71,21 @@ async function main(argv) {
     "AddressRegistryProxy",
     networkName
   );
-  const tvlManager = await TVLManager.deploy(addressRegistryAddress, {
+  const tvlManager = await TvlManager.deploy(addressRegistryAddress, {
     gasPrice,
   });
   console.log(
     "Deploy:",
     `https://etherscan.io/tx/${tvlManager.deployTransaction.hash}`
   );
-  console.log("TVLManager:", chalk.green(tvlManager.address));
+  console.log("TvlManager:", chalk.green(tvlManager.address));
   console.log("  Address registry:", addressRegistryAddress);
   console.log("");
   let receipt = await tvlManager.deployTransaction.wait();
   gasUsed = gasUsed.add(receipt.gasUsed);
 
   const deploy_data = {
-    TVLManager: tvlManager.address,
+    TvlManager: tvlManager.address,
   };
   updateDeployJsons(networkName, deploy_data);
 

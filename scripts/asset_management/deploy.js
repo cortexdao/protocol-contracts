@@ -258,11 +258,11 @@ async function main(argv) {
 
   console.log("Deploying TVL Manager ...");
 
-  const TVLManager = await ethers.getContractFactory("TVLManager");
+  const TvlManager = await ethers.getContractFactory("TvlManager");
 
-  const tvlManager = await TVLManager.deploy(addressRegistry.address);
+  const tvlManager = await TvlManager.deploy(addressRegistry.address);
   await tvlManager.deployed();
-  console.logAddress("TVLManager", tvlManager.address);
+  console.logAddress("TvlManager", tvlManager.address);
   trx = await addressRegistry.registerAddress(
     bytes32("tvlManager"),
     tvlManager.address

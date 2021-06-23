@@ -137,7 +137,7 @@ const CONTRACT_NAMES = [
   "PoolManagerProxyAdmin",
   "ProxyConstructorArg",
   "RewardDistributor",
-  "TVLManager",
+  "TvlManager",
   "AdminSafe",
   "LpSafe",
 ];

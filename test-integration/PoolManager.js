@@ -291,8 +291,8 @@ describe("Contract: PoolManager", () => {
     /*******************************************/
     /***** deploy asset allocation registry ****/
     /*******************************************/
-    const TVLManager = await ethers.getContractFactory("TVLManager");
-    tvlManager = await TVLManager.deploy(addressRegistry.address);
+    const TvlManager = await ethers.getContractFactory("TvlManager");
+    tvlManager = await TvlManager.deploy(addressRegistry.address);
     await tvlManager.deployed();
 
     await addressRegistry.registerAddress(
