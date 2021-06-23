@@ -91,25 +91,25 @@ contract OracleAdapter is Ownable, IOracleAdapter {
 
     /**
      * @notice Constructor
-     * @param _addressRegistry the address registry
+     * @param addressRegistry_ the address registry
      * @param assets the assets priced by sources
      * @param sources the source for each asset
      * @param tvlSource the source for the TVL value
-     * @param _chainlinkStalePeriod the number of seconds until a source value is stale
+     * @param chainlinkStalePeriod_ the number of seconds until a source value is stale
      */
     constructor(
-        address _addressRegistry,
+        address addressRegistry_,
         address tvlSource,
         address[] memory assets,
         address[] memory sources,
-        uint256 _chainlinkStalePeriod,
-        uint256 _defaultLockPeriod
+        uint256 chainlinkStalePeriod_,
+        uint256 defaultLockPeriod_
     ) public {
-        setAddressRegistry(_addressRegistry);
+        setAddressRegistry(addressRegistry_);
         setTvlSource(tvlSource);
         setAssetSources(assets, sources);
-        setChainlinkStalePeriod(_chainlinkStalePeriod);
-        setDefaultLockPeriod(_defaultLockPeriod);
+        setChainlinkStalePeriod(chainlinkStalePeriod_);
+        setDefaultLockPeriod(defaultLockPeriod_);
     }
 
     function setDefaultLockPeriod(uint256 newPeriod) public override onlyOwner {
@@ -131,11 +131,11 @@ contract OracleAdapter is Ownable, IOracleAdapter {
     /**
      * @notice Sets the address registry
      * @dev only callable by owner
-     * @param _addressRegistry the address of the registry
+     * @param addressRegistry_ the address of the registry
      */
-    function setAddressRegistry(address _addressRegistry) public onlyOwner {
-        require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistryV2(_addressRegistry);
+    function setAddressRegistry(address addressRegistry_) public onlyOwner {
+        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
 
     //------------------------------------------------------------
@@ -198,15 +198,15 @@ contract OracleAdapter is Ownable, IOracleAdapter {
 
     /**
      * @notice Set the length of time before an agg value is considered stale
-     * @param _chainlinkStalePeriod the length of time in seconds
+     * @param chainlinkStalePeriod_ the length of time in seconds
      */
-    function setChainlinkStalePeriod(uint256 _chainlinkStalePeriod)
+    function setChainlinkStalePeriod(uint256 chainlinkStalePeriod_)
         public
         onlyOwner
     {
-        require(_chainlinkStalePeriod > 0, "INVALID_STALE_PERIOD");
-        chainlinkStalePeriod = _chainlinkStalePeriod;
-        emit ChainlinkStalePeriodUpdated(_chainlinkStalePeriod);
+        require(chainlinkStalePeriod_ > 0, "INVALID_STALE_PERIOD");
+        chainlinkStalePeriod = chainlinkStalePeriod_;
+        emit ChainlinkStalePeriodUpdated(chainlinkStalePeriod_);
     }
 
     function isLocked() public view override returns (bool) {

@@ -27,18 +27,18 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
     IAddressRegistryV2 public addressRegistry;
 
     // all registered allocation ids
-    EnumerableSet.Bytes32Set private _allocationIds;
+    EnumerableSet.Bytes32Set private allocationIds;
     // ids mapped to data
-    mapping(bytes32 => Data) private _allocationData;
+    mapping(bytes32 => Data) private allocationData;
     // ids mapped to symbol
-    mapping(bytes32 => string) private _allocationSymbols;
+    mapping(bytes32 => string) private allocationSymbols;
     // ids mapped to decimals
-    mapping(bytes32 => uint256) private _allocationDecimals;
+    mapping(bytes32 => uint256) private allocationDecimals;
 
     /// @notice Constructor TVLManager
-    /// @param _addressRegistry the address registry to initialize with
-    constructor(address _addressRegistry) public {
-        setAddressRegistry(_addressRegistry);
+    /// @param addressRegistry_ the address registry to initialize with
+    constructor(address addressRegistry_) public {
+        setAddressRegistry(addressRegistry_);
     }
 
     /// @dev Reverts if non-permissed account calls.
@@ -72,10 +72,10 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
     ) external override nonReentrant onlyPermissioned {
         require(!isAssetAllocationRegistered(data), "DUPLICATE_DATA_DETECTED");
         bytes32 dataHash = generateDataHash(data);
-        _allocationIds.add(dataHash);
-        _allocationData[dataHash] = data;
-        _allocationSymbols[dataHash] = symbol;
-        _allocationDecimals[dataHash] = decimals;
+        allocationIds.add(dataHash);
+        allocationData[dataHash] = data;
+        allocationSymbols[dataHash] = symbol;
+        allocationDecimals[dataHash] = decimals;
         lockOracleAdapter();
         emit AssetAllocationAdded(data, symbol, decimals);
     }
@@ -91,11 +91,11 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
     {
         require(isAssetAllocationRegistered(data), "ALLOCATION_DOES_NOT_EXIST");
         bytes32 dataHash = generateDataHash(data);
-        _allocationIds.remove(dataHash);
-        delete _allocationData[dataHash];
-        string memory symbol = _allocationSymbols[dataHash];
-        delete _allocationSymbols[dataHash];
-        delete _allocationDecimals[dataHash];
+        allocationIds.remove(dataHash);
+        delete allocationData[dataHash];
+        string memory symbol = allocationSymbols[dataHash];
+        delete allocationSymbols[dataHash];
+        delete allocationDecimals[dataHash];
         lockOracleAdapter();
         emit AssetAllocationRemoved(data, symbol);
     }
@@ -132,7 +132,7 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
         view
         returns (bool)
     {
-        return _allocationIds.contains(data);
+        return allocationIds.contains(data);
     }
 
     /// @notice Returns a list of all identifiers where asset allocations have been registered
@@ -144,12 +144,12 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
         override
         returns (bytes32[] memory)
     {
-        uint256 length = _allocationIds.length();
-        bytes32[] memory allocationIds = new bytes32[](length);
+        uint256 length = allocationIds.length();
+        bytes32[] memory allocationIds_ = new bytes32[](length);
         for (uint256 i = 0; i < length; i++) {
-            allocationIds[i] = _allocationIds.at(i);
+            allocationIds_[i] = allocationIds.at(i);
         }
-        return allocationIds;
+        return allocationIds_;
     }
 
     /// @notice Executes the bytes lookup data registered under an id
@@ -166,7 +166,7 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
             _isAssetAllocationRegistered(allocationId),
             "INVALID_ALLOCATION_ID"
         );
-        Data memory data = _allocationData[allocationId];
+        Data memory data = allocationData[allocationId];
         bytes memory returnData = executeView(data);
 
         uint256 _balance;
@@ -186,7 +186,7 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
         override
         returns (string memory)
     {
-        return _allocationSymbols[allocationId];
+        return allocationSymbols[allocationId];
     }
 
     /// @notice Returns the decimals registered under an id
@@ -198,7 +198,7 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
         override
         returns (uint256)
     {
-        return _allocationDecimals[allocationId];
+        return allocationDecimals[allocationId];
     }
 
     /// @notice Executes data's bytes look up data against data's target address
@@ -216,10 +216,10 @@ contract TVLManager is Ownable, ReentrancyGuard, ITVLManager, IAssetAllocation {
     /**
      * @notice Sets the address registry
      * @dev only callable by owner
-     * @param _addressRegistry the address of the registry
+     * @param addressRegistry_ the address of the registry
      */
-    function setAddressRegistry(address _addressRegistry) public onlyOwner {
-        require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistryV2(_addressRegistry);
+    function setAddressRegistry(address addressRegistry_) public onlyOwner {
+        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
 }

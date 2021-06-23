@@ -64,9 +64,9 @@ contract PoolManager is
      *
      * Our proxy deployment will call this as part of the constructor.
      * @param adminAddress the admin proxy to initialize with
-     * @param _addressRegistry the address registry to initialize with
+     * @param addressRegistry_ the address registry to initialize with
      */
-    function initialize(address adminAddress, address _addressRegistry)
+    function initialize(address adminAddress, address addressRegistry_)
         external
         initializer
     {
@@ -79,7 +79,7 @@ contract PoolManager is
 
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
-        setAddressRegistry(_addressRegistry);
+        setAddressRegistry(addressRegistry_);
     }
 
     /**
@@ -116,11 +116,11 @@ contract PoolManager is
     /**
      * @notice Sets the address registry
      * @dev only callable by owner
-     * @param _addressRegistry the address of the registry
+     * @param addressRegistry_ the address of the registry
      */
-    function setAddressRegistry(address _addressRegistry) public onlyOwner {
-        require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistryV2(_addressRegistry);
+    function setAddressRegistry(address addressRegistry_) public onlyOwner {
+        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
 
     /**
