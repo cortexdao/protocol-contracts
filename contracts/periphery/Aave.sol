@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
