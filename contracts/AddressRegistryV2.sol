@@ -1,33 +1,33 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import "./interfaces/IAddressRegistry.sol";
+import "./interfaces/IAddressRegistryV2.sol";
 
 /**
  * @title APY.Finance's address registry
  * @author APY.Finance
  * @notice The address registry has two important purposes, one which
- *         is fairly concrete and another abstract.
+ * is fairly concrete and another abstract.
  *
- *         1. The registry enables components of the APY.Finance system
- *         and external systems to retrieve core addresses reliably
- *         even when the functionality may move to a different
- *         address.
+ * 1. The registry enables components of the APY.Finance system
+ * and external systems to retrieve core addresses reliably
+ * even when the functionality may move to a different
+ * address.
  *
- *         2. The registry also makes explicit which contracts serve
- *         as primary entrypoints for interacting with different
- *         components.  Not every contract is registered here, only
- *         the ones properly deserving of an identifier.  This helps
- *         define explicit boundaries between groups of contracts,
- *         each of which is logically cohesive.
+ * 2. The registry also makes explicit which contracts serve
+ * as primary entrypoints for interacting with different
+ * components.  Not every contract is registered here, only
+ * the ones properly deserving of an identifier.  This helps
+ * define explicit boundaries between groups of contracts,
+ * each of which is logically cohesive.
  */
 contract AddressRegistryV2 is
     Initializable,
     OwnableUpgradeSafe,
-    IAddressRegistry
+    IAddressRegistryV2
 {
     /* ------------------------------- */
     /* impl-specific storage variables */
@@ -41,7 +41,14 @@ contract AddressRegistryV2 is
     /* ------------------------------- */
 
     event AdminChanged(address);
-    event AddressRegistered(bytes32 id, address _address);
+
+    /**
+     * @dev Throws if called by any account other than the proxy admin.
+     */
+    modifier onlyAdmin() {
+        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
+        _;
+    }
 
     /**
      * @dev Since the proxy delegate calls to this "logic" contract, any
@@ -80,47 +87,9 @@ contract AddressRegistryV2 is
     // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual onlyAdmin {}
 
-    function setAdminAddress(address adminAddress) public onlyOwner {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-        proxyAdmin = adminAddress;
-        emit AdminChanged(adminAddress);
-    }
-
     /**
-     * @dev Throws if called by any account other than the proxy admin.
+     * @dev Convenient method to register multiple addresses at once.
      */
-    modifier onlyAdmin() {
-        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
-        _;
-    }
-
-    /// @notice Returns the list of all registered identifiers.
-    function getIds() public view override returns (bytes32[] memory) {
-        return _idList;
-    }
-
-    /// @dev block ETHER transfers as the registry will never need it
-    receive() external payable {
-        revert("DONT_SEND_ETHER");
-    }
-
-    /**
-     * @notice Register address with identifier.
-     * @dev Using an existing ID will replace the old address with new.
-     *      Currently there is no way to remove an ID, as attempting to
-     *      register the zero address will revert.
-     */
-    function registerAddress(bytes32 id, address _address) public onlyOwner {
-        require(_address != address(0), "Invalid address");
-        if (_idToAddress[id] == address(0)) {
-            // id wasn't registered before, so add it to the list
-            _idList.push(id);
-        }
-        _idToAddress[id] = _address;
-        emit AddressRegistered(id, _address);
-    }
-
-    /// @dev Convenient method to register multiple addresses at once.
     function registerMultipleAddresses(
         bytes32[] calldata ids,
         address[] calldata addresses
@@ -128,21 +97,30 @@ contract AddressRegistryV2 is
         require(ids.length == addresses.length, "Inputs have differing length");
         for (uint256 i = 0; i < ids.length; i++) {
             bytes32 id = ids[i];
-            address _address = addresses[i];
-            registerAddress(id, _address);
+            address address_ = addresses[i];
+            registerAddress(id, address_);
         }
     }
 
-    /// @notice Retrieve the address corresponding to the identifier.
-    function getAddress(bytes32 id) public view override returns (address) {
-        address _address = _idToAddress[id];
-        require(_address != address(0), "Missing address");
-        return _address;
+    /**
+     * @notice Register address with identifier.
+     * @dev Using an existing ID will replace the old address with new.
+     * Currently there is no way to remove an ID, as attempting to
+     * register the zero address will revert.
+     */
+    function registerAddress(bytes32 id, address address_) public onlyOwner {
+        require(address_ != address(0), "Invalid address");
+        if (_idToAddress[id] == address(0)) {
+            // id wasn't registered before, so add it to the list
+            _idList.push(id);
+        }
+        _idToAddress[id] = address_;
+        emit AddressRegistered(id, address_);
     }
 
     /**
      * @dev Delete the address corresponding to the identifier.
-     *      Time-complexity is O(n) where n is the length of `_idList`.
+     * Time-complexity is O(n) where n is the length of `_idList`.
      */
     function deleteAddress(bytes32 id) public onlyOwner {
         for (uint256 i = 0; i < _idList.length; i++) {
@@ -150,74 +128,104 @@ contract AddressRegistryV2 is
                 // copy last element to slot i and shorten array
                 _idList[i] = _idList[_idList.length - 1];
                 _idList.pop();
+                address address_ = _idToAddress[id];
                 delete _idToAddress[id];
+                emit AddressDeleted(id, address_);
                 break;
             }
         }
     }
 
+    function setAdminAddress(address adminAddress) public onlyOwner {
+        require(adminAddress != address(0), "INVALID_ADMIN");
+        proxyAdmin = adminAddress;
+        emit AdminChanged(adminAddress);
+    }
+
     /**
-     * @notice Get the address for the Account Manager.
-     * @dev Not just a helper function, this makes explicit a key ID
-     *      for the system.
+     * @notice Returns the list of all registered identifiers.
      */
-    function accountManagerAddress() public view returns (address) {
-        return getAddress("accountManager");
+    function getIds() public view override returns (bytes32[] memory) {
+        return _idList;
+    }
+
+    /**
+     * @notice Retrieve the address corresponding to the identifier.
+     */
+    function getAddress(bytes32 id) public view override returns (address) {
+        address address_ = _idToAddress[id];
+        require(address_ != address(0), "Missing address");
+        return address_;
     }
 
     /**
      * @notice Get the address for the Pool Manager.
      * @dev Not just a helper function, this makes explicit a key ID
-     *      for the system.
+     * for the system.
      */
-    function poolManagerAddress() public view returns (address) {
+    function poolManagerAddress() public view override returns (address) {
         return getAddress("poolManager");
     }
 
     /**
      * @notice Get the address for the TVL Manager.
      * @dev Not just a helper function, this makes explicit a key ID
-     *      for the system.
+     * for the system.
      */
-    function tvlManagerAddress() public view returns (address) {
+    function tvlManagerAddress() public view override returns (address) {
         return getAddress("tvlManager");
     }
 
     /**
      * @notice An alias for the TVL Manager.  This is used by
-     *         Chainlink nodes to compute the deployed value of the
-     *         APY.Finance system.
+     * Chainlink nodes to compute the deployed value of the
+     * APY.Finance system.
      * @dev Not just a helper function, this makes explicit a key ID
-     *      for the system.
+     * for the system.
      */
-    function chainlinkRegistryAddress() public view returns (address) {
+    function chainlinkRegistryAddress() public view override returns (address) {
         return tvlManagerAddress();
     }
 
     /**
      * @notice Get the address for APY.Finance's DAI stablecoin pool.
      * @dev Not just a helper function, this makes explicit a key ID
-     *      for the system.
+     * for the system.
      */
-    function daiPoolAddress() public view returns (address) {
+    function daiPoolAddress() public view override returns (address) {
         return getAddress("daiPool");
     }
 
     /**
      * @notice Get the address for APY.Finance's USDC stablecoin pool.
      * @dev Not just a helper function, this makes explicit a key ID
-     *      for the system.
+     * for the system.
      */
-    function usdcPoolAddress() public view returns (address) {
+    function usdcPoolAddress() public view override returns (address) {
         return getAddress("usdcPool");
     }
 
     /**
      * @notice Get the address for APY.Finance's USDT stablecoin pool.
      * @dev Not just a helper function, this makes explicit a key ID
-     *      for the system.
+     * for the system.
      */
-    function usdtPoolAddress() public view returns (address) {
+    function usdtPoolAddress() public view override returns (address) {
         return getAddress("usdtPool");
+    }
+
+    function mAptAddress() public view override returns (address) {
+        return getAddress("mApt");
+    }
+
+    /**
+     * @notice Get the address for the APY.Finance LP Safe.
+     */
+    function lpSafeAddress() public view override returns (address) {
+        return getAddress("lpSafe");
+    }
+
+    function oracleAdapterAddress() public view override returns (address) {
+        return getAddress("oracleAdapter");
     }
 }

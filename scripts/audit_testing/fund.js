@@ -16,21 +16,22 @@
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = hre;
+const { getApyPool } = require("./utils");
 const { bytes32, tokenAmountToBigNumber } = require("../../utils/helpers");
 const { console, getAddressRegistry } = require("./utils");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
   await hre.run("compile");
-  const networkName = network.name.toUpperCase();
+  const NETWORK_NAME = network.name.toUpperCase();
   console.log("");
-  console.log(`${networkName} selected`);
+  console.log(`${NETWORK_NAME} selected`);
   console.log("");
 
   const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
 
-  const addressRegistry = await getAddressRegistry(networkName);
+  const addressRegistry = await getAddressRegistry(NETWORK_NAME);
   const poolManagerAddress = await addressRegistry.poolManagerAddress();
   const poolManager = await ethers.getContractAt(
     "PoolManager",
@@ -41,25 +42,34 @@ async function main(argv) {
   console.log("Funding strategy account from pools ...");
   console.log("");
 
-  const daiAmount = tokenAmountToBigNumber("1000000", "18"); // 1MM DAI
-  const usdcAmount = tokenAmountToBigNumber("5000000", "6"); // 5MM USDC
-  const tetherAmount = tokenAmountToBigNumber("2000000", "6"); // 2MM Tether
+  const poolAmounts = [];
+  for (const symbol of ["DAI", "USDC", "USDT"]) {
+    const pool = await getApyPool(NETWORK_NAME, symbol);
+    let topUpValue = await pool.getReserveTopUpValue();
+    // if (symbol == "DAI")
+    //   topUpValue = tokenAmountToBigNumber("500000", "8").mul("-1");
+    let topUpAmount;
+    if (topUpValue.lt(0)) {
+      topUpAmount = await pool.getUnderlyerAmountFromValue(topUpValue.abs());
+      poolAmounts.push({
+        poolId: bytes32(`${symbol.toLowerCase()}Pool`),
+        amount: topUpAmount,
+      });
+      console.log(
+        `${symbol} top-up amount: ${topUpAmount
+          .div(tokenAmountToBigNumber(1))
+          .toString()}`
+      );
+    } else {
+      console.log(
+        "Top-up value is positive:",
+        topUpValue.div(tokenAmountToBigNumber(1, 8)).toString()
+      );
+    }
+  }
 
   const accountId = bytes32("alpha");
-  await poolManager.fundAccount(accountId, [
-    {
-      poolId: bytes32("daiPool"),
-      amount: daiAmount,
-    },
-    {
-      poolId: bytes32("usdcPool"),
-      amount: usdcAmount,
-    },
-    {
-      poolId: bytes32("usdtPool"),
-      amount: tetherAmount,
-    },
-  ]);
+  await poolManager.fundAccount(accountId, poolAmounts);
   console.log("... done.");
 }
 

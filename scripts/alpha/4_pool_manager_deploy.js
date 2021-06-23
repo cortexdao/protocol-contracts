@@ -22,9 +22,9 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  const POOL_MANAGER_MNEMONIC = process.env.POOL_MANAGER_MNEMONIC;
+  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
   const poolManagerDeployer = ethers.Wallet.fromMnemonic(
-    POOL_MANAGER_MNEMONIC
+    ADDRESS_REGISTRY_MNEMONIC
   ).connect(ethers.provider);
   console.log("Deployer address:", poolManagerDeployer.address);
   /* TESTING on localhost only
@@ -72,7 +72,7 @@ async function main(argv) {
     `https://etherscan.io/tx/${proxyAdmin.deployTransaction.hash}`
   );
   let receipt = await proxyAdmin.deployTransaction.wait();
-  deploy_data["ManagerProxyAdmin"] = proxyAdmin.address;
+  deploy_data["PoolManagerProxyAdmin"] = proxyAdmin.address;
   console.log(`ProxyAdmin: ${chalk.green(proxyAdmin.address)}`);
   console.log("");
   gasUsed = gasUsed.add(receipt.gasUsed);
@@ -90,7 +90,6 @@ async function main(argv) {
   gasUsed = gasUsed.add(receipt.gasUsed);
 
   gasPrice = await getGasPrice(argv.gasPrice);
-  const mAptAddress = getDeployedAddress("MetaPoolTokenProxy", networkName);
   const addressRegistryAddress = getDeployedAddress(
     "AddressRegistryProxy",
     networkName
@@ -98,7 +97,6 @@ async function main(argv) {
   const proxy = await PoolManagerProxy.deploy(
     logic.address,
     proxyAdmin.address,
-    mAptAddress,
     addressRegistryAddress,
     { gasPrice }
   );
@@ -114,47 +112,6 @@ async function main(argv) {
 
   updateDeployJsons(networkName, deploy_data);
 
-  const MAPT_MNEMONIC = process.env.MAPT_MNEMONIC;
-  const mAptDeployer = ethers.Wallet.fromMnemonic(MAPT_MNEMONIC).connect(
-    ethers.provider
-  );
-  const mAPT = await ethers.getContractAt(
-    "MetaPoolToken",
-    mAptAddress,
-    mAptDeployer
-  );
-  gasPrice = await getGasPrice(argv.gasPrice);
-  let trx = await mAPT.setManagerAddress(proxy.address, { gasPrice });
-  console.log(
-    "Set manager address on mAPT:",
-    `https://etherscan.io/tx/${trx.hash}`
-  );
-  receipt = await trx.wait();
-  console.log("");
-  gasUsed = gasUsed.add(receipt.gasUsed);
-
-  const accountManagerAddress = getDeployedAddress(
-    "AccountManagerProxy",
-    networkName
-  );
-  gasPrice = await getGasPrice(argv.gasPrice);
-  const poolManager = await ethers.getContractAt(
-    "PoolManager",
-    proxy.address,
-    poolManagerDeployer
-  );
-  trx = await poolManager.setAccountFactory(accountManagerAddress, {
-    gasPrice,
-  });
-  console.log(
-    "Set account factory on pool manager:",
-    `https://etherscan.io/tx/${trx.hash}`
-  );
-  receipt = await trx.wait();
-  console.log("");
-  gasUsed = gasUsed.add(receipt.gasUsed);
-
-  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
   const addressRegistryDeployer = ethers.Wallet.fromMnemonic(
     ADDRESS_REGISTRY_MNEMONIC
   ).connect(ethers.provider);
@@ -175,14 +132,12 @@ async function main(argv) {
     addressRegistryAddress,
     addressRegistryDeployer
   );
-  trx = await addressRegistry.registerAddress(
+  let trx = await addressRegistry.registerAddress(
     bytes32("poolManager"),
     proxy.address
   );
-  console.log(
-    "Update address registry:",
-    `https://etherscan.io/tx/${trx.hash}`
-  );
+  console.log("Register address", `https://etherscan.io/tx/${trx.hash}`);
+  console.log("");
   receipt = await trx.wait();
   gasUsed = gasUsed.add(receipt.gasUsed);
   console.log("Total gas used:", gasUsed.toString());
@@ -190,13 +145,12 @@ async function main(argv) {
   if (["KOVAN", "MAINNET"].includes(networkName)) {
     console.log("");
     console.log("Verifying on Etherscan ...");
-    await ethers.provider.waitForTransaction(proxy.deployTransaction.hash, 5); // wait for Etherscan to catch up
+    await ethers.provider.waitForTransaction(trx.hash, 5); // wait for Etherscan to catch up
     await hre.run("verify:verify", {
       address: proxy.address,
       constructorArguments: [
         logic.address,
         proxyAdmin.address,
-        mAptAddress,
         addressRegistryAddress,
       ],
       // to avoid the "More than one contract was found to match the deployed bytecode."

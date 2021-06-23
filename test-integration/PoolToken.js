@@ -1,6 +1,7 @@
 const { assert, expect } = require("chai");
 const { ethers } = require("hardhat");
 const { AddressZero: ZERO_ADDRESS, MaxUint256: MAX_UINT256 } = ethers.constants;
+const { impersonateAccount } = require("../utils/helpers");
 const timeMachine = require("ganache-time-traveler");
 const { STABLECOIN_POOLS } = require("../utils/constants");
 const {
@@ -22,34 +23,19 @@ console.debugging = false;
 
 describe("Contract: PoolToken", () => {
   let deployer;
-  let manager;
   let oracle;
+  let poolManager;
   let randomUser;
   let anotherUser;
-
-  let ProxyAdmin;
-  let PoolTokenProxy;
-  let PoolToken;
-  let PoolTokenV2;
-
-  let MetaPoolToken;
-  let MetaPoolTokenProxy;
 
   before(async () => {
     [
       deployer,
-      manager,
       oracle,
+      poolManager,
       randomUser,
       anotherUser,
     ] = await ethers.getSigners();
-
-    ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    PoolTokenProxy = await ethers.getContractFactory("PoolTokenProxy");
-    PoolToken = await ethers.getContractFactory("TestPoolToken");
-    PoolTokenV2 = await ethers.getContractFactory("TestPoolTokenV2");
-
-    MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
   });
 
   // for Chainlink aggregator (price feed) addresses, see the Mainnet
@@ -90,8 +76,9 @@ describe("Contract: PoolToken", () => {
     describe(`\n    **** ${symbol} as underlyer ****\n`, () => {
       let tvlAgg;
       let underlyer;
+      let oracleAdapter;
       let mApt;
-
+      let addressRegistry;
       let poolToken;
 
       before("Setup", async () => {
@@ -117,29 +104,83 @@ describe("Contract: PoolToken", () => {
           deployer.address // ETH funder
         );
 
-        ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-        MetaPoolTokenProxy = await ethers.getContractFactory(
-          "MetaPoolTokenProxy"
+        const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+
+        const AddressRegistryV2 = await ethers.getContractFactory(
+          "AddressRegistryV2"
         );
-        MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
+        const addressRegistryLogic = await AddressRegistryV2.deploy();
+        const addressRegistryProxyAdmin = await ProxyAdmin.deploy();
+        await addressRegistryProxyAdmin.deployed();
+
+        const encodedParamData = AddressRegistryV2.interface.encodeFunctionData(
+          "initialize(address)",
+          [addressRegistryProxyAdmin.address]
+        );
+
+        const TransparentUpgradeableProxy = await ethers.getContractFactory(
+          "TransparentUpgradeableProxy"
+        );
+        const addressRegistryProxy = await TransparentUpgradeableProxy.deploy(
+          addressRegistryLogic.address,
+          addressRegistryProxyAdmin.address,
+          encodedParamData
+        );
+
+        addressRegistry = await AddressRegistryV2.attach(
+          addressRegistryProxy.address
+        );
+
+        await addressRegistry.registerAddress(
+          ethers.utils.formatBytes32String("poolManager"),
+          poolManager.address
+        );
+
+        const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
+        oracleAdapter = await OracleAdapter.deploy(
+          addressRegistry.address,
+          tvlAgg.address,
+          [tokenAddress],
+          [aggAddress],
+          86400,
+          86400
+        );
+        await oracleAdapter.deployed();
+        await addressRegistry.registerAddress(
+          ethers.utils.formatBytes32String("oracleAdapter"),
+          oracleAdapter.address
+        );
 
         const proxyAdmin = await ProxyAdmin.deploy();
         await proxyAdmin.deployed();
 
+        const MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
         const mAptLogic = await MetaPoolToken.deploy();
         await mAptLogic.deployed();
+
+        const MetaPoolTokenProxy = await ethers.getContractFactory(
+          "MetaPoolTokenProxy"
+        );
         const mAptProxy = await MetaPoolTokenProxy.deploy(
           mAptLogic.address,
           proxyAdmin.address,
-          tvlAgg.address,
-          14400
+          addressRegistry.address
         );
         await mAptProxy.deployed();
         mApt = await MetaPoolToken.attach(mAptProxy.address);
-        await mApt.connect(deployer).setManagerAddress(manager.address);
 
+        await addressRegistry.registerAddress(
+          ethers.utils.formatBytes32String("mApt"),
+          mApt.address
+        );
+
+        const PoolToken = await ethers.getContractFactory("TestPoolToken");
         const logic = await PoolToken.deploy();
         await logic.deployed();
+
+        const PoolTokenProxy = await ethers.getContractFactory(
+          "PoolTokenProxy"
+        );
         const proxy = await PoolTokenProxy.deploy(
           logic.address,
           proxyAdmin.address,
@@ -148,12 +189,13 @@ describe("Contract: PoolToken", () => {
         );
         await proxy.deployed();
 
+        const PoolTokenV2 = await ethers.getContractFactory("TestPoolTokenV2");
         const logicV2 = await PoolTokenV2.deploy();
         await logicV2.deployed();
 
         const initData = PoolTokenV2.interface.encodeFunctionData(
           "initializeUpgrade(address)",
-          [mApt.address]
+          [addressRegistry.address]
         );
         await proxyAdmin
           .connect(deployer)
@@ -219,55 +261,6 @@ describe("Contract: PoolToken", () => {
         it("Revert when non-owner attempts to set address", async () => {
           await expect(
             poolToken.connect(randomUser).setAdminAddress(FAKE_ADDRESS)
-          ).to.be.revertedWith("Ownable: caller is not the owner");
-        });
-      });
-
-      describe("Set price aggregator address", async () => {
-        it("Revert when agg address is zero", async () => {
-          await expect(
-            poolToken.setPriceAggregator(ZERO_ADDRESS)
-          ).to.be.revertedWith("INVALID_AGG");
-        });
-
-        it("Revert when non-owner attempts to set agg", async () => {
-          await expect(
-            poolToken.connect(randomUser).setPriceAggregator(FAKE_ADDRESS)
-          ).to.be.revertedWith("Ownable: caller is not the owner");
-        });
-
-        it("Owner can set agg", async () => {
-          const setPromise = poolToken
-            .connect(deployer)
-            .setPriceAggregator(FAKE_ADDRESS);
-          await setPromise;
-
-          const priceAgg = await poolToken.priceAgg();
-          assert.equal(priceAgg, FAKE_ADDRESS);
-
-          await expect(setPromise)
-            .to.emit(poolToken, "PriceAggregatorChanged")
-            .withArgs(FAKE_ADDRESS);
-        });
-      });
-
-      describe("Set mAPT address", async () => {
-        it("Owner can set mAPT address", async () => {
-          const newMApt = await MetaPoolToken.deploy();
-          await newMApt.deployed();
-          await poolToken.connect(deployer).setMetaPoolToken(newMApt.address);
-          assert.equal(await poolToken.mApt(), newMApt.address);
-        });
-
-        it("Revert on setting to non-contract address", async () => {
-          await expect(
-            poolToken.connect(deployer).setMetaPoolToken(FAKE_ADDRESS)
-          ).to.be.reverted;
-        });
-
-        it("Revert when non-owner attempts to set address", async () => {
-          await expect(
-            poolToken.connect(randomUser).setMetaPoolToken(FAKE_ADDRESS)
           ).to.be.revertedWith("Ownable: caller is not the owner");
         });
       });
@@ -465,9 +458,15 @@ describe("Contract: PoolToken", () => {
       ];
       deployedValues.forEach(function (deployedValue) {
         describe(`deployed value: ${deployedValue}`, () => {
+          let poolManagerSigner;
           const mAptSupply = tokenAmountToBigNumber("100");
 
           async function updateTvlAgg(usdDeployedValue) {
+            if (usdDeployedValue.isZero()) {
+              await oracleAdapter.lockFor(10);
+              await oracleAdapter.setTvl(0, 100);
+              await oracleAdapter.unlock();
+            }
             const lastRoundId = await tvlAgg.latestRound();
             const newRoundId = lastRoundId.add(1);
             await tvlAgg.connect(oracle).submit(newRoundId, usdDeployedValue);
@@ -475,10 +474,14 @@ describe("Contract: PoolToken", () => {
 
           beforeEach(async () => {
             /* these get rollbacked after each test due to snapshotting */
+            poolManagerSigner = await impersonateAccount(poolManager.address);
 
             // default to giving entire deployed value to the pool
-            await mApt.connect(manager).mint(poolToken.address, mAptSupply);
+            await mApt
+              .connect(poolManagerSigner)
+              .mint(poolToken.address, mAptSupply);
             await updateTvlAgg(deployedValue);
+            await oracleAdapter.unlock();
           });
 
           describe("Underlyer and mAPT integration with calculations", () => {
@@ -595,10 +598,14 @@ describe("Contract: PoolToken", () => {
               );
 
               // transfer quarter of mAPT to another pool
-              await mApt.connect(manager).mint(FAKE_ADDRESS, mAptSupply.div(4));
               await mApt
-                .connect(manager)
+                .connect(poolManagerSigner)
+                .mint(FAKE_ADDRESS, mAptSupply.div(4));
+              await mApt
+                .connect(poolManagerSigner)
                 .burn(poolToken.address, mAptSupply.div(4));
+              // unlock oracle adapter after mint/burn
+              await oracleAdapter.unlock();
               // must update agg so staleness check passes
               await updateTvlAgg(deployedValue);
               expect(await poolToken.getDeployedValue()).to.equal(
@@ -606,10 +613,14 @@ describe("Contract: PoolToken", () => {
               );
 
               // transfer same amount again
-              await mApt.connect(manager).mint(FAKE_ADDRESS, mAptSupply.div(4));
               await mApt
-                .connect(manager)
+                .connect(poolManagerSigner)
+                .mint(FAKE_ADDRESS, mAptSupply.div(4));
+              await mApt
+                .connect(poolManagerSigner)
                 .burn(poolToken.address, mAptSupply.div(4));
+              // unlock oracle adapter after mint/burn
+              await oracleAdapter.unlock();
               // must update agg so staleness check passes
               await updateTvlAgg(deployedValue);
               expect(await poolToken.getDeployedValue()).to.equal(
@@ -961,7 +972,7 @@ describe("Contract: PoolToken", () => {
               ]);
               await ethers.provider.send("evm_mine");
               // effectively disable staleness check
-              await mApt.setAggStalePeriod(MAX_UINT256);
+              await oracleAdapter.setChainlinkStalePeriod(MAX_UINT256);
 
               const beforeBalance = await underlyer.balanceOf(
                 randomUser.address

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 
 // We import the contract so truffle compiles it, and we have the ABI

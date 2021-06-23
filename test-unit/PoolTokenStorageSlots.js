@@ -10,9 +10,8 @@ const ZERO_DATA =
 
 /*
 This is the expected storage layout of the APT contract, based on
-the following external packages:
+the following external package:
 
-@openzeppelin/openzeppelin-contracts@3.2.0
 @openzeppelin/openzeppelin-ethereum-packages@3.0.0
 
 -------------------------------------------------------------
@@ -61,13 +60,13 @@ APY.Finance APT V1
   301 bool public addLiquidityLock;
   301 bool public redeemLock;
   302 IDetailedERC20 public underlyer;
-  303 AggregatorV3Interface public priceAgg;
+  // 303 AggregatorV3Interface public priceAgg; <-- removed in V2
 
 APY.Finance APT V2
-  304 MetaPoolToken public mApt;
-  305 uint256 public feePeriod;
-  306 uint256 public feePercentage;
-  307 mapping(address => uint256) public lastDepositTime;
+  303 IAddressRegistryV2 public addressRegistry; <-- replaces V1 slot
+  304 uint256 public feePeriod;
+  305 uint256 public feePercentage;
+  306 mapping(address => uint256) public lastDepositTime;
 */
 
 /* ************************ */
@@ -88,7 +87,7 @@ describe("APT V2 uses V1 storage slot positions", () => {
   let proxyAdmin;
   let agg;
   let underlyer;
-  let mApt;
+  let addressRegistry;
 
   before(async () => {
     [deployer, user, otherUser] = await ethers.getSigners();
@@ -102,7 +101,7 @@ describe("APT V2 uses V1 storage slot positions", () => {
     await proxyAdmin.deployed();
     agg = await deployMockContract(deployer, []);
     underlyer = await deployMockContract(deployer, []);
-    mApt = await deployMockContract(deployer, []);
+    addressRegistry = await deployMockContract(deployer, []);
 
     const logicV1 = await PoolToken.deploy();
     await logicV1.deployed();
@@ -119,7 +118,7 @@ describe("APT V2 uses V1 storage slot positions", () => {
 
     const initData = PoolTokenV2.interface.encodeFunctionData(
       "initializeUpgrade(address)",
-      [mApt.address]
+      [addressRegistry.address]
     );
     await proxyAdmin
       .connect(deployer)
@@ -135,8 +134,8 @@ describe("APT V2 uses V1 storage slot positions", () => {
     await poolToken.approve(otherUser.address, allowance);
   });
 
-  it("Retains original storage slots 0 through 303", async () => {
-    const numSlots = 308;
+  it("Retains original storage slots 0 through 302", async () => {
+    const numSlots = 307;
     const slots = [];
     for (let i = 0; i < numSlots; i++) {
       const data = await readSlot(poolToken.address, i);
@@ -175,8 +174,14 @@ describe("APT V2 uses V1 storage slot positions", () => {
     expect(slots[301].slice(0, 24).slice(-4)).to.equal("0101");
     // 302 IDetailedERC20 public underlyer;
     expect(parseAddress(slots[302])).to.equal(underlyer.address);
-    // 303 AggregatorV3Interface public priceAgg;
-    expect(parseAddress(slots[303])).to.equal(agg.address);
+  });
+
+  it("Replaces original slot 303", async () => {
+    // 303 AggregatorV3Interface public priceAgg; <-- removed in V2
+    // 303 IAddressRegistryV2 public addressRegistry; <-- replaces V1 slot
+    const data = await readSlot(poolToken.address, 303);
+    console.debug(`${303}: ${data}`);
+    expect(parseAddress(data)).to.equal(addressRegistry.address);
   });
 
   it("Retains original storage slots for balances mapping", async () => {

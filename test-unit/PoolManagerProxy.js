@@ -42,13 +42,11 @@ describe("Contract: PoolManagerProxy", () => {
     logic = await PoolManager.deploy();
     await logic.deployed();
 
-    const mApt = await deployMockContract(deployer, []);
     const addressRegistry = await deployMockContract(deployer, []);
     PoolManagerProxy = await ethers.getContractFactory("PoolManagerProxy");
     proxy = await PoolManagerProxy.deploy(
       logic.address,
       proxyAdmin.address,
-      mApt.address,
       addressRegistry.address
     );
     await proxy.deployed();
@@ -186,33 +184,17 @@ describe("Contract: PoolManagerProxy", () => {
         PoolManagerProxy.deploy(
           logic.address,
           ZERO_ADDRESS,
-          dummyContract.address,
           dummyContract.address
         )
       ).to.be.reverted;
     });
 
     it("Cannot initialize with non-contract addresses", async () => {
-      const dummyContract = await deployMockContract(deployer, []);
       const logic = await PoolManager.deploy();
       await logic.deployed();
 
       await expect(
-        PoolManagerProxy.deploy(
-          logic.address,
-          proxyAdmin.address,
-          FAKE_ADDRESS,
-          dummyContract.address
-        )
-      ).to.be.reverted;
-
-      await expect(
-        PoolManagerProxy.deploy(
-          logic.address,
-          proxyAdmin.address,
-          dummyContract.address,
-          FAKE_ADDRESS
-        )
+        PoolManagerProxy.deploy(logic.address, proxyAdmin.address, FAKE_ADDRESS)
       ).to.be.reverted;
     });
 
@@ -220,13 +202,11 @@ describe("Contract: PoolManagerProxy", () => {
       const logic = await PoolManager.deploy();
       await logic.deployed();
 
-      const mApt = await deployMockContract(deployer, []);
       const addressRegistry = await deployMockContract(deployer, []);
 
       const proxy = await PoolManagerProxy.deploy(
         logic.address,
         proxyAdmin.address,
-        mApt.address,
         addressRegistry.address
       );
       const manager = await PoolManager.attach(proxy.address);
@@ -234,7 +214,6 @@ describe("Contract: PoolManagerProxy", () => {
       expect(await manager.owner()).to.equal(deployer.address);
       expect(await manager.proxyAdmin()).to.equal(proxyAdmin.address);
       expect(await manager.addressRegistry()).to.equal(addressRegistry.address);
-      expect(await manager.mApt()).to.equal(mApt.address);
     });
   });
 });

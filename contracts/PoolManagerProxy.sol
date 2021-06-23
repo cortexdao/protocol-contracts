@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
@@ -8,7 +8,6 @@ contract PoolManagerProxy is TransparentUpgradeableProxy {
     constructor(
         address _logic,
         address _proxyAdmin,
-        address _mApt,
         address _addressRegistry
     )
         public
@@ -16,9 +15,8 @@ contract PoolManagerProxy is TransparentUpgradeableProxy {
             _logic,
             _proxyAdmin,
             abi.encodeWithSignature(
-                "initialize(address,address,address)",
+                "initialize(address,address)",
                 _proxyAdmin,
-                _mApt,
                 _addressRegistry
             )
         )

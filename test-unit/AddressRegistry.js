@@ -221,36 +221,41 @@ contract("AddressRegistry", async (accounts) => {
     const poolManagerAddress = web3.utils.toChecksumAddress(
       "0x2AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
-    const accountManagerAddress = web3.utils.toChecksumAddress(
+    const lpSafeAddress = web3.utils.toChecksumAddress(
       "0x3AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
     const daiPoolAddress = web3.utils.toChecksumAddress(
-      "0x5AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+      "0x4AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
     const usdcPoolAddress = web3.utils.toChecksumAddress(
       "0x5AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
     const usdtPoolAddress = web3.utils.toChecksumAddress(
-      "0x5AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+      "0x6AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+    );
+    const oracleAdapterAddress = web3.utils.toChecksumAddress(
+      "0x7AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
     beforeEach("Prep addresses", async () => {
       const names = [
         DUMMY_NAME,
         bytes32("tvlManager"),
         bytes32("poolManager"),
-        bytes32("accountManager"),
+        bytes32("lpSafe"),
         bytes32("daiPool"),
         bytes32("usdcPool"),
         bytes32("usdtPool"),
+        bytes32("oracleAdapter"),
       ];
       const addresses = [
         DUMMY_ADDRESS,
         tvlManagerAddress,
         poolManagerAddress,
-        accountManagerAddress,
+        lpSafeAddress,
         daiPoolAddress,
         usdcPoolAddress,
         usdtPoolAddress,
+        oracleAdapterAddress,
       ];
       await registry.registerMultipleAddresses(names, addresses);
     });
@@ -260,10 +265,11 @@ contract("AddressRegistry", async (accounts) => {
         DUMMY_NAME,
         bytes32("tvlManager"),
         bytes32("poolManager"),
-        bytes32("accountManager"),
+        bytes32("lpSafe"),
         bytes32("daiPool"),
         bytes32("usdcPool"),
         bytes32("usdtPool"),
+        bytes32("oracleAdapter"),
       ]);
     });
 
@@ -297,10 +303,10 @@ contract("AddressRegistry", async (accounts) => {
       );
     });
 
-    it("User can retrieve account manager", async () => {
+    it("User can retrieve LP Safe", async () => {
       assert.equal(
-        await registry.accountManagerAddress({ from: randomUser }),
-        accountManagerAddress
+        await registry.lpSafeAddress({ from: randomUser }),
+        lpSafeAddress
       );
     });
 
@@ -329,6 +335,13 @@ contract("AddressRegistry", async (accounts) => {
       assert.equal(
         await registry.usdtPoolAddress({ from: randomUser }),
         usdtPoolAddress
+      );
+    });
+
+    it("User can retrieve oracle adapter", async () => {
+      assert.equal(
+        await registry.oracleAdapterAddress({ from: randomUser }),
+        oracleAdapterAddress
       );
     });
   });

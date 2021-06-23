@@ -9,6 +9,7 @@ const {
   updateDeployJsons,
 } = require("./address");
 const { deployAggregator } = require("./aggregator");
+const { getAssetAllocationValue } = require("./asset_allocation");
 const { expectEventInTransaction } = require("./event");
 const { getGasPrice } = require("./gas");
 const {
@@ -22,6 +23,8 @@ const {
   erc20,
   tokenAmountToBigNumber,
   undoErc20,
+  commify,
+  formatUnits,
 } = require("./unit");
 
 console.debug = function () {
@@ -53,10 +56,13 @@ module.exports = {
   getStablecoinAddress,
   getAggregatorAddress,
   tokenAmountToBigNumber,
+  commify,
+  formatUnits,
   getGasPrice,
   acquireToken,
   deployAggregator,
   expectEventInTransaction,
+  getAssetAllocationValue,
   ZERO_ADDRESS,
   MAX_UINT256,
   FAKE_ADDRESS,

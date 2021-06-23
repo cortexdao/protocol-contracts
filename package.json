@@ -1,12 +1,8 @@
 {
   "name": "@apy-finance/apy-core",
-  "version": "6.0.0",
+  "version": "6.1.0",
   "description": "",
-  "keywords": [
-    "ethereum",
-    "solidity",
-    "defi"
-  ],
+  "keywords": ["ethereum", "solidity", "defi"],
   "files": [
     "contracts",
     "artifacts",
@@ -16,11 +12,11 @@
   "scripts": {
     "check": "yarn lint",
     "clean": "hardhat clean",
-    "compile": "hardhat compile",
+    "compile": "hardhat compile 2>&1 | sed '/^@/,/^$/ d' | sed '/FluxAggregator/,/^$/ d'",
     "test:unit": "hardhat test test-unit/*",
     "test:integration": "ENABLE_FORKING=true hardhat test test-integration/*",
     "lint": "solhint contracts/**/*.sol contracts/*.sol",
-    "coverage": "hardhat coverage --network coverage --testfiles \"test-unit/*.js\"",
+    "coverage": "yarn clean; ENABLE_FORKING=true hardhat coverage --testfiles \"test-{unit,integration}/**/*.js\"",
     "ganache": "ganache-cli",
     "fork:mainnet": "./scripts/fork_mainnet.sh",
     "emergency:withdraw": "yarn hardhat --network localhost run scripts/EmergencyAPYWithdraw.js"
@@ -34,7 +30,7 @@
   "lint-staged": {
     "contracts/**/*.sol": "solhint -w 0",
     "*.js": "eslint --cache --fix",
-    "*.{js,css,md}": "prettier --write"
+    "*.{js,sol,css,md}": "prettier --write"
   },
   "repository": {
     "type": "git",
@@ -57,7 +53,6 @@
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@openzeppelin/test-helpers": "^0.5.9",
-    "axios": "^0.21.1",
     "dotenv": "^8.2.0",
     "eslint": "^7.11.0",
     "eslint-config-prettier": "^6.14.0",
@@ -65,20 +60,24 @@
     "ethers": "^5.0.24",
     "ganache-cli": "^6.10.2",
     "ganache-time-traveler": "^1.0.15",
-    "hardhat": "^2.1.1",
+    "hardhat": "^2.2.0",
     "husky": "4.0.10",
     "lint-staged": "^10.2.11",
     "prettier": "2.1.2",
+    "prettier-plugin-solidity": "^1.0.0-beta.8",
     "solhint": "^3.2.0",
     "solidity-coverage": "^0.7.10"
   },
   "dependencies": {
     "@chainlink/contracts": "0.0.9",
-    "@openzeppelin/contracts": "3.2.0",
+    "@openzeppelin/contracts": "3.4.0",
     "@openzeppelin/contracts-ethereum-package": "3.0.0",
     "abdk-libraries-solidity": "2.4.0",
+    "axios": "^0.21.1",
+    "bignumber.js": "^9.0.1",
     "chalk": "^4.1.0",
     "commander": "^6.2.0",
+    "lodash": "^4.17.21",
     "yargs": "^16.1.1"
   }
 }

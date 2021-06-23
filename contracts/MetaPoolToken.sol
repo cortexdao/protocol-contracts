@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
@@ -8,8 +8,9 @@ import "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
+import "./interfaces/IAddressRegistryV2.sol";
 import "./interfaces/IMintable.sol";
+import "./interfaces/IOracleAdapter.sol";
 
 /**
  * @title Meta Pool Token
@@ -56,24 +57,35 @@ contract MetaPoolToken is
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
-    /// @notice used to protect init functions for upgrades
+    /** @notice used to protect init functions for upgrades */
     address public proxyAdmin;
-    /// @notice used to protect mint and burn function
-    address public manager;
-    /// @notice Chainlink aggregator for deployed TVL
-    AggregatorV3Interface public tvlAgg;
-    /// @notice seconds within which aggregator should be updated
-    uint256 public aggStalePeriod;
-    /// @notice used to guard against non-updated TVL
-    uint256 public lastMintOrBurn;
+    /** @notice used to protect mint and burn function */
+    IAddressRegistryV2 public addressRegistry;
 
     /* ------------------------------- */
 
     event Mint(address acccount, uint256 amount);
     event Burn(address acccount, uint256 amount);
     event AdminChanged(address);
-    event ManagerChanged(address);
-    event TvlAggregatorChanged(address agg);
+
+    /**
+     * @dev Throws if called by any account other than the proxy admin.
+     */
+    modifier onlyAdmin() {
+        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
+        _;
+    }
+
+    /**
+     * @dev Throws if called by any account other than the PoolManager.
+     */
+    modifier onlyManager() {
+        require(
+            msg.sender == addressRegistry.poolManagerAddress(),
+            "MANAGER_ONLY"
+        );
+        _;
+    }
 
     /**
      * @dev Since the proxy delegate calls to this "logic" contract, any
@@ -87,13 +99,11 @@ contract MetaPoolToken is
      * repeatedly.  It should be called during the deployment so that
      * it cannot be called by someone else later.
      */
-    function initialize(
-        address adminAddress,
-        address _tvlAgg,
-        uint256 _aggStalePeriod
-    ) external initializer {
+    function initialize(address adminAddress, address addressRegistry_)
+        external
+        initializer
+    {
         require(adminAddress != address(0), "INVALID_ADMIN");
-        require(_tvlAgg != address(0), "INVALID_AGG");
 
         // initialize ancestor storage
         __Context_init_unchained();
@@ -104,8 +114,7 @@ contract MetaPoolToken is
 
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
-        setTvlAggregator(_tvlAgg);
-        setAggStalePeriod(_aggStalePeriod);
+        setAddressRegistry(addressRegistry_);
     }
 
     /**
@@ -125,123 +134,84 @@ contract MetaPoolToken is
         emit AdminChanged(adminAddress);
     }
 
-    function setManagerAddress(address managerAddress) public onlyOwner {
-        require(managerAddress != address(0), "INVALID_MANAGER");
-        manager = managerAddress;
-        emit ManagerChanged(managerAddress);
-    }
-
-    function setTvlAggregator(address _tvlAgg) public onlyOwner {
-        require(_tvlAgg != address(0), "INVALID_AGG");
-        tvlAgg = AggregatorV3Interface(_tvlAgg);
-        emit TvlAggregatorChanged(_tvlAgg);
-    }
-
-    function setAggStalePeriod(uint256 _aggStalePeriod) public onlyOwner {
-        require(_aggStalePeriod > 0, "INVALID_STALE_PERIOD");
-        aggStalePeriod = _aggStalePeriod;
-    }
-
     /**
-     * @dev Throws if called by any account other than the proxy admin.
+     * @notice Sets the address registry
+     * @dev only callable by owner
+     * @param addressRegistry_ the address of the registry
      */
-    modifier onlyAdmin() {
-        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
-        _;
-    }
-
-    /**
-     * @dev Throws if called by any account other than the PoolManager.
-     */
-    modifier onlyManager() {
-        require(msg.sender == manager, "MANAGER_ONLY");
-        _;
-    }
-
-    receive() external payable {
-        revert("DONT_SEND_ETHER");
+    function setAddressRegistry(address addressRegistry_) public onlyOwner {
+        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
 
     /**
      * @notice Mint specified amount of mAPT to the given account.
-     * @dev Only the manager can call this.  The timestamp is saved so that
-     *      `getTVL` can revert if the Chainlink aggregator hasn't updated since
-     *       mint was called.
+     * @dev Only the manager can call this.
      * @param account address to mint to
      * @param amount mint amount
      */
-    function mint(address account, uint256 amount) public override onlyManager {
-        lastMintOrBurn = block.timestamp; // solhint-disable-line not-rely-on-time
+    function mint(address account, uint256 amount)
+        public
+        override
+        nonReentrant
+        onlyManager
+    {
+        require(amount > 0, "INVALID_MINT_AMOUNT");
+        IOracleAdapter oracleAdapter = _getOracleAdapter();
+        oracleAdapter.lock();
         _mint(account, amount);
         emit Mint(account, amount);
     }
 
     /**
      * @notice Burn specified amount of mAPT from the given account.
-     * @dev Only the manager can call this.  The timestamp is saved so that
-     *      `getTVL` can revert if the Chainlink aggregator hasn't updated since
-     *       burn was called.
+     * @dev Only the manager can call this.
      * @param account address to burn from
      * @param amount burn amount
      */
-    function burn(address account, uint256 amount) public override onlyManager {
-        lastMintOrBurn = block.timestamp; // solhint-disable-line not-rely-on-time
+    function burn(address account, uint256 amount)
+        public
+        override
+        nonReentrant
+        onlyManager
+    {
+        require(amount > 0, "INVALID_BURN_AMOUNT");
+        IOracleAdapter oracleAdapter = _getOracleAdapter();
+        oracleAdapter.lock();
         _burn(account, amount);
         emit Burn(account, amount);
     }
 
     /**
-     * @notice Get the USD value of all assets being managed by the AccountManager,
-     *         i.e. the "deployed capital".  This is the same as the total value
-     *         represented by the total mAPT supply.
+     * @notice Get the USD value of all assets in the system, not just those
+     * being managed by the AccountManager but also the pool underlyers.
+     *
+     * Note this is NOT the same as the total value represented by the
+     * total mAPT supply, i.e. the "deployed capital".
      *
      * @dev Chainlink nodes read from the TVLManager, pull the
-     *      prices from market feeds, and submits the calculated total value
-     *      to an aggregator contract.
+     * prices from market feeds, and submits the calculated total value
+     * to an aggregator contract.
      *
-     *      USD prices have 8 decimals.
+     * USD prices have 8 decimals.
      *
-     * @return the USD value of the deployed capital
+     * @return "Total Value Locked", the USD value of all APY Finance assets.
      */
-    function getTVL() public view virtual returns (uint256) {
-        // possible revert with "No data present" but this can
-        // only happen if there has never been a successful round.
-        (, int256 answer, , uint256 updatedAt, ) = tvlAgg.latestRoundData();
-        require(answer >= 0, "CHAINLINK_INVALID_ANSWER");
-        validateNotStale(updatedAt);
-        return uint256(answer);
+    function getTvl() public view returns (uint256) {
+        IOracleAdapter oracleAdapter = _getOracleAdapter();
+        return oracleAdapter.getTvl();
     }
 
     /**
-     * @notice Checks to guard against stale data from Chainlink:
-     *
-     *         1. Require time since last update is not greater than `aggStalePeriod`.
-     *
-     *         2. Require update took place after last change in mAPT supply
-     *            (mint or burn), as it is necessary pulled deployed value always
-     *            reflects the newly acquired/disposed of funds from pools.
-     *
-     * @param updatedAt update time for Chainlink round
-     */
-    function validateNotStale(uint256 updatedAt) private view {
-        // solhint-disable not-rely-on-time
-        require(
-            block.timestamp.sub(updatedAt) < aggStalePeriod,
-            "CHAINLINK_STALE_DATA"
-        );
-        require(updatedAt > lastMintOrBurn, "CHAINLINK_STALE_DATA");
-        // solhint-enable not-rely-on-time
-    }
-
-    /** @notice Calculate mAPT amount to be minted for given pool's underlyer amount.
-     *  @param depositAmount Pool underlyer amount to be converted
-     *  @param tokenPrice Pool underlyer's USD price (in wei) per underlyer token
-     *  @param decimals Pool underlyer's number of decimals
-     *  @dev Price parameter is in units of wei per token ("big" unit), since
-     *       attempting to express wei per token bit ("small" unit) will be
-     *       fractional, requiring fixed-point representation.  This means we need
-     *       to also pass in the underlyer's number of decimals to do the appropriate
-     *       multiplication in the calculation.
+     * @notice Calculate mAPT amount to be minted for given pool's underlyer amount.
+     * @param depositAmount Pool underlyer amount to be converted
+     * @param tokenPrice Pool underlyer's USD price (in wei) per underlyer token
+     * @param decimals Pool underlyer's number of decimals
+     * @dev Price parameter is in units of wei per token ("big" unit), since
+     * attempting to express wei per token bit ("small" unit) will be
+     * fractional, requiring fixed-point representation.  This means we need
+     * to also pass in the underlyer's number of decimals to do the appropriate
+     * multiplication in the calculation.
      */
     function calculateMintAmount(
         uint256 depositAmount,
@@ -249,20 +219,61 @@ contract MetaPoolToken is
         uint256 decimals
     ) public view returns (uint256) {
         uint256 depositValue = depositAmount.mul(tokenPrice).div(10**decimals);
-        uint256 totalValue = getTVL();
+        uint256 totalValue = getTvl();
         return _calculateMintAmount(depositValue, totalValue);
     }
 
     /**
-     *  @dev amount of APT minted should be in same ratio to APT supply
-     *       as deposit value is to pool's total value, i.e.:
+     * @notice Calculate amount in pool's underlyer token from given mAPT amount.
+     * @param mAptAmount mAPT amount to be converted
+     * @param tokenPrice Pool underlyer's USD price (in wei) per underlyer token
+     * @param decimals Pool underlyer's number of decimals
+     * @dev Price parameter is in units of wei per token ("big" unit), since
+     * attempting to express wei per token bit ("small" unit) will be
+     * fractional, requiring fixed-point representation.  This means we need
+     * to also pass in the underlyer's number of decimals to do the appropriate
+     * multiplication in the calculation.
+     */
+    function calculatePoolAmount(
+        uint256 mAptAmount,
+        uint256 tokenPrice,
+        uint256 decimals
+    ) public view returns (uint256) {
+        if (mAptAmount == 0) return 0;
+        require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
+        uint256 poolValue = mAptAmount.mul(getTvl()).div(totalSupply());
+        uint256 poolAmount = poolValue.mul(10**decimals).div(tokenPrice);
+        return poolAmount;
+    }
+
+    /**
+     * @notice Get the USD-denominated value (in wei) of the pool's share
+     * of the deployed capital, as tracked by the mAPT token.
+     * @return uint256
+     */
+    function getDeployedValue(address pool) public view returns (uint256) {
+        uint256 balance = balanceOf(pool);
+        uint256 totalSupply = totalSupply();
+        if (totalSupply == 0 || balance == 0) return 0;
+
+        return getTvl().mul(balance).div(totalSupply);
+    }
+
+    function _getOracleAdapter() internal view returns (IOracleAdapter) {
+        address oracleAdapterAddress = addressRegistry.oracleAdapterAddress();
+        return IOracleAdapter(oracleAdapterAddress);
+    }
+
+    /**
+     * @dev amount of APT minted should be in same ratio to APT supply
+     * as deposit value is to pool's total value, i.e.:
      *
-     *       mint amount / total supply
-     *       = deposit value / pool total value
+     * mint amount / total supply
+     * = deposit value / pool total value
      *
-     *       For denominators, pre or post-deposit amounts can be used.
-     *       The important thing is they are consistent, i.e. both pre-deposit
-     *       or both post-deposit.
+     * For denominators, pre or post-deposit amounts can be used.
+     * The important thing is they are consistent, i.e. both pre-deposit
+     * or both post-deposit.
      */
     function _calculateMintAmount(uint256 depositValue, uint256 totalValue)
         internal
@@ -276,40 +287,5 @@ contract MetaPoolToken is
         }
 
         return depositValue.mul(totalSupply).div(totalValue);
-    }
-
-    /** @notice Calculate amount in pool's underlyer token from given mAPT amount.
-     *  @param mAptAmount mAPT amount to be converted
-     *  @param tokenPrice Pool underlyer's USD price (in wei) per underlyer token
-     *  @param decimals Pool underlyer's number of decimals
-     *  @dev Price parameter is in units of wei per token ("big" unit), since
-     *       attempting to express wei per token bit ("small" unit) will be
-     *       fractional, requiring fixed-point representation.  This means we need
-     *       to also pass in the underlyer's number of decimals to do the appropriate
-     *       multiplication in the calculation.
-     */
-    function calculatePoolAmount(
-        uint256 mAptAmount,
-        uint256 tokenPrice,
-        uint256 decimals
-    ) public view returns (uint256) {
-        if (mAptAmount == 0) return 0;
-        require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        uint256 poolValue = mAptAmount.mul(getTVL()).div(totalSupply());
-        uint256 poolAmount = poolValue.mul(10**decimals).div(tokenPrice);
-        return poolAmount;
-    }
-
-    /**
-     * @notice Get the USD-denominated value (in wei) of the pool's share
-     *         of the deployed capital, as tracked by the mAPT token.
-     * @return uint256
-     */
-    function getDeployedValue(address pool) public view returns (uint256) {
-        uint256 balance = balanceOf(pool);
-        uint256 totalSupply = totalSupply();
-        if (totalSupply == 0 || balance == 0) return 0;
-
-        return getTVL().mul(balance).div(totalSupply);
     }
 }

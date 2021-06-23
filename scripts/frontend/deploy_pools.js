@@ -16,6 +16,7 @@ const { ethers, network } = require("hardhat");
 const {
   getAggregatorAddress,
   getDeployedAddress,
+  impersonateAccount,
 } = require("../../utils/helpers");
 
 async function main() {
@@ -30,14 +31,13 @@ async function main() {
   console.log("Deployer address:", await deployer.getAddress());
 
   const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-  const APYMetaPoolToken = await ethers.getContractFactory("APYMetaPoolToken");
-  const APYMetaPoolTokenProxy = await ethers.getContractFactory(
-    "APYMetaPoolTokenProxy"
+  const MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
+  const MetaPoolTokenProxy = await ethers.getContractFactory(
+    "MetaPoolTokenProxy"
   );
-  const APYPoolTokenV2 = await ethers.getContractFactory("APYPoolTokenV2");
 
   const proxyAdminAddress = getDeployedAddress(
-    "APYPoolTokenProxyAdmin",
+    "PoolTokenProxyAdmin",
     NETWORK_NAME
   );
   const proxyAdmin = await ProxyAdmin.attach(proxyAdminAddress);
@@ -46,60 +46,65 @@ async function main() {
 
   // need to impersonate (and fund) pool owner
   // so we can upgrade the proxy to V2 logic
-  const ownerAddress = await proxyAdmin.owner();
-  const owner = await ethers.provider.getSigner(ownerAddress);
-  await network.provider.request({
-    method: "hardhat_impersonateAccount",
-    params: [ownerAddress],
-  });
+  const poolDeployerAddress = await proxyAdmin.owner();
+  const poolDeployer = await impersonateAccount(poolDeployerAddress);
   await deployer.sendTransaction({
-    to: ownerAddress,
+    to: poolDeployerAddress,
     value: ethers.utils.parseEther("10").toHexString(),
   });
 
   console.log("");
   console.log("Deploying mAPT ...");
   console.log("");
-  const mAptLogic = await APYMetaPoolToken.deploy();
+  const mAptLogic = await MetaPoolToken.deploy();
   await mAptLogic.deployed();
 
   const tvlAggAddress = getAggregatorAddress("TVL", NETWORK_NAME);
-  const ethUsdAggAddress = getAggregatorAddress("ETH-USD", NETWORK_NAME);
   const aggStalePeriod = 14400;
-  const mAptProxy = await APYMetaPoolTokenProxy.deploy(
+  const mAptProxy = await MetaPoolTokenProxy.deploy(
     mAptLogic.address,
     proxyAdmin.address,
     tvlAggAddress,
-    ethUsdAggAddress,
     aggStalePeriod
   );
   await mAptProxy.deployed();
   console.log(`mAPT: ${mAptProxy.address}`);
-  console.log("ETH-USD Aggregator:", ethUsdAggAddress);
   console.log("TVL Aggregator:", tvlAggAddress);
   console.log("Aggregator stale period:", aggStalePeriod);
   console.log("");
   console.log("... done.");
   console.log("");
 
+  const PoolTokenV2 = await ethers.getContractFactory(
+    "PoolTokenV2",
+    poolDeployer
+  );
+
   console.log("");
   for (const symbol of ["DAI", "USDC", "USDT"]) {
     console.log(`Upgrading ${symbol} pool ...`);
     const poolAddress = getDeployedAddress(
-      symbol + "_APYPoolTokenProxy",
+      symbol + "_PoolTokenProxy",
       NETWORK_NAME
     );
     console.log(`${symbol} APT: ${poolAddress}`);
 
-    const logicV2 = await APYPoolTokenV2.deploy();
+    const logicV2 = await PoolTokenV2.deploy();
     await logicV2.deployed();
-    const initData = APYPoolTokenV2.interface.encodeFunctionData(
+    const initData = PoolTokenV2.interface.encodeFunctionData(
       "initializeUpgrade(address)",
       [mAptProxy.address]
     );
     await proxyAdmin
-      .connect(owner)
+      .connect(poolDeployer)
       .upgradeAndCall(poolAddress, logicV2.address, initData);
+    console.log("Set V2 logic.");
+
+    const pool = await PoolTokenV2.attach(poolAddress);
+    const priceAggAddress = getAggregatorAddress(`${symbol}-USD`, NETWORK_NAME);
+    const trx = await pool.setPriceAggregator(priceAggAddress);
+    await trx.wait();
+    console.log("Set USD price agg.");
     console.log("... done.");
   }
 }

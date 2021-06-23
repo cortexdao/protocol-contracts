@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
@@ -19,6 +19,15 @@ contract GovernanceToken is
     /* ------------------------------- */
 
     event AdminChanged(address);
+
+    modifier onlyAdmin() {
+        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
+        _;
+    }
+
+    receive() external payable {
+        revert("DONT_SEND_ETHER");
+    }
 
     function initialize(address adminAddress, uint256 totalSupply)
         external
@@ -44,14 +53,5 @@ contract GovernanceToken is
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
         emit AdminChanged(adminAddress);
-    }
-
-    modifier onlyAdmin() {
-        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
-        _;
-    }
-
-    receive() external payable {
-        revert("DONT_SEND_ETHER");
     }
 }

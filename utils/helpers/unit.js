@@ -55,4 +55,6 @@ module.exports = {
   erc20,
   undoErc20,
   tokenAmountToBigNumber,
+  commify: ethers.utils.commify,
+  formatUnits: ethers.utils.formatUnits,
 };

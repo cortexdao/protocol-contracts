@@ -1,10 +1,12 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-/// @notice Uniswap contract for adding/removing liquidity from pools
+/**
+ * @notice Uniswap contract for adding/removing liquidity from pools
+ */
 interface IUniswapV2Router {
     function addLiquidity(
         address tokenA,
@@ -69,17 +71,17 @@ interface IUniswapV2Pair is IERC20 {
  * @title Periphery Contract for the Uniswap V2 Router
  * @author APY.Finance
  * @notice This contract enables the APY.Finance system to retrieve the balance
- *         of an underlyer of a Uniswap LP token. The balance is used as part
- *         of the Chainlink computation of the deployed TVL.  The primary
- *         `getUnderlyerBalance` function is invoked indirectly when a
- *         Chainlink node calls `balanceOf` on the APYAssetAllocationRegistry.
+ * of an underlyer of a Uniswap LP token. The balance is used as part
+ * of the Chainlink computation of the deployed TVL.  The primary
+ * `getUnderlyerBalance` function is invoked indirectly when a
+ * Chainlink node calls `balanceOf` on the APYAssetAllocationRegistry.
  */
 contract UniswapPeriphery {
     using SafeMath for uint256;
 
     /**
      * @notice Returns the balance of an underlying token represented by
-     *         an account's LP token balance.
+     * an account's LP token balance.
      * @param lpToken the LP token representing the share of the pool
      * @param tokenIndex the index indicating which underlyer
      * @return balance

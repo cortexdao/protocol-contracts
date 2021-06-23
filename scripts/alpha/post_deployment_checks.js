@@ -21,7 +21,8 @@ const {
   getDeployedAddress,
   bytes32,
   MAX_UINT256,
-  ZERO_ADDRESS,
+  getStablecoinAddress,
+  getAggregatorAddress,
 } = require("../../utils/helpers");
 
 console.logDone = function () {
@@ -38,27 +39,6 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
-  const addressRegistryDeployer = ethers.Wallet.fromMnemonic(
-    ADDRESS_REGISTRY_MNEMONIC
-  ).connect(ethers.provider);
-  const MAPT_MNEMONIC = process.env.MAPT_MNEMONIC;
-  const mAptDeployer = ethers.Wallet.fromMnemonic(MAPT_MNEMONIC).connect(
-    ethers.provider
-  );
-  const ACCOUNT_MANAGER_MNEMONIC = process.env.ACCOUNT_MANAGER_MNEMONIC;
-  const accountManagerDeployer = ethers.Wallet.fromMnemonic(
-    ACCOUNT_MANAGER_MNEMONIC
-  ).connect(ethers.provider);
-  const POOL_MANAGER_MNEMONIC = process.env.POOL_MANAGER_MNEMONIC;
-  const poolManagerDeployer = ethers.Wallet.fromMnemonic(
-    POOL_MANAGER_MNEMONIC
-  ).connect(ethers.provider);
-  const TVL_MANAGER_MNEMONIC = process.env.TVL_MANAGER_MNEMONIC;
-  const tvlManagerDeployer = ethers.Wallet.fromMnemonic(
-    TVL_MANAGER_MNEMONIC
-  ).connect(ethers.provider);
-
   const addressRegistryAddress = getDeployedAddress(
     "AddressRegistryProxy",
     networkName
@@ -69,14 +49,6 @@ async function main(argv) {
   );
   const mAptAddress = getDeployedAddress("MetaPoolTokenProxy", networkName);
   const mApt = await ethers.getContractAt("MetaPoolToken", mAptAddress);
-  const accountManagerAddress = getDeployedAddress(
-    "AccountManagerProxy",
-    networkName
-  );
-  const accountManager = await ethers.getContractAt(
-    "AccountManager",
-    accountManagerAddress
-  );
   const poolManagerAddress = getDeployedAddress(
     "PoolManagerProxy",
     networkName
@@ -85,20 +57,27 @@ async function main(argv) {
     "PoolManager",
     poolManagerAddress
   );
-  const tvlManagerAddress = getDeployedAddress("TVLManager", networkName);
+  const tvlManagerAddress = getDeployedAddress("TvlManager", networkName);
   const tvlManager = await ethers.getContractAt(
-    "TVLManager",
+    "TvlManager",
     tvlManagerAddress
   );
+  const oracleAdapterAddress = getDeployedAddress("OracleAdapter", networkName);
+  const oracleAdapter = await ethers.getContractAt(
+    "OracleAdapter",
+    oracleAdapterAddress
+  );
+
+  const lpSafeAddress = getDeployedAddress("LpSafe", networkName);
+
+  const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
 
   console.log("Check owners ...");
-  expect(await addressRegistry.owner()).to.equal(
-    addressRegistryDeployer.address
-  );
-  expect(await mApt.owner()).to.equal(mAptDeployer.address);
-  expect(await accountManager.owner()).to.equal(accountManagerDeployer.address);
-  expect(await poolManager.owner()).to.equal(poolManagerDeployer.address);
-  expect(await tvlManager.owner()).to.equal(tvlManagerDeployer.address);
+  expect(await addressRegistry.owner()).to.equal(adminSafeAddress);
+  expect(await mApt.owner()).to.equal(adminSafeAddress);
+  expect(await poolManager.owner()).to.equal(adminSafeAddress);
+  expect(await tvlManager.owner()).to.equal(adminSafeAddress);
+  expect(await oracleAdapter.owner()).to.equal(adminSafeAddress);
   console.logDone();
 
   console.log("Check address registry addresses ...");
@@ -106,19 +85,16 @@ async function main(argv) {
     await addressRegistry.getAddress(bytes32("chainlinkRegistry"));
     expect.to.fail();
   } catch (error) {
-    // Infura will revert before sending to blockchain, so we never get the revert reason
-    expect(error.message).to.equal("VM execution error.");
+    // error messages differ based on network setup
   }
   try {
     await addressRegistry.getAddress(bytes32("manager"));
     expect.to.fail();
   } catch (error) {
-    // Infura will revert before sending to blockchain, so we never get the revert reason
-    expect(error.message).to.equal("VM execution error.");
+    // error messages differ based on network setup
   }
-  expect(await addressRegistry.accountManagerAddress()).to.equal(
-    accountManager.address
-  );
+  expect(await addressRegistry.mAptAddress()).to.equal(mApt.address);
+  expect(await addressRegistry.lpSafeAddress()).to.equal(lpSafeAddress);
   expect(await addressRegistry.poolManagerAddress()).to.equal(
     poolManager.address
   );
@@ -128,25 +104,46 @@ async function main(argv) {
   expect(await addressRegistry.chainlinkRegistryAddress()).to.equal(
     tvlManager.address
   );
+  expect(await addressRegistry.oracleAdapterAddress()).to.equal(
+    oracleAdapter.address
+  );
   console.logDone();
 
-  console.log("Check pool manager address set on mAPT ...");
-  expect(await mApt.manager()).to.equal(poolManager.address);
+  console.log("Check address registry set on mAPT ...");
+  expect(await mApt.addressRegistry()).to.equal(addressRegistry.address);
   console.logDone();
 
-  console.log("Check account factory address set on pool manager ...");
-  expect(await poolManager.accountFactory()).to.equal(accountManager.address);
+  console.log("Check address registry set on oracle adapter ...");
+  expect(await oracleAdapter.addressRegistry()).to.equal(
+    addressRegistry.address
+  );
   console.logDone();
 
-  console.log("Check pools upgrade ...");
-  for (let poolId of ["daiPool", "usdcPool", "usdtPool"]) {
+  console.log("Check address registry set on pool manager ...");
+  expect(await poolManager.addressRegistry()).to.equal(addressRegistry.address);
+  console.logDone();
+
+  console.log("Check sources set on oracle adapter ...");
+  for (const symbol of ["DAI", "USDC", "USDT"]) {
+    const asset = getStablecoinAddress(symbol, networkName);
+    const source = getAggregatorAddress(`${symbol}-USD`, networkName);
+    expect(await oracleAdapter.assetSources(asset)).to.equal(source);
+  }
+  const tvlSource = getAggregatorAddress("TVL", "MAINNET");
+  expect(await oracleAdapter.tvlSource()).to.equal(tvlSource);
+  console.logDone();
+
+  console.log("Check demo pools ...");
+  for (let poolId of ["daiDemoPool", "usdcDemoPool", "usdtDemoPool"]) {
+    // console.log("Check pools upgrade ...");
+    // for (let poolId of ["daiPool", "usdcPool", "usdtPool"]) {
     console.log("- " + poolId);
     poolId = bytes32(poolId);
     const poolAddress = await addressRegistry.getAddress(poolId);
     const pool = await ethers.getContractAt("PoolTokenV2", poolAddress);
 
     // sanity-check; also checks if we are using V2 contracts
-    expect(await pool.mApt()).to.equal(mApt.address);
+    expect(await pool.addressRegistry()).to.equal(addressRegistry.address);
 
     // check pool manager allowances
     const underlyerAddress = await pool.underlyer();
@@ -163,19 +160,7 @@ async function main(argv) {
     // check pool underlyer price is in USD
     expect(await pool.getUnderlyerPrice()).to.be.lt("110000000");
     expect(await pool.getUnderlyerPrice()).to.be.gt("90000000");
-
-    // TODO: check agg addresses?
   }
-  console.logDone();
-
-  console.log(
-    "Check account deployed with correct ID and set with executor ..."
-  );
-  const accountAddress = await accountManager.getAccount(bytes32("alpha"));
-  expect(accountAddress).to.not.equal(ZERO_ADDRESS);
-  const accountContract = await ethers.getContractAt("Account", accountAddress);
-  const executorAddress = getDeployedAddress("GenericExecutor", networkName);
-  expect(await accountContract.genericExecutor()).to.equal(executorAddress);
   console.logDone();
 }
 

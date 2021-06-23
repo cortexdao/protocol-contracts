@@ -1,7 +1,8 @@
 const { expect } = require("chai");
-const { ethers } = require("hardhat");
+const { ethers, waffle, artifacts } = require("hardhat");
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
 const timeMachine = require("ganache-time-traveler");
+const { deployMockContract } = waffle;
 const {
   tokenAmountToBigNumber,
   FAKE_ADDRESS,
@@ -31,22 +32,17 @@ describe("Contract: MetaPoolToken", () => {
   let deployer;
   let manager;
   let randomUser;
-  let anotherUser;
   let oracle;
-
-  // contract factories
-  let ProxyAdmin;
-  let MetaPoolTokenProxy;
-  let MetaPoolToken;
 
   // deployed contracts
   let proxyAdmin;
   let logic;
   let proxy;
   let mApt;
+  let oracleAdapter;
+  let addressRegistry;
 
   let tvlAgg;
-  let aggStalePeriod = 14400;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -61,13 +57,7 @@ describe("Contract: MetaPoolToken", () => {
   });
 
   before(async () => {
-    [
-      deployer,
-      manager,
-      oracle,
-      randomUser,
-      anotherUser,
-    ] = await ethers.getSigners();
+    [deployer, manager, oracle, randomUser] = await ethers.getSigners();
 
     const paymentAmount = link("1");
     const maxSubmissionValue = tokenAmountToBigNumber("1", "20");
@@ -85,9 +75,31 @@ describe("Contract: MetaPoolToken", () => {
       deployer.address // ETH funder
     );
 
-    ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    MetaPoolTokenProxy = await ethers.getContractFactory("MetaPoolTokenProxy");
-    MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
+    addressRegistry = await deployMockContract(
+      deployer,
+      artifacts.require("IAddressRegistryV2").abi
+    );
+    await addressRegistry.mock.poolManagerAddress.returns(manager.address);
+
+    const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
+    oracleAdapter = await OracleAdapter.deploy(
+      addressRegistry.address,
+      tvlAgg.address,
+      [],
+      [],
+      86400,
+      86400
+    );
+    await oracleAdapter.deployed();
+    await addressRegistry.mock.oracleAdapterAddress.returns(
+      oracleAdapter.address
+    );
+
+    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+    const MetaPoolTokenProxy = await ethers.getContractFactory(
+      "MetaPoolTokenProxy"
+    );
+    const MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
 
     proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
@@ -96,60 +108,12 @@ describe("Contract: MetaPoolToken", () => {
     proxy = await MetaPoolTokenProxy.deploy(
       logic.address,
       proxyAdmin.address,
-      tvlAgg.address,
-      aggStalePeriod
+      addressRegistry.address
     );
     await proxy.deployed();
     mApt = await MetaPoolToken.attach(proxy.address);
 
-    await mApt.connect(deployer).setManagerAddress(manager.address);
-  });
-
-  describe("Minting and burning", async () => {
-    it("Manager can mint", async () => {
-      const mintAmount = tokenAmountToBigNumber("100");
-      await expect(mApt.connect(manager).mint(randomUser.address, mintAmount))
-        .to.not.be.reverted;
-      expect(await mApt.balanceOf(randomUser.address)).to.equal(mintAmount);
-    });
-
-    it("Manager can burn", async () => {
-      const mintAmount = tokenAmountToBigNumber("100");
-      const burnAmount = tokenAmountToBigNumber("90");
-      await mApt.connect(manager).mint(randomUser.address, mintAmount);
-
-      await expect(mApt.connect(manager).burn(randomUser.address, burnAmount))
-        .to.not.be.reverted;
-      expect(await mApt.balanceOf(randomUser.address)).to.equal(
-        mintAmount.sub(burnAmount)
-      );
-    });
-
-    it("Revert when non-manager attempts to mint", async () => {
-      await expect(
-        mApt
-          .connect(randomUser)
-          .mint(anotherUser.address, tokenAmountToBigNumber("1"))
-      ).to.be.revertedWith("MANAGER_ONLY");
-      await expect(
-        mApt
-          .connect(deployer)
-          .mint(anotherUser.address, tokenAmountToBigNumber("1"))
-      ).to.be.revertedWith("MANAGER_ONLY");
-    });
-
-    it("Revert when non-manager attempts to burn", async () => {
-      await expect(
-        mApt
-          .connect(randomUser)
-          .burn(anotherUser.address, tokenAmountToBigNumber("1"))
-      ).to.be.revertedWith("MANAGER_ONLY");
-      await expect(
-        mApt
-          .connect(deployer)
-          .mint(anotherUser.address, tokenAmountToBigNumber("1"))
-      ).to.be.revertedWith("MANAGER_ONLY");
-    });
+    await addressRegistry.mock.mAptAddress.returns(mApt.address);
   });
 
   describe("getDeployedValue", async () => {
@@ -176,6 +140,7 @@ describe("Contract: MetaPoolToken", () => {
       await tvlAgg.connect(oracle).submit(1, tvl);
 
       const expectedEthValue = tvl.mul(balance).div(totalSupply);
+      await oracleAdapter.unlock();
       expect(await mApt.getDeployedValue(FAKE_ADDRESS)).to.equal(
         expectedEthValue
       );
@@ -190,9 +155,12 @@ describe("Contract: MetaPoolToken", () => {
 
       await mApt
         .connect(manager)
-        .mint(anotherUser.address, tokenAmountToBigNumber(100));
+        .mint(randomUser.address, tokenAmountToBigNumber(100));
 
-      await tvlAgg.connect(oracle).submit(1, 0);
+      // manually set TVL to zero
+      await oracleAdapter.lockFor(100);
+      await oracleAdapter.setTvl(0, 100);
+      await oracleAdapter.unlock();
 
       const mintAmount = await mApt.calculateMintAmount(
         usdcAmount,
@@ -228,8 +196,9 @@ describe("Contract: MetaPoolToken", () => {
       let tvl = usdcUsdPrice.mul(usdcAmount).div(usdc(1));
 
       const totalSupply = tokenAmountToBigNumber(21);
-      await mApt.connect(manager).mint(anotherUser.address, totalSupply);
+      await mApt.connect(manager).mint(randomUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
+      await oracleAdapter.unlock();
 
       let mintAmount = await mApt.calculateMintAmount(
         usdcAmount,
@@ -255,8 +224,9 @@ describe("Contract: MetaPoolToken", () => {
       const tvl = usdcUsdPrice.mul(usdcAmount).div(usdc(1));
 
       const totalSupply = tokenAmountToBigNumber(21);
-      await mApt.connect(manager).mint(anotherUser.address, totalSupply);
+      await mApt.connect(manager).mint(randomUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
+      await oracleAdapter.unlock();
 
       let poolAmount = await mApt.calculatePoolAmount(
         totalSupply,
@@ -291,8 +261,9 @@ describe("Contract: MetaPoolToken", () => {
       let mAptAmount = tokenAmountToBigNumber(10);
       let expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
       let expectedPoolAmount = expectedPoolValue.mul(usdc(1)).div(usdcUsdPrice);
-      await mApt.connect(manager).mint(anotherUser.address, totalSupply);
+      await mApt.connect(manager).mint(randomUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
+      await oracleAdapter.unlock();
 
       let poolAmount = await mApt.calculatePoolAmount(
         mAptAmount,

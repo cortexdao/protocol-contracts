@@ -17,7 +17,7 @@ chain_id=1
 # add option arg to args array
 args=( )
 if [ -n "${fork}" ]; then
-  args+=( --fork "${fork}" );
+  args+=( --fork "${fork}@12000000" );
 else
   echo "Must have fork url in .env file.";
 fi

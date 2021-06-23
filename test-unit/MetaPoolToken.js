@@ -1,4 +1,4 @@
-const { expect, assert } = require("chai");
+const { expect } = require("chai");
 const { ethers, web3, artifacts, waffle } = require("hardhat");
 const timeMachine = require("ganache-time-traveler");
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
@@ -8,7 +8,7 @@ const {
   tokenAmountToBigNumber,
 } = require("../utils/helpers");
 const { deployMockContract } = waffle;
-const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
+const OracleAdapter = artifacts.require("OracleAdapter");
 
 const DUMMY_ADDRESS = web3.utils.toChecksumAddress(
   "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
@@ -39,8 +39,8 @@ describe("Contract: MetaPoolToken", () => {
 
   // default settings
   // mocks have to be done async in "before"
-  let tvlAggMock;
-  const aggStalePeriod = 14400;
+  let oracleAdapterMock;
+  let addressRegistryMock;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -59,9 +59,20 @@ describe("Contract: MetaPoolToken", () => {
 
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     MetaPoolTokenProxy = await ethers.getContractFactory("MetaPoolTokenProxy");
-    MetaPoolToken = await ethers.getContractFactory("TestMetaPoolToken");
+    MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
 
-    tvlAggMock = await deployMockContract(deployer, AggregatorV3Interface.abi);
+    // Mock out the pool manager and oracle adapter addresses
+    // in the address registry.
+    addressRegistryMock = await deployMockContract(
+      deployer,
+      artifacts.require("IAddressRegistryV2").abi
+    );
+    await addressRegistryMock.mock.poolManagerAddress.returns(manager.address);
+
+    oracleAdapterMock = await deployMockContract(deployer, OracleAdapter.abi);
+    await addressRegistryMock.mock.oracleAdapterAddress.returns(
+      oracleAdapterMock.address
+    );
 
     proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
@@ -70,21 +81,22 @@ describe("Contract: MetaPoolToken", () => {
     proxy = await MetaPoolTokenProxy.deploy(
       logic.address,
       proxyAdmin.address,
-      tvlAggMock.address,
-      aggStalePeriod
+      addressRegistryMock.address
     );
     await proxy.deployed();
     mApt = await MetaPoolToken.attach(proxy.address);
+
+    // allows mAPT to mint and burn
+    await oracleAdapterMock.mock.lock.returns();
   });
 
-  describe("Constructor", async () => {
+  describe("Constructor", () => {
     it("Revert when logic is not a contract address", async () => {
       await expect(
         MetaPoolTokenProxy.connect(deployer).deploy(
           DUMMY_ADDRESS,
           proxyAdmin.address,
-          DUMMY_ADDRESS,
-          120
+          DUMMY_ADDRESS
         )
       ).to.be.revertedWith(
         "UpgradeableProxy: new implementation is not a contract"
@@ -96,45 +108,25 @@ describe("Contract: MetaPoolToken", () => {
         MetaPoolTokenProxy.connect(deployer).deploy(
           logic.address,
           ZERO_ADDRESS,
-          DUMMY_ADDRESS,
-          120
+          DUMMY_ADDRESS
         )
       ).to.be.reverted;
     });
 
-    it("Revert when TVL aggregator is zero address", async () => {
+    it("Revert when address registry is zero address", async () => {
       await expect(
         MetaPoolTokenProxy.connect(deployer).deploy(
           logic.address,
           DUMMY_ADDRESS,
-          ZERO_ADDRESS,
-          120
-        )
-      ).to.be.reverted;
-    });
-
-    it("Revert when aggStalePeriod is zero", async () => {
-      await expect(
-        MetaPoolTokenProxy.connect(deployer).deploy(
-          logic.address,
-          DUMMY_ADDRESS,
-          DUMMY_ADDRESS,
-          DUMMY_ADDRESS,
-          0
+          ZERO_ADDRESS
         )
       ).to.be.reverted;
     });
   });
 
-  describe("Defaults", async () => {
+  describe("Defaults", () => {
     it("Owner is set to deployer", async () => {
       expect(await mApt.owner()).to.equal(deployer.address);
-    });
-
-    it("Revert when ETH is sent", async () => {
-      await expect(
-        deployer.sendTransaction({ to: mApt.address, value: "10" })
-      ).to.be.revertedWith("DONT_SEND_ETHER");
     });
 
     it("Name set to correct value", async () => {
@@ -153,16 +145,14 @@ describe("Contract: MetaPoolToken", () => {
       expect(await mApt.proxyAdmin()).to.equal(proxyAdmin.address);
     });
 
-    it("TVL agg set correctly", async () => {
-      expect(await mApt.tvlAgg()).to.equal(tvlAggMock.address);
-    });
-
-    it("aggStalePeriod set to correct value", async () => {
-      expect(await mApt.aggStalePeriod()).to.equal(aggStalePeriod);
+    it("Address registry set correctly", async () => {
+      expect(await mApt.addressRegistry()).to.equal(
+        addressRegistryMock.address
+      );
     });
   });
 
-  describe("Set admin address", async () => {
+  describe("Set admin address", () => {
     it("Owner can set to valid address", async () => {
       await mApt.connect(deployer).setAdminAddress(randomUser.address);
       expect(await mApt.proxyAdmin()).to.equal(randomUser.address);
@@ -181,51 +171,7 @@ describe("Contract: MetaPoolToken", () => {
     });
   });
 
-  describe("Set TVL aggregator address", async () => {
-    it("Owner can set to valid address", async () => {
-      await mApt.connect(deployer).setTvlAggregator(DUMMY_ADDRESS);
-      assert.equal(await mApt.tvlAgg(), DUMMY_ADDRESS);
-    });
-
-    it("Revert when non-owner attempts to set", async () => {
-      await expect(
-        mApt.connect(randomUser).setTvlAggregator(DUMMY_ADDRESS)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
-    });
-
-    it("Cannot set to zero address", async () => {
-      await expect(
-        mApt.connect(deployer).setTvlAggregator(ZERO_ADDRESS)
-      ).to.be.revertedWith("INVALID_AGG");
-    });
-  });
-
-  describe("Set aggregator staleness period", async () => {
-    it("Owner can set to valid value", async () => {
-      const newPeriod = 360;
-      expect(await mApt.aggStalePeriod()).to.not.equal(newPeriod);
-      await mApt.connect(deployer).setAggStalePeriod(newPeriod);
-      expect(await mApt.aggStalePeriod()).to.equal(newPeriod);
-    });
-
-    it("Revert when non-owner attempts to set", async () => {
-      await expect(
-        mApt.connect(randomUser).setAggStalePeriod(60)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
-    });
-
-    it("Cannot set to zero", async () => {
-      await expect(
-        mApt.connect(deployer).setAggStalePeriod(0)
-      ).to.be.revertedWith("INVALID_STALE_PERIOD");
-    });
-  });
-
-  describe("Minting and burning", async () => {
-    before(async () => {
-      await mApt.connect(deployer).setManagerAddress(manager.address);
-    });
-
+  describe("Minting and burning", () => {
     it("Manager can mint", async () => {
       const mintAmount = tokenAmountToBigNumber("100");
       await expect(mApt.connect(manager).mint(randomUser.address, mintAmount))
@@ -271,13 +217,21 @@ describe("Contract: MetaPoolToken", () => {
           .mint(anotherUser.address, tokenAmountToBigNumber("1"))
       ).to.be.revertedWith("MANAGER_ONLY");
     });
-  });
 
-  describe("getDeployedValue", async () => {
-    before(async () => {
-      await mApt.connect(deployer).setManagerAddress(manager.address);
+    it("Revert when minting zero", async () => {
+      await expect(
+        mApt.connect(manager).mint(randomUser.address, 0)
+      ).to.be.revertedWith("INVALID_MINT_AMOUNT");
     });
 
+    it("Revert when burning zero", async () => {
+      await expect(
+        mApt.connect(manager).burn(randomUser.address, 0)
+      ).to.be.revertedWith("INVALID_BURN_AMOUNT");
+    });
+  });
+
+  describe("getDeployedValue", () => {
     it("Return 0 if zero mAPT supply", async () => {
       expect(await mApt.totalSupply()).to.equal("0");
       expect(await mApt.getDeployedValue(FAKE_ADDRESS)).to.equal("0");
@@ -296,7 +250,7 @@ describe("Contract: MetaPoolToken", () => {
       const anotherBalance = tokenAmountToBigNumber("12345");
       const totalSupply = balance.add(anotherBalance);
 
-      await mApt.setTVL(tvl);
+      await oracleAdapterMock.mock.getTvl.returns(tvl);
       await mApt.connect(manager).mint(FAKE_ADDRESS, balance);
       await mApt.connect(manager).mint(ANOTHER_FAKE_ADDRESS, anotherBalance);
 
@@ -305,15 +259,12 @@ describe("Contract: MetaPoolToken", () => {
     });
   });
 
-  describe("Calculations", async () => {
-    before(async () => {
-      await mApt.connect(deployer).setManagerAddress(manager.address);
-    });
-
+  describe("Calculations", () => {
     it("Calculate mint amount with zero deployed TVL", async () => {
       const usdcEthPrice = tokenAmountToBigNumber("1602950450000000");
       let usdcAmount = usdc(107);
       let usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
+      await oracleAdapterMock.mock.getTvl.returns(0);
 
       await mApt
         .connect(manager)
@@ -334,7 +285,7 @@ describe("Contract: MetaPoolToken", () => {
       const usdcEthPrice = tokenAmountToBigNumber("1602950450000000");
       let usdcAmount = usdc(107);
       let usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
-      await mApt.setTVL(1);
+      await oracleAdapterMock.mock.getTvl.returns(1);
 
       const mintAmount = await mApt.calculateMintAmount(
         usdcAmount,
@@ -351,7 +302,7 @@ describe("Contract: MetaPoolToken", () => {
       const usdcEthPrice = tokenAmountToBigNumber("1602950450000000");
       let usdcAmount = usdc(107);
       let tvl = usdcEthPrice.mul(usdcAmount).div(usdc(1));
-      await mApt.setTVL(tvl);
+      await oracleAdapterMock.mock.getTvl.returns(tvl);
 
       const totalSupply = tokenAmountToBigNumber(21);
       await mApt.connect(manager).mint(anotherUser.address, totalSupply);
@@ -364,7 +315,7 @@ describe("Contract: MetaPoolToken", () => {
       expect(mintAmount).to.be.equal(totalSupply);
 
       tvl = usdcEthPrice.mul(usdcAmount.mul(2)).div(usdc(1));
-      await mApt.setTVL(tvl);
+      await oracleAdapterMock.mock.getTvl.returns(tvl);
       const expectedMintAmount = totalSupply.div(2);
       mintAmount = await mApt.calculateMintAmount(
         usdcAmount,
@@ -378,7 +329,7 @@ describe("Contract: MetaPoolToken", () => {
       const usdcEthPrice = tokenAmountToBigNumber("1602950450000000");
       const usdcAmount = usdc(107);
       const tvl = usdcEthPrice.mul(usdcAmount).div(usdc(1));
-      await mApt.setTVL(tvl);
+      await oracleAdapterMock.mock.getTvl.returns(tvl);
 
       const totalSupply = tokenAmountToBigNumber(21);
       await mApt.connect(manager).mint(anotherUser.address, totalSupply);
@@ -411,7 +362,7 @@ describe("Contract: MetaPoolToken", () => {
       const usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
       const daiValue = daiEthPrice.mul(daiAmount).div(dai(1));
       const tvl = usdcValue.add(daiValue);
-      await mApt.setTVL(tvl);
+      await oracleAdapterMock.mock.getTvl.returns(tvl);
 
       const totalSupply = tokenAmountToBigNumber(21);
       let mAptAmount = tokenAmountToBigNumber(10);
@@ -437,82 +388,16 @@ describe("Contract: MetaPoolToken", () => {
     });
   });
 
-  describe("getTVL and auxiliary functions", () => {
-    const usdTvl = tokenAmountToBigNumber("2510012387654321");
-
-    before(async () => {
-      /* for these tests, we want to test the actual implementation
-         of `getTVL`, rather than mocking it out, so we need
-         to deploy the real contract, not the test version. */
-
-      // Note our local declarations shadow some existing globals
-      // but their scope is limited to this `before`.
-      const MetaPoolToken = await ethers.getContractFactory(
-        "MetaPoolToken" // the *real* contract
-      );
-      const logic = await MetaPoolToken.deploy();
-      await logic.deployed();
-      const proxy = await MetaPoolTokenProxy.deploy(
-        logic.address,
-        proxyAdmin.address,
-        tvlAggMock.address,
-        aggStalePeriod
-      );
-      await proxy.deployed();
-      // Set the `mAPT` global to point to a deployed proxy with
-      // the real logic, not the test one.
-      mApt = await MetaPoolToken.attach(proxy.address);
-      await mApt.setManagerAddress(manager.address);
+  describe("getTvl", () => {
+    it("Call delegates to oracle adapter's getTvl", async () => {
+      const usdTvl = tokenAmountToBigNumber("25100123.87654321", "8");
+      await oracleAdapterMock.mock.getTvl.returns(usdTvl);
+      expect(await mApt.getTvl()).to.equal(usdTvl);
     });
 
-    after(async () => {
-      // re-attach to test contract for other tests
-      // Note: here the variables all refer to the global scope
-      mApt = await MetaPoolToken.attach(proxy.address);
-    });
-
-    it("getTVL reverts on negative answer", async () => {
-      const updatedAt = (await ethers.provider.getBlock()).timestamp;
-      const invalidPrice = -1;
-      // setting the mock mines a block and advances time by 1 sec
-      await tvlAggMock.mock.latestRoundData.returns(
-        0,
-        invalidPrice,
-        0,
-        updatedAt,
-        0
-      );
-
-      await expect(mApt.getTVL()).to.be.revertedWith(
-        "CHAINLINK_INVALID_ANSWER"
-      );
-    });
-
-    it("getTVL reverts when update is too old", async () => {
-      const updatedAt = (await ethers.provider.getBlock()).timestamp;
-      // setting the mock mines a block and advances time by 1 sec
-      await tvlAggMock.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
-      await ethers.provider.send("evm_increaseTime", [aggStalePeriod / 2]);
-      await ethers.provider.send("evm_mine");
-      await expect(mApt.getTVL()).to.not.be.reverted;
-
-      await ethers.provider.send("evm_increaseTime", [aggStalePeriod / 2]);
-      await ethers.provider.send("evm_mine");
-      await expect(mApt.getTVL()).to.be.revertedWith("CHAINLINK_STALE_DATA");
-    });
-
-    it("getTVL reverts when update is before last mint/burn", async () => {
-      await mApt.connect(manager).mint(deployer.address, 1);
-      const mintTime = (await ethers.provider.getBlock()).timestamp;
-      let updatedAt = mintTime + 1;
-      await tvlAggMock.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
-      await expect(mApt.getTVL()).to.not.be.reverted;
-
-      await mApt.connect(manager).burn(deployer.address, 1);
-      const burnTime = (await ethers.provider.getBlock()).timestamp;
-      updatedAt = burnTime - 1;
-      await tvlAggMock.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
-      await expect(mApt.getTVL()).to.be.revertedWith("CHAINLINK_STALE_DATA");
+    it("getTvl reverts with same reason as oracle adapter", async () => {
+      await oracleAdapterMock.mock.getTvl.revertsWithReason("SOMETHING_WRONG");
+      await expect(mApt.getTvl()).to.be.revertedWith("SOMETHING_WRONG");
     });
   });
 });

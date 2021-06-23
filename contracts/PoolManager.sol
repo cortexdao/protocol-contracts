@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
@@ -6,34 +6,38 @@ import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import "./interfaces/IAssetAllocation.sol";
-import "./interfaces/IAddressRegistry.sol";
+import "./interfaces/IAddressRegistryV2.sol";
 import "./interfaces/IDetailedERC20.sol";
-import "./interfaces/IAccountFunder.sol";
-import "./interfaces/IAccountFactory.sol";
-import "./interfaces/ITVLManager.sol";
+import "./interfaces/ILpSafeFunder.sol";
+import "./interfaces/ITvlManager.sol";
 import "./PoolTokenV2.sol";
 import "./MetaPoolToken.sol";
-import "./Account.sol";
 
 /**
  * @title Pool Manager
  * @author APY.Finance
- * @notice This is the pool manager logic contract for use with the pool manager proxy contract.
+ * @notice The pool manager logic contract for use with the pool manager proxy contract.
  *
  * The Pool Manager orchestrates the movement of capital within the APY system
- * between the PoolTokens and Accounts.
+ * between pools (PoolTokenV2 contracts) and strategy accounts, e.g. LP Safe.
  *
- * Transferring from the PoolToken contracts to the Account contract stages
- * capital for deployment before yield farming strategies are executed.
+ * Transferring from a PoolToken to an account stages capital in preparation
+ * for executing yield farming strategies.
  *
- * Capital unwound from yield farming strategies for user withdrawals is transferred from the
- * Account contract to the PoolToken contracts.
+ * Capital is unwound from yield farming strategies for user withdrawals by transferring
+ * from accounts to PoolTokens.
  *
- * When funding an account, the Pool Manager simultaneously register the account
- * with the TVL Manager for the undelerying token pool to ensure the TVL is properly updated
+ * When funding an account from a pool, the Pool Manager simultaneously register the asset
+ * allocation with the TVL Manager to ensure the TVL is properly updated.
  */
-contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
+contract PoolManager is
+    Initializable,
+    OwnableUpgradeSafe,
+    ReentrancyGuardUpgradeSafe,
+    ILpSafeFunder
+{
     using SafeMath for uint256;
     using SafeERC20 for IDetailedERC20;
 
@@ -41,14 +45,19 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     /* impl-specific storage variables */
     /* ------------------------------- */
     address public proxyAdmin;
-    MetaPoolToken public mApt;
-    IAddressRegistry public addressRegistry;
-    IAccountFactory public accountFactory;
-    bytes32[] internal _poolIds;
+    IAddressRegistryV2 public addressRegistry;
 
     /* ------------------------------- */
 
     event AdminChanged(address);
+
+    /**
+     * @dev Throws if called by any account other than the proxy admin.
+     */
+    modifier onlyAdmin() {
+        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
+        _;
+    }
 
     /**
      * @dev Since the proxy delegate calls to this "logic" contract, any
@@ -63,26 +72,22 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
      *
      * Our proxy deployment will call this as part of the constructor.
      * @param adminAddress the admin proxy to initialize with
-     * @param _mApt the metapool token to initialize with
-     * @param _addressRegistry the address registry to initialize with
+     * @param addressRegistry_ the address registry to initialize with
      */
-    function initialize(
-        address adminAddress,
-        address payable _mApt,
-        address _addressRegistry
-    ) external initializer {
+    function initialize(address adminAddress, address addressRegistry_)
+        external
+        initializer
+    {
         require(adminAddress != address(0), "INVALID_ADMIN");
-        require(Address.isContract(_mApt), "INVALID_ADDRESS");
-        require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
 
         // initialize ancestor storage
         __Context_init_unchained();
         __Ownable_init_unchained();
+        __ReentrancyGuard_init_unchained();
 
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
-        mApt = MetaPoolToken(_mApt);
-        addressRegistry = IAddressRegistry(_addressRegistry);
+        setAddressRegistry(addressRegistry_);
     }
 
     /**
@@ -98,106 +103,95 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     function initializeUpgrade() external virtual onlyAdmin {}
 
     /**
-     * @dev Throws if called by any account other than the proxy admin.
-     */
-    modifier onlyAdmin() {
-        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
-        _;
-    }
-
-    /// @notice Sets the proxy admin address of the pool manager proxy
-    /// @dev only callable by owner
-    /// @param adminAddress the new proxy admin address of the pool manager
-    function setAdminAddress(address adminAddress) public onlyOwner {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-        proxyAdmin = adminAddress;
-        emit AdminChanged(adminAddress);
-    }
-
-    /// @dev Allow contract to receive Ether.
-    receive() external payable {} // solhint-disable-line no-empty-blocks
-
-    /// @notice Sets the metapool token address
-    /// @dev only callable by owner
-    /// @param _mApt the address of the metapool token
-    function setMetaPoolToken(address payable _mApt) public onlyOwner {
-        require(Address.isContract(_mApt), "INVALID_ADDRESS");
-        mApt = MetaPoolToken(_mApt);
-    }
-
-    /// @notice Sets the address registry
-    /// @dev only callable by owner
-    /// @param _addressRegistry the address of the registry
-    function setAddressRegistry(address _addressRegistry) public onlyOwner {
-        require(Address.isContract(_addressRegistry), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistry(_addressRegistry);
-    }
-
-    /// @notice Sets the new account factory
-    /// @dev only callable by owner
-    /// @param _accountFactory the address of the account factory
-    function setAccountFactory(address _accountFactory) public onlyOwner {
-        require(Address.isContract(_accountFactory), "INVALID_ADDRESS");
-        accountFactory = IAccountFactory(_accountFactory);
-    }
-
-    /**
-     * @notice Funds Account and register an asset allocation
+     * @notice Funds LP Safe account and register an asset allocation
      * @dev only callable by owner. Also registers the pool underlyer for the account being funded
-     * @param accountId id of the Account being funded
-     * @param poolAmounts a list of PoolAmount structs denoting the pools id and amounts that will be used to fund the account
-     * @notice PoolAmount example (pulls ~$1 from each pool to the Account):
+     * @param poolAmounts a list of PoolAmount structs denoting the pools id and amounts used to fund the account
+     * @notice PoolAmount example (pulls ~$1 from each pool to the account):
      *      [
      *          { poolId: "daiPool", amount: "1000000000000" },
      *          { poolId: "usdcPool", amount: "1000000" },
      *          { poolId: "usdtPool", amount: "1000000" },
      *      ]
      */
-    function fundAccount(
-        bytes32 accountId,
-        IAccountFunder.PoolAmount[] memory poolAmounts
-    ) external override onlyOwner {
-        address accountAddress = accountFactory.getAccount(accountId);
-        require(accountAddress != address(0), "INVALID_ACCOUNT");
+    function fundLpSafe(ILpSafeFunder.PoolAmount[] memory poolAmounts)
+        external
+        override
+        onlyOwner
+        nonReentrant
+    {
+        address lpSafeAddress = addressRegistry.lpSafeAddress();
+        require(lpSafeAddress != address(0), "INVALID_LP_SAFE");
         (PoolTokenV2[] memory pools, uint256[] memory amounts) =
             _getPoolsAndAmounts(poolAmounts);
-        _registerPoolUnderlyers(accountAddress, pools);
-        _fundAccount(accountAddress, pools, amounts);
+        _fund(lpSafeAddress, pools, amounts);
+        _registerPoolUnderlyers(lpSafeAddress, pools);
     }
 
-    function _getPoolsAndAmounts(IAccountFunder.PoolAmount[] memory poolAmounts)
-        internal
-        view
-        returns (PoolTokenV2[] memory, uint256[] memory)
+    /**
+     * @notice Moves capital from LP Safe account to the PoolToken contracts
+     * @dev only callable by owner
+     * @param poolAmounts list of PoolAmount structs denoting pool IDs and pool deposit amounts
+     * @notice PoolAmount example (pushes ~$1 to each pool from the account):
+     *      [
+     *          { poolId: "daiPool", amount: "1000000000000" },
+     *          { poolId: "usdcPool", amount: "1000000" },
+     *          { poolId: "usdtPool", amount: "1000000" },
+     *      ]
+     */
+    function withdrawFromLpSafe(ILpSafeFunder.PoolAmount[] memory poolAmounts)
+        external
+        override
+        onlyOwner
+        nonReentrant
     {
-        PoolTokenV2[] memory pools = new PoolTokenV2[](poolAmounts.length);
-        uint256[] memory amounts = new uint256[](poolAmounts.length);
-        for (uint256 i = 0; i < poolAmounts.length; i++) {
-            amounts[i] = poolAmounts[i].amount;
-            pools[i] = PoolTokenV2(
-                addressRegistry.getAddress(poolAmounts[i].poolId)
-            );
-        }
-        return (pools, amounts);
+        address lpSafeAddress = addressRegistry.lpSafeAddress();
+        require(lpSafeAddress != address(0), "INVALID_LP_SAFE");
+        (PoolTokenV2[] memory pools, uint256[] memory amounts) =
+            _getPoolsAndAmounts(poolAmounts);
+        _checkManagerAllowances(lpSafeAddress, pools, amounts);
+        _withdraw(lpSafeAddress, pools, amounts);
     }
 
-    /// @notice Helper function to register a pool's underlyer balanceOf method for an account, when the account is funded
-    /// @param account the address of the account that will be registered with the balanceOf method
-    /// @param pools a list of pools that need their underlyer balanceOf method registered with the provided account being funded
+    /**
+     * @notice Sets the proxy admin address of the pool manager proxy
+     * @dev only callable by owner
+     * @param adminAddress the new proxy admin address of the pool manager
+     */
+    function setAdminAddress(address adminAddress) public onlyOwner {
+        require(adminAddress != address(0), "INVALID_ADMIN");
+        proxyAdmin = adminAddress;
+        emit AdminChanged(adminAddress);
+    }
+
+    /**
+     * @notice Sets the address registry
+     * @dev only callable by owner
+     * @param addressRegistry_ the address of the registry
+     */
+    function setAddressRegistry(address addressRegistry_) public onlyOwner {
+        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(addressRegistry_);
+    }
+
+    /**
+     * @notice Register an asset allocation for the account with each pool underlyer
+     * @param account address of the registered account
+     * @param pools list of pools whose underlyers will be registered
+     */
     function _registerPoolUnderlyers(
         address account,
         PoolTokenV2[] memory pools
     ) internal {
-        ITVLManager tvlManager =
-            ITVLManager(addressRegistry.getAddress("tvlManager"));
+        ITvlManager tvlManager =
+            ITvlManager(addressRegistry.getAddress("tvlManager"));
         for (uint256 i = 0; i < pools.length; i++) {
             PoolTokenV2 pool = pools[i];
             IDetailedERC20 underlyer = pool.underlyer();
             string memory symbol = underlyer.symbol();
             bytes memory _data =
                 abi.encodeWithSignature("balanceOf(address)", account);
-            ITVLManager.Data memory data =
-                ITVLManager.Data(address(pool.underlyer()), _data);
+            ITvlManager.Data memory data =
+                ITvlManager.Data(address(pool.underlyer()), _data);
             if (!tvlManager.isAssetAllocationRegistered(data)) {
                 tvlManager.addAssetAllocation(
                     data,
@@ -209,20 +203,22 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     }
 
     /**
-     * @notice Helper function move capital from PoolToken contracts to an Account
+     * @notice Helper function move capital from PoolToken contracts to an account
      * @param account the address to move funds to
      * @param pools a list of pools to pull funds from
      * @param amounts a list of fund amounts to pull from pools
      */
-    function _fundAccount(
+    function _fund(
         address account,
         PoolTokenV2[] memory pools,
         uint256[] memory amounts
     ) internal {
+        MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAptAddress());
         uint256[] memory mintAmounts = new uint256[](pools.length);
         for (uint256 i = 0; i < pools.length; i++) {
             PoolTokenV2 pool = pools[i];
             uint256 poolAmount = amounts[i];
+            require(poolAmount > 0, "INVALID_AMOUNT");
             IDetailedERC20 underlyer = pool.underlyer();
 
             uint256 tokenPrice = pool.getUnderlyerPrice();
@@ -245,62 +241,23 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
     }
 
     /**
-     * @notice Moves capital from an Account to the PoolToken contracts
-     * @dev only callable by owner
-     * @param accountId the account id to withdraw funds from
-     * @param poolAmounts a list of PoolAmount structs denoting the pools id and amounts that will deposited back into the pools
-     * @notice PoolAmount example (pushes ~$1 to each pool from the Account):
-     *      [
-     *          { poolId: "daiPool", amount: "1000000000000" },
-     *          { poolId: "usdcPool", amount: "1000000" },
-     *          { poolId: "usdtPool", amount: "1000000" },
-     *      ]
-     */
-    function withdrawFromAccount(
-        bytes32 accountId,
-        IAccountFunder.PoolAmount[] memory poolAmounts
-    ) external override onlyOwner {
-        address accountAddress = accountFactory.getAccount(accountId);
-        require(accountAddress != address(0), "INVALID_ACCOUNT");
-        (PoolTokenV2[] memory pools, uint256[] memory amounts) =
-            _getPoolsAndAmounts(poolAmounts);
-        _checkManagerAllowances(accountAddress, pools, amounts);
-        _withdrawFromAccount(accountAddress, pools, amounts);
-    }
-
-    /// @notice helper function to check if the pool manager has sufficient allowance to transfer
-    /// the pool's underlyer from the provided account
-    /// @param account the address of the account to check
-    /// @param pools the list of pools to transfer funds to; used for retrieving the underlyer
-    /// @param amounts the list of allowance amounts the manager needs to have in order to successfully transfer from an account
-    function _checkManagerAllowances(
-        address account,
-        PoolTokenV2[] memory pools,
-        uint256[] memory amounts
-    ) internal view {
-        for (uint256 i = 0; i < pools.length; i++) {
-            IDetailedERC20 underlyer = pools[i].underlyer();
-            uint256 allowance = underlyer.allowance(account, address(this));
-            require(amounts[i] <= allowance, "INSUFFICIENT_ALLOWANCE");
-        }
-    }
-
-    /**
-     * @notice Move capital from an Account back to the PoolToken contracts
+     * @notice Move capital from an account back to the PoolToken contracts
      * @param account account that funds are being withdrawn from
      * @param pools a list of pools to place recovered funds back into
      * @param amounts a list of amounts to send from the account to the pools
      *
      */
-    function _withdrawFromAccount(
+    function _withdraw(
         address account,
         PoolTokenV2[] memory pools,
         uint256[] memory amounts
     ) internal {
+        MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAptAddress());
         uint256[] memory burnAmounts = new uint256[](pools.length);
         for (uint256 i = 0; i < pools.length; i++) {
             PoolTokenV2 pool = pools[i];
             uint256 amountToSend = amounts[i];
+            require(amountToSend > 0, "INVALID_AMOUNT");
             IDetailedERC20 underlyer = pool.underlyer();
 
             uint256 tokenPrice = pool.getUnderlyerPrice();
@@ -322,22 +279,37 @@ contract PoolManager is Initializable, OwnableUpgradeSafe, IAccountFunder {
         }
     }
 
-    /// @notice Returns a list of all the pool ids
-    /// @return bytes32 list of pool ids
-    function getPoolIds() public view returns (bytes32[] memory) {
-        return _poolIds;
+    function _getPoolsAndAmounts(ILpSafeFunder.PoolAmount[] memory poolAmounts)
+        internal
+        view
+        returns (PoolTokenV2[] memory, uint256[] memory)
+    {
+        PoolTokenV2[] memory pools = new PoolTokenV2[](poolAmounts.length);
+        uint256[] memory amounts = new uint256[](poolAmounts.length);
+        for (uint256 i = 0; i < poolAmounts.length; i++) {
+            amounts[i] = poolAmounts[i].amount;
+            pools[i] = PoolTokenV2(
+                addressRegistry.getAddress(poolAmounts[i].poolId)
+            );
+        }
+        return (pools, amounts);
     }
 
-    /// @notice Sets a list of pool ids
-    /// @dev only callable by owner. overwrites prior list of pool ids
-    /// @param poolIds the new list of pool ids
-    function setPoolIds(bytes32[] memory poolIds) public onlyOwner {
-        _poolIds = poolIds;
-    }
-
-    /// @notice Removes the list of pool ids
-    /// @dev only callable by owner. removes all pool ids
-    function deletePoolIds() external onlyOwner {
-        delete _poolIds;
+    /**
+     * @notice Check if pool manager has sufficient allowance to transfer pool underlyer from account
+     * @param account the address of the account to check
+     * @param pools list of pools to transfer funds to; used for retrieving the underlyer
+     * @param amounts list of required minimal allowances needed by the manager
+     */
+    function _checkManagerAllowances(
+        address account,
+        PoolTokenV2[] memory pools,
+        uint256[] memory amounts
+    ) internal view {
+        for (uint256 i = 0; i < pools.length; i++) {
+            IDetailedERC20 underlyer = pools[i].underlyer();
+            uint256 allowance = underlyer.allowance(account, address(this));
+            require(amounts[i] <= allowance, "INSUFFICIENT_ALLOWANCE");
+        }
     }
 }

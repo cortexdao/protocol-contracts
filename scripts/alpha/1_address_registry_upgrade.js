@@ -57,7 +57,7 @@ async function main(argv) {
   console.log("");
 
   console.log("");
-  console.log("Deploying ...");
+  console.log("Upgrading ...");
   console.log("");
 
   const proxyAdminAddress = getDeployedAddress(
@@ -83,37 +83,92 @@ async function main(argv) {
     addressRegistryDeployer
   );
 
-  let deploy_data = {};
+  let deployData = {};
   let gasUsed = BigNumber.from("0");
-
   let gasPrice = await getGasPrice(argv.gasPrice);
+
+  const addressRegistry = AddressRegistryV2.attach(proxy.address);
+
+  // set old Manager as TvlManager temporarily to avoid
+  // Chainlink service interruption
+  const oldManagerAddress = await addressRegistry.getAddress(
+    bytes32("chainlinkRegistry")
+  );
+  let trx = await addressRegistry.registerAddress(
+    bytes32("tvlManager"),
+    oldManagerAddress,
+    {
+      gasPrice,
+    }
+  );
+  console.log(
+    "Remap TVL manager address:",
+    `https://etherscan.io/tx/${trx.hash}`
+  );
+  console.log("");
+  let receipt = await trx.wait();
+  gasUsed = gasUsed.add(receipt.gasUsed);
+
+  // deploy V2 logic and upgrade
+  gasPrice = await getGasPrice(argv.gasPrice);
   const logic = await AddressRegistryV2.deploy({ gasPrice });
   console.log(
-    "Deploy:",
+    "Deploy V2 logic:",
     `https://etherscan.io/tx/${logic.deployTransaction.hash}`
   );
-  let receipt = await logic.deployTransaction.wait();
-  deploy_data["AddressRegistry"] = logic.address;
-  console.log(`Implementation Logic: ${chalk.green(logic.address)}`);
+  receipt = await logic.deployTransaction.wait();
+  deployData["AddressRegistryV2"] = logic.address;
+  console.log(`V2 logic: ${chalk.green(logic.address)}`);
   console.log("");
   gasUsed = gasUsed.add(receipt.gasUsed);
 
   gasPrice = await getGasPrice(argv.gasPrice);
-  let trx = await proxyAdmin.upgrade(proxy.address, logic.address, {
+  trx = await proxyAdmin.upgrade(proxy.address, logic.address, {
     gasPrice,
   });
-  console.log("Upgrade:", `https://etherscan.io/tx/${trx.hash}`);
-  receipt = await trx.wait();
-  gasUsed = gasUsed.add(receipt.gasUsed);
-  const addressRegistry = AddressRegistryV2.attach(proxy.address);
-  trx = await addressRegistry.deleteAddress(bytes32("manager"));
-  receipt = await trx.wait();
-  gasUsed = gasUsed.add(receipt.gasUsed);
-  trx = await addressRegistry.deleteAddress(bytes32("chainlinkRegistry"));
+  console.log("Upgrade proxy:", `https://etherscan.io/tx/${trx.hash}`);
+  console.log("");
   receipt = await trx.wait();
   gasUsed = gasUsed.add(receipt.gasUsed);
 
-  updateDeployJsons(networkName, deploy_data);
+  // delete deprecated identifiers
+  gasPrice = await getGasPrice(argv.gasPrice);
+  trx = await addressRegistry.deleteAddress(bytes32("manager"), { gasPrice });
+  console.log(
+    "Delete old manager address:",
+    `https://etherscan.io/tx/${trx.hash}`
+  );
+  console.log("");
+  receipt = await trx.wait();
+  gasUsed = gasUsed.add(receipt.gasUsed);
+
+  gasPrice = await getGasPrice(argv.gasPrice);
+  trx = await addressRegistry.deleteAddress(bytes32("chainlinkRegistry"), {
+    gasPrice,
+  });
+  console.log(
+    "Delete chainlink registry address:",
+    `https://etherscan.io/tx/${trx.hash}`
+  );
+  console.log("");
+  receipt = await trx.wait();
+  gasUsed = gasUsed.add(receipt.gasUsed);
+
+  gasPrice = await getGasPrice(argv.gasPrice);
+  const lpSafeAddress = getDeployedAddress("LpSafe", networkName);
+  trx = await addressRegistry.registerAddress(
+    bytes32("lpSafe"),
+    lpSafeAddress,
+    {
+      gasPrice,
+    }
+  );
+  console.log("Register LP Safe:", `https://etherscan.io/tx/${trx.hash}`);
+  console.log("");
+  receipt = await trx.wait();
+  gasUsed = gasUsed.add(receipt.gasUsed);
+
+  updateDeployJsons(networkName, deployData);
   console.log("Total gas used:", gasUsed.toString());
 
   if (["KOVAN", "MAINNET"].includes(networkName)) {

@@ -8,23 +8,33 @@ const {
   CONTRACT_NAMES,
 } = require("../constants.js");
 
+function getChainId(networkName) {
+  networkName = networkName.toUpperCase();
+  const chainId = CHAIN_IDS[networkName];
+  if (chainId === undefined) {
+    throw new Error(`getChainId: unrecognized network name - ${networkName}`);
+  }
+  return chainId;
+}
+
 /**
  * Update the JSONs of deployed addresses based on name and network.
  *
  * @param {string} network Network name in utils/constants.js:CHAIN_IDS
- * @param {object} deploy_data object mapping contract name to address
+ * @param {object} deployData object mapping contract name to address
  */
-function updateDeployJsons(network, deploy_data) {
-  for (let [contract_name, file_path] of Object.entries(DEPLOYS_JSON)) {
-    // go through all deploys json and update them
-    const address_json = require(file_path);
-    // skip over contracts not changed
-    if (deploy_data[contract_name] === undefined) {
-      continue;
-    }
-    address_json[CHAIN_IDS[network]] = deploy_data[contract_name];
-    const address_json_string = JSON.stringify(address_json, null, "  ");
-    fs.writeFileSync(file_path, address_json_string, (err) => {
+function updateDeployJsons(network, deployData) {
+  for (const contractName of Object.keys(deployData)) {
+    if (!isApyContractName(contractName))
+      throw new Error(
+        `updateDeployJsons: unrecognized APY contract name - ${contractName}.`
+      );
+    const filepath = DEPLOYS_JSON[contractName];
+    const addressJson = fs.existsSync(filepath) ? require(filepath) : {};
+    const chainId = getChainId(network);
+    addressJson[chainId] = deployData[contractName];
+    const addressJsonString = JSON.stringify(addressJson, null, "  ");
+    fs.writeFileSync(filepath, addressJsonString, (err) => {
       if (err) throw err;
     });
   }
@@ -44,11 +54,7 @@ function getDeployedAddress(contractName, network) {
       `getDeployedAddress: unrecognized APY contract name - ${contractName}.`
     );
   const contractAddresses = require(DEPLOYS_JSON[contractName]);
-  const chainId = CHAIN_IDS[network.toUpperCase()];
-  if (!chainId)
-    throw new Error(
-      `getDeployedAddress: unrecognized network name - ${network}.`
-    );
+  const chainId = getChainId(network);
   const deployedAddress = contractAddresses[chainId];
   return deployedAddress;
 }
@@ -65,7 +71,7 @@ function isApyContractName(contractName) {
 function getStablecoinAddress(symbol, network) {
   const aggItems = TOKEN_AGG_MAP[network.toUpperCase()];
   for (const aggItem of aggItems) {
-    if (symbol == aggItem["symbol"]) {
+    if (symbol.toUpperCase() == aggItem["symbol"]) {
       return aggItem["token"];
     }
   }
