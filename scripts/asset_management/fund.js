@@ -66,20 +66,6 @@ async function fundAccount(symbols, amounts) {
   } catch (error) {
     console.log(error);
   }
-
-  // unset manual override for zero TVL (if needed)
-  try {
-    const oracleAdapterAddress = await addressRegistry.oracleAdapterAddress();
-    const oracleAdapter = await ethers.getContractAt(
-      "OracleAdapter",
-      oracleAdapterAddress
-    );
-    await oracleAdapter.lock();
-    await oracleAdapter.setTvl(1, 0);
-    await oracleAdapter.unlock();
-  } catch (error) {
-    console.log(error);
-  }
 }
 
 const getPoolId = (symbol) => bytes32(`${symbol.toLowerCase()}Pool`);

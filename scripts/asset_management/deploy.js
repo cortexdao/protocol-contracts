@@ -242,11 +242,6 @@ async function main(argv) {
   console.log("Registered Oracle Adapter with Address Registry.");
   console.logDone();
 
-  // after funding, we need to update
-  await oracleAdapter.lock();
-  await oracleAdapter.setTvl(0, 1000);
-  await oracleAdapter.unlock();
-
   console.log("Deploying Pool Manager ...");
 
   const PoolManager = await ethers.getContractFactory("PoolManager");

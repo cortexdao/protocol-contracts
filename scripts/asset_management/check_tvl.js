@@ -57,8 +57,10 @@ async function main(argv) {
   console.log("");
   const oracleAdapter = await getOracleAdapter(NETWORK_NAME);
   try {
+    await oracleAdapter.unlock(); // need to unlock if we just funded
     const tvl = await oracleAdapter.getTvl();
     console.log("TVL: $ ", commify(formatUnits(tvl.toString(), 8)));
+    console.log("Has override:", await oracleAdapter.hasTvlOverride());
   } catch (error) {
     console.log(error);
   }
