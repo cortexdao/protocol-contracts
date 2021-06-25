@@ -41,10 +41,9 @@ async function main(argv) {
   console.log("");
   console.log(`${networkName} selected`);
   console.log("");
-  assert.strictEqual(
-    networkName,
-    "LOCALHOST",
-    "This script is for local forked mainnet testing only."
+  assert(
+    ["LOCALHOST", "TESTNET"].includes(networkName),
+    "This script is for forked mainnet testing only."
   );
 
   const [deployer] = await ethers.getSigners();
