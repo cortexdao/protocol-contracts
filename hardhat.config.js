@@ -50,7 +50,7 @@ module.exports = {
       },
     },
     testnet: {
-      url: "http://34.75.245.203:8545",
+      url: "http://34.138.217.77:8545",
     },
   },
   solidity: {
