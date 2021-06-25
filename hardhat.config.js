@@ -49,6 +49,9 @@ module.exports = {
         mnemonic: process.env.MNEMONIC || "",
       },
     },
+    testnet: {
+      url: "http://34.75.245.203:8545",
+    },
   },
   solidity: {
     version: "0.6.11",
