@@ -41,10 +41,9 @@ async function main(argv) {
   console.log("");
   console.log(`${networkName} selected`);
   console.log("");
-  assert.strictEqual(
-    networkName,
-    "LOCALHOST",
-    "This script is for local forked mainnet testing only."
+  assert(
+    ["LOCALHOST", "TESTNET"].includes(networkName),
+    "This script is for forked mainnet testing only."
   );
 
   const [deployer] = await ethers.getSigners();
@@ -140,11 +139,17 @@ async function main(argv) {
     "AddressRegistryProxyAdmin",
     networkName
   );
-  const addressRegistryAdmin = await ethers.getContractAt(
+  let addressRegistryAdmin = await ethers.getContractAt(
     "ProxyAdmin",
-    addressRegistryAdminAddress,
-    addressRegistryDeployer
+    addressRegistryAdminAddress
   );
+  const addressRegistryAdminDeployer = await impersonateAccount(
+    await addressRegistryAdmin.owner()
+  );
+  addressRegistryAdmin = addressRegistryAdmin.connect(
+    addressRegistryAdminDeployer
+  );
+
   const AddressRegistryV2 = await ethers.getContractFactory(
     "AddressRegistryV2",
     addressRegistryDeployer
@@ -166,6 +171,11 @@ async function main(argv) {
   );
   await addressRegistry.deleteAddress(bytes32("manager"));
   await addressRegistry.deleteAddress(bytes32("chainlinkRegistry"));
+  console.logDone();
+
+  const lpSafeAddress = getDeployedAddress("LpSafe", networkName);
+  trx = await addressRegistry.registerAddress(bytes32("lpSafe"), lpSafeAddress);
+  console.log("Registered LP Safe with Address Registry.");
   console.logDone();
 
   // Note: in prod deployment, separate admins are deployed for contracts
@@ -198,7 +208,6 @@ async function main(argv) {
   trx = await addressRegistry.registerAddress(bytes32("mApt"), mApt.address);
   console.log("Registered mAPT with Address Registry.");
   console.logDone();
-  console.logDone();
 
   console.log("");
   console.log("Deploying OracleAdapter ...");
@@ -213,7 +222,6 @@ async function main(argv) {
   const sources = symbols.map((symbol) =>
     getAggregatorAddress(`${symbol}-USD`, networkName)
   );
-  console.log(aggregator.address);
 
   const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
   const oracleAdapter = await OracleAdapter.deploy(

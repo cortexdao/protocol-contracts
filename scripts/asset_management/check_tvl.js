@@ -17,6 +17,7 @@ const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = hre;
 const { commify, formatUnits } = require("../../utils/helpers");
+const { getOracleAdapter } = require("./utils");
 
 const AGG_ADDRESS = "0x344D5d70fc3c3097f82d1F26464aaDcEb30C6AC7";
 
@@ -33,6 +34,8 @@ async function main(argv) {
   console.log("Deployer address:", deployer.address);
   console.log("");
 
+  console.log("Aggregator:");
+  console.log("");
   const FluxAggregator = await ethers.getContractFactory("FluxAggregator");
   const aggregator = await FluxAggregator.attach(AGG_ADDRESS);
 
@@ -48,6 +51,19 @@ async function main(argv) {
   console.log("startedAt:", startedAt.toString());
   console.log("updatedAt:", updatedAt.toString());
   console.log("answeredInRound:", answeredInRound.toString());
+  console.log("");
+
+  console.log("Oracle Adapter:");
+  console.log("");
+  const oracleAdapter = await getOracleAdapter(NETWORK_NAME);
+  try {
+    await oracleAdapter.unlock(); // need to unlock if we just funded
+    const tvl = await oracleAdapter.getTvl();
+    console.log("TVL: $ ", commify(formatUnits(tvl.toString(), 8)));
+    console.log("Has override:", await oracleAdapter.hasTvlOverride());
+  } catch (error) {
+    console.log(error);
+  }
   console.log("");
 }
 

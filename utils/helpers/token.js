@@ -1,6 +1,5 @@
 const hre = require("hardhat");
 const { artifacts, ethers } = hre;
-const { send } = require("@openzeppelin/test-helpers");
 const { tokenAmountToBigNumber } = require("./unit");
 const { getAddress } = require("./account.js");
 
@@ -94,8 +93,14 @@ async function forciblySendEth(recipient, amount, ethFunder) {
   const EthSender = await ethers.getContractFactory("EthSender");
   const ethSender = await EthSender.deploy();
   await ethSender.deployed();
-  await send.ether(ethFunder, ethSender.address, amount);
-  await ethSender.send(recipient);
+  ethFunder = await ethers.getSigner(ethFunder);
+  let trx = await ethFunder.sendTransaction({
+    to: ethSender.address,
+    value: amount,
+  });
+  await trx.wait();
+  trx = await ethSender.send(recipient);
+  await trx.wait();
 }
 
 module.exports = {

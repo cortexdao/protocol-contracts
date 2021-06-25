@@ -42,14 +42,14 @@ async function getPoolManager(networkName) {
   return poolManager;
 }
 
-async function getAccountManager(networkName) {
+async function getOracleAdapter(networkName) {
   const addressRegistry = await getAddressRegistry(networkName);
-  const accountManagerAddress = await addressRegistry.accountManagerAddress();
-  const accountManager = await ethers.getContractAt(
-    "AccountManager",
-    accountManagerAddress
+  const oracleAdapterAddress = await addressRegistry.oracleAdapterAddress();
+  const oracleAdapter = await ethers.getContractAt(
+    "OracleAdapter",
+    oracleAdapterAddress
   );
-  return accountManager;
+  return oracleAdapter;
 }
 
 async function getTvlManager(networkName) {
@@ -60,13 +60,6 @@ async function getTvlManager(networkName) {
     tvlManagerAddress
   );
   return tvlManager;
-}
-
-async function getStrategyAccountInfo(networkName) {
-  const accountId = bytes32("alpha");
-  const accountManager = await getAccountManager(networkName);
-  const accountAddress = await accountManager.getAccount(bytes32("alpha"));
-  return [accountId, accountAddress];
 }
 
 async function getStablecoins(networkName) {
@@ -92,8 +85,7 @@ module.exports = {
   getApyPool,
   getStablecoins,
   getAddressRegistry,
-  getAccountManager,
+  getOracleAdapter,
   getPoolManager,
   getTvlManager,
-  getStrategyAccountInfo,
 };
