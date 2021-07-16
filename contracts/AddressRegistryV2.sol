@@ -159,6 +159,9 @@ contract AddressRegistryV2 is
                 target == permissions[i].target && role == permissions[i].role
             ) {
                 target.revokeRole(role, member);
+                // copy last element to slot i and shorten array
+                permissions[i] = permissions[permissions.length - 1];
+                permissions.pop();
                 return;
             }
         }
