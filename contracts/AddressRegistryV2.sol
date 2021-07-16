@@ -138,6 +138,87 @@ contract AddressRegistryV2 is
         emit AdminChanged(adminAddress);
     }
 
+    function registerPermission(
+        address member,
+        IAccessControl target,
+        bytes32 role
+    ) public onlyOwner {
+        // FIXME: Uniqueness should be enforced here
+        _permissions[member].push(Permission(target, role));
+        target.grantRole(role, member);
+    }
+
+    function deletePermission(
+        address member,
+        IAccessControl target,
+        bytes32 role
+    ) public onlyOwner {
+        Permission[] storage permissions = _permissions[member];
+        for (uint256 i = 0; i < permissions.length; i++) {
+            if (
+                target == permissions[i].target && role == permissions[i].role
+            ) {
+                target.revokeRole(role, member);
+                return;
+            }
+        }
+    }
+
+    function _registerAddress(bytes32 id, address address_) internal {
+        require(address_ != address(0), "Invalid address");
+        if (_idToAddress[id] == address(0)) {
+            // id wasn't registered before, so add it to the list
+            _idList.push(id);
+        }
+        _idToAddress[id] = address_;
+        emit AddressRegistered(id, address_);
+    }
+
+    /**
+     * @dev Delete the address corresponding to the identifier.
+     * Time-complexity is O(n) where n is the length of `_idList`.
+     */
+    function _deleteAddress(bytes32 id) internal {
+        for (uint256 i = 0; i < _idList.length; i++) {
+            if (_idList[i] == id) {
+                // copy last element to slot i and shorten array
+                _idList[i] = _idList[_idList.length - 1];
+                _idList.pop();
+                address address_ = _idToAddress[id];
+                delete _idToAddress[id];
+                emit AddressDeleted(id, address_);
+                break;
+            }
+        }
+    }
+
+    function transferPermissions(address oldMember, address newMember)
+        public
+        onlyOwner
+    {
+        copyPermissions(oldMember, newMember);
+        clearPermissions(oldMember);
+    }
+
+    function copyPermissions(address from, address to) public onlyOwner {
+        Permission[] memory permissions = _permissions[from];
+        for (uint256 i = 0; i < permissions.length; i++) {
+            IAccessControl target = permissions[i].target;
+            bytes32 role = permissions[i].role;
+            target.grantRole(role, to);
+        }
+    }
+
+    function clearPermissions(address member) public onlyOwner {
+        Permission[] memory permissions = _permissions[member];
+        for (uint256 i = 0; i < permissions.length; i++) {
+            IAccessControl target = permissions[i].target;
+            bytes32 role = permissions[i].role;
+            target.revokeRole(role, member);
+        }
+        delete _permissions[member];
+    }
+
     /**
      * @notice Returns the list of all registered identifiers.
      */
@@ -223,86 +304,5 @@ contract AddressRegistryV2 is
 
     function oracleAdapterAddress() public view override returns (address) {
         return getAddress("oracleAdapter");
-    }
-
-    function registerPermission(
-        address member,
-        IAccessControl target,
-        bytes32 role
-    ) public onlyOwner {
-        // FIXME: Uniqueness should be enforced here
-        _permissions[member].push(Permission(target, role));
-        target.grantRole(role, member);
-    }
-
-    function deletePermission(
-        address member,
-        IAccessControl target,
-        bytes32 role
-    ) public onlyOwner {
-        Permission[] storage permissions = _permissions[member];
-        for (uint256 i = 0; i < permissions.length; i++) {
-            if (
-                target == permissions[i].target && role == permissions[i].role
-            ) {
-                target.revokeRole(role, member);
-                return;
-            }
-        }
-    }
-
-    function _registerAddress(bytes32 id, address address_) internal {
-        require(address_ != address(0), "Invalid address");
-        if (_idToAddress[id] == address(0)) {
-            // id wasn't registered before, so add it to the list
-            _idList.push(id);
-        }
-        _idToAddress[id] = address_;
-        emit AddressRegistered(id, address_);
-    }
-
-    /**
-     * @dev Delete the address corresponding to the identifier.
-     * Time-complexity is O(n) where n is the length of `_idList`.
-     */
-    function _deleteAddress(bytes32 id) internal {
-        for (uint256 i = 0; i < _idList.length; i++) {
-            if (_idList[i] == id) {
-                // copy last element to slot i and shorten array
-                _idList[i] = _idList[_idList.length - 1];
-                _idList.pop();
-                address address_ = _idToAddress[id];
-                delete _idToAddress[id];
-                emit AddressDeleted(id, address_);
-                break;
-            }
-        }
-    }
-
-    function transferPermissions(address oldMember, address newMember)
-        public
-        onlyOwner
-    {
-        copyPermissions(oldMember, newMember);
-        clearPermissions(oldMember);
-    }
-
-    function copyPermissions(address from, address to) public onlyOwner {
-        Permission[] memory permissions = _permissions[from];
-        for (uint256 i = 0; i < permissions.length; i++) {
-            IAccessControl target = permissions[i].target;
-            bytes32 role = permissions[i].role;
-            target.grantRole(role, to);
-        }
-    }
-
-    function clearPermissions(address member) public onlyOwner {
-        Permission[] memory permissions = _permissions[member];
-        for (uint256 i = 0; i < permissions.length; i++) {
-            IAccessControl target = permissions[i].target;
-            bytes32 role = permissions[i].role;
-            target.revokeRole(role, member);
-        }
-        delete _permissions[member];
     }
 }
