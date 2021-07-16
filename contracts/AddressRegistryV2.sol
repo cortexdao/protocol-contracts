@@ -143,7 +143,8 @@ contract AddressRegistryV2 is
         IAccessControl target,
         bytes32 role
     ) public onlyOwner {
-        // FIXME: Uniqueness should be enforced here
+        int256 foundIndex = findPermission(member, target, role);
+        if (foundIndex >= 0) return; // already exists
         _permissions[member].push(Permission(target, role));
         target.grantRole(role, member);
     }
@@ -153,18 +154,16 @@ contract AddressRegistryV2 is
         IAccessControl target,
         bytes32 role
     ) public onlyOwner {
+        int256 foundIndex = findPermission(member, target, role);
+        if (foundIndex < 0) return; // nothing to delete
+
         Permission[] storage permissions = _permissions[member];
-        for (uint256 i = 0; i < permissions.length; i++) {
-            if (
-                target == permissions[i].target && role == permissions[i].role
-            ) {
-                target.revokeRole(role, member);
-                // copy last element to slot i and shorten array
-                permissions[i] = permissions[permissions.length - 1];
-                permissions.pop();
-                return;
-            }
-        }
+        uint256 idx = uint256(foundIndex);
+        // copy last element to found index and shorten array
+        permissions[idx] = permissions[permissions.length - 1];
+        permissions.pop();
+
+        target.revokeRole(role, member);
     }
 
     function _registerAddress(bytes32 id, address address_) internal {
@@ -220,6 +219,27 @@ contract AddressRegistryV2 is
             target.revokeRole(role, member);
         }
         delete _permissions[member];
+    }
+
+    /**
+     * @dev Returns index of searched-for permission in the
+     * permissions array for given member.
+     * A negative index means search is a miss.
+     */
+    function findPermission(
+        address member,
+        IAccessControl target,
+        bytes32 role
+    ) public view returns (int256) {
+        Permission[] storage permissions = _permissions[member];
+        for (uint256 i = 0; i < permissions.length; i++) {
+            if (
+                target == permissions[i].target && role == permissions[i].role
+            ) {
+                return int256(i);
+            }
+        }
+        return -1;
     }
 
     /**
