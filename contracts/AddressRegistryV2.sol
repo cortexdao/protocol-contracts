@@ -118,7 +118,7 @@ contract AddressRegistryV2 is
      */
     function registerAddress(bytes32 id, address address_) public onlyOwner {
         address oldAddress = getAddress(id);
-        registerAddress(id, address_);
+        _registerAddress(id, address_);
         transferPermissions(oldAddress, address_);
     }
 
