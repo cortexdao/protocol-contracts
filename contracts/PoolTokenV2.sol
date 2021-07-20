@@ -140,16 +140,10 @@ contract PoolTokenV2 is
 
         // initialize ancestor storage
         __Context_init_unchained();
-        __AccessControl_init_unchained();
+        // __Ownable_init_unchained();  <-- Comment-out for compiler; replaced by AccessControl
         __ReentrancyGuard_init_unchained();
         __Pausable_init_unchained();
         __ERC20_init_unchained("APY Pool Token", "APT");
-
-        _setupRole(ADMIN_ROLE, addressRegistry_.getAddress("adminSafe"));
-        _setupRole(
-            EMERGENCY_ROLE,
-            addressRegistry_.getAddress("emergencySafe")
-        );
 
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
@@ -175,6 +169,14 @@ contract PoolTokenV2 is
     {
         require(addressRegistry_.isContract(), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
+
+        __AccessControl_init_unchained();
+        _setupRole(ADMIN_ROLE, addressRegistry_.getAddress("adminSafe"));
+        _setupRole(
+            EMERGENCY_ROLE,
+            addressRegistry_.getAddress("emergencySafe")
+        );
+
         feePeriod = 1 days;
         feePercentage = 5;
         reservePercentage = 5;
