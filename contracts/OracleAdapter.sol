@@ -83,20 +83,6 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
     }
 
     /**
-     * @dev Reverts if non-permissioned account calls.
-     * Permissioned accounts are: owner, mAPT, and TVL manager
-     */
-    modifier onlyPermissioned() {
-        require(
-            msg.sender == owner() ||
-                msg.sender == addressRegistry.mAptAddress() ||
-                msg.sender == addressRegistry.tvlManagerAddress(),
-            "PERMISSIONED_ONLY"
-        );
-        _;
-    }
-
-    /**
      * @notice Constructor
      * @param addressRegistry_ the address registry
      * @param assets the assets priced by sources
