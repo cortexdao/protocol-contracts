@@ -2,7 +2,7 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
@@ -54,7 +54,7 @@ import "./MetaPoolToken.sol";
 contract PoolTokenV2 is
     ILiquidityPoolV2,
     Initializable,
-    OwnableUpgradeSafe,
+    AccessControlUpgradeSafe,
     ReentrancyGuardUpgradeSafe,
     PausableUpgradeSafe,
     ERC20UpgradeSafe
@@ -63,6 +63,10 @@ contract PoolTokenV2 is
     using SafeMath for uint256;
     using SignedSafeMath for int256;
     using SafeERC20 for IDetailedERC20;
+
+    /** @notice access control roles **/
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+    bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
 
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
     uint256 internal constant _MAX_INT256 = 2**255 - 1;
@@ -136,10 +140,16 @@ contract PoolTokenV2 is
 
         // initialize ancestor storage
         __Context_init_unchained();
-        __Ownable_init_unchained();
+        __AccessControl_init_unchained();
         __ReentrancyGuard_init_unchained();
         __Pausable_init_unchained();
         __ERC20_init_unchained("APY Pool Token", "APT");
+
+        _setupRole(ADMIN_ROLE, addressRegistry_.getAddress("adminSafe"));
+        _setupRole(
+            EMERGENCY_ROLE,
+            addressRegistry_.getAddress("emergencySafe")
+        );
 
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
@@ -174,7 +184,7 @@ contract PoolTokenV2 is
      * @notice Disable both depositing and withdrawals.
      * Note that `addLiquidity` and `redeem` also have individual locks.
      */
-    function lock() external onlyOwner {
+    function lock() external onlyRole(EMERGENCY_ROLE) {
         _pause();
     }
 
@@ -182,7 +192,7 @@ contract PoolTokenV2 is
      * @notice Re-enable both depositing and withdrawals.
      * Note that `addLiquidity` and `redeem` also have individual locks.
      */
-    function unlock() external onlyOwner {
+    function unlock() external onlyRole(EMERGENCY_ROLE) {
         _unpause();
     }
 
@@ -227,13 +237,13 @@ contract PoolTokenV2 is
     }
 
     /** @notice Disable deposits. */
-    function lockAddLiquidity() external onlyOwner {
+    function lockAddLiquidity() external onlyRole(EMERGENCY_ROLE) {
         addLiquidityLock = true;
         emit AddLiquidityLocked();
     }
 
     /** @notice Enable deposits. */
-    function unlockAddLiquidity() external onlyOwner {
+    function unlockAddLiquidity() external onlyRole(EMERGENCY_ROLE) {
         addLiquidityLock = false;
         emit AddLiquidityUnlocked();
     }
@@ -274,13 +284,13 @@ contract PoolTokenV2 is
     }
 
     /** @notice Disable APT redeeming. */
-    function lockRedeem() external onlyOwner {
+    function lockRedeem() external onlyRole(EMERGENCY_ROLE) {
         redeemLock = true;
         emit RedeemLocked();
     }
 
     /** @notice Enable APT redeeming. */
-    function unlockRedeem() external onlyOwner {
+    function unlockRedeem() external onlyRole(EMERGENCY_ROLE) {
         redeemLock = false;
         emit RedeemUnlocked();
     }
@@ -294,7 +304,7 @@ contract PoolTokenV2 is
         external
         nonReentrant
         whenNotPaused
-        onlyOwner
+        onlyRole(EMERGENCY_ROLE)
     {
         underlyer.safeApprove(delegate, type(uint256).max);
     }
@@ -304,11 +314,18 @@ contract PoolTokenV2 is
      * @dev Can be called even when the pool is locked.
      * @param delegate Address to remove allowance from
      */
-    function revokeApprove(address delegate) external nonReentrant onlyOwner {
+    function revokeApprove(address delegate)
+        external
+        nonReentrant
+        onlyRole(EMERGENCY_ROLE)
+    {
         underlyer.safeApprove(delegate, 0);
     }
 
-    function setAdminAddress(address adminAddress) public onlyOwner {
+    function setAdminAddress(address adminAddress)
+        public
+        onlyRole(EMERGENCY_ROLE)
+    {
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
         emit AdminChanged(adminAddress);
@@ -316,21 +333,27 @@ contract PoolTokenV2 is
 
     function setAddressRegistry(address payable addressRegistry_)
         public
-        onlyOwner
+        onlyRole(EMERGENCY_ROLE)
     {
         require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
 
-    function setFeePeriod(uint256 feePeriod_) public onlyOwner {
+    function setFeePeriod(uint256 feePeriod_) public onlyRole(ADMIN_ROLE) {
         feePeriod = feePeriod_;
     }
 
-    function setFeePercentage(uint256 feePercentage_) public onlyOwner {
+    function setFeePercentage(uint256 feePercentage_)
+        public
+        onlyRole(ADMIN_ROLE)
+    {
         feePercentage = feePercentage_;
     }
 
-    function setReservePercentage(uint256 reservePercentage_) public onlyOwner {
+    function setReservePercentage(uint256 reservePercentage_)
+        public
+        onlyRole(ADMIN_ROLE)
+    {
         reservePercentage = reservePercentage_;
     }
 

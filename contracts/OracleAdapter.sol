@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -49,9 +49,14 @@ import "./interfaces/IAddressRegistryV2.sol";
  * were to accept it, funds up to the amount available in the reserve pools
  * could be lost.
  */
-contract OracleAdapter is Ownable, IOracleAdapter {
+contract OracleAdapter is AccessControl, IOracleAdapter {
     using SafeMath for uint256;
     using Address for address;
+
+    /** @notice access control roles **/
+    bytes32 public constant CONTRACT_ROLE = keccak256("CONTRACT_ROLE");
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+    bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
 
     IAddressRegistryV2 public addressRegistry;
 
@@ -107,6 +112,14 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         uint256 chainlinkStalePeriod_,
         uint256 defaultLockPeriod_
     ) public {
+        _setupRole(CONTRACT_ROLE, addressRegistry_.mAptAddress());
+        _setupRole(CONTRACT_ROLE, addressRegistry_.tvlManagerAddress());
+        _setupRole(ADMIN_ROLE, addressRegistry_.getAddress("adminSafe"));
+        _setupRole(
+            EMERGENCY_ROLE,
+            addressRegistry_.getAddress("emergencySafe")
+        );
+
         setAddressRegistry(addressRegistry_);
         setTvlSource(tvlSource_);
         setAssetSources(assets, sources);
@@ -114,19 +127,27 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         setDefaultLockPeriod(defaultLockPeriod_);
     }
 
-    function setDefaultLockPeriod(uint256 newPeriod) public override onlyOwner {
+    function setDefaultLockPeriod(uint256 newPeriod)
+        public
+        override
+        onlyRole(ADMIN_ROLE)
+    {
         defaultLockPeriod = newPeriod;
     }
 
-    function lock() external override onlyPermissioned {
+    function lock() external override onlyRole(CONTRACT_ROLE) {
         lockFor(defaultLockPeriod);
     }
 
-    function unlock() external override onlyPermissioned {
+    function unlock() external override Role(EMERGENCY_ROLE) {
         lockFor(0);
     }
 
-    function lockFor(uint256 activePeriod) public override onlyPermissioned {
+    function lockFor(uint256 activePeriod)
+        public
+        override
+        onlyRole(CONTRACT_ROLE)
+    {
         lockEnd = block.number.add(activePeriod);
     }
 
@@ -135,7 +156,10 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      * @dev only callable by owner
      * @param addressRegistry_ the address of the registry
      */
-    function setAddressRegistry(address addressRegistry_) public onlyOwner {
+    function setAddressRegistry(address addressRegistry_)
+        public
+        onlyRole(EMERGENCY_ROLE)
+    {
         require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
@@ -148,12 +172,16 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         address asset,
         uint256 value,
         uint256 period
-    ) external override onlyOwner {
+    ) external override onlyRole(EMERGENCY_ROLE) {
         // We do allow 0 values for submitted values
         submittedAssetValues[asset] = Value(value, block.number.add(period));
     }
 
-    function unsetAssetValue(address asset) external override onlyOwner {
+    function unsetAssetValue(address asset)
+        external
+        override
+        onlyRole(EMERGENCY_ROLE)
+    {
         require(
             submittedAssetValues[asset].periodEnd != 0,
             "NO_ASSET_VALUE_SET"
@@ -161,12 +189,16 @@ contract OracleAdapter is Ownable, IOracleAdapter {
         submittedAssetValues[asset].periodEnd = block.number;
     }
 
-    function setTvl(uint256 value, uint256 period) external override onlyOwner {
+    function setTvl(uint256 value, uint256 period)
+        external
+        override
+        onlyRole(EMERGENCY_ROLE)
+    {
         // We do allow 0 values for submitted values
         submittedTvlValue = Value(value, block.number.add(period));
     }
 
-    function unsetTvl() external override onlyOwner {
+    function unsetTvl() external override onlyRole(EMERGENCY_ROLE) {
         require(submittedTvlValue.periodEnd != 0, "NO_TVL_SET");
         submittedTvlValue.periodEnd = block.number;
     }
@@ -179,7 +211,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      * @notice Set or replace the TVL source
      * @param source the TVL source address
      */
-    function setTvlSource(address source) public onlyOwner {
+    function setTvlSource(address source) public onlyRole(EMERGENCY_ROLE) {
         require(source.isContract(), "INVALID_SOURCE");
         tvlSource = AggregatorV3Interface(source);
         emit TvlSourceUpdated(source);
@@ -192,7 +224,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      */
     function setAssetSources(address[] memory assets, address[] memory sources)
         public
-        onlyOwner
+        onlyRole(EMERGENCY_ROLE)
     {
         require(assets.length == sources.length, "INCONSISTENT_PARAMS_LENGTH");
         for (uint256 i = 0; i < assets.length; i++) {
@@ -205,7 +237,10 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      * @param asset asset token address
      * @param source the price source (aggregator)
      */
-    function setAssetSource(address asset, address source) public onlyOwner {
+    function setAssetSource(address asset, address source)
+        public
+        onlyRole(EMERGENCY_ROLE)
+    {
         require(source.isContract(), "INVALID_SOURCE");
         assetSources[asset] = AggregatorV3Interface(source);
         emit AssetSourceUpdated(asset, source);
@@ -217,7 +252,7 @@ contract OracleAdapter is Ownable, IOracleAdapter {
      */
     function setChainlinkStalePeriod(uint256 chainlinkStalePeriod_)
         public
-        onlyOwner
+        onlyRole(ADMIN_ROLE)
     {
         require(chainlinkStalePeriod_ > 0, "INVALID_STALE_PERIOD");
         chainlinkStalePeriod = chainlinkStalePeriod_;

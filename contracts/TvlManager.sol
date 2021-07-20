@@ -2,7 +2,7 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./utils/EnumerableSet.sol";
@@ -22,9 +22,18 @@ import "./interfaces/IAddressRegistryV2.sol";
  * allocations registered. Any assets in the system that have been deployed,
  * but are not registered can have devastating and catastrophic effects on the TVL.
  */
-contract TvlManager is Ownable, ReentrancyGuard, ITvlManager, IAssetAllocation {
+contract TvlManager is
+    AccessControl,
+    ReentrancyGuard,
+    ITvlManager,
+    IAssetAllocation
+{
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using Address for address;
+
+    bytes32 public constant CONTRACT_ROLE = keccak256("CONTRACT_ROLE");
+    bytes32 public constant LP_ROLE = keccak256("LP_ROLE");
+    bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
 
     IAddressRegistryV2 public addressRegistry;
 
@@ -38,24 +47,17 @@ contract TvlManager is Ownable, ReentrancyGuard, ITvlManager, IAssetAllocation {
     mapping(bytes32 => uint256) private allocationDecimals;
 
     /**
-     * @dev Reverts if non-permissed account calls.
-     * Permissioned accounts are: owner, pool manager, and account manager
-     */
-    modifier onlyPermissioned() {
-        require(
-            msg.sender == owner() ||
-                msg.sender == addressRegistry.poolManagerAddress() ||
-                msg.sender == addressRegistry.lpSafeAddress(),
-            "PERMISSIONED_ONLY"
-        );
-        _;
-    }
-
-    /**
      * @notice Constructor
      * @param addressRegistry_ the address registry to initialize with
      */
     constructor(address addressRegistry_) public {
+        _setupRole(CONTRACT_ROLE, addressRegistry_.poolManagerAddress());
+        _setupRole(LP_ROLE, addressRegistry_.lpSafeAddress());
+        _setupRole(
+            EMERGENCY_ROLE,
+            addressRegistry_.getAddress("emergencySafe")
+        );
+
         setAddressRegistry(addressRegistry_);
     }
 
@@ -71,7 +73,12 @@ contract TvlManager is Ownable, ReentrancyGuard, ITvlManager, IAssetAllocation {
         Data memory data,
         string calldata symbol,
         uint256 decimals
-    ) external override nonReentrant onlyPermissioned {
+    ) external override nonReentrant {
+        require(
+            hasRole(CONTRACT_ROLE) || hasRole(LP_ROLE),
+            "INVALID_ACCESS_CONTROL"
+        );
+
         require(!isAssetAllocationRegistered(data), "DUPLICATE_DATA_DETECTED");
         bytes32 dataHash = generateDataHash(data);
         allocationIds.add(dataHash);
@@ -91,8 +98,12 @@ contract TvlManager is Ownable, ReentrancyGuard, ITvlManager, IAssetAllocation {
         external
         override
         nonReentrant
-        onlyPermissioned
     {
+        require(
+            hasRole(CONTRACT_ROLE) || hasRole(LP_ROLE),
+            "INVALID_ACCESS_CONTROL"
+        );
+
         require(isAssetAllocationRegistered(data), "ALLOCATION_DOES_NOT_EXIST");
         bytes32 dataHash = generateDataHash(data);
         allocationIds.remove(dataHash);
@@ -224,7 +235,8 @@ contract TvlManager is Ownable, ReentrancyGuard, ITvlManager, IAssetAllocation {
      * @dev only callable by owner
      * @param addressRegistry_ the address of the registry
      */
-    function setAddressRegistry(address addressRegistry_) public onlyOwner {
+    function setAddressRegistry(address addressRegistry_) public {
+        require(hasRole(EMERGENCY_ROLE), "INVALID_ACCESS_CONTROL");
         require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
     }

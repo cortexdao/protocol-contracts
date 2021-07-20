@@ -2,7 +2,7 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
@@ -34,12 +34,15 @@ import "./MetaPoolToken.sol";
  */
 contract PoolManager is
     Initializable,
-    OwnableUpgradeSafe,
+    AccessControlUpgradeSafe,
     ReentrancyGuardUpgradeSafe,
     ILpSafeFunder
 {
     using SafeMath for uint256;
     using SafeERC20 for IDetailedERC20;
+
+    bytes32 public constant LP_ROLE = keccak256("LP_ROLE");
+    bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
 
     /* ------------------------------- */
     /* impl-specific storage variables */
@@ -85,6 +88,12 @@ contract PoolManager is
         __Ownable_init_unchained();
         __ReentrancyGuard_init_unchained();
 
+        _setupRole(ADMIN_ROLE, addressRegistry_.getAddress("adminSafe"));
+        _setupRole(
+            EMERGENCY_ROLE,
+            addressRegistry_.getAddress("emergencySafe")
+        );
+
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
         setAddressRegistry(addressRegistry_);
@@ -116,7 +125,7 @@ contract PoolManager is
     function fundLpSafe(ILpSafeFunder.PoolAmount[] memory poolAmounts)
         external
         override
-        onlyOwner
+        onlyRole(LP_ROLE)
         nonReentrant
     {
         address lpSafeAddress = addressRegistry.lpSafeAddress();
@@ -141,7 +150,7 @@ contract PoolManager is
     function withdrawFromLpSafe(ILpSafeFunder.PoolAmount[] memory poolAmounts)
         external
         override
-        onlyOwner
+        onlyRole(LP_ROLE)
         nonReentrant
     {
         address lpSafeAddress = addressRegistry.lpSafeAddress();
@@ -157,7 +166,10 @@ contract PoolManager is
      * @dev only callable by owner
      * @param adminAddress the new proxy admin address of the pool manager
      */
-    function setAdminAddress(address adminAddress) public onlyOwner {
+    function setAdminAddress(address adminAddress)
+        public
+        onlyRole(EMERGENCY_ROLE)
+    {
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
         emit AdminChanged(adminAddress);
@@ -168,7 +180,10 @@ contract PoolManager is
      * @dev only callable by owner
      * @param addressRegistry_ the address of the registry
      */
-    function setAddressRegistry(address addressRegistry_) public onlyOwner {
+    function setAddressRegistry(address addressRegistry_)
+        public
+        onlyRole(EMERGENCY_ROLE)
+    {
         require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
     }

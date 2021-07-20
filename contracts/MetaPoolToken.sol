@@ -2,12 +2,13 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/access/AccessControl.sol";
 import "./interfaces/IAddressRegistryV2.sol";
 import "./interfaces/IMintable.sol";
 import "./interfaces/IOracleAdapter.sol";
@@ -45,13 +46,18 @@ import "./interfaces/IOracleAdapter.sol";
  */
 contract MetaPoolToken is
     Initializable,
-    OwnableUpgradeSafe,
+    AccessControlUpgradeSafe,
     ReentrancyGuardUpgradeSafe,
     PausableUpgradeSafe,
     ERC20UpgradeSafe,
     IMintable
 {
     using SafeMath for uint256;
+
+    /** @notice access control roles **/
+    bytes32 public constant CONTRACT_ROLE = keccak256("CONTRACT_ROLE");
+    bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
+
     uint256 public constant DEFAULT_MAPT_TO_UNDERLYER_FACTOR = 1000;
 
     /* ------------------------------- */
@@ -77,17 +83,6 @@ contract MetaPoolToken is
     }
 
     /**
-     * @dev Throws if called by any account other than the PoolManager.
-     */
-    modifier onlyManager() {
-        require(
-            msg.sender == addressRegistry.poolManagerAddress(),
-            "MANAGER_ONLY"
-        );
-        _;
-    }
-
-    /**
      * @dev Since the proxy delegate calls to this "logic" contract, any
      * storage set by the logic contract's constructor during deploy is
      * disregarded and this function is needed to initialize the proxy
@@ -107,10 +102,16 @@ contract MetaPoolToken is
 
         // initialize ancestor storage
         __Context_init_unchained();
-        __Ownable_init_unchained();
+        __AccessControl_init_unchained();
         __ReentrancyGuard_init_unchained();
         __Pausable_init_unchained();
         __ERC20_init_unchained("APY MetaPool Token", "mAPT");
+
+        _setupRole(CONTRACT_ROLE, addressRegistry_.poolManagerAddress());
+        _setupRole(
+            EMERGENCY_ROLE,
+            addressRegistry_.getAddress("emergencySafe")
+        );
 
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
@@ -128,7 +129,10 @@ contract MetaPoolToken is
     // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual onlyAdmin {}
 
-    function setAdminAddress(address adminAddress) public onlyOwner {
+    function setAdminAddress(address adminAddress)
+        public
+        onlyRole(EMERGENCY_ROLE)
+    {
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
         emit AdminChanged(adminAddress);
@@ -139,7 +143,10 @@ contract MetaPoolToken is
      * @dev only callable by owner
      * @param addressRegistry_ the address of the registry
      */
-    function setAddressRegistry(address addressRegistry_) public onlyOwner {
+    function setAddressRegistry(address addressRegistry_)
+        public
+        onlyRole(EMERGENCY_ROLE)
+    {
         require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
@@ -154,7 +161,7 @@ contract MetaPoolToken is
         public
         override
         nonReentrant
-        onlyManager
+        onlyRole(CONTRACT_ROLE)
     {
         require(amount > 0, "INVALID_MINT_AMOUNT");
         IOracleAdapter oracleAdapter = _getOracleAdapter();
@@ -173,7 +180,7 @@ contract MetaPoolToken is
         public
         override
         nonReentrant
-        onlyManager
+        onlyRole(CONTRACT_ROLE)
     {
         require(amount > 0, "INVALID_BURN_AMOUNT");
         IOracleAdapter oracleAdapter = _getOracleAdapter();
