@@ -128,10 +128,8 @@ contract MetaPoolToken is
     // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual onlyAdmin {}
 
-    function setAdminAddress(address adminAddress)
-        public
-        onlyRole(EMERGENCY_ROLE)
-    {
+    function setAdminAddress(address adminAddress) public {
+        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
         emit AdminChanged(adminAddress);
@@ -142,10 +140,8 @@ contract MetaPoolToken is
      * @dev only callable by owner
      * @param addressRegistry_ the address of the registry
      */
-    function setAddressRegistry(address addressRegistry_)
-        public
-        onlyRole(EMERGENCY_ROLE)
-    {
+    function setAddressRegistry(address addressRegistry_) public {
+        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
@@ -160,8 +156,8 @@ contract MetaPoolToken is
         public
         override
         nonReentrant
-        onlyRole(CONTRACT_ROLE)
     {
+        require(hasRole(CONTRACT_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         require(amount > 0, "INVALID_MINT_AMOUNT");
         IOracleAdapter oracleAdapter = _getOracleAdapter();
         oracleAdapter.lock();
@@ -179,8 +175,8 @@ contract MetaPoolToken is
         public
         override
         nonReentrant
-        onlyRole(CONTRACT_ROLE)
     {
+        require(hasRole(CONTRACT_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         require(amount > 0, "INVALID_BURN_AMOUNT");
         IOracleAdapter oracleAdapter = _getOracleAdapter();
         oracleAdapter.lock();
