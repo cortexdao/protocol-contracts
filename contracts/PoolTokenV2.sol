@@ -184,7 +184,8 @@ contract PoolTokenV2 is
      * @notice Disable both depositing and withdrawals.
      * Note that `addLiquidity` and `redeem` also have individual locks.
      */
-    function lock() external onlyRole(EMERGENCY_ROLE) {
+    function lock() external {
+        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         _pause();
     }
 
@@ -192,7 +193,8 @@ contract PoolTokenV2 is
      * @notice Re-enable both depositing and withdrawals.
      * Note that `addLiquidity` and `redeem` also have individual locks.
      */
-    function unlock() external onlyRole(EMERGENCY_ROLE) {
+    function unlock() external {
+        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         _unpause();
     }
 
@@ -237,13 +239,15 @@ contract PoolTokenV2 is
     }
 
     /** @notice Disable deposits. */
-    function lockAddLiquidity() external onlyRole(EMERGENCY_ROLE) {
+    function lockAddLiquidity() external {
+        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         addLiquidityLock = true;
         emit AddLiquidityLocked();
     }
 
     /** @notice Enable deposits. */
-    function unlockAddLiquidity() external onlyRole(EMERGENCY_ROLE) {
+    function unlockAddLiquidity() external {
+        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         addLiquidityLock = false;
         emit AddLiquidityUnlocked();
     }
@@ -284,13 +288,15 @@ contract PoolTokenV2 is
     }
 
     /** @notice Disable APT redeeming. */
-    function lockRedeem() external onlyRole(EMERGENCY_ROLE) {
+    function lockRedeem() external {
+        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         redeemLock = true;
         emit RedeemLocked();
     }
 
     /** @notice Enable APT redeeming. */
-    function unlockRedeem() external onlyRole(EMERGENCY_ROLE) {
+    function unlockRedeem() external {
+        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         redeemLock = false;
         emit RedeemUnlocked();
     }
@@ -304,8 +310,8 @@ contract PoolTokenV2 is
         external
         nonReentrant
         whenNotPaused
-        onlyRole(EMERGENCY_ROLE)
     {
+        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         underlyer.safeApprove(delegate, type(uint256).max);
     }
 
@@ -314,46 +320,36 @@ contract PoolTokenV2 is
      * @dev Can be called even when the pool is locked.
      * @param delegate Address to remove allowance from
      */
-    function revokeApprove(address delegate)
-        external
-        nonReentrant
-        onlyRole(EMERGENCY_ROLE)
-    {
+    function revokeApprove(address delegate) external nonReentrant {
+        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         underlyer.safeApprove(delegate, 0);
     }
 
-    function setAdminAddress(address adminAddress)
-        public
-        onlyRole(EMERGENCY_ROLE)
-    {
+    function setAdminAddress(address adminAddress) public {
+        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
         emit AdminChanged(adminAddress);
     }
 
-    function setAddressRegistry(address payable addressRegistry_)
-        public
-        onlyRole(EMERGENCY_ROLE)
-    {
+    function setAddressRegistry(address payable addressRegistry_) public {
+        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
 
-    function setFeePeriod(uint256 feePeriod_) public onlyRole(ADMIN_ROLE) {
+    function setFeePeriod(uint256 feePeriod_) public {
+        require(hasRole(ADMIN_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         feePeriod = feePeriod_;
     }
 
-    function setFeePercentage(uint256 feePercentage_)
-        public
-        onlyRole(ADMIN_ROLE)
-    {
+    function setFeePercentage(uint256 feePercentage_) public {
+        require(hasRole(ADMIN_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         feePercentage = feePercentage_;
     }
 
-    function setReservePercentage(uint256 reservePercentage_)
-        public
-        onlyRole(ADMIN_ROLE)
-    {
+    function setReservePercentage(uint256 reservePercentage_) public {
+        require(hasRole(ADMIN_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         reservePercentage = reservePercentage_;
     }
 
