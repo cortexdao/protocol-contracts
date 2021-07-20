@@ -53,14 +53,10 @@ contract TvlManager is
      * @param addressRegistry_ the address registry to initialize with
      */
     constructor(address addressRegistry_) public {
-        _setupRole(CONTRACT_ROLE, addressRegistry_.poolManagerAddress());
-        _setupRole(LP_ROLE, addressRegistry_.lpSafeAddress());
-        _setupRole(
-            EMERGENCY_ROLE,
-            addressRegistry_.getAddress("emergencySafe")
-        );
-
         setAddressRegistry(addressRegistry_);
+        _setupRole(CONTRACT_ROLE, addressRegistry.poolManagerAddress());
+        _setupRole(LP_ROLE, addressRegistry.lpSafeAddress());
+        _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
     }
 
     /**
@@ -77,7 +73,7 @@ contract TvlManager is
         uint256 decimals
     ) external override nonReentrant {
         require(
-            hasRole(CONTRACT_ROLE) || hasRole(LP_ROLE),
+            hasRole(CONTRACT_ROLE, msg.sender) || hasRole(LP_ROLE, msg.sender),
             "INVALID_ACCESS_CONTROL"
         );
 
@@ -102,7 +98,7 @@ contract TvlManager is
         nonReentrant
     {
         require(
-            hasRole(CONTRACT_ROLE) || hasRole(LP_ROLE),
+            hasRole(CONTRACT_ROLE, msg.sender) || hasRole(LP_ROLE, msg.sender),
             "INVALID_ACCESS_CONTROL"
         );
 
@@ -238,7 +234,7 @@ contract TvlManager is
      * @param addressRegistry_ the address of the registry
      */
     function setAddressRegistry(address addressRegistry_) public {
-        require(hasRole(EMERGENCY_ROLE), "INVALID_ACCESS_CONTROL");
+        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
     }

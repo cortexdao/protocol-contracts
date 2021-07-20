@@ -98,19 +98,16 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         uint256 chainlinkStalePeriod_,
         uint256 defaultLockPeriod_
     ) public {
-        _setupRole(CONTRACT_ROLE, addressRegistry_.mAptAddress());
-        _setupRole(CONTRACT_ROLE, addressRegistry_.tvlManagerAddress());
-        _setupRole(ADMIN_ROLE, addressRegistry_.getAddress("adminSafe"));
-        _setupRole(
-            EMERGENCY_ROLE,
-            addressRegistry_.getAddress("emergencySafe")
-        );
-
         setAddressRegistry(addressRegistry_);
         setTvlSource(tvlSource_);
         setAssetSources(assets, sources);
         setChainlinkStalePeriod(chainlinkStalePeriod_);
         setDefaultLockPeriod(defaultLockPeriod_);
+
+        _setupRole(CONTRACT_ROLE, addressRegistry.mAptAddress());
+        _setupRole(CONTRACT_ROLE, addressRegistry.tvlManagerAddress());
+        _setupRole(ADMIN_ROLE, addressRegistry.getAddress("adminSafe"));
+        _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
     }
 
     function setDefaultLockPeriod(uint256 newPeriod) public override {

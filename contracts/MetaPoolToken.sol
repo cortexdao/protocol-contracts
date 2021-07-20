@@ -106,15 +106,11 @@ contract MetaPoolToken is
         __Pausable_init_unchained();
         __ERC20_init_unchained("APY MetaPool Token", "mAPT");
 
-        _setupRole(CONTRACT_ROLE, addressRegistry_.poolManagerAddress());
-        _setupRole(
-            EMERGENCY_ROLE,
-            addressRegistry_.getAddress("emergencySafe")
-        );
-
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
         setAddressRegistry(addressRegistry_);
+        _setupRole(CONTRACT_ROLE, addressRegistry.poolManagerAddress());
+        _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
     }
 
     /**

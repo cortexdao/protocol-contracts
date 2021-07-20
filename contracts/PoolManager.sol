@@ -89,15 +89,11 @@ contract PoolManager is
         __AccessControl_init_unchained();
         __ReentrancyGuard_init_unchained();
 
-        _setupRole(ADMIN_ROLE, addressRegistry_.getAddress("adminSafe"));
-        _setupRole(
-            EMERGENCY_ROLE,
-            addressRegistry_.getAddress("emergencySafe")
-        );
-
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
         setAddressRegistry(addressRegistry_);
+        _setupRole(ADMIN_ROLE, addressRegistry.getAddress("adminSafe"));
+        _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
     }
 
     /**
