@@ -2,14 +2,16 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "./utils/EnumerableSet.sol";
-import "./interfaces/IAssetAllocation.sol";
-import "./interfaces/ITvlManager.sol";
-import "./interfaces/IOracleAdapter.sol";
-import "./interfaces/IAddressRegistryV2.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {
+    ReentrancyGuard
+} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {EnumerableSet} from "./utils/EnumerableSet.sol";
+import {IAssetAllocation} from "./interfaces/IAssetAllocation.sol";
+import {ITvlManager} from "./interfaces/ITvlManager.sol";
+import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
+import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 
 /**
  r @title TVL Manager

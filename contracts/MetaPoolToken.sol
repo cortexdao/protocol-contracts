@@ -8,7 +8,6 @@ import "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/access/AccessControl.sol";
 import "./interfaces/IAddressRegistryV2.sol";
 import "./interfaces/IMintable.sol";
 import "./interfaces/IOracleAdapter.sol";
