@@ -170,7 +170,10 @@ contract PoolTokenV2 is
         require(addressRegistry_.isContract(), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
 
-        __AccessControl_init_unchained();
+        // Sadly, the AccessControl init is protected by `initializer` so can't
+        // be called ever again (see above natspec).  Fortunately, the init body
+        // is empty, so we don't actually need to call it.
+        // __AccessControl_init_unchained();
         _setupRole(ADMIN_ROLE, addressRegistry_.getAddress("adminSafe"));
         _setupRole(
             EMERGENCY_ROLE,
