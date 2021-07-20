@@ -42,6 +42,7 @@ contract PoolManager is
     using SafeERC20 for IDetailedERC20;
 
     bytes32 public constant LP_ROLE = keccak256("LP_ROLE");
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
 
     /* ------------------------------- */
@@ -85,7 +86,7 @@ contract PoolManager is
 
         // initialize ancestor storage
         __Context_init_unchained();
-        __Ownable_init_unchained();
+        __AccessControl_init_unchained();
         __ReentrancyGuard_init_unchained();
 
         _setupRole(ADMIN_ROLE, addressRegistry_.getAddress("adminSafe"));
@@ -125,9 +126,9 @@ contract PoolManager is
     function fundLpSafe(ILpSafeFunder.PoolAmount[] memory poolAmounts)
         external
         override
-        onlyRole(LP_ROLE)
         nonReentrant
     {
+        require(hasRole(LP_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         address lpSafeAddress = addressRegistry.lpSafeAddress();
         require(lpSafeAddress != address(0), "INVALID_LP_SAFE");
         (PoolTokenV2[] memory pools, uint256[] memory amounts) =
@@ -150,9 +151,9 @@ contract PoolManager is
     function withdrawFromLpSafe(ILpSafeFunder.PoolAmount[] memory poolAmounts)
         external
         override
-        onlyRole(LP_ROLE)
         nonReentrant
     {
+        require(hasRole(LP_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         address lpSafeAddress = addressRegistry.lpSafeAddress();
         require(lpSafeAddress != address(0), "INVALID_LP_SAFE");
         (PoolTokenV2[] memory pools, uint256[] memory amounts) =
@@ -166,10 +167,8 @@ contract PoolManager is
      * @dev only callable by owner
      * @param adminAddress the new proxy admin address of the pool manager
      */
-    function setAdminAddress(address adminAddress)
-        public
-        onlyRole(EMERGENCY_ROLE)
-    {
+    function setAdminAddress(address adminAddress) public {
+        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
         emit AdminChanged(adminAddress);
@@ -180,10 +179,8 @@ contract PoolManager is
      * @dev only callable by owner
      * @param addressRegistry_ the address of the registry
      */
-    function setAddressRegistry(address addressRegistry_)
-        public
-        onlyRole(EMERGENCY_ROLE)
-    {
+    function setAddressRegistry(address addressRegistry_) public {
+        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
