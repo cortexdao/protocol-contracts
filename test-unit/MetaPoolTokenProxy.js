@@ -7,6 +7,7 @@ const ProxyAdmin = artifacts.require("ProxyAdmin");
 const MetaPoolTokenUpgraded = artifacts.require("MetaPoolTokenUpgraded");
 const MetaPoolTokenProxy = artifacts.require("MetaPoolTokenProxy");
 const MetaPoolToken = artifacts.require("MetaPoolToken");
+const MockContract = artifacts.require("MockContract");
 
 contract("MetaPoolTokenProxy", async (accounts) => {
   const [deployer, randomUser] = accounts;
@@ -31,11 +32,11 @@ contract("MetaPoolTokenProxy", async (accounts) => {
   before(async () => {
     proxyAdmin = await ProxyAdmin.new({ from: deployer });
     logic = await MetaPoolToken.new({ from: deployer });
-    const fakeAddressRegistryAddress = await ProxyAdmin.new({ from: deployer });
+    const addressRegistryMock = await MockContract.new({ from: deployer });
     proxy = await MetaPoolTokenProxy.new(
       logic.address,
       proxyAdmin.address,
-      fakeAddressRegistryAddress.address,
+      addressRegistryMock.address,
       {
         from: deployer,
       }
