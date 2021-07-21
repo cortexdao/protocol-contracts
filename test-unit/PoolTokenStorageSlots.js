@@ -1,9 +1,10 @@
 const hre = require("hardhat");
-const { ethers, waffle, web3 } = hre;
+const { artifacts, ethers, waffle, web3 } = hre;
 const { BigNumber } = ethers;
 const { expect } = require("chai");
 const { deployMockContract } = waffle;
-const { console } = require("../utils/helpers");
+const { console, bytes32 } = require("../utils/helpers");
+const AddressRegistryV2 = artifacts.require("AddressRegistryV2");
 
 const ZERO_DATA =
   "0000000000000000000000000000000000000000000000000000000000000000";
@@ -80,6 +81,8 @@ describe("APT V2 uses V1 storage slot positions", () => {
   const [minted, transferred, allowance] = [100e6, 30e6, 10e6];
 
   let deployer;
+  let emergencySafe;
+  let adminSafe;
   let user;
   let otherUser;
 
@@ -90,7 +93,13 @@ describe("APT V2 uses V1 storage slot positions", () => {
   let addressRegistry;
 
   before(async () => {
-    [deployer, user, otherUser] = await ethers.getSigners();
+    [
+      deployer,
+      emergencySafe,
+      adminSafe,
+      user,
+      otherUser,
+    ] = await ethers.getSigners();
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     const PoolTokenProxy = await ethers.getContractFactory("PoolTokenProxy");
@@ -101,7 +110,14 @@ describe("APT V2 uses V1 storage slot positions", () => {
     await proxyAdmin.deployed();
     agg = await deployMockContract(deployer, []);
     underlyer = await deployMockContract(deployer, []);
-    addressRegistry = await deployMockContract(deployer, []);
+    addressRegistry = await deployMockContract(deployer, AddressRegistryV2.abi);
+
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("emergencySafe"))
+      .returns(emergencySafe.address);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("adminSafe"))
+      .returns(adminSafe.address);
 
     const logicV1 = await PoolToken.deploy();
     await logicV1.deployed();
@@ -126,10 +142,10 @@ describe("APT V2 uses V1 storage slot positions", () => {
 
     poolToken = await PoolTokenV2.attach(proxy.address);
 
-    await poolToken.lock();
+    await poolToken.connect(emergencySafe).lock();
     await poolToken.testMint(deployer.address, minted);
-    await poolToken.lockAddLiquidity();
-    await poolToken.lockRedeem();
+    await poolToken.connect(emergencySafe).lockAddLiquidity();
+    await poolToken.connect(emergencySafe).lockRedeem();
     await poolToken.testTransfer(deployer.address, user.address, transferred);
     await poolToken.approve(otherUser.address, allowance);
   });
@@ -150,6 +166,8 @@ describe("APT V2 uses V1 storage slot positions", () => {
     expect(slots[0].slice(-2)).to.equal("01"); // initialized
 
     // 101 address _owner;
+    // NOTE: in the V2 upgrade, this slot has been repurposed
+    // for AccessControl's _roles mapping
     expect(parseAddress(slots[101])).to.equal(deployer.address);
     // 151 bool _notEntered;
     expect(slots[151].slice(-2)).to.equal("01");
