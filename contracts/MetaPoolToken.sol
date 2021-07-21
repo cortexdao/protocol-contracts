@@ -106,17 +106,11 @@ contract MetaPoolToken is
         setAdminAddress(adminAddress);
         setAddressRegistry(addressRegistry_);
         _setupRole(
-            OZAccessControl.DEFAULT_ADMIN_ROLE,
+            DEFAULT_ADMIN_ROLE,
             addressRegistry.getAddress("emergencySafe")
         );
-        _setupRole(
-            AccessControlUpgradeSafe.CONTRACT_ROLE,
-            addressRegistry.poolManagerAddress()
-        );
-        _setupRole(
-            AccessControlUpgradeSafe.EMERGENCY_ROLE,
-            addressRegistry.getAddress("emergencySafe")
-        );
+        _setupRole(CONTRACT_ROLE, addressRegistry.poolManagerAddress());
+        _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
     }
 
     /**

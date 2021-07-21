@@ -171,17 +171,11 @@ contract PoolTokenV2 is
         // is empty, so we don't actually need to call it.
         // __AccessControl_init_unchained();
         _setupRole(
-            OZAccessControl.DEFAULT_ADMIN_ROLE,
+            DEFAULT_ADMIN_ROLE,
             addressRegistry.getAddress("emergencySafe")
         );
-        _setupRole(
-            AccessControlUpgradeSafe.ADMIN_ROLE,
-            addressRegistry.getAddress("adminSafe")
-        );
-        _setupRole(
-            AccessControlUpgradeSafe.EMERGENCY_ROLE,
-            addressRegistry.getAddress("emergencySafe")
-        );
+        _setupRole(ADMIN_ROLE, addressRegistry.getAddress("adminSafe"));
+        _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
 
         feePeriod = 1 days;
         feePercentage = 5;

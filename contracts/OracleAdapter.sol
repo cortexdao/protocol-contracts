@@ -103,19 +103,10 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
             DEFAULT_ADMIN_ROLE,
             addressRegistry.getAddress("emergencySafe")
         );
-        _setupRole(AccessControl.CONTRACT_ROLE, addressRegistry.mAptAddress());
-        _setupRole(
-            AccessControl.CONTRACT_ROLE,
-            addressRegistry.tvlManagerAddress()
-        );
-        _setupRole(
-            AccessControl.ADMIN_ROLE,
-            addressRegistry.getAddress("adminSafe")
-        );
-        _setupRole(
-            AccessControl.EMERGENCY_ROLE,
-            addressRegistry.getAddress("emergencySafe")
-        );
+        _setupRole(CONTRACT_ROLE, addressRegistry.mAptAddress());
+        _setupRole(CONTRACT_ROLE, addressRegistry.tvlManagerAddress());
+        _setupRole(ADMIN_ROLE, addressRegistry.getAddress("adminSafe"));
+        _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
     }
 
     function setDefaultLockPeriod(uint256 newPeriod)
