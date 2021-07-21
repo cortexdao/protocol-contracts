@@ -2,12 +2,12 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {
     ReentrancyGuard
 } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {EnumerableSet} from "./utils/EnumerableSet.sol";
+import {AccessControl} from "./utils/AccessControl.sol";
 import {IAssetAllocation} from "./interfaces/IAssetAllocation.sol";
 import {ITvlManager} from "./interfaces/ITvlManager.sol";
 import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
@@ -32,10 +32,6 @@ contract TvlManager is
 {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using Address for address;
-
-    bytes32 public constant CONTRACT_ROLE = keccak256("CONTRACT_ROLE");
-    bytes32 public constant LP_ROLE = keccak256("LP_ROLE");
-    bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
 
     IAddressRegistryV2 public addressRegistry;
 
@@ -233,8 +229,10 @@ contract TvlManager is
      * @dev only callable by owner
      * @param addressRegistry_ the address of the registry
      */
-    function setAddressRegistry(address addressRegistry_) public {
-        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
+    function setAddressRegistry(address addressRegistry_)
+        public
+        onlyEmergencyRole
+    {
         require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
