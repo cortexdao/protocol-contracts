@@ -39,7 +39,7 @@ Initializable:
 ContextUpgradeSafe:
   51-100 uint256[50] __gap;
 OwnableUpgradeSafe:
-  101 address _owner;
+  // 101 address _owner; <-- repurposed in V2
   102-150 uint256[49] __gap;
 ReentrancyGuardUpgradeSafe:
   151 bool _notEntered;
@@ -57,17 +57,18 @@ ERC20UpgradeSafe:
   257-300 uint256[44] __gap;
 
 APY.Finance APT V1
-  301 address public proxyAdmin;
-  301 bool public addLiquidityLock;
-  301 bool public redeemLock;
-  302 IDetailedERC20 public underlyer;
-  // 303 AggregatorV3Interface public priceAgg; <-- removed in V2
+  301 address proxyAdmin;
+  301 bool addLiquidityLock;
+  301 bool redeemLock;
+  302 IDetailedERC20 underlyer;
+  // 303 AggregatorV3Interface priceAgg; <-- replaced in V2
 
 APY.Finance APT V2
-  303 IAddressRegistryV2 public addressRegistry; <-- replaces V1 slot
-  304 uint256 public feePeriod;
-  305 uint256 public feePercentage;
-  306 mapping(address => uint256) public lastDepositTime;
+  101 mapping (bytes32 => RoleData) _roles; <-- repurposes V1 slot
+  303 IAddressRegistryV2 addressRegistry; <-- replaces V1 slot
+  304 uint256 feePeriod;
+  305 uint256 feePercentage;
+  306 mapping(address => uint256) lastDepositTime;
 */
 
 /* ************************ */
