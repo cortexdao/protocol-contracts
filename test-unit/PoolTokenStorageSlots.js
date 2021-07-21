@@ -112,6 +112,7 @@ describe("APT V2 uses V1 storage slot positions", () => {
     underlyer = await deployMockContract(deployer, []);
     addressRegistry = await deployMockContract(deployer, AddressRegistryV2.abi);
 
+    // these addresses are assigned roles in PoolTokenV2 init
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("emergencySafe"))
       .returns(emergencySafe.address);
@@ -222,7 +223,7 @@ describe("APT V2 uses V1 storage slot positions", () => {
   });
 
   it("Retains original storage slots for allowances mapping", async () => {
-    // _allowances[alice][bob]
+    // _allowances[deployer][user]
     let v = parseInt(
       await readSlot(
         poolToken.address,
@@ -232,7 +233,7 @@ describe("APT V2 uses V1 storage slot positions", () => {
     );
     expect(v).to.equal(0);
 
-    // _allowances[alice][charlie]
+    // _allowances[deployer][otherUser]
     v = parseInt(
       await readSlot(
         poolToken.address,
@@ -241,6 +242,36 @@ describe("APT V2 uses V1 storage slot positions", () => {
       16
     );
     expect(v).to.equal(allowance);
+  });
+
+  it("Roles mapping replacing old storage slot uses expected slots", async () => {
+    // PoolTokenV2's init function will setup roles, which is a
+    //
+    // mapping (bytes32 => struct)
+    //
+    // with the struct being
+    //
+    // RoleData {
+    //   EnumerableSet.AddressSet members;
+    //   bytes32 adminRole;
+    // }
+    //
+    // The struct will start with a dynamic array of values in the
+    // EnumerableSet, so its first slot will hold the length of
+    // the array.
+    const EMERGENCY_ROLE = await poolToken.EMERGENCY_ROLE();
+    let data = await readSlot(
+      poolToken.address,
+      bytes32MappingSlot(EMERGENCY_ROLE, 101)
+    );
+    expect(data).to.not.equal(ZERO_DATA);
+
+    const ADMIN_ROLE = await poolToken.ADMIN_ROLE();
+    data = await readSlot(
+      poolToken.address,
+      bytes32MappingSlot(ADMIN_ROLE, 101)
+    );
+    expect(data).to.not.equal(ZERO_DATA);
   });
 });
 
@@ -282,4 +313,9 @@ function address2MappingSlot(address, address_2, position) {
       encodeAddress(address_2) +
       addressMappingSlot(address, position).slice(2)
   );
+}
+
+function bytes32MappingSlot(address, position) {
+  // same encoding logic as for address mapping
+  return addressMappingSlot(address, position);
 }
