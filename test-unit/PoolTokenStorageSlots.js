@@ -187,18 +187,18 @@ describe("APT V2 uses V1 storage slot positions", () => {
     expect(parseString(slots[255])).to.equal(symbol);
     // 256 uint8 _decimals;
     expect(parseUint(slots[256])).to.equal(decimals);
-    // 301 address public proxyAdmin;
-    // 301 bool public addLiquidityLock;
-    // 301 bool public redeemLock;
+    // 301 address proxyAdmin;
+    // 301 bool addLiquidityLock;
+    // 301 bool redeemLock;
     expect(parseAddress(slots[301])).to.equal(proxyAdmin.address);
     expect(slots[301].slice(0, 24).slice(-4)).to.equal("0101");
-    // 302 IDetailedERC20 public underlyer;
+    // 302 IDetailedERC20 underlyer;
     expect(parseAddress(slots[302])).to.equal(underlyer.address);
   });
 
   it("Replaces original slot 303", async () => {
-    // 303 AggregatorV3Interface public priceAgg; <-- removed in V2
-    // 303 IAddressRegistryV2 public addressRegistry; <-- replaces V1 slot
+    // 303 AggregatorV3Interface priceAgg; <-- replaced in V2
+    // 303 IAddressRegistryV2 addressRegistry; <-- replaces V1 slot
     const data = await readSlot(poolToken.address, 303);
     console.debug(`${303}: ${data}`);
     expect(parseAddress(data)).to.equal(addressRegistry.address);
@@ -245,7 +245,10 @@ describe("APT V2 uses V1 storage slot positions", () => {
     expect(v).to.equal(allowance);
   });
 
-  it("Roles mapping replacing old storage slot uses expected slots", async () => {
+  it("Roles mapping replacing slot 101 uses expected slots", async () => {
+    // 101 address _owner; <-- repurposed in V2
+    // 101 mapping (bytes32 => RoleData) _roles; <-- repurposes V1 slot
+    //
     // PoolTokenV2's init function will setup roles, which is a
     //
     // mapping (bytes32 => struct)
@@ -257,9 +260,12 @@ describe("APT V2 uses V1 storage slot positions", () => {
     //   bytes32 adminRole;
     // }
     //
-    // The struct will start with a dynamic array of values in the
+    // The struct starts with a dynamic array of values in the
     // EnumerableSet, so its first slot will hold the length of
-    // the array.
+    // the array.  This will be nonzero if the role has members.
+    //
+    // To check if position 101 is used in the mapping's key hash,
+    // it suffices to check if the expected slot has nonzero data.
     const EMERGENCY_ROLE = await poolToken.EMERGENCY_ROLE();
     let data = await readSlot(
       poolToken.address,
