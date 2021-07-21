@@ -6,7 +6,7 @@ const timeMachine = require("ganache-time-traveler");
 const { expectRevert } = require("@openzeppelin/test-helpers");
 const { ZERO_ADDRESS, FAKE_ADDRESS } = require("../utils/helpers");
 
-describe("Contract: PoolManagerProxy", () => {
+describe.skip("Contract: PoolManagerProxy", () => {
   let deployer;
   let randomUser;
 
