@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
+import "./utils/AccessControl.sol";
 import "./interfaces/IOracleAdapter.sol";
 import "./interfaces/IAddressRegistryV2.sol";
 
@@ -53,11 +53,6 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
     using SafeMath for uint256;
     using Address for address;
 
-    /** @notice access control roles **/
-    bytes32 public constant CONTRACT_ROLE = keccak256("CONTRACT_ROLE");
-    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
-    bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
-
     IAddressRegistryV2 public addressRegistry;
 
     uint256 public override defaultLockPeriod;
@@ -104,29 +99,38 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         setChainlinkStalePeriod(chainlinkStalePeriod_);
         setDefaultLockPeriod(defaultLockPeriod_);
 
-        _setupRole(CONTRACT_ROLE, addressRegistry.mAptAddress());
-        _setupRole(CONTRACT_ROLE, addressRegistry.tvlManagerAddress());
-        _setupRole(ADMIN_ROLE, addressRegistry.getAddress("adminSafe"));
-        _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
+        _setupRole(AccessControl.CONTRACT_ROLE, addressRegistry.mAptAddress());
+        _setupRole(
+            AccessControl.CONTRACT_ROLE,
+            addressRegistry.tvlManagerAddress()
+        );
+        _setupRole(
+            AccessControl.ADMIN_ROLE,
+            addressRegistry.getAddress("adminSafe")
+        );
+        _setupRole(
+            AccessControl.EMERGENCY_ROLE,
+            addressRegistry.getAddress("emergencySafe")
+        );
     }
 
-    function setDefaultLockPeriod(uint256 newPeriod) public override {
-        require(hasRole(ADMIN_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
+    function setDefaultLockPeriod(uint256 newPeriod)
+        public
+        override
+        onlyAdminRole
+    {
         defaultLockPeriod = newPeriod;
     }
 
-    function lock() external override {
-        require(hasRole(CONTRACT_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
+    function lock() external override onlyContractRole {
         _lockFor(defaultLockPeriod);
     }
 
-    function unlock() external override {
-        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
+    function unlock() external override onlyEmergencyRole {
         _lockFor(0);
     }
 
-    function lockFor(uint256 activePeriod) public override {
-        require(hasRole(CONTRACT_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
+    function lockFor(uint256 activePeriod) public override onlyContractRole {
         lockEnd = block.number.add(activePeriod);
     }
 
@@ -139,8 +143,10 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
      * @dev only callable by owner
      * @param addressRegistry_ the address of the registry
      */
-    function setAddressRegistry(address addressRegistry_) public {
-        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
+    function setAddressRegistry(address addressRegistry_)
+        public
+        onlyEmergencyRole
+    {
         require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
@@ -153,14 +159,16 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         address asset,
         uint256 value,
         uint256 period
-    ) external override {
-        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
+    ) external override onlyEmergencyRole {
         // We do allow 0 values for submitted values
         submittedAssetValues[asset] = Value(value, block.number.add(period));
     }
 
-    function unsetAssetValue(address asset) external override {
-        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
+    function unsetAssetValue(address asset)
+        external
+        override
+        onlyEmergencyRole
+    {
         require(
             submittedAssetValues[asset].periodEnd != 0,
             "NO_ASSET_VALUE_SET"
@@ -168,14 +176,16 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         submittedAssetValues[asset].periodEnd = block.number;
     }
 
-    function setTvl(uint256 value, uint256 period) external override {
-        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
+    function setTvl(uint256 value, uint256 period)
+        external
+        override
+        onlyEmergencyRole
+    {
         // We do allow 0 values for submitted values
         submittedTvlValue = Value(value, block.number.add(period));
     }
 
-    function unsetTvl() external override {
-        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
+    function unsetTvl() external override onlyEmergencyRole {
         require(submittedTvlValue.periodEnd != 0, "NO_TVL_SET");
         submittedTvlValue.periodEnd = block.number;
     }
@@ -188,8 +198,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
      * @notice Set or replace the TVL source
      * @param source the TVL source address
      */
-    function setTvlSource(address source) public {
-        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
+    function setTvlSource(address source) public onlyEmergencyRole {
         require(source.isContract(), "INVALID_SOURCE");
         tvlSource = AggregatorV3Interface(source);
         emit TvlSourceUpdated(source);
@@ -202,8 +211,8 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
      */
     function setAssetSources(address[] memory assets, address[] memory sources)
         public
+        onlyEmergencyRole
     {
-        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         require(assets.length == sources.length, "INCONSISTENT_PARAMS_LENGTH");
         for (uint256 i = 0; i < assets.length; i++) {
             setAssetSource(assets[i], sources[i]);
@@ -215,8 +224,10 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
      * @param asset asset token address
      * @param source the price source (aggregator)
      */
-    function setAssetSource(address asset, address source) public {
-        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
+    function setAssetSource(address asset, address source)
+        public
+        onlyEmergencyRole
+    {
         require(source.isContract(), "INVALID_SOURCE");
         assetSources[asset] = AggregatorV3Interface(source);
         emit AssetSourceUpdated(asset, source);
@@ -226,8 +237,10 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
      * @notice Set the length of time before an agg value is considered stale
      * @param chainlinkStalePeriod_ the length of time in seconds
      */
-    function setChainlinkStalePeriod(uint256 chainlinkStalePeriod_) public {
-        require(hasRole(ADMIN_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
+    function setChainlinkStalePeriod(uint256 chainlinkStalePeriod_)
+        public
+        onlyAdminRole
+    {
         require(chainlinkStalePeriod_ > 0, "INVALID_STALE_PERIOD");
         chainlinkStalePeriod = chainlinkStalePeriod_;
         emit ChainlinkStalePeriodUpdated(chainlinkStalePeriod_);
