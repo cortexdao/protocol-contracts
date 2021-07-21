@@ -7,6 +7,7 @@ const {
   tokenAmountToBigNumber,
   FAKE_ADDRESS,
   ANOTHER_FAKE_ADDRESS,
+  bytes32,
 } = require("../utils/helpers");
 const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
 const IAddressRegistryV2 = artifacts.require("IAddressRegistryV2");
@@ -14,9 +15,12 @@ const IERC20 = artifacts.require(
   "@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20"
 );
 
-describe("Contract: OracleAdapter", () => {
+describe.only("Contract: OracleAdapter", () => {
   // signers
   let deployer;
+  let emergencySafe;
+  let adminSafe;
+  let tvlManager;
   let randomUser;
   let accounts;
 
@@ -50,7 +54,14 @@ describe("Contract: OracleAdapter", () => {
   });
 
   before(async () => {
-    [deployer, randomUser, ...accounts] = await ethers.getSigners();
+    [
+      deployer,
+      emergencySafe,
+      adminSafe,
+      tvlManager,
+      randomUser,
+      ...accounts
+    ] = await ethers.getSigners();
 
     addressRegistryMock = await deployMockContract(
       deployer,
@@ -59,6 +70,18 @@ describe("Contract: OracleAdapter", () => {
 
     mAptMock = await deployMockContract(deployer, IERC20.abi);
     await addressRegistryMock.mock.mAptAddress.returns(mAptMock.address);
+
+    // These registered addresses are setup for roles in the
+    // constructor for OracleAdapter
+    await addressRegistryMock.mock.tvlManagerAddress.returns(
+      tvlManager.address
+    );
+    await addressRegistryMock.mock.getAddress
+      .withArgs(bytes32("adminSafe"))
+      .returns(adminSafe.address);
+    await addressRegistryMock.mock.getAddress
+      .withArgs(bytes32("emergencySafe"))
+      .returns(emergencySafe.address);
 
     tvlAggMock = await deployMockContract(deployer, AggregatorV3Interface.abi);
     assetAggMock_1 = await deployMockContract(
@@ -125,8 +148,33 @@ describe("Contract: OracleAdapter", () => {
   });
 
   describe("Defaults", () => {
-    it("Owner is set to deployer", async () => {
-      expect(await oracleAdapter.owner()).to.equal(deployer.address);
+    it("Default admin role given to Emergency Safe", async () => {
+      const DEFAULT_ADMIN_ROLE = await oracleAdapter.DEFAULT_ADMIN_ROLE();
+      const memberCount = await oracleAdapter.getRoleMemberCount(
+        DEFAULT_ADMIN_ROLE
+      );
+      expect(memberCount).to.equal(1);
+      expect(
+        await oracleAdapter.hasRole(DEFAULT_ADMIN_ROLE, emergencySafe.address)
+      ).to.be.true;
+    });
+
+    it("Contract role given to Pool Manager", async () => {
+      const CONTRACT_ROLE = await oracleAdapter.CONTRACT_ROLE();
+      const memberCount = await oracleAdapter.getRoleMemberCount(CONTRACT_ROLE);
+      expect(memberCount).to.equal(1);
+      expect(await oracleAdapter.hasRole(CONTRACT_ROLE, tvlManager.address)).to
+        .be.true;
+    });
+
+    it("Emergency role given to Emergency Safe", async () => {
+      const EMERGENCY_ROLE = await oracleAdapter.EMERGENCY_ROLE();
+      const memberCount = await oracleAdapter.getRoleMemberCount(
+        EMERGENCY_ROLE
+      );
+      expect(memberCount).to.equal(1);
+      expect(await oracleAdapter.hasRole(EMERGENCY_ROLE, emergencySafe.address))
+        .to.be.true;
     });
 
     it("Sources are set", async () => {
