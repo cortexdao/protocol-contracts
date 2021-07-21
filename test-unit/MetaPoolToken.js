@@ -185,20 +185,20 @@ describe("Contract: MetaPoolToken", () => {
   });
 
   describe("Set admin address", () => {
-    it("Owner can set to valid address", async () => {
-      await mApt.connect(deployer).setAdminAddress(randomUser.address);
+    it("Emergency Safe can set to valid address", async () => {
+      await mApt.connect(emergencySafe).setAdminAddress(randomUser.address);
       expect(await mApt.proxyAdmin()).to.equal(randomUser.address);
     });
 
-    it("Revert when non-owner attempts to set", async () => {
+    it("Revert when unpermissioned attempts to set", async () => {
       await expect(
         mApt.connect(randomUser).setAdminAddress(FAKE_ADDRESS)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
 
     it("Cannot set to zero address", async () => {
       await expect(
-        mApt.connect(deployer).setAdminAddress(ZERO_ADDRESS)
+        mApt.connect(emergencySafe).setAdminAddress(ZERO_ADDRESS)
       ).to.be.revertedWith("INVALID_ADMIN");
     });
   });
@@ -231,12 +231,12 @@ describe("Contract: MetaPoolToken", () => {
         mApt
           .connect(randomUser)
           .mint(anotherUser.address, tokenAmountToBigNumber("1"))
-      ).to.be.revertedWith("MANAGER_ONLY");
+      ).to.be.revertedWith("NOT_CONTRACT_ROLE");
       await expect(
         mApt
           .connect(deployer)
           .mint(anotherUser.address, tokenAmountToBigNumber("1"))
-      ).to.be.revertedWith("MANAGER_ONLY");
+      ).to.be.revertedWith("NOT_CONTRACT_ROLE");
     });
 
     it("Revert when non-manager attempts to burn", async () => {
@@ -244,12 +244,12 @@ describe("Contract: MetaPoolToken", () => {
         mApt
           .connect(randomUser)
           .burn(anotherUser.address, tokenAmountToBigNumber("1"))
-      ).to.be.revertedWith("MANAGER_ONLY");
+      ).to.be.revertedWith("NOT_CONTRACT_ROLE");
       await expect(
         mApt
           .connect(deployer)
           .mint(anotherUser.address, tokenAmountToBigNumber("1"))
-      ).to.be.revertedWith("MANAGER_ONLY");
+      ).to.be.revertedWith("NOT_CONTRACT_ROLE");
     });
 
     it("Revert when minting zero", async () => {
