@@ -2,12 +2,12 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts-ethereum-package/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import "./utils/AccessControlUpgradeSafe.sol";
 import "./interfaces/IAddressRegistryV2.sol";
 import "./interfaces/IMintable.sol";
 import "./interfaces/IOracleAdapter.sol";
@@ -52,10 +52,6 @@ contract MetaPoolToken is
     IMintable
 {
     using SafeMath for uint256;
-
-    /** @notice access control roles **/
-    bytes32 public constant CONTRACT_ROLE = keccak256("CONTRACT_ROLE");
-    bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
 
     uint256 public constant DEFAULT_MAPT_TO_UNDERLYER_FACTOR = 1000;
 
@@ -109,8 +105,14 @@ contract MetaPoolToken is
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
         setAddressRegistry(addressRegistry_);
-        _setupRole(CONTRACT_ROLE, addressRegistry.poolManagerAddress());
-        _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
+        _setupRole(
+            AccessControlUpgradeSafe.CONTRACT_ROLE,
+            addressRegistry.poolManagerAddress()
+        );
+        _setupRole(
+            AccessControlUpgradeSafe.EMERGENCY_ROLE,
+            addressRegistry.getAddress("emergencySafe")
+        );
     }
 
     /**
@@ -124,8 +126,7 @@ contract MetaPoolToken is
     // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual onlyAdmin {}
 
-    function setAdminAddress(address adminAddress) public {
-        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
+    function setAdminAddress(address adminAddress) public onlyEmergencyRole {
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
         emit AdminChanged(adminAddress);
@@ -136,8 +137,10 @@ contract MetaPoolToken is
      * @dev only callable by owner
      * @param addressRegistry_ the address of the registry
      */
-    function setAddressRegistry(address addressRegistry_) public {
-        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
+    function setAddressRegistry(address addressRegistry_)
+        public
+        onlyEmergencyRole
+    {
         require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
@@ -152,8 +155,8 @@ contract MetaPoolToken is
         public
         override
         nonReentrant
+        onlyContractRole
     {
-        require(hasRole(CONTRACT_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         require(amount > 0, "INVALID_MINT_AMOUNT");
         IOracleAdapter oracleAdapter = _getOracleAdapter();
         oracleAdapter.lock();
@@ -171,8 +174,8 @@ contract MetaPoolToken is
         public
         override
         nonReentrant
+        onlyContractRole
     {
-        require(hasRole(CONTRACT_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         require(amount > 0, "INVALID_BURN_AMOUNT");
         IOracleAdapter oracleAdapter = _getOracleAdapter();
         oracleAdapter.lock();
