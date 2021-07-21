@@ -5,6 +5,10 @@ import {
     AccessControlUpgradeSafe as OZAccessControl
 } from "@openzeppelin/contracts-ethereum-package/contracts/access/AccessControl.sol";
 
+/**
+ * @notice Extends OpenZeppelin upgradeable AccessControl contract with modifiers
+ * @dev This contract and AccessControl are essentially duplicates.
+ */
 contract AccessControlUpgradeSafe is OZAccessControl {
     /** @notice access control roles **/
     bytes32 public constant CONTRACT_ROLE = keccak256("CONTRACT_ROLE");
