@@ -99,6 +99,10 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         setChainlinkStalePeriod(chainlinkStalePeriod_);
         setDefaultLockPeriod(defaultLockPeriod_);
 
+        _setupRole(
+            DEFAULT_ADMIN_ROLE,
+            addressRegistry.getAddress("emergencySafe")
+        );
         _setupRole(AccessControl.CONTRACT_ROLE, addressRegistry.mAptAddress());
         _setupRole(
             AccessControl.CONTRACT_ROLE,

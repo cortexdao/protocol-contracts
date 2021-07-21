@@ -89,6 +89,10 @@ contract PoolManager is
         setAdminAddress(adminAddress);
         setAddressRegistry(addressRegistry_);
         _setupRole(
+            OZAccessControl.DEFAULT_ADMIN_ROLE,
+            addressRegistry.getAddress("emergencySafe")
+        );
+        _setupRole(
             AccessControlUpgradeSafe.LP_ROLE,
             addressRegistry.lpSafeAddress()
         );
