@@ -2,11 +2,11 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts-ethereum-package/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
+import "./utils/AccessControlUpgradeSafe.sol";
 import "./interfaces/IAssetAllocation.sol";
 import "./interfaces/IAddressRegistryV2.sol";
 import "./interfaces/IDetailedERC20.sol";
@@ -40,10 +40,6 @@ contract PoolManager is
 {
     using SafeMath for uint256;
     using SafeERC20 for IDetailedERC20;
-
-    bytes32 public constant LP_ROLE = keccak256("LP_ROLE");
-    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
-    bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
 
     /* ------------------------------- */
     /* impl-specific storage variables */
@@ -92,8 +88,14 @@ contract PoolManager is
         // initialize impl-specific storage
         setAdminAddress(adminAddress);
         setAddressRegistry(addressRegistry_);
-        _setupRole(ADMIN_ROLE, addressRegistry.getAddress("adminSafe"));
-        _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
+        _setupRole(
+            AccessControlUpgradeSafe.LP_ROLE,
+            addressRegistry.lpSafeAddress()
+        );
+        _setupRole(
+            AccessControlUpgradeSafe.EMERGENCY_ROLE,
+            addressRegistry.getAddress("emergencySafe")
+        );
     }
 
     /**
@@ -123,8 +125,8 @@ contract PoolManager is
         external
         override
         nonReentrant
+        onlyLpRole
     {
-        require(hasRole(LP_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         address lpSafeAddress = addressRegistry.lpSafeAddress();
         require(lpSafeAddress != address(0), "INVALID_LP_SAFE");
         (PoolTokenV2[] memory pools, uint256[] memory amounts) =
@@ -148,8 +150,8 @@ contract PoolManager is
         external
         override
         nonReentrant
+        onlyLpRole
     {
-        require(hasRole(LP_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
         address lpSafeAddress = addressRegistry.lpSafeAddress();
         require(lpSafeAddress != address(0), "INVALID_LP_SAFE");
         (PoolTokenV2[] memory pools, uint256[] memory amounts) =
@@ -163,8 +165,7 @@ contract PoolManager is
      * @dev only callable by owner
      * @param adminAddress the new proxy admin address of the pool manager
      */
-    function setAdminAddress(address adminAddress) public {
-        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
+    function setAdminAddress(address adminAddress) public onlyEmergencyRole {
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
         emit AdminChanged(adminAddress);
@@ -175,8 +176,10 @@ contract PoolManager is
      * @dev only callable by owner
      * @param addressRegistry_ the address of the registry
      */
-    function setAddressRegistry(address addressRegistry_) public {
-        require(hasRole(EMERGENCY_ROLE, msg.sender), "INVALID_ACCESS_CONTROL");
+    function setAddressRegistry(address addressRegistry_)
+        public
+        onlyEmergencyRole
+    {
         require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
