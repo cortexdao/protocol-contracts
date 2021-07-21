@@ -103,8 +103,8 @@ contract MetaPoolToken is
         __ERC20_init_unchained("APY MetaPool Token", "mAPT");
 
         // initialize impl-specific storage
-        setAdminAddress(adminAddress);
-        setAddressRegistry(addressRegistry_);
+        _setAdminAddress(adminAddress);
+        _setAddressRegistry(addressRegistry_);
         _setupRole(
             DEFAULT_ADMIN_ROLE,
             addressRegistry.getAddress("emergencySafe")
@@ -125,6 +125,10 @@ contract MetaPoolToken is
     function initializeUpgrade() external virtual onlyAdmin {}
 
     function setAdminAddress(address adminAddress) public onlyEmergencyRole {
+        _setAdminAddress(adminAddress);
+    }
+
+    function _setAdminAddress(address adminAddress) internal {
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
         emit AdminChanged(adminAddress);
@@ -139,6 +143,15 @@ contract MetaPoolToken is
         public
         onlyEmergencyRole
     {
+        _setAddressRegistry(addressRegistry_);
+    }
+
+    /**
+     * @notice Sets the address registry
+     * @dev only callable by owner
+     * @param addressRegistry_ the address of the registry
+     */
+    function _setAddressRegistry(address addressRegistry_) internal {
         require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
