@@ -93,11 +93,11 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         uint256 chainlinkStalePeriod_,
         uint256 defaultLockPeriod_
     ) public {
-        setAddressRegistry(addressRegistry_);
-        setTvlSource(tvlSource_);
-        setAssetSources(assets, sources);
-        setChainlinkStalePeriod(chainlinkStalePeriod_);
-        setDefaultLockPeriod(defaultLockPeriod_);
+        _setAddressRegistry(addressRegistry_);
+        _setTvlSource(tvlSource_);
+        _setAssetSources(assets, sources);
+        _setChainlinkStalePeriod(chainlinkStalePeriod_);
+        _setDefaultLockPeriod(defaultLockPeriod_);
 
         _setupRole(
             DEFAULT_ADMIN_ROLE,
@@ -114,7 +114,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         override
         onlyAdminRole
     {
-        defaultLockPeriod = newPeriod;
+        _setDefaultLockPeriod(newPeriod);
     }
 
     function lock() external override onlyContractRole {
@@ -129,10 +129,6 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         lockEnd = block.number.add(activePeriod);
     }
 
-    function _lockFor(uint256 activePeriod) internal {
-        lockEnd = block.number.add(activePeriod);
-    }
-
     /**
      * @notice Sets the address registry
      * @dev only callable by owner
@@ -142,8 +138,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         public
         onlyEmergencyRole
     {
-        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistryV2(addressRegistry_);
+        _setAddressRegistry(addressRegistry_);
     }
 
     //------------------------------------------------------------
@@ -194,9 +189,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
      * @param source the TVL source address
      */
     function setTvlSource(address source) public onlyEmergencyRole {
-        require(source.isContract(), "INVALID_SOURCE");
-        tvlSource = AggregatorV3Interface(source);
-        emit TvlSourceUpdated(source);
+        _setTvlSource(source);
     }
 
     /**
@@ -208,10 +201,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         public
         onlyEmergencyRole
     {
-        require(assets.length == sources.length, "INCONSISTENT_PARAMS_LENGTH");
-        for (uint256 i = 0; i < assets.length; i++) {
-            setAssetSource(assets[i], sources[i]);
-        }
+        _setAssetSources(assets, sources);
     }
 
     /**
@@ -223,9 +213,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         public
         onlyEmergencyRole
     {
-        require(source.isContract(), "INVALID_SOURCE");
-        assetSources[asset] = AggregatorV3Interface(source);
-        emit AssetSourceUpdated(asset, source);
+        _setAssetSource(asset, source);
     }
 
     /**
@@ -236,9 +224,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         public
         onlyAdminRole
     {
-        require(chainlinkStalePeriod_ > 0, "INVALID_STALE_PERIOD");
-        chainlinkStalePeriod = chainlinkStalePeriod_;
-        emit ChainlinkStalePeriodUpdated(chainlinkStalePeriod_);
+        _setChainlinkStalePeriod(chainlinkStalePeriod_);
     }
 
     function isLocked() public view override returns (bool) {
@@ -302,6 +288,46 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
 
     function hasAssetOverride(address asset) public view returns (bool) {
         return block.number < submittedAssetValues[asset].periodEnd;
+    }
+
+    function _setDefaultLockPeriod(uint256 newPeriod) internal {
+        defaultLockPeriod = newPeriod;
+    }
+
+    function _lockFor(uint256 activePeriod) internal {
+        lockEnd = block.number.add(activePeriod);
+    }
+
+    function _setAddressRegistry(address addressRegistry_) internal {
+        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(addressRegistry_);
+    }
+
+    function _setChainlinkStalePeriod(uint256 chainlinkStalePeriod_) internal {
+        require(chainlinkStalePeriod_ > 0, "INVALID_STALE_PERIOD");
+        chainlinkStalePeriod = chainlinkStalePeriod_;
+        emit ChainlinkStalePeriodUpdated(chainlinkStalePeriod_);
+    }
+
+    function _setTvlSource(address source) internal {
+        require(source.isContract(), "INVALID_SOURCE");
+        tvlSource = AggregatorV3Interface(source);
+        emit TvlSourceUpdated(source);
+    }
+
+    function _setAssetSources(address[] memory assets, address[] memory sources)
+        internal
+    {
+        require(assets.length == sources.length, "INCONSISTENT_PARAMS_LENGTH");
+        for (uint256 i = 0; i < assets.length; i++) {
+            _setAssetSource(assets[i], sources[i]);
+        }
+    }
+
+    function _setAssetSource(address asset, address source) internal {
+        require(source.isContract(), "INVALID_SOURCE");
+        assetSources[asset] = AggregatorV3Interface(source);
+        emit AssetSourceUpdated(asset, source);
     }
 
     /**
