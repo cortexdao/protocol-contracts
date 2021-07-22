@@ -86,8 +86,8 @@ contract PoolManager is
         __ReentrancyGuard_init_unchained();
 
         // initialize impl-specific storage
-        setAdminAddress(adminAddress);
-        setAddressRegistry(addressRegistry_);
+        _setAdminAddress(adminAddress);
+        _setAddressRegistry(addressRegistry_);
         _setupRole(
             DEFAULT_ADMIN_ROLE,
             addressRegistry.getAddress("emergencySafe")
@@ -110,7 +110,7 @@ contract PoolManager is
 
     /**
      * @notice Funds LP Safe account and register an asset allocation
-     * @dev only callable by owner. Also registers the pool underlyer for the account being funded
+     * @dev only callable with LpRole. Also registers the pool underlyer for the account being funded
      * @param poolAmounts a list of PoolAmount structs denoting the pools id and amounts used to fund the account
      * @notice PoolAmount example (pulls ~$1 from each pool to the account):
      *      [
@@ -135,7 +135,7 @@ contract PoolManager is
 
     /**
      * @notice Moves capital from LP Safe account to the PoolToken contracts
-     * @dev only callable by owner
+     * @dev only callable with LpRole
      * @param poolAmounts list of PoolAmount structs denoting pool IDs and pool deposit amounts
      * @notice PoolAmount example (pushes ~$1 to each pool from the account):
      *      [
@@ -158,28 +158,36 @@ contract PoolManager is
         _withdraw(lpSafeAddress, pools, amounts);
     }
 
-    /**
-     * @notice Sets the proxy admin address of the pool manager proxy
-     * @dev only callable by owner
-     * @param adminAddress the new proxy admin address of the pool manager
-     */
-    function setAdminAddress(address adminAddress) public onlyEmergencyRole {
+    function _setAdminAddress(address adminAddress) internal {
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
         emit AdminChanged(adminAddress);
     }
 
     /**
+     * @notice Sets the proxy admin address of the pool manager proxy
+     * @dev only callable with emergencyRole
+     * @param adminAddress the new proxy admin address of the pool manager
+     */
+    function setAdminAddress(address adminAddress) public onlyEmergencyRole {
+        _setAdminAddress(adminAddress);
+    }
+
+    function _setAddressRegistry(address addressRegistry_) internal {
+        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(addressRegistry_);
+    }
+
+    /**
      * @notice Sets the address registry
-     * @dev only callable by owner
+     * @dev only callable with emergencyRole
      * @param addressRegistry_ the address of the registry
      */
     function setAddressRegistry(address addressRegistry_)
         public
         onlyEmergencyRole
     {
-        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistryV2(addressRegistry_);
+        _setAddressRegistry(addressRegistry_);
     }
 
     /**
