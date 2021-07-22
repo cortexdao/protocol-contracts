@@ -28,7 +28,7 @@ const usdc = (amount) => tokenAmountToBigNumber(amount, "6");
 console.debugging = false;
 /* ************************ */
 
-describe.only("Contract: MetaPoolToken", () => {
+describe("Contract: MetaPoolToken", () => {
   // accounts
   let deployer;
   let poolManager;
@@ -179,7 +179,7 @@ describe.only("Contract: MetaPoolToken", () => {
       await tvlAgg.connect(oracle).submit(1, tvl);
 
       const expectedEthValue = tvl.mul(balance).div(totalSupply);
-      await oracleAdapter.unlock();
+      await oracleAdapter.connect(emergencySafe).unlock();
       expect(await mApt.getDeployedValue(FAKE_ADDRESS)).to.equal(
         expectedEthValue
       );
@@ -197,9 +197,8 @@ describe.only("Contract: MetaPoolToken", () => {
         .mint(randomUser.address, tokenAmountToBigNumber(100));
 
       // manually set TVL to zero
-      await oracleAdapter.lockFor(100);
-      await oracleAdapter.setTvl(0, 100);
-      await oracleAdapter.unlock();
+      await oracleAdapter.connect(emergencySafe).setTvl(0, 100);
+      await oracleAdapter.connect(emergencySafe).unlock();
 
       const mintAmount = await mApt.calculateMintAmount(
         usdcAmount,
@@ -237,7 +236,7 @@ describe.only("Contract: MetaPoolToken", () => {
       const totalSupply = tokenAmountToBigNumber(21);
       await mApt.connect(poolManager).mint(randomUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
-      await oracleAdapter.unlock();
+      await oracleAdapter.connect(emergencySafe).unlock();
 
       let mintAmount = await mApt.calculateMintAmount(
         usdcAmount,
@@ -265,7 +264,7 @@ describe.only("Contract: MetaPoolToken", () => {
       const totalSupply = tokenAmountToBigNumber(21);
       await mApt.connect(poolManager).mint(randomUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
-      await oracleAdapter.unlock();
+      await oracleAdapter.connect(emergencySafe).unlock();
 
       let poolAmount = await mApt.calculatePoolAmount(
         totalSupply,
@@ -302,7 +301,7 @@ describe.only("Contract: MetaPoolToken", () => {
       let expectedPoolAmount = expectedPoolValue.mul(usdc(1)).div(usdcUsdPrice);
       await mApt.connect(poolManager).mint(randomUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
-      await oracleAdapter.unlock();
+      await oracleAdapter.connect(emergencySafe).unlock();
 
       let poolAmount = await mApt.calculatePoolAmount(
         mAptAmount,
