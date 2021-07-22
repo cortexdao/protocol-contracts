@@ -20,6 +20,7 @@ describe.only("Contract: OracleAdapter", () => {
   let deployer;
   let emergencySafe;
   let adminSafe;
+  let mApt;
   let tvlManager;
   let randomUser;
   let accounts;
@@ -70,6 +71,7 @@ describe.only("Contract: OracleAdapter", () => {
 
     mAptMock = await deployMockContract(deployer, IERC20.abi);
     await addressRegistryMock.mock.mAptAddress.returns(mAptMock.address);
+    mApt = await ethers.getSigner(mAptMock.address);
 
     // These registered addresses are setup for roles in the
     // constructor for OracleAdapter
@@ -162,9 +164,11 @@ describe.only("Contract: OracleAdapter", () => {
     it("Contract role given to Pool Manager", async () => {
       const CONTRACT_ROLE = await oracleAdapter.CONTRACT_ROLE();
       const memberCount = await oracleAdapter.getRoleMemberCount(CONTRACT_ROLE);
-      expect(memberCount).to.equal(1);
+      expect(memberCount).to.equal(2);
       expect(await oracleAdapter.hasRole(CONTRACT_ROLE, tvlManager.address)).to
         .be.true;
+      expect(await oracleAdapter.hasRole(CONTRACT_ROLE, mAptMock.address)).to.be
+        .true;
     });
 
     it("Emergency role given to Emergency Safe", async () => {
@@ -201,21 +205,23 @@ describe.only("Contract: OracleAdapter", () => {
   describe("setTvlSource", () => {
     it("Cannot set to non-contract address", async () => {
       await expect(
-        oracleAdapter.connect(deployer).setTvlSource(FAKE_ADDRESS)
+        oracleAdapter.connect(emergencySafe).setTvlSource(FAKE_ADDRESS)
       ).to.be.revertedWith("INVALID_SOURCE");
     });
 
-    it("Owner can set", async () => {
+    it("Emergency role can set", async () => {
       const dummyContract = await deployMockContract(deployer, []);
-      await oracleAdapter.connect(deployer).setTvlSource(dummyContract.address);
+      await oracleAdapter
+        .connect(emergencySafe)
+        .setTvlSource(dummyContract.address);
       expect(await oracleAdapter.tvlSource()).to.equal(dummyContract.address);
     });
 
-    it("Revert when non-owner calls", async () => {
+    it("Revert when unpermissioned calls", async () => {
       const dummyContract = await deployMockContract(deployer, []);
       await expect(
         oracleAdapter.connect(randomUser).setTvlSource(dummyContract.address)
-      ).to.be.reverted;
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
   });
 
@@ -224,200 +230,161 @@ describe.only("Contract: OracleAdapter", () => {
       const assets = [FAKE_ADDRESS];
       const sources = [ANOTHER_FAKE_ADDRESS];
       await expect(
-        oracleAdapter.connect(deployer).setAssetSources(assets, sources)
+        oracleAdapter.connect(emergencySafe).setAssetSources(assets, sources)
       ).to.be.revertedWith("INVALID_SOURCE");
     });
 
-    it("Owner can set", async () => {
+    it("Emergency role can set", async () => {
       const assets = [FAKE_ADDRESS];
       const dummyContract = await deployMockContract(deployer, []);
       const sources = [dummyContract.address];
 
-      await oracleAdapter.connect(deployer).setAssetSources(assets, sources);
+      await oracleAdapter
+        .connect(emergencySafe)
+        .setAssetSources(assets, sources);
       expect(await oracleAdapter.assetSources(FAKE_ADDRESS)).to.equal(
         dummyContract.address
       );
     });
 
-    it("Revert when non-owner calls", async () => {
+    it("Revert when unpermissioned calls", async () => {
       const assets = [FAKE_ADDRESS];
       const dummyContract = await deployMockContract(deployer, []);
       const sources = [dummyContract.address];
 
       await expect(
         oracleAdapter.connect(randomUser).setAssetSources(assets, sources)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
   });
 
   describe("setChainlinkStalePeriod", () => {
     it("Cannot set to 0", async () => {
       await expect(
-        oracleAdapter.connect(deployer).setChainlinkStalePeriod(0)
+        oracleAdapter.connect(adminSafe).setChainlinkStalePeriod(0)
       ).to.be.revertedWith("INVALID_STALE_PERIOD");
     });
 
-    it("Owner can set", async () => {
+    it("Admin role can set", async () => {
       const period = 100;
-      await oracleAdapter.connect(deployer).setChainlinkStalePeriod(period);
+      await oracleAdapter.connect(adminSafe).setChainlinkStalePeriod(period);
     });
 
-    it("Revert when non-owner calls", async () => {
+    it("Revert when unpermissioned calls", async () => {
       await expect(
         oracleAdapter.connect(randomUser).setChainlinkStalePeriod(14400)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.revertedWith("NOT_ADMIN_ROLE");
     });
   });
 
   describe("setDefaultLockPeriod", () => {
-    it("revert when non-owner calls", async () => {
+    it("revert when unpermissioned calls", async () => {
       const period = 100;
       await expect(
         oracleAdapter.connect(randomUser).setDefaultLockPeriod(period)
-      ).to.be.revertedWith("caller is not the owner");
+      ).to.be.revertedWith("NOT_ADMIN_ROLE");
     });
 
-    it("Owner can set", async () => {
+    it("Admin role can call", async () => {
       const period = 100;
-      await expect(oracleAdapter.connect(deployer).setDefaultLockPeriod(period))
-        .to.not.be.reverted;
+      await expect(
+        oracleAdapter.connect(adminSafe).setDefaultLockPeriod(period)
+      ).to.not.be.reverted;
       expect(await oracleAdapter.defaultLockPeriod()).to.equal(period);
     });
   });
 
   describe("lock", () => {
-    let mApt;
-    let tvlManager;
-
-    beforeEach("Setup permissioned list", async () => {
-      // permissioned list is owner, mApt, tvlManager
-      [mApt, tvlManager] = accounts;
-      await addressRegistryMock.mock.mAptAddress.returns(mApt.address);
-      await addressRegistryMock.mock.tvlManagerAddress.returns(
-        tvlManager.address
-      );
-    });
-
     it("revert when non-permissioned calls", async () => {
       await expect(oracleAdapter.connect(randomUser).lock()).to.be.revertedWith(
-        "PERMISSIONED_ONLY"
+        "NOT_CONTRACT_ROLE"
       );
     });
 
-    it("Permissioned can call", async () => {
-      const lockEndBefore = await oracleAdapter.lockEnd();
+    it("Contract role can call", async () => {
       await expect(oracleAdapter.connect(mApt).lock()).to.not.be.reverted;
-      const lockEndAfter = await oracleAdapter.lockEnd();
-      expect(lockEndAfter.toNumber()).greaterThan(lockEndBefore.toNumber());
+      await expect(oracleAdapter.connect(tvlManager).lock()).to.not.be.reverted;
     });
   });
 
   describe("unlock", () => {
-    let mApt;
-    let tvlManager;
-
-    beforeEach("Setup permissioned list", async () => {
-      // permissioned list is owner, mApt, tvlManager
-      [mApt, tvlManager] = accounts;
-      await addressRegistryMock.mock.mAptAddress.returns(mApt.address);
-      await addressRegistryMock.mock.tvlManagerAddress.returns(
-        tvlManager.address
-      );
-    });
-
     it("revert when non-permissioned calls", async () => {
-      await oracleAdapter.connect(deployer).lock();
       await expect(
         oracleAdapter.connect(randomUser).unlock()
-      ).to.be.revertedWith("PERMISSIONED_ONLY");
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
 
-    it("Permissioned can call", async () => {
-      await oracleAdapter.connect(deployer).lock();
-      const lockEndBefore = await oracleAdapter.lockEnd();
-      await expect(oracleAdapter.connect(mApt).unlock()).to.not.be.reverted;
-      const lockEndAfter = await oracleAdapter.lockEnd();
-      expect(lockEndAfter.toNumber()).lessThan(lockEndBefore.toNumber());
+    it("Emergency role can call", async () => {
+      await expect(oracleAdapter.connect(emergencySafe).unlock()).to.not.be
+        .reverted;
     });
   });
 
   describe("lockFor / isLocked", () => {
-    let mApt;
-    let tvlManager;
-    const period = 1;
+    const period = 10;
 
-    beforeEach("Setup permissioned list", async () => {
-      // permissioned list is owner, mApt, tvlManager
-      [mApt, tvlManager] = accounts;
-      await addressRegistryMock.mock.mAptAddress.returns(mApt.address);
-      await addressRegistryMock.mock.tvlManagerAddress.returns(
-        tvlManager.address
-      );
-    });
-
-    it("Permissioned can set", async () => {
-      // owner
-      await oracleAdapter.connect(deployer).lockFor(period);
+    it("Contract role can set", async () => {
+      await expect(oracleAdapter.connect(mApt).lockFor(period)).to.not.be
+        .reverted;
       expect(await oracleAdapter.isLocked()).to.be.true;
 
-      // mAPT
-      await oracleAdapter.connect(mApt).lockFor(period);
-      expect(await oracleAdapter.isLocked()).to.be.true;
-
-      // TVL manager
-      await oracleAdapter.connect(tvlManager).lockFor(period);
+      await expect(oracleAdapter.connect(tvlManager).lockFor(period)).to.not.be
+        .reverted;
       expect(await oracleAdapter.isLocked()).to.be.true;
     });
 
     it("Revert when non-permissioned calls", async () => {
       await expect(
-        oracleAdapter.connect(randomUser).lockFor(0)
-      ).to.be.revertedWith("PERMISSIONED_ONLY");
+        oracleAdapter.connect(randomUser).lockFor(period)
+      ).to.be.revertedWith("NOT_CONTRACT_ROLE");
     });
 
-    it("Can unlock", async () => {
-      await oracleAdapter.connect(deployer).lockFor(0);
-      expect(await oracleAdapter.isLocked()).to.be.false;
+    it("Cannot shorten locking period", async () => {
+      await oracleAdapter.connect(mApt).lockFor(period);
+      await expect(oracleAdapter.connect(mApt).lockFor(0)).to.be.revertedWith(
+        "CANNOT_SHORTEN_LOCK"
+      );
     });
   });
 
   describe("setTvl", () => {
-    it("Owner can set", async () => {
+    it("Emergency role can set", async () => {
       const value = 1;
       const period = 5;
-      await expect(oracleAdapter.connect(deployer).setTvl(value, period)).to.not
-        .be.reverted;
+      await expect(oracleAdapter.connect(emergencySafe).setTvl(value, period))
+        .to.not.be.reverted;
     });
 
-    it("Revert when non-owner calls", async () => {
+    it("Revert when unpermissioned calls", async () => {
       const value = 1;
       const period = 5;
       await expect(
         oracleAdapter.connect(randomUser).setTvl(value, period)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
   });
 
   describe("unsetTvl", () => {
     it("Revert when TVL has not been set", async () => {
       expect(await oracleAdapter.hasTvlOverride()).to.be.false;
-      await expect(oracleAdapter.connect(deployer).unsetTvl()).to.be.reverted;
-    });
-
-    it("Owner can unset", async () => {
-      const value = 1;
-      const period = 5;
-      await oracleAdapter.connect(deployer).setTvl(value, period);
-      expect(await oracleAdapter.hasTvlOverride()).to.be.true;
-
-      await expect(oracleAdapter.connect(deployer).unsetTvl()).to.not.be
+      await expect(oracleAdapter.connect(emergencySafe).unsetTvl()).to.be
         .reverted;
     });
 
-    it("Revert when non-owner calls", async () => {
+    it("Emergency role can unset", async () => {
       const value = 1;
       const period = 5;
-      await oracleAdapter.connect(deployer).setTvl(value, period);
+      await oracleAdapter.connect(emergencySafe).setTvl(value, period);
+      expect(await oracleAdapter.hasTvlOverride()).to.be.true;
+
+      await expect(oracleAdapter.connect(emergencySafe).unsetTvl()).to.not.be
+        .reverted;
+    });
+
+    it("Revert when unpermissioned calls", async () => {
+      const value = 1;
+      const period = 5;
+      await oracleAdapter.connect(emergencySafe).setTvl(value, period);
       await expect(
         oracleAdapter.connect(randomUser).unsetTvl()
       ).to.be.revertedWith("Ownable: caller is not the owner");
@@ -425,24 +392,24 @@ describe.only("Contract: OracleAdapter", () => {
   });
 
   describe("setAssetValue", () => {
-    it("Owner can set", async () => {
+    it("Emergency role can set", async () => {
       const value = 1;
       const period = 5;
       await expect(
         oracleAdapter
-          .connect(deployer)
+          .connect(emergencySafe)
           .setAssetValue(assetAddress_1, value, period)
       ).to.not.be.reverted;
     });
 
-    it("Revert when non-owner calls", async () => {
+    it("Revert when unpermissioned calls", async () => {
       const value = 1;
       const period = 5;
       await expect(
         oracleAdapter
           .connect(randomUser)
           .setAssetValue(assetAddress_1, value, period)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
   });
 
@@ -454,25 +421,25 @@ describe.only("Contract: OracleAdapter", () => {
       ).to.be.reverted;
     });
 
-    it("Owner can unset", async () => {
+    it("Emergency role can unset", async () => {
       const value = 1;
       const period = 5;
       await oracleAdapter
-        .connect(deployer)
+        .connect(emergencySafe)
         .setAssetValue(assetAddress_1, value, period);
       expect(await oracleAdapter.hasAssetOverride(assetAddress_1)).to.be.true;
 
       await expect(
-        oracleAdapter.connect(deployer).unsetAssetValue(assetAddress_1)
+        oracleAdapter.connect(emergencySafe).unsetAssetValue(assetAddress_1)
       ).to.not.be.reverted;
       expect(await oracleAdapter.hasAssetOverride(assetAddress_1)).to.be.false;
     });
 
-    it("Revert when non-owner calls", async () => {
+    it("Revert when unpermissioned calls", async () => {
       const value = 1;
       const period = 5;
       await oracleAdapter
-        .connect(deployer)
+        .connect(emergencySafe)
         .setAssetValue(assetAddress_1, value, period);
       await expect(
         oracleAdapter.connect(randomUser).unsetAssetValue(assetAddress_1)
