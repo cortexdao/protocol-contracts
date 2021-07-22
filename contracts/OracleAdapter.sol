@@ -126,7 +126,9 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
     }
 
     function lockFor(uint256 activePeriod) public override onlyContractRole {
-        lockEnd = block.number.add(activePeriod);
+        uint256 oldLockEnd = lockEnd;
+        _lockFor(activePeriod);
+        require(lockEnd > oldLockEnd, "CANNOT_SHORTEN_LOCK");
     }
 
     /**
