@@ -23,7 +23,6 @@ describe.only("Contract: OracleAdapter", () => {
   let mApt;
   let tvlManager;
   let randomUser;
-  let accounts;
 
   // contract factories
   let OracleAdapter;
@@ -33,7 +32,6 @@ describe.only("Contract: OracleAdapter", () => {
 
   // mocks and constants
   let addressRegistryMock;
-  let mAptMock;
   let tvlAggMock;
   let assetAggMock_1;
   let assetAggMock_2;
@@ -59,9 +57,9 @@ describe.only("Contract: OracleAdapter", () => {
       deployer,
       emergencySafe,
       adminSafe,
+      mApt,
       tvlManager,
       randomUser,
-      ...accounts
     ] = await ethers.getSigners();
 
     addressRegistryMock = await deployMockContract(
@@ -69,9 +67,7 @@ describe.only("Contract: OracleAdapter", () => {
       IAddressRegistryV2.abi
     );
 
-    mAptMock = await deployMockContract(deployer, IERC20.abi);
-    await addressRegistryMock.mock.mAptAddress.returns(mAptMock.address);
-    mApt = await ethers.getSigner(mAptMock.address);
+    await addressRegistryMock.mock.mAptAddress.returns(mApt.address);
 
     // These registered addresses are setup for roles in the
     // constructor for OracleAdapter
@@ -167,7 +163,7 @@ describe.only("Contract: OracleAdapter", () => {
       expect(memberCount).to.equal(2);
       expect(await oracleAdapter.hasRole(CONTRACT_ROLE, tvlManager.address)).to
         .be.true;
-      expect(await oracleAdapter.hasRole(CONTRACT_ROLE, mAptMock.address)).to.be
+      expect(await oracleAdapter.hasRole(CONTRACT_ROLE, mApt.address)).to.be
         .true;
     });
 
@@ -449,6 +445,12 @@ describe.only("Contract: OracleAdapter", () => {
 
   describe("getTvl", () => {
     const usdTvl = tokenAmountToBigNumber("25100123.87654321", "8");
+    let mAptMock;
+
+    beforeEach(async () => {
+      mAptMock = await deployMockContract(deployer, IERC20.abi);
+      await addressRegistryMock.mock.mAptAddress.returns(mAptMock.address);
+    });
 
     it("Revert when TVL is negative", async () => {
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
@@ -506,7 +508,7 @@ describe.only("Contract: OracleAdapter", () => {
 
     it("Revert when locked", async () => {
       const lockPeriod = 10;
-      await oracleAdapter.lockFor(lockPeriod);
+      await oracleAdapter.connect(mApt).lockFor(lockPeriod);
       await expect(oracleAdapter.getTvl()).to.be.revertedWith("ORACLE_LOCKED");
     });
 
@@ -515,7 +517,7 @@ describe.only("Contract: OracleAdapter", () => {
       await tvlAggMock.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
       // set tvlBlockEnd to 2 blocks ahead
       const lockPeriod = 2;
-      await oracleAdapter.lockFor(lockPeriod);
+      await oracleAdapter.connect(mApt).lockFor(lockPeriod);
 
       await timeMachine.advanceBlock();
       await expect(oracleAdapter.getTvl()).to.be.revertedWith("ORACLE_LOCKED");
@@ -527,7 +529,7 @@ describe.only("Contract: OracleAdapter", () => {
       const updatedAt = (await ethers.provider.getBlock()).timestamp;
       await tvlAggMock.mock.latestRoundData.returns(0, usdTvl, 0, updatedAt, 0);
       const lockPeriod = 100;
-      await oracleAdapter.lockFor(lockPeriod);
+      await oracleAdapter.connect(mApt).lockFor(lockPeriod);
 
       await expect(oracleAdapter.getTvl()).to.be.revertedWith("ORACLE_LOCKED");
 
@@ -550,14 +552,16 @@ describe.only("Contract: OracleAdapter", () => {
       );
       expect(await oracleAdapter.getTvl()).to.equal(chainlinkValue);
 
-      await oracleAdapter.lockFor(5);
+      await oracleAdapter.connect(mApt).lockFor(5);
       const activePeriod = 2;
-      await oracleAdapter.setTvl(manualValue, activePeriod); // advances 1 block
+      await oracleAdapter
+        .connect(emergencySafe)
+        .setTvl(manualValue, activePeriod); // advances 1 block
 
       // TVL lock takes precedence over manual submission
       await expect(oracleAdapter.getTvl()).to.be.reverted;
 
-      await oracleAdapter.unlock(); // unlock; advances 1 block
+      await oracleAdapter.connect(emergencySafe).unlock(); // unlock; advances 1 block
       // Manual submission takes precedence over Chainlink
       expect(await oracleAdapter.getTvl()).to.equal(manualValue);
 
@@ -625,7 +629,7 @@ describe.only("Contract: OracleAdapter", () => {
 
     it("Revert when locked", async () => {
       const lockPeriod = 10;
-      await oracleAdapter.lockFor(lockPeriod);
+      await oracleAdapter.connect(mApt).lockFor(lockPeriod);
       await expect(
         oracleAdapter.getAssetPrice(assetAddress_1)
       ).to.be.revertedWith("ORACLE_LOCKED");
@@ -642,7 +646,7 @@ describe.only("Contract: OracleAdapter", () => {
       );
       // set tvlBlockEnd to 2 blocks ahead
       const lockPeriod = 2;
-      await oracleAdapter.lockFor(lockPeriod);
+      await oracleAdapter.connect(mApt).lockFor(lockPeriod);
 
       await timeMachine.advanceBlock();
       await expect(
@@ -663,13 +667,13 @@ describe.only("Contract: OracleAdapter", () => {
         0
       );
       const lockPeriod = 100;
-      await oracleAdapter.lockFor(lockPeriod);
+      await oracleAdapter.connect(mApt).lockFor(lockPeriod);
 
       await expect(
         oracleAdapter.getAssetPrice(assetAddress_1)
       ).to.be.revertedWith("ORACLE_LOCKED");
 
-      await oracleAdapter.unlock();
+      await oracleAdapter.connect(emergencySafe).unlock();
       await expect(oracleAdapter.getAssetPrice(assetAddress_1)).to.not.be
         .reverted;
     });
@@ -691,7 +695,7 @@ describe.only("Contract: OracleAdapter", () => {
         chainlinkValue
       );
 
-      await oracleAdapter.lockFor(5);
+      await oracleAdapter.connect(mApt).lockFor(5);
       const activePeriod = 2;
       await oracleAdapter.setAssetValue(
         assetAddress_1,
@@ -702,7 +706,7 @@ describe.only("Contract: OracleAdapter", () => {
       // TVL lock takes precedence over manual submission
       await expect(oracleAdapter.getAssetPrice(assetAddress_1)).to.be.reverted;
 
-      await oracleAdapter.unlock(); // unlock; advances 1 block
+      await oracleAdapter.connect(emergencySafe).unlock(); // unlock; advances 1 block
       // Manual submission takes precedence over Chainlink
       expect(await oracleAdapter.getAssetPrice(assetAddress_1)).to.equal(
         manualValue
