@@ -9,6 +9,7 @@ const {
   ANOTHER_FAKE_ADDRESS,
   acquireToken,
   console,
+  bytes32,
 } = require("../utils/helpers");
 const { BigNumber } = require("ethers");
 
@@ -27,12 +28,15 @@ const usdc = (amount) => tokenAmountToBigNumber(amount, "6");
 console.debugging = false;
 /* ************************ */
 
-describe("Contract: MetaPoolToken", () => {
+describe.only("Contract: MetaPoolToken", () => {
   // accounts
   let deployer;
-  let manager;
-  let randomUser;
+  let poolManager;
+  let tvlManager;
+  let emergencySafe;
+  let adminSafe;
   let oracle;
+  let randomUser;
 
   // deployed contracts
   let proxyAdmin;
@@ -57,7 +61,15 @@ describe("Contract: MetaPoolToken", () => {
   });
 
   before(async () => {
-    [deployer, manager, oracle, randomUser] = await ethers.getSigners();
+    [
+      deployer,
+      poolManager,
+      tvlManager,
+      emergencySafe,
+      adminSafe,
+      oracle,
+      randomUser,
+    ] = await ethers.getSigners();
 
     const paymentAmount = link("1");
     const maxSubmissionValue = tokenAmountToBigNumber("1", "20");
@@ -79,21 +91,30 @@ describe("Contract: MetaPoolToken", () => {
       deployer,
       artifacts.require("IAddressRegistryV2").abi
     );
-    await addressRegistry.mock.poolManagerAddress.returns(manager.address);
-
-    const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
-    oracleAdapter = await OracleAdapter.deploy(
-      addressRegistry.address,
-      tvlAgg.address,
-      [],
-      [],
-      86400,
-      86400
-    );
-    await oracleAdapter.deployed();
-    await addressRegistry.mock.oracleAdapterAddress.returns(
-      oracleAdapter.address
-    );
+    /* The address registry needs multiple addresses registered
+     * to setup the roles for access control in the contract
+     * constructors:
+     *
+     * MetaPoolToken
+     * - poolManager (contract role)
+     * - emergencySafe (emergency role, default admin role)
+     *
+     * OracleAdapter
+     * - tvlManager (contract role)
+     * - mApt (contract role)
+     * - adminSafe (admin role)
+     * - emergencySafe (emergency role, default admin role)
+     *
+     * mApt is added below after deployment.
+     */
+    await addressRegistry.mock.poolManagerAddress.returns(poolManager.address);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("emergencySafe"))
+      .returns(emergencySafe.address);
+    await addressRegistry.mock.tvlManagerAddress.returns(tvlManager.address);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("adminSafe"))
+      .returns(adminSafe.address);
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     const MetaPoolTokenProxy = await ethers.getContractFactory(
@@ -114,6 +135,22 @@ describe("Contract: MetaPoolToken", () => {
     mApt = await MetaPoolToken.attach(proxy.address);
 
     await addressRegistry.mock.mAptAddress.returns(mApt.address);
+
+    // oracle adapter needs to be deployed after mAPT due to dependency
+    // on AddressRegistryV2.mAptAddress in constructor
+    const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
+    oracleAdapter = await OracleAdapter.deploy(
+      addressRegistry.address,
+      tvlAgg.address,
+      [],
+      [],
+      86400,
+      270
+    );
+    await oracleAdapter.deployed();
+    await addressRegistry.mock.oracleAdapterAddress.returns(
+      oracleAdapter.address
+    );
   });
 
   describe("getDeployedValue", async () => {
@@ -124,7 +161,7 @@ describe("Contract: MetaPoolToken", () => {
 
     it("Return 0 if zero mAPT balance", async () => {
       await mApt
-        .connect(manager)
+        .connect(poolManager)
         .mint(FAKE_ADDRESS, tokenAmountToBigNumber(1000));
       expect(await mApt.getDeployedValue(ANOTHER_FAKE_ADDRESS)).to.equal("0");
     });
@@ -135,8 +172,10 @@ describe("Contract: MetaPoolToken", () => {
       const anotherBalance = tokenAmountToBigNumber("12345");
       const totalSupply = balance.add(anotherBalance);
 
-      await mApt.connect(manager).mint(FAKE_ADDRESS, balance);
-      await mApt.connect(manager).mint(ANOTHER_FAKE_ADDRESS, anotherBalance);
+      await mApt.connect(poolManager).mint(FAKE_ADDRESS, balance);
+      await mApt
+        .connect(poolManager)
+        .mint(ANOTHER_FAKE_ADDRESS, anotherBalance);
       await tvlAgg.connect(oracle).submit(1, tvl);
 
       const expectedEthValue = tvl.mul(balance).div(totalSupply);
@@ -154,7 +193,7 @@ describe("Contract: MetaPoolToken", () => {
       let usdcValue = usdcUsdPrice.mul(usdcAmount).div(usdc(1));
 
       await mApt
-        .connect(manager)
+        .connect(poolManager)
         .mint(randomUser.address, tokenAmountToBigNumber(100));
 
       // manually set TVL to zero
@@ -196,7 +235,7 @@ describe("Contract: MetaPoolToken", () => {
       let tvl = usdcUsdPrice.mul(usdcAmount).div(usdc(1));
 
       const totalSupply = tokenAmountToBigNumber(21);
-      await mApt.connect(manager).mint(randomUser.address, totalSupply);
+      await mApt.connect(poolManager).mint(randomUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
       await oracleAdapter.unlock();
 
@@ -224,7 +263,7 @@ describe("Contract: MetaPoolToken", () => {
       const tvl = usdcUsdPrice.mul(usdcAmount).div(usdc(1));
 
       const totalSupply = tokenAmountToBigNumber(21);
-      await mApt.connect(manager).mint(randomUser.address, totalSupply);
+      await mApt.connect(poolManager).mint(randomUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
       await oracleAdapter.unlock();
 
@@ -261,7 +300,7 @@ describe("Contract: MetaPoolToken", () => {
       let mAptAmount = tokenAmountToBigNumber(10);
       let expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
       let expectedPoolAmount = expectedPoolValue.mul(usdc(1)).div(usdcUsdPrice);
-      await mApt.connect(manager).mint(randomUser.address, totalSupply);
+      await mApt.connect(poolManager).mint(randomUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
       await oracleAdapter.unlock();
 
