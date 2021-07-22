@@ -15,7 +15,7 @@ const IERC20 = artifacts.require(
   "@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20"
 );
 
-describe.only("Contract: OracleAdapter", () => {
+describe("Contract: OracleAdapter", () => {
   // signers
   let deployer;
   let emergencySafe;
@@ -274,7 +274,7 @@ describe.only("Contract: OracleAdapter", () => {
   });
 
   describe("setDefaultLockPeriod", () => {
-    it("revert when unpermissioned calls", async () => {
+    it("Revert when unpermissioned calls", async () => {
       const period = 100;
       await expect(
         oracleAdapter.connect(randomUser).setDefaultLockPeriod(period)
@@ -291,7 +291,7 @@ describe.only("Contract: OracleAdapter", () => {
   });
 
   describe("lock", () => {
-    it("revert when non-permissioned calls", async () => {
+    it("Revert when non-permissioned calls", async () => {
       await expect(oracleAdapter.connect(randomUser).lock()).to.be.revertedWith(
         "NOT_CONTRACT_ROLE"
       );
@@ -304,7 +304,7 @@ describe.only("Contract: OracleAdapter", () => {
   });
 
   describe("unlock", () => {
-    it("revert when non-permissioned calls", async () => {
+    it("Revert when non-permissioned calls", async () => {
       await expect(
         oracleAdapter.connect(randomUser).unlock()
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
@@ -317,7 +317,7 @@ describe.only("Contract: OracleAdapter", () => {
   });
 
   describe("lockFor / isLocked", () => {
-    const period = 10;
+    const period = 100;
 
     it("Contract role can set", async () => {
       await expect(oracleAdapter.connect(mApt).lockFor(period)).to.not.be
@@ -337,9 +337,9 @@ describe.only("Contract: OracleAdapter", () => {
 
     it("Cannot shorten locking period", async () => {
       await oracleAdapter.connect(mApt).lockFor(period);
-      await expect(oracleAdapter.connect(mApt).lockFor(0)).to.be.revertedWith(
-        "CANNOT_SHORTEN_LOCK"
-      );
+      await expect(
+        oracleAdapter.connect(mApt).lockFor(period - 1)
+      ).to.be.revertedWith("CANNOT_SHORTEN_LOCK");
     });
   });
 
@@ -383,7 +383,7 @@ describe.only("Contract: OracleAdapter", () => {
       await oracleAdapter.connect(emergencySafe).setTvl(value, period);
       await expect(
         oracleAdapter.connect(randomUser).unsetTvl()
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
   });
 
@@ -439,7 +439,7 @@ describe.only("Contract: OracleAdapter", () => {
         .setAssetValue(assetAddress_1, value, period);
       await expect(
         oracleAdapter.connect(randomUser).unsetAssetValue(assetAddress_1)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
   });
 
@@ -533,7 +533,7 @@ describe.only("Contract: OracleAdapter", () => {
 
       await expect(oracleAdapter.getTvl()).to.be.revertedWith("ORACLE_LOCKED");
 
-      await oracleAdapter.unlock();
+      await oracleAdapter.connect(emergencySafe).unlock();
       await expect(oracleAdapter.getTvl()).to.not.be.reverted;
     });
 
@@ -697,11 +697,9 @@ describe.only("Contract: OracleAdapter", () => {
 
       await oracleAdapter.connect(mApt).lockFor(5);
       const activePeriod = 2;
-      await oracleAdapter.setAssetValue(
-        assetAddress_1,
-        manualValue,
-        activePeriod
-      ); // advances 1 block
+      await oracleAdapter
+        .connect(emergencySafe)
+        .setAssetValue(assetAddress_1, manualValue, activePeriod); // advances 1 block
 
       // TVL lock takes precedence over manual submission
       await expect(oracleAdapter.getAssetPrice(assetAddress_1)).to.be.reverted;
