@@ -2,7 +2,9 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/proxy/TransparentUpgradeableProxy.sol";
+import {
+    TransparentUpgradeableProxy
+} from "@openzeppelin/contracts/proxy/TransparentUpgradeableProxy.sol";
 
 contract PoolManagerProxy is TransparentUpgradeableProxy {
     constructor(

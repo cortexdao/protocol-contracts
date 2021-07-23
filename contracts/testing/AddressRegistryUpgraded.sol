@@ -2,7 +2,7 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "../AddressRegistry.sol";
+import {AddressRegistry} from "../AddressRegistry.sol";
 
 contract AddressRegistryUpgraded is AddressRegistry {
     bool public newlyAddedVariable;

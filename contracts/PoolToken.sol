@@ -2,16 +2,32 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
-import "./interfaces/ILiquidityPool.sol";
-import "./interfaces/IDetailedERC20.sol";
+import {
+    OwnableUpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
+import {
+    ReentrancyGuardUpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
+import {
+    PausableUpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
+import {
+    Initializable
+} from "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
+import {
+    SafeERC20
+} from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
+import {
+    ERC20UpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
+import {
+    SafeMath
+} from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import {
+    AggregatorV3Interface
+} from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
+import {ILiquidityPool} from "./interfaces/ILiquidityPool.sol";
+import {IDetailedERC20} from "./interfaces/IDetailedERC20.sol";
 
 contract PoolToken is
     ILiquidityPool,

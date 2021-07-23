@@ -2,10 +2,10 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import {ECDSA} from "@openzeppelin/contracts/cryptography/ECDSA.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract RewardDistributor is Ownable {
     using ECDSA for bytes32;
@@ -85,7 +85,7 @@ contract RewardDistributor is Ownable {
         emit Claimed(recipient.nonce, recipient.wallet, recipient.amount);
     }
 
-    function _hash(Recipient memory recipient) private returns (bytes32) {
+    function _hash(Recipient memory recipient) private view returns (bytes32) {
         return
             keccak256(
                 abi.encodePacked(
@@ -96,7 +96,7 @@ contract RewardDistributor is Ownable {
             );
     }
 
-    function _getChainID() private view returns (uint256) {
+    function _getChainID() private pure returns (uint256) {
         uint256 id;
         // no-inline-assembly
         assembly {
