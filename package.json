@@ -12,7 +12,7 @@
     "test:integration": "ENABLE_FORKING=true hardhat test test-integration/*",
     "lint": "solhint contracts/**/*.sol contracts/*.sol",
     "coverage": "yarn clean; ENABLE_FORKING=true hardhat coverage --testfiles \"test-{unit,integration}/**/*.js\"",
-    "dot-only": "yarn dot-only-hunter test-unit; yarn dot-only-hunter test-integration",
+    "dot-only": "yarn dot-only-hunter test-unit && yarn dot-only-hunter test-integration",
     "emergency:withdraw": "yarn hardhat --network localhost run scripts/EmergencyAPYWithdraw.js"
   },
   "husky": {
