@@ -36,7 +36,7 @@ const APY_USDT_POOL = "0xeA9c5a2717D5Ab75afaAC340151e73a7e37d99A7";
 console.debugging = false;
 /* ************************ */
 
-describe.only("Contract: PoolManager", () => {
+describe("Contract: PoolManager", () => {
   // to-be-deployed contracts
   let poolManager;
   let tvlManager;
@@ -391,25 +391,25 @@ describe.only("Contract: PoolManager", () => {
     const usdcAmount = tokenAmountToBigNumber(dollars, 6);
     const usdtAmount = tokenAmountToBigNumber(dollars, 6);
 
-    it("Non-owner cannot call", async () => {
+    it("Unpermissioned cannot call", async () => {
       await expect(
         poolManager.connect(randomUser).fundLpSafe([])
-      ).to.be.revertedWith("revert Ownable: caller is not the owner");
+      ).to.be.revertedWith("NOT_LP_ROLE");
     });
 
-    it("Owner can call", async () => {
-      await expect(poolManager.connect(deployer).fundLpSafe([])).to.not.be
+    it("LP role can call", async () => {
+      await expect(poolManager.connect(lpSafe).fundLpSafe([])).to.not.be
         .reverted;
     });
 
     it("Revert on missing LP Safe address", async () => {
       await addressRegistry.deleteAddress(bytes32("lpSafe"));
-      await expect(poolManager.connect(deployer).fundLpSafe([])).to.be.reverted;
+      await expect(poolManager.connect(lpSafe).fundLpSafe([])).to.be.reverted;
     });
 
     it("Revert on unregistered pool", async () => {
       await expect(
-        poolManager.fundLpSafe([
+        poolManager.connect(lpSafe).fundLpSafe([
           { poolId: bytes32("daiPool"), amount: 10 },
           { poolId: bytes32("invalidPoolId"), amount: 10 },
           { poolId: bytes32("usdtPool"), amount: 10 },
@@ -420,7 +420,7 @@ describe.only("Contract: PoolManager", () => {
     it("Revert on zero amount", async () => {
       await expect(
         poolManager
-          .connect(deployer)
+          .connect(lpSafe)
           .fundLpSafe([{ poolId: bytes32("usdcPool"), amount: 0 }])
       ).to.be.revertedWith("INVALID_AMOUNT");
     });
@@ -437,9 +437,9 @@ describe.only("Contract: PoolManager", () => {
 
       const daiPoolMintAmount = await getMintAmount(daiPool, daiAmount);
 
-      await poolManager.fundLpSafe([
-        { poolId: bytes32("daiPool"), amount: daiAmount },
-      ]);
+      await poolManager
+        .connect(lpSafe)
+        .fundLpSafe([{ poolId: bytes32("daiPool"), amount: daiAmount }]);
 
       const strategyDaiBalance = await daiToken.balanceOf(lpSafeAddress);
 
@@ -502,7 +502,7 @@ describe.only("Contract: PoolManager", () => {
       const usdcPoolMintAmount = await getMintAmount(usdcPool, usdcAmount);
       const usdtPoolMintAmount = await getMintAmount(usdtPool, usdtAmount);
 
-      await poolManager.fundLpSafe([
+      await poolManager.connect(lpSafe).fundLpSafe([
         { poolId: bytes32("daiPool"), amount: daiAmount },
         { poolId: bytes32("usdcPool"), amount: usdcAmount },
         { poolId: bytes32("usdtPool"), amount: usdtAmount },
@@ -599,18 +599,17 @@ describe.only("Contract: PoolManager", () => {
 
     it("Second funding updates balances (single pool)", async () => {
       // pre-conditions
-      await poolManager.fundLpSafe([
-        { poolId: bytes32("daiPool"), amount: daiAmount },
-      ]);
+      await poolManager
+        .connect(lpSafe)
+        .fundLpSafe([{ poolId: bytes32("daiPool"), amount: daiAmount }]);
       expect(await daiToken.balanceOf(lpSafeAddress)).to.be.gt(0);
       expect(await mApt.totalSupply()).to.be.gt(0);
 
       // adjust the TVL appropriately, as there is no Chainlink to update it
-      await oracleAdapter.unlock(); // needed to get value
+      await oracleAdapter.connect(emergencySafe).unlock(); // needed to get value
       const tvl = await daiPool.getValueFromUnderlyerAmount(daiAmount);
-      await oracleAdapter.lock();
-      await oracleAdapter.setTvl(tvl, 100);
-      await oracleAdapter.unlock();
+      await oracleAdapter.connect(emergencySafe).setTvl(tvl, 100);
+      await oracleAdapter.connect(emergencySafe).unlock();
 
       /***********************************************/
       /* Test all balances are updated appropriately */
@@ -622,9 +621,9 @@ describe.only("Contract: PoolManager", () => {
       const transferAmount = daiAmount.mul(3);
       const mintAmount = await getMintAmount(daiPool, transferAmount);
 
-      await poolManager.fundLpSafe([
-        { poolId: bytes32("daiPool"), amount: transferAmount },
-      ]);
+      await poolManager
+        .connect(lpSafe)
+        .fundLpSafe([{ poolId: bytes32("daiPool"), amount: transferAmount }]);
 
       const newPoolBalance = await daiToken.balanceOf(daiPool.address);
       const newStrategyBalance = await daiToken.balanceOf(lpSafeAddress);
@@ -642,7 +641,7 @@ describe.only("Contract: PoolManager", () => {
 
     it("Second funding updates balances (multiple pools)", async () => {
       // pre-conditions
-      await poolManager.fundLpSafe([
+      await poolManager.connect(lpSafe).fundLpSafe([
         { poolId: bytes32("daiPool"), amount: daiAmount },
         { poolId: bytes32("usdcPool"), amount: usdcAmount },
         { poolId: bytes32("usdtPool"), amount: usdtAmount },
@@ -653,14 +652,13 @@ describe.only("Contract: PoolManager", () => {
       expect(await mApt.totalSupply()).to.be.gt(0);
 
       // adjust the TVL appropriately, as there is no Chainlink to update it
-      await oracleAdapter.unlock(); // needed to get value
+      await oracleAdapter.connect(emergencySafe).unlock(); // needed to get value
       const daiValue = await daiPool.getValueFromUnderlyerAmount(daiAmount);
       const usdcValue = await usdcPool.getValueFromUnderlyerAmount(usdcAmount);
       const usdtValue = await usdtPool.getValueFromUnderlyerAmount(usdtAmount);
       const tvl = daiValue.add(usdcValue).add(usdtValue);
-      await oracleAdapter.lock();
-      await oracleAdapter.setTvl(tvl, 100);
-      await oracleAdapter.unlock();
+      await oracleAdapter.connect(emergencySafe).setTvl(tvl, 100);
+      await oracleAdapter.connect(emergencySafe).unlock();
 
       /***********************************************/
       /* Test all balances are updated appropriately */
@@ -692,7 +690,7 @@ describe.only("Contract: PoolManager", () => {
         usdtTransferAmount
       );
 
-      await poolManager.fundLpSafe([
+      await poolManager.connect(lpSafe).fundLpSafe([
         { poolId: bytes32("daiPool"), amount: daiTransferAmount },
         { poolId: bytes32("usdcPool"), amount: usdcTransferAmount },
         { poolId: bytes32("usdtPool"), amount: usdtTransferAmount },
@@ -744,36 +742,36 @@ describe.only("Contract: PoolManager", () => {
   });
 
   describe("withdrawFromLpSafe", () => {
-    it("Non-owner cannot call", async () => {
+    it("Unpermissioned cannot call", async () => {
       await expect(
         poolManager.connect(randomUser).withdrawFromLpSafe([])
-      ).to.be.revertedWith("revert Ownable: caller is not the owner");
+      ).to.be.revertedWith("NOT_LP_ROLE");
     });
 
-    it("Owner can call", async () => {
-      await expect(poolManager.connect(deployer).withdrawFromLpSafe([])).to.not
-        .be.reverted;
+    it("LP role can call", async () => {
+      await expect(poolManager.connect(lpSafe).withdrawFromLpSafe([])).to.not.be
+        .reverted;
     });
 
     it("Revert on missing LP Safe address", async () => {
       await addressRegistry.deleteAddress(bytes32("lpSafe"));
       await expect(
-        poolManager.connect(deployer).withdrawFromLpSafe([])
+        poolManager.connect(lpSafe).withdrawFromLpSafe([])
       ).to.be.revertedWith("Missing address");
     });
 
     it("Revert on unregistered pool", async () => {
       await expect(
-        poolManager.withdrawFromLpSafe([
-          { poolId: bytes32("invalidPool"), amount: 10 },
-        ])
+        poolManager
+          .connect(lpSafe)
+          .withdrawFromLpSafe([{ poolId: bytes32("invalidPool"), amount: 10 }])
       ).to.be.revertedWith("Missing address");
     });
 
     it("Revert on zero amount", async () => {
       await expect(
         poolManager
-          .connect(deployer)
+          .connect(lpSafe)
           .withdrawFromLpSafe([{ poolId: bytes32("usdcPool"), amount: 0 }])
       ).to.be.revertedWith("INVALID_AMOUNT");
     });
@@ -785,24 +783,23 @@ describe.only("Contract: PoolManager", () => {
       await daiToken.connect(lpSafe).approve(poolManager.address, 0);
 
       await expect(
-        poolManager.withdrawFromLpSafe([
-          { poolId: bytes32("daiPool"), amount: amount },
-        ])
+        poolManager
+          .connect(lpSafe)
+          .withdrawFromLpSafe([{ poolId: bytes32("daiPool"), amount: amount }])
       ).to.be.revertedWith("INSUFFICIENT_ALLOWANCE");
     });
 
     it("Updates balances correctly (single pool)", async () => {
       const transferAmount = tokenAmountToBigNumber("10", 18);
-      await poolManager.fundLpSafe([
-        { poolId: bytes32("daiPool"), amount: transferAmount },
-      ]);
+      await poolManager
+        .connect(lpSafe)
+        .fundLpSafe([{ poolId: bytes32("daiPool"), amount: transferAmount }]);
 
       // adjust the TVL appropriately, as there is no Chainlink to update it
-      await oracleAdapter.unlock(); // needed to get value
+      await oracleAdapter.connect(emergencySafe).unlock(); // needed to get value
       const tvl = await daiPool.getValueFromUnderlyerAmount(transferAmount);
-      await oracleAdapter.lock();
-      await oracleAdapter.setTvl(tvl, 100);
-      await oracleAdapter.unlock();
+      await oracleAdapter.connect(emergencySafe).setTvl(tvl, 100);
+      await oracleAdapter.connect(emergencySafe).unlock();
 
       const prevSafeBalance = await daiToken.balanceOf(lpSafeAddress);
       const prevPoolBalance = await daiToken.balanceOf(daiPool.address);
@@ -810,9 +807,11 @@ describe.only("Contract: PoolManager", () => {
 
       const burnAmount = await getMintAmount(daiPool, transferAmount);
 
-      await poolManager.withdrawFromLpSafe([
-        { poolId: bytes32("daiPool"), amount: transferAmount },
-      ]);
+      await poolManager
+        .connect(lpSafe)
+        .withdrawFromLpSafe([
+          { poolId: bytes32("daiPool"), amount: transferAmount },
+        ]);
 
       const newSafeBalance = await daiToken.balanceOf(lpSafeAddress);
       const newPoolBalance = await daiToken.balanceOf(daiPool.address);
@@ -832,14 +831,14 @@ describe.only("Contract: PoolManager", () => {
       const daiTransferAmount = tokenAmountToBigNumber("10", 18);
       const usdcTransferAmount = tokenAmountToBigNumber("25", 6);
       const usdtTransferAmount = tokenAmountToBigNumber("8", 6);
-      await poolManager.fundLpSafe([
+      await poolManager.connect(lpSafe).fundLpSafe([
         { poolId: bytes32("daiPool"), amount: daiTransferAmount },
         { poolId: bytes32("usdcPool"), amount: usdcTransferAmount },
         { poolId: bytes32("usdtPool"), amount: usdtTransferAmount },
       ]);
 
       // adjust the TVL appropriately, as there is no Chainlink to update it
-      await oracleAdapter.unlock(); // needed to get value
+      await oracleAdapter.connect(emergencySafe).unlock(); // needed to get value
       const daiValue = await daiPool.getValueFromUnderlyerAmount(
         daiTransferAmount
       );
@@ -850,9 +849,8 @@ describe.only("Contract: PoolManager", () => {
         usdtTransferAmount
       );
       const tvl = daiValue.add(usdcValue).add(usdtValue);
-      await oracleAdapter.lock();
-      await oracleAdapter.setTvl(tvl, 100);
-      await oracleAdapter.unlock();
+      await oracleAdapter.connect(emergencySafe).setTvl(tvl, 100);
+      await oracleAdapter.connect(emergencySafe).unlock();
 
       // DAI
       const prevSafeDaiBalance = await daiToken.balanceOf(lpSafeAddress);
@@ -877,7 +875,7 @@ describe.only("Contract: PoolManager", () => {
         usdtTransferAmount
       );
 
-      await poolManager.withdrawFromLpSafe([
+      await poolManager.connect(lpSafe).withdrawFromLpSafe([
         { poolId: bytes32("daiPool"), amount: daiTransferAmount },
         { poolId: bytes32("usdcPool"), amount: usdcTransferAmount },
         { poolId: bytes32("usdtPool"), amount: usdtTransferAmount },
@@ -949,29 +947,30 @@ describe.only("Contract: PoolManager", () => {
     it("Full withdrawal reverts if TVL not updated", async () => {
       let totalTransferred = tokenAmountToBigNumber(0, 18);
       let transferAmount = daiAmount.div(2);
-      await poolManager.fundLpSafe([
-        { poolId: bytes32("daiPool"), amount: transferAmount },
-      ]);
+      await poolManager
+        .connect(lpSafe)
+        .fundLpSafe([{ poolId: bytes32("daiPool"), amount: transferAmount }]);
       totalTransferred = totalTransferred.add(transferAmount);
 
       // adjust the tvl appropriately, as there is no chainlink to update it
-      await oracleAdapter.unlock(); // needed to get value
+      await oracleAdapter.connect(emergencySafe).unlock(); // needed to get value
       let tvl = await daiPool.getValueFromUnderlyerAmount(transferAmount);
-      await oracleAdapter.lock();
-      await oracleAdapter.setTvl(tvl, 100);
-      await oracleAdapter.unlock();
+      await oracleAdapter.connect(emergencySafe).setTvl(tvl, 100);
+      await oracleAdapter.connect(emergencySafe).unlock();
 
       transferAmount = daiAmount.div(3);
-      await poolManager.fundLpSafe([
-        { poolId: bytes32("daiPool"), amount: transferAmount },
-      ]);
-      await oracleAdapter.unlock();
+      await poolManager
+        .connect(lpSafe)
+        .fundLpSafe([{ poolId: bytes32("daiPool"), amount: transferAmount }]);
+      await oracleAdapter.connect(emergencySafe).unlock();
       totalTransferred = totalTransferred.add(transferAmount);
 
       await expect(
-        poolManager.withdrawFromLpSafe([
-          { poolId: bytes32("daiPool"), amount: totalTransferred },
-        ])
+        poolManager
+          .connect(lpSafe)
+          .withdrawFromLpSafe([
+            { poolId: bytes32("daiPool"), amount: totalTransferred },
+          ])
       ).to.be.revertedWith("ERC20: burn amount exceeds balance");
     });
 
@@ -981,35 +980,35 @@ describe.only("Contract: PoolManager", () => {
 
       let totalTransferred = tokenAmountToBigNumber(0, 18);
       let transferAmount = daiAmount.div(2);
-      await poolManager.fundLpSafe([
-        { poolId: bytes32("daiPool"), amount: transferAmount },
-      ]);
+      await poolManager
+        .connect(lpSafe)
+        .fundLpSafe([{ poolId: bytes32("daiPool"), amount: transferAmount }]);
       totalTransferred = totalTransferred.add(transferAmount);
 
       // adjust the tvl appropriately, as there is no chainlink to update it
-      await oracleAdapter.unlock(); // needed to get value
+      await oracleAdapter.connect(emergencySafe).unlock(); // needed to get value
       let tvl = await daiPool.getValueFromUnderlyerAmount(totalTransferred);
-      await oracleAdapter.lock();
-      await oracleAdapter.setTvl(tvl, 100);
-      await oracleAdapter.unlock();
+      await oracleAdapter.connect(emergencySafe).setTvl(tvl, 100);
+      await oracleAdapter.connect(emergencySafe).unlock();
 
       transferAmount = daiAmount.div(3);
-      await poolManager.fundLpSafe([
-        { poolId: bytes32("daiPool"), amount: transferAmount },
-      ]);
-      await oracleAdapter.unlock();
+      await poolManager
+        .connect(lpSafe)
+        .fundLpSafe([{ poolId: bytes32("daiPool"), amount: transferAmount }]);
+      await oracleAdapter.connect(emergencySafe).unlock();
       totalTransferred = totalTransferred.add(transferAmount);
 
       // adjust the tvl appropriately, as there is no chainlink to update it
-      await oracleAdapter.unlock(); // needed to get value
+      await oracleAdapter.connect(emergencySafe).unlock(); // needed to get value
       tvl = await daiPool.getValueFromUnderlyerAmount(totalTransferred);
-      await oracleAdapter.lock();
-      await oracleAdapter.setTvl(tvl, 100);
-      await oracleAdapter.unlock();
+      await oracleAdapter.connect(emergencySafe).setTvl(tvl, 100);
+      await oracleAdapter.connect(emergencySafe).unlock();
 
-      await poolManager.withdrawFromLpSafe([
-        { poolId: bytes32("daiPool"), amount: totalTransferred },
-      ]);
+      await poolManager
+        .connect(lpSafe)
+        .withdrawFromLpSafe([
+          { poolId: bytes32("daiPool"), amount: totalTransferred },
+        ]);
 
       expect(await mApt.balanceOf(daiPool.address)).to.equal(0);
       expect(await daiToken.balanceOf(daiPool.address)).to.equal(poolBalance);
