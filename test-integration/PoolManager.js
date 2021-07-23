@@ -334,7 +334,6 @@ describe("Contract: PoolManager", () => {
 
     // set default TVL for tests to zero
     await oracleAdapter.connect(emergencySafe).setTvl(0, 100);
-    await oracleAdapter.connect(emergencySafe).unlock();
 
     /*********************************************/
     /* main deployments and upgrades finished 
@@ -609,7 +608,6 @@ describe("Contract: PoolManager", () => {
       await oracleAdapter.connect(emergencySafe).unlock(); // needed to get value
       const tvl = await daiPool.getValueFromUnderlyerAmount(daiAmount);
       await oracleAdapter.connect(emergencySafe).setTvl(tvl, 100);
-      await oracleAdapter.connect(emergencySafe).unlock();
 
       /***********************************************/
       /* Test all balances are updated appropriately */
@@ -658,7 +656,6 @@ describe("Contract: PoolManager", () => {
       const usdtValue = await usdtPool.getValueFromUnderlyerAmount(usdtAmount);
       const tvl = daiValue.add(usdcValue).add(usdtValue);
       await oracleAdapter.connect(emergencySafe).setTvl(tvl, 100);
-      await oracleAdapter.connect(emergencySafe).unlock();
 
       /***********************************************/
       /* Test all balances are updated appropriately */
@@ -799,7 +796,6 @@ describe("Contract: PoolManager", () => {
       await oracleAdapter.connect(emergencySafe).unlock(); // needed to get value
       const tvl = await daiPool.getValueFromUnderlyerAmount(transferAmount);
       await oracleAdapter.connect(emergencySafe).setTvl(tvl, 100);
-      await oracleAdapter.connect(emergencySafe).unlock();
 
       const prevSafeBalance = await daiToken.balanceOf(lpSafeAddress);
       const prevPoolBalance = await daiToken.balanceOf(daiPool.address);
@@ -850,7 +846,6 @@ describe("Contract: PoolManager", () => {
       );
       const tvl = daiValue.add(usdcValue).add(usdtValue);
       await oracleAdapter.connect(emergencySafe).setTvl(tvl, 100);
-      await oracleAdapter.connect(emergencySafe).unlock();
 
       // DAI
       const prevSafeDaiBalance = await daiToken.balanceOf(lpSafeAddress);
@@ -956,7 +951,6 @@ describe("Contract: PoolManager", () => {
       await oracleAdapter.connect(emergencySafe).unlock(); // needed to get value
       let tvl = await daiPool.getValueFromUnderlyerAmount(transferAmount);
       await oracleAdapter.connect(emergencySafe).setTvl(tvl, 100);
-      await oracleAdapter.connect(emergencySafe).unlock();
 
       transferAmount = daiAmount.div(3);
       await poolManager
@@ -989,7 +983,6 @@ describe("Contract: PoolManager", () => {
       await oracleAdapter.connect(emergencySafe).unlock(); // needed to get value
       let tvl = await daiPool.getValueFromUnderlyerAmount(totalTransferred);
       await oracleAdapter.connect(emergencySafe).setTvl(tvl, 100);
-      await oracleAdapter.connect(emergencySafe).unlock();
 
       transferAmount = daiAmount.div(3);
       await poolManager
@@ -1002,7 +995,6 @@ describe("Contract: PoolManager", () => {
       await oracleAdapter.connect(emergencySafe).unlock(); // needed to get value
       tvl = await daiPool.getValueFromUnderlyerAmount(totalTransferred);
       await oracleAdapter.connect(emergencySafe).setTvl(tvl, 100);
-      await oracleAdapter.connect(emergencySafe).unlock();
 
       await poolManager
         .connect(lpSafe)
