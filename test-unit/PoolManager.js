@@ -6,7 +6,7 @@ const timeMachine = require("ganache-time-traveler");
 const { FAKE_ADDRESS, bytes32 } = require("../utils/helpers");
 const { deployMockContract } = require("@ethereum-waffle/mock-contract");
 
-describe.only("Contract: PoolManager", () => {
+describe("Contract: PoolManager", () => {
   // signers
   let deployer;
   let randomUser;
