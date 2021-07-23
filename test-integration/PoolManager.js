@@ -36,7 +36,7 @@ const APY_USDT_POOL = "0xeA9c5a2717D5Ab75afaAC340151e73a7e37d99A7";
 console.debugging = false;
 /* ************************ */
 
-describe("Contract: PoolManager", () => {
+describe.only("Contract: PoolManager", () => {
   // to-be-deployed contracts
   let poolManager;
   let tvlManager;
@@ -45,7 +45,9 @@ describe("Contract: PoolManager", () => {
 
   // signers
   let deployer;
-  let lpSafe; // mock for LP Safe instance
+  let emergencySafe;
+  let adminSafe;
+  let lpSafe;
   let randomUser;
 
   // existing Mainnet contracts
@@ -59,7 +61,7 @@ describe("Contract: PoolManager", () => {
   let usdcToken;
   let usdtToken;
 
-  // address for mock LP Safe instance
+  // purely for convenience; address of lpSafe signer
   let lpSafeAddress;
 
   // use EVM snapshots for test isolation
@@ -81,7 +83,7 @@ describe("Contract: PoolManager", () => {
   });
 
   before(async () => {
-    [deployer, lpSafe, randomUser] = await ethers.getSigners();
+    [deployer, emergencySafe, lpSafe, randomUser] = await ethers.getSigners();
     lpSafeAddress = lpSafe.address;
 
     /*************************************/
@@ -105,7 +107,71 @@ describe("Contract: PoolManager", () => {
       to: ADMIN_SAFE,
       value: ethers.utils.parseEther("10").toHexString(),
     });
-    const adminSafe = await impersonateAccount(ADMIN_SAFE);
+    adminSafe = await impersonateAccount(ADMIN_SAFE);
+
+    /*************************************/
+    /***** Upgrade Address Registry ******/
+    /*************************************/
+    const AddressRegistryV2 = await ethers.getContractFactory(
+      "AddressRegistryV2"
+    );
+    const addressRegistryLogicV2 = await AddressRegistryV2.deploy();
+    const addressRegistryAdmin = await ethers.getContractAt(
+      "ProxyAdmin",
+      APY_REGISTRY_ADMIN,
+      addressRegistryDeployer
+    );
+
+    await addressRegistryAdmin.upgrade(
+      APY_ADDRESS_REGISTRY,
+      addressRegistryLogicV2.address
+    );
+
+    addressRegistry = await ethers.getContractAt(
+      "AddressRegistryV2",
+      APY_ADDRESS_REGISTRY,
+      adminSafe
+    );
+    /* The address registry needs multiple addresses registered
+     * to setup the roles for access control in the contract
+     * constructors:
+     *
+     * PoolTokenV2
+     * - adminSafe (admin role)
+     * - emergencySafe (emergency role, default admin role)
+     *
+     * PoolManager
+     * - lpSafe (LP role)
+     * - emergencySafe (emergency role, default admin role)
+     *
+     * MetaPoolToken
+     * - poolManager (contract role)
+     * - emergencySafe (emergency role, default admin role)
+     *
+     * TvlManager
+     * - poolManager (contract role)
+     * - lpSafe (LP role)
+     * - emergencySafe (emergency role, default admin role)
+     *
+     * OracleAdapter
+     * - tvlManager (contract role)
+     * - mApt (contract role)
+     * - adminSafe (admin role)
+     * - emergencySafe (emergency role, default admin role)
+     *
+     * Note the order of dependencies: a contract requires contracts
+     * above it in the list to be deployed first.   Thus we need
+     * to deploy in the order given, starting with the Safes.
+     */
+    await addressRegistry.registerAddress(
+      bytes32("emergencySafe"),
+      emergencySafe.address
+    );
+    await addressRegistry.registerAddress(
+      bytes32("adminSafe"),
+      adminSafe.address
+    );
+    await addressRegistry.registerAddress(bytes32("lpSafe"), lpSafeAddress);
 
     /***********************************/
     /* upgrade pools to V2 */
@@ -138,28 +204,102 @@ describe("Contract: PoolManager", () => {
       initData
     );
 
-    /*************************************/
-    /***** Upgrade Address Registry ******/
-    /*************************************/
-    const AddressRegistryV2 = await ethers.getContractFactory(
-      "AddressRegistryV2"
-    );
-    const addressRegistryLogicV2 = await AddressRegistryV2.deploy();
-    const addressRegistryAdmin = await ethers.getContractAt(
-      "ProxyAdmin",
-      APY_REGISTRY_ADMIN,
-      addressRegistryDeployer
+    /********************************/
+    /***** deploy Pool Manager  *****/
+    /********************************/
+    const PoolManager = await ethers.getContractFactory("PoolManager");
+    const PoolManagerProxy = await ethers.getContractFactory(
+      "PoolManagerProxy"
     );
 
-    await addressRegistryAdmin.upgrade(
-      APY_ADDRESS_REGISTRY,
-      addressRegistryLogicV2.address
+    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+    const managerAdmin = await ProxyAdmin.deploy();
+    await managerAdmin.deployed();
+    const managerLogic = await PoolManager.deploy();
+    await managerLogic.deployed();
+    const managerProxy = await PoolManagerProxy.deploy(
+      managerLogic.address,
+      managerAdmin.address,
+      APY_ADDRESS_REGISTRY
+    );
+    await managerProxy.deployed();
+    poolManager = await PoolManager.attach(managerProxy.address);
+
+    // approve manager to withdraw from pools
+    daiPool = await ethers.getContractAt(
+      "PoolTokenV2",
+      APY_DAI_POOL,
+      poolDeployer
+    );
+    usdcPool = await ethers.getContractAt(
+      "PoolTokenV2",
+      APY_USDC_POOL,
+      poolDeployer
+    );
+    usdtPool = await ethers.getContractAt(
+      "PoolTokenV2",
+      APY_USDT_POOL,
+      poolDeployer
+    );
+    await daiPool.connect(emergencySafe).infiniteApprove(poolManager.address);
+    await usdcPool.connect(emergencySafe).infiniteApprove(poolManager.address);
+    await usdtPool.connect(emergencySafe).infiniteApprove(poolManager.address);
+
+    await addressRegistry.registerAddress(
+      bytes32("poolManager"),
+      poolManager.address
     );
 
-    addressRegistry = await ethers.getContractAt(
-      "AddressRegistryV2",
-      APY_ADDRESS_REGISTRY,
-      adminSafe
+    /***********************/
+    /***** deploy mAPT *****/
+    /***********************/
+    /*
+    Possibly we should use real aggregators here, i.e. deploy
+    the TVL agg and connect to the Mainnet ETH-USD agg;
+    however, it's unclear what additional confidence it adds
+    to the tests for the additional complexity to update the
+    TVL values.
+    
+    For example, we'd need to update the TVL agg with USD values
+    which would either be off from the stablecoin amounts and
+    possibly cause issues with allowed deviation levels, or we
+    would need to use a stablecoin to USD conversion.
+
+    As a final note, rather than dummy addresses, we deploy mocks,
+    as we may add checks for contract addresses in the future.
+    */
+
+    const MetaPoolTokenProxy = await ethers.getContractFactory(
+      "MetaPoolTokenProxy"
+    );
+    const MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
+
+    const mAptAdmin = await ProxyAdmin.deploy();
+    await mAptAdmin.deployed();
+
+    const logic = await MetaPoolToken.deploy();
+    await logic.deployed();
+
+    const mAptProxy = await MetaPoolTokenProxy.deploy(
+      logic.address,
+      mAptAdmin.address,
+      addressRegistry.address
+    );
+    await mAptProxy.deployed();
+
+    mApt = await MetaPoolToken.attach(mAptProxy.address);
+    await addressRegistry.registerAddress(bytes32("mApt"), mApt.address);
+
+    /******************************/
+    /***** deploy TVL Manager *****/
+    /******************************/
+    const TvlManager = await ethers.getContractFactory("TvlManager");
+    tvlManager = await TvlManager.deploy(addressRegistry.address);
+    await tvlManager.deployed();
+
+    await addressRegistry.registerAddress(
+      bytes32("tvlManager"),
+      tvlManager.address
     );
 
     /*********************************/
@@ -193,112 +333,8 @@ describe("Contract: PoolManager", () => {
     );
 
     // set default TVL for tests to zero
-    await oracleAdapter.lockFor(10);
-    await oracleAdapter.setTvl(0, 100);
-    await oracleAdapter.unlock();
-
-    /***********************/
-    /***** deploy mAPT *****/
-    /***********************/
-    /*
-    Possibly we should use real aggregators here, i.e. deploy
-    the TVL agg and connect to the Mainnet ETH-USD agg;
-    however, it's unclear what additional confidence it adds
-    to the tests for the additional complexity to update the
-    TVL values.
-    
-    For example, we'd need to update the TVL agg with USD values
-    which would either be off from the stablecoin amounts and
-    possibly cause issues with allowed deviation levels, or we
-    would need to use a stablecoin to USD conversion.
-
-    As a final note, rather than dummy addresses, we deploy mocks,
-    as we may add checks for contract addresses in the future.
-    */
-
-    const MetaPoolTokenProxy = await ethers.getContractFactory(
-      "MetaPoolTokenProxy"
-    );
-    const MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
-
-    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    const proxyAdmin = await ProxyAdmin.deploy();
-    await proxyAdmin.deployed();
-
-    const logic = await MetaPoolToken.deploy();
-    await logic.deployed();
-
-    const mAptProxy = await MetaPoolTokenProxy.deploy(
-      logic.address,
-      proxyAdmin.address,
-      addressRegistry.address
-    );
-    await mAptProxy.deployed();
-
-    mApt = await MetaPoolToken.attach(mAptProxy.address);
-    await addressRegistry.registerAddress(bytes32("mApt"), mApt.address);
-
-    /***********************************/
-    /***** deploy manager  *************/
-    /***********************************/
-    const PoolManager = await ethers.getContractFactory("PoolManager");
-    const PoolManagerProxy = await ethers.getContractFactory(
-      "PoolManagerProxy"
-    );
-
-    const managerAdmin = await ProxyAdmin.deploy();
-    await managerAdmin.deployed();
-    const managerLogic = await PoolManager.deploy();
-    await managerLogic.deployed();
-    const managerProxy = await PoolManagerProxy.deploy(
-      managerLogic.address,
-      managerAdmin.address,
-      APY_ADDRESS_REGISTRY
-    );
-    await managerProxy.deployed();
-    poolManager = await PoolManager.attach(managerProxy.address);
-
-    await addressRegistry.registerAddress(
-      ethers.utils.formatBytes32String("poolManager"),
-      poolManager.address
-    );
-
-    // approve manager to withdraw from pools
-    daiPool = await ethers.getContractAt(
-      "PoolTokenV2",
-      APY_DAI_POOL,
-      poolDeployer
-    );
-    usdcPool = await ethers.getContractAt(
-      "PoolTokenV2",
-      APY_USDC_POOL,
-      poolDeployer
-    );
-    usdtPool = await ethers.getContractAt(
-      "PoolTokenV2",
-      APY_USDT_POOL,
-      poolDeployer
-    );
-    await daiPool.infiniteApprove(poolManager.address);
-    await usdcPool.infiniteApprove(poolManager.address);
-    await usdtPool.infiniteApprove(poolManager.address);
-
-    await addressRegistry.registerAddress(
-      ethers.utils.formatBytes32String("lpSafe"),
-      lpSafeAddress
-    );
-
-    /*******************************************/
-    /***** deploy asset allocation registry ****/
-    /*******************************************/
-    const TvlManager = await ethers.getContractFactory("TvlManager");
-    tvlManager = await TvlManager.deploy(addressRegistry.address);
-    await tvlManager.deployed();
-
-    await addressRegistry.registerAddress(
-      bytes32("tvlManager"),
-      tvlManager.address
-    );
+    await oracleAdapter.connect(emergencySafe).setTvl(0, 100);
+    await oracleAdapter.connect(emergencySafe).unlock();
 
     /*********************************************/
     /* main deployments and upgrades finished 
