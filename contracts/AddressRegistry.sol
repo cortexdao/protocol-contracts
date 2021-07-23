@@ -2,9 +2,13 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import "./interfaces/IAddressRegistry.sol";
+import {
+    OwnableUpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
+import {
+    Initializable
+} from "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
+import {IAddressRegistry} from "./interfaces/IAddressRegistry.sol";
 
 /**
  * @title APY.Finance's address registry
