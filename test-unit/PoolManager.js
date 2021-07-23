@@ -64,6 +64,10 @@ describe("Contract: PoolManager", () => {
     await addressRegistryMock.mock.getAddress
       .withArgs(bytes32("tvlManager"))
       .returns(tvlManager.address);
+    // these addresses need to be registered to setup roles
+    // in the PoolManager constructor:
+    // - emergencySafe (default admin role, emergency role)
+    // - lpSafe (LP role)
     await addressRegistryMock.mock.getAddress
       .withArgs(bytes32("emergencySafe"))
       .returns(emergencySafe.address);
@@ -107,18 +111,25 @@ describe("Contract: PoolManager", () => {
   });
 
   describe("Set address registry", () => {
-    it("Cannot set to zero address", async () => {
-      await expect(
-        poolManager.connect(emergencySafe).setAddressRegistry(ZERO_ADDRESS)
-      ).to.be.revertedWith("INVALID_ADDRESS");
-    });
-
-    it("Emergency Safe can set", async () => {
+    it("Emergency Safe can set to contract address", async () => {
       const contract = await deployMockContract(deployer, []);
       await poolManager
         .connect(emergencySafe)
         .setAddressRegistry(contract.address);
       expect(await poolManager.addressRegistry()).to.equal(contract.address);
+    });
+
+    it("Unpermissioned cannot set", async () => {
+      const contract = await deployMockContract(deployer, []);
+      await expect(
+        poolManager.connect(randomUser).setAddressRegistry(contract.address)
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
+    });
+
+    it("Cannot set to non-contract address", async () => {
+      await expect(
+        poolManager.connect(emergencySafe).setAddressRegistry(FAKE_ADDRESS)
+      ).to.be.revertedWith("INVALID_ADDRESS");
     });
   });
 
@@ -128,7 +139,7 @@ describe("Contract: PoolManager", () => {
       expect(await poolManager.proxyAdmin()).to.equal(FAKE_ADDRESS);
     });
 
-    it("Non-owner cannot set", async () => {
+    it("Unpermissioned cannot set", async () => {
       await expect(
         poolManager.connect(randomUser).setAdminAddress(FAKE_ADDRESS)
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
@@ -144,13 +155,11 @@ describe("Contract: PoolManager", () => {
   describe("LP Safe Funder", () => {
     describe("fundLpSafe", () => {
       it("LP Safe can call", async () => {
-        await poolManager.connect(lpSafe).fundLpSafe([]);
-        // await expect(
-        // ).to.not.be
-        //   .reverted;
+        await expect(poolManager.connect(lpSafe).fundLpSafe([])).to.not.be
+          .reverted;
       });
 
-      it("Non-owner cannot call", async () => {
+      it("Unpermissioned cannot call", async () => {
         await expect(
           poolManager.connect(randomUser).fundLpSafe([])
         ).to.be.revertedWith("NOT_LP_ROLE");
@@ -170,7 +179,7 @@ describe("Contract: PoolManager", () => {
           .be.reverted;
       });
 
-      it("Non-owner cannot call", async () => {
+      it("Unpermissioned cannot call", async () => {
         await expect(
           poolManager.connect(randomUser).withdrawFromLpSafe([])
         ).to.be.revertedWith("NOT_LP_ROLE");
