@@ -1,9 +1,10 @@
 const hre = require("hardhat");
-const { ethers, waffle, web3 } = hre;
+const { artifacts, ethers, waffle, web3 } = hre;
 const { BigNumber } = ethers;
 const { expect } = require("chai");
 const { deployMockContract } = waffle;
-const { console } = require("../utils/helpers");
+const { console, bytes32 } = require("../utils/helpers");
+const AddressRegistryV2 = artifacts.require("AddressRegistryV2");
 
 const ZERO_DATA =
   "0000000000000000000000000000000000000000000000000000000000000000";
@@ -38,7 +39,7 @@ Initializable:
 ContextUpgradeSafe:
   51-100 uint256[50] __gap;
 OwnableUpgradeSafe:
-  101 address _owner;
+  // 101 address _owner; <-- repurposed in V2
   102-150 uint256[49] __gap;
 ReentrancyGuardUpgradeSafe:
   151 bool _notEntered;
@@ -56,17 +57,18 @@ ERC20UpgradeSafe:
   257-300 uint256[44] __gap;
 
 APY.Finance APT V1
-  301 address public proxyAdmin;
-  301 bool public addLiquidityLock;
-  301 bool public redeemLock;
-  302 IDetailedERC20 public underlyer;
-  // 303 AggregatorV3Interface public priceAgg; <-- removed in V2
+  301 address proxyAdmin;
+  301 bool addLiquidityLock;
+  301 bool redeemLock;
+  302 IDetailedERC20 underlyer;
+  // 303 AggregatorV3Interface priceAgg; <-- replaced in V2
 
 APY.Finance APT V2
-  303 IAddressRegistryV2 public addressRegistry; <-- replaces V1 slot
-  304 uint256 public feePeriod;
-  305 uint256 public feePercentage;
-  306 mapping(address => uint256) public lastDepositTime;
+  101 mapping (bytes32 => RoleData) _roles; <-- repurposes V1 slot
+  303 IAddressRegistryV2 addressRegistry; <-- replaces V1 slot
+  304 uint256 feePeriod;
+  305 uint256 feePercentage;
+  306 mapping(address => uint256) lastDepositTime;
 */
 
 /* ************************ */
@@ -80,6 +82,8 @@ describe("APT V2 uses V1 storage slot positions", () => {
   const [minted, transferred, allowance] = [100e6, 30e6, 10e6];
 
   let deployer;
+  let emergencySafe;
+  let adminSafe;
   let user;
   let otherUser;
 
@@ -90,7 +94,13 @@ describe("APT V2 uses V1 storage slot positions", () => {
   let addressRegistry;
 
   before(async () => {
-    [deployer, user, otherUser] = await ethers.getSigners();
+    [
+      deployer,
+      emergencySafe,
+      adminSafe,
+      user,
+      otherUser,
+    ] = await ethers.getSigners();
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     const PoolTokenProxy = await ethers.getContractFactory("PoolTokenProxy");
@@ -101,7 +111,15 @@ describe("APT V2 uses V1 storage slot positions", () => {
     await proxyAdmin.deployed();
     agg = await deployMockContract(deployer, []);
     underlyer = await deployMockContract(deployer, []);
-    addressRegistry = await deployMockContract(deployer, []);
+    addressRegistry = await deployMockContract(deployer, AddressRegistryV2.abi);
+
+    // these addresses are assigned roles in PoolTokenV2 init
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("emergencySafe"))
+      .returns(emergencySafe.address);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("adminSafe"))
+      .returns(adminSafe.address);
 
     const logicV1 = await PoolToken.deploy();
     await logicV1.deployed();
@@ -126,10 +144,10 @@ describe("APT V2 uses V1 storage slot positions", () => {
 
     poolToken = await PoolTokenV2.attach(proxy.address);
 
-    await poolToken.lock();
+    await poolToken.connect(emergencySafe).lock();
     await poolToken.testMint(deployer.address, minted);
-    await poolToken.lockAddLiquidity();
-    await poolToken.lockRedeem();
+    await poolToken.connect(emergencySafe).lockAddLiquidity();
+    await poolToken.connect(emergencySafe).lockRedeem();
     await poolToken.testTransfer(deployer.address, user.address, transferred);
     await poolToken.approve(otherUser.address, allowance);
   });
@@ -150,6 +168,8 @@ describe("APT V2 uses V1 storage slot positions", () => {
     expect(slots[0].slice(-2)).to.equal("01"); // initialized
 
     // 101 address _owner;
+    // NOTE: in the V2 upgrade, this slot has been repurposed
+    // for AccessControl's _roles mapping
     expect(parseAddress(slots[101])).to.equal(deployer.address);
     // 151 bool _notEntered;
     expect(slots[151].slice(-2)).to.equal("01");
@@ -167,18 +187,18 @@ describe("APT V2 uses V1 storage slot positions", () => {
     expect(parseString(slots[255])).to.equal(symbol);
     // 256 uint8 _decimals;
     expect(parseUint(slots[256])).to.equal(decimals);
-    // 301 address public proxyAdmin;
-    // 301 bool public addLiquidityLock;
-    // 301 bool public redeemLock;
+    // 301 address proxyAdmin;
+    // 301 bool addLiquidityLock;
+    // 301 bool redeemLock;
     expect(parseAddress(slots[301])).to.equal(proxyAdmin.address);
     expect(slots[301].slice(0, 24).slice(-4)).to.equal("0101");
-    // 302 IDetailedERC20 public underlyer;
+    // 302 IDetailedERC20 underlyer;
     expect(parseAddress(slots[302])).to.equal(underlyer.address);
   });
 
   it("Replaces original slot 303", async () => {
-    // 303 AggregatorV3Interface public priceAgg; <-- removed in V2
-    // 303 IAddressRegistryV2 public addressRegistry; <-- replaces V1 slot
+    // 303 AggregatorV3Interface priceAgg; <-- replaced in V2
+    // 303 IAddressRegistryV2 addressRegistry; <-- replaces V1 slot
     const data = await readSlot(poolToken.address, 303);
     console.debug(`${303}: ${data}`);
     expect(parseAddress(data)).to.equal(addressRegistry.address);
@@ -204,7 +224,7 @@ describe("APT V2 uses V1 storage slot positions", () => {
   });
 
   it("Retains original storage slots for allowances mapping", async () => {
-    // _allowances[alice][bob]
+    // _allowances[deployer][user]
     let v = parseInt(
       await readSlot(
         poolToken.address,
@@ -214,7 +234,7 @@ describe("APT V2 uses V1 storage slot positions", () => {
     );
     expect(v).to.equal(0);
 
-    // _allowances[alice][charlie]
+    // _allowances[deployer][otherUser]
     v = parseInt(
       await readSlot(
         poolToken.address,
@@ -223,6 +243,42 @@ describe("APT V2 uses V1 storage slot positions", () => {
       16
     );
     expect(v).to.equal(allowance);
+  });
+
+  it("Roles mapping replacing slot 101 uses expected slots", async () => {
+    // 101 address _owner; <-- repurposed in V2
+    // 101 mapping (bytes32 => RoleData) _roles; <-- repurposes V1 slot
+    //
+    // PoolTokenV2's init function will setup roles, which is a
+    //
+    // mapping (bytes32 => struct)
+    //
+    // with the struct being
+    //
+    // RoleData {
+    //   EnumerableSet.AddressSet members;
+    //   bytes32 adminRole;
+    // }
+    //
+    // The struct starts with a dynamic array of values in the
+    // EnumerableSet, so its first slot will hold the length of
+    // the array.  This will be nonzero if the role has members.
+    //
+    // To check if position 101 is used in the mapping's key hash,
+    // it suffices to check if the expected slot has nonzero data.
+    const EMERGENCY_ROLE = await poolToken.EMERGENCY_ROLE();
+    let data = await readSlot(
+      poolToken.address,
+      bytes32MappingSlot(EMERGENCY_ROLE, 101)
+    );
+    expect(data).to.not.equal(ZERO_DATA);
+
+    const ADMIN_ROLE = await poolToken.ADMIN_ROLE();
+    data = await readSlot(
+      poolToken.address,
+      bytes32MappingSlot(ADMIN_ROLE, 101)
+    );
+    expect(data).to.not.equal(ZERO_DATA);
   });
 });
 
@@ -264,4 +320,9 @@ function address2MappingSlot(address, address_2, position) {
       encodeAddress(address_2) +
       addressMappingSlot(address, position).slice(2)
   );
+}
+
+function bytes32MappingSlot(address, position) {
+  // same encoding logic as for address mapping
+  return addressMappingSlot(address, position);
 }

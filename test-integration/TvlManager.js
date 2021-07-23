@@ -9,6 +9,7 @@ const {
   getStablecoinAddress,
   acquireToken,
   MAX_UINT256,
+  bytes32,
 } = require("../utils/helpers");
 const { STABLECOIN_POOLS } = require("../utils/constants");
 
@@ -28,7 +29,9 @@ const LIQUIDITY_GAUGE_ADDRESS = "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A";
 describe("Contract: TvlManager", () => {
   /* signers */
   let deployer;
+  let emergencySafe;
   let lpSafe;
+  let poolManager;
 
   /* contract factories */
   let TvlManager;
@@ -49,20 +52,30 @@ describe("Contract: TvlManager", () => {
   });
 
   before(async () => {
-    [deployer, lpSafe] = await ethers.getSigners();
+    [deployer, emergencySafe, lpSafe, poolManager] = await ethers.getSigners();
 
     const addressRegistry = await deployMockContract(
       deployer,
       artifacts.require("IAddressRegistryV2").abi
     );
+    /* These registered addresses are setup for roles in the
+     * constructor for TvlManager
+     * TvlManager
+     * - poolManager (contract role)
+     * - lpSafe (LP role)
+     * - emergencySafe (emergency role, default admin role)
+     */
+    await addressRegistry.mock.poolManagerAddress.returns(poolManager.address);
+    await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("emergencySafe"))
+      .returns(emergencySafe.address);
 
     const oracleAdapter = await deployMockContract(
       deployer,
       artifacts.require("IOracleAdapter").abi
     );
-
     await oracleAdapter.mock.lock.returns();
-
     await addressRegistry.mock.oracleAdapterAddress.returns(
       oracleAdapter.address
     );
@@ -126,7 +139,9 @@ describe("Contract: TvlManager", () => {
       );
       const data = [curve.address, encodedGetUnderlyerBalance];
 
-      await tvlManager.addAssetAllocation(data, daiSymbol, daiDecimals);
+      await tvlManager
+        .connect(lpSafe)
+        .addAssetAllocation(data, daiSymbol, daiDecimals);
       lookupId = await tvlManager.generateDataHash(data);
     });
 

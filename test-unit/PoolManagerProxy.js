@@ -1,14 +1,17 @@
 const hre = require("hardhat");
-const { ethers, waffle } = hre;
+const { ethers, waffle, artifacts } = hre;
 const { deployMockContract } = waffle;
 const { assert, expect } = require("chai");
 const timeMachine = require("ganache-time-traveler");
 const { expectRevert } = require("@openzeppelin/test-helpers");
-const { ZERO_ADDRESS, FAKE_ADDRESS } = require("../utils/helpers");
+const { ZERO_ADDRESS, FAKE_ADDRESS, bytes32 } = require("../utils/helpers");
+const IAddressRegistryV2 = artifacts.require("IAddressRegistryV2");
 
 describe("Contract: PoolManagerProxy", () => {
   let deployer;
   let randomUser;
+  let emergencySafe;
+  let lpSafe;
 
   let ProxyAdmin;
   let PoolManager;
@@ -32,7 +35,7 @@ describe("Contract: PoolManagerProxy", () => {
   });
 
   before(async () => {
-    [deployer, randomUser] = await ethers.getSigners();
+    [deployer, randomUser, emergencySafe, lpSafe] = await ethers.getSigners();
 
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     proxyAdmin = await ProxyAdmin.deploy();
@@ -42,7 +45,15 @@ describe("Contract: PoolManagerProxy", () => {
     logic = await PoolManager.deploy();
     await logic.deployed();
 
-    const addressRegistry = await deployMockContract(deployer, []);
+    const addressRegistry = await deployMockContract(
+      deployer,
+      IAddressRegistryV2.abi
+    );
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("emergencySafe"))
+      .returns(emergencySafe.address);
+    await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
+
     PoolManagerProxy = await ethers.getContractFactory("PoolManagerProxy");
     proxy = await PoolManagerProxy.deploy(
       logic.address,
@@ -202,7 +213,14 @@ describe("Contract: PoolManagerProxy", () => {
       const logic = await PoolManager.deploy();
       await logic.deployed();
 
-      const addressRegistry = await deployMockContract(deployer, []);
+      const addressRegistry = await deployMockContract(
+        deployer,
+        IAddressRegistryV2.abi
+      );
+      await addressRegistry.mock.getAddress
+        .withArgs(bytes32("emergencySafe"))
+        .returns(emergencySafe.address);
+      await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
 
       const proxy = await PoolManagerProxy.deploy(
         logic.address,
@@ -211,7 +229,6 @@ describe("Contract: PoolManagerProxy", () => {
       );
       const manager = await PoolManager.attach(proxy.address);
 
-      expect(await manager.owner()).to.equal(deployer.address);
       expect(await manager.proxyAdmin()).to.equal(proxyAdmin.address);
       expect(await manager.addressRegistry()).to.equal(addressRegistry.address);
     });

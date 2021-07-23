@@ -16,6 +16,7 @@ describe("Contract: TvlManager", () => {
   let addressRegistry;
   let poolManager;
   let lpSafe;
+  let emergencySafe;
   let oracleAdapter;
   let randomUser;
 
@@ -38,7 +39,13 @@ describe("Contract: TvlManager", () => {
   });
 
   before(async () => {
-    [deployer, poolManager, lpSafe, randomUser] = await ethers.getSigners();
+    [
+      deployer,
+      poolManager,
+      lpSafe,
+      emergencySafe,
+      randomUser,
+    ] = await ethers.getSigners();
 
     addressRegistry = await deployMockContract(
       deployer,
@@ -49,14 +56,18 @@ describe("Contract: TvlManager", () => {
       deployer,
       artifacts.require("IOracleAdapter").abi
     );
-
-    await addressRegistry.mock.poolManagerAddress.returns(poolManager.address);
-    await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
     await addressRegistry.mock.oracleAdapterAddress.returns(
       oracleAdapter.address
     );
-
     await oracleAdapter.mock.lock.returns();
+
+    // These registered addresses are setup for roles in the
+    // constructor for TvlManager
+    await addressRegistry.mock.poolManagerAddress.returns(poolManager.address);
+    await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("emergencySafe"))
+      .returns(emergencySafe.address);
 
     TvlManager = await ethers.getContractFactory("TvlManager");
 
@@ -65,14 +76,44 @@ describe("Contract: TvlManager", () => {
   });
 
   describe("Defaults", () => {
-    it("Owner is set to deployer", async () => {
-      expect(await tvlManager.owner()).to.equal(deployer.address);
+    it("Default admin role given to Emergency Safe", async () => {
+      const DEFAULT_ADMIN_ROLE = await tvlManager.DEFAULT_ADMIN_ROLE();
+      const memberCount = await tvlManager.getRoleMemberCount(
+        DEFAULT_ADMIN_ROLE
+      );
+      expect(memberCount).to.equal(1);
+      expect(
+        await tvlManager.hasRole(DEFAULT_ADMIN_ROLE, emergencySafe.address)
+      ).to.be.true;
+    });
+
+    it("Emergency role given to Emergency Safe", async () => {
+      const EMERGENCY_ROLE = await tvlManager.EMERGENCY_ROLE();
+      const memberCount = await tvlManager.getRoleMemberCount(EMERGENCY_ROLE);
+      expect(memberCount).to.equal(1);
+      expect(await tvlManager.hasRole(EMERGENCY_ROLE, emergencySafe.address)).to
+        .be.true;
+    });
+
+    it("Contract role given to Pool Manager", async () => {
+      const CONTRACT_ROLE = await tvlManager.CONTRACT_ROLE();
+      const memberCount = await tvlManager.getRoleMemberCount(CONTRACT_ROLE);
+      expect(memberCount).to.equal(1);
+      expect(await tvlManager.hasRole(CONTRACT_ROLE, poolManager.address)).to.be
+        .true;
+    });
+
+    it("LP role given to LP Safe", async () => {
+      const LP_ROLE = await tvlManager.LP_ROLE();
+      const memberCount = await tvlManager.getRoleMemberCount(LP_ROLE);
+      expect(memberCount).to.equal(1);
+      expect(await tvlManager.hasRole(LP_ROLE, lpSafe.address)).to.be.true;
     });
   });
 
   describe("Token registration", () => {
     describe("addAssetAllocation", async () => {
-      it("Non-owner cannot call", async () => {
+      it("Unpermissioned cannot call", async () => {
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
         const decimals = 18;
@@ -80,21 +121,19 @@ describe("Contract: TvlManager", () => {
           tvlManager
             .connect(randomUser)
             .addAssetAllocation(data, symbol, decimals)
-        ).to.be.revertedWith("PERMISSIONED_ONLY");
+        ).to.be.revertedWith("INVALID_ACCESS_CONTROL");
       });
 
-      it("Owner can call", async () => {
+      it("LP role can call", async () => {
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
         const decimals = 18;
         await expect(
-          tvlManager
-            .connect(deployer)
-            .addAssetAllocation(data, symbol, decimals)
+          tvlManager.connect(lpSafe).addAssetAllocation(data, symbol, decimals)
         ).to.not.be.reverted;
       });
 
-      it("Pool manager can call", async () => {
+      it("Contract role can call", async () => {
         const data = [FAKE_ADDRESS, bytes32("")];
         const symbol = "FOO";
         const decimals = 18;
@@ -102,15 +141,6 @@ describe("Contract: TvlManager", () => {
           tvlManager
             .connect(poolManager)
             .addAssetAllocation(data, symbol, decimals)
-        ).to.not.be.reverted;
-      });
-
-      it("LP Safe can call", async () => {
-        const data = [FAKE_ADDRESS, bytes32("")];
-        const symbol = "FOO";
-        const decimals = 18;
-        await expect(
-          tvlManager.connect(lpSafe).addAssetAllocation(data, symbol, decimals)
         ).to.not.be.reverted;
       });
 
@@ -128,31 +158,22 @@ describe("Contract: TvlManager", () => {
     });
 
     describe("deregisterTokens", () => {
-      it("Non-owner cannot call", async () => {
+      it("Unpermissioned cannot call", async () => {
         const data = [FAKE_ADDRESS, bytes32("")];
         await expect(
           tvlManager.connect(randomUser).removeAssetAllocation(data)
-        ).to.be.revertedWith("PERMISSIONED_ONLY");
+        ).to.be.revertedWith("INVALID_ACCESS_CONTROL");
       });
 
-      it("Owner can call", async () => {
+      it("LP role can call", async () => {
         const data = [FAKE_ADDRESS, bytes32("")];
-        await tvlManager
-          .connect(poolManager)
-          .addAssetAllocation(data, "FOO", 18);
+        await tvlManager.connect(lpSafe).addAssetAllocation(data, "FOO", 18);
 
-        await expect(tvlManager.connect(deployer).removeAssetAllocation(data))
-          .to.not.be.reverted;
+        await expect(tvlManager.connect(lpSafe).removeAssetAllocation(data)).to
+          .not.be.reverted;
       });
 
-      it("Fails to remove if allocation does not exist", async () => {
-        const data = [FAKE_ADDRESS, bytes32("")];
-        await expect(
-          tvlManager.connect(deployer).removeAssetAllocation(data)
-        ).to.be.revertedWith("ALLOCATION_DOES_NOT_EXIST");
-      });
-
-      it("Pool manager can call", async () => {
+      it("Contract role can call", async () => {
         const data = [FAKE_ADDRESS, bytes32("")];
         await tvlManager
           .connect(poolManager)
@@ -163,14 +184,11 @@ describe("Contract: TvlManager", () => {
         ).to.not.be.reverted;
       });
 
-      it("LP Safe can call", async () => {
+      it("Fails to remove if allocation does not exist", async () => {
         const data = [FAKE_ADDRESS, bytes32("")];
-        await tvlManager
-          .connect(poolManager)
-          .addAssetAllocation(data, "FOO", 18);
-
-        await expect(tvlManager.connect(lpSafe).removeAssetAllocation(data)).to
-          .not.be.reverted;
+        await expect(
+          tvlManager.connect(lpSafe).removeAssetAllocation(data)
+        ).to.be.revertedWith("ALLOCATION_DOES_NOT_EXIST");
       });
     });
 
@@ -178,7 +196,9 @@ describe("Contract: TvlManager", () => {
       const data = [FAKE_ADDRESS, bytes32("")];
       const symbol = "FOO";
       const decimals = 18;
-      await tvlManager.addAssetAllocation(data, symbol, decimals);
+      await tvlManager
+        .connect(lpSafe)
+        .addAssetAllocation(data, symbol, decimals);
 
       expect(await tvlManager.isAssetAllocationRegistered(data)).to.be.true;
       expect(
@@ -198,7 +218,9 @@ describe("Contract: TvlManager", () => {
         const lookupId = await tvlManager.generateDataHash(data);
 
         const allocationIds = [lookupId];
-        await tvlManager.addAssetAllocation(data, symbol, decimals);
+        await tvlManager
+          .connect(lpSafe)
+          .addAssetAllocation(data, symbol, decimals);
 
         expect(await tvlManager.getAssetAllocationIds()).to.have.members(
           allocationIds
@@ -226,9 +248,11 @@ describe("Contract: TvlManager", () => {
         const leftoverIds = [allocationIds[0], allocationIds[1]];
 
         for (const data of allocationData) {
-          await tvlManager.addAssetAllocation(data, symbol, decimals);
+          await tvlManager
+            .connect(lpSafe)
+            .addAssetAllocation(data, symbol, decimals);
         }
-        await tvlManager.removeAssetAllocation(allocation3);
+        await tvlManager.connect(lpSafe).removeAssetAllocation(allocation3);
 
         expect(await tvlManager.getAssetAllocationIds()).to.have.members(
           leftoverIds
@@ -254,16 +278,18 @@ describe("Contract: TvlManager", () => {
         }
 
         for (const data of allocationData) {
-          await tvlManager.addAssetAllocation(data, symbol, decimals);
+          await tvlManager
+            .connect(lpSafe)
+            .addAssetAllocation(data, symbol, decimals);
         }
-        await tvlManager.removeAssetAllocation(allocation3);
+        await tvlManager.connect(lpSafe).removeAssetAllocation(allocation3);
 
         expect(await tvlManager.getAssetAllocationIds()).to.not.include(
           allocationIds[2]
         );
         expect(await tvlManager.getAssetAllocationIds()).to.have.lengthOf(2);
 
-        await tvlManager.removeAssetAllocation(allocation1);
+        await tvlManager.connect(lpSafe).removeAssetAllocation(allocation1);
         expect(await tvlManager.getAssetAllocationIds()).to.have.lengthOf(1);
         expect(await tvlManager.getAssetAllocationIds()).to.have.members([
           allocationIds[1],
@@ -317,7 +343,9 @@ describe("Contract: TvlManager", () => {
         .withArgs(Account)
         .returns(expectedBalance);
 
-      await tvlManager.addAssetAllocation(data, symbol, decimals);
+      await tvlManager
+        .connect(lpSafe)
+        .addAssetAllocation(data, symbol, decimals);
 
       const lookupId = await tvlManager.generateDataHash(data);
 
@@ -338,7 +366,9 @@ describe("Contract: TvlManager", () => {
       // step execution will revert
       await peripheryContract.mock.balance.reverts();
 
-      await tvlManager.addAssetAllocation(data, symbol, decimals);
+      await tvlManager
+        .connect(lpSafe)
+        .addAssetAllocation(data, symbol, decimals);
 
       const lookupId = await tvlManager.generateDataHash(data);
 
@@ -349,7 +379,9 @@ describe("Contract: TvlManager", () => {
       const symbol = "FOO";
       const decimals = 18;
       const data = [FAKE_ADDRESS, bytes32("")];
-      await tvlManager.addAssetAllocation(data, symbol, decimals);
+      await tvlManager
+        .connect(lpSafe)
+        .addAssetAllocation(data, symbol, decimals);
 
       const invalidData = [FAKE_ADDRESS, bytes32("1")];
       const lookupId = await tvlManager.generateDataHash(invalidData);
@@ -364,7 +396,7 @@ describe("Contract: TvlManager", () => {
     const data = [FAKE_ADDRESS, bytes32("")];
     const symbol = "FOO";
     const decimals = 18;
-    await tvlManager.addAssetAllocation(data, symbol, decimals);
+    await tvlManager.connect(lpSafe).addAssetAllocation(data, symbol, decimals);
 
     const lookupId = await tvlManager.generateDataHash(data);
     expect(await tvlManager.symbolOf(lookupId)).to.equal(symbol);
@@ -374,7 +406,7 @@ describe("Contract: TvlManager", () => {
     const data = [FAKE_ADDRESS, bytes32("")];
     const symbol = "FOO";
     const decimals = 18;
-    await tvlManager.addAssetAllocation(data, symbol, decimals);
+    await tvlManager.connect(lpSafe).addAssetAllocation(data, symbol, decimals);
 
     const lookupId = await tvlManager.generateDataHash(data);
     expect(await tvlManager.decimalsOf(lookupId)).to.equal(decimals);
