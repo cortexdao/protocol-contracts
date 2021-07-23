@@ -49,7 +49,7 @@ contract TvlManager is
      * @param addressRegistry_ the address registry to initialize with
      */
     constructor(address addressRegistry_) public {
-        setAddressRegistry(addressRegistry_);
+        _setAddressRegistry(addressRegistry_);
         _setupRole(
             DEFAULT_ADMIN_ROLE,
             addressRegistry.getAddress("emergencySafe")
@@ -237,8 +237,7 @@ contract TvlManager is
         public
         onlyEmergencyRole
     {
-        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistryV2(addressRegistry_);
+        _setAddressRegistry(addressRegistry_);
     }
 
     /**
@@ -259,5 +258,10 @@ contract TvlManager is
         IOracleAdapter oracleAdapter =
             IOracleAdapter(addressRegistry.oracleAdapterAddress());
         oracleAdapter.lock();
+    }
+
+    function _setAddressRegistry(address addressRegistry_) internal {
+        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
 }

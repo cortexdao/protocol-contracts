@@ -25,6 +25,9 @@ describe("Contract: PoolToken", () => {
   let deployer;
   let oracle;
   let poolManager;
+  let tvlManager;
+  let adminSafe;
+  let emergencySafe;
   let randomUser;
   let anotherUser;
 
@@ -33,6 +36,9 @@ describe("Contract: PoolToken", () => {
       deployer,
       oracle,
       poolManager,
+      tvlManager,
+      adminSafe,
+      emergencySafe,
       randomUser,
       anotherUser,
     ] = await ethers.getSigners();
@@ -136,19 +142,19 @@ describe("Contract: PoolToken", () => {
           poolManager.address
         );
 
-        const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
-        oracleAdapter = await OracleAdapter.deploy(
-          addressRegistry.address,
-          tvlAgg.address,
-          [tokenAddress],
-          [aggAddress],
-          86400,
-          86400
-        );
-        await oracleAdapter.deployed();
         await addressRegistry.registerAddress(
-          ethers.utils.formatBytes32String("oracleAdapter"),
-          oracleAdapter.address
+          ethers.utils.formatBytes32String("tvlManager"),
+          tvlManager.address
+        );
+
+        await addressRegistry.registerAddress(
+          ethers.utils.formatBytes32String("adminSafe"),
+          adminSafe.address
+        );
+
+        await addressRegistry.registerAddress(
+          ethers.utils.formatBytes32String("emergencySafe"),
+          emergencySafe.address
         );
 
         const proxyAdmin = await ProxyAdmin.deploy();
@@ -172,6 +178,21 @@ describe("Contract: PoolToken", () => {
         await addressRegistry.registerAddress(
           ethers.utils.formatBytes32String("mApt"),
           mApt.address
+        );
+
+        const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
+        oracleAdapter = await OracleAdapter.deploy(
+          addressRegistry.address,
+          tvlAgg.address,
+          [tokenAddress],
+          [aggAddress],
+          86400,
+          86400
+        );
+        await oracleAdapter.deployed();
+        await addressRegistry.registerAddress(
+          ethers.utils.formatBytes32String("oracleAdapter"),
+          oracleAdapter.address
         );
 
         const PoolToken = await ethers.getContractFactory("TestPoolToken");
@@ -225,8 +246,13 @@ describe("Contract: PoolToken", () => {
       });
 
       describe("Defaults", () => {
-        it("Owner is set to deployer", async () => {
-          assert.equal(await poolToken.owner(), deployer.address);
+        it("Emergency role is set to Emergency Safe", async () => {
+          assert.isTrue(
+            await poolToken.hasRole(
+              await poolToken.EMERGENCY_ROLE(),
+              emergencySafe.address
+            )
+          );
         });
 
         it("DEFAULT_APT_TO_UNDERLYER_FACTOR has correct value", async () => {
@@ -247,43 +273,44 @@ describe("Contract: PoolToken", () => {
       });
 
       describe("Set admin address", async () => {
-        it("Owner can set admin", async () => {
-          await poolToken.connect(deployer).setAdminAddress(FAKE_ADDRESS);
+        it("Emergency Safe can set admin", async () => {
+          await poolToken.connect(emergencySafe).setAdminAddress(FAKE_ADDRESS);
           expect(await poolToken.proxyAdmin()).to.equal(FAKE_ADDRESS);
         });
 
         it("Revert on setting to zero address", async () => {
           await expect(
-            poolToken.connect(deployer).setAdminAddress(ZERO_ADDRESS)
+            poolToken.connect(emergencySafe).setAdminAddress(ZERO_ADDRESS)
           ).to.be.revertedWith("INVALID_ADMIN");
         });
 
-        it("Revert when non-owner attempts to set address", async () => {
+        it("Revert when unpermissioned account attempts to set address", async () => {
           await expect(
             poolToken.connect(randomUser).setAdminAddress(FAKE_ADDRESS)
-          ).to.be.revertedWith("Ownable: caller is not the owner");
+          ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
         });
       });
 
       describe("Approvals", () => {
-        it("Owner can call infiniteApprove", async () => {
+        it("Emergency Safe can call infiniteApprove", async () => {
           await expect(
-            poolToken.connect(deployer).infiniteApprove(FAKE_ADDRESS)
+            poolToken.connect(emergencySafe).infiniteApprove(FAKE_ADDRESS)
           ).to.not.be.reverted;
         });
 
-        it("Revert when non-owner calls infiniteApprove", async () => {
+        it("Revert when unpermissioned account calls infiniteApprove", async () => {
           await expect(
             poolToken.connect(randomUser).infiniteApprove(FAKE_ADDRESS)
           ).to.be.reverted;
         });
 
-        it("Owner can call revokeApprove", async () => {
-          await expect(poolToken.connect(deployer).revokeApprove(FAKE_ADDRESS))
-            .to.not.be.reverted;
+        it("Emergency Safe can call revokeApprove", async () => {
+          await expect(
+            poolToken.connect(emergencySafe).revokeApprove(FAKE_ADDRESS)
+          ).to.not.be.reverted;
         });
 
-        it("Revert when non-owner calls revokeApprove", async () => {
+        it("Revert when unpermissioned account calls revokeApprove", async () => {
           await expect(
             poolToken.connect(randomUser).revokeApprove(FAKE_ADDRESS)
           ).to.be.reverted;
@@ -291,31 +318,31 @@ describe("Contract: PoolToken", () => {
       });
 
       describe("Lock pool", () => {
-        it("Owner can lock and unlock pool", async () => {
-          await expect(poolToken.connect(deployer).lock()).to.emit(
+        it("Emergency Safe can lock and unlock pool", async () => {
+          await expect(poolToken.connect(emergencySafe).lock()).to.emit(
             poolToken,
             "Paused"
           );
-          await expect(poolToken.connect(deployer).unlock()).to.emit(
+          await expect(poolToken.connect(emergencySafe).unlock()).to.emit(
             poolToken,
             "Unpaused"
           );
         });
 
-        it("Revert when non-owner attempts to lock", async () => {
+        it("Revert when unpermissioned account attempts to lock", async () => {
           await expect(poolToken.connect(randomUser).lock()).to.be.revertedWith(
-            "Ownable: caller is not the owner"
+            "NOT_EMERGENCY_ROLE"
           );
         });
 
-        it("Revert when non-owner attempts to unlock", async () => {
+        it("Revert when unpermissioned account attempts to unlock", async () => {
           await expect(
             poolToken.connect(randomUser).unlock()
-          ).to.be.revertedWith("Ownable: caller is not the owner");
+          ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
         });
 
         it("Revert when calling addLiquidity/redeem on locked pool", async () => {
-          await poolToken.connect(deployer).lock();
+          await poolToken.connect(emergencySafe).lock();
 
           await expect(
             poolToken.connect(randomUser).addLiquidity(50)
@@ -327,49 +354,49 @@ describe("Contract: PoolToken", () => {
         });
 
         it("Revert when calling infiniteApprove on locked pool", async () => {
-          await poolToken.connect(deployer).lock();
+          await poolToken.connect(emergencySafe).lock();
 
           await expect(
-            poolToken.connect(deployer).infiniteApprove(FAKE_ADDRESS)
+            poolToken.connect(emergencySafe).infiniteApprove(FAKE_ADDRESS)
           ).to.revertedWith("Pausable: paused");
         });
 
         it("Allow calling revokeApprove on locked pool", async () => {
-          await poolToken.connect(deployer).lock();
+          await poolToken.connect(emergencySafe).lock();
 
-          await expect(poolToken.connect(deployer).revokeApprove(FAKE_ADDRESS))
-            .to.not.be.reverted;
+          await expect(
+            poolToken.connect(emergencySafe).revokeApprove(FAKE_ADDRESS)
+          ).to.not.be.reverted;
         });
       });
 
       describe("Lock addLiquidity", () => {
-        it("Owner can lock", async () => {
-          await expect(poolToken.connect(deployer).lockAddLiquidity()).to.emit(
-            poolToken,
-            "AddLiquidityLocked"
-          );
+        it("Emergency Safe can lock", async () => {
+          await expect(
+            poolToken.connect(emergencySafe).lockAddLiquidity()
+          ).to.emit(poolToken, "AddLiquidityLocked");
         });
 
-        it("Owner can unlock", async () => {
+        it("Emergency Safe can unlock", async () => {
           await expect(
-            poolToken.connect(deployer).unlockAddLiquidity()
+            poolToken.connect(emergencySafe).unlockAddLiquidity()
           ).to.emit(poolToken, "AddLiquidityUnlocked");
         });
 
-        it("Revert if non-owner attempts to lock", async () => {
+        it("Revert if unpermissioned account attempts to lock", async () => {
           await expect(
             poolToken.connect(randomUser).lockAddLiquidity()
-          ).to.be.revertedWith("Ownable: caller is not the owner");
+          ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
         });
 
-        it("Revert if non-owner attempts to unlock", async () => {
+        it("Revert if unpermissioned account attempts to unlock", async () => {
           await expect(
             poolToken.connect(randomUser).unlockAddLiquidity()
-          ).to.be.revertedWith("Ownable: caller is not the owner");
+          ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
         });
 
         it("Revert deposit when pool is locked", async () => {
-          await poolToken.connect(deployer).lockAddLiquidity();
+          await poolToken.connect(emergencySafe).lockAddLiquidity();
 
           await expect(
             poolToken.connect(randomUser).addLiquidity(1)
@@ -377,8 +404,8 @@ describe("Contract: PoolToken", () => {
         });
 
         it("Deposit should work after unlock", async () => {
-          await poolToken.connect(deployer).lockAddLiquidity();
-          await poolToken.connect(deployer).unlockAddLiquidity();
+          await poolToken.connect(emergencySafe).lockAddLiquidity();
+          await poolToken.connect(emergencySafe).unlockAddLiquidity();
 
           await expect(poolToken.connect(randomUser).addLiquidity(1)).to.not.be
             .reverted;
@@ -386,34 +413,34 @@ describe("Contract: PoolToken", () => {
       });
 
       describe("Lock redeem", () => {
-        it("Owner can lock", async () => {
-          await expect(poolToken.connect(deployer).lockRedeem()).to.emit(
+        it("Emergency Safe can lock", async () => {
+          await expect(poolToken.connect(emergencySafe).lockRedeem()).to.emit(
             poolToken,
             "RedeemLocked"
           );
         });
 
-        it("Owner can unlock", async () => {
-          await expect(poolToken.connect(deployer).unlockRedeem()).to.emit(
+        it("Emergency Safe can unlock", async () => {
+          await expect(poolToken.connect(emergencySafe).unlockRedeem()).to.emit(
             poolToken,
             "RedeemUnlocked"
           );
         });
 
-        it("Revert if non-owner attempts to lock", async () => {
+        it("Revert if unpermissioned account attempts to lock", async () => {
           await expect(
             poolToken.connect(randomUser).lockRedeem()
-          ).to.be.revertedWith("Ownable: caller is not the owner");
+          ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
         });
 
-        it("Revert if non-owner attempts to unlock", async () => {
+        it("Revert if unpermissioned account attempts to unlock", async () => {
           await expect(
             poolToken.connect(randomUser).unlockRedeem()
-          ).to.be.revertedWith("Ownable: caller is not the owner");
+          ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
         });
 
         it("Revert redeem when pool is locked", async () => {
-          await poolToken.connect(deployer).lockRedeem();
+          await poolToken.connect(emergencySafe).lockRedeem();
 
           await expect(
             poolToken.connect(randomUser).redeem(1)
@@ -421,8 +448,8 @@ describe("Contract: PoolToken", () => {
         });
 
         it("Redeem should work after unlock", async () => {
-          await poolToken.connect(deployer).lockRedeem();
-          await poolToken.connect(deployer).unlockRedeem();
+          await poolToken.connect(emergencySafe).lockRedeem();
+          await poolToken.connect(emergencySafe).unlockRedeem();
 
           await poolToken.mint(randomUser.address, 1);
           await expect(poolToken.connect(randomUser).redeem(1)).to.not.be
@@ -463,9 +490,7 @@ describe("Contract: PoolToken", () => {
 
           async function updateTvlAgg(usdDeployedValue) {
             if (usdDeployedValue.isZero()) {
-              await oracleAdapter.lockFor(10);
-              await oracleAdapter.setTvl(0, 100);
-              await oracleAdapter.unlock();
+              await oracleAdapter.connect(emergencySafe).setTvl(0, 100);
             }
             const lastRoundId = await tvlAgg.latestRound();
             const newRoundId = lastRoundId.add(1);
@@ -481,7 +506,7 @@ describe("Contract: PoolToken", () => {
               .connect(poolManagerSigner)
               .mint(poolToken.address, mAptSupply);
             await updateTvlAgg(deployedValue);
-            await oracleAdapter.unlock();
+            await oracleAdapter.connect(emergencySafe).unlock();
           });
 
           describe("Underlyer and mAPT integration with calculations", () => {
@@ -605,7 +630,7 @@ describe("Contract: PoolToken", () => {
                 .connect(poolManagerSigner)
                 .burn(poolToken.address, mAptSupply.div(4));
               // unlock oracle adapter after mint/burn
-              await oracleAdapter.unlock();
+              await oracleAdapter.connect(emergencySafe).unlock();
               // must update agg so staleness check passes
               await updateTvlAgg(deployedValue);
               expect(await poolToken.getDeployedValue()).to.equal(
@@ -620,7 +645,7 @@ describe("Contract: PoolToken", () => {
                 .connect(poolManagerSigner)
                 .burn(poolToken.address, mAptSupply.div(4));
               // unlock oracle adapter after mint/burn
-              await oracleAdapter.unlock();
+              await oracleAdapter.connect(emergencySafe).unlock();
               // must update agg so staleness check passes
               await updateTvlAgg(deployedValue);
               expect(await poolToken.getDeployedValue()).to.equal(
@@ -972,7 +997,9 @@ describe("Contract: PoolToken", () => {
               ]);
               await ethers.provider.send("evm_mine");
               // effectively disable staleness check
-              await oracleAdapter.setChainlinkStalePeriod(MAX_UINT256);
+              await oracleAdapter
+                .connect(adminSafe)
+                .setChainlinkStalePeriod(MAX_UINT256);
 
               const beforeBalance = await underlyer.balanceOf(
                 randomUser.address
