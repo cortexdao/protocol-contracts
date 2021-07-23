@@ -19,7 +19,7 @@ const usdc = (amount) => tokenAmountToBigNumber(amount, "6");
 const dai = (amount) => tokenAmountToBigNumber(amount, "18");
 const ether = (amount) => tokenAmountToBigNumber(amount, "18");
 
-describe("Contract: MetaPoolToken", () => {
+describe.only("Contract: MetaPoolToken", () => {
   // signers
   let deployer;
   let poolManager;
