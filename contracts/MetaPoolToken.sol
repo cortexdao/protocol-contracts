@@ -2,15 +2,28 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import "./utils/AccessControlUpgradeSafe.sol";
-import "./interfaces/IAddressRegistryV2.sol";
-import "./interfaces/IMintable.sol";
-import "./interfaces/IOracleAdapter.sol";
+import {
+    Address
+} from "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
+import {
+    SafeMath
+} from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import {
+    Initializable
+} from "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
+import {
+    PausableUpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
+import {
+    ReentrancyGuardUpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
+import {
+    ERC20UpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
+import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
+import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
+import {IMintable} from "./interfaces/IMintable.sol";
+import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
 
 /**
  * @title Meta Pool Token
