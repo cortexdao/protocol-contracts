@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
-import "./utils/AccessControl.sol";
-import "./interfaces/IOracleAdapter.sol";
-import "./interfaces/IAddressRegistryV2.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {
+    AggregatorV3Interface
+} from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
+import {AccessControl} from "./utils/AccessControl.sol";
+import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
+import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 
 /**
  * @title Oracle Adapter
