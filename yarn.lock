@@ -3250,6 +3250,10 @@ domutils@^2.4.3, domutils@^2.4.4:
     domelementtype "^2.0.1"
     domhandler "^4.0.0"
 
+dot-only-hunter@apy-finance/dot-only-hunter:
+  version "1.0.3"
+  resolved "https://codeload.github.com/apy-finance/dot-only-hunter/tar.gz/35d8fda95686040e306a9ab06a62b7962ff70a17"
+
 dotenv@^8.2.0:
   version "8.2.0"
   resolved "https://registry.npmjs.org/dotenv/-/dotenv-8.2.0.tgz"
