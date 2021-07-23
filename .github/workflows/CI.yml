@@ -69,3 +69,9 @@ jobs:
         INFURA_API_KEY: ${{ secrets.INFURA_API_KEY }}
     - name: Check for dot-only
       run: yarn dot-only
+    - name: Code coverage
+      run: |
+        yarn coverage
+        yarn istanbul check-coverage ./coverage.json --statements 88
+      env:
+        INFURA_API_KEY: ${{ secrets.INFURA_API_KEY }}
