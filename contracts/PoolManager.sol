@@ -2,18 +2,29 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
-import "./utils/AccessControlUpgradeSafe.sol";
-import "./interfaces/IAssetAllocation.sol";
-import "./interfaces/IAddressRegistryV2.sol";
-import "./interfaces/IDetailedERC20.sol";
-import "./interfaces/ILpSafeFunder.sol";
-import "./interfaces/ITvlManager.sol";
-import "./PoolTokenV2.sol";
-import "./MetaPoolToken.sol";
+import {
+    Address
+} from "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
+import {
+    SafeERC20
+} from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
+import {
+    SafeMath
+} from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import {
+    Initializable
+} from "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
+import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
+import {
+    ReentrancyGuardUpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
+import {IAssetAllocation} from "./interfaces/IAssetAllocation.sol";
+import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
+import {IDetailedERC20} from "./interfaces/IDetailedERC20.sol";
+import {ILpSafeFunder} from "./interfaces/ILpSafeFunder.sol";
+import {ITvlManager} from "./interfaces/ITvlManager.sol";
+import {PoolTokenV2} from "./PoolTokenV2.sol";
+import {MetaPoolToken} from "./MetaPoolToken.sol";
 
 /**
  * @title Pool Manager
