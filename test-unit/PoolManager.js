@@ -6,7 +6,7 @@ const timeMachine = require("ganache-time-traveler");
 const { FAKE_ADDRESS, bytes32 } = require("../utils/helpers");
 const { deployMockContract } = require("@ethereum-waffle/mock-contract");
 
-describe("Contract: PoolManager", () => {
+describe.only("Contract: PoolManager", () => {
   // signers
   let deployer;
   let randomUser;
@@ -76,6 +76,34 @@ describe("Contract: PoolManager", () => {
     );
     await proxy.deployed();
     poolManager = await PoolManager.attach(proxy.address);
+  });
+
+  describe("Defaults", () => {
+    it("Default admin role given to emergency safe", async () => {
+      const DEFAULT_ADMIN_ROLE = await poolManager.DEFAULT_ADMIN_ROLE();
+      const memberCount = await poolManager.getRoleMemberCount(
+        DEFAULT_ADMIN_ROLE
+      );
+      expect(memberCount).to.equal(1);
+      expect(
+        await poolManager.hasRole(DEFAULT_ADMIN_ROLE, emergencySafe.address)
+      ).to.be.true;
+    });
+
+    it("LP role given to LP Safe", async () => {
+      const LP_ROLE = await poolManager.LP_ROLE();
+      const memberCount = await poolManager.getRoleMemberCount(LP_ROLE);
+      expect(memberCount).to.equal(1);
+      expect(await poolManager.hasRole(LP_ROLE, lpSafe.address)).to.be.true;
+    });
+
+    it("Emergency role given to Emergency Safe", async () => {
+      const EMERGENCY_ROLE = await poolManager.EMERGENCY_ROLE();
+      const memberCount = await poolManager.getRoleMemberCount(EMERGENCY_ROLE);
+      expect(memberCount).to.equal(1);
+      expect(await poolManager.hasRole(EMERGENCY_ROLE, emergencySafe.address))
+        .to.be.true;
+    });
   });
 
   describe("Set address registry", () => {
