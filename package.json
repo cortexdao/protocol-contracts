@@ -12,6 +12,7 @@
     "test:integration": "ENABLE_FORKING=true hardhat test test-integration/*",
     "lint": "solhint contracts/**/*.sol contracts/*.sol",
     "coverage": "yarn clean; ENABLE_FORKING=true hardhat coverage --testfiles \"test-{unit,integration}/**/*.js\"",
+    "dot-only": "yarn dot-only-hunter test-unit && yarn dot-only-hunter test-integration",
     "emergency:withdraw": "yarn hardhat --network localhost run scripts/EmergencyAPYWithdraw.js"
   },
   "husky": {
@@ -46,6 +47,7 @@
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@openzeppelin/test-helpers": "^0.5.9",
+    "dot-only-hunter": "apy-finance/dot-only-hunter",
     "dotenv": "^8.2.0",
     "eslint": "^7.11.0",
     "eslint-config-prettier": "^6.14.0",
