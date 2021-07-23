@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 
-import "../PoolTokenV2.sol";
+import {PoolTokenV2} from "../PoolTokenV2.sol";
 
 /**
  * @dev Proxy contract to test internal variables and functions

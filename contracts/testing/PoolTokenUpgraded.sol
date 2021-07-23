@@ -2,7 +2,7 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "../PoolToken.sol";
+import {PoolToken} from "../PoolToken.sol";
 
 contract PoolTokenUpgraded is PoolToken {
     bool public newlyAddedVariable;
