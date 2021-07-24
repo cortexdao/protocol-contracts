@@ -2,24 +2,24 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import {
     SafeERC20
 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 import {
     ReentrancyGuard
 } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {AccessControl} from "./utils/AccessControl.sol";
-import {IAssetAllocation} from "./interfaces/IAssetAllocation.sol";
-import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
+import { AccessControl } from "./utils/AccessControl.sol";
+import { IAssetAllocation } from "./interfaces/IAssetAllocation.sol";
+import { IAddressRegistryV2 } from "./interfaces/IAddressRegistryV2.sol";
 import {
     IDetailedERC20UpgradeSafe
 } from "./interfaces/IDetailedERC20UpgradeSafe.sol";
-import {ILpSafeFunder} from "./interfaces/ILpSafeFunder.sol";
-import {ITvlManager} from "./interfaces/ITvlManager.sol";
-import {PoolTokenV2} from "./PoolTokenV2.sol";
-import {MetaPoolToken} from "./MetaPoolToken.sol";
+import { ILpSafeFunder } from "./interfaces/ILpSafeFunder.sol";
+import { ITvlManager } from "./interfaces/ITvlManager.sol";
+import { PoolTokenV2 } from "./PoolTokenV2.sol";
+import { MetaPoolToken } from "./MetaPoolToken.sol";
 
 /**
  * @title Pool Manager
@@ -68,6 +68,30 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
     }
 
+    function rebalanceReserves(bytes32[] calldata poolIds)
+        external
+        override
+        nonReentrant
+        onlyLpRole
+    {
+        address lpSafeAddress = addressRegistry.lpSafeAddress();
+        require(lpSafeAddress != address(0), "INVALID_LP_SAFE");
+
+        PoolAmount[] memory rebalanceAmounts = new PoolAmount[](poolIds.length);
+
+        for (uint256 i = 0; i < poolIds.length; i++) {
+            rebalanceAmounts[i] = PoolAmount(
+                poolIds[i],
+                PoolTokenV2(addressRegistry.getAddress(poolIds[i]))
+                    .getReserveTopUpValue()
+            );
+        }
+
+        (PoolTokenV2[] memory pools, int256[] memory amounts) =
+            _getPoolsAndAmounts(rebalanceAmounts);
+        _rebalance(lpSafeAddress, pools, amounts);
+    }
+
     /**
      * @notice Funds LP Safe account and register an asset allocation
      * @dev only callable with LpRole. Also registers the pool underlyer for the account being funded
@@ -87,7 +111,7 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
     {
         address lpSafeAddress = addressRegistry.lpSafeAddress();
         require(lpSafeAddress != address(0), "INVALID_LP_SAFE");
-        (PoolTokenV2[] memory pools, uint256[] memory amounts) =
+        (PoolTokenV2[] memory pools, int256[] memory amounts) =
             _getPoolsAndAmounts(poolAmounts);
         _fund(lpSafeAddress, pools, amounts);
         _registerPoolUnderlyers(lpSafeAddress, pools);
@@ -112,7 +136,7 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
     {
         address lpSafeAddress = addressRegistry.lpSafeAddress();
         require(lpSafeAddress != address(0), "INVALID_LP_SAFE");
-        (PoolTokenV2[] memory pools, uint256[] memory amounts) =
+        (PoolTokenV2[] memory pools, int256[] memory amounts) =
             _getPoolsAndAmounts(poolAmounts);
         _checkManagerAllowances(lpSafeAddress, pools, amounts);
         _withdraw(lpSafeAddress, pools, amounts);
@@ -174,15 +198,15 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
     function _fund(
         address account,
         PoolTokenV2[] memory pools,
-        uint256[] memory amounts
+        int256[] memory amounts
     ) internal {
         MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAptAddress());
         uint256[] memory mintAmounts = new uint256[](pools.length);
         for (uint256 i = 0; i < pools.length; i++) {
             PoolTokenV2 pool = pools[i];
-            uint256 poolAmount = amounts[i];
-            require(poolAmount > 0, "INVALID_AMOUNT");
-            IDetailedERC20UpgradeSafe underlyer = pool.underlyer();
+            require(amounts[i] > 0, "INVALID_AMOUNT");
+            uint256 poolAmount = uint256(amounts[i]);
+            IDetailedERC20 underlyer = pool.underlyer();
 
             uint256 tokenPrice = pool.getUnderlyerPrice();
             uint8 decimals = underlyer.decimals();
@@ -213,15 +237,15 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
     function _withdraw(
         address account,
         PoolTokenV2[] memory pools,
-        uint256[] memory amounts
+        int256[] memory amounts
     ) internal {
         MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAptAddress());
         uint256[] memory burnAmounts = new uint256[](pools.length);
         for (uint256 i = 0; i < pools.length; i++) {
             PoolTokenV2 pool = pools[i];
-            uint256 amountToSend = amounts[i];
-            require(amountToSend > 0, "INVALID_AMOUNT");
-            IDetailedERC20UpgradeSafe underlyer = pool.underlyer();
+            require(amounts[i] > 0, "INVALID_AMOUNT");
+            uint256 amountToSend = uint256(amounts[i]);
+            IDetailedERC20 underlyer = pool.underlyer();
 
             uint256 tokenPrice = pool.getUnderlyerPrice();
             uint8 decimals = underlyer.decimals();
@@ -242,13 +266,110 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         }
     }
 
+    function _rebalance(
+        address account,
+        PoolTokenV2[] memory pools,
+        int256[] memory amounts
+    ) internal {
+        MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAptAddress());
+
+        int256[] memory mAptDeltas = _calculateMaptDeltas(mApt, pools, amounts);
+
+        _transferBetweenAccountAndPools(account, pools, amounts);
+
+        // MUST do the actual minting after calculating *all* mint amounts,
+        // otherwise due to Chainlink not updating during a transaction,
+        // the totalSupply will change while TVL doesn't.
+        //
+        // Using the pre-mint TVL and totalSupply gives the same answer
+        // as using post-mint values.
+        _rebalanceMapt(mApt, pools, mAptDeltas);
+    }
+
+    function _transferBetweenAccountAndPools(
+        address account,
+        PoolTokenV2[] memory pools,
+        int256[] memory amounts
+    ) internal {
+        require(account != address(0), "INVALID_ADDRESS");
+        require(pools.length == amounts.length, "LENGTHS_MUST_MATCH");
+
+        for (uint256 i = 0; i < pools.length; i++) {
+            require(amounts[i] != 0, "INVALID_AMOUNT");
+
+            IDetailedERC20 underlyer = pools[i].underlyer();
+
+            if (amounts[i] < 0) {
+                underlyer.safeTransferFrom(
+                    address(pools[i]),
+                    account,
+                    uint256(-amounts[i])
+                );
+            } else if (amounts[i] > 0) {
+                underlyer.safeTransferFrom(
+                    account,
+                    address(pools[i]),
+                    uint256(amounts[i])
+                );
+            }
+        }
+    }
+
+    function _rebalanceMapt(
+        MetaPoolToken mApt,
+        PoolTokenV2[] memory pools,
+        int256[] memory mAptDeltas
+    ) internal {
+        require(pools.length == mAptDeltas.length, "LENGTHS_MUST_MATCH");
+
+        for (uint256 i = 0; i < pools.length; i++) {
+            require(mAptDeltas[i] != 0, "INVALID_AMOUNT");
+
+            if (mAptDeltas[i] < 0) {
+                mApt.mint(address(pools[i]), uint256(-mAptDeltas[i]));
+            } else if (mAptDeltas[i] > 0) {
+                mApt.burn(address(pools[i]), uint256(mAptDeltas[i]));
+            }
+        }
+    }
+
+    function _calculateMaptDeltas(
+        MetaPoolToken mApt,
+        PoolTokenV2[] memory pools,
+        int256[] memory amounts
+    ) internal view returns (int256[] memory) {
+        require(pools.length == amounts.length, "LENGTHS_MUST_MATCH");
+
+        int256[] memory mAptDeltas = new int256[](pools.length);
+
+        for (uint256 i = 0; i < pools.length; i++) {
+            require(amounts[i] != 0, "INVALID_AMOUNT");
+
+            IDetailedERC20 underlyer = pools[i].underlyer();
+            uint256 tokenPrice = pools[i].getUnderlyerPrice();
+            uint8 decimals = underlyer.decimals();
+
+            uint256 mAptDelta =
+                mApt.calculateMintAmount(
+                    amounts[i] < 0 ? uint256(-amounts[i]) : uint256(amounts[i]),
+                    tokenPrice,
+                    decimals
+                );
+            mAptDeltas[i] = amounts[i] < 0
+                ? -int256(mAptDelta)
+                : int256(mAptDelta);
+        }
+
+        return mAptDeltas;
+    }
+
     function _getPoolsAndAmounts(ILpSafeFunder.PoolAmount[] memory poolAmounts)
         internal
         view
-        returns (PoolTokenV2[] memory, uint256[] memory)
+        returns (PoolTokenV2[] memory, int256[] memory)
     {
         PoolTokenV2[] memory pools = new PoolTokenV2[](poolAmounts.length);
-        uint256[] memory amounts = new uint256[](poolAmounts.length);
+        int256[] memory amounts = new int256[](poolAmounts.length);
         for (uint256 i = 0; i < poolAmounts.length; i++) {
             amounts[i] = poolAmounts[i].amount;
             pools[i] = PoolTokenV2(
@@ -267,12 +388,13 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
     function _checkManagerAllowances(
         address account,
         PoolTokenV2[] memory pools,
-        uint256[] memory amounts
+        int256[] memory amounts
     ) internal view {
         for (uint256 i = 0; i < pools.length; i++) {
             IDetailedERC20UpgradeSafe underlyer = pools[i].underlyer();
             uint256 allowance = underlyer.allowance(account, address(this));
-            require(amounts[i] <= allowance, "INSUFFICIENT_ALLOWANCE");
+            require(amounts[i] > 0, "INVALID_AMOUNT");
+            require(uint256(amounts[i]) <= allowance, "INSUFFICIENT_ALLOWANCE");
         }
     }
 }
