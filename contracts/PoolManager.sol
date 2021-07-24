@@ -3,7 +3,9 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import {
+    SafeERC20
+} from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {
     ReentrancyGuard
@@ -11,7 +13,9 @@ import {
 import {AccessControl} from "./utils/AccessControl.sol";
 import {IAssetAllocation} from "./interfaces/IAssetAllocation.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
-import {IDetailedERC20} from "./interfaces/IDetailedERC20.sol";
+import {
+    IDetailedERC20UpgradeSafe
+} from "./interfaces/IDetailedERC20UpgradeSafe.sol";
 import {ILpSafeFunder} from "./interfaces/ILpSafeFunder.sol";
 import {ITvlManager} from "./interfaces/ITvlManager.sol";
 import {PoolTokenV2} from "./PoolTokenV2.sol";
@@ -36,7 +40,7 @@ import {MetaPoolToken} from "./MetaPoolToken.sol";
  */
 contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
     using SafeMath for uint256;
-    using SafeERC20 for IDetailedERC20;
+    using SafeERC20 for IDetailedERC20UpgradeSafe;
 
     IAddressRegistryV2 public addressRegistry;
 
@@ -145,7 +149,7 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
             ITvlManager(addressRegistry.getAddress("tvlManager"));
         for (uint256 i = 0; i < pools.length; i++) {
             PoolTokenV2 pool = pools[i];
-            IDetailedERC20 underlyer = pool.underlyer();
+            IDetailedERC20UpgradeSafe underlyer = pool.underlyer();
             string memory symbol = underlyer.symbol();
             bytes memory _data =
                 abi.encodeWithSignature("balanceOf(address)", account);
@@ -178,7 +182,7 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
             PoolTokenV2 pool = pools[i];
             uint256 poolAmount = amounts[i];
             require(poolAmount > 0, "INVALID_AMOUNT");
-            IDetailedERC20 underlyer = pool.underlyer();
+            IDetailedERC20UpgradeSafe underlyer = pool.underlyer();
 
             uint256 tokenPrice = pool.getUnderlyerPrice();
             uint8 decimals = underlyer.decimals();
@@ -217,7 +221,7 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
             PoolTokenV2 pool = pools[i];
             uint256 amountToSend = amounts[i];
             require(amountToSend > 0, "INVALID_AMOUNT");
-            IDetailedERC20 underlyer = pool.underlyer();
+            IDetailedERC20UpgradeSafe underlyer = pool.underlyer();
 
             uint256 tokenPrice = pool.getUnderlyerPrice();
             uint8 decimals = underlyer.decimals();
@@ -266,7 +270,7 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         uint256[] memory amounts
     ) internal view {
         for (uint256 i = 0; i < pools.length; i++) {
-            IDetailedERC20 underlyer = pools[i].underlyer();
+            IDetailedERC20UpgradeSafe underlyer = pools[i].underlyer();
             uint256 allowance = underlyer.allowance(account, address(this));
             require(amounts[i] <= allowance, "INSUFFICIENT_ALLOWANCE");
         }

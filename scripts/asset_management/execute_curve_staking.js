@@ -29,7 +29,7 @@ async function executeStaking(lpTokenAddress, gaugeAddress, lpTokenAmount) {
   const [accountId] = await getStrategyAccountInfo(networkName);
 
   const ifaceERC20 = new ethers.utils.Interface(
-    artifacts.require("IDetailedERC20").abi
+    artifacts.require("IDetailedERC20UpgradeSafe").abi
   );
   const ifaceLiquidityGauge = new ethers.utils.Interface(
     artifacts.require("ILiquidityGauge").abi

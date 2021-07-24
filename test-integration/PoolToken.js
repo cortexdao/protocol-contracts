@@ -92,7 +92,10 @@ describe("Contract: PoolToken", () => {
           "AggregatorV3Interface",
           aggAddress
         );
-        underlyer = await ethers.getContractAt("IDetailedERC20", tokenAddress);
+        underlyer = await ethers.getContractAt(
+          "IDetailedERC20UpgradeSafe",
+          tokenAddress
+        );
 
         const paymentAmount = link("1");
         const maxSubmissionValue = tokenAmountToBigNumber("1", "20");

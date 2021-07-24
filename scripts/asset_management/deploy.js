@@ -81,7 +81,10 @@ async function main(argv) {
   console.logDone();
 
   console.log("Funding aggregator with LINK ...");
-  const token = await ethers.getContractAt("IDetailedERC20", LINK_ADDRESS);
+  const token = await ethers.getContractAt(
+    "IDetailedERC20UpgradeSafe",
+    LINK_ADDRESS
+  );
   // aggregator must hold enough LINK for two rounds of submissions, i.e.
   // LINK reserve >= 2 * number of oracles * payment amount
   const linkAmount = argv.linkAmount || "100000";

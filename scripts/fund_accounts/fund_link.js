@@ -11,7 +11,10 @@ const WHALE_ADDRESS = "0x3dfd23A6c5E8BbcFc9581d2E864a68feb6a076d3";
 async function main(argv) {
   await hre.run("compile");
   console.log("Acquire LINK for testing ...");
-  const token = await ethers.getContractAt("IDetailedERC20", LINK_ADDRESS);
+  const token = await ethers.getContractAt(
+    "IDetailedERC20UpgradeSafe",
+    LINK_ADDRESS
+  );
 
   const testAccountIndex = argv.accountIndex || 0;
   console.log("Account index:", testAccountIndex);

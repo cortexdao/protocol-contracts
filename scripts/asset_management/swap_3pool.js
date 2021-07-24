@@ -69,13 +69,13 @@ async function swap3Pool(inputSymbol, outputSymbol, amount) {
 
   const outputTokenAddress = getStablecoinAddress(outputSymbol, NETWORK_NAME);
   const outputToken = await ethers.getContractAt(
-    "IDetailedERC20",
+    "IDetailedERC20UpgradeSafe",
     outputTokenAddress
   );
   const balanceBefore = await outputToken.balanceOf(accountAddress);
 
   const ifaceERC20 = new ethers.utils.Interface(
-    artifacts.require("IDetailedERC20").abi
+    artifacts.require("IDetailedERC20UpgradeSafe").abi
   );
   const iface3pool = new ethers.utils.Interface(CURVE_3POOL_ABI);
   const encodedApprove = ifaceERC20.encodeFunctionData(

@@ -30,7 +30,10 @@ async function getTokenBalance(symbol, tokenAddress) {
       throw new Error(`'symbol' value not recognized: ${symbol}`);
   }
 
-  const token = await ethers.getContractAt("IDetailedERC20", tokenAddress);
+  const token = await ethers.getContractAt(
+    "IDetailedERC20UpgradeSafe",
+    tokenAddress
+  );
   const [, accountAddress] = await getStrategyAccountInfo(NETWORK_NAME);
   const balance = await token.balanceOf(accountAddress);
   return balance;
