@@ -210,22 +210,8 @@ describe("Contract: PoolManager", () => {
     /***** deploy Pool Manager  *****/
     /********************************/
     const PoolManager = await ethers.getContractFactory("PoolManager");
-    const PoolManagerProxy = await ethers.getContractFactory(
-      "PoolManagerProxy"
-    );
-
-    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    const managerAdmin = await ProxyAdmin.deploy();
-    await managerAdmin.deployed();
-    const managerLogic = await PoolManager.deploy();
-    await managerLogic.deployed();
-    const managerProxy = await PoolManagerProxy.deploy(
-      managerLogic.address,
-      managerAdmin.address,
-      APY_ADDRESS_REGISTRY
-    );
-    await managerProxy.deployed();
-    poolManager = await PoolManager.attach(managerProxy.address);
+    poolManager = await PoolManager.deploy(addressRegistry.address);
+    await poolManager.deployed();
 
     // approve manager to withdraw from pools
     daiPool = await ethers.getContractAt(
@@ -276,6 +262,7 @@ describe("Contract: PoolManager", () => {
     );
     const MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
 
+    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     const mAptAdmin = await ProxyAdmin.deploy();
     await mAptAdmin.deployed();
 
