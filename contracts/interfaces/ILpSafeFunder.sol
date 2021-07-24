@@ -13,7 +13,6 @@ interface ILpSafeFunder {
 
     function rebalanceReserves(bytes32[] calldata pools) external;
 
-    function fundLpSafe(PoolAmount[] calldata poolAmounts) external;
-
-    function withdrawFromLpSafe(PoolAmount[] calldata poolAmounts) external;
+    function emergencyRebalanceReserves(PoolAmount[] calldata rebalanceAmounts)
+        external;
 }
