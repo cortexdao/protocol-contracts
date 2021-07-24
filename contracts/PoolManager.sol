@@ -58,7 +58,7 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
      * Our proxy deployment will call this as part of the constructor.
      * @param addressRegistry_ the address registry to initialize with
      */
-    function initialize(address addressRegistry_) external {
+    constructor(address addressRegistry_) public {
         _setAddressRegistry(addressRegistry_);
         _setupRole(
             DEFAULT_ADMIN_ROLE,
