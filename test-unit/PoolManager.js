@@ -229,7 +229,7 @@ describe("Contract: PoolManager", () => {
       });
     });
 
-    describe.only("_calculateMaptDeltas", async () => {
+    describe("_calculateMaptDeltas", async () => {
       it("Revert if array lengths do not match", async () => {
         const pools = Object.values(poolMocks).map((p) => p.address);
         const amounts = new Array(pools.length - 1).fill(
