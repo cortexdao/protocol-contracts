@@ -24,7 +24,9 @@ describe("Contract: PoolManager", () => {
 
   // deployed contracts
   let poolManager;
+  let underlyerMocks;
   let poolMocks;
+  let mAptMock;
   let addressRegistryMock;
 
   // use EVM snapshots for test isolation
@@ -60,7 +62,10 @@ describe("Contract: PoolManager", () => {
     const proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
 
-    const mAptMock = await deployMockContract(deployer, []);
+    mAptMock = await deployMockContract(
+      deployer,
+      artifacts.require("MetaPoolToken").abi
+    );
     addressRegistryMock = await deployMockContract(
       deployer,
       artifacts.require("IAddressRegistryV2").abi
@@ -78,16 +83,41 @@ describe("Contract: PoolManager", () => {
       .returns(emergencySafe.address);
     await addressRegistryMock.mock.lpSafeAddress.returns(lpSafe.address);
 
-    poolMocks = {};
-    const poolIds = ["daiPool", "usdcPool", "usdtPool"].map((id) =>
-      bytes32(id)
-    );
+    underlyerMocks = {};
+    const underlyerSymbols = ["dai", "usdc", "usdt"];
     await Promise.all(
-      poolIds.map(async (poolId) => {
-        poolMocks[poolId] = await deployMockContract(deployer, []);
+      underlyerSymbols.map(async (symbol) => {
+        const underlyerMock = await deployMockContract(
+          deployer,
+          artifacts.require("IDetailedERC20").abi
+        );
+
+        await underlyerMock.mock.decimals.returns(
+          tokenAmountToBigNumber("18", "0")
+        );
+
+        underlyerMocks[symbol] = underlyerMock;
+      })
+    );
+
+    poolMocks = {};
+    await Promise.all(
+      underlyerSymbols.map(async (symbol) => {
+        const poolId = bytes32(`${symbol}Pool`);
+        const poolMock = await deployMockContract(
+          deployer,
+          artifacts.require("PoolTokenV2").abi
+        );
+
+        await poolMock.mock.underlyer.returns(underlyerMocks[symbol].address);
+        await poolMock.mock.getUnderlyerPrice.returns(
+          tokenAmountToBigNumber("1", "8")
+        );
         await addressRegistryMock.mock.getAddress
           .withArgs(poolId)
-          .returns(poolMocks[poolId].address);
+          .returns(poolMock.address);
+
+        poolMocks[poolId] = poolMock;
       })
     );
 
@@ -196,6 +226,82 @@ describe("Contract: PoolManager", () => {
         ];
         const result = await poolManager.getPoolsAndAmounts(poolAmounts);
         expect(result).to.deep.equal(poolsAndAmounts);
+      });
+    });
+
+    describe.only("_calculateMaptDeltas", async () => {
+      it("Revert if array lengths do not match", async () => {
+        const pools = Object.values(poolMocks).map((p) => p.address);
+        const amounts = new Array(pools.length - 1).fill(
+          tokenAmountToBigNumber("1", "18")
+        );
+
+        await expect(
+          poolManager.calculateMaptDeltas(mAptMock.address, pools, amounts)
+        ).to.be.revertedWith("LENGTHS_MUST_MATCH");
+      });
+
+      it("Revert if there is a zero amount", async () => {
+        const pools = Object.values(poolMocks).map((p) => p.address);
+        const amounts = new Array(pools.length).fill(
+          tokenAmountToBigNumber("0", "18")
+        );
+
+        await expect(
+          poolManager.calculateMaptDeltas(mAptMock.address, pools, amounts)
+        ).to.be.revertedWith("INVALID_AMOUNT");
+      });
+
+      it("Return an empty array when given empty arrays", async () => {
+        const pools = [];
+        const amounts = [];
+
+        const result = await poolManager.calculateMaptDeltas(
+          mAptMock.address,
+          pools,
+          amounts
+        );
+        expect(result).to.deep.equal([]);
+      });
+
+      it("Return negative deltas when amounts are negative", async () => {
+        const pools = Object.values(poolMocks).map((p) => p.address);
+        const amounts = new Array(pools.length).fill(
+          tokenAmountToBigNumber("-1", "18")
+        );
+
+        const mAptDelta = tokenAmountToBigNumber("1", "18");
+        await mAptMock.mock.calculateMintAmount.returns(mAptDelta);
+
+        const expected = new Array(pools.length).fill(mAptDelta.mul("-1"));
+
+        const result = await poolManager.calculateMaptDeltas(
+          mAptMock.address,
+          pools,
+          amounts
+        );
+
+        expect(result).to.deep.equal(expected);
+      });
+
+      it("Return positive deltas when amounts are positive", async () => {
+        const pools = Object.values(poolMocks).map((p) => p.address);
+        const amounts = new Array(pools.length).fill(
+          tokenAmountToBigNumber("1", "18")
+        );
+
+        const mAptDelta = tokenAmountToBigNumber("1", "18");
+        await mAptMock.mock.calculateMintAmount.returns(mAptDelta);
+
+        const expected = new Array(pools.length).fill(mAptDelta.mul("1"));
+
+        const result = await poolManager.calculateMaptDeltas(
+          mAptMock.address,
+          pools,
+          amounts
+        );
+
+        expect(result).to.deep.equal(expected);
       });
     });
 
