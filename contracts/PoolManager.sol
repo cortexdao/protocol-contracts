@@ -276,23 +276,4 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         }
         return (pools, amounts);
     }
-
-    /**
-     * @notice Check if pool manager has sufficient allowance to transfer pool underlyer from account
-     * @param account the address of the account to check
-     * @param pools list of pools to transfer funds to; used for retrieving the underlyer
-     * @param amounts list of required minimal allowances needed by the manager
-     */
-    function _checkManagerAllowances(
-        address account,
-        PoolTokenV2[] memory pools,
-        int256[] memory amounts
-    ) internal view {
-        for (uint256 i = 0; i < pools.length; i++) {
-            IDetailedERC20UpgradeSafe underlyer = pools[i].underlyer();
-            uint256 allowance = underlyer.allowance(account, address(this));
-            require(amounts[i] > 0, "INVALID_AMOUNT");
-            require(uint256(amounts[i]) <= allowance, "INSUFFICIENT_ALLOWANCE");
-        }
-    }
 }
