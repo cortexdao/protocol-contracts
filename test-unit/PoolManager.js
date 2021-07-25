@@ -3,7 +3,11 @@ const hre = require("hardhat");
 const { artifacts, ethers } = hre;
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
 const timeMachine = require("ganache-time-traveler");
-const { FAKE_ADDRESS, bytes32 } = require("../utils/helpers");
+const {
+  FAKE_ADDRESS,
+  tokenAmountToBigNumber,
+  bytes32,
+} = require("../utils/helpers");
 const { deployMockContract } = require("@ethereum-waffle/mock-contract");
 
 describe("Contract: PoolManager", () => {
@@ -20,6 +24,7 @@ describe("Contract: PoolManager", () => {
 
   // deployed contracts
   let poolManager;
+  let poolMocks;
   let addressRegistryMock;
 
   // use EVM snapshots for test isolation
@@ -44,7 +49,7 @@ describe("Contract: PoolManager", () => {
     ] = await ethers.getSigners();
 
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    PoolManager = await ethers.getContractFactory("PoolManager");
+    PoolManager = await ethers.getContractFactory("TestPoolManager");
     const PoolManagerProxy = await ethers.getContractFactory(
       "PoolManagerProxy"
     );
@@ -72,6 +77,19 @@ describe("Contract: PoolManager", () => {
       .withArgs(bytes32("emergencySafe"))
       .returns(emergencySafe.address);
     await addressRegistryMock.mock.lpSafeAddress.returns(lpSafe.address);
+
+    poolMocks = {};
+    const poolIds = ["daiPool", "usdcPool", "usdtPool"].map((id) =>
+      bytes32(id)
+    );
+    await Promise.all(
+      poolIds.map(async (poolId) => {
+        poolMocks[poolId] = await deployMockContract(deployer, []);
+        await addressRegistryMock.mock.getAddress
+          .withArgs(poolId)
+          .returns(poolMocks[poolId].address);
+      })
+    );
 
     const proxy = await PoolManagerProxy.deploy(
       logic.address,
@@ -153,7 +171,35 @@ describe("Contract: PoolManager", () => {
   });
 
   describe("LP Safe Funder", () => {
-    describe("fundLpSafe", () => {
+    describe("_getPoolsAndAmounts", async () => {
+      it("Return empty arrays when given an empty array", async () => {
+        const emptyPoolAmounts = [];
+        const emptyPoolsAndAmounts = [[], []];
+        const result = await poolManager.getPoolsAndAmounts(emptyPoolAmounts);
+        expect(result).to.deep.equal(emptyPoolsAndAmounts);
+      });
+
+      it("Return pools and amounts when given a PoolAmount array", async () => {
+        const poolAmounts = [
+          {
+            poolId: bytes32("daiPool"),
+            amount: tokenAmountToBigNumber("1", "18"),
+          },
+          {
+            poolId: bytes32("usdcPool"),
+            amount: tokenAmountToBigNumber("2", "6"),
+          },
+        ];
+        const poolsAndAmounts = [
+          poolAmounts.map((p) => poolMocks[p.poolId].address),
+          poolAmounts.map((p) => p.amount),
+        ];
+        const result = await poolManager.getPoolsAndAmounts(poolAmounts);
+        expect(result).to.deep.equal(poolsAndAmounts);
+      });
+    });
+
+    describe("rebalanceReserves", async () => {
       it("LP Safe can call", async () => {
         await expect(poolManager.connect(lpSafe).fundLpSafe([])).to.not.be
           .reverted;
