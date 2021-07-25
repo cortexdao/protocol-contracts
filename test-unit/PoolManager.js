@@ -25,6 +25,7 @@ describe("Contract: PoolManager", () => {
   // deployed contracts
   let poolManager;
   let underlyerMocks;
+  let poolIds;
   let poolMocks;
   let mAptMock;
   let addressRegistryMock;
@@ -101,7 +102,7 @@ describe("Contract: PoolManager", () => {
     );
 
     poolMocks = {};
-    await Promise.all(
+    poolIds = await Promise.all(
       underlyerSymbols.map(async (symbol) => {
         const poolId = bytes32(`${symbol}Pool`);
         const poolMock = await deployMockContract(
@@ -118,6 +119,8 @@ describe("Contract: PoolManager", () => {
           .returns(poolMock.address);
 
         poolMocks[poolId] = poolMock;
+
+        return poolId;
       })
     );
 
@@ -302,6 +305,31 @@ describe("Contract: PoolManager", () => {
         );
 
         expect(result).to.deep.equal(expected);
+      });
+    });
+
+    describe("_getRebalanceAmounts", async () => {
+      it("Return an empty array when give an empty array", async () => {
+        const poolIds = [];
+        const rebalanceAmounts = [];
+        const result = await poolManager.getRebalanceAmounts(poolIds);
+        expect(result).to.deep.equal(rebalanceAmounts);
+      });
+
+      it("Return array of top-up PoolAmounts from specified pools", async () => {
+        let value = 1;
+        let rebalanceAmounts = await Promise.all(
+          poolIds.map(async (id, index) => {
+            const rebalanceAmount = tokenAmountToBigNumber(value * index, "18");
+            await poolMocks[id].mock.getReserveTopUpValue.returns(
+              rebalanceAmount
+            );
+
+            return [id, rebalanceAmount];
+          })
+        );
+        const result = await poolManager.getRebalanceAmounts(poolIds);
+        expect(result).to.deep.equal(rebalanceAmounts);
       });
     });
 
