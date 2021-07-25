@@ -165,41 +165,44 @@ describe("Contract: PoolManager", () => {
 
     describe("rebalanceReserves", async () => {
       it("LP Safe can call", async () => {
-        await expect(poolManager.connect(lpSafe).fundLpSafe([])).to.not.be
-          .reverted;
-      });
-
-      it("Unpermissioned cannot call", async () => {
-        await expect(
-          poolManager.connect(randomUser).fundLpSafe([])
-        ).to.be.revertedWith("NOT_LP_ROLE");
-      });
-
-      it("Revert on unregistered LP Safe address", async () => {
-        await addressRegistryMock.mock.lpSafeAddress.returns(ZERO_ADDRESS);
-        await expect(
-          poolManager.connect(lpSafe).fundLpSafe([])
-        ).to.be.revertedWith("INVALID_LP_SAFE");
-      });
-    });
-
-    describe("withdrawFromLpSafe", () => {
-      it("LP Safe can call", async () => {
-        await expect(poolManager.connect(lpSafe).withdrawFromLpSafe([])).to.not
+        await expect(poolManager.connect(lpSafe).rebalanceReserves([])).to.not
           .be.reverted;
       });
 
       it("Unpermissioned cannot call", async () => {
         await expect(
-          poolManager.connect(randomUser).withdrawFromLpSafe([])
+          poolManager.connect(randomUser).rebalanceReserves([])
         ).to.be.revertedWith("NOT_LP_ROLE");
       });
 
       it("Revert on unregistered LP Safe address", async () => {
         await addressRegistryMock.mock.lpSafeAddress.returns(ZERO_ADDRESS);
         await expect(
-          poolManager.connect(lpSafe).withdrawFromLpSafe([])
+          poolManager.connect(lpSafe).rebalanceReserves([])
         ).to.be.revertedWith("INVALID_LP_SAFE");
+      });
+    });
+
+    describe("emergencyRebalanceReserves", async () => {
+      it("Emergency Safe can call", async () => {
+        await expect(
+          poolManager.connect(emergencySafe).emergencyRebalanceReserves([])
+        ).to.not.be.reverted;
+      });
+
+      it("Unpermissioned cannot call", async () => {
+        await expect(
+          poolManager.connect(randomUser).emergencyRebalanceReserves([])
+        ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
+      });
+
+      it("Revert on unregistered Emergency Safe address", async () => {
+        await addressRegistryMock.mock.emergencySafeAddress.returns(
+          ZERO_ADDRESS
+        );
+        await expect(
+          poolManager.connect(emergencySafe).emergencyRebalanceReserves([])
+        ).to.be.revertedWith("INVALID_EMERGENCY_SAFE");
       });
     });
   });
