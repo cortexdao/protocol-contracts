@@ -214,13 +214,20 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         int256[] memory mAptDeltas = new int256[](pools.length);
 
         for (uint256 i = 0; i < pools.length; i++) {
-            require(amounts[i] != 0, "INVALID_AMOUNT");
+            int256 amountSign;
+
+            if (amounts[i] < 0) {
+                amountSign = int256(-1);
+            } else if (amounts[i] > 0) {
+                amountSign = int256(1);
+            } else {
+                mAptDeltas[i] = 0;
+                continue;
+            }
 
             IDetailedERC20UpgradeSafe underlyer = pools[i].underlyer();
             uint256 tokenPrice = pools[i].getUnderlyerPrice();
             uint8 decimals = underlyer.decimals();
-
-            int256 amountSign = amounts[i] < 0 ? int256(-1) : int256(1);
 
             uint256 mAptDelta =
                 mApt.calculateMintAmount(

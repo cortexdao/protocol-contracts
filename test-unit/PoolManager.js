@@ -214,15 +214,19 @@ describe("Contract: PoolManager", () => {
         ).to.be.revertedWith("LENGTHS_MUST_MATCH");
       });
 
-      it("Revert if there is a zero amount", async () => {
+      it("Skip if there is a zero amount", async () => {
         const pools = Object.values(poolMocks).map((p) => p.address);
         const amounts = new Array(pools.length).fill(
           tokenAmountToBigNumber("0", "18")
         );
 
-        await expect(
-          poolManager.testCalculateMaptDeltas(mAptMock.address, pools, amounts)
-        ).to.be.revertedWith("INVALID_AMOUNT");
+        const result = await poolManager.testCalculateMaptDeltas(
+          mAptMock.address,
+          pools,
+          amounts
+        );
+
+        expect(result).to.be.deep.equal(amounts);
       });
 
       it("Return an empty array when given empty arrays", async () => {
