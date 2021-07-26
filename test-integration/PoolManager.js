@@ -38,7 +38,7 @@ const APY_USDT_POOL = "0xeA9c5a2717D5Ab75afaAC340151e73a7e37d99A7";
 console.debugging = false;
 /* ************************ */
 
-describe("Contract: PoolManager", () => {
+describe.skip("Contract: PoolManager", () => {
   // to-be-deployed contracts
   let poolManager;
   let tvlManager;
