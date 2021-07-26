@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const hre = require("hardhat");
-const { artifacts, ethers } = hre;
+const { artifacts, ethers, waffle } = hre;
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
 const timeMachine = require("ganache-time-traveler");
 const {
@@ -8,7 +8,7 @@ const {
   tokenAmountToBigNumber,
   bytes32,
 } = require("../utils/helpers");
-const { deployMockContract } = require("@ethereum-waffle/mock-contract");
+const { deployMockContract } = waffle;
 
 describe("Contract: PoolManager", () => {
   // signers
