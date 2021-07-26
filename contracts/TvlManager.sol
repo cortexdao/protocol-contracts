@@ -198,7 +198,7 @@ contract TvlManager is
 
     /**
      * @notice determines if a target address and bytes lookup data has already been registered
-     * @param data the data hash containing the target address and the bytes lookup data
+     * @param data the struct containing the target address and the bytes lookup data
      * @return returns true if the asset allocation is currently registered, otherwise false
      */
     function isAssetAllocationRegistered(Data memory data)
@@ -212,15 +212,15 @@ contract TvlManager is
 
     /**
      * @notice helper function for isAssetallocationRegistered function
-     * @param data the bytes32 hash
+     * @param id the asset allocation ID
      * @return returns true if the asset allocation is currently registered, otherwise false
      */
-    function _isAssetAllocationRegistered(bytes32 data)
+    function _isAssetAllocationRegistered(bytes32 id)
         public
         view
         returns (bool)
     {
-        return allocationIds.contains(data);
+        return allocationIds.contains(id);
     }
 
     /**
