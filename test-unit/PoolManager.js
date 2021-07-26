@@ -10,7 +10,7 @@ const {
 } = require("../utils/helpers");
 const { deployMockContract } = waffle;
 
-describe.only("Contract: PoolManager", () => {
+describe("Contract: PoolManager", () => {
   // signers
   let deployer;
   let randomUser;
@@ -303,51 +303,14 @@ describe.only("Contract: PoolManager", () => {
       });
     });
 
-    describe("_rebalanceMapt", async () => {
-      it("Revert if array lengths do not match", async () => {
-        const pools = Object.values(poolMocks).map((p) => p.address);
-        const deltas = new Array(pools.length - 1).fill(
-          tokenAmountToBigNumber("1", "18")
-        );
-
-        await expect(
-          poolManager.testRebalanceMapt(mAptMock.address, pools, deltas)
-        ).to.be.revertedWith("LENGTHS_MUST_MATCH");
-      });
-
-      it("Revert if there is a zero amount", async () => {
-        const pools = Object.values(poolMocks).map((p) => p.address);
-        const deltas = new Array(pools.length).fill(
-          tokenAmountToBigNumber("0", "18")
-        );
-
-        await expect(
-          poolManager.testRebalanceMapt(mAptMock.address, pools, deltas)
-        ).to.be.revertedWith("INVALID_AMOUNT");
-      });
-
-      it("Should not mint or burn if parameter arrays are empty", async () => {
-        const pools = [];
-        const deltas = [];
-
-        await expect(
-          poolManager.testRebalanceMapt(mAptMock.address, pools, deltas)
-        ).to.not.emit(mAptMock, "Transfer");
-      });
-    });
-
-    describe("_transferBetweenAccountAndPools", async () => {
+    describe("_rebalance", async () => {
       it("Revert if the account is a zero address", async () => {
         const account = ZERO_ADDRESS;
         const pools = [];
         const amounts = [];
 
         await expect(
-          poolManager.testTransferBetweenAccountAndPools(
-            account,
-            pools,
-            amounts
-          )
+          poolManager.testRebalance(account, pools, amounts)
         ).to.be.revertedWith("INVALID_ADDRESS");
       });
 
@@ -359,28 +322,8 @@ describe.only("Contract: PoolManager", () => {
         );
 
         await expect(
-          poolManager.testTransferBetweenAccountAndPools(
-            account,
-            pools,
-            amounts
-          )
+          poolManager.testRebalance(account, pools, amounts)
         ).to.be.revertedWith("LENGTHS_MUST_MATCH");
-      });
-
-      it("Revert if there is a zero amount", async () => {
-        const account = lpSafe.address;
-        const pools = Object.values(poolMocks).map((p) => p.address);
-        const amounts = new Array(pools.length).fill(
-          tokenAmountToBigNumber("0", "18")
-        );
-
-        await expect(
-          poolManager.testTransferBetweenAccountAndPools(
-            account,
-            pools,
-            amounts
-          )
-        ).to.be.revertedWith("INVALID_AMOUNT");
       });
     });
 

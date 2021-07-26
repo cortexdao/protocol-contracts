@@ -50,22 +50,6 @@ contract TestPoolManager is PoolManager {
         _rebalance(account, pools, amounts);
     }
 
-    function testTransferBetweenAccountAndPools(
-        address account,
-        PoolTokenV2[] memory pools,
-        int256[] memory amounts
-    ) public {
-        _transferBetweenAccountAndPools(account, pools, amounts);
-    }
-
-    function testRebalanceMapt(
-        MetaPoolToken mApt,
-        PoolTokenV2[] memory pools,
-        int256[] memory mAptDeltas
-    ) public {
-        _rebalanceMapt(mApt, pools, mAptDeltas);
-    }
-
     function testGetRebalanceAmounts(bytes32[] memory poolIds)
         public
         view

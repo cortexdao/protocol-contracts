@@ -153,11 +153,11 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         PoolTokenV2[] memory pools,
         int256[] memory amounts
     ) internal {
+        require(account != address(0), "INVALID_ADDRESS");
+        require(pools.length == amounts.length, "LENGTHS_MUST_MATCH");
+
         MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAptAddress());
-
         int256[] memory mAptDeltas = _calculateMaptDeltas(mApt, pools, amounts);
-
-        _transferBetweenAccountAndPools(account, pools, amounts);
 
         // MUST do the actual minting after calculating *all* mint amounts,
         // otherwise due to Chainlink not updating during a transaction,
@@ -165,46 +165,24 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         //
         // Using the pre-mint TVL and totalSupply gives the same answer
         // as using post-mint values.
-        _rebalanceMapt(mApt, pools, mAptDeltas);
-    }
-
-    function _transferBetweenAccountAndPools(
-        address account,
-        PoolTokenV2[] memory pools,
-        int256[] memory amounts
-    ) internal {
-        require(account != address(0), "INVALID_ADDRESS");
-        require(pools.length == amounts.length, "LENGTHS_MUST_MATCH");
-
         for (uint256 i = 0; i < pools.length; i++) {
-            require(amounts[i] != 0, "INVALID_AMOUNT");
+            int256 delta = mAptDeltas[i];
 
-            IDetailedERC20UpgradeSafe underlyer = pools[i].underlyer();
+            if (delta < 0) {
+                mApt.mint(address(pools[i]), uint256(-delta));
+            } else if (delta > 0) {
+                mApt.burn(address(pools[i]), uint256(delta));
+            } else {
+                continue;
+            }
 
             (address from, address to, uint256 amount) =
                 amounts[i] < 0
                     ? (address(pools[i]), account, uint256(-amounts[i]))
                     : (account, address(pools[i]), uint256(amounts[i]));
 
+            IDetailedERC20UpgradeSafe underlyer = pools[i].underlyer();
             underlyer.safeTransferFrom(from, to, amount);
-        }
-    }
-
-    function _rebalanceMapt(
-        MetaPoolToken mApt,
-        PoolTokenV2[] memory pools,
-        int256[] memory mAptDeltas
-    ) internal {
-        require(pools.length == mAptDeltas.length, "LENGTHS_MUST_MATCH");
-
-        for (uint256 i = 0; i < pools.length; i++) {
-            require(mAptDeltas[i] != 0, "INVALID_AMOUNT");
-
-            if (mAptDeltas[i] < 0) {
-                mApt.mint(address(pools[i]), uint256(-mAptDeltas[i]));
-            } else if (mAptDeltas[i] > 0) {
-                mApt.burn(address(pools[i]), uint256(mAptDeltas[i]));
-            }
         }
     }
 
