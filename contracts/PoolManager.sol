@@ -2,25 +2,25 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {
+    SafeERC20 as SafeERC20UpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import {
     ReentrancyGuard
 } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { AccessControl } from "./utils/AccessControl.sol";
-import { IAssetAllocation } from "./interfaces/IAssetAllocation.sol";
-import { IAddressRegistryV2 } from "./interfaces/IAddressRegistryV2.sol";
-import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
-import {
-    SignedSafeMath
-} from "@openzeppelin/contracts/math/SignedSafeMath.sol";
+import {AccessControl} from "./utils/AccessControl.sol";
+import {IAssetAllocation} from "./interfaces/IAssetAllocation.sol";
+import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
+import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import {SignedSafeMath} from "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import {
     IDetailedERC20UpgradeSafe
 } from "./interfaces/IDetailedERC20UpgradeSafe.sol";
-import { ILpSafeFunder } from "./interfaces/ILpSafeFunder.sol";
-import { ITvlManager } from "./interfaces/ITvlManager.sol";
-import { PoolTokenV2 } from "./PoolTokenV2.sol";
-import { MetaPoolToken } from "./MetaPoolToken.sol";
+import {ILpSafeFunder} from "./interfaces/ILpSafeFunder.sol";
+import {ITvlManager} from "./interfaces/ITvlManager.sol";
+import {PoolTokenV2} from "./PoolTokenV2.sol";
+import {MetaPoolToken} from "./MetaPoolToken.sol";
 
 /**
  * @title Pool Manager
@@ -42,7 +42,7 @@ import { MetaPoolToken } from "./MetaPoolToken.sol";
 contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
-    using SafeERC20 for IDetailedERC20UpgradeSafe;
+    using SafeERC20UpgradeSafe for IDetailedERC20UpgradeSafe;
 
     IAddressRegistryV2 public addressRegistry;
 
@@ -179,7 +179,7 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         for (uint256 i = 0; i < pools.length; i++) {
             require(amounts[i] != 0, "INVALID_AMOUNT");
 
-            IDetailedERC20 underlyer = pools[i].underlyer();
+            IDetailedERC20UpgradeSafe underlyer = pools[i].underlyer();
 
             (address from, address to, uint256 amount) =
                 amounts[i] < 0
@@ -238,7 +238,7 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         for (uint256 i = 0; i < pools.length; i++) {
             require(amounts[i] != 0, "INVALID_AMOUNT");
 
-            IDetailedERC20 underlyer = pools[i].underlyer();
+            IDetailedERC20UpgradeSafe underlyer = pools[i].underlyer();
             uint256 tokenPrice = pools[i].getUnderlyerPrice();
             uint8 decimals = underlyer.decimals();
 

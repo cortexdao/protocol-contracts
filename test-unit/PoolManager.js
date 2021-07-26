@@ -24,10 +24,11 @@ describe("Contract: PoolManager", () => {
   // deployed contracts
   let poolManager;
   let underlyerMocks;
-  let poolIds;
   let poolMocks;
   let mAptMock;
   let addressRegistryMock;
+
+  const poolIds = ["daiPool", "usdcPool", "usdtPool"].map((id) => bytes32(id));
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -77,9 +78,6 @@ describe("Contract: PoolManager", () => {
     await poolManager.deployed();
 
     poolMocks = {};
-    const poolIds = ["daiPool", "usdcPool", "usdtPool"].map((id) =>
-      bytes32(id)
-    );
 
     underlyerMocks = {};
     const underlyerSymbols = ["dai", "usdc", "usdt"];
@@ -87,7 +85,7 @@ describe("Contract: PoolManager", () => {
       underlyerSymbols.map(async (symbol) => {
         const underlyerMock = await deployMockContract(
           deployer,
-          artifacts.require("IDetailedERC20").abi
+          artifacts.require("IDetailedERC20UpgradeSafe").abi
         );
 
         await underlyerMock.mock.decimals.returns(
@@ -99,7 +97,7 @@ describe("Contract: PoolManager", () => {
     );
 
     poolMocks = {};
-    poolIds = await Promise.all(
+    await Promise.all(
       underlyerSymbols.map(async (symbol) => {
         const poolId = bytes32(`${symbol}Pool`);
         const poolMock = await deployMockContract(

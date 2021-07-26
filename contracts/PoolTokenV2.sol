@@ -15,7 +15,7 @@ import {
     Initializable
 } from "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import {
-    SafeERC20
+    SafeERC20 as SafeERC20UpgradeSafe
 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import {
     ERC20UpgradeSafe
@@ -83,7 +83,7 @@ contract PoolTokenV2 is
     using Address for address;
     using SafeMath for uint256;
     using SignedSafeMath for int256;
-    using SafeERC20 for IDetailedERC20UpgradeSafe;
+    using SafeERC20UpgradeSafe for IDetailedERC20UpgradeSafe;
 
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
     uint256 internal constant _MAX_INT256 = 2**255 - 1;
