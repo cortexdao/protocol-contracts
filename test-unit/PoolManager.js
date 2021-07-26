@@ -282,11 +282,11 @@ describe("Contract: PoolManager", () => {
       });
     });
 
-    describe("_getRebalanceAmounts", async () => {
+    describe("getRebalanceAmounts", async () => {
       it("Return an empty array when give an empty array", async () => {
         const poolIds = [];
         const rebalanceAmounts = [];
-        const result = await poolManager.testGetRebalanceAmounts(poolIds);
+        const result = await poolManager.getRebalanceAmounts(poolIds);
         expect(result).to.deep.equal(rebalanceAmounts);
       });
 
@@ -302,7 +302,7 @@ describe("Contract: PoolManager", () => {
             return [id, rebalanceAmount];
           })
         );
-        const result = await poolManager.testGetRebalanceAmounts(poolIds);
+        const result = await poolManager.getRebalanceAmounts(poolIds);
         expect(result).to.deep.equal(rebalanceAmounts);
       });
     });

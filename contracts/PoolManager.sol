@@ -79,7 +79,7 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         address lpSafeAddress = addressRegistry.lpSafeAddress();
         require(lpSafeAddress != address(0), "INVALID_LP_SAFE");
 
-        PoolAmount[] memory rebalanceAmounts = _getRebalanceAmounts(poolIds);
+        PoolAmount[] memory rebalanceAmounts = getRebalanceAmounts(poolIds);
 
         (PoolTokenV2[] memory pools, int256[] memory amounts) =
             _getPoolsAndAmounts(rebalanceAmounts);
@@ -117,6 +117,24 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         onlyEmergencyRole
     {
         _setAddressRegistry(addressRegistry_);
+    }
+
+    function getRebalanceAmounts(bytes32[] memory poolIds)
+        public
+        view
+        returns (PoolAmount[] memory)
+    {
+        PoolAmount[] memory rebalanceAmounts = new PoolAmount[](poolIds.length);
+
+        for (uint256 i = 0; i < poolIds.length; i++) {
+            rebalanceAmounts[i] = PoolAmount(
+                poolIds[i],
+                PoolTokenV2(addressRegistry.getAddress(poolIds[i]))
+                    .getReserveTopUpValue()
+            );
+        }
+
+        return rebalanceAmounts;
     }
 
     /**
@@ -184,24 +202,6 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
             IDetailedERC20UpgradeSafe underlyer = pools[i].underlyer();
             underlyer.safeTransferFrom(from, to, amount);
         }
-    }
-
-    function _getRebalanceAmounts(bytes32[] memory poolIds)
-        internal
-        view
-        returns (PoolAmount[] memory)
-    {
-        PoolAmount[] memory rebalanceAmounts = new PoolAmount[](poolIds.length);
-
-        for (uint256 i = 0; i < poolIds.length; i++) {
-            rebalanceAmounts[i] = PoolAmount(
-                poolIds[i],
-                PoolTokenV2(addressRegistry.getAddress(poolIds[i]))
-                    .getReserveTopUpValue()
-            );
-        }
-
-        return rebalanceAmounts;
     }
 
     function _calculateMaptDeltas(

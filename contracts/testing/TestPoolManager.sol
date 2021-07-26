@@ -50,14 +50,6 @@ contract TestPoolManager is PoolManager {
         _rebalance(account, pools, amounts);
     }
 
-    function testGetRebalanceAmounts(bytes32[] memory poolIds)
-        public
-        view
-        returns (PoolAmount[] memory)
-    {
-        return _getRebalanceAmounts(poolIds);
-    }
-
     function testCalculateMaptDeltas(
         MetaPoolToken mApt,
         PoolTokenV2[] memory pools,
