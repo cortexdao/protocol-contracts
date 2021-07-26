@@ -12,6 +12,9 @@ import {
     SafeMath
 } from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import {
+    SignedSafeMath
+} from "@openzeppelin/contracts-ethereum-package/contracts/math/SignedSafeMath.sol";
+import {
     Initializable
 } from "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
@@ -50,6 +53,7 @@ contract PoolManager is
     ILpSafeFunder
 {
     using SafeMath for uint256;
+    using SignedSafeMath for int256;
     using SafeERC20 for IDetailedERC20;
 
     /* ------------------------------- */
@@ -244,19 +248,12 @@ contract PoolManager is
 
             IDetailedERC20 underlyer = pools[i].underlyer();
 
-            if (amounts[i] < 0) {
-                underlyer.safeTransferFrom(
-                    address(pools[i]),
-                    account,
-                    uint256(-amounts[i])
-                );
-            } else if (amounts[i] > 0) {
-                underlyer.safeTransferFrom(
-                    account,
-                    address(pools[i]),
-                    uint256(amounts[i])
-                );
-            }
+            (address from, address to, uint256 amount) =
+                amounts[i] < 0
+                    ? (address(pools[i]), account, uint256(-amounts[i]))
+                    : (account, address(pools[i]), uint256(amounts[i]));
+
+            underlyer.safeTransferFrom(from, to, amount);
         }
     }
 
@@ -312,15 +309,16 @@ contract PoolManager is
             uint256 tokenPrice = pools[i].getUnderlyerPrice();
             uint8 decimals = underlyer.decimals();
 
+            int256 amountSign = amounts[i] < 0 ? int256(-1) : int256(1);
+
             uint256 mAptDelta =
                 mApt.calculateMintAmount(
-                    amounts[i] < 0 ? uint256(-amounts[i]) : uint256(amounts[i]),
+                    uint256(amounts[i].mul(amountSign)),
                     tokenPrice,
                     decimals
                 );
-            mAptDeltas[i] = amounts[i] < 0
-                ? -int256(mAptDelta)
-                : int256(mAptDelta);
+
+            mAptDeltas[i] = int256(mAptDelta).mul(amountSign);
         }
 
         return mAptDeltas;
