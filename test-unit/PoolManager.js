@@ -369,13 +369,11 @@ describe("Contract: PoolManager", () => {
         ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
       });
 
-      it("Revert on unregistered Emergency Safe address", async () => {
-        await addressRegistryMock.mock.emergencySafeAddress.returns(
-          ZERO_ADDRESS
-        );
+      it("Revert on unregistered LP Safe address", async () => {
+        await addressRegistryMock.mock.lpSafeAddress.returns(ZERO_ADDRESS);
         await expect(
           poolManager.connect(emergencySafe).emergencyRebalanceReserves([])
-        ).to.be.revertedWith("INVALID_EMERGENCY_SAFE");
+        ).to.be.revertedWith("INVALID_LP_SAFE");
       });
     });
   });
