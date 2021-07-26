@@ -366,6 +366,42 @@ describe("Contract: PoolManager", () => {
       });
     });
 
+    describe("_transferBetweenAccountAndPools", async () => {
+      it("Revert if the account is a zero address", async () => {
+        const account = ZERO_ADDRESS;
+        const pools = [];
+        const amounts = [];
+
+        await expect(
+          poolManager.transferBetweenAccountAndPools(account, pools, amounts)
+        ).to.be.revertedWith("INVALID_ADDRESS");
+      });
+
+      it("Revert if array lengths do not match", async () => {
+        const account = lpSafe.address;
+        const pools = Object.values(poolMocks).map((p) => p.address);
+        const amounts = new Array(pools.length - 1).fill(
+          tokenAmountToBigNumber("1", "18")
+        );
+
+        await expect(
+          poolManager.transferBetweenAccountAndPools(account, pools, amounts)
+        ).to.be.revertedWith("LENGTHS_MUST_MATCH");
+      });
+
+      it("Revert if there is a zero amount", async () => {
+        const account = lpSafe.address;
+        const pools = Object.values(poolMocks).map((p) => p.address);
+        const amounts = new Array(pools.length).fill(
+          tokenAmountToBigNumber("0", "18")
+        );
+
+        await expect(
+          poolManager.transferBetweenAccountAndPools(account, pools, amounts)
+        ).to.be.revertedWith("INVALID_AMOUNT");
+      });
+    });
+
     describe("rebalanceReserves", async () => {
       it("LP Safe can call", async () => {
         await expect(poolManager.connect(lpSafe).rebalanceReserves([])).to.not
