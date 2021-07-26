@@ -333,6 +333,39 @@ describe("Contract: PoolManager", () => {
       });
     });
 
+    describe("_rebalanceMapt", async () => {
+      it("Revert if array lengths do not match", async () => {
+        const pools = Object.values(poolMocks).map((p) => p.address);
+        const deltas = new Array(pools.length - 1).fill(
+          tokenAmountToBigNumber("1", "18")
+        );
+
+        await expect(
+          poolManager.rebalanceMapt(mAptMock.address, pools, deltas)
+        ).to.be.revertedWith("LENGTHS_MUST_MATCH");
+      });
+
+      it("Revert if there is a zero amount", async () => {
+        const pools = Object.values(poolMocks).map((p) => p.address);
+        const deltas = new Array(pools.length).fill(
+          tokenAmountToBigNumber("0", "18")
+        );
+
+        await expect(
+          poolManager.rebalanceMapt(mAptMock.address, pools, deltas)
+        ).to.be.revertedWith("INVALID_AMOUNT");
+      });
+
+      it("Should not mint or burn if parameter arrays are empty", async () => {
+        const pools = [];
+        const deltas = [];
+
+        await expect(
+          poolManager.rebalanceMapt(mAptMock.address, pools, deltas)
+        ).to.not.emit(mAptMock, "Transfer");
+      });
+    });
+
     describe("rebalanceReserves", async () => {
       it("LP Safe can call", async () => {
         await expect(poolManager.connect(lpSafe).rebalanceReserves([])).to.not
