@@ -120,7 +120,7 @@ async function setAllowanceForManager(poolManagerAddress, symbol, networkName) {
   );
   if (allowance.isZero()) {
     const ifaceERC20 = new ethers.utils.Interface(
-      artifacts.require("IDetailedERC20").abi
+      artifacts.require("IDetailedERC20UpgradeSafe").abi
     );
     const approveManager = ifaceERC20.encodeFunctionData(
       "approve(address,uint256)",

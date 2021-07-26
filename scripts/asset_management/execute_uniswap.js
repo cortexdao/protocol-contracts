@@ -40,7 +40,7 @@ async function executeUniswap(
   const tokenB = stablecoins[tokenBSymbol];
 
   const ifaceERC20 = new ethers.utils.Interface(
-    artifacts.require("IDetailedERC20").abi
+    artifacts.require("IDetailedERC20UpgradeSafe").abi
   );
 
   const ifaceUniswapRouter = new ethers.utils.Interface(

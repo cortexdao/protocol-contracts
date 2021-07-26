@@ -2,25 +2,20 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {
-    Address
-} from "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {
     SafeERC20
 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
+import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {
-    SafeMath
-} from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import {
-    Initializable
-} from "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
-import {
-    ReentrancyGuardUpgradeSafe
-} from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
+    ReentrancyGuard
+} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {AccessControl} from "./utils/AccessControl.sol";
 import {IAssetAllocation} from "./interfaces/IAssetAllocation.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
-import {IDetailedERC20} from "./interfaces/IDetailedERC20.sol";
+import {
+    IDetailedERC20UpgradeSafe
+} from "./interfaces/IDetailedERC20UpgradeSafe.sol";
 import {ILpSafeFunder} from "./interfaces/ILpSafeFunder.sol";
 import {ITvlManager} from "./interfaces/ITvlManager.sol";
 import {PoolTokenV2} from "./PoolTokenV2.sol";
@@ -43,32 +38,11 @@ import {MetaPoolToken} from "./MetaPoolToken.sol";
  * When funding an account from a pool, the Pool Manager simultaneously register the asset
  * allocation with the TVL Manager to ensure the TVL is properly updated.
  */
-contract PoolManager is
-    Initializable,
-    AccessControlUpgradeSafe,
-    ReentrancyGuardUpgradeSafe,
-    ILpSafeFunder
-{
+contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
     using SafeMath for uint256;
-    using SafeERC20 for IDetailedERC20;
+    using SafeERC20 for IDetailedERC20UpgradeSafe;
 
-    /* ------------------------------- */
-    /* impl-specific storage variables */
-    /* ------------------------------- */
-    address public proxyAdmin;
     IAddressRegistryV2 public addressRegistry;
-
-    /* ------------------------------- */
-
-    event AdminChanged(address);
-
-    /**
-     * @dev Throws if called by any account other than the proxy admin.
-     */
-    modifier onlyAdmin() {
-        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
-        _;
-    }
 
     /**
      * @dev Since the proxy delegate calls to this "logic" contract, any
@@ -82,22 +56,9 @@ contract PoolManager is
      * repeatedly.
      *
      * Our proxy deployment will call this as part of the constructor.
-     * @param adminAddress the admin proxy to initialize with
      * @param addressRegistry_ the address registry to initialize with
      */
-    function initialize(address adminAddress, address addressRegistry_)
-        external
-        initializer
-    {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-
-        // initialize ancestor storage
-        __Context_init_unchained();
-        __AccessControl_init_unchained();
-        __ReentrancyGuard_init_unchained();
-
-        // initialize impl-specific storage
-        _setAdminAddress(adminAddress);
+    constructor(address addressRegistry_) public {
         _setAddressRegistry(addressRegistry_);
         _setupRole(
             DEFAULT_ADMIN_ROLE,
@@ -106,18 +67,6 @@ contract PoolManager is
         _setupRole(LP_ROLE, addressRegistry.lpSafeAddress());
         _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
     }
-
-    /**
-     * @notice Initialize the new logic in V2 when upgrading from V1.
-     * @dev The `onlyAdmin` modifier prevents this function from being called
-     * multiple times, because the call has to come from the ProxyAdmin contract
-     * and it can only call this during its `upgradeAndCall` function.
-     *
-     * Note the `initializer` modifier can only be used once in the entire
-     * contract, so we can't use it here.
-     */
-    // solhint-disable-next-line no-empty-blocks
-    function initializeUpgrade() external virtual onlyAdmin {}
 
     /**
      * @notice Funds LP Safe account and register an asset allocation
@@ -169,23 +118,9 @@ contract PoolManager is
         _withdraw(lpSafeAddress, pools, amounts);
     }
 
-    function _setAdminAddress(address adminAddress) internal {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-        proxyAdmin = adminAddress;
-        emit AdminChanged(adminAddress);
-    }
-
-    /**
-     * @notice Sets the proxy admin address of the pool manager proxy
-     * @dev only callable with emergencyRole
-     * @param adminAddress the new proxy admin address of the pool manager
-     */
-    function setAdminAddress(address adminAddress) public onlyEmergencyRole {
-        _setAdminAddress(adminAddress);
-    }
-
     function _setAddressRegistry(address addressRegistry_) internal {
         require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
+        require(addressRegistry_ != address(0), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
 
@@ -214,7 +149,7 @@ contract PoolManager is
             ITvlManager(addressRegistry.getAddress("tvlManager"));
         for (uint256 i = 0; i < pools.length; i++) {
             PoolTokenV2 pool = pools[i];
-            IDetailedERC20 underlyer = pool.underlyer();
+            IDetailedERC20UpgradeSafe underlyer = pool.underlyer();
             string memory symbol = underlyer.symbol();
             bytes memory _data =
                 abi.encodeWithSignature("balanceOf(address)", account);
@@ -247,7 +182,7 @@ contract PoolManager is
             PoolTokenV2 pool = pools[i];
             uint256 poolAmount = amounts[i];
             require(poolAmount > 0, "INVALID_AMOUNT");
-            IDetailedERC20 underlyer = pool.underlyer();
+            IDetailedERC20UpgradeSafe underlyer = pool.underlyer();
 
             uint256 tokenPrice = pool.getUnderlyerPrice();
             uint8 decimals = underlyer.decimals();
@@ -286,7 +221,7 @@ contract PoolManager is
             PoolTokenV2 pool = pools[i];
             uint256 amountToSend = amounts[i];
             require(amountToSend > 0, "INVALID_AMOUNT");
-            IDetailedERC20 underlyer = pool.underlyer();
+            IDetailedERC20UpgradeSafe underlyer = pool.underlyer();
 
             uint256 tokenPrice = pool.getUnderlyerPrice();
             uint8 decimals = underlyer.decimals();
@@ -335,7 +270,7 @@ contract PoolManager is
         uint256[] memory amounts
     ) internal view {
         for (uint256 i = 0; i < pools.length; i++) {
-            IDetailedERC20 underlyer = pools[i].underlyer();
+            IDetailedERC20UpgradeSafe underlyer = pools[i].underlyer();
             uint256 allowance = underlyer.allowance(account, address(this));
             require(amounts[i] <= allowance, "INSUFFICIENT_ALLOWANCE");
         }

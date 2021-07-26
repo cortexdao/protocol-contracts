@@ -15,8 +15,7 @@ describe("Contract: PoolManager", () => {
   let tvlManager;
 
   // contract factories
-  let PoolManager;
-  let ProxyAdmin;
+  let PoolManagerFactory;
 
   // deployed contracts
   let poolManager;
@@ -42,19 +41,6 @@ describe("Contract: PoolManager", () => {
       lpSafe,
       tvlManager,
     ] = await ethers.getSigners();
-
-    ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    PoolManager = await ethers.getContractFactory("PoolManager");
-    const PoolManagerProxy = await ethers.getContractFactory(
-      "PoolManagerProxy"
-    );
-
-    const logic = await PoolManager.deploy();
-    await logic.deployed();
-
-    const proxyAdmin = await ProxyAdmin.deploy();
-    await proxyAdmin.deployed();
-
     const mAptMock = await deployMockContract(deployer, []);
     addressRegistryMock = await deployMockContract(
       deployer,
@@ -73,13 +59,9 @@ describe("Contract: PoolManager", () => {
       .returns(emergencySafe.address);
     await addressRegistryMock.mock.lpSafeAddress.returns(lpSafe.address);
 
-    const proxy = await PoolManagerProxy.deploy(
-      logic.address,
-      proxyAdmin.address,
-      addressRegistryMock.address
-    );
-    await proxy.deployed();
-    poolManager = await PoolManager.attach(proxy.address);
+    PoolManagerFactory = await ethers.getContractFactory("PoolManager");
+    poolManager = await PoolManagerFactory.deploy(addressRegistryMock.address);
+    await poolManager.deployed();
   });
 
   describe("Defaults", () => {
@@ -130,25 +112,6 @@ describe("Contract: PoolManager", () => {
       await expect(
         poolManager.connect(emergencySafe).setAddressRegistry(FAKE_ADDRESS)
       ).to.be.revertedWith("INVALID_ADDRESS");
-    });
-  });
-
-  describe("Setting admin address", () => {
-    it("Emergency Safe can set to valid address", async () => {
-      await poolManager.connect(emergencySafe).setAdminAddress(FAKE_ADDRESS);
-      expect(await poolManager.proxyAdmin()).to.equal(FAKE_ADDRESS);
-    });
-
-    it("Unpermissioned cannot set", async () => {
-      await expect(
-        poolManager.connect(randomUser).setAdminAddress(FAKE_ADDRESS)
-      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
-    });
-
-    it("Cannot set to zero address", async () => {
-      await expect(
-        poolManager.connect(emergencySafe).setAdminAddress(ZERO_ADDRESS)
-      ).to.be.revertedWith("INVALID_ADMIN");
     });
   });
 

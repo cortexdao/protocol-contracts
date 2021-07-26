@@ -54,7 +54,7 @@ async function main(argv) {
   const usdcAmount = tokenAmountToBigNumber("4990000", "6"); // 5MM USDC
 
   const ifaceERC20 = new ethers.utils.Interface(
-    artifacts.require("IDetailedERC20").abi
+    artifacts.require("IDetailedERC20UpgradeSafe").abi
   );
   const approveManager = ifaceERC20.encodeFunctionData(
     "approve(address,uint256)",
