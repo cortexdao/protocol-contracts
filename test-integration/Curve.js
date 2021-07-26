@@ -10,7 +10,9 @@ const {
 } = require("../utils/helpers");
 const { STABLECOIN_POOLS } = require("../utils/constants");
 
-const IDetailedERC20 = artifacts.require("IDetailedERC20");
+const IDetailedERC20UpgradeSafe = artifacts.require(
+  "IDetailedERC20UpgradeSafe"
+);
 const IStableSwap = artifacts.require("IStableSwap");
 const ILiquidityGauge = artifacts.require("ILiquidityGauge");
 
@@ -59,7 +61,7 @@ describe("Contract: CurvePeriphery", () => {
 
     beforeEach(async () => {
       lpToken = await ethers.getContractAt(
-        IDetailedERC20.abi,
+        IDetailedERC20UpgradeSafe.abi,
         LP_TOKEN_ADDRESS
       );
       stableSwap = await ethers.getContractAt(
@@ -74,7 +76,7 @@ describe("Contract: CurvePeriphery", () => {
       for (const symbol of ["DAI", "USDC", "USDT"]) {
         const stablecoinAddress = getStablecoinAddress(symbol, "MAINNET");
         stablecoins[symbol] = await ethers.getContractAt(
-          "IDetailedERC20",
+          "IDetailedERC20UpgradeSafe",
           stablecoinAddress
         );
       }

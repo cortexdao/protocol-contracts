@@ -148,7 +148,7 @@ async function main(argv) {
     // check pool manager allowances
     const underlyerAddress = await pool.underlyer();
     const underlyer = await ethers.getContractAt(
-      "IDetailedERC20",
+      "IDetailedERC20UpgradeSafe",
       underlyerAddress
     );
     const allowance = await underlyer.allowance(

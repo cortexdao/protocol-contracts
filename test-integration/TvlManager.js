@@ -106,7 +106,10 @@ describe("Contract: TvlManager", () => {
       curve = await CurvePeriphery.deploy();
       await curve.deployed();
 
-      lpToken = await ethers.getContractAt("IDetailedERC20", LP_TOKEN_ADDRESS);
+      lpToken = await ethers.getContractAt(
+        "IDetailedERC20UpgradeSafe",
+        LP_TOKEN_ADDRESS
+      );
       stableSwap = await ethers.getContractAt(
         "IStableSwap",
         STABLE_SWAP_ADDRESS
@@ -119,7 +122,10 @@ describe("Contract: TvlManager", () => {
 
     before("Prepare account 0 with DAI funds", async () => {
       const daiAddress = getStablecoinAddress("DAI", "MAINNET");
-      daiToken = await ethers.getContractAt("IDetailedERC20", daiAddress);
+      daiToken = await ethers.getContractAt(
+        "IDetailedERC20UpgradeSafe",
+        daiAddress
+      );
 
       const amount = dai(500000);
       const sender = STABLECOIN_POOLS["DAI"];

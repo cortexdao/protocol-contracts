@@ -10,7 +10,7 @@ const {
 } = require("../utils/helpers");
 const { deployMockContract } = waffle;
 
-describe("Contract: PoolManager", () => {
+describe.only("Contract: PoolManager", () => {
   // signers
   let deployer;
   let randomUser;
@@ -20,15 +20,15 @@ describe("Contract: PoolManager", () => {
 
   // contract factories
   let PoolManager;
-  let ProxyAdmin;
 
   // deployed contracts
   let poolManager;
   let underlyerMocks;
-  let poolIds;
   let poolMocks;
   let mAptMock;
   let addressRegistryMock;
+
+  const poolIds = ["daiPool", "usdcPool", "usdtPool"].map((id) => bytes32(id));
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -51,22 +51,11 @@ describe("Contract: PoolManager", () => {
       tvlManager,
     ] = await ethers.getSigners();
 
-    ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    PoolManager = await ethers.getContractFactory("TestPoolManager");
-    const PoolManagerProxy = await ethers.getContractFactory(
-      "PoolManagerProxy"
-    );
-
-    const logic = await PoolManager.deploy();
-    await logic.deployed();
-
-    const proxyAdmin = await ProxyAdmin.deploy();
-    await proxyAdmin.deployed();
-
     mAptMock = await deployMockContract(
       deployer,
       artifacts.require("MetaPoolToken").abi
     );
+
     addressRegistryMock = await deployMockContract(
       deployer,
       artifacts.require("IAddressRegistryV2").abi
@@ -84,13 +73,19 @@ describe("Contract: PoolManager", () => {
       .returns(emergencySafe.address);
     await addressRegistryMock.mock.lpSafeAddress.returns(lpSafe.address);
 
+    PoolManager = await ethers.getContractFactory("TestPoolManager");
+    poolManager = await PoolManager.deploy(addressRegistryMock.address);
+    await poolManager.deployed();
+
+    poolMocks = {};
+
     underlyerMocks = {};
     const underlyerSymbols = ["dai", "usdc", "usdt"];
     await Promise.all(
       underlyerSymbols.map(async (symbol) => {
         const underlyerMock = await deployMockContract(
           deployer,
-          artifacts.require("IDetailedERC20").abi
+          artifacts.require("IDetailedERC20UpgradeSafe").abi
         );
 
         await underlyerMock.mock.decimals.returns(
@@ -102,7 +97,7 @@ describe("Contract: PoolManager", () => {
     );
 
     poolMocks = {};
-    poolIds = await Promise.all(
+    await Promise.all(
       underlyerSymbols.map(async (symbol) => {
         const poolId = bytes32(`${symbol}Pool`);
         const poolMock = await deployMockContract(
@@ -123,14 +118,6 @@ describe("Contract: PoolManager", () => {
         return poolId;
       })
     );
-
-    const proxy = await PoolManagerProxy.deploy(
-      logic.address,
-      proxyAdmin.address,
-      addressRegistryMock.address
-    );
-    await proxy.deployed();
-    poolManager = await PoolManager.attach(proxy.address);
   });
 
   describe("Defaults", () => {
@@ -184,31 +171,14 @@ describe("Contract: PoolManager", () => {
     });
   });
 
-  describe("Setting admin address", () => {
-    it("Emergency Safe can set to valid address", async () => {
-      await poolManager.connect(emergencySafe).setAdminAddress(FAKE_ADDRESS);
-      expect(await poolManager.proxyAdmin()).to.equal(FAKE_ADDRESS);
-    });
-
-    it("Unpermissioned cannot set", async () => {
-      await expect(
-        poolManager.connect(randomUser).setAdminAddress(FAKE_ADDRESS)
-      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
-    });
-
-    it("Cannot set to zero address", async () => {
-      await expect(
-        poolManager.connect(emergencySafe).setAdminAddress(ZERO_ADDRESS)
-      ).to.be.revertedWith("INVALID_ADMIN");
-    });
-  });
-
   describe("LP Safe Funder", () => {
     describe("_getPoolsAndAmounts", async () => {
       it("Return empty arrays when given an empty array", async () => {
         const emptyPoolAmounts = [];
         const emptyPoolsAndAmounts = [[], []];
-        const result = await poolManager.getPoolsAndAmounts(emptyPoolAmounts);
+        const result = await poolManager.testGetPoolsAndAmounts(
+          emptyPoolAmounts
+        );
         expect(result).to.deep.equal(emptyPoolsAndAmounts);
       });
 
@@ -227,7 +197,7 @@ describe("Contract: PoolManager", () => {
           poolAmounts.map((p) => poolMocks[p.poolId].address),
           poolAmounts.map((p) => p.amount),
         ];
-        const result = await poolManager.getPoolsAndAmounts(poolAmounts);
+        const result = await poolManager.testGetPoolsAndAmounts(poolAmounts);
         expect(result).to.deep.equal(poolsAndAmounts);
       });
     });
@@ -240,7 +210,7 @@ describe("Contract: PoolManager", () => {
         );
 
         await expect(
-          poolManager.calculateMaptDeltas(mAptMock.address, pools, amounts)
+          poolManager.testCalculateMaptDeltas(mAptMock.address, pools, amounts)
         ).to.be.revertedWith("LENGTHS_MUST_MATCH");
       });
 
@@ -251,7 +221,7 @@ describe("Contract: PoolManager", () => {
         );
 
         await expect(
-          poolManager.calculateMaptDeltas(mAptMock.address, pools, amounts)
+          poolManager.testCalculateMaptDeltas(mAptMock.address, pools, amounts)
         ).to.be.revertedWith("INVALID_AMOUNT");
       });
 
@@ -259,7 +229,7 @@ describe("Contract: PoolManager", () => {
         const pools = [];
         const amounts = [];
 
-        const result = await poolManager.calculateMaptDeltas(
+        const result = await poolManager.testCalculateMaptDeltas(
           mAptMock.address,
           pools,
           amounts
@@ -278,7 +248,7 @@ describe("Contract: PoolManager", () => {
 
         const expected = new Array(pools.length).fill(mAptDelta.mul("-1"));
 
-        const result = await poolManager.calculateMaptDeltas(
+        const result = await poolManager.testCalculateMaptDeltas(
           mAptMock.address,
           pools,
           amounts
@@ -298,7 +268,7 @@ describe("Contract: PoolManager", () => {
 
         const expected = new Array(pools.length).fill(mAptDelta.mul("1"));
 
-        const result = await poolManager.calculateMaptDeltas(
+        const result = await poolManager.testCalculateMaptDeltas(
           mAptMock.address,
           pools,
           amounts
@@ -312,7 +282,7 @@ describe("Contract: PoolManager", () => {
       it("Return an empty array when give an empty array", async () => {
         const poolIds = [];
         const rebalanceAmounts = [];
-        const result = await poolManager.getRebalanceAmounts(poolIds);
+        const result = await poolManager.testGetRebalanceAmounts(poolIds);
         expect(result).to.deep.equal(rebalanceAmounts);
       });
 
@@ -328,7 +298,7 @@ describe("Contract: PoolManager", () => {
             return [id, rebalanceAmount];
           })
         );
-        const result = await poolManager.getRebalanceAmounts(poolIds);
+        const result = await poolManager.testGetRebalanceAmounts(poolIds);
         expect(result).to.deep.equal(rebalanceAmounts);
       });
     });
@@ -341,7 +311,7 @@ describe("Contract: PoolManager", () => {
         );
 
         await expect(
-          poolManager.rebalanceMapt(mAptMock.address, pools, deltas)
+          poolManager.testRebalanceMapt(mAptMock.address, pools, deltas)
         ).to.be.revertedWith("LENGTHS_MUST_MATCH");
       });
 
@@ -352,7 +322,7 @@ describe("Contract: PoolManager", () => {
         );
 
         await expect(
-          poolManager.rebalanceMapt(mAptMock.address, pools, deltas)
+          poolManager.testRebalanceMapt(mAptMock.address, pools, deltas)
         ).to.be.revertedWith("INVALID_AMOUNT");
       });
 
@@ -361,7 +331,7 @@ describe("Contract: PoolManager", () => {
         const deltas = [];
 
         await expect(
-          poolManager.rebalanceMapt(mAptMock.address, pools, deltas)
+          poolManager.testRebalanceMapt(mAptMock.address, pools, deltas)
         ).to.not.emit(mAptMock, "Transfer");
       });
     });
@@ -373,7 +343,11 @@ describe("Contract: PoolManager", () => {
         const amounts = [];
 
         await expect(
-          poolManager.transferBetweenAccountAndPools(account, pools, amounts)
+          poolManager.testTransferBetweenAccountAndPools(
+            account,
+            pools,
+            amounts
+          )
         ).to.be.revertedWith("INVALID_ADDRESS");
       });
 
@@ -385,7 +359,11 @@ describe("Contract: PoolManager", () => {
         );
 
         await expect(
-          poolManager.transferBetweenAccountAndPools(account, pools, amounts)
+          poolManager.testTransferBetweenAccountAndPools(
+            account,
+            pools,
+            amounts
+          )
         ).to.be.revertedWith("LENGTHS_MUST_MATCH");
       });
 
@@ -397,7 +375,11 @@ describe("Contract: PoolManager", () => {
         );
 
         await expect(
-          poolManager.transferBetweenAccountAndPools(account, pools, amounts)
+          poolManager.testTransferBetweenAccountAndPools(
+            account,
+            pools,
+            amounts
+          )
         ).to.be.revertedWith("INVALID_AMOUNT");
       });
     });

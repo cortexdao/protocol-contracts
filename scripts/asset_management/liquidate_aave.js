@@ -43,7 +43,7 @@ async function liquidateAave(
   const stablecoins = await getStablecoins(networkName);
 
   const ifaceERC20 = new ethers.utils.Interface(
-    artifacts.require("IDetailedERC20").abi
+    artifacts.require("IDetailedERC20UpgradeSafe").abi
   );
   const ifaceLendingPool = new ethers.utils.Interface(
     artifacts.require("IAaveLendingPool").abi

@@ -14,7 +14,9 @@ const erc20Interface = new ethers.utils.Interface(
 );
 const { STABLECOIN_POOLS } = require("../utils/constants");
 
-const IDetailedERC20 = artifacts.require("IDetailedERC20");
+const IDetailedERC20UpgradeSafe = artifacts.require(
+  "IDetailedERC20UpgradeSafe"
+);
 
 // Mainnet addresses
 const DAI_TOKEN = getStablecoinAddress("DAI", "MAINNET");
@@ -36,7 +38,7 @@ const APY_USDT_POOL = "0xeA9c5a2717D5Ab75afaAC340151e73a7e37d99A7";
 console.debugging = false;
 /* ************************ */
 
-describe("Contract: PoolManager", () => {
+describe.skip("Contract: PoolManager", () => {
   // to-be-deployed contracts
   let poolManager;
   let tvlManager;
@@ -208,22 +210,8 @@ describe("Contract: PoolManager", () => {
     /***** deploy Pool Manager  *****/
     /********************************/
     const PoolManager = await ethers.getContractFactory("PoolManager");
-    const PoolManagerProxy = await ethers.getContractFactory(
-      "PoolManagerProxy"
-    );
-
-    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    const managerAdmin = await ProxyAdmin.deploy();
-    await managerAdmin.deployed();
-    const managerLogic = await PoolManager.deploy();
-    await managerLogic.deployed();
-    const managerProxy = await PoolManagerProxy.deploy(
-      managerLogic.address,
-      managerAdmin.address,
-      APY_ADDRESS_REGISTRY
-    );
-    await managerProxy.deployed();
-    poolManager = await PoolManager.attach(managerProxy.address);
+    poolManager = await PoolManager.deploy(addressRegistry.address);
+    await poolManager.deployed();
 
     // approve manager to withdraw from pools
     daiPool = await ethers.getContractAt(
@@ -274,6 +262,7 @@ describe("Contract: PoolManager", () => {
     );
     const MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
 
+    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     const mAptAdmin = await ProxyAdmin.deploy();
     await mAptAdmin.deployed();
 
@@ -339,9 +328,18 @@ describe("Contract: PoolManager", () => {
     /* main deployments and upgrades finished 
     /*********************************************/
 
-    daiToken = await ethers.getContractAt("IDetailedERC20", DAI_TOKEN);
-    usdcToken = await ethers.getContractAt("IDetailedERC20", USDC_TOKEN);
-    usdtToken = await ethers.getContractAt("IDetailedERC20", USDT_TOKEN);
+    daiToken = await ethers.getContractAt(
+      "IDetailedERC20UpgradeSafe",
+      DAI_TOKEN
+    );
+    usdcToken = await ethers.getContractAt(
+      "IDetailedERC20UpgradeSafe",
+      USDC_TOKEN
+    );
+    usdtToken = await ethers.getContractAt(
+      "IDetailedERC20UpgradeSafe",
+      USDT_TOKEN
+    );
     await acquireToken(
       STABLECOIN_POOLS["DAI"],
       deployer,
@@ -373,7 +371,10 @@ describe("Contract: PoolManager", () => {
   async function getMintAmount(pool, underlyerAmount) {
     const tokenPrice = await pool.getUnderlyerPrice();
     const underlyer = await pool.underlyer();
-    const erc20 = await ethers.getContractAt(IDetailedERC20.abi, underlyer);
+    const erc20 = await ethers.getContractAt(
+      IDetailedERC20UpgradeSafe.abi,
+      underlyer
+    );
     const decimals = await erc20.decimals();
     const mintAmount = await mApt.calculateMintAmount(
       underlyerAmount,

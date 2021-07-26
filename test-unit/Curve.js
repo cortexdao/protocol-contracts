@@ -5,7 +5,9 @@ const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
 const { tokenAmountToBigNumber } = require("../utils/helpers");
 
-const IDetailedERC20 = artifacts.require("IDetailedERC20");
+const IDetailedERC20UpgradeSafe = artifacts.require(
+  "IDetailedERC20UpgradeSafe"
+);
 const IStableSwap = artifacts.require("IStableSwap");
 const ILiquidityGauge = artifacts.require("ILiquidityGauge");
 
@@ -47,7 +49,10 @@ describe("Contract: CurvePeriphery", () => {
     const coinIndex = 0;
 
     before(async () => {
-      lpTokenMock = await deployMockContract(deployer, IDetailedERC20.abi);
+      lpTokenMock = await deployMockContract(
+        deployer,
+        IDetailedERC20UpgradeSafe.abi
+      );
 
       stableSwapMock = await deployMockContract(deployer, IStableSwap.abi);
       // await stableSwapMock.mock.lp_token.returns(lpTokenMock.address);

@@ -15,7 +15,7 @@ async function liquidateUniswap(liquidityTokenAddress, liquidityTokenAmount) {
   const [accountId, accountAddress] = await getStrategyAccountInfo(networkName);
 
   const ifaceERC20 = new ethers.utils.Interface(
-    artifacts.require("IDetailedERC20").abi
+    artifacts.require("IDetailedERC20UpgradeSafe").abi
   );
   const ifaceUniswapRouter = new ethers.utils.Interface(
     artifacts.require("IUniswapV2Router").abi

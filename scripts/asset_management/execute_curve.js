@@ -29,7 +29,7 @@ async function executeCurve(stableSwapAddress, amountsArray, min) {
   const stablecoins = await getStablecoins(networkName);
 
   const ifaceERC20 = new ethers.utils.Interface(
-    artifacts.require("IDetailedERC20").abi
+    artifacts.require("IDetailedERC20UpgradeSafe").abi
   );
   const ifaceStableSwap = new ethers.utils.Interface(
     artifacts.require("IStableSwap").abi
