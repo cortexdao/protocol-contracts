@@ -3,16 +3,17 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import {
-    SafeERC20
-} from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
-import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {
     ReentrancyGuard
 } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { AccessControl } from "./utils/AccessControl.sol";
 import { IAssetAllocation } from "./interfaces/IAssetAllocation.sol";
 import { IAddressRegistryV2 } from "./interfaces/IAddressRegistryV2.sol";
+import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
+import {
+    SignedSafeMath
+} from "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import {
     IDetailedERC20UpgradeSafe
 } from "./interfaces/IDetailedERC20UpgradeSafe.sol";
@@ -40,6 +41,7 @@ import { MetaPoolToken } from "./MetaPoolToken.sol";
  */
 contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
     using SafeMath for uint256;
+    using SignedSafeMath for int256;
     using SafeERC20 for IDetailedERC20UpgradeSafe;
 
     IAddressRegistryV2 public addressRegistry;
@@ -179,19 +181,12 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
 
             IDetailedERC20 underlyer = pools[i].underlyer();
 
-            if (amounts[i] < 0) {
-                underlyer.safeTransferFrom(
-                    address(pools[i]),
-                    account,
-                    uint256(-amounts[i])
-                );
-            } else if (amounts[i] > 0) {
-                underlyer.safeTransferFrom(
-                    account,
-                    address(pools[i]),
-                    uint256(amounts[i])
-                );
-            }
+            (address from, address to, uint256 amount) =
+                amounts[i] < 0
+                    ? (address(pools[i]), account, uint256(-amounts[i]))
+                    : (account, address(pools[i]), uint256(amounts[i]));
+
+            underlyer.safeTransferFrom(from, to, amount);
         }
     }
 
@@ -247,15 +242,16 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
             uint256 tokenPrice = pools[i].getUnderlyerPrice();
             uint8 decimals = underlyer.decimals();
 
+            int256 amountSign = amounts[i] < 0 ? int256(-1) : int256(1);
+
             uint256 mAptDelta =
                 mApt.calculateMintAmount(
-                    amounts[i] < 0 ? uint256(-amounts[i]) : uint256(amounts[i]),
+                    uint256(amounts[i].mul(amountSign)),
                     tokenPrice,
                     decimals
                 );
-            mAptDeltas[i] = amounts[i] < 0
-                ? -int256(mAptDelta)
-                : int256(mAptDelta);
+
+            mAptDeltas[i] = int256(mAptDelta).mul(amountSign);
         }
 
         return mAptDeltas;
