@@ -148,7 +148,7 @@ describe("Contract: TvlManager", () => {
       await tvlManager
         .connect(lpSafe)
         .addAssetAllocation(data, daiSymbol, daiDecimals);
-      lookupId = await tvlManager.generateDataHash(data);
+      lookupId = await tvlManager.createId(data);
     });
 
     it("Get underlyer balance from account holding", async () => {

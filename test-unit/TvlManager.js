@@ -215,7 +215,7 @@ describe("Contract: TvlManager", () => {
         const symbol = "FOO";
         const decimals = 18;
 
-        const lookupId = await tvlManager.generateDataHash(data);
+        const lookupId = await tvlManager.createId(data);
 
         const allocationIds = [lookupId];
         await tvlManager
@@ -241,7 +241,7 @@ describe("Contract: TvlManager", () => {
 
         const allocationIds = [];
         for (let allocation of allocationData) {
-          const lookupId = await tvlManager.generateDataHash(allocation);
+          const lookupId = await tvlManager.createId(allocation);
           allocationIds.push(lookupId);
         }
 
@@ -273,7 +273,7 @@ describe("Contract: TvlManager", () => {
 
         const allocationIds = [];
         for (let allocation of allocationData) {
-          const lookupId = await tvlManager.generateDataHash(allocation);
+          const lookupId = await tvlManager.createId(allocation);
           allocationIds.push(lookupId);
         }
 
@@ -347,7 +347,7 @@ describe("Contract: TvlManager", () => {
         .connect(lpSafe)
         .addAssetAllocation(data, symbol, decimals);
 
-      const lookupId = await tvlManager.generateDataHash(data);
+      const lookupId = await tvlManager.createId(data);
 
       const balance = await tvlManager.balanceOf(lookupId);
       expect(balance).to.equal(expectedBalance);
@@ -370,7 +370,7 @@ describe("Contract: TvlManager", () => {
         .connect(lpSafe)
         .addAssetAllocation(data, symbol, decimals);
 
-      const lookupId = await tvlManager.generateDataHash(data);
+      const lookupId = await tvlManager.createId(data);
 
       await expect(tvlManager.balanceOf(lookupId)).to.be.reverted;
     });
@@ -384,7 +384,7 @@ describe("Contract: TvlManager", () => {
         .addAssetAllocation(data, symbol, decimals);
 
       const invalidData = [FAKE_ADDRESS, bytes32("1")];
-      const lookupId = await tvlManager.generateDataHash(invalidData);
+      const lookupId = await tvlManager.createId(invalidData);
 
       await expect(tvlManager.balanceOf(lookupId)).to.be.revertedWith(
         "INVALID_ALLOCATION_ID"
@@ -398,7 +398,7 @@ describe("Contract: TvlManager", () => {
     const decimals = 18;
     await tvlManager.connect(lpSafe).addAssetAllocation(data, symbol, decimals);
 
-    const lookupId = await tvlManager.generateDataHash(data);
+    const lookupId = await tvlManager.createId(data);
     expect(await tvlManager.symbolOf(lookupId)).to.equal(symbol);
   });
 
@@ -408,13 +408,13 @@ describe("Contract: TvlManager", () => {
     const decimals = 18;
     await tvlManager.connect(lpSafe).addAssetAllocation(data, symbol, decimals);
 
-    const lookupId = await tvlManager.generateDataHash(data);
+    const lookupId = await tvlManager.createId(data);
     expect(await tvlManager.decimalsOf(lookupId)).to.equal(decimals);
   });
 
-  it("generate data hash", async () => {
+  it("createId", async () => {
     const data = [FAKE_ADDRESS, bytes32("randomDataInput")];
     const lookupId = hash(["bytes"], [pack(["address", "bytes"], data)]);
-    expect(await tvlManager.generateDataHash(data)).to.equal(lookupId);
+    expect(await tvlManager.createId(data)).to.equal(lookupId);
   });
 });
