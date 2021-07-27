@@ -89,16 +89,8 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         nonReentrant
         onlyLpRole
     {
-        address lpSafeAddress = addressRegistry.lpSafeAddress();
-        require(lpSafeAddress != address(0), "INVALID_LP_SAFE"); // defensive check -- should never happen
-
         PoolAmount[] memory rebalanceAmounts = getRebalanceAmounts(poolIds);
-
-        (PoolTokenV2[] memory pools, int256[] memory amounts) =
-            _getPoolsAndAmounts(rebalanceAmounts);
-
-        _rebalance(lpSafeAddress, pools, amounts);
-        _registerPoolUnderlyers(lpSafeAddress, pools);
+        _rebalanceReserves(rebalanceAmounts);
     }
 
     /**
@@ -111,8 +103,12 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
     function emergencyRebalanceReserves(
         ILpSafeFunder.PoolAmount[] calldata rebalanceAmounts
     ) external override nonReentrant onlyEmergencyRole {
+        _rebalanceReserves(rebalanceAmounts);
+    }
+
+    function _rebalanceReserves(PoolAmount[] memory rebalanceAmounts) internal {
         address lpSafeAddress = addressRegistry.lpSafeAddress();
-        require(lpSafeAddress != address(0), "INVALID_LP_SAFE");
+        require(lpSafeAddress != address(0), "INVALID_LP_SAFE"); // defensive check -- should never happen
 
         (PoolTokenV2[] memory pools, int256[] memory amounts) =
             _getPoolsAndAmounts(rebalanceAmounts);
