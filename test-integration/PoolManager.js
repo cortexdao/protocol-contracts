@@ -386,7 +386,7 @@ describe.only("Contract: PoolManager", () => {
     return mintAmount;
   }
 
-  describe.only("emergencyRebalanceReserves", () => {
+  describe("emergencyRebalanceReserves", () => {
     // standard amounts we use in our tests
     const dollars = 100;
     const daiAmount = tokenAmountToBigNumber(dollars, 18);
@@ -755,54 +755,36 @@ describe.only("Contract: PoolManager", () => {
         usdtPoolMintAmount
       );
     });
-  });
 
-  describe("withdrawFromLpSafe", () => {
-    it("Unpermissioned cannot call", async () => {
-      await expect(
-        poolManager.connect(randomUser).withdrawFromLpSafe([])
-      ).to.be.revertedWith("NOT_LP_ROLE");
-    });
+    it("Revert for insufficient allowance from LP Safe", async () => {
+      const amount = tokenAmountToBigNumber(100);
+      // await daiToken.connect(deployer).transfer(lpSafeAddress, amount);
 
-    it("LP role can call", async () => {
-      await expect(poolManager.connect(lpSafe).withdrawFromLpSafe([])).to.not.be
-        .reverted;
-    });
+      await poolManager
+        .connect(emergencySafe)
+        .emergencyRebalanceReserves([
+          { poolId: bytes32("daiPool"), amount: amount.mul(-2) },
+        ]);
+      await oracleAdapter.connect(emergencySafe).unlock();
 
-    it("Revert on missing LP Safe address", async () => {
-      await addressRegistry.deleteAddress(bytes32("lpSafe"));
-      await expect(
-        poolManager.connect(lpSafe).withdrawFromLpSafe([])
-      ).to.be.revertedWith("Missing address");
-    });
-
-    it("Revert on unregistered pool", async () => {
       await expect(
         poolManager
-          .connect(lpSafe)
-          .withdrawFromLpSafe([{ poolId: bytes32("invalidPool"), amount: 10 }])
-      ).to.be.revertedWith("Missing address");
-    });
-
-    it("Revert on zero amount", async () => {
-      await expect(
-        poolManager
-          .connect(lpSafe)
-          .withdrawFromLpSafe([{ poolId: bytes32("usdcPool"), amount: 0 }])
-      ).to.be.revertedWith("INVALID_AMOUNT");
-    });
-
-    it("Revert with specified reason for insufficient allowance", async () => {
-      const amount = "10";
-      await daiToken.connect(deployer).transfer(lpSafeAddress, amount);
+          .connect(emergencySafe)
+          .emergencyRebalanceReserves([
+            { poolId: bytes32("daiPool"), amount: amount },
+          ])
+      ).to.not.be.reverted;
+      await oracleAdapter.connect(emergencySafe).unlock();
 
       await daiToken.connect(lpSafe).approve(poolManager.address, 0);
 
       await expect(
         poolManager
-          .connect(lpSafe)
-          .withdrawFromLpSafe([{ poolId: bytes32("daiPool"), amount: amount }])
-      ).to.be.revertedWith("INSUFFICIENT_ALLOWANCE");
+          .connect(emergencySafe)
+          .emergencyRebalanceReserves([
+            { poolId: bytes32("daiPool"), amount: amount },
+          ])
+      ).to.be.revertedWith("SafeERC20: low-level call failed");
     });
 
     it("Updates balances correctly (single pool)", async () => {
