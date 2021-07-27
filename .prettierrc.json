@@ -1,1 +1,10 @@
-{}
+{
+  "overrides": [
+    {
+      "files": "*.sol",
+      "options": {
+        "bracketSpacing": false
+      }
+    }
+  ]
+}
