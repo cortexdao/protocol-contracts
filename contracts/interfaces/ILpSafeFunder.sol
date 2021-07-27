@@ -8,10 +8,11 @@ interface ILpSafeFunder {
     // amount represents the amount to move when funding
     struct PoolAmount {
         bytes32 poolId;
-        uint256 amount;
+        int256 amount;
     }
 
-    function fundLpSafe(PoolAmount[] calldata poolAmounts) external;
+    function rebalanceReserves(bytes32[] calldata pools) external;
 
-    function withdrawFromLpSafe(PoolAmount[] calldata poolAmounts) external;
+    function emergencyRebalanceReserves(PoolAmount[] calldata rebalanceAmounts)
+        external;
 }

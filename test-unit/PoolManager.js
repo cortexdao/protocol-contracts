@@ -1,10 +1,14 @@
 const { expect } = require("chai");
 const hre = require("hardhat");
-const { artifacts, ethers } = hre;
+const { artifacts, ethers, waffle } = hre;
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
 const timeMachine = require("ganache-time-traveler");
-const { FAKE_ADDRESS, bytes32 } = require("../utils/helpers");
-const { deployMockContract } = require("@ethereum-waffle/mock-contract");
+const {
+  FAKE_ADDRESS,
+  tokenAmountToBigNumber,
+  bytes32,
+} = require("../utils/helpers");
+const { deployMockContract } = waffle;
 
 describe("Contract: PoolManager", () => {
   // signers
@@ -15,11 +19,16 @@ describe("Contract: PoolManager", () => {
   let tvlManager;
 
   // contract factories
-  let PoolManagerFactory;
+  let PoolManager;
 
   // deployed contracts
   let poolManager;
+  let underlyerMocks;
+  let poolMocks;
+  let mAptMock;
   let addressRegistryMock;
+
+  const poolIds = ["daiPool", "usdcPool", "usdtPool"].map((id) => bytes32(id));
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -41,7 +50,12 @@ describe("Contract: PoolManager", () => {
       lpSafe,
       tvlManager,
     ] = await ethers.getSigners();
-    const mAptMock = await deployMockContract(deployer, []);
+
+    mAptMock = await deployMockContract(
+      deployer,
+      artifacts.require("MetaPoolToken").abi
+    );
+
     addressRegistryMock = await deployMockContract(
       deployer,
       artifacts.require("IAddressRegistryV2").abi
@@ -59,9 +73,51 @@ describe("Contract: PoolManager", () => {
       .returns(emergencySafe.address);
     await addressRegistryMock.mock.lpSafeAddress.returns(lpSafe.address);
 
-    PoolManagerFactory = await ethers.getContractFactory("PoolManager");
-    poolManager = await PoolManagerFactory.deploy(addressRegistryMock.address);
+    PoolManager = await ethers.getContractFactory("TestPoolManager");
+    poolManager = await PoolManager.deploy(addressRegistryMock.address);
     await poolManager.deployed();
+
+    poolMocks = {};
+
+    underlyerMocks = {};
+    const underlyerSymbols = ["dai", "usdc", "usdt"];
+    await Promise.all(
+      underlyerSymbols.map(async (symbol) => {
+        const underlyerMock = await deployMockContract(
+          deployer,
+          artifacts.require("IDetailedERC20UpgradeSafe").abi
+        );
+
+        await underlyerMock.mock.decimals.returns(
+          tokenAmountToBigNumber("18", "0")
+        );
+
+        underlyerMocks[symbol] = underlyerMock;
+      })
+    );
+
+    poolMocks = {};
+    await Promise.all(
+      underlyerSymbols.map(async (symbol) => {
+        const poolId = bytes32(`${symbol}Pool`);
+        const poolMock = await deployMockContract(
+          deployer,
+          artifacts.require("PoolTokenV2").abi
+        );
+
+        await poolMock.mock.underlyer.returns(underlyerMocks[symbol].address);
+        await poolMock.mock.getUnderlyerPrice.returns(
+          tokenAmountToBigNumber("1", "8")
+        );
+        await addressRegistryMock.mock.getAddress
+          .withArgs(poolId)
+          .returns(poolMock.address);
+
+        poolMocks[poolId] = poolMock;
+
+        return poolId;
+      })
+    );
   });
 
   describe("Defaults", () => {
@@ -116,42 +172,202 @@ describe("Contract: PoolManager", () => {
   });
 
   describe("LP Safe Funder", () => {
-    describe("fundLpSafe", () => {
-      it("LP Safe can call", async () => {
-        await expect(poolManager.connect(lpSafe).fundLpSafe([])).to.not.be
-          .reverted;
+    describe("_getPoolsAndAmounts", async () => {
+      it("Return empty arrays when given an empty array", async () => {
+        const emptyPoolAmounts = [];
+        const emptyPoolsAndAmounts = [[], []];
+        const result = await poolManager.testGetPoolsAndAmounts(
+          emptyPoolAmounts
+        );
+        expect(result).to.deep.equal(emptyPoolsAndAmounts);
       });
 
-      it("Unpermissioned cannot call", async () => {
-        await expect(
-          poolManager.connect(randomUser).fundLpSafe([])
-        ).to.be.revertedWith("NOT_LP_ROLE");
-      });
-
-      it("Revert on unregistered LP Safe address", async () => {
-        await addressRegistryMock.mock.lpSafeAddress.returns(ZERO_ADDRESS);
-        await expect(
-          poolManager.connect(lpSafe).fundLpSafe([])
-        ).to.be.revertedWith("INVALID_LP_SAFE");
+      it("Return pools and amounts when given a PoolAmount array", async () => {
+        const poolAmounts = [
+          {
+            poolId: bytes32("daiPool"),
+            amount: tokenAmountToBigNumber("1", "18"),
+          },
+          {
+            poolId: bytes32("usdcPool"),
+            amount: tokenAmountToBigNumber("2", "6"),
+          },
+        ];
+        const poolsAndAmounts = [
+          poolAmounts.map((p) => poolMocks[p.poolId].address),
+          poolAmounts.map((p) => p.amount),
+        ];
+        const result = await poolManager.testGetPoolsAndAmounts(poolAmounts);
+        expect(result).to.deep.equal(poolsAndAmounts);
       });
     });
 
-    describe("withdrawFromLpSafe", () => {
+    describe("_calculateMaptDeltas", async () => {
+      it("Revert if array lengths do not match", async () => {
+        const pools = Object.values(poolMocks).map((p) => p.address);
+        const amounts = new Array(pools.length - 1).fill(
+          tokenAmountToBigNumber("1", "18")
+        );
+
+        await expect(
+          poolManager.testCalculateMaptDeltas(mAptMock.address, pools, amounts)
+        ).to.be.revertedWith("LENGTHS_MUST_MATCH");
+      });
+
+      it("Skip if there is a zero amount", async () => {
+        const pools = Object.values(poolMocks).map((p) => p.address);
+        const amounts = new Array(pools.length).fill(
+          tokenAmountToBigNumber("0", "18")
+        );
+
+        const result = await poolManager.testCalculateMaptDeltas(
+          mAptMock.address,
+          pools,
+          amounts
+        );
+
+        expect(result).to.be.deep.equal(amounts);
+      });
+
+      it("Return an empty array when given empty arrays", async () => {
+        const pools = [];
+        const amounts = [];
+
+        const result = await poolManager.testCalculateMaptDeltas(
+          mAptMock.address,
+          pools,
+          amounts
+        );
+        expect(result).to.deep.equal([]);
+      });
+
+      it("Return negative deltas when amounts are negative", async () => {
+        const pools = Object.values(poolMocks).map((p) => p.address);
+        const amounts = new Array(pools.length).fill(
+          tokenAmountToBigNumber("-1", "18")
+        );
+
+        const mAptDelta = tokenAmountToBigNumber("1", "18");
+        await mAptMock.mock.calculateMintAmount.returns(mAptDelta);
+
+        const expected = new Array(pools.length).fill(mAptDelta.mul("-1"));
+
+        const result = await poolManager.testCalculateMaptDeltas(
+          mAptMock.address,
+          pools,
+          amounts
+        );
+
+        expect(result).to.deep.equal(expected);
+      });
+
+      it("Return positive deltas when amounts are positive", async () => {
+        const pools = Object.values(poolMocks).map((p) => p.address);
+        const amounts = new Array(pools.length).fill(
+          tokenAmountToBigNumber("1", "18")
+        );
+
+        const mAptDelta = tokenAmountToBigNumber("1", "18");
+        await mAptMock.mock.calculateMintAmount.returns(mAptDelta);
+
+        const expected = new Array(pools.length).fill(mAptDelta.mul("1"));
+
+        const result = await poolManager.testCalculateMaptDeltas(
+          mAptMock.address,
+          pools,
+          amounts
+        );
+
+        expect(result).to.deep.equal(expected);
+      });
+    });
+
+    describe("getRebalanceAmounts", async () => {
+      it("Return an empty array when give an empty array", async () => {
+        const poolIds = [];
+        const rebalanceAmounts = [];
+        const result = await poolManager.getRebalanceAmounts(poolIds);
+        expect(result).to.deep.equal(rebalanceAmounts);
+      });
+
+      it("Return array of top-up PoolAmounts from specified pools", async () => {
+        let value = 1;
+        let rebalanceAmounts = await Promise.all(
+          poolIds.map(async (id, index) => {
+            const rebalanceAmount = tokenAmountToBigNumber(value * index, "18");
+            await poolMocks[id].mock.getReserveTopUpValue.returns(
+              rebalanceAmount
+            );
+
+            return [id, rebalanceAmount];
+          })
+        );
+        const result = await poolManager.getRebalanceAmounts(poolIds);
+        expect(result).to.deep.equal(rebalanceAmounts);
+      });
+    });
+
+    describe("_rebalance", async () => {
+      it("Revert if the account is a zero address", async () => {
+        const account = ZERO_ADDRESS;
+        const pools = [];
+        const amounts = [];
+
+        await expect(
+          poolManager.testRebalance(account, pools, amounts)
+        ).to.be.revertedWith("INVALID_ADDRESS");
+      });
+
+      it("Revert if array lengths do not match", async () => {
+        const account = lpSafe.address;
+        const pools = Object.values(poolMocks).map((p) => p.address);
+        const amounts = new Array(pools.length - 1).fill(
+          tokenAmountToBigNumber("1", "18")
+        );
+
+        await expect(
+          poolManager.testRebalance(account, pools, amounts)
+        ).to.be.revertedWith("LENGTHS_MUST_MATCH");
+      });
+    });
+
+    describe("rebalanceReserves", async () => {
       it("LP Safe can call", async () => {
-        await expect(poolManager.connect(lpSafe).withdrawFromLpSafe([])).to.not
+        await expect(poolManager.connect(lpSafe).rebalanceReserves([])).to.not
           .be.reverted;
       });
 
       it("Unpermissioned cannot call", async () => {
         await expect(
-          poolManager.connect(randomUser).withdrawFromLpSafe([])
+          poolManager.connect(randomUser).rebalanceReserves([])
         ).to.be.revertedWith("NOT_LP_ROLE");
       });
 
       it("Revert on unregistered LP Safe address", async () => {
         await addressRegistryMock.mock.lpSafeAddress.returns(ZERO_ADDRESS);
         await expect(
-          poolManager.connect(lpSafe).withdrawFromLpSafe([])
+          poolManager.connect(lpSafe).rebalanceReserves([])
+        ).to.be.revertedWith("INVALID_LP_SAFE");
+      });
+    });
+
+    describe("emergencyRebalanceReserves", async () => {
+      it("Emergency Safe can call", async () => {
+        await expect(
+          poolManager.connect(emergencySafe).emergencyRebalanceReserves([])
+        ).to.not.be.reverted;
+      });
+
+      it("Unpermissioned cannot call", async () => {
+        await expect(
+          poolManager.connect(randomUser).emergencyRebalanceReserves([])
+        ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
+      });
+
+      it("Revert on unregistered LP Safe address", async () => {
+        await addressRegistryMock.mock.lpSafeAddress.returns(ZERO_ADDRESS);
+        await expect(
+          poolManager.connect(emergencySafe).emergencyRebalanceReserves([])
         ).to.be.revertedWith("INVALID_LP_SAFE");
       });
     });
