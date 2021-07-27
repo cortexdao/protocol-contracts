@@ -792,7 +792,7 @@ describe.only("Contract: PoolManager", () => {
       await poolManager
         .connect(lpSafe)
         .emergencyRebalanceReserves([
-          { poolId: bytes32("daiPool"), amount: transferAmount },
+          { poolId: bytes32("daiPool"), amount: transferAmount.mul(-1) },
         ]);
 
       // adjust the TVL appropriately, as there is no Chainlink to update it
@@ -807,8 +807,8 @@ describe.only("Contract: PoolManager", () => {
       const burnAmount = await getMintAmount(daiPool, transferAmount);
 
       await poolManager
-        .connect(lpSafe)
-        .withdrawFromLpSafe([
+        .connect(emergencySafe)
+        .emergencyRebalanceReserves([
           { poolId: bytes32("daiPool"), amount: transferAmount },
         ]);
 
@@ -831,9 +831,9 @@ describe.only("Contract: PoolManager", () => {
       const usdcTransferAmount = tokenAmountToBigNumber("25", 6);
       const usdtTransferAmount = tokenAmountToBigNumber("8", 6);
       await poolManager.connect(lpSafe).emergencyRebalanceReserves([
-        { poolId: bytes32("daiPool"), amount: daiTransferAmount },
-        { poolId: bytes32("usdcPool"), amount: usdcTransferAmount },
-        { poolId: bytes32("usdtPool"), amount: usdtTransferAmount },
+        { poolId: bytes32("daiPool"), amount: daiTransferAmount.mul(-1) },
+        { poolId: bytes32("usdcPool"), amount: usdcTransferAmount.mul(-1) },
+        { poolId: bytes32("usdtPool"), amount: usdtTransferAmount.mul(-1) },
       ]);
 
       // adjust the TVL appropriately, as there is no Chainlink to update it
@@ -873,7 +873,7 @@ describe.only("Contract: PoolManager", () => {
         usdtTransferAmount
       );
 
-      await poolManager.connect(lpSafe).withdrawFromLpSafe([
+      await poolManager.connect(emergencySafe).emergencyRebalanceReserves([
         { poolId: bytes32("daiPool"), amount: daiTransferAmount },
         { poolId: bytes32("usdcPool"), amount: usdcTransferAmount },
         { poolId: bytes32("usdtPool"), amount: usdtTransferAmount },
