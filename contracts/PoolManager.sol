@@ -64,6 +64,18 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
     }
 
     /**
+     * @notice Sets the address registry
+     * @dev only callable with emergencyRole
+     * @param addressRegistry_ the address of the registry
+     */
+    function setAddressRegistry(address addressRegistry_)
+        external
+        onlyEmergencyRole
+    {
+        _setAddressRegistry(addressRegistry_);
+    }
+
+    /**
      * @notice Rebalances the pool reserve for each given pool ID so that
      *         it is the required percentage of the pool's deployed value.
      *         This will transfer funds between pool(s) and LP Safe.
@@ -109,24 +121,6 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         _registerPoolUnderlyers(lpSafeAddress, pools);
     }
 
-    function _setAddressRegistry(address addressRegistry_) internal {
-        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
-        require(addressRegistry_ != address(0), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistryV2(addressRegistry_);
-    }
-
-    /**
-     * @notice Sets the address registry
-     * @dev only callable with emergencyRole
-     * @param addressRegistry_ the address of the registry
-     */
-    function setAddressRegistry(address addressRegistry_)
-        public
-        onlyEmergencyRole
-    {
-        _setAddressRegistry(addressRegistry_);
-    }
-
     /**
      * @notice Returns the (signed) top-up amount for each pool ID given.
      *         A positive (negative) sign means the reserve level is in
@@ -150,6 +144,11 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         }
 
         return rebalanceAmounts;
+    }
+
+    function _setAddressRegistry(address addressRegistry_) internal {
+        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
 
     /**
