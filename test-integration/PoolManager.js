@@ -17,16 +17,22 @@ const IDetailedERC20UpgradeSafe = artifacts.require(
   "IDetailedERC20UpgradeSafe"
 );
 
-// Mainnet addresses
-const DAI_TOKEN = getStablecoinAddress("DAI", "MAINNET");
-const USDC_TOKEN = getStablecoinAddress("USDC", "MAINNET");
-const USDT_TOKEN = getStablecoinAddress("USDT", "MAINNET");
-
-/* ************************ */
+/****************************/
 /* set DEBUG log level here */
-/* ************************ */
+/****************************/
 console.debugging = false;
-/* ************************ */
+/****************************/
+
+const NETWORK = "MAINNET";
+const SYMBOLS = ["DAI", "USDC", "USDT"];
+
+const UNDERLYER_PARAMS = SYMBOLS.map((symbol) => {
+  return {
+    symbol: symbol,
+    tokenAddress: getStablecoinAddress(symbol, NETWORK),
+    aggAddress: getAggregatorAddress(`${symbol}-USD`, NETWORK),
+  };
+});
 
 describe.only("Contract: PoolManager", () => {
   // to-be-deployed contracts
@@ -176,17 +182,7 @@ describe.only("Contract: PoolManager", () => {
 
     const pools = {};
 
-    const network = "MAINNET";
-    const symbols = ["DAI", "USDC", "USDT"];
-
-    const underlyerParams = symbols.map((symbol) => {
-      return {
-        symbol: symbol,
-        tokenAddress: getStablecoinAddress(symbol, network),
-        aggAddress: getAggregatorAddress(`${symbol}-USD`, network),
-      };
-    });
-    for (const { symbol, tokenAddress, aggAddress } of underlyerParams) {
+    for (const { symbol, tokenAddress, aggAddress } of UNDERLYER_PARAMS) {
       const poolProxy = await PoolTokenProxy.deploy(
         poolLogic.address,
         poolAdmin.address,
@@ -276,9 +272,9 @@ describe.only("Contract: PoolManager", () => {
     /***** deploy Oracle Adapter *****/
     /*********************************/
 
-    const tvlAggAddress = getAggregatorAddress("TVL", network);
-    const assetAddresses = underlyerParams.map((_) => _.tokenAddress);
-    const sourceAddresses = underlyerParams.map((_) => _.aggAddress);
+    const tvlAggAddress = getAggregatorAddress("TVL", NETWORK);
+    const assetAddresses = UNDERLYER_PARAMS.map((_) => _.tokenAddress);
+    const sourceAddresses = UNDERLYER_PARAMS.map((_) => _.aggAddress);
 
     const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
     oracleAdapter = await OracleAdapter.deploy(
@@ -305,15 +301,15 @@ describe.only("Contract: PoolManager", () => {
 
     daiToken = await ethers.getContractAt(
       "IDetailedERC20UpgradeSafe",
-      DAI_TOKEN
+      UNDERLYER_PARAMS["DAI"].tokenAddress
     );
     usdcToken = await ethers.getContractAt(
       "IDetailedERC20UpgradeSafe",
-      USDC_TOKEN
+      UNDERLYER_PARAMS["USDC"].tokenAddress
     );
     usdtToken = await ethers.getContractAt(
       "IDetailedERC20UpgradeSafe",
-      USDT_TOKEN
+      UNDERLYER_PARAMS["USDT"].tokenAddress
     );
     await acquireToken(
       STABLECOIN_POOLS["DAI"],
