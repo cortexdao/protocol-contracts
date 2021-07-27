@@ -113,7 +113,7 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         (PoolTokenV2[] memory pools, int256[] memory amounts) =
             _getPoolsAndAmounts(rebalanceAmounts);
 
-        _rebalance(lpSafeAddress, pools, amounts);
+        _deployOrUnwindCapital(lpSafeAddress, pools, amounts);
         _registerPoolUnderlyers(lpSafeAddress, pools);
     }
 
@@ -181,7 +181,7 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
      *      a corresponding mAPT mint or burn.  Note no transfer occurs
      *      when the mint/burn amount is zero.
      */
-    function _rebalance(
+    function _deployOrUnwindCapital(
         address account,
         PoolTokenV2[] memory pools,
         int256[] memory amounts

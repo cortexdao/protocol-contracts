@@ -307,14 +307,14 @@ describe("Contract: PoolManager", () => {
       });
     });
 
-    describe("_rebalance", async () => {
+    describe("_deployOrUnwindCapital", async () => {
       it("Revert if the account is a zero address", async () => {
         const account = ZERO_ADDRESS;
         const pools = [];
         const amounts = [];
 
         await expect(
-          poolManager.testRebalance(account, pools, amounts)
+          poolManager.testDeployOrUnwindCapital(account, pools, amounts)
         ).to.be.revertedWith("INVALID_ADDRESS");
       });
 
@@ -326,7 +326,7 @@ describe("Contract: PoolManager", () => {
         );
 
         await expect(
-          poolManager.testRebalance(account, pools, amounts)
+          poolManager.testDeployOrUnwindCapital(account, pools, amounts)
         ).to.be.revertedWith("LENGTHS_MUST_MATCH");
       });
     });
