@@ -27,8 +27,7 @@ import {MetaPoolToken} from "./MetaPoolToken.sol";
 /**
  * @title Pool Manager
  * @author APY.Finance
- * @notice The pool manager logic contract for use with the pool manager proxy contract.
- *
+ * @notice
  * The Pool Manager orchestrates the movement of capital within the APY system
  * between pools (PoolTokenV2 contracts) and strategy accounts, e.g. LP Safe.
  *
@@ -49,17 +48,9 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
     IAddressRegistryV2 public addressRegistry;
 
     /**
-     * @dev Since the proxy delegate calls to this "logic" contract, any
-     * storage set by the logic contract's constructor during deploy is
-     * disregarded and this function is needed to initialize the proxy
-     * contract's storage according to this contract's layout.
-     *
-     * Since storage is not set yet, there is no simple way to protect
-     * calling this function with owner modifiers.  Thus the OpenZeppelin
-     * `initializer` modifier protects this function from being called
-     * repeatedly.
-     *
-     * Our proxy deployment will call this as part of the constructor.
+     * @dev Access control roles are dynamic through the Address Registry.
+     *      In the future, DEFAULT_ADMIN_ROLE will be the Address Registry itself,
+     *      which will have functionality for granting and revoking roles.
      * @param addressRegistry_ the address registry to initialize with
      */
     constructor(address addressRegistry_) public {
@@ -72,6 +63,14 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
     }
 
+    /**
+     * @notice Rebalances the pool reserve for each given pool ID so that
+     *         it is the required percentage of the pool's deployed value.
+     *         This will transfer funds between pool(s) and LP Safe.
+     * @dev LP Safe must approve the Pool Manager for transfers.
+     *      Will throw if not called by role-permissioned address.
+     * @param poolIds array of pool identifiers
+     */
     function rebalanceReserves(bytes32[] calldata poolIds)
         external
         override
@@ -79,7 +78,7 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         onlyLpRole
     {
         address lpSafeAddress = addressRegistry.lpSafeAddress();
-        require(lpSafeAddress != address(0), "INVALID_LP_SAFE");
+        require(lpSafeAddress != address(0), "INVALID_LP_SAFE"); // defensive check -- should never happen
 
         PoolAmount[] memory rebalanceAmounts = getRebalanceAmounts(poolIds);
 
@@ -90,6 +89,13 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         _registerPoolUnderlyers(lpSafeAddress, pools);
     }
 
+    /**
+     * @notice This will transfer specified amounts between pool(s) and LP Safe.
+     *         Uses the same sign convention as in `getRebalanceAmounts`.
+     * @dev LP Safe must approve the Pool Manager for transfers.
+     *      Will throw if not called by role-permissioned address.
+     * @param rebalanceAmounts array of PoolAmount structs
+     */
     function emergencyRebalanceReserves(
         ILpSafeFunder.PoolAmount[] calldata rebalanceAmounts
     ) external override nonReentrant onlyEmergencyRole {
@@ -121,6 +127,13 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         _setAddressRegistry(addressRegistry_);
     }
 
+    /**
+     * @notice Returns the (signed) top-up amount for each pool ID given.
+     *         A positive (negative) sign means the reserve level is in
+     *         deficit (excess) of required percentage.
+     * @param poolIds array of pool identifiers
+     * @return array of structs holding pool ID and signed amount
+     */
     function getRebalanceAmounts(bytes32[] memory poolIds)
         public
         view
@@ -168,6 +181,11 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         }
     }
 
+    /**
+     * @dev Transfers underlyer between pool and account while doing
+     *      a corresponding mAPT mint or burn.  Note no transfer occurs
+     *      when the mint/burn amount is zero.
+     */
     function _rebalance(
         address account,
         PoolTokenV2[] memory pools,
@@ -206,6 +224,10 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         }
     }
 
+    /**
+     * @dev Calculates the mAPT mint/burn amounts for each given pool
+     *      and underlyer amount.
+     */
     function _calculateMaptDeltas(
         MetaPoolToken mApt,
         PoolTokenV2[] memory pools,
@@ -244,6 +266,7 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         return mAptDeltas;
     }
 
+    /// @dev convenience function to destructure PoolAmount structs
     function _getPoolsAndAmounts(ILpSafeFunder.PoolAmount[] memory poolAmounts)
         internal
         view
