@@ -34,6 +34,10 @@ const UNDERLYER_PARAMS = SYMBOLS.map((symbol) => {
   };
 });
 
+const DAI_TOKEN = getStablecoinAddress("DAI", NETWORK);
+const USDC_TOKEN = getStablecoinAddress("USDC", NETWORK);
+const USDT_TOKEN = getStablecoinAddress("USDT", NETWORK);
+
 describe.only("Contract: PoolManager", () => {
   // to-be-deployed contracts
   let poolManager;
@@ -200,6 +204,10 @@ describe.only("Contract: PoolManager", () => {
         initData
       );
       const pool = await PoolTokenV2.attach(poolProxy.address);
+
+      const poolId = bytes32(symbol.toLowerCase() + "Pool");
+      await addressRegistry.registerAddress(poolId, pool.address);
+
       pools[symbol.toLowerCase()] = pool;
     }
     daiPool = pools.dai;
@@ -301,16 +309,17 @@ describe.only("Contract: PoolManager", () => {
 
     daiToken = await ethers.getContractAt(
       "IDetailedERC20UpgradeSafe",
-      UNDERLYER_PARAMS["DAI"].tokenAddress
+      DAI_TOKEN
     );
     usdcToken = await ethers.getContractAt(
       "IDetailedERC20UpgradeSafe",
-      UNDERLYER_PARAMS["USDC"].tokenAddress
+      USDC_TOKEN
     );
     usdtToken = await ethers.getContractAt(
       "IDetailedERC20UpgradeSafe",
-      UNDERLYER_PARAMS["USDT"].tokenAddress
+      USDT_TOKEN
     );
+    // fund deployer with stablecoins
     await acquireToken(
       STABLECOIN_POOLS["DAI"],
       deployer,
@@ -330,6 +339,28 @@ describe.only("Contract: PoolManager", () => {
       deployer,
       usdtToken,
       "1000",
+      deployer
+    );
+    // fund each APY pool with corresponding stablecoin
+    await acquireToken(
+      STABLECOIN_POOLS["DAI"],
+      daiPool,
+      daiToken,
+      "5000000",
+      deployer
+    );
+    await acquireToken(
+      STABLECOIN_POOLS["USDC"],
+      usdcPool,
+      usdcToken,
+      "5000000",
+      deployer
+    );
+    await acquireToken(
+      STABLECOIN_POOLS["USDT"],
+      usdtPool,
+      usdtToken,
+      "5000000",
       deployer
     );
 
@@ -355,7 +386,7 @@ describe.only("Contract: PoolManager", () => {
     return mintAmount;
   }
 
-  describe("fundLpSafe", () => {
+  describe.only("emergencyRebalanceReserves", () => {
     // standard amounts we use in our tests
     const dollars = 100;
     const daiAmount = tokenAmountToBigNumber(dollars, 18);
@@ -364,36 +395,46 @@ describe.only("Contract: PoolManager", () => {
 
     it("Unpermissioned cannot call", async () => {
       await expect(
-        poolManager.connect(randomUser).fundLpSafe([])
-      ).to.be.revertedWith("NOT_LP_ROLE");
+        poolManager.connect(randomUser).emergencyRebalanceReserves([])
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
 
-    it("LP role can call", async () => {
-      await expect(poolManager.connect(lpSafe).fundLpSafe([])).to.not.be
-        .reverted;
+    it("Emergency role can call", async () => {
+      await expect(
+        poolManager.connect(emergencySafe).emergencyRebalanceReserves([])
+      ).to.not.be.reverted;
     });
 
     it("Revert on missing LP Safe address", async () => {
       await addressRegistry.deleteAddress(bytes32("lpSafe"));
-      await expect(poolManager.connect(lpSafe).fundLpSafe([])).to.be.reverted;
+      await expect(
+        poolManager.connect(emergencySafe).emergencyRebalanceReserves([])
+      ).to.be.reverted;
     });
 
     it("Revert on unregistered pool", async () => {
       await expect(
-        poolManager.connect(lpSafe).fundLpSafe([
-          { poolId: bytes32("daiPool"), amount: 10 },
-          { poolId: bytes32("invalidPoolId"), amount: 10 },
-          { poolId: bytes32("usdtPool"), amount: 10 },
+        poolManager.connect(emergencySafe).emergencyRebalanceReserves([
+          { poolId: bytes32("daiPool"), amount: -10 },
+          { poolId: bytes32("invalidPoolId"), amount: -10 },
+          { poolId: bytes32("usdtPool"), amount: -10 },
         ])
       ).to.be.revertedWith("Missing address");
     });
 
-    it("Revert on zero amount", async () => {
-      await expect(
-        poolManager
-          .connect(lpSafe)
-          .fundLpSafe([{ poolId: bytes32("usdcPool"), amount: 0 }])
-      ).to.be.revertedWith("INVALID_AMOUNT");
+    it("Skip on zero amount", async () => {
+      const mAptSupply = await mApt.totalSupply();
+      const poolBalance = await usdcToken.balanceOf(usdcPool.address);
+
+      await poolManager
+        .connect(emergencySafe)
+        .emergencyRebalanceReserves([
+          { poolId: bytes32("usdcPool"), amount: 0 },
+        ]);
+
+      // should be no mAPT minted and no change in pool's USDC balance
+      expect(await mApt.totalSupply()).to.equal(mAptSupply);
+      expect(await usdcToken.balanceOf(usdcPool.address)).to.equal(poolBalance);
     });
 
     it("First funding updates balances and registers asset allocations (single pool)", async () => {
@@ -409,8 +450,10 @@ describe.only("Contract: PoolManager", () => {
       const daiPoolMintAmount = await getMintAmount(daiPool, daiAmount);
 
       await poolManager
-        .connect(lpSafe)
-        .fundLpSafe([{ poolId: bytes32("daiPool"), amount: daiAmount }]);
+        .connect(emergencySafe)
+        .emergencyRebalanceReserves([
+          { poolId: bytes32("daiPool"), amount: daiAmount.mul(-1) },
+        ]);
 
       const strategyDaiBalance = await daiToken.balanceOf(lpSafeAddress);
 
@@ -432,7 +475,7 @@ describe.only("Contract: PoolManager", () => {
         "balanceOf(address)",
         [lpSafeAddress]
       );
-      const expectedDaiId = await tvlManager.generateDataHash([
+      const expectedDaiId = await tvlManager.createId([
         daiToken.address,
         encodedBalanceOf,
       ]);
@@ -473,10 +516,10 @@ describe.only("Contract: PoolManager", () => {
       const usdcPoolMintAmount = await getMintAmount(usdcPool, usdcAmount);
       const usdtPoolMintAmount = await getMintAmount(usdtPool, usdtAmount);
 
-      await poolManager.connect(lpSafe).fundLpSafe([
-        { poolId: bytes32("daiPool"), amount: daiAmount },
-        { poolId: bytes32("usdcPool"), amount: usdcAmount },
-        { poolId: bytes32("usdtPool"), amount: usdtAmount },
+      await poolManager.connect(emergencySafe).emergencyRebalanceReserves([
+        { poolId: bytes32("daiPool"), amount: daiAmount.mul(-1) },
+        { poolId: bytes32("usdcPool"), amount: usdcAmount.mul(-1) },
+        { poolId: bytes32("usdtPool"), amount: usdtAmount.mul(-1) },
       ]);
 
       const strategyDaiBalance = await daiToken.balanceOf(lpSafeAddress);
@@ -515,15 +558,15 @@ describe.only("Contract: PoolManager", () => {
         "balanceOf(address)",
         [lpSafeAddress]
       );
-      const expectedDaiId = await tvlManager.generateDataHash([
+      const expectedDaiId = await tvlManager.createId([
         daiToken.address,
         encodedBalanceOf,
       ]);
-      const expectedUsdcId = await tvlManager.generateDataHash([
+      const expectedUsdcId = await tvlManager.createId([
         usdcToken.address,
         encodedBalanceOf,
       ]);
-      const expectedUsdtId = await tvlManager.generateDataHash([
+      const expectedUsdtId = await tvlManager.createId([
         usdtToken.address,
         encodedBalanceOf,
       ]);
@@ -571,8 +614,10 @@ describe.only("Contract: PoolManager", () => {
     it("Second funding updates balances (single pool)", async () => {
       // pre-conditions
       await poolManager
-        .connect(lpSafe)
-        .fundLpSafe([{ poolId: bytes32("daiPool"), amount: daiAmount }]);
+        .connect(emergencySafe)
+        .emergencyRebalanceReserves([
+          { poolId: bytes32("daiPool"), amount: daiAmount.mul(-1) },
+        ]);
       expect(await daiToken.balanceOf(lpSafeAddress)).to.be.gt(0);
       expect(await mApt.totalSupply()).to.be.gt(0);
 
@@ -592,8 +637,10 @@ describe.only("Contract: PoolManager", () => {
       const mintAmount = await getMintAmount(daiPool, transferAmount);
 
       await poolManager
-        .connect(lpSafe)
-        .fundLpSafe([{ poolId: bytes32("daiPool"), amount: transferAmount }]);
+        .connect(emergencySafe)
+        .emergencyRebalanceReserves([
+          { poolId: bytes32("daiPool"), amount: transferAmount.mul(-1) },
+        ]);
 
       const newPoolBalance = await daiToken.balanceOf(daiPool.address);
       const newStrategyBalance = await daiToken.balanceOf(lpSafeAddress);
@@ -611,10 +658,10 @@ describe.only("Contract: PoolManager", () => {
 
     it("Second funding updates balances (multiple pools)", async () => {
       // pre-conditions
-      await poolManager.connect(lpSafe).fundLpSafe([
-        { poolId: bytes32("daiPool"), amount: daiAmount },
-        { poolId: bytes32("usdcPool"), amount: usdcAmount },
-        { poolId: bytes32("usdtPool"), amount: usdtAmount },
+      await poolManager.connect(emergencySafe).emergencyRebalanceReserves([
+        { poolId: bytes32("daiPool"), amount: daiAmount.mul(-1) },
+        { poolId: bytes32("usdcPool"), amount: usdcAmount.mul(-1) },
+        { poolId: bytes32("usdtPool"), amount: usdtAmount.mul(-1) },
       ]);
       expect(await daiToken.balanceOf(lpSafeAddress)).to.be.gt(0);
       expect(await usdcToken.balanceOf(lpSafeAddress)).to.be.gt(0);
@@ -659,10 +706,10 @@ describe.only("Contract: PoolManager", () => {
         usdtTransferAmount
       );
 
-      await poolManager.connect(lpSafe).fundLpSafe([
-        { poolId: bytes32("daiPool"), amount: daiTransferAmount },
-        { poolId: bytes32("usdcPool"), amount: usdcTransferAmount },
-        { poolId: bytes32("usdtPool"), amount: usdtTransferAmount },
+      await poolManager.connect(emergencySafe).emergencyRebalanceReserves([
+        { poolId: bytes32("daiPool"), amount: daiTransferAmount.mul(-1) },
+        { poolId: bytes32("usdcPool"), amount: usdcTransferAmount.mul(-1) },
+        { poolId: bytes32("usdtPool"), amount: usdtTransferAmount.mul(-1) },
       ]);
 
       const newDaiPoolBalance = await daiToken.balanceOf(daiPool.address);
@@ -762,7 +809,9 @@ describe.only("Contract: PoolManager", () => {
       const transferAmount = tokenAmountToBigNumber("10", 18);
       await poolManager
         .connect(lpSafe)
-        .fundLpSafe([{ poolId: bytes32("daiPool"), amount: transferAmount }]);
+        .emergencyRebalanceReserves([
+          { poolId: bytes32("daiPool"), amount: transferAmount },
+        ]);
 
       // adjust the TVL appropriately, as there is no Chainlink to update it
       await oracleAdapter.connect(emergencySafe).unlock(); // needed to get value
@@ -799,7 +848,7 @@ describe.only("Contract: PoolManager", () => {
       const daiTransferAmount = tokenAmountToBigNumber("10", 18);
       const usdcTransferAmount = tokenAmountToBigNumber("25", 6);
       const usdtTransferAmount = tokenAmountToBigNumber("8", 6);
-      await poolManager.connect(lpSafe).fundLpSafe([
+      await poolManager.connect(lpSafe).emergencyRebalanceReserves([
         { poolId: bytes32("daiPool"), amount: daiTransferAmount },
         { poolId: bytes32("usdcPool"), amount: usdcTransferAmount },
         { poolId: bytes32("usdtPool"), amount: usdtTransferAmount },
