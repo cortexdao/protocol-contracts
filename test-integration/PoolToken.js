@@ -21,11 +21,12 @@ const link = (amount) => tokenAmountToBigNumber(amount, "18");
 console.debugging = false;
 /* ************************ */
 
-describe("Contract: PoolToken", () => {
+describe.only("Contract: PoolToken", () => {
   let deployer;
   let oracle;
   let poolManager;
   let tvlManager;
+  let lpSafe;
   let adminSafe;
   let emergencySafe;
   let randomUser;
@@ -37,6 +38,7 @@ describe("Contract: PoolToken", () => {
       oracle,
       poolManager,
       tvlManager,
+      lpSafe,
       adminSafe,
       emergencySafe,
       randomUser,
@@ -158,6 +160,11 @@ describe("Contract: PoolToken", () => {
         await addressRegistry.registerAddress(
           ethers.utils.formatBytes32String("emergencySafe"),
           emergencySafe.address
+        );
+
+        await addressRegistry.registerAddress(
+          ethers.utils.formatBytes32String("lpSafe"),
+          lpSafe.address
         );
 
         const proxyAdmin = await ProxyAdmin.deploy();
@@ -294,29 +301,16 @@ describe("Contract: PoolToken", () => {
         });
       });
 
-      describe("Approvals", () => {
-        it("Emergency Safe can call infiniteApprove", async () => {
-          await expect(
-            poolToken.connect(emergencySafe).infiniteApprove(FAKE_ADDRESS)
-          ).to.not.be.reverted;
+      describe("Transfer to LP Safe", () => {
+        it("Pool Manager can call transferToLPSafe", async () => {
+          // await expect(
+          await poolToken.connect(poolManager).transferToLPSafe(100);
+          // ).to.not.be.reverted;
         });
 
-        it("Revert when unpermissioned account calls infiniteApprove", async () => {
-          await expect(
-            poolToken.connect(randomUser).infiniteApprove(FAKE_ADDRESS)
-          ).to.be.reverted;
-        });
-
-        it("Emergency Safe can call revokeApprove", async () => {
-          await expect(
-            poolToken.connect(emergencySafe).revokeApprove(FAKE_ADDRESS)
-          ).to.not.be.reverted;
-        });
-
-        it("Revert when unpermissioned account calls revokeApprove", async () => {
-          await expect(
-            poolToken.connect(randomUser).revokeApprove(FAKE_ADDRESS)
-          ).to.be.reverted;
+        it("Revert when unpermissioned account calls transferToLPSafe", async () => {
+          await expect(poolToken.connect(randomUser).transferToLPSafe(100)).to
+            .be.reverted;
         });
       });
 
@@ -356,20 +350,12 @@ describe("Contract: PoolToken", () => {
           ).to.revertedWith("Pausable: paused");
         });
 
-        it("Revert when calling infiniteApprove on locked pool", async () => {
+        it("Revert when calling transferToLPSafe on locked pool", async () => {
           await poolToken.connect(emergencySafe).lock();
 
           await expect(
-            poolToken.connect(emergencySafe).infiniteApprove(FAKE_ADDRESS)
+            poolToken.connect(emergencySafe).transferToLPSafe(FAKE_ADDRESS)
           ).to.revertedWith("Pausable: paused");
-        });
-
-        it("Allow calling revokeApprove on locked pool", async () => {
-          await poolToken.connect(emergencySafe).lock();
-
-          await expect(
-            poolToken.connect(emergencySafe).revokeApprove(FAKE_ADDRESS)
-          ).to.not.be.reverted;
         });
       });
 

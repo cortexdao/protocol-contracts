@@ -330,7 +330,7 @@ contract PoolTokenV2 is
         whenNotPaused
         onlyContractRole
     {
-        underlyer.transfer(addressRegistry.lpSafeAddress(), amount);
+        underlyer.safeTransfer(addressRegistry.lpSafeAddress(), amount);
     }
 
     function setAdminAddress(address adminAddress) public onlyEmergencyRole {
