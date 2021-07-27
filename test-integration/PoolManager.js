@@ -217,7 +217,7 @@ describe.only("Contract: PoolManager", () => {
     /********************************/
     /***** deploy Pool Manager  *****/
     /********************************/
-    const PoolManager = await ethers.getContractFactory("PoolManager");
+    const PoolManager = await ethers.getContractFactory("TestPoolManager");
     poolManager = await PoolManager.deploy(addressRegistry.address);
 
     // approve manager to withdraw from pools
@@ -387,12 +387,6 @@ describe.only("Contract: PoolManager", () => {
   }
 
   describe("emergencyRebalanceReserves", () => {
-    // standard amounts we use in our tests
-    const dollars = 100;
-    const daiAmount = tokenAmountToBigNumber(dollars, 18);
-    const usdcAmount = tokenAmountToBigNumber(dollars, 6);
-    const usdtAmount = tokenAmountToBigNumber(dollars, 6);
-
     it("Unpermissioned cannot call", async () => {
       await expect(
         poolManager.connect(randomUser).emergencyRebalanceReserves([])
@@ -404,6 +398,14 @@ describe.only("Contract: PoolManager", () => {
         poolManager.connect(emergencySafe).emergencyRebalanceReserves([])
       ).to.not.be.reverted;
     });
+  });
+
+  describe("_rebalanceReserves", () => {
+    // standard amounts we use in our tests
+    const dollars = 100;
+    const daiAmount = tokenAmountToBigNumber(dollars, 18);
+    const usdcAmount = tokenAmountToBigNumber(dollars, 6);
+    const usdtAmount = tokenAmountToBigNumber(dollars, 6);
 
     it("Revert on missing LP Safe address", async () => {
       await addressRegistry.deleteAddress(bytes32("lpSafe"));
