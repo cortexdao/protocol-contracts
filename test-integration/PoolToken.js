@@ -301,19 +301,6 @@ describe.only("Contract: PoolToken", () => {
         });
       });
 
-      describe("Transfer to LP Safe", () => {
-        it("Pool Manager can call transferToLPSafe", async () => {
-          // await expect(
-          await poolToken.connect(poolManager).transferToLPSafe(100);
-          // ).to.not.be.reverted;
-        });
-
-        it("Revert when unpermissioned account calls transferToLPSafe", async () => {
-          await expect(poolToken.connect(randomUser).transferToLPSafe(100)).to
-            .be.reverted;
-        });
-      });
-
       describe("Lock pool", () => {
         it("Emergency Safe can lock and unlock pool", async () => {
           await expect(poolToken.connect(emergencySafe).lock()).to.emit(
@@ -398,6 +385,19 @@ describe.only("Contract: PoolToken", () => {
 
           await expect(poolToken.connect(randomUser).addLiquidity(1)).to.not.be
             .reverted;
+        });
+      });
+
+      describe("Transfer to LP Safe", () => {
+        it("Pool Manager can call transferToLPSafe", async () => {
+          await poolToken.connect(randomUser).addLiquidity(100);
+          await expect(poolToken.connect(poolManager).transferToLPSafe(100)).to
+            .not.be.reverted;
+        });
+
+        it("Revert when unpermissioned account calls transferToLPSafe", async () => {
+          await expect(poolToken.connect(randomUser).transferToLPSafe(100)).to
+            .be.reverted;
         });
       });
 
