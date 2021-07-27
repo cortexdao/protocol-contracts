@@ -215,7 +215,7 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
 
             (address from, address to, uint256 amount) =
                 amounts[i] < 0
-                    ? (address(pools[i]), account, uint256(-amounts[i]))
+                    ? (address(pools[i]), account, uint256(amounts[i].mul(-1)))
                     : (account, address(pools[i]), uint256(amounts[i]));
 
             IDetailedERC20UpgradeSafe underlyer = pools[i].underlyer();
