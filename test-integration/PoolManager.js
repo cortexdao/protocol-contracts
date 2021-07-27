@@ -3,7 +3,6 @@ const { artifacts, ethers } = require("hardhat");
 const timeMachine = require("ganache-time-traveler");
 const {
   tokenAmountToBigNumber,
-  impersonateAccount,
   bytes32,
   acquireToken,
   getStablecoinAddress,
@@ -22,15 +21,6 @@ const IDetailedERC20UpgradeSafe = artifacts.require(
 const DAI_TOKEN = getStablecoinAddress("DAI", "MAINNET");
 const USDC_TOKEN = getStablecoinAddress("USDC", "MAINNET");
 const USDT_TOKEN = getStablecoinAddress("USDT", "MAINNET");
-const POOL_DEPLOYER = "0x6EAF0ab3455787bA10089800dB91F11fDf6370BE";
-const ADDRESS_REGISTRY_DEPLOYER = "0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3";
-const ADMIN_SAFE = "0x1f7f8DA3eac80DBc0b4A49BC447A88585D8766C8";
-const APY_POOL_ADMIN = "0x7965283631253DfCb71Db63a60C656DEDF76234f";
-const APY_REGISTRY_ADMIN = "0xFbF6c940c1811C3ebc135A9c4e39E042d02435d1";
-const APY_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
-const APY_DAI_POOL = "0x75CE0E501E2E6776FCAAA514F394A88A772A8970";
-const APY_USDC_POOL = "0xe18b0365D5D09F394f84eE56ed29DD2d8D6Fba5f";
-const APY_USDT_POOL = "0xeA9c5a2717D5Ab75afaAC340151e73a7e37d99A7";
 
 /* ************************ */
 /* set DEBUG log level here */
@@ -38,7 +28,7 @@ const APY_USDT_POOL = "0xeA9c5a2717D5Ab75afaAC340151e73a7e37d99A7";
 console.debugging = false;
 /* ************************ */
 
-describe.skip("Contract: PoolManager", () => {
+describe.only("Contract: PoolManager", () => {
   // to-be-deployed contracts
   let poolManager;
   let tvlManager;
@@ -85,54 +75,50 @@ describe.skip("Contract: PoolManager", () => {
   });
 
   before(async () => {
-    [deployer, emergencySafe, lpSafe, randomUser] = await ethers.getSigners();
+    [
+      deployer,
+      emergencySafe,
+      adminSafe,
+      lpSafe,
+      randomUser,
+    ] = await ethers.getSigners();
     lpSafeAddress = lpSafe.address;
 
-    /*************************************/
-    /* unlock and fund Mainnet deployers */
-    /*************************************/
-    await deployer.sendTransaction({
-      to: POOL_DEPLOYER,
-      value: ethers.utils.parseEther("10").toHexString(),
-    });
-    const poolDeployer = await impersonateAccount(POOL_DEPLOYER);
-
-    await deployer.sendTransaction({
-      to: ADDRESS_REGISTRY_DEPLOYER,
-      value: ethers.utils.parseEther("10").toHexString(),
-    });
-    const addressRegistryDeployer = await impersonateAccount(
-      ADDRESS_REGISTRY_DEPLOYER
-    );
-
-    await deployer.sendTransaction({
-      to: ADMIN_SAFE,
-      value: ethers.utils.parseEther("10").toHexString(),
-    });
-    adminSafe = await impersonateAccount(ADMIN_SAFE);
+    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
 
     /*************************************/
     /***** Upgrade Address Registry ******/
     /*************************************/
+    const AddressRegistry = await ethers.getContractFactory("AddressRegistry");
+    const addressRegistryLogic = await AddressRegistry.deploy();
     const AddressRegistryV2 = await ethers.getContractFactory(
       "AddressRegistryV2"
     );
     const addressRegistryLogicV2 = await AddressRegistryV2.deploy();
-    const addressRegistryAdmin = await ethers.getContractAt(
-      "ProxyAdmin",
-      APY_REGISTRY_ADMIN,
-      addressRegistryDeployer
+    const addressRegistryAdmin = await ProxyAdmin.deploy();
+
+    const ProxyConstructorArg = await ethers.getContractFactory(
+      "ProxyConstructorArg"
+    );
+    const encodedArg = await (await ProxyConstructorArg.deploy()).getEncodedArg(
+      addressRegistryAdmin.address
+    );
+    const TransparentUpgradeableProxy = await ethers.getContractFactory(
+      "TransparentUpgradeableProxy"
+    );
+    const addressRegistryProxy = await TransparentUpgradeableProxy.deploy(
+      addressRegistryLogic.address,
+      addressRegistryAdmin.address,
+      encodedArg
     );
 
     await addressRegistryAdmin.upgrade(
-      APY_ADDRESS_REGISTRY,
+      addressRegistryProxy.address,
       addressRegistryLogicV2.address
     );
 
-    addressRegistry = await ethers.getContractAt(
-      "AddressRegistryV2",
-      APY_ADDRESS_REGISTRY,
-      adminSafe
+    addressRegistry = await AddressRegistryV2.attach(
+      addressRegistryProxy.address
     );
     /* The address registry needs multiple addresses registered
      * to setup the roles for access control in the contract
@@ -176,59 +162,61 @@ describe.skip("Contract: PoolManager", () => {
     await addressRegistry.registerAddress(bytes32("lpSafe"), lpSafeAddress);
 
     /***********************************/
-    /* upgrade pools to V2 */
+    /* deploy pools and upgrade to V2 */
     /***********************************/
-    const PoolTokenV2 = await ethers.getContractFactory("PoolTokenV2");
-    const newPoolLogic = await PoolTokenV2.deploy();
-    const poolAdmin = await ethers.getContractAt(
-      "ProxyAdmin",
-      APY_POOL_ADMIN,
-      poolDeployer
-    );
+    const PoolToken = await ethers.getContractFactory("PoolToken");
+    const poolLogic = await PoolToken.deploy();
 
-    const initData = PoolTokenV2.interface.encodeFunctionData(
-      "initializeUpgrade(address)",
-      [APY_ADDRESS_REGISTRY]
-    );
-    await poolAdmin.upgradeAndCall(
-      APY_DAI_POOL,
-      newPoolLogic.address,
-      initData
-    );
-    await poolAdmin.upgradeAndCall(
-      APY_USDC_POOL,
-      newPoolLogic.address,
-      initData
-    );
-    await poolAdmin.upgradeAndCall(
-      APY_USDT_POOL,
-      newPoolLogic.address,
-      initData
-    );
+    const PoolTokenV2 = await ethers.getContractFactory("PoolTokenV2");
+    const poolLogicV2 = await PoolTokenV2.deploy();
+
+    const poolAdmin = await ProxyAdmin.deploy();
+
+    const PoolTokenProxy = await ethers.getContractFactory("PoolTokenProxy");
+
+    const pools = {};
+
+    const network = "MAINNET";
+    const symbols = ["DAI", "USDC", "USDT"];
+
+    const underlyerParams = symbols.map((symbol) => {
+      return {
+        symbol: symbol,
+        tokenAddress: getStablecoinAddress(symbol, network),
+        aggAddress: getAggregatorAddress(`${symbol}-USD`, network),
+      };
+    });
+    for (const { symbol, tokenAddress, aggAddress } of underlyerParams) {
+      const poolProxy = await PoolTokenProxy.deploy(
+        poolLogic.address,
+        poolAdmin.address,
+        tokenAddress,
+        aggAddress
+      );
+
+      const initData = PoolTokenV2.interface.encodeFunctionData(
+        "initializeUpgrade(address)",
+        [addressRegistry.address]
+      );
+      await poolAdmin.upgradeAndCall(
+        poolProxy.address,
+        poolLogicV2.address,
+        initData
+      );
+      const pool = await PoolTokenV2.attach(poolProxy.address);
+      pools[symbol.toLowerCase()] = pool;
+    }
+    daiPool = pools.dai;
+    usdcPool = pools.usdc;
+    usdtPool = pools.usdt;
 
     /********************************/
     /***** deploy Pool Manager  *****/
     /********************************/
     const PoolManager = await ethers.getContractFactory("PoolManager");
     poolManager = await PoolManager.deploy(addressRegistry.address);
-    await poolManager.deployed();
 
     // approve manager to withdraw from pools
-    daiPool = await ethers.getContractAt(
-      "PoolTokenV2",
-      APY_DAI_POOL,
-      poolDeployer
-    );
-    usdcPool = await ethers.getContractAt(
-      "PoolTokenV2",
-      APY_USDC_POOL,
-      poolDeployer
-    );
-    usdtPool = await ethers.getContractAt(
-      "PoolTokenV2",
-      APY_USDT_POOL,
-      poolDeployer
-    );
     await daiPool.connect(emergencySafe).infiniteApprove(poolManager.address);
     await usdcPool.connect(emergencySafe).infiniteApprove(poolManager.address);
     await usdtPool.connect(emergencySafe).infiniteApprove(poolManager.address);
@@ -256,25 +244,19 @@ describe.skip("Contract: PoolManager", () => {
     As a final note, rather than dummy addresses, we deploy mocks,
     as we may add checks for contract addresses in the future.
     */
+    const MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
+    const mAptLogic = await MetaPoolToken.deploy();
+
+    const mAptAdmin = await ProxyAdmin.deploy();
 
     const MetaPoolTokenProxy = await ethers.getContractFactory(
       "MetaPoolTokenProxy"
     );
-    const MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
-
-    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    const mAptAdmin = await ProxyAdmin.deploy();
-    await mAptAdmin.deployed();
-
-    const logic = await MetaPoolToken.deploy();
-    await logic.deployed();
-
     const mAptProxy = await MetaPoolTokenProxy.deploy(
-      logic.address,
+      mAptLogic.address,
       mAptAdmin.address,
       addressRegistry.address
     );
-    await mAptProxy.deployed();
 
     mApt = await MetaPoolToken.attach(mAptProxy.address);
     await addressRegistry.registerAddress(bytes32("mApt"), mApt.address);
@@ -284,7 +266,6 @@ describe.skip("Contract: PoolManager", () => {
     /******************************/
     const TvlManager = await ethers.getContractFactory("TvlManager");
     tvlManager = await TvlManager.deploy(addressRegistry.address);
-    await tvlManager.deployed();
 
     await addressRegistry.registerAddress(
       bytes32("tvlManager"),
@@ -295,16 +276,10 @@ describe.skip("Contract: PoolManager", () => {
     /***** deploy Oracle Adapter *****/
     /*********************************/
 
-    const network = "MAINNET";
-    const symbols = ["DAI", "USDC", "USDT"];
-
     const tvlAggAddress = getAggregatorAddress("TVL", network);
-    const assetAddresses = symbols.map((symbol) =>
-      getStablecoinAddress(symbol, network)
-    );
-    const sourceAddresses = symbols.map((symbol) =>
-      getAggregatorAddress(`${symbol}-USD`, network)
-    );
+    const assetAddresses = underlyerParams.map((_) => _.tokenAddress);
+    const sourceAddresses = underlyerParams.map((_) => _.aggAddress);
+
     const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
     oracleAdapter = await OracleAdapter.deploy(
       addressRegistry.address,
