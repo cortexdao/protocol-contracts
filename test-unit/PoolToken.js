@@ -20,7 +20,7 @@ const AddressRegistry = artifacts.require("IAddressRegistryV2");
 const MetaPoolToken = artifacts.require("MetaPoolToken");
 const OracleAdapter = artifacts.require("OracleAdapter");
 
-describe.only("Contract: PoolTokenV2", () => {
+describe("Contract: PoolTokenV2", () => {
   // signers
   let deployer;
   let adminSafe;
