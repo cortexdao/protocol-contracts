@@ -42,6 +42,12 @@ contract TestPoolManager is PoolManager {
         _registerPoolUnderlyers(account, pools);
     }
 
+    function testRebalanceReserves(PoolAmount[] memory rebalanceAmounts)
+        public
+    {
+        _rebalanceReserves(rebalanceAmounts);
+    }
+
     function testDeployOrUnwindCapital(
         address account,
         PoolTokenV2[] memory pools,
