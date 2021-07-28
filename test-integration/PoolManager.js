@@ -233,21 +233,6 @@ describe("Contract: PoolManager", () => {
     /***********************/
     /***** deploy mAPT *****/
     /***********************/
-    /*
-    Possibly we should use real aggregators here, i.e. deploy
-    the TVL agg and connect to the Mainnet ETH-USD agg;
-    however, it's unclear what additional confidence it adds
-    to the tests for the additional complexity to update the
-    TVL values.
-    
-    For example, we'd need to update the TVL agg with USD values
-    which would either be off from the stablecoin amounts and
-    possibly cause issues with allowed deviation levels, or we
-    would need to use a stablecoin to USD conversion.
-
-    As a final note, rather than dummy addresses, we deploy mocks,
-    as we may add checks for contract addresses in the future.
-    */
     const MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
     const mAptLogic = await MetaPoolToken.deploy();
 
