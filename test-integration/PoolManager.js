@@ -96,9 +96,9 @@ describe("Contract: PoolManager", () => {
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
 
-    /*************************************/
-    /***** Upgrade Address Registry ******/
-    /*************************************/
+    /************************************************/
+    /***** Deploy and upgrade Address Registry ******/
+    /************************************************/
     const AddressRegistry = await ethers.getContractFactory("AddressRegistry");
     const addressRegistryLogic = await AddressRegistry.deploy();
     const AddressRegistryV2 = await ethers.getContractFactory(
@@ -181,11 +181,9 @@ describe("Contract: PoolManager", () => {
     const poolLogicV2 = await PoolTokenV2.deploy();
 
     const poolAdmin = await ProxyAdmin.deploy();
-
     const PoolTokenProxy = await ethers.getContractFactory("PoolTokenProxy");
 
     const pools = {};
-
     for (const { symbol, tokenAddress, aggAddress } of UNDERLYER_PARAMS) {
       const poolProxy = await PoolTokenProxy.deploy(
         poolLogic.address,
@@ -399,15 +397,11 @@ describe("Contract: PoolManager", () => {
   });
 
   describe("_rebalanceReserves", () => {
-    // standard amounts we use in our tests
-    const dollars = 100;
-    const daiAmount = tokenAmountToBigNumber(dollars, 18);
-    const usdcAmount = tokenAmountToBigNumber(dollars, 6);
-    const usdtAmount = tokenAmountToBigNumber(dollars, 6);
-
     it("Revert on missing LP Safe address", async () => {
       await addressRegistry.deleteAddress(bytes32("lpSafe"));
-      await expect(poolManager.testRebalanceReserves([])).to.be.reverted;
+      await expect(poolManager.testRebalanceReserves([])).to.be.revertedWith(
+        "Missing address"
+      );
     });
 
     it("Revert on unregistered pool", async () => {
@@ -779,7 +773,7 @@ describe("Contract: PoolManager", () => {
       ).to.be.revertedWith("SafeERC20: low-level call failed");
     });
 
-    it("Updates balances correctly (single pool)", async () => {
+    it("Withdrawal updates balances correctly (single pool)", async () => {
       const transferAmount = tokenAmountToBigNumber("10", 18);
       await poolManager.testRebalanceReserves([
         { poolId: bytes32("daiPool"), amount: transferAmount.mul(-1) },
@@ -816,7 +810,7 @@ describe("Contract: PoolManager", () => {
       );
     });
 
-    it("Updates balances correctly (multiple pools)", async () => {
+    it("Withdrawal updates balances correctly (multiple pools)", async () => {
       const daiTransferAmount = tokenAmountToBigNumber("10", 18);
       const usdcTransferAmount = tokenAmountToBigNumber("25", 6);
       const usdtTransferAmount = tokenAmountToBigNumber("8", 6);
@@ -991,6 +985,115 @@ describe("Contract: PoolManager", () => {
 
       expect(await mApt.balanceOf(daiPool.address)).to.equal(0);
       expect(await daiToken.balanceOf(daiPool.address)).to.equal(poolBalance);
+    });
+
+    it("Simultaneous fund and withdraw updates balances correctly", async () => {
+      const daiTransferAmount = tokenAmountToBigNumber("10", 18);
+      const usdcTransferAmount = tokenAmountToBigNumber("25", 6);
+      const usdtTransferAmount = tokenAmountToBigNumber("8", 6);
+      // fund LP Safe with USDC
+      await poolManager.testRebalanceReserves([
+        { poolId: bytes32("usdcPool"), amount: usdcTransferAmount.mul(-1) },
+      ]);
+
+      // adjust the TVL appropriately, as there is no Chainlink to update it
+      await oracleAdapter.connect(emergencySafe).unlock(); // needed to get value
+      const usdcValue = await usdcPool.getValueFromUnderlyerAmount(
+        usdcTransferAmount
+      );
+      const tvl = usdcValue;
+      await oracleAdapter.connect(emergencySafe).setTvl(tvl, 100);
+
+      // DAI
+      const prevSafeDaiBalance = await daiToken.balanceOf(lpSafeAddress);
+      const prevDaiPoolBalance = await daiToken.balanceOf(daiPool.address);
+      const prevDaiMaptBalance = await mApt.balanceOf(daiPool.address);
+      // USDC
+      const prevSafeUsdcBalance = await usdcToken.balanceOf(lpSafeAddress);
+      const prevUsdcPoolBalance = await usdcToken.balanceOf(usdcPool.address);
+      const prevUsdcMaptBalance = await mApt.balanceOf(usdcPool.address);
+      // USDT
+      const prevSafeUsdtBalance = await usdtToken.balanceOf(lpSafeAddress);
+      const prevUsdtPoolBalance = await usdtToken.balanceOf(usdtPool.address);
+      const prevUsdtMaptBalance = await mApt.balanceOf(usdtPool.address);
+
+      // mint mAPT for DAI and Tether pools; burn for USDC pool
+      const daiPoolMintAmount = await getMintAmount(daiPool, daiTransferAmount);
+      const usdcPoolBurnAmount = await getMintAmount(
+        usdcPool,
+        usdcTransferAmount
+      );
+      const usdtPoolMintAmount = await getMintAmount(
+        usdtPool,
+        usdtTransferAmount
+      );
+
+      // fund LP Safe with DAI and Tether; withdraw USDC
+      await poolManager.testRebalanceReserves([
+        { poolId: bytes32("daiPool"), amount: daiTransferAmount.mul(-1) },
+        { poolId: bytes32("usdcPool"), amount: usdcTransferAmount },
+        { poolId: bytes32("usdtPool"), amount: usdtTransferAmount.mul(-1) },
+      ]);
+
+      /****************************/
+      /* check underlyer balances */
+      /****************************/
+
+      // DAI
+      const newSafeDaiBalance = await daiToken.balanceOf(lpSafeAddress);
+      const newDaiPoolBalance = await daiToken.balanceOf(daiPool.address);
+      expect(newSafeDaiBalance.sub(prevSafeDaiBalance)).to.equal(
+        daiTransferAmount
+      );
+      expect(prevDaiPoolBalance.sub(newDaiPoolBalance)).to.equal(
+        daiTransferAmount
+      );
+      // USDC
+      const newSafeUsdcBalance = await usdcToken.balanceOf(lpSafeAddress);
+      const newUsdcPoolBalance = await usdcToken.balanceOf(usdcPool.address);
+      expect(prevSafeUsdcBalance.sub(newSafeUsdcBalance)).to.equal(
+        usdcTransferAmount
+      );
+      expect(newUsdcPoolBalance.sub(prevUsdcPoolBalance)).to.equal(
+        usdcTransferAmount
+      );
+      // USDT
+      const newSafeUsdtBalance = await usdtToken.balanceOf(lpSafeAddress);
+      const newUsdtPoolBalance = await usdtToken.balanceOf(usdtPool.address);
+      expect(newSafeUsdtBalance.sub(prevSafeUsdtBalance)).to.equal(
+        usdtTransferAmount
+      );
+      expect(prevUsdtPoolBalance.sub(newUsdtPoolBalance)).to.equal(
+        usdtTransferAmount
+      );
+
+      /***********************/
+      /* check mAPT balances */
+      /***********************/
+
+      const allowedDeviation = 2;
+      // DAI
+      const newDaiMaptBalance = await mApt.balanceOf(daiPool.address);
+      const expectedDaiMaptBalance = prevDaiMaptBalance.add(daiPoolMintAmount);
+      expect(newDaiMaptBalance.sub(expectedDaiMaptBalance).abs()).lt(
+        allowedDeviation
+      );
+      // USDC
+      const newUsdcMaptBalance = await mApt.balanceOf(usdcPool.address);
+      const expectedUsdcMaptBalance = prevUsdcMaptBalance.sub(
+        usdcPoolBurnAmount
+      );
+      expect(newUsdcMaptBalance.sub(expectedUsdcMaptBalance).abs()).lt(
+        allowedDeviation
+      );
+      // USDT
+      const newUsdtMaptBalance = await mApt.balanceOf(usdtPool.address);
+      const expectedUsdtMaptBalance = prevUsdtMaptBalance.add(
+        usdtPoolMintAmount
+      );
+      expect(newUsdtMaptBalance.sub(expectedUsdtMaptBalance).abs()).lt(
+        allowedDeviation
+      );
     });
   });
 });
