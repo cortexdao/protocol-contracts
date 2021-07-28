@@ -7,7 +7,7 @@ pragma solidity 0.6.11;
  * @notice Enables 3rd Parties (ie. Chainlink) to pull relevant asset allocations
  * in order to compute the TVL across the entire APY.Finance system.
  */
-interface IAssetAllocation {
+interface IAssetAllocationRegistry {
     /**
      * @notice Returns a list of all identifiers where asset allocations have been registered
      * @dev the list contains no duplicate identifiers

@@ -5,13 +5,15 @@ pragma experimental ABIEncoderV2;
 import {
     ReentrancyGuard
 } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { EnumerableSet } from "./utils/EnumerableSet.sol";
-import { AccessControl } from "./utils/AccessControl.sol";
-import { IAssetAllocation } from "./interfaces/IAssetAllocation.sol";
-import { ITvlManager } from "./interfaces/ITvlManager.sol";
-import { IOracleAdapter } from "./interfaces/IOracleAdapter.sol";
-import { IAddressRegistryV2 } from "./interfaces/IAddressRegistryV2.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {EnumerableSet} from "./utils/EnumerableSet.sol";
+import {AccessControl} from "./utils/AccessControl.sol";
+import {
+    IAssetAllocationRegistry
+} from "./interfaces/IAssetAllocationRegistry.sol";
+import {ITvlManager} from "./interfaces/ITvlManager.sol";
+import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
+import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 
 /**
  r @title TVL Manager
@@ -28,7 +30,7 @@ contract TvlManager is
     AccessControl,
     ReentrancyGuard,
     ITvlManager,
-    IAssetAllocation
+    IAssetAllocationRegistry
 {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using Address for address;

@@ -10,7 +10,9 @@ import {
     ReentrancyGuard
 } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {AccessControl} from "./utils/AccessControl.sol";
-import {IAssetAllocation} from "./interfaces/IAssetAllocation.sol";
+import {
+    IAssetAllocationRegistry
+} from "./interfaces/IAssetAllocationRegistry.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {SignedSafeMath} from "@openzeppelin/contracts/math/SignedSafeMath.sol";
