@@ -155,7 +155,7 @@ contract TvlManager is
         bytes[] memory assetAllocationIds = new bytes[](idsLength);
 
         uint256 k = 0;
-        for (uint256 i = 0; i < length; i++) {
+        for (uint256 i = 0; i < _assetAllocations.length(); i++) {
             IAssetAllocation assetAllocation = _assetAllocations.at(i);
 
             address[] memory tokenAddresses = assetAllocation.tokenAddresses();
@@ -174,10 +174,8 @@ contract TvlManager is
     }
 
     function _getAssetAllocationIdCount() internal view returns (uint256) {
-        uint256 length = _assetAllocations.length();
-
         uint256 idsLength = 0;
-        for (uint256 i = 0; i < length; i++) {
+        for (uint256 i = 0; i < _assetAllocations.length(); i++) {
             IAssetAllocation assetAllocation = _assetAllocations.at(i);
             idsLength += assetAllocation.tokenAddresses().length;
         }
