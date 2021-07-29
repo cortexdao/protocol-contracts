@@ -201,21 +201,28 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         for (uint256 i = 0; i < pools.length; i++) {
             int256 delta = mAptDeltas[i];
 
+            PoolTokenV2 pool = pools[i];
+
             if (delta < 0) {
-                mApt.mint(address(pools[i]), uint256(-delta));
+                mApt.mint(address(pool), uint256(-delta));
             } else if (delta > 0) {
-                mApt.burn(address(pools[i]), uint256(delta));
+                mApt.burn(address(pool), uint256(delta));
             } else {
                 continue;
             }
 
-            (address from, address to, uint256 amount) =
-                amounts[i] < 0
-                    ? (address(pools[i]), account, uint256(amounts[i].mul(-1)))
-                    : (account, address(pools[i]), uint256(amounts[i]));
-
-            IDetailedERC20UpgradeSafe underlyer = pools[i].underlyer();
-            underlyer.safeTransferFrom(from, to, amount);
+            //NOTE: negative amount Pool to LPSafe; positive amount LpSafe to Pool
+            int256 transferAmount = amounts[i];
+            if (transferAmount < 0) {
+                pool.transferToLPSafe(uint256(transferAmount.mul(-1)));
+            } else {
+                IDetailedERC20UpgradeSafe underlyer = pool.underlyer();
+                underlyer.safeTransferFrom(
+                    account,
+                    address(pool),
+                    uint256(transferAmount)
+                );
+            }
         }
     }
 
