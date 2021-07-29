@@ -17,15 +17,22 @@ abstract contract AssetAllocation is IAssetAllocation {
         return _tokenAddresses;
     }
 
-    function tokenData(address token)
-        public
+    function symbolOf(address token)
+        external
         view
         override
-        returns (TokenData memory)
+        returns (string memory)
     {
-        return _tokenData[token];
+        return _tokenData[token].symbol;
     }
 
+    function decimalsOf(address token) external view override returns (uint8) {
+        return _tokenData[token].decimals;
+    }
+
+    /**
+     * @dev This function should only be called in the constructor
+     */
     function _setupAssetAllocation(
         address token,
         string memory symbol,
