@@ -42,12 +42,18 @@ contract TestPoolManager is PoolManager {
         _registerPoolUnderlyers(account, pools);
     }
 
-    function testRebalance(
+    function testRebalanceReserves(PoolAmount[] memory rebalanceAmounts)
+        public
+    {
+        _rebalanceReserves(rebalanceAmounts);
+    }
+
+    function testDeployOrUnwindCapital(
         address account,
         PoolTokenV2[] memory pools,
         int256[] memory amounts
     ) public {
-        _rebalance(account, pools, amounts);
+        _deployOrUnwindCapital(account, pools, amounts);
     }
 
     function testCalculateMaptDeltas(
