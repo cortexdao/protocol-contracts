@@ -32,19 +32,12 @@ contract TvlManager is
     ITvlManager,
     IAssetAllocationRegistry
 {
-    using EnumerableSet for EnumerableSet.Bytes32Set;
+    using EnumerableSet for EnumerableSet.AddressSet;
     using Address for address;
 
     IAddressRegistryV2 public addressRegistry;
 
-    // all registered allocation ids
-    EnumerableSet.Bytes32Set private allocationIds;
-    // ids mapped to data
-    mapping(bytes32 => Data) private allocationData;
-    // ids mapped to symbol
-    mapping(bytes32 => string) private allocationSymbols;
-    // ids mapped to decimals
-    mapping(bytes32 => uint256) private allocationDecimals;
+    EnumerableSet.AddressSet private _assetAllocations;
 
     /**
      * @notice Constructor
@@ -62,39 +55,10 @@ contract TvlManager is
     }
 
     /**
-     * @notice Registers a new asset allocation
-     * @dev only permissed accounts can call.
-     * New ids are uniquely determined by the provided data struct; no duplicates are allowed
-     * @param data the data struct containing the target address and the bytes lookup data that will be registered
-     * @param symbol the token symbol to register for the asset allocation
-     * @param decimals the decimals to register for the new asset allocation
+     * @notice Register a new asset allocation
+     * @dev only permissioned accounts can call.
      */
-    function addAssetAllocation(
-        Data memory data,
-        string calldata symbol,
-        uint256 decimals
-    ) external override nonReentrant {
-        require(
-            hasRole(CONTRACT_ROLE, msg.sender) || hasRole(LP_ROLE, msg.sender),
-            "INVALID_ACCESS_CONTROL"
-        );
-
-        require(!isAssetAllocationRegistered(data), "DUPLICATE_DATA_DETECTED");
-        bytes32 id = createId(data);
-        allocationIds.add(id);
-        allocationData[id] = data;
-        allocationSymbols[id] = symbol;
-        allocationDecimals[id] = decimals;
-        lockOracleAdapter();
-        emit AssetAllocationAdded(data, symbol, decimals);
-    }
-
-    /**
-     * @notice Removes an existing asset allocation
-     * @dev only permissed accounts can call.
-     * @param data the data struct containing the target address and bytes lookup data that will be removed
-     */
-    function removeAssetAllocation(Data memory data)
+    function registerAssetAllocation(address assetAllocation)
         external
         override
         nonReentrant
@@ -103,16 +67,27 @@ contract TvlManager is
             hasRole(CONTRACT_ROLE, msg.sender) || hasRole(LP_ROLE, msg.sender),
             "INVALID_ACCESS_CONTROL"
         );
-
-        require(isAssetAllocationRegistered(data), "ALLOCATION_DOES_NOT_EXIST");
-        bytes32 id = createId(data);
-        allocationIds.remove(id);
-        delete allocationData[id];
-        string memory symbol = allocationSymbols[id];
-        delete allocationSymbols[id];
-        delete allocationDecimals[id];
+        _assetAllocations.add(assetAllocation);
         lockOracleAdapter();
-        emit AssetAllocationRemoved(data, symbol);
+        emit AssetAllocationRegistered(assetAllocation);
+    }
+
+    /**
+     * @notice Remove a new asset allocation
+     * @dev only permissioned accounts can call.
+     */
+    function removeAssetAllocation(address assetAllocation)
+        external
+        override
+        nonReentrant
+    {
+        require(
+            hasRole(CONTRACT_ROLE, msg.sender) || hasRole(LP_ROLE, msg.sender),
+            "INVALID_ACCESS_CONTROL"
+        );
+        _assetAllocations.remove(assetAllocation);
+        lockOracleAdapter();
+        emit AssetAllocationRemoved(assetAllocation);
     }
 
     /**
@@ -168,6 +143,46 @@ contract TvlManager is
         returns (uint256)
     {
         return allocationDecimals[allocationId];
+    }
+
+    function getAssetAllocationIds()
+        external
+        view
+        override
+        returns (bytes32[] memory)
+    {
+        uint256 idsLength = _getAssetAllocationIdCount();
+        bytes[] memory assetAllocationIds = new bytes[](idsLength);
+
+        uint256 k = 0;
+        for (uint256 i = 0; i < length; i++) {
+            IAssetAllocation assetAllocation = _assetAllocations.at(i);
+
+            address[] memory tokenAddresses = assetAllocation.tokenAddresses();
+            uint256 tokensLength = tokenAddresses.length;
+
+            for (uint256 j = 0; j < tokensLength; j++) {
+                assetAllocationIds[k] = abi.encodePacked(
+                    address(assetAllocation),
+                    tokenAddresses[j]
+                );
+                k++;
+            }
+        }
+
+        return assetAllocationIds;
+    }
+
+    function _getAssetAllocationIdCount() internal view returns (uint256) {
+        uint256 length = _assetAllocations.length();
+
+        uint256 idsLength = 0;
+        for (uint256 i = 0; i < length; i++) {
+            IAssetAllocation assetAllocation = _assetAllocations.at(i);
+            idsLength += assetAllocation.tokenAddresses().length;
+        }
+
+        return idsLength;
     }
 
     /**
