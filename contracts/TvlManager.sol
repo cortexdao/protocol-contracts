@@ -8,6 +8,7 @@ import {
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {EnumerableSet} from "./utils/EnumerableSet.sol";
 import {AccessControl} from "./utils/AccessControl.sol";
+import {IAssetAllocation} from "./interfaces/IAssetAllocation.sol";
 import {
     IAssetAllocationRegistry
 } from "./interfaces/IAssetAllocationRegistry.sol";
@@ -68,7 +69,7 @@ contract TvlManager is
             "INVALID_ACCESS_CONTROL"
         );
         _assetAllocations.add(assetAllocation);
-        lockOracleAdapter();
+        _lockOracleAdapter();
         emit AssetAllocationRegistered(assetAllocation);
     }
 
@@ -86,7 +87,7 @@ contract TvlManager is
             "INVALID_ACCESS_CONTROL"
         );
         _assetAllocations.remove(assetAllocation);
-        lockOracleAdapter();
+        _lockOracleAdapter();
         emit AssetAllocationRemoved(assetAllocation);
     }
 
@@ -102,19 +103,9 @@ contract TvlManager is
         override
         returns (uint256)
     {
-        require(
-            _isAssetAllocationRegistered(allocationId),
-            "INVALID_ALLOCATION_ID"
-        );
-        Data memory data = allocationData[allocationId];
-        bytes memory returnData = executeView(data);
-
-        uint256 _balance;
-        assembly {
-            _balance := mload(add(returnData, 0x20))
-        }
-
-        return _balance;
+        (address assetAllocation, address token) =
+            _idToAssetAllocation(allocationId);
+        return IAssetAllocation(assetAllocation).balanceOf(token);
     }
 
     /**
@@ -122,13 +113,15 @@ contract TvlManager is
      * @param allocationId the id to fetch the token for
      * @return returns the result of the token symbol registered for the provided id
      */
-    function symbolOf(bytes32 allocationId)
+    function symbolOf(bytes memory allocationId)
         external
         view
         override
         returns (string memory)
     {
-        return allocationSymbols[allocationId];
+        (address assetAllocation, address token) =
+            _idToAssetAllocation(allocationId);
+        return IAssetAllocation(assetAllocation).symbolOf(token);
     }
 
     /**
@@ -142,14 +135,16 @@ contract TvlManager is
         override
         returns (uint256)
     {
-        return allocationDecimals[allocationId];
+        (address assetAllocation, address token) =
+            _idToAssetAllocation(allocationId);
+        return IAssetAllocation(assetAllocation).decimalsOf(token);
     }
 
     function getAssetAllocationIds()
         external
         view
         override
-        returns (bytes32[] memory)
+        returns (bytes[] memory)
     {
         uint256 idsLength = _getAssetAllocationIdCount();
         bytes[] memory assetAllocationIds = new bytes[](idsLength);
@@ -173,71 +168,6 @@ contract TvlManager is
         return assetAllocationIds;
     }
 
-    function _getAssetAllocationIdCount() internal view returns (uint256) {
-        uint256 idsLength = 0;
-        for (uint256 i = 0; i < _assetAllocations.length(); i++) {
-            IAssetAllocation assetAllocation = _assetAllocations.at(i);
-            idsLength += assetAllocation.tokenAddresses().length;
-        }
-
-        return idsLength;
-    }
-
-    /**
-     * @notice Returns a list of all identifiers where asset allocations have been registered
-     * @dev the list contains no duplicate identifiers
-     * @return list of all the registered identifiers
-     */
-    function getAssetAllocationIds()
-        external
-        view
-        override
-        returns (bytes32[] memory)
-    {
-        uint256 length = allocationIds.length();
-        bytes32[] memory allocationIds_ = new bytes32[](length);
-        for (uint256 i = 0; i < length; i++) {
-            allocationIds_[i] = allocationIds.at(i);
-        }
-        return allocationIds_;
-    }
-
-    /**
-     * @notice Generates a data hash used for uniquely identifying asset allocations
-     * @param data the data hash containing the target address and the bytes lookup data
-     * @return returns the resulting bytes32 hash of the abi encode packed target address and bytes look up data
-     */
-    function createId(Data memory data) public pure override returns (bytes32) {
-        return keccak256(abi.encodePacked(data.target, data.data));
-    }
-
-    /**
-     * @notice determines if a target address and bytes lookup data has already been registered
-     * @param data the struct containing the target address and the bytes lookup data
-     * @return returns true if the asset allocation is currently registered, otherwise false
-     */
-    function isAssetAllocationRegistered(Data memory data)
-        public
-        view
-        override
-        returns (bool)
-    {
-        return _isAssetAllocationRegistered(createId(data));
-    }
-
-    /**
-     * @notice helper function for isAssetallocationRegistered function
-     * @param id the asset allocation ID
-     * @return returns true if the asset allocation is currently registered, otherwise false
-     */
-    function _isAssetAllocationRegistered(bytes32 id)
-        public
-        view
-        returns (bool)
-    {
-        return allocationIds.contains(id);
-    }
-
     /**
      * @notice Sets the address registry
      * @dev only callable by owner
@@ -250,21 +180,7 @@ contract TvlManager is
         _setAddressRegistry(addressRegistry_);
     }
 
-    /**
-     * @notice Executes data's bytes look up data against data's target address
-     * @dev execution is a static call
-     * @param data the data hash containing the target address and the bytes lookup data to execute
-     * @return returnData returns return data from the executed contract
-     */
-    function executeView(Data memory data)
-        public
-        view
-        returns (bytes memory returnData)
-    {
-        returnData = data.target.functionStaticCall(data.data);
-    }
-
-    function lockOracleAdapter() internal {
+    function _lockOracleAdapter() internal {
         IOracleAdapter oracleAdapter =
             IOracleAdapter(addressRegistry.oracleAdapterAddress());
         oracleAdapter.lock();
@@ -273,5 +189,36 @@ contract TvlManager is
     function _setAddressRegistry(address addressRegistry_) internal {
         require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
+    }
+
+    function _getAssetAllocationIdCount() internal view returns (uint256) {
+        uint256 idsLength = 0;
+        for (uint256 i = 0; i < _assetAllocations.length(); i++) {
+            IAssetAllocation assetAllocation = _assetAllocations.at(i);
+            idsLength += assetAllocation.tokenAddresses().length;
+        }
+
+        return idsLength;
+    }
+
+    function _idToAssetAllocation(bytes id)
+        internal
+        view
+        returns (address, address)
+    {
+        (address assetAllocation, address token) =
+            abi.decode(id, (address, address));
+
+        require(
+            _assetAllocations.contains(assetAllocation),
+            "INVALID_ASSET_ALLOCATION"
+        );
+        require(
+            bytes(IAssetAllocation(assetAllocation).symbolOf(token)).length !=
+                0,
+            "INVALID_TOKEN"
+        );
+
+        return (assetAllocation, token);
     }
 }
