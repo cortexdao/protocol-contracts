@@ -134,12 +134,13 @@ describe("Contract: PoolManager", () => {
      * to setup the roles for access control in the contract
      * constructors:
      *
-     * PoolTokenV2
-     * - adminSafe (admin role)
-     * - emergencySafe (emergency role, default admin role)
-     *
      * PoolManager
      * - lpSafe (LP role)
+     * - emergencySafe (emergency role, default admin role)
+     *
+     * PoolTokenV2
+     * - adminSafe (admin role)
+     * - poolManager (contract role)
      * - emergencySafe (emergency role, default admin role)
      *
      * MetaPoolToken
@@ -170,6 +171,17 @@ describe("Contract: PoolManager", () => {
       adminSafe.address
     );
     await addressRegistry.registerAddress(bytes32("lpSafe"), lpSafeAddress);
+
+    /********************************/
+    /***** deploy Pool Manager  *****/
+    /********************************/
+    const PoolManager = await ethers.getContractFactory("TestPoolManager");
+    poolManager = await PoolManager.deploy(addressRegistry.address);
+
+    await addressRegistry.registerAddress(
+      bytes32("poolManager"),
+      poolManager.address
+    );
 
     /***********************************/
     /* deploy pools and upgrade to V2 */
@@ -211,22 +223,6 @@ describe("Contract: PoolManager", () => {
     daiPool = pools.dai;
     usdcPool = pools.usdc;
     usdtPool = pools.usdt;
-
-    /********************************/
-    /***** deploy Pool Manager  *****/
-    /********************************/
-    const PoolManager = await ethers.getContractFactory("TestPoolManager");
-    poolManager = await PoolManager.deploy(addressRegistry.address);
-
-    // approve manager to withdraw from pools
-    await daiPool.connect(emergencySafe).infiniteApprove(poolManager.address);
-    await usdcPool.connect(emergencySafe).infiniteApprove(poolManager.address);
-    await usdtPool.connect(emergencySafe).infiniteApprove(poolManager.address);
-
-    await addressRegistry.registerAddress(
-      bytes32("poolManager"),
-      poolManager.address
-    );
 
     /***********************/
     /***** deploy mAPT *****/

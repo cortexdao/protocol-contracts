@@ -25,6 +25,8 @@ describe("Contract: PoolTokenV2", () => {
   let deployer;
   let adminSafe;
   let emergencySafe;
+  let poolManager;
+  let lpSafe;
   let randomUser;
   let anotherUser;
 
@@ -61,6 +63,8 @@ describe("Contract: PoolTokenV2", () => {
       deployer,
       adminSafe,
       emergencySafe,
+      poolManager,
+      lpSafe,
       randomUser,
       anotherUser,
     ] = await ethers.getSigners();
@@ -105,6 +109,10 @@ describe("Contract: PoolTokenV2", () => {
     await addressRegistryMock.mock.getAddress
       .withArgs(bytes32("emergencySafe"))
       .returns(emergencySafe.address);
+    await addressRegistryMock.mock.poolManagerAddress.returns(
+      poolManager.address
+    );
+    await addressRegistryMock.mock.lpSafeAddress.returns(lpSafe.address);
 
     const initData = PoolTokenV2.interface.encodeFunctionData(
       "initializeUpgrade(address)",
@@ -170,6 +178,14 @@ describe("Contract: PoolTokenV2", () => {
       const memberCount = await poolToken.getRoleMemberCount(ADMIN_ROLE);
       expect(memberCount).to.equal(1);
       expect(await poolToken.hasRole(ADMIN_ROLE, adminSafe.address)).to.be.true;
+    });
+
+    it("Contract role given to pool manager", async () => {
+      const CONTRACT_ROLE = await poolToken.CONTRACT_ROLE();
+      const memberCount = await poolToken.getRoleMemberCount(CONTRACT_ROLE);
+      expect(memberCount).to.equal(1);
+      expect(await poolToken.hasRole(CONTRACT_ROLE, poolManager.address)).to.be
+        .true;
     });
 
     it("Emergency role given to Emergency Safe", async () => {
@@ -318,49 +334,29 @@ describe("Contract: PoolTokenV2", () => {
       );
     });
 
-    it("Revert when calling infiniteApprove on locked pool", async () => {
+    it("Revert when calling transferToLPSafe on locked pool from poolManager", async () => {
       await poolToken.connect(emergencySafe).lock();
 
       await expect(
-        poolToken.connect(emergencySafe).infiniteApprove(FAKE_ADDRESS)
+        poolToken.connect(poolManager).transferToLPSafe(100)
       ).to.revertedWith("Pausable: paused");
-    });
-
-    it("Allow calling revokeApprove on locked pool", async () => {
-      await underlyerMock.mock.approve.returns(true);
-
-      await poolToken.connect(emergencySafe).lock();
-
-      await expect(poolToken.connect(emergencySafe).revokeApprove(FAKE_ADDRESS))
-        .to.not.be.reverted;
     });
   });
 
-  describe("Approvals", () => {
-    beforeEach(async () => {
-      await underlyerMock.mock.allowance.returns(0); // needed for `safeApprove`
-      await underlyerMock.mock.approve.returns(true);
+  describe("Transfer to LP Safe", () => {
+    before(async () => {
+      await underlyerMock.mock.transfer.returns(true);
     });
 
-    it("Emergency Safe can call infiniteApprove", async () => {
-      await expect(
-        poolToken.connect(emergencySafe).infiniteApprove(FAKE_ADDRESS)
-      ).to.not.be.reverted;
+    it("Pool Manager can call transferToLPSafe", async () => {
+      // await expect(
+      await poolToken.connect(poolManager).transferToLPSafe(100);
+      // ).to.not.be.reverted;
     });
 
-    it("Revert when unpermissioned account calls infiniteApprove", async () => {
-      await expect(poolToken.connect(randomUser).infiniteApprove(FAKE_ADDRESS))
-        .to.be.reverted;
-    });
-
-    it("Emergency Safe can call revokeApprove", async () => {
-      await expect(poolToken.connect(emergencySafe).revokeApprove(FAKE_ADDRESS))
-        .to.not.be.reverted;
-    });
-
-    it("Revert when unpermissioned account calls revokeApprove", async () => {
-      await expect(poolToken.connect(randomUser).revokeApprove(FAKE_ADDRESS)).to
-        .be.reverted;
+    it("Revert when unpermissioned account calls transferToLPSafe", async () => {
+      await expect(poolToken.connect(randomUser).transferToLPSafe(100)).to.be
+        .reverted;
     });
   });
 

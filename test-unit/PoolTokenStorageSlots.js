@@ -84,6 +84,7 @@ describe("APT V2 uses V1 storage slot positions", () => {
   let deployer;
   let emergencySafe;
   let adminSafe;
+  let poolManager;
   let user;
   let otherUser;
 
@@ -98,6 +99,7 @@ describe("APT V2 uses V1 storage slot positions", () => {
       deployer,
       emergencySafe,
       adminSafe,
+      poolManager,
       user,
       otherUser,
     ] = await ethers.getSigners();
@@ -120,6 +122,7 @@ describe("APT V2 uses V1 storage slot positions", () => {
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("adminSafe"))
       .returns(adminSafe.address);
+    await addressRegistry.mock.poolManagerAddress.returns(poolManager.address);
 
     const logicV1 = await PoolToken.deploy();
     await logicV1.deployed();

@@ -197,6 +197,7 @@ contract PoolTokenV2 is
         );
         _setupRole(ADMIN_ROLE, addressRegistry.getAddress("adminSafe"));
         _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
+        _setupRole(CONTRACT_ROLE, addressRegistry.poolManagerAddress());
 
         feePeriod = 1 days;
         feePercentage = 5;
@@ -319,30 +320,17 @@ contract PoolTokenV2 is
     }
 
     /**
-     * @notice Allow `delegate` to withdraw any amount from the pool.
-     * @dev Will fail if called twice, due to usage of `safeApprove`.
-     * @param delegate Address to give infinite allowance to
+     * @notice transfers underlyer to the LP Safe
+     * @dev permissioned with CONTRACT_ROLE
+     * @param amount amount to transfer to the lp safe
      */
-    function infiniteApprove(address delegate)
+    function transferToLPSafe(uint256 amount)
         external
         nonReentrant
         whenNotPaused
-        onlyEmergencyRole
+        onlyContractRole
     {
-        underlyer.safeApprove(delegate, type(uint256).max);
-    }
-
-    /**
-     * @notice Revoke given allowance from `delegate`.
-     * @dev Can be called even when the pool is locked.
-     * @param delegate Address to remove allowance from
-     */
-    function revokeApprove(address delegate)
-        external
-        nonReentrant
-        onlyEmergencyRole
-    {
-        underlyer.safeApprove(delegate, 0);
+        underlyer.safeTransfer(addressRegistry.lpSafeAddress(), amount);
     }
 
     function setAdminAddress(address adminAddress) public onlyEmergencyRole {
