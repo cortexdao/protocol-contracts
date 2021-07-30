@@ -30,7 +30,7 @@ import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 contract TvlManagerV2 is
     AccessControl,
     ReentrancyGuard,
-    ITvlManager,
+    ITvlManagerV2,
     IAssetAllocationRegistry
 {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -53,6 +53,18 @@ contract TvlManagerV2 is
         _setupRole(CONTRACT_ROLE, addressRegistry.poolManagerAddress());
         _setupRole(LP_ROLE, addressRegistry.lpSafeAddress());
         _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
+    }
+
+    /**
+     * @notice Sets the address registry
+     * @dev only callable by owner
+     * @param addressRegistry_ the address of the registry
+     */
+    function setAddressRegistry(address addressRegistry_)
+        external
+        onlyEmergencyRole
+    {
+        _setAddressRegistry(addressRegistry_);
     }
 
     /**
@@ -91,6 +103,56 @@ contract TvlManagerV2 is
         emit AssetAllocationRemoved(assetAllocation);
     }
 
+    function getAssetAllocationIds()
+        external
+        view
+        override
+        returns (bytes32[] memory)
+    {
+        uint256 idsLength = _getAssetAllocationIdCount();
+        bytes32[] memory assetAllocationIds = new bytes32[](idsLength);
+
+        uint256 k = 0;
+        for (uint256 i = 0; i < _assetAllocations.length(); i++) {
+            IAssetAllocation assetAllocation =
+                IAssetAllocation(_assetAllocations.at(i));
+
+            uint256 tokensLength = assetAllocation.tokens().length;
+
+            require(tokensLength < type(uint8).max, "TOO_MANY_TOKENS");
+
+            for (uint256 j = 0; j < tokensLength; j++) {
+                assetAllocationIds[k] = _encodeAssetAllocationId(
+                    address(assetAllocation),
+                    uint8(j)
+                );
+                k++;
+            }
+        }
+
+        return assetAllocationIds;
+    }
+
+    function getAssetAllocationId(address assetAllocation, uint8 tokenIndex)
+        external
+        view
+        override
+        returns (bytes32)
+    {
+        require(
+            _assetAllocations.contains(assetAllocation),
+            "INVALID_ASSET_ALLOCATION"
+        );
+
+        require(
+            bytes(IAssetAllocation(assetAllocation).symbolOf(tokenIndex))
+                .length != 0,
+            "INVALID_TOKEN"
+        );
+
+        return _encodeAssetAllocationId(assetAllocation, tokenIndex);
+    }
+
     /**
      * @notice Executes the bytes lookup data registered under an id
      * @dev The balance of an id may be aggregated from multiple contracts
@@ -103,9 +165,13 @@ contract TvlManagerV2 is
         override
         returns (uint256)
     {
-        (address assetAllocation, address token) =
-            _idToAssetAllocation(allocationId);
-        return IAssetAllocation(assetAllocation).balanceOf(token);
+        (address assetAllocation, uint8 tokenIndex) =
+            getAssetAllocation(allocationId);
+        return
+            IAssetAllocation(assetAllocation).balanceOf(
+                addressRegistry.lpSafeAddress(),
+                tokenIndex
+            );
     }
 
     /**
@@ -113,15 +179,15 @@ contract TvlManagerV2 is
      * @param allocationId the id to fetch the token for
      * @return returns the result of the token symbol registered for the provided id
      */
-    function symbolOf(bytes memory allocationId)
+    function symbolOf(bytes32 allocationId)
         external
         view
         override
         returns (string memory)
     {
-        (address assetAllocation, address token) =
-            _idToAssetAllocation(allocationId);
-        return IAssetAllocation(assetAllocation).symbolOf(token);
+        (address assetAllocation, uint8 tokenIndex) =
+            getAssetAllocation(allocationId);
+        return IAssetAllocation(assetAllocation).symbolOf(tokenIndex);
     }
 
     /**
@@ -135,49 +201,37 @@ contract TvlManagerV2 is
         override
         returns (uint256)
     {
-        (address assetAllocation, address token) =
-            _idToAssetAllocation(allocationId);
-        return IAssetAllocation(assetAllocation).decimalsOf(token);
+        (address assetAllocation, uint8 tokenIndex) =
+            getAssetAllocation(allocationId);
+        return IAssetAllocation(assetAllocation).decimalsOf(tokenIndex);
     }
 
-    function getAssetAllocationIds()
-        external
+    function getAssetAllocation(bytes32 id)
+        public
         view
         override
-        returns (bytes[] memory)
+        returns (address, uint8)
     {
-        uint256 idsLength = _getAssetAllocationIdCount();
-        bytes[] memory assetAllocationIds = new bytes[](idsLength);
+        (address assetAllocation, uint8 tokenIndex) =
+            _decodeAssetAllocationId(id);
 
-        uint256 k = 0;
-        for (uint256 i = 0; i < _assetAllocations.length(); i++) {
-            IAssetAllocation assetAllocation = _assetAllocations.at(i);
+        require(
+            _assetAllocations.contains(assetAllocation),
+            "INVALID_ASSET_ALLOCATION"
+        );
 
-            address[] memory tokenAddresses = assetAllocation.tokenAddresses();
-            uint256 tokensLength = tokenAddresses.length;
+        require(
+            bytes(IAssetAllocation(assetAllocation).symbolOf(tokenIndex))
+                .length != 0,
+            "INVALID_TOKEN"
+        );
 
-            for (uint256 j = 0; j < tokensLength; j++) {
-                assetAllocationIds[k] = abi.encodePacked(
-                    address(assetAllocation),
-                    tokenAddresses[j]
-                );
-                k++;
-            }
-        }
-
-        return assetAllocationIds;
+        return (assetAllocation, tokenIndex);
     }
 
-    /**
-     * @notice Sets the address registry
-     * @dev only callable by owner
-     * @param addressRegistry_ the address of the registry
-     */
-    function setAddressRegistry(address addressRegistry_)
-        public
-        onlyEmergencyRole
-    {
-        _setAddressRegistry(addressRegistry_);
+    function _setAddressRegistry(address addressRegistry_) internal {
+        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
 
     function _lockOracleAdapter() internal {
@@ -186,39 +240,43 @@ contract TvlManagerV2 is
         oracleAdapter.lock();
     }
 
-    function _setAddressRegistry(address addressRegistry_) internal {
-        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistryV2(addressRegistry_);
-    }
-
     function _getAssetAllocationIdCount() internal view returns (uint256) {
         uint256 idsLength = 0;
         for (uint256 i = 0; i < _assetAllocations.length(); i++) {
-            IAssetAllocation assetAllocation = _assetAllocations.at(i);
-            idsLength += assetAllocation.tokenAddresses().length;
+            IAssetAllocation assetAllocation =
+                IAssetAllocation(_assetAllocations.at(i));
+            idsLength += assetAllocation.tokens().length;
         }
 
         return idsLength;
     }
 
-    function _idToAssetAllocation(bytes id)
+    function _encodeAssetAllocationId(address assetAllocation, uint8 tokenIndex)
         internal
-        view
-        returns (address, address)
+        pure
+        returns (bytes32)
     {
-        (address assetAllocation, address token) =
-            abi.decode(id, (address, address));
+        bytes memory idPacked = abi.encodePacked(assetAllocation, tokenIndex);
 
-        require(
-            _assetAllocations.contains(assetAllocation),
-            "INVALID_ASSET_ALLOCATION"
-        );
-        require(
-            bytes(IAssetAllocation(assetAllocation).symbolOf(token)).length !=
-                0,
-            "INVALID_TOKEN"
-        );
+        bytes32 id;
 
-        return (assetAllocation, token);
+        assembly {
+            id := mload(add(idPacked, 32))
+        }
+
+        return id;
+    }
+
+    function _decodeAssetAllocationId(bytes32 id)
+        internal
+        pure
+        returns (address, uint8)
+    {
+        uint256 id_ = uint256(id);
+
+        address assetAllocation = address(bytes20(uint160(id_ >> 96)));
+        uint8 tokenIndex = uint8(id_ >> 88);
+
+        return (assetAllocation, tokenIndex);
     }
 }

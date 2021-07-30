@@ -4,22 +4,23 @@ pragma experimental ABIEncoderV2;
 
 interface IAssetAllocation {
     struct TokenData {
+        address token;
         string symbol;
         uint8 decimals;
     }
 
-    function tokenAddresses() external view returns (address[] memory);
+    function tokens() external view returns (TokenData[] memory);
 
     /**
      * @dev Should be implemented by child contracts.
      * @dev Should work with any token from the `tokenAddresses` list.
      */
-    function balanceOf(address account, address token)
+    function balanceOf(address account, uint8 tokenIndex)
         external
         view
         returns (uint256);
 
-    function symbolOf(address token) external view returns (string memory);
+    function symbolOf(uint8 tokenIndex) external view returns (string memory);
 
-    function decimalsOf(address token) external view returns (uint8);
+    function decimalsOf(uint8 tokenIndex) external view returns (uint8);
 }

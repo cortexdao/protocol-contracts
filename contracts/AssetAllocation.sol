@@ -5,41 +5,40 @@ pragma experimental ABIEncoderV2;
 import {IAssetAllocation} from "./interfaces/IAssetAllocation.sol";
 
 abstract contract AssetAllocation is IAssetAllocation {
-    address[] private _tokenAddresses;
-    mapping(address => TokenData) private _tokenData;
+    TokenData[] private _tokens;
 
-    function tokenAddresses()
-        external
-        view
-        override
-        returns (address[] memory)
-    {
-        return _tokenAddresses;
+    function tokens() external view override returns (TokenData[] memory) {
+        return _tokens;
     }
 
-    function symbolOf(address token)
+    function symbolOf(uint8 tokenIndex)
         external
         view
         override
         returns (string memory)
     {
-        return _tokenData[token].symbol;
+        return _tokens[tokenIndex].symbol;
     }
 
-    function decimalsOf(address token) external view override returns (uint8) {
-        return _tokenData[token].decimals;
+    function decimalsOf(uint8 tokenIndex)
+        external
+        view
+        override
+        returns (uint8)
+    {
+        return _tokens[tokenIndex].decimals;
     }
 
     /**
      * @dev This function should only be called in the constructor
+     * TODO: This potentially should check for dupes
      */
     function _setupAssetAllocation(
         address token,
         string memory symbol,
         uint8 decimals
     ) internal {
-        require(bytes(_tokenData[token].symbol).length != 0, "DUPLICATE_TOKEN");
-        _tokenAddresses.push(token);
-        _tokenData[token] = TokenData(symbol, decimals);
+        require(_tokens.length < type(uint8).max, "TOO_MANY_TOKENS");
+        _tokens.push(TokenData(token, symbol, decimals));
     }
 }

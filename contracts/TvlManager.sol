@@ -189,6 +189,20 @@ contract TvlManager is
         return allocationIds_;
     }
 
+    function getAssetAllocationId(address assetAllocation, uint8 tokenIndex)
+        external
+        view
+        override
+        returns (bytes32)
+    {} // solhint-disable-line no-empty-blocks
+
+    function getAssetAllocation(bytes32 id)
+        external
+        view
+        override
+        returns (address, uint8)
+    {} // solhint-disable-line no-empty-blocks
+
     /**
      * @notice Generates a data hash used for uniquely identifying asset allocations
      * @param data the data hash containing the target address and the bytes lookup data
