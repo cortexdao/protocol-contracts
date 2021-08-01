@@ -40,7 +40,6 @@ describe("Contract: AssetAllocation", () => {
 
   before(async () => {
     // [deployer, randomUser] = await ethers.getSigners();
-
     SimpleAssetAllocation = await ethers.getContractFactory(
       "SimpleAssetAllocation"
     );

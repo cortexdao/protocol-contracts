@@ -11,6 +11,7 @@ describe.only("Contract: Erc20Allocation", () => {
   // signers
   let deployer;
   let user;
+  let anotherUser;
 
   // contract factories
   let Erc20Allocation;
@@ -42,27 +43,61 @@ describe.only("Contract: Erc20Allocation", () => {
   });
 
   before(async () => {
-    [deployer, user] = await ethers.getSigners();
+    [deployer, user, anotherUser] = await ethers.getSigners();
     Erc20Allocation = await ethers.getContractFactory("Erc20Allocation");
     erc20Allocation = await Erc20Allocation.deploy();
   });
 
-  it("addToken", async () => {
-    await erc20Allocation["addToken(address,string,uint8)"](
-      token_0.token,
-      token_0.symbol,
-      token_0.decimals
-    );
-    let result = await erc20Allocation.tokens();
-    // have to check in this cumbersome manner rather than a deep
-    // equal, because Ethers returns each struct as an *array*
-    // with struct fields set as properties
-    expect(result[0].token).to.equal(token_0.token);
-    expect(result[0].symbol).to.equal(token_0.symbol);
-    expect(result[0].decimals).to.equal(token_0.decimals);
+  describe("Adding and removing tokens", () => {
+    it("addToken populates tokens correctly", async () => {
+      await erc20Allocation["addToken(address,string,uint8)"](
+        token_0.token,
+        token_0.symbol,
+        token_0.decimals
+      );
+      await erc20Allocation["addToken(address,string,uint8)"](
+        token_1.token,
+        token_1.symbol,
+        token_1.decimals
+      );
+      let result = await erc20Allocation.tokens();
+      // have to check in this cumbersome manner rather than a deep
+      // equal, because Ethers returns each struct as an *array*
+      // with struct fields set as properties
+      expect(result[0].token).to.equal(token_0.token);
+      expect(result[0].symbol).to.equal(token_0.symbol);
+      expect(result[0].decimals).to.equal(token_0.decimals);
+      expect(result[1].token).to.equal(token_1.token);
+      expect(result[1].symbol).to.equal(token_1.symbol);
+      expect(result[1].decimals).to.equal(token_1.decimals);
+    });
+
+    it("removeToken", async () => {
+      await erc20Allocation["addToken(address,string,uint8)"](
+        token_0.token,
+        token_0.symbol,
+        token_0.decimals
+      );
+      await erc20Allocation["addToken(address,string,uint8)"](
+        token_1.token,
+        token_1.symbol,
+        token_1.decimals
+      );
+
+      await erc20Allocation.removeToken(token_0.token);
+
+      const tokens = await erc20Allocation.tokens();
+      expect(await erc20Allocation.tokens()).to.have.lengthOf(1);
+      expect(tokens[0].token).to.equal(token_1.token);
+      expect(tokens[0].symbol).to.equal(token_1.symbol);
+      expect(tokens[0].decimals).to.equal(token_1.decimals);
+
+      await erc20Allocation.removeToken(token_1.token);
+      expect(await erc20Allocation.tokens()).to.be.empty;
+    });
   });
 
-  describe("", () => {
+  describe("View functions read token info correctly", () => {
     let tokenMock_0;
     let tokenMock_1;
 
@@ -75,19 +110,29 @@ describe.only("Contract: Erc20Allocation", () => {
       decimals: 18,
     };
 
-    beforeEach("", async () => {
+    const userBalance = 42;
+    const anotherUserBalance = 100;
+
+    beforeEach("Setup token list with mock ERC20s", async () => {
+      // setup each mock ERC20 token
       tokenMock_0 = await deployMockContract(deployer, IDetailedERC20.abi);
       token_0.token = tokenMock_0.address;
-      tokenMock_1 = await deployMockContract(deployer, IDetailedERC20.abi);
-      token_1.token = tokenMock_1.address;
-
       await tokenMock_0.mock.symbol.returns(token_0.symbol);
       await tokenMock_0.mock.decimals.returns(token_0.decimals);
+
+      tokenMock_1 = await deployMockContract(deployer, IDetailedERC20.abi);
+      token_1.token = tokenMock_1.address;
       await tokenMock_1.mock.symbol.returns(token_1.symbol);
       await tokenMock_1.mock.decimals.returns(token_1.decimals);
 
-      await tokenMock_0.mock.balanceOf.withArgs(user.address).returns(42);
+      await tokenMock_0.mock.balanceOf
+        .withArgs(user.address)
+        .returns(userBalance);
+      await tokenMock_1.mock.balanceOf
+        .withArgs(anotherUser.address)
+        .returns(anotherUserBalance);
 
+      // register mock tokens
       await erc20Allocation["addToken(address,string,uint8)"](
         token_0.token,
         token_0.symbol,
@@ -111,7 +156,12 @@ describe.only("Contract: Erc20Allocation", () => {
     });
 
     it("balanceOf", async () => {
-      expect(await erc20Allocation.balanceOf(user.address, 0)).to.equal(42);
+      expect(await erc20Allocation.balanceOf(user.address, 0)).to.equal(
+        userBalance
+      );
+      expect(await erc20Allocation.balanceOf(anotherUser.address, 1)).to.equal(
+        anotherUserBalance
+      );
     });
   });
 });
