@@ -13,15 +13,19 @@ contract TestTvlManager is TvlManagerV2 {
     function testEncodeAssetAllocationId(
         address assetAllocation,
         uint8 tokenIndex
-    ) external view returns (bytes32) {
+    ) external pure returns (bytes32) {
         return _encodeAssetAllocationId(assetAllocation, tokenIndex);
     }
 
     function testDecodeAssetAllocationId(bytes32 id)
         external
-        view
+        pure
         returns (address, uint8)
     {
         return _decodeAssetAllocationId(id);
+    }
+
+    function testGetAssetAllocationIdCount() external view returns (uint256) {
+        return _getAssetAllocationIdCount();
     }
 }
