@@ -3,10 +3,10 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
+import {AssetAllocationBase} from "./AssetAllocationBase.sol";
 import {IDetailedERC20} from "./interfaces/IDetailedERC20.sol";
-import {IAssetAllocation} from "./interfaces/IAssetAllocation.sol";
 
-contract Erc20Allocation is IAssetAllocation {
+contract Erc20Allocation is AssetAllocationBase {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet private _tokenAddresses;
@@ -37,6 +37,16 @@ contract Erc20Allocation is IAssetAllocation {
         delete _tokenToData[token];
     }
 
+    function balanceOf(address account, uint8 tokenIndex)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        address token = addressOf(tokenIndex);
+        return IDetailedERC20(token).balanceOf(account);
+    }
+
     function tokens() public view override returns (TokenData[] memory) {
         TokenData[] memory _tokens = new TokenData[](_tokenAddresses.length());
         for (uint256 i = 0; i < _tokens.length; i++) {
@@ -44,33 +54,5 @@ contract Erc20Allocation is IAssetAllocation {
             _tokens[i] = _tokenToData[tokenAddress];
         }
         return _tokens;
-    }
-
-    function symbolOf(uint8 tokenIndex)
-        external
-        view
-        override
-        returns (string memory)
-    {
-        return tokens()[tokenIndex].symbol;
-    }
-
-    function decimalsOf(uint8 tokenIndex)
-        external
-        view
-        override
-        returns (uint8)
-    {
-        return tokens()[tokenIndex].decimals;
-    }
-
-    function balanceOf(address account, uint8 tokenIndex)
-        external
-        view
-        override
-        returns (uint256)
-    {
-        address token = tokens()[tokenIndex].token;
-        return IDetailedERC20(token).balanceOf(account);
     }
 }

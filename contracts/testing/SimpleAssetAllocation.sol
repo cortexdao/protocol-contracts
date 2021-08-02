@@ -2,19 +2,15 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {AssetAllocation} from "../AssetAllocation.sol";
+import {ImmutableAssetAllocation} from "../ImmutableAssetAllocation.sol";
 
-contract SimpleAssetAllocation is AssetAllocation {
-    constructor(TokenData[] memory tokens) public {
-        for (uint256 i = 0; i < tokens.length; i++) {
-            address token = tokens[i].token;
-            string memory symbol = tokens[i].symbol;
-            uint8 decimals = tokens[i].decimals;
-            _setupAssetAllocation(token, symbol, decimals);
-        }
-    }
+contract SimpleAssetAllocation is ImmutableAssetAllocation {
+    constructor(TokenData[] memory tokens)
+        public
+        ImmutableAssetAllocation(tokens)
+    {} // solhint-disable-line no-empty-blocks
 
-    // solhint-disable-next-line no-unused-vars
+    // solhint-disable-next-line
     function balanceOf(address account, uint8 tokenIndex)
         external
         view

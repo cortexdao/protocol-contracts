@@ -7,7 +7,7 @@ const { deployMockContract } = waffle;
 
 const IDetailedERC20 = artifacts.readArtifactSync("IDetailedERC20");
 
-describe.only("Contract: Erc20Allocation", () => {
+describe("Contract: Erc20Allocation", () => {
   // signers
   let deployer;
   let user;
