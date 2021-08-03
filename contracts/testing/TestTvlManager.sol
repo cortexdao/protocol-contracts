@@ -5,9 +5,9 @@ pragma experimental ABIEncoderV2;
 import {TvlManagerV2} from "../TvlManagerV2.sol";
 
 contract TestTvlManager is TvlManagerV2 {
-    constructor(address addressRegistry_)
+    constructor(address addressRegistry_, address erc20Allocation_)
         public
-        TvlManagerV2(addressRegistry_)
+        TvlManagerV2(addressRegistry_, erc20Allocation_)
     {} // solhint-disable-line no-empty-blocks
 
     function testEncodeAssetAllocationId(

@@ -20,6 +20,7 @@ describe("Contract: TvlManager", () => {
 
   // deployed contracts
   let tvlManager;
+  let erc20Allocation;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -44,12 +45,12 @@ describe("Contract: TvlManager", () => {
 
     addressRegistry = await deployMockContract(
       deployer,
-      artifacts.require("IAddressRegistryV2").abi
+      artifacts.readArtifactSync("IAddressRegistryV2").abi
     );
 
     oracleAdapter = await deployMockContract(
       deployer,
-      artifacts.require("IOracleAdapter").abi
+      artifacts.readArtifactSync("IOracleAdapter").abi
     );
     await addressRegistry.mock.oracleAdapterAddress.returns(
       oracleAdapter.address
@@ -64,14 +65,21 @@ describe("Contract: TvlManager", () => {
       .withArgs(bytes32("emergencySafe"))
       .returns(emergencySafe.address);
 
-    TvlManager = await ethers.getContractFactory("TestTvlManager");
+    erc20Allocation = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("Erc20Allocation").abi
+    );
 
-    tvlManager = await TvlManager.deploy(addressRegistry.address);
+    TvlManager = await ethers.getContractFactory("TestTvlManager");
+    tvlManager = await TvlManager.deploy(
+      addressRegistry.address,
+      erc20Allocation.address
+    );
     await tvlManager.deployed();
   });
 
-  describe("Asset allocation IDs", async () => {
-    describe("encodeAssetAllocationId", async () => {
+  describe("Asset allocation IDs", () => {
+    describe("encodeAssetAllocationId", () => {
       it("should pack the address and index into a bytes32", async () => {
         const address = randomUser.address;
         const tokenIndex = 2;
@@ -90,7 +98,7 @@ describe("Contract: TvlManager", () => {
       });
     });
 
-    describe("decodeAssetAllocationId", async () => {
+    describe("decodeAssetAllocationId", () => {
       it("should decode an ID into an address and index", async () => {
         const address = randomUser.address;
         const tokenIndex = 2;
