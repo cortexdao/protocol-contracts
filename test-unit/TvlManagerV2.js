@@ -8,11 +8,9 @@ const { ZERO_ADDRESS, bytes32 } = require("../utils/helpers");
 describe("Contract: TvlManager", () => {
   // signers
   let deployer;
-  let addressRegistry;
   let poolManager;
   let lpSafe;
   let emergencySafe;
-  let oracleAdapter;
   let randomUser;
 
   // contract factories
@@ -20,7 +18,11 @@ describe("Contract: TvlManager", () => {
 
   // deployed contracts
   let tvlManager;
+  // mocks
+  let addressRegistry;
   let erc20Allocation;
+  let oracleAdapter;
+  let erc20Mock;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -69,6 +71,16 @@ describe("Contract: TvlManager", () => {
       deployer,
       artifacts.readArtifactSync("Erc20Allocation").abi
     );
+    erc20Mock = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("IDetailedERC20").abi
+    );
+    await erc20Mock.mock.symbol.returns("MOCK");
+    await erc20Mock.mock.decimals.returns(6);
+    await erc20Mock.mock.balanceOf.withArgs(randomUser.address).returns(123e6);
+    await erc20Allocation.mock.tokens.returns([
+      { token: erc20Mock.address, symbol: "MOCK", decimals: 6 },
+    ]);
 
     TvlManager = await ethers.getContractFactory("TestTvlManager");
     tvlManager = await TvlManager.deploy(
@@ -76,6 +88,53 @@ describe("Contract: TvlManager", () => {
       erc20Allocation.address
     );
     await tvlManager.deployed();
+  });
+
+  describe("Defaults", () => {
+    it("Default admin role given to Emergency Safe", async () => {
+      const DEFAULT_ADMIN_ROLE = await tvlManager.DEFAULT_ADMIN_ROLE();
+      const memberCount = await tvlManager.getRoleMemberCount(
+        DEFAULT_ADMIN_ROLE
+      );
+      expect(memberCount).to.equal(1);
+      expect(
+        await tvlManager.hasRole(DEFAULT_ADMIN_ROLE, emergencySafe.address)
+      ).to.be.true;
+    });
+
+    it("Emergency role given to Emergency Safe", async () => {
+      const EMERGENCY_ROLE = await tvlManager.EMERGENCY_ROLE();
+      const memberCount = await tvlManager.getRoleMemberCount(EMERGENCY_ROLE);
+      expect(memberCount).to.equal(1);
+      expect(await tvlManager.hasRole(EMERGENCY_ROLE, emergencySafe.address)).to
+        .be.true;
+    });
+
+    it("Contract role given to Pool Manager", async () => {
+      const CONTRACT_ROLE = await tvlManager.CONTRACT_ROLE();
+      const memberCount = await tvlManager.getRoleMemberCount(CONTRACT_ROLE);
+      expect(memberCount).to.equal(1);
+      expect(await tvlManager.hasRole(CONTRACT_ROLE, poolManager.address)).to.be
+        .true;
+    });
+
+    it("LP role given to LP Safe", async () => {
+      const LP_ROLE = await tvlManager.LP_ROLE();
+      const memberCount = await tvlManager.getRoleMemberCount(LP_ROLE);
+      expect(memberCount).to.equal(1);
+      expect(await tvlManager.hasRole(LP_ROLE, lpSafe.address)).to.be.true;
+    });
+
+    it("ERC20 Allocation is registered", async () => {
+      // expected ID count is 1, since only ERC20 allocation is registered
+      // and it has one token added
+      expect(await tvlManager.testGetAssetAllocationIdCount()).to.equal(1);
+      // sanity check: should be zero count after removal
+      await tvlManager
+        .connect(lpSafe)
+        .removeAssetAllocation(erc20Allocation.address);
+      expect(await tvlManager.testGetAssetAllocationIdCount()).to.equal(0);
+    });
   });
 
   describe("Asset allocation IDs", () => {
