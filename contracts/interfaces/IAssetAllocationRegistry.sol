@@ -15,6 +15,16 @@ interface IAssetAllocationRegistry {
      */
     function getAssetAllocationIds() external view returns (bytes32[] memory);
 
+    function getAssetAllocationId(address assetAllocation, uint8 tokenIndex)
+        external
+        view
+        returns (bytes32);
+
+    function getAssetAllocation(bytes32 id)
+        external
+        view
+        returns (address, uint8);
+
     /**
      * @notice Executes the bytes lookup data registered under an id
      * @dev The balance of an id may be aggregated from multiple contracts

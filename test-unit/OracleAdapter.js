@@ -157,7 +157,7 @@ describe("Contract: OracleAdapter", () => {
       ).to.be.true;
     });
 
-    it("Contract role given to Pool Manager", async () => {
+    it("Contract role given to TVL Manager and mAPT", async () => {
       const CONTRACT_ROLE = await oracleAdapter.CONTRACT_ROLE();
       const memberCount = await oracleAdapter.getRoleMemberCount(CONTRACT_ROLE);
       expect(memberCount).to.equal(2);
