@@ -163,7 +163,7 @@ contract PoolTokenV2 is
         __ERC20_init_unchained("APY Pool Token", "APT");
 
         // initialize impl-specific storage
-        setAdminAddress(adminAddress);
+        _setAdminAddress(adminAddress);
         addLiquidityLock = false;
         redeemLock = false;
         underlyer = underlyer_;
@@ -184,8 +184,7 @@ contract PoolTokenV2 is
         virtual
         onlyAdmin
     {
-        require(addressRegistry_.isContract(), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistryV2(addressRegistry_);
+        _setAddressRegistry(addressRegistry_);
 
         // Sadly, the AccessControl init is protected by `initializer` so can't
         // be called ever again (see above natspec).  Fortunately, the init body
@@ -333,30 +332,27 @@ contract PoolTokenV2 is
         underlyer.safeTransfer(addressRegistry.lpSafeAddress(), amount);
     }
 
-    function setAdminAddress(address adminAddress) public onlyEmergencyRole {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-        proxyAdmin = adminAddress;
-        emit AdminChanged(adminAddress);
+    function setAdminAddress(address adminAddress) external onlyEmergencyRole {
+        _setAdminAddress(adminAddress);
     }
 
-    function setAddressRegistry(address payable addressRegistry_)
-        public
+    function setAddressRegistry(address addressRegistry_)
+        external
         onlyEmergencyRole
     {
-        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistryV2(addressRegistry_);
+        _setAddressRegistry(addressRegistry_);
     }
 
-    function setFeePeriod(uint256 feePeriod_) public onlyAdminRole {
+    function setFeePeriod(uint256 feePeriod_) external onlyAdminRole {
         feePeriod = feePeriod_;
     }
 
-    function setFeePercentage(uint256 feePercentage_) public onlyAdminRole {
+    function setFeePercentage(uint256 feePercentage_) external onlyAdminRole {
         feePercentage = feePercentage_;
     }
 
     function setReservePercentage(uint256 reservePercentage_)
-        public
+        external
         onlyAdminRole
     {
         reservePercentage = reservePercentage_;
@@ -368,7 +364,7 @@ contract PoolTokenV2 is
      * @return The mint amount
      */
     function calculateMintAmount(uint256 depositAmount)
-        public
+        external
         view
         returns (uint256)
     {
@@ -475,7 +471,7 @@ contract PoolTokenV2 is
      * @param aptAmount APT amount
      * @return USD value
      */
-    function getAPTValue(uint256 aptAmount) public view returns (uint256) {
+    function getAPTValue(uint256 aptAmount) external view returns (uint256) {
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
         return aptAmount.mul(getPoolTotalValue()).div(totalSupply());
     }
@@ -503,7 +499,7 @@ contract PoolTokenV2 is
      * @return amount of underlying stablecoin
      */
     function getUnderlyerAmountFromValue(uint256 value)
-        public
+        external
         view
         returns (uint256)
     {
@@ -559,7 +555,7 @@ contract PoolTokenV2 is
      *
      * @return int256 The underlyer value to top-up the pool's reserve
      */
-    function getReserveTopUpValue() public view returns (int256) {
+    function getReserveTopUpValue() external view returns (int256) {
         uint256 unnormalizedTargetValue =
             getDeployedValue().mul(reservePercentage);
         uint256 unnormalizedUnderlyerValue = getPoolUnderlyerValue().mul(100);
@@ -574,6 +570,17 @@ contract PoolTokenV2 is
                 .sub(int256(unnormalizedUnderlyerValue))
                 .div(int256(reservePercentage).add(100));
         return topUpValue;
+    }
+
+    function _setAdminAddress(address adminAddress) internal {
+        require(adminAddress != address(0), "INVALID_ADMIN");
+        proxyAdmin = adminAddress;
+        emit AdminChanged(adminAddress);
+    }
+
+    function _setAddressRegistry(address addressRegistry_) internal {
+        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
 
     /**
