@@ -44,8 +44,9 @@ contract TvlManagerV2 is
      * @notice Constructor
      * @param addressRegistry_ the address registry to initialize with
      */
-    constructor(address addressRegistry_) public {
+    constructor(address addressRegistry_, address erc20Allocation_) public {
         _setAddressRegistry(addressRegistry_);
+        _setErc20Allocation(erc20Allocation_);
         _setupRole(
             DEFAULT_ADMIN_ROLE,
             addressRegistry.getAddress("emergencySafe")
@@ -65,6 +66,18 @@ contract TvlManagerV2 is
         onlyEmergencyRole
     {
         _setAddressRegistry(addressRegistry_);
+    }
+
+    /**
+     * @notice Sets the ERC20 allocation contract
+     * @dev only callable by owner
+     * @param erc20Allocation_ the address of ERC20 allocation
+     */
+    function setErc20Allocation(address erc20Allocation_)
+        external
+        onlyEmergencyRole
+    {
+        _setErc20Allocation(erc20Allocation_);
     }
 
     /**
@@ -232,6 +245,11 @@ contract TvlManagerV2 is
     function _setAddressRegistry(address addressRegistry_) internal {
         require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
+    }
+
+    function _setErc20Allocation(address erc20Allocation_) internal {
+        require(Address.isContract(erc20Allocation_), "INVALID_ADDRESS");
+        _assetAllocations.add(erc20Allocation_);
     }
 
     function _lockOracleAdapter() internal {
