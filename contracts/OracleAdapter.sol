@@ -112,7 +112,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
     }
 
     function setDefaultLockPeriod(uint256 newPeriod)
-        public
+        external
         override
         onlyAdminRole
     {
@@ -127,7 +127,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         _lockFor(0);
     }
 
-    function lockFor(uint256 activePeriod) public override onlyContractRole {
+    function lockFor(uint256 activePeriod) external override onlyContractRole {
         uint256 oldLockEnd = lockEnd;
         _lockFor(activePeriod);
         require(lockEnd > oldLockEnd, "CANNOT_SHORTEN_LOCK");
@@ -139,7 +139,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
      * @param addressRegistry_ the address of the registry
      */
     function setAddressRegistry(address addressRegistry_)
-        public
+        external
         onlyEmergencyRole
     {
         _setAddressRegistry(addressRegistry_);
@@ -192,7 +192,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
      * @notice Set or replace the TVL source
      * @param source the TVL source address
      */
-    function setTvlSource(address source) public onlyEmergencyRole {
+    function setTvlSource(address source) external onlyEmergencyRole {
         _setTvlSource(source);
     }
 
@@ -202,7 +202,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
      * @param sources the array of price sources (aggregators)
      */
     function setAssetSources(address[] memory assets, address[] memory sources)
-        public
+        external
         onlyEmergencyRole
     {
         _setAssetSources(assets, sources);
@@ -214,7 +214,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
      * @param source the price source (aggregator)
      */
     function setAssetSource(address asset, address source)
-        public
+        external
         onlyEmergencyRole
     {
         _setAssetSource(asset, source);
@@ -225,7 +225,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
      * @param chainlinkStalePeriod_ the length of time in seconds
      */
     function setChainlinkStalePeriod(uint256 chainlinkStalePeriod_)
-        public
+        external
         onlyAdminRole
     {
         _setChainlinkStalePeriod(chainlinkStalePeriod_);
@@ -271,7 +271,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
      * @return the asset price
      */
     function getAssetPrice(address asset)
-        public
+        external
         view
         override
         unlocked

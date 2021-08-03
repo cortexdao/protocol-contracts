@@ -137,7 +137,7 @@ contract MetaPoolToken is
     // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual onlyAdmin {}
 
-    function setAdminAddress(address adminAddress) public onlyEmergencyRole {
+    function setAdminAddress(address adminAddress) external onlyEmergencyRole {
         _setAdminAddress(adminAddress);
     }
 
@@ -153,7 +153,7 @@ contract MetaPoolToken is
      * @param addressRegistry_ the address of the registry
      */
     function setAddressRegistry(address addressRegistry_)
-        public
+        external
         onlyEmergencyRole
     {
         _setAddressRegistry(addressRegistry_);
@@ -176,7 +176,7 @@ contract MetaPoolToken is
      * @param amount mint amount
      */
     function mint(address account, uint256 amount)
-        public
+        external
         override
         nonReentrant
         onlyContractRole
@@ -195,7 +195,7 @@ contract MetaPoolToken is
      * @param amount burn amount
      */
     function burn(address account, uint256 amount)
-        public
+        external
         override
         nonReentrant
         onlyContractRole
@@ -242,7 +242,7 @@ contract MetaPoolToken is
         uint256 depositAmount,
         uint256 tokenPrice,
         uint256 decimals
-    ) public view returns (uint256) {
+    ) external view returns (uint256) {
         uint256 depositValue = depositAmount.mul(tokenPrice).div(10**decimals);
         uint256 totalValue = getTvl();
         return _calculateMintAmount(depositValue, totalValue);
@@ -263,7 +263,7 @@ contract MetaPoolToken is
         uint256 mAptAmount,
         uint256 tokenPrice,
         uint256 decimals
-    ) public view returns (uint256) {
+    ) external view returns (uint256) {
         if (mAptAmount == 0) return 0;
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
         uint256 poolValue = mAptAmount.mul(getTvl()).div(totalSupply());
@@ -276,7 +276,7 @@ contract MetaPoolToken is
      * of the deployed capital, as tracked by the mAPT token.
      * @return uint256
      */
-    function getDeployedValue(address pool) public view returns (uint256) {
+    function getDeployedValue(address pool) external view returns (uint256) {
         uint256 balance = balanceOf(pool);
         uint256 totalSupply = totalSupply();
         if (totalSupply == 0 || balance == 0) return 0;
