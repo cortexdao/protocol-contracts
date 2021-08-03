@@ -77,7 +77,7 @@ contract AddressRegistryV2 is
         __Ownable_init_unchained();
 
         // initialize impl-specific storage
-        setAdminAddress(adminAddress);
+        _setAdminAddress(adminAddress);
     }
 
     /**
@@ -126,7 +126,7 @@ contract AddressRegistryV2 is
      * @dev Delete the address corresponding to the identifier.
      * Time-complexity is O(n) where n is the length of `_idList`.
      */
-    function deleteAddress(bytes32 id) public onlyOwner {
+    function deleteAddress(bytes32 id) external onlyOwner {
         for (uint256 i = 0; i < _idList.length; i++) {
             if (_idList[i] == id) {
                 // copy last element to slot i and shorten array
@@ -140,16 +140,14 @@ contract AddressRegistryV2 is
         }
     }
 
-    function setAdminAddress(address adminAddress) public onlyOwner {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-        proxyAdmin = adminAddress;
-        emit AdminChanged(adminAddress);
+    function setAdminAddress(address adminAddress) external onlyOwner {
+        _setAdminAddress(adminAddress);
     }
 
     /**
      * @notice Returns the list of all registered identifiers.
      */
-    function getIds() public view override returns (bytes32[] memory) {
+    function getIds() external view override returns (bytes32[] memory) {
         return _idList;
     }
 
@@ -167,7 +165,7 @@ contract AddressRegistryV2 is
      * @dev Not just a helper function, this makes explicit a key ID
      * for the system.
      */
-    function poolManagerAddress() public view override returns (address) {
+    function poolManagerAddress() external view override returns (address) {
         return getAddress("poolManager");
     }
 
@@ -187,7 +185,12 @@ contract AddressRegistryV2 is
      * @dev Not just a helper function, this makes explicit a key ID
      * for the system.
      */
-    function chainlinkRegistryAddress() public view override returns (address) {
+    function chainlinkRegistryAddress()
+        external
+        view
+        override
+        returns (address)
+    {
         return tvlManagerAddress();
     }
 
@@ -196,7 +199,7 @@ contract AddressRegistryV2 is
      * @dev Not just a helper function, this makes explicit a key ID
      * for the system.
      */
-    function daiPoolAddress() public view override returns (address) {
+    function daiPoolAddress() external view override returns (address) {
         return getAddress("daiPool");
     }
 
@@ -205,7 +208,7 @@ contract AddressRegistryV2 is
      * @dev Not just a helper function, this makes explicit a key ID
      * for the system.
      */
-    function usdcPoolAddress() public view override returns (address) {
+    function usdcPoolAddress() external view override returns (address) {
         return getAddress("usdcPool");
     }
 
@@ -214,22 +217,28 @@ contract AddressRegistryV2 is
      * @dev Not just a helper function, this makes explicit a key ID
      * for the system.
      */
-    function usdtPoolAddress() public view override returns (address) {
+    function usdtPoolAddress() external view override returns (address) {
         return getAddress("usdtPool");
     }
 
-    function mAptAddress() public view override returns (address) {
+    function mAptAddress() external view override returns (address) {
         return getAddress("mApt");
     }
 
     /**
      * @notice Get the address for the APY.Finance LP Safe.
      */
-    function lpSafeAddress() public view override returns (address) {
+    function lpSafeAddress() external view override returns (address) {
         return getAddress("lpSafe");
     }
 
-    function oracleAdapterAddress() public view override returns (address) {
+    function oracleAdapterAddress() external view override returns (address) {
         return getAddress("oracleAdapter");
+    }
+
+    function _setAdminAddress(address adminAddress) internal {
+        require(adminAddress != address(0), "INVALID_ADMIN");
+        proxyAdmin = adminAddress;
+        emit AdminChanged(adminAddress);
     }
 }
