@@ -78,6 +78,12 @@ describe("Contract: TvlManager", () => {
     await erc20Mock.mock.symbol.returns("MOCK");
     await erc20Mock.mock.decimals.returns(6);
     await erc20Mock.mock.balanceOf.withArgs(randomUser.address).returns(123e6);
+    await erc20Allocation.mock.isErc20TokenRegistered
+      .withArgs(erc20Mock.address)
+      .returns(true);
+    await erc20Allocation.mock.isErc20TokenRegistered
+      .withArgs(randomUser.address)
+      .returns(false);
     await erc20Allocation.mock.tokens.returns([
       { token: erc20Mock.address, symbol: "MOCK", decimals: 6 },
     ]);
@@ -125,15 +131,29 @@ describe("Contract: TvlManager", () => {
       expect(await tvlManager.hasRole(LP_ROLE, lpSafe.address)).to.be.true;
     });
 
-    it("ERC20 Allocation is registered", async () => {
-      // expected ID count is 1, since only ERC20 allocation is registered
-      // and it has one token added
-      expect(await tvlManager.testGetAssetAllocationIdCount()).to.equal(1);
-      // sanity check: should be zero count after removal
-      await tvlManager
-        .connect(lpSafe)
-        .removeAssetAllocation(erc20Allocation.address);
-      expect(await tvlManager.testGetAssetAllocationIdCount()).to.equal(0);
+    it("ERC20 allocation was set", async () => {
+      // Check if the ERC20 allocation address was set by removing it, which should fail
+      await expect(
+        tvlManager.connect(lpSafe).removeAssetAllocation(erc20Mock.address)
+      ).to.be.revertedWith("CANNOT_REMOVE_ALLOCATION");
+    });
+  });
+
+  describe("ERC20 allocations", () => {
+    it("ERC20 allocations can be checked", async () => {
+      expect(await tvlManager.isErc20TokenRegistered(erc20Mock.address)).to.be
+        .true;
+
+      expect(await tvlManager.isErc20TokenRegistered(randomUser.address)).to.be
+        .false;
+    });
+
+    it("ERC20 Allocation cannot be removed", async () => {
+      await expect(
+        tvlManager
+          .connect(lpSafe)
+          .removeAssetAllocation(erc20Allocation.address)
+      ).to.be.revertedWith("CANNOT_REMOVE_ALLOCATION");
     });
   });
 

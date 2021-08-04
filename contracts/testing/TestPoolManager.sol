@@ -32,14 +32,10 @@ contract TestPoolManager is PoolManager {
 
     /**
      * @notice Register an asset allocation for the account with each pool underlyer
-     * @param account address of the registered account
      * @param pools list of pools whose underlyers will be registered
      */
-    function testRegisterPoolUnderlyers(
-        address account,
-        PoolTokenV2[] memory pools
-    ) public {
-        _registerPoolUnderlyers(account, pools);
+    function testRegisterPoolUnderlyers(PoolTokenV2[] memory pools) public {
+        _registerPoolUnderlyers(pools);
     }
 
     function testRebalanceReserves(PoolAmount[] memory rebalanceAmounts)

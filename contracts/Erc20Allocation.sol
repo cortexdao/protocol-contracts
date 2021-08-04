@@ -5,11 +5,18 @@ pragma experimental ABIEncoderV2;
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import {AssetAllocationBase} from "./AssetAllocationBase.sol";
+import {
+    IErc20AllocationRegistry
+} from "./interfaces/IErc20AllocationRegistry.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 import {IDetailedERC20} from "./interfaces/IDetailedERC20.sol";
 import {AccessControl} from "./utils/AccessControl.sol";
 
-contract Erc20Allocation is AssetAllocationBase, AccessControl {
+contract Erc20Allocation is
+    IErc20AllocationRegistry,
+    AssetAllocationBase,
+    AccessControl
+{
     using Address for address;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -27,40 +34,59 @@ contract Erc20Allocation is AssetAllocationBase, AccessControl {
         _setupRole(CONTRACT_ROLE, addressRegistry.tvlManagerAddress());
     }
 
-    function addToken(address token) external onlyContractRole {
+    function registerErc20Token(address token)
+        external
+        override
+        onlyContractRole
+    {
         string memory symbol = IDetailedERC20(token).symbol();
         uint8 decimals = IDetailedERC20(token).decimals();
-        _addToken(token, symbol, decimals);
+        _registerErc20Token(token, symbol, decimals);
     }
 
-    function addToken(address token, string memory symbol)
+    function registerErc20Token(address token, string calldata symbol)
         external
+        override
         onlyContractRole
     {
         uint8 decimals = IDetailedERC20(token).decimals();
-        _addToken(token, symbol, decimals);
+        _registerErc20Token(token, symbol, decimals);
     }
 
-    function addToken(
+    function registerErc20Token(
         address token,
-        string memory symbol,
+        string calldata symbol,
         uint8 decimals
-    ) external onlyContractRole {
-        _addToken(token, symbol, decimals);
+    ) external override onlyContractRole {
+        _registerErc20Token(token, symbol, decimals);
     }
 
-    function _addToken(
+    function _registerErc20Token(
         address token,
         string memory symbol,
         uint8 decimals
     ) internal {
+        require(Address.isContract(token), "INVALID_ADDRESS");
         _tokenAddresses.add(token);
         _tokenToData[token] = TokenData(token, symbol, decimals);
     }
 
-    function removeToken(address token) external onlyContractRole {
+    function removeErc20Token(address token)
+        external
+        override
+        onlyContractRole
+    {
         _tokenAddresses.remove(token);
         delete _tokenToData[token];
+    }
+
+    function isErc20TokenRegistered(address token)
+        external
+        view
+        override
+        returns (bool)
+    {
+        return _tokenAddresses.contains(token);
     }
 
     function balanceOf(address account, uint8 tokenIndex)
