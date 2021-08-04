@@ -115,12 +115,12 @@ describe("Contract: Erc20Allocation", () => {
   });
 
   describe("Adding and removing tokens", () => {
-    describe("addToken", () => {
+    describe("registerErc20Token", () => {
       it("TVL Manager can call", async () => {
         await expect(
           erc20Allocation
             .connect(tvlManager)
-            ["addToken(address,string,uint8)"](
+            ["registerErc20Token(address,string,uint8)"](
               token_0.token,
               token_0.symbol,
               token_0.decimals
@@ -129,12 +129,15 @@ describe("Contract: Erc20Allocation", () => {
         await expect(
           erc20Allocation
             .connect(tvlManager)
-            ["addToken(address,string)"](token_0.token, token_0.symbol)
+            ["registerErc20Token(address,string)"](
+              token_0.token,
+              token_0.symbol
+            )
         ).to.not.be.reverted;
         await expect(
           erc20Allocation
             .connect(tvlManager)
-            ["addToken(address)"](token_0.token)
+            ["registerErc20Token(address)"](token_0.token)
         ).to.not.be.reverted;
       });
 
@@ -142,7 +145,7 @@ describe("Contract: Erc20Allocation", () => {
         await expect(
           erc20Allocation
             .connect(user)
-            ["addToken(address,string,uint8)"](
+            ["registerErc20Token(address,string,uint8)"](
               token_0.token,
               token_0.symbol,
               token_0.decimals
@@ -151,20 +154,25 @@ describe("Contract: Erc20Allocation", () => {
         await expect(
           erc20Allocation
             .connect(user)
-            ["addToken(address,string)"](token_0.token, token_0.symbol)
+            ["registerErc20Token(address,string)"](
+              token_0.token,
+              token_0.symbol
+            )
         ).to.be.revertedWith("NOT_CONTRACT_ROLE");
         await expect(
-          erc20Allocation.connect(user)["addToken(address)"](token_0.token)
+          erc20Allocation
+            .connect(user)
+            ["registerErc20Token(address)"](token_0.token)
         ).to.be.revertedWith("NOT_CONTRACT_ROLE");
       });
 
-      it("addToken populates tokens correctly", async () => {
-        await erc20Allocation["addToken(address,string,uint8)"](
+      it("registerErc20Token populates tokens correctly", async () => {
+        await erc20Allocation["registerErc20Token(address,string,uint8)"](
           token_0.token,
           token_0.symbol,
           token_0.decimals
         );
-        await erc20Allocation["addToken(address,string,uint8)"](
+        await erc20Allocation["registerErc20Token(address,string,uint8)"](
           token_1.token,
           token_1.symbol,
           token_1.decimals
@@ -182,34 +190,36 @@ describe("Contract: Erc20Allocation", () => {
       });
     });
 
-    describe("removeToken", () => {
+    describe("removeErc20Token", () => {
       it("TVL Manager can call", async () => {
         await expect(
           erc20Allocation
             .connect(tvlManager)
-            ["removeToken(address)"](token_0.token)
+            ["removeErc20Token(address)"](token_0.token)
         ).to.not.be.reverted;
       });
 
       it("Unpermissioned cannot call", async () => {
         await expect(
-          erc20Allocation.connect(user)["removeToken(address)"](token_0.token)
+          erc20Allocation
+            .connect(user)
+            ["removeErc20Token(address)"](token_0.token)
         ).to.be.revertedWith("NOT_CONTRACT_ROLE");
       });
 
-      it("removeToken", async () => {
-        await erc20Allocation["addToken(address,string,uint8)"](
+      it("removeErc20Token", async () => {
+        await erc20Allocation["registerErc20Token(address,string,uint8)"](
           token_0.token,
           token_0.symbol,
           token_0.decimals
         );
-        await erc20Allocation["addToken(address,string,uint8)"](
+        await erc20Allocation["registerErc20Token(address,string,uint8)"](
           token_1.token,
           token_1.symbol,
           token_1.decimals
         );
 
-        await erc20Allocation.removeToken(token_0.token);
+        await erc20Allocation.removeErc20Token(token_0.token);
 
         const tokens = await erc20Allocation.tokens();
         expect(await erc20Allocation.tokens()).to.have.lengthOf(1);
@@ -217,7 +227,7 @@ describe("Contract: Erc20Allocation", () => {
         expect(tokens[0].symbol).to.equal(token_1.symbol);
         expect(tokens[0].decimals).to.equal(token_1.decimals);
 
-        await erc20Allocation.removeToken(token_1.token);
+        await erc20Allocation.removeErc20Token(token_1.token);
         expect(await erc20Allocation.tokens()).to.be.empty;
       });
     });
@@ -225,12 +235,12 @@ describe("Contract: Erc20Allocation", () => {
 
   it("balanceOf", async () => {
     // register mock tokens
-    await erc20Allocation["addToken(address,string,uint8)"](
+    await erc20Allocation["registerErc20Token(address,string,uint8)"](
       token_0.token,
       token_0.symbol,
       token_0.decimals
     );
-    await erc20Allocation["addToken(address,string,uint8)"](
+    await erc20Allocation["registerErc20Token(address,string,uint8)"](
       token_1.token,
       token_1.symbol,
       token_1.decimals
