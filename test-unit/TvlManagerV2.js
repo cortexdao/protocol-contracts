@@ -130,6 +130,13 @@ describe("Contract: TvlManager", () => {
       expect(memberCount).to.equal(1);
       expect(await tvlManager.hasRole(LP_ROLE, lpSafe.address)).to.be.true;
     });
+
+    it("ERC20 allocation was set", async () => {
+      // Check if the ERC20 allocation address was set by removing it, which should fail
+      await expect(
+        tvlManager.connect(lpSafe).removeAssetAllocation(erc20Mock.address)
+      ).to.be.revertedWith("CANNOT_REMOVE_ALLOCATION");
+    });
   });
 
   describe("ERC20 allocations", () => {
