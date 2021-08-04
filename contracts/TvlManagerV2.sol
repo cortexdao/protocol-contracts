@@ -192,7 +192,7 @@ contract TvlManagerV2 is
 
         uint256 k = 0;
         for (uint256 i = 0; i < allocations.length; i++) {
-            uint256 tokensLength = allocations[i].tokens().length;
+            uint256 tokensLength = allocations[i].numberOfTokens();
 
             require(tokensLength < type(uint8).max, "TOO_MANY_TOKENS");
 
@@ -339,7 +339,7 @@ contract TvlManagerV2 is
         uint256 idsLength = 0;
         for (uint256 i = 0; i < allocations.length; i++) {
             IAssetAllocation allocation = IAssetAllocation(allocations[i]);
-            idsLength += allocation.tokens().length;
+            idsLength += allocation.numberOfTokens();
         }
 
         return idsLength;
