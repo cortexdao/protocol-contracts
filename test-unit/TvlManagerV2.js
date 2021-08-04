@@ -5,13 +5,14 @@ const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS, bytes32 } = require("../utils/helpers");
 
-describe("Contract: TvlManager", () => {
+describe.only("Contract: TvlManager", () => {
   // signers
   let deployer;
   let poolManager;
   let lpSafe;
   let emergencySafe;
   let randomUser;
+  let randomAddress;
 
   // contract factories
   let TvlManager;
@@ -43,6 +44,7 @@ describe("Contract: TvlManager", () => {
       lpSafe,
       emergencySafe,
       randomUser,
+      randomAddress,
     ] = await ethers.getSigners();
 
     addressRegistry = await deployMockContract(
@@ -134,7 +136,9 @@ describe("Contract: TvlManager", () => {
     it("ERC20 allocation was set", async () => {
       // Check if the ERC20 allocation address was set by removing it, which should fail
       await expect(
-        tvlManager.connect(lpSafe).removeAssetAllocation(erc20Mock.address)
+        tvlManager
+          .connect(lpSafe)
+          .removeAssetAllocation(erc20Allocation.address)
       ).to.be.revertedWith("CANNOT_REMOVE_ALLOCATION");
     });
   });
@@ -210,6 +214,50 @@ describe("Contract: TvlManager", () => {
         const result = await tvlManager.testDecodeAssetAllocationId(id);
         expect(result).to.deep.equal([address, tokenIndex]);
       });
+    });
+
+    describe("getAssetAllocationId(s)", async () => {
+      let mockAssetAllocation;
+      let mockAsset;
+
+      before("register asset allocations", async () => {
+        mockAssetAllocation = await deployMockContract(
+          deployer,
+          artifacts.readArtifactSync("Erc20Allocation").abi
+        );
+        mockAsset = await deployMockContract(
+          deployer,
+          artifacts.readArtifactSync("IDetailedERC20").abi
+        );
+        await mockAsset.mock.symbol.returns("MOCK");
+        await mockAsset.mock.decimals.returns(6);
+        await mockAsset.mock.balanceOf
+          .withArgs(randomUser.address)
+          .returns(123e6);
+        await mockAssetAllocation.mock.isErc20TokenRegistered
+          .withArgs(mockAsset.address)
+          .returns(true);
+        await mockAssetAllocation.mock.isErc20TokenRegistered
+          .withArgs(randomUser.address)
+          .returns(false);
+        await mockAssetAllocation.mock.tokens.returns([
+          { token: mockAsset.address, symbol: "MOCK", decimals: 6 },
+        ]);
+
+        await tvlManager
+          .connect(poolManager)
+          .registerAssetAllocation(mockAssetAllocation.address);
+      });
+
+      it("should fail on invalid asset allocation", async () => {
+        await expect(
+          tvlManager.getAssetAllocationId(randomAddress.address, 4)
+        ).to.be.revertedWith("INVALID_ASSET_ALLOCATION");
+      });
+
+      it("should fail with invalid token index", async () => {});
+
+      it("should successfully get the asset allocation id", async () => {});
     });
   });
 });
