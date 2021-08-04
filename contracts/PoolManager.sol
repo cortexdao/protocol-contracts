@@ -13,6 +13,9 @@ import {AccessControl} from "./utils/AccessControl.sol";
 import {
     IAssetAllocationRegistry
 } from "./interfaces/IAssetAllocationRegistry.sol";
+import {
+    IErc20AllocationRegistry
+} from "./interfaces/IErc20AllocationRegistry.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {SignedSafeMath} from "@openzeppelin/contracts/math/SignedSafeMath.sol";
@@ -20,7 +23,6 @@ import {
     IDetailedERC20UpgradeSafe
 } from "./interfaces/IDetailedERC20UpgradeSafe.sol";
 import {ILpSafeFunder} from "./interfaces/ILpSafeFunder.sol";
-import {ITvlManager} from "./interfaces/ITvlManager.sol";
 import {PoolTokenV2} from "./PoolTokenV2.sol";
 import {MetaPoolToken} from "./MetaPoolToken.sol";
 
@@ -114,7 +116,7 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
             _getPoolsAndAmounts(rebalanceAmounts);
 
         _deployOrUnwindCapital(lpSafeAddress, pools, amounts);
-        _registerPoolUnderlyers(lpSafeAddress, pools);
+        _registerPoolUnderlyers(pools);
     }
 
     /**
@@ -149,29 +151,17 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
 
     /**
      * @notice Register an asset allocation for the account with each pool underlyer
-     * @param account address of the registered account
      * @param pools list of pools whose underlyers will be registered
      */
-    function _registerPoolUnderlyers(
-        address account,
-        PoolTokenV2[] memory pools
-    ) internal {
-        ITvlManager tvlManager =
-            ITvlManager(addressRegistry.getAddress("tvlManager"));
+    function _registerPoolUnderlyers(PoolTokenV2[] memory pools) internal {
+        IErc20AllocationRegistry tvlManager =
+            IErc20AllocationRegistry(addressRegistry.getAddress("tvlManager"));
+
         for (uint256 i = 0; i < pools.length; i++) {
-            PoolTokenV2 pool = pools[i];
-            IDetailedERC20UpgradeSafe underlyer = pool.underlyer();
-            string memory symbol = underlyer.symbol();
-            bytes memory _data =
-                abi.encodeWithSignature("balanceOf(address)", account);
-            ITvlManager.Data memory data =
-                ITvlManager.Data(address(pool.underlyer()), _data);
-            if (!tvlManager.isAssetAllocationRegistered(data)) {
-                tvlManager.addAssetAllocation(
-                    data,
-                    symbol,
-                    underlyer.decimals()
-                );
+            address underlyer = address(pools[i].underlyer());
+
+            if (!tvlManager.isErc20TokenRegistered(underlyer)) {
+                tvlManager.registerErc20Token(underlyer);
             }
         }
     }
