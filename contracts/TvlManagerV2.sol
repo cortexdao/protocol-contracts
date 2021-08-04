@@ -12,6 +12,9 @@ import {IAssetAllocation} from "./interfaces/IAssetAllocation.sol";
 import {
     IAssetAllocationRegistry
 } from "./interfaces/IAssetAllocationRegistry.sol";
+import {
+    IErc20AllocationRegistry
+} from "./interfaces/IErc20AllocationRegistry.sol";
 import {ITvlManagerV2} from "./interfaces/ITvlManagerV2.sol";
 import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
@@ -31,7 +34,8 @@ contract TvlManagerV2 is
     AccessControl,
     ReentrancyGuard,
     ITvlManagerV2,
-    IAssetAllocationRegistry
+    IAssetAllocationRegistry,
+    IErc20AllocationRegistry
 {
     using EnumerableSet for EnumerableSet.AddressSet;
     using Address for address;
@@ -39,14 +43,15 @@ contract TvlManagerV2 is
     IAddressRegistryV2 public addressRegistry;
 
     EnumerableSet.AddressSet private _assetAllocations;
+    IErc20AllocationRegistry private _erc20Allocation;
 
     /**
      * @notice Constructor
      * @param addressRegistry_ the address registry to initialize with
      */
-    constructor(address addressRegistry_, address erc20Allocation_) public {
+    constructor(address addressRegistry_, address erc20Allocation) public {
         _setAddressRegistry(addressRegistry_);
-        _setErc20Allocation(erc20Allocation_);
+        _setErc20Allocation(erc20Allocation);
         _setupRole(
             DEFAULT_ADMIN_ROLE,
             addressRegistry.getAddress("emergencySafe")
@@ -61,7 +66,7 @@ contract TvlManagerV2 is
      * @dev only callable by owner
      * @param addressRegistry_ the address of the registry
      */
-    function setAddressRegistry(address addressRegistry_)
+    function emergencySetAddressRegistry(address addressRegistry_)
         external
         onlyEmergencyRole
     {
@@ -71,13 +76,13 @@ contract TvlManagerV2 is
     /**
      * @notice Sets the ERC20 allocation contract
      * @dev only callable by owner
-     * @param erc20Allocation_ the address of ERC20 allocation
+     * @param erc20Allocation the address of ERC20 allocation
      */
-    function setErc20Allocation(address erc20Allocation_)
+    function emergencySetErc20Allocation(address erc20Allocation)
         external
         onlyEmergencyRole
     {
-        _setErc20Allocation(erc20Allocation_);
+        _setErc20Allocation(erc20Allocation);
     }
 
     /**
@@ -111,9 +116,60 @@ contract TvlManagerV2 is
             hasRole(CONTRACT_ROLE, msg.sender) || hasRole(LP_ROLE, msg.sender),
             "INVALID_ACCESS_CONTROL"
         );
+
+        require(
+            assetAllocation != address(_erc20Allocation),
+            "CANNOT_REMOVE_ALLOCATION"
+        );
+
         _assetAllocations.remove(assetAllocation);
+
         _lockOracleAdapter();
+
         emit AssetAllocationRemoved(assetAllocation);
+    }
+
+    function registerErc20Token(address token) external override {
+        require(
+            hasRole(CONTRACT_ROLE, msg.sender) || hasRole(LP_ROLE, msg.sender),
+            "INVALID_ACCESS_CONTROL"
+        );
+
+        _erc20Allocation.registerErc20Token(token);
+    }
+
+    function registerErc20Token(address token, string calldata symbol)
+        external
+        override
+    {
+        require(
+            hasRole(CONTRACT_ROLE, msg.sender) || hasRole(LP_ROLE, msg.sender),
+            "INVALID_ACCESS_CONTROL"
+        );
+
+        _erc20Allocation.registerErc20Token(token, symbol);
+    }
+
+    function registerErc20Token(
+        address token,
+        string calldata symbol,
+        uint8 decimals
+    ) external override {
+        require(
+            hasRole(CONTRACT_ROLE, msg.sender) || hasRole(LP_ROLE, msg.sender),
+            "INVALID_ACCESS_CONTROL"
+        );
+
+        _erc20Allocation.registerErc20Token(token, symbol, decimals);
+    }
+
+    function removeErc20Token(address token) external override {
+        require(
+            hasRole(CONTRACT_ROLE, msg.sender) || hasRole(LP_ROLE, msg.sender),
+            "INVALID_ACCESS_CONTROL"
+        );
+
+        _erc20Allocation.removeErc20Token(token);
     }
 
     function getAssetAllocationIds()
@@ -164,6 +220,15 @@ contract TvlManagerV2 is
         );
 
         return _encodeAssetAllocationId(assetAllocation, tokenIndex);
+    }
+
+    function isErc20TokenRegistered(address token)
+        external
+        view
+        override
+        returns (bool)
+    {
+        return _erc20Allocation.isErc20TokenRegistered(token);
     }
 
     /**
@@ -247,9 +312,11 @@ contract TvlManagerV2 is
         addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
 
-    function _setErc20Allocation(address erc20Allocation_) internal {
-        require(Address.isContract(erc20Allocation_), "INVALID_ADDRESS");
-        _assetAllocations.add(erc20Allocation_);
+    function _setErc20Allocation(address erc20Allocation) internal {
+        require(Address.isContract(erc20Allocation), "INVALID_ADDRESS");
+        _assetAllocations.remove(address(_erc20Allocation));
+        _assetAllocations.add(erc20Allocation);
+        _erc20Allocation = IErc20AllocationRegistry(erc20Allocation);
     }
 
     function _lockOracleAdapter() internal {
