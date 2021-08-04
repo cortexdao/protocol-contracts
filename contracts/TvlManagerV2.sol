@@ -178,21 +178,27 @@ contract TvlManagerV2 is
         override
         returns (bytes32[] memory)
     {
-        uint256 idsLength = _getAssetAllocationIdCount();
+        IAssetAllocation[] memory allocations = _getAssetAllocations();
+        return _getAssetAllocationsIds(allocations);
+    }
+
+    function _getAssetAllocationsIds(IAssetAllocation[] memory allocations)
+        internal
+        view
+        returns (bytes32[] memory)
+    {
+        uint256 idsLength = _getAssetAllocationIdCount(allocations);
         bytes32[] memory assetAllocationIds = new bytes32[](idsLength);
 
         uint256 k = 0;
-        for (uint256 i = 0; i < _assetAllocations.length(); i++) {
-            IAssetAllocation assetAllocation =
-                IAssetAllocation(_assetAllocations.at(i));
-
-            uint256 tokensLength = assetAllocation.tokens().length;
+        for (uint256 i = 0; i < allocations.length; i++) {
+            uint256 tokensLength = allocations[i].tokens().length;
 
             require(tokensLength < type(uint8).max, "TOO_MANY_TOKENS");
 
             for (uint256 j = 0; j < tokensLength; j++) {
                 assetAllocationIds[k] = _encodeAssetAllocationId(
-                    address(assetAllocation),
+                    address(allocations[i]),
                     uint8(j)
                 );
                 k++;
@@ -325,15 +331,32 @@ contract TvlManagerV2 is
         oracleAdapter.lock();
     }
 
-    function _getAssetAllocationIdCount() internal view returns (uint256) {
+    function _getAssetAllocationIdCount(IAssetAllocation[] memory allocations)
+        internal
+        view
+        returns (uint256)
+    {
         uint256 idsLength = 0;
-        for (uint256 i = 0; i < _assetAllocations.length(); i++) {
-            IAssetAllocation assetAllocation =
-                IAssetAllocation(_assetAllocations.at(i));
-            idsLength += assetAllocation.tokens().length;
+        for (uint256 i = 0; i < allocations.length; i++) {
+            IAssetAllocation allocation = IAssetAllocation(allocations[i]);
+            idsLength += allocation.tokens().length;
         }
 
         return idsLength;
+    }
+
+    function _getAssetAllocations()
+        internal
+        view
+        returns (IAssetAllocation[] memory)
+    {
+        uint256 numAllocations = _assetAllocations.length();
+        IAssetAllocation[] memory allocations =
+            new IAssetAllocation[](numAllocations);
+        for (uint256 i = 0; i < numAllocations; i++) {
+            allocations[i] = IAssetAllocation(_assetAllocations.at(i));
+        }
+        return allocations;
     }
 
     function _encodeAssetAllocationId(address assetAllocation, uint8 tokenIndex)

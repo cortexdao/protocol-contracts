@@ -3,6 +3,7 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import {TvlManagerV2} from "../TvlManagerV2.sol";
+import {IAssetAllocation} from "../interfaces/IAssetAllocation.sol";
 
 contract TestTvlManager is TvlManagerV2 {
     constructor(address addressRegistry_, address erc20Allocation_)
@@ -25,7 +26,25 @@ contract TestTvlManager is TvlManagerV2 {
         return _decodeAssetAllocationId(id);
     }
 
-    function testGetAssetAllocationIdCount() external view returns (uint256) {
-        return _getAssetAllocationIdCount();
+    function testGetAssetAllocationIdCount(
+        IAssetAllocation[] memory allocations
+    ) external view returns (uint256) {
+        return _getAssetAllocationIdCount(allocations);
+    }
+
+    function testGetAssetAllocationIds(IAssetAllocation[] memory allocations)
+        external
+        view
+        returns (bytes32[] memory)
+    {
+        return _getAssetAllocationsIds(allocations);
+    }
+
+    function testGetAssetAllocations()
+        external
+        view
+        returns (IAssetAllocation[] memory)
+    {
+        return _getAssetAllocations();
     }
 }
