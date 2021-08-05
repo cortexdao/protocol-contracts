@@ -98,6 +98,7 @@ contract TvlManagerV2 is
             hasRole(CONTRACT_ROLE, msg.sender) || hasRole(LP_ROLE, msg.sender),
             "INVALID_ACCESS_CONTROL"
         );
+        require(assetAllocation.isContract(), "INVALID_ADDRESS");
         _assetAllocations.add(assetAllocation);
         _lockOracleAdapter();
         emit AssetAllocationRegistered(assetAllocation);
@@ -314,12 +315,12 @@ contract TvlManagerV2 is
     }
 
     function _setAddressRegistry(address addressRegistry_) internal {
-        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
+        require(addressRegistry_.isContract(), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
 
     function _setErc20Allocation(address erc20Allocation) internal {
-        require(Address.isContract(erc20Allocation), "INVALID_ADDRESS");
+        require(erc20Allocation.isContract(), "INVALID_ADDRESS");
         _assetAllocations.remove(address(_erc20Allocation));
         _assetAllocations.add(erc20Allocation);
         _erc20Allocation = IErc20AllocationRegistry(erc20Allocation);
