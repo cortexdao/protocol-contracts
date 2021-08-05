@@ -29,6 +29,7 @@ describe("Contract: TvlManager", () => {
   let erc20Allocation;
   let oracleAdapter;
   let erc20Mock;
+  const mockSymbol = "MOCK";
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -82,7 +83,7 @@ describe("Contract: TvlManager", () => {
       deployer,
       artifacts.readArtifactSync("IDetailedERC20").abi
     );
-    await erc20Mock.mock.symbol.returns("MOCK");
+    await erc20Mock.mock.symbol.returns(mockSymbol);
     await erc20Mock.mock.decimals.returns(6);
     await erc20Mock.mock.balanceOf.withArgs(randomUser.address).returns(123e6);
     await erc20Allocation.mock.isErc20TokenRegistered
@@ -92,8 +93,10 @@ describe("Contract: TvlManager", () => {
       .withArgs(randomUser.address)
       .returns(false);
     await erc20Allocation.mock.tokens.returns([
-      { token: erc20Mock.address, symbol: "MOCK", decimals: 6 },
+      { token: erc20Mock.address, symbol: mockSymbol, decimals: 6 },
     ]);
+    await erc20Allocation.mock.symbolOf.withArgs(0).returns(mockSymbol);
+    await erc20Allocation.mock.symbolOf.withArgs(99).returns("");
 
     TvlManager = await ethers.getContractFactory("TestTvlManager");
     tvlManager = await TvlManager.deploy(
@@ -470,7 +473,7 @@ describe("Contract: TvlManager", () => {
           deployer,
           artifacts.readArtifactSync("IDetailedERC20").abi
         );
-        await mockAsset.mock.symbol.returns("MOCK");
+        await mockAsset.mock.symbol.returns(mockSymbol);
         await mockAsset.mock.decimals.returns(6);
         await mockAsset.mock.balanceOf
           .withArgs(randomUser.address)
@@ -482,7 +485,7 @@ describe("Contract: TvlManager", () => {
           .withArgs(randomUser.address)
           .returns(false);
         await mockAssetAllocation.mock.tokens.returns([
-          { token: mockAsset.address, symbol: "MOCK", decimals: 6 },
+          { token: mockAsset.address, symbol: mockSymbol, decimals: 6 },
         ]);
 
         await tvlManager
@@ -499,6 +502,39 @@ describe("Contract: TvlManager", () => {
       it("should fail with invalid token index", async () => {});
 
       it("should successfully get the asset allocation id", async () => {});
+    });
+
+    describe("getAssetAllocation", async () => {
+      it("should revert when an asset allocation address does not exist", async () => {
+        const id = await tvlManager.testEncodeAssetAllocationId(
+          randomUser.address,
+          0
+        );
+        await expect(tvlManager.getAssetAllocation(id)).to.be.revertedWith(
+          "INVALID_ASSET_ALLOCATION"
+        );
+      });
+
+      it("should revert when a token index does not exist for an asset allocation", async () => {
+        const id = await tvlManager.testEncodeAssetAllocationId(
+          erc20Allocation.address,
+          99
+        );
+        await expect(tvlManager.getAssetAllocation(id)).to.be.revertedWith(
+          "INVALID_TOKEN"
+        );
+      });
+
+      it("should return the decoded ID if the asset allocation is valid", async () => {
+        const id = await tvlManager.testEncodeAssetAllocationId(
+          erc20Allocation.address,
+          0
+        );
+
+        const result = await tvlManager.getAssetAllocation(id);
+
+        expect(result).to.deep.equal([erc20Allocation.address, 0]);
+      });
     });
 
     describe("_getAssetAllocationIdCount", async () => {
