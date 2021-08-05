@@ -153,12 +153,9 @@ describe.only("Contract: TvlManager", () => {
     });
 
     it("ERC20 allocation was set", async () => {
-      // Check if the ERC20 allocation address was set by removing it, which should fail
-      await expect(
-        tvlManager
-          .connect(lpSafe)
-          .removeAssetAllocation(erc20Allocation.address)
-      ).to.be.revertedWith("CANNOT_REMOVE_ALLOCATION");
+      const allocations = await tvlManager.testGetAssetAllocations();
+      expect(allocations).to.have.lengthOf(1);
+      expect(allocations).to.include(erc20Allocation.address);
     });
   });
 
