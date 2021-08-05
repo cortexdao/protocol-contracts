@@ -216,6 +216,43 @@ describe.only("Contract: TvlManager", () => {
       });
     });
 
+    describe("_getAssetAllocationIds", async () => {
+      let allocation_0;
+      let allocation_1;
+
+      it("Gets correct list of IDs", async () => {
+        allocation_0 = await deployMockContract(
+          deployer,
+          artifacts.readArtifactSync("IAssetAllocation").abi
+        );
+        await allocation_0.mock.numberOfTokens.returns(1);
+
+        allocation_1 = await deployMockContract(
+          deployer,
+          artifacts.readArtifactSync("IAssetAllocation").abi
+        );
+        await allocation_1.mock.numberOfTokens.returns(2);
+
+        const allocations = [allocation_0.address, allocation_1.address];
+        const result = await tvlManager.testGetAssetAllocationIds(allocations);
+
+        const expectedResult = [];
+        expectedResult[0] = await tvlManager.testEncodeAssetAllocationId(
+          allocation_0.address,
+          0
+        );
+        expectedResult[1] = await tvlManager.testEncodeAssetAllocationId(
+          allocation_1.address,
+          0
+        );
+        expectedResult[2] = await tvlManager.testEncodeAssetAllocationId(
+          allocation_1.address,
+          1
+        );
+        expect(result).to.deep.equal(expectedResult);
+      });
+    });
+
     describe("getAssetAllocationId(s)", async () => {
       let mockAssetAllocation;
       let mockAsset;
