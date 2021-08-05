@@ -2,9 +2,12 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {AssetAllocationBase} from "./AssetAllocationBase.sol";
 
 abstract contract ImmutableAssetAllocation is AssetAllocationBase {
+    using Address for address;
+
     TokenData[] private _tokens;
 
     constructor(TokenData[] memory tokens) public {
@@ -27,6 +30,12 @@ abstract contract ImmutableAssetAllocation is AssetAllocationBase {
     function _validateTokens(TokenData[] memory tokens_) internal {
         // length restriction due to encoding logic for allocation IDs
         require(tokens_.length < type(uint8).max, "TOO_MANY_TOKENS");
+        for (uint256 i = 0; i < tokens_.length; i++) {
+            address token = tokens_[i].token;
+            string memory symbol = tokens_[i].symbol;
+            require(token.isContract(), "INVALID_ADDRESS");
+            require(bytes(symbol).length != 0, "INVALID_SYMBOL");
+        }
         // TODO: check for duplicate tokens
     }
 

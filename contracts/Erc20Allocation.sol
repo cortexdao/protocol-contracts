@@ -67,6 +67,7 @@ contract Erc20Allocation is
         uint8 decimals
     ) internal {
         require(Address.isContract(token), "INVALID_ADDRESS");
+        require(bytes(symbol).length != 0, "INVALID_SYMBOL");
         _tokenAddresses.add(token);
         _tokenToData[token] = TokenData(token, symbol, decimals);
     }

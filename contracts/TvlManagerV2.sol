@@ -219,11 +219,9 @@ contract TvlManagerV2 is
             _assetAllocations.contains(assetAllocation),
             "INVALID_ASSET_ALLOCATION"
         );
-
         require(
-            bytes(IAssetAllocation(assetAllocation).symbolOf(tokenIndex))
-                .length != 0,
-            "INVALID_TOKEN"
+            IAssetAllocation(assetAllocation).numberOfTokens() > tokenIndex,
+            "INVALID_TOKEN_INDEX"
         );
 
         return _encodeAssetAllocationId(assetAllocation, tokenIndex);
@@ -304,11 +302,9 @@ contract TvlManagerV2 is
             _assetAllocations.contains(assetAllocation),
             "INVALID_ASSET_ALLOCATION"
         );
-
         require(
-            bytes(IAssetAllocation(assetAllocation).symbolOf(tokenIndex))
-                .length != 0,
-            "INVALID_TOKEN"
+            IAssetAllocation(assetAllocation).numberOfTokens() > tokenIndex,
+            "INVALID_TOKEN_INDEX"
         );
 
         return (assetAllocation, tokenIndex);
