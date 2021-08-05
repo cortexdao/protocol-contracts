@@ -10,6 +10,11 @@ const {
   ANOTHER_FAKE_ADDRESS,
 } = require("../utils/helpers");
 
+async function generateContractAddress(signer) {
+  const mockContract = await deployMockContract(signer, []);
+  return mockContract.address;
+}
+
 describe.only("Contract: TvlManager", () => {
   // signers
   let deployer;
@@ -166,61 +171,7 @@ describe.only("Contract: TvlManager", () => {
     });
   });
 
-  describe("Asset allocation IDs", () => {
-    describe("encodeAssetAllocationId", () => {
-      it("should pack the address and index into a bytes32", async () => {
-        const address = randomUser.address;
-        const tokenIndex = 2;
-
-        const result = await tvlManager.testEncodeAssetAllocationId(
-          address,
-          tokenIndex
-        );
-
-        const pack = ethers.utils.solidityPack(
-          ["address", "uint8"],
-          [address, tokenIndex]
-        );
-        const id = `${pack}0000000000000000000000`;
-        expect(result).to.equal(id);
-      });
-    });
-
-    describe("decodeAssetAllocationId", () => {
-      it("should decode an ID into an address and index", async () => {
-        const address = randomUser.address;
-        const tokenIndex = 2;
-        const id = await tvlManager.testEncodeAssetAllocationId(
-          address,
-          tokenIndex
-        );
-        const result = await tvlManager.testDecodeAssetAllocationId(id);
-        expect(result).to.deep.equal([address, tokenIndex]);
-      });
-
-      it("should decode an ID when the index is large", async () => {
-        const address = randomUser.address;
-        const tokenIndex = 200;
-        const id = await tvlManager.testEncodeAssetAllocationId(
-          address,
-          tokenIndex
-        );
-        const result = await tvlManager.testDecodeAssetAllocationId(id);
-        expect(result).to.deep.equal([address, tokenIndex]);
-      });
-
-      it("should decode an ID when the address is zero", async () => {
-        const address = ZERO_ADDRESS;
-        const tokenIndex = 200;
-        const id = await tvlManager.testEncodeAssetAllocationId(
-          address,
-          tokenIndex
-        );
-        const result = await tvlManager.testDecodeAssetAllocationId(id);
-        expect(result).to.deep.equal([address, tokenIndex]);
-      });
-    });
-
+  describe("Adding and removing asset allocations", () => {
     describe("registerAssetAllocation", () => {
       it("Pool manager can call", async () => {
         await expect(
@@ -317,6 +268,106 @@ describe.only("Contract: TvlManager", () => {
         expect(allocations).to.have.lengthOf(2);
         expect(allocations).to.include(erc20Allocation.address);
         expect(allocations).to.include(ANOTHER_FAKE_ADDRESS);
+      });
+    });
+
+    describe("Mixing registrations and removals", () => {
+      it("foo", async () => {
+        // always starts with 1 allocation, the ERC20 allocation
+        let allocations = await tvlManager.testGetAssetAllocations();
+        expect(allocations).to.have.lengthOf(1);
+        expect(allocations).to.include(erc20Allocation.address);
+
+        // register and remove
+        await tvlManager.connect(lpSafe).registerAssetAllocation(FAKE_ADDRESS);
+
+        allocations = await tvlManager.testGetAssetAllocations();
+        expect(allocations).to.have.lengthOf(2);
+        expect(allocations).to.include(erc20Allocation.address);
+        expect(allocations).to.include(FAKE_ADDRESS);
+
+        await tvlManager.connect(lpSafe).removeAssetAllocation(FAKE_ADDRESS);
+
+        allocations = await tvlManager.testGetAssetAllocations();
+        expect(allocations).to.have.lengthOf(1);
+        expect(allocations).to.include(erc20Allocation.address);
+
+        // register multiple
+        await tvlManager.connect(lpSafe).registerAssetAllocation(FAKE_ADDRESS);
+        await tvlManager
+          .connect(lpSafe)
+          .registerAssetAllocation(ANOTHER_FAKE_ADDRESS);
+
+        allocations = await tvlManager.testGetAssetAllocations();
+        expect(allocations).to.have.lengthOf(3);
+        expect(allocations).to.include(erc20Allocation.address);
+        expect(allocations).to.include(FAKE_ADDRESS);
+        expect(allocations).to.include(ANOTHER_FAKE_ADDRESS);
+
+        await tvlManager
+          .connect(lpSafe)
+          .removeAssetAllocation(ANOTHER_FAKE_ADDRESS);
+
+        allocations = await tvlManager.testGetAssetAllocations();
+        expect(allocations).to.have.lengthOf(2);
+        expect(allocations).to.include(erc20Allocation.address);
+        expect(allocations).to.include(FAKE_ADDRESS);
+      });
+    });
+  });
+
+  describe("Asset allocation IDs", () => {
+    describe("encodeAssetAllocationId", () => {
+      it("should pack the address and index into a bytes32", async () => {
+        const address = randomUser.address;
+        const tokenIndex = 2;
+
+        const result = await tvlManager.testEncodeAssetAllocationId(
+          address,
+          tokenIndex
+        );
+
+        const pack = ethers.utils.solidityPack(
+          ["address", "uint8"],
+          [address, tokenIndex]
+        );
+        const id = `${pack}0000000000000000000000`;
+        expect(result).to.equal(id);
+      });
+    });
+
+    describe("decodeAssetAllocationId", () => {
+      it("should decode an ID into an address and index", async () => {
+        const address = randomUser.address;
+        const tokenIndex = 2;
+        const id = await tvlManager.testEncodeAssetAllocationId(
+          address,
+          tokenIndex
+        );
+        const result = await tvlManager.testDecodeAssetAllocationId(id);
+        expect(result).to.deep.equal([address, tokenIndex]);
+      });
+
+      it("should decode an ID when the index is large", async () => {
+        const address = randomUser.address;
+        const tokenIndex = 200;
+        const id = await tvlManager.testEncodeAssetAllocationId(
+          address,
+          tokenIndex
+        );
+        const result = await tvlManager.testDecodeAssetAllocationId(id);
+        expect(result).to.deep.equal([address, tokenIndex]);
+      });
+
+      it("should decode an ID when the address is zero", async () => {
+        const address = ZERO_ADDRESS;
+        const tokenIndex = 200;
+        const id = await tvlManager.testEncodeAssetAllocationId(
+          address,
+          tokenIndex
+        );
+        const result = await tvlManager.testDecodeAssetAllocationId(id);
+        expect(result).to.deep.equal([address, tokenIndex]);
       });
     });
 
