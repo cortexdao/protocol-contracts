@@ -31,7 +31,8 @@ contract Erc20Allocation is
             DEFAULT_ADMIN_ROLE,
             addressRegistry.getAddress("emergencySafe")
         );
-        _setupRole(CONTRACT_ROLE, addressRegistry.tvlManagerAddress());
+        _setupRole(CONTRACT_ROLE, addressRegistry.poolManagerAddress());
+        _setupRole(CONTRACT_ROLE, addressRegistry.lpSafeAddress());
     }
 
     function registerErc20Token(address token)
