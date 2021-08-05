@@ -3,7 +3,12 @@ const hre = require("hardhat");
 const { ethers, waffle, artifacts } = hre;
 const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
-const { ZERO_ADDRESS, FAKE_ADDRESS, bytes32 } = require("../utils/helpers");
+const {
+  ZERO_ADDRESS,
+  FAKE_ADDRESS,
+  bytes32,
+  ANOTHER_FAKE_ADDRESS,
+} = require("../utils/helpers");
 
 describe.only("Contract: TvlManager", () => {
   // signers
@@ -236,14 +241,40 @@ describe.only("Contract: TvlManager", () => {
       });
 
       it("Correctly populates array of allocations", async () => {
-        //
+        // always starts with 1 allocation, the ERC20 allocation
+        let allocations = await tvlManager.testGetAssetAllocations();
+        expect(allocations).to.have.lengthOf(1);
+        expect(allocations).to.include(erc20Allocation.address);
+
+        await tvlManager.connect(lpSafe).registerAssetAllocation(FAKE_ADDRESS);
+        allocations = await tvlManager.testGetAssetAllocations();
+        expect(allocations).to.have.lengthOf(2);
+        expect(allocations).to.include(erc20Allocation.address);
+        expect(allocations).to.include(FAKE_ADDRESS);
+
+        await tvlManager
+          .connect(lpSafe)
+          .registerAssetAllocation(ANOTHER_FAKE_ADDRESS);
+        allocations = await tvlManager.testGetAssetAllocations();
+        expect(allocations).to.have.lengthOf(3);
+        expect(allocations).to.include(erc20Allocation.address);
+        expect(allocations).to.include(FAKE_ADDRESS);
+        expect(allocations).to.include(ANOTHER_FAKE_ADDRESS);
+
+        // check no duplicates can be registered
+        await tvlManager.connect(lpSafe).registerAssetAllocation(FAKE_ADDRESS);
+        allocations = await tvlManager.testGetAssetAllocations();
+        expect(allocations).to.have.lengthOf(3);
+        expect(allocations).to.include(erc20Allocation.address);
+        expect(allocations).to.include(FAKE_ADDRESS);
+        expect(allocations).to.include(ANOTHER_FAKE_ADDRESS);
       });
     });
 
     describe("removeAssetAllocation", () => {
       it("Pool manager can call", async () => {
         await expect(
-          tvlManager.connect(poolManager).removeAssetAllocation(FAKE_ADDRESS)
+          tvlManager.connect(lpSafe).removeAssetAllocation(FAKE_ADDRESS)
         ).to.not.be.reverted;
       });
 
@@ -258,9 +289,34 @@ describe.only("Contract: TvlManager", () => {
           tvlManager.connect(randomUser).registerAssetAllocation(FAKE_ADDRESS)
         ).to.be.revertedWith("INVALID_ACCESS_CONTROL");
       });
+      it("Cannot remove ERC20 allocation", async () => {
+        await expect(
+          tvlManager
+            .connect(lpSafe)
+            .removeAssetAllocation(erc20Allocation.address)
+        ).to.be.revertedWith("CANNOT_REMOVE_ALLOCATION");
+      });
 
       it("Correctly removes allocation", async () => {
-        //
+        // setup and assert preconditions
+        await tvlManager.connect(lpSafe).registerAssetAllocation(FAKE_ADDRESS);
+        await tvlManager
+          .connect(lpSafe)
+          .registerAssetAllocation(ANOTHER_FAKE_ADDRESS);
+
+        let allocations = await tvlManager.testGetAssetAllocations();
+        expect(allocations).to.have.lengthOf(3);
+        expect(allocations).to.include(erc20Allocation.address);
+        expect(allocations).to.include(FAKE_ADDRESS);
+        expect(allocations).to.include(ANOTHER_FAKE_ADDRESS);
+
+        // start test
+        await tvlManager.connect(lpSafe).removeAssetAllocation(FAKE_ADDRESS);
+
+        allocations = await tvlManager.testGetAssetAllocations();
+        expect(allocations).to.have.lengthOf(2);
+        expect(allocations).to.include(erc20Allocation.address);
+        expect(allocations).to.include(ANOTHER_FAKE_ADDRESS);
       });
     });
 
