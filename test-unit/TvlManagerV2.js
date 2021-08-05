@@ -3,7 +3,12 @@ const hre = require("hardhat");
 const { ethers, waffle, artifacts } = hre;
 const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
-const { ZERO_ADDRESS, FAKE_ADDRESS, bytes32 } = require("../utils/helpers");
+const {
+  ZERO_ADDRESS,
+  FAKE_ADDRESS,
+  bytes32,
+  tokenAmountToBigNumber,
+} = require("../utils/helpers");
 
 const IAssetAllocation = artifacts.readArtifactSync("IAssetAllocation");
 const Erc20Allocation = artifacts.readArtifactSync("Erc20Allocation");
@@ -581,6 +586,94 @@ describe("Contract: TvlManager", () => {
         const totalLength = 6;
         expect(result).to.equal(totalLength);
       });
+    });
+  });
+
+  describe("Allocation view functions", () => {
+    const token_0 = {
+      token: undefined,
+      symbol: "TOKEN0",
+      decimals: 6,
+    };
+    const token_1 = {
+      token: undefined,
+      symbol: "TOKEN1",
+      decimals: 8,
+    };
+    let allocation;
+    let allocationId_0;
+    let allocationId_1;
+
+    before("Setup allocation and IDs", async () => {
+      // const erc20Mock_0 = await deployMockContract(
+      //   deployer,
+      //   IDetailedERC20.abi
+      // );
+      // token_0.token = erc20Mock_0.address;
+      // await erc20Mock_0.mock.symbol.returns(token_0.symbol);
+      // await erc20Mock_0.mock.decimals.returns(token_0.decimals);
+      // const erc20Mock_1 = await deployMockContract(
+      //   deployer,
+      //   IDetailedERC20.abi
+      // );
+      // token_1.token = erc20Mock_1.address;
+      // await erc20Mock_1.mock.symbol.returns(token_1.symbol);
+      // await erc20Mock_1.mock.decimals.returns(token_1.decimals);
+
+      allocation = await deployMockContract(deployer, IAssetAllocation.abi);
+      // await allocation.mock.tokens.returns([token_0, token_1]);
+
+      await tvlManager
+        .connect(lpSafe)
+        .registerAssetAllocation(allocation.address);
+
+      allocationId_0 = await tvlManager.testEncodeAssetAllocationId(
+        allocation.address,
+        0
+      );
+      allocationId_1 = await tvlManager.testEncodeAssetAllocationId(
+        allocation.address,
+        1
+      );
+    });
+
+    it.only("symbolOf", async () => {
+      await allocation.mock.symbolOf.withArgs(0).returns(token_0.symbol);
+      await allocation.mock.symbolOf.withArgs(1).returns(token_1.symbol);
+      expect(await tvlManager.symbolOf(allocationId_0)).to.equal(
+        token_0.symbol
+      );
+      expect(await tvlManager.symbolOf(allocationId_1)).to.equal(
+        token_1.symbol
+      );
+    });
+
+    it.only("decimalsOf", async () => {
+      await allocation.mock.symbolOf.withArgs(0).returns(token_0.symbol);
+      await allocation.mock.symbolOf.withArgs(1).returns(token_1.symbol);
+      await allocation.mock.decimalsOf.withArgs(0).returns(token_0.decimals);
+      await allocation.mock.decimalsOf.withArgs(1).returns(token_1.decimals);
+      expect(await tvlManager.decimalsOf(allocationId_0)).to.equal(
+        token_0.decimals
+      );
+      expect(await tvlManager.decimalsOf(allocationId_1)).to.equal(
+        token_1.decimals
+      );
+    });
+
+    it.only("balanceOf", async () => {
+      const balance_0 = tokenAmountToBigNumber("100");
+      const balance_1 = tokenAmountToBigNumber("250");
+      await allocation.mock.symbolOf.withArgs(0).returns(token_0.symbol);
+      await allocation.mock.symbolOf.withArgs(1).returns(token_1.symbol);
+      await allocation.mock.balanceOf
+        .withArgs(lpSafe.address, 0)
+        .returns(balance_0);
+      await allocation.mock.balanceOf
+        .withArgs(lpSafe.address, 1)
+        .returns(balance_1);
+      expect(await tvlManager.balanceOf(allocationId_0)).to.equal(balance_0);
+      expect(await tvlManager.balanceOf(allocationId_1)).to.equal(balance_1);
     });
   });
 });
