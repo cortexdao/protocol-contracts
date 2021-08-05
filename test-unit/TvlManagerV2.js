@@ -5,6 +5,12 @@ const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS, FAKE_ADDRESS, bytes32 } = require("../utils/helpers");
 
+const IAssetAllocation = artifacts.readArtifactSync("IAssetAllocation");
+const Erc20Allocation = artifacts.readArtifactSync("Erc20Allocation");
+const IAddressRegistryV2 = artifacts.readArtifactSync("IAddressRegistryV2");
+const IOracleAdapter = artifacts.readArtifactSync("IOracleAdapter");
+const IDetailedERC20 = artifacts.readArtifactSync("IDetailedERC20");
+
 async function generateContractAddress(signer) {
   const mockContract = await deployMockContract(signer, []);
   return mockContract.address;
@@ -55,13 +61,10 @@ describe("Contract: TvlManager", () => {
 
     addressRegistry = await deployMockContract(
       deployer,
-      artifacts.readArtifactSync("IAddressRegistryV2").abi
+      IAddressRegistryV2.abi
     );
 
-    oracleAdapter = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("IOracleAdapter").abi
-    );
+    oracleAdapter = await deployMockContract(deployer, IOracleAdapter.abi);
     await addressRegistry.mock.oracleAdapterAddress.returns(
       oracleAdapter.address
     );
@@ -75,14 +78,8 @@ describe("Contract: TvlManager", () => {
       .withArgs(bytes32("emergencySafe"))
       .returns(emergencySafe.address);
 
-    erc20Allocation = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("Erc20Allocation").abi
-    );
-    erc20Mock = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("IDetailedERC20").abi
-    );
+    erc20Allocation = await deployMockContract(deployer, Erc20Allocation.abi);
+    erc20Mock = await deployMockContract(deployer, IDetailedERC20.abi);
     await erc20Mock.mock.symbol.returns(mockSymbol);
     await erc20Mock.mock.decimals.returns(6);
     await erc20Mock.mock.balanceOf.withArgs(randomUser.address).returns(123e6);
@@ -428,16 +425,10 @@ describe("Contract: TvlManager", () => {
       let allocation_1;
 
       it("Gets correct list of IDs", async () => {
-        allocation_0 = await deployMockContract(
-          deployer,
-          artifacts.readArtifactSync("IAssetAllocation").abi
-        );
+        allocation_0 = await deployMockContract(deployer, IAssetAllocation.abi);
         await allocation_0.mock.numberOfTokens.returns(1);
 
-        allocation_1 = await deployMockContract(
-          deployer,
-          artifacts.readArtifactSync("IAssetAllocation").abi
-        );
+        allocation_1 = await deployMockContract(deployer, IAssetAllocation.abi);
         await allocation_1.mock.numberOfTokens.returns(2);
 
         const allocations = [allocation_0.address, allocation_1.address];
@@ -467,12 +458,9 @@ describe("Contract: TvlManager", () => {
       before("register asset allocations", async () => {
         mockAssetAllocation = await deployMockContract(
           deployer,
-          artifacts.readArtifactSync("Erc20Allocation").abi
+          Erc20Allocation.abi
         );
-        mockAsset = await deployMockContract(
-          deployer,
-          artifacts.readArtifactSync("IDetailedERC20").abi
-        );
+        mockAsset = await deployMockContract(deployer, IDetailedERC20.abi);
         await mockAsset.mock.symbol.returns(mockSymbol);
         await mockAsset.mock.decimals.returns(6);
         await mockAsset.mock.balanceOf
@@ -555,7 +543,7 @@ describe("Contract: TvlManager", () => {
           [...new Array(length)].map(async () => {
             const allocation = await deployMockContract(
               deployer,
-              artifacts.readArtifactSync("IAssetAllocation").abi
+              IAssetAllocation.abi
             );
 
             await allocation.mock.numberOfTokens.returns(1);
@@ -577,7 +565,7 @@ describe("Contract: TvlManager", () => {
           [...new Array(length)].map(async (_, index) => {
             const allocation = await deployMockContract(
               deployer,
-              artifacts.readArtifactSync("IAssetAllocation").abi
+              IAssetAllocation.abi
             );
 
             await allocation.mock.numberOfTokens.returns(index + 1);
