@@ -3,7 +3,7 @@ const hre = require("hardhat");
 const { ethers, waffle, artifacts } = hre;
 const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
-const { ZERO_ADDRESS, bytes32 } = require("../utils/helpers");
+const { ZERO_ADDRESS, FAKE_ADDRESS, bytes32 } = require("../utils/helpers");
 
 describe.only("Contract: TvlManager", () => {
   // signers
@@ -216,7 +216,55 @@ describe.only("Contract: TvlManager", () => {
       });
     });
 
-    describe("_getAssetAllocationIds", async () => {
+    describe("registerAssetAllocation", () => {
+      it("Pool manager can call", async () => {
+        await expect(
+          tvlManager.connect(poolManager).registerAssetAllocation(FAKE_ADDRESS)
+        ).to.not.be.reverted;
+      });
+
+      it("LP Safe can call", async () => {
+        await expect(
+          tvlManager.connect(lpSafe).registerAssetAllocation(FAKE_ADDRESS)
+        ).to.not.be.reverted;
+      });
+
+      it("Unpermissioned cannot call", async () => {
+        await expect(
+          tvlManager.connect(randomUser).registerAssetAllocation(FAKE_ADDRESS)
+        ).to.be.revertedWith("INVALID_ACCESS_CONTROL");
+      });
+
+      it("Correctly populates array of allocations", async () => {
+        //
+      });
+    });
+
+    describe("removeAssetAllocation", () => {
+      it("Pool manager can call", async () => {
+        await expect(
+          tvlManager.connect(poolManager).removeAssetAllocation(FAKE_ADDRESS)
+        ).to.not.be.reverted;
+      });
+
+      it("LP Safe can call", async () => {
+        await expect(
+          tvlManager.connect(lpSafe).removeAssetAllocation(FAKE_ADDRESS)
+        ).to.not.be.reverted;
+      });
+
+      it("Unpermissioned cannot call", async () => {
+        await expect(
+          tvlManager.connect(randomUser).registerAssetAllocation(FAKE_ADDRESS)
+        ).to.be.revertedWith("INVALID_ACCESS_CONTROL");
+      });
+
+      it("Correctly removes allocation", async () => {
+        //
+      });
+    });
+
+    describe("_getAssetAllocationIds", () => {
       let allocation_0;
       let allocation_1;
 
