@@ -14,7 +14,6 @@ const IAssetAllocation = artifacts.readArtifactSync("IAssetAllocation");
 const Erc20Allocation = artifacts.readArtifactSync("Erc20Allocation");
 const IAddressRegistryV2 = artifacts.readArtifactSync("IAddressRegistryV2");
 const IOracleAdapter = artifacts.readArtifactSync("IOracleAdapter");
-const IDetailedERC20 = artifacts.readArtifactSync("IDetailedERC20");
 
 async function generateContractAddress(signer) {
   const mockContract = await deployMockContract(signer, []);
@@ -28,7 +27,6 @@ describe("Contract: TvlManager", () => {
   let lpSafe;
   let emergencySafe;
   let randomUser;
-  let randomAddress;
 
   // contract factories
   let TvlManager;
@@ -61,7 +59,6 @@ describe("Contract: TvlManager", () => {
       lpSafe,
       emergencySafe,
       randomUser,
-      randomAddress,
     ] = await ethers.getSigners();
 
     addressRegistry = await deployMockContract(
@@ -424,6 +421,40 @@ describe("Contract: TvlManager", () => {
       });
     });
 
+    describe("getAssetAllocationId", async () => {
+      let allocation;
+      let numTokens = 4;
+
+      beforeEach("register asset allocations", async () => {
+        allocation = await deployMockContract(deployer, Erc20Allocation.abi);
+        await allocation.mock.numberOfTokens.returns(numTokens);
+
+        await tvlManager
+          .connect(poolManager)
+          .registerAssetAllocation(allocation.address);
+      });
+
+      it("should fail on unregistered address", async () => {
+        const unregisteredAddress = await generateContractAddress(deployer);
+        await expect(
+          tvlManager.getAssetAllocationId(unregisteredAddress, 0)
+        ).to.be.revertedWith("INVALID_ASSET_ALLOCATION");
+      });
+
+      it("should fail with invalid token index", async () => {
+        await expect(
+          tvlManager.getAssetAllocationId(allocation.address, numTokens)
+        ).to.be.revertedWith("INVALID_TOKEN_INDEX");
+      });
+
+      it("Successfully get ID for registered allocation and valid index", async () => {
+        for (let i = 0; i < numTokens; i++) {
+          await expect(tvlManager.getAssetAllocationId(allocation.address, i))
+            .to.not.be.reverted;
+        }
+      });
+    });
+
     describe("_getAssetAllocationIds", () => {
       let allocation_0;
       let allocation_1;
@@ -455,51 +486,52 @@ describe("Contract: TvlManager", () => {
       });
     });
 
-    describe("getAssetAllocationId(s)", async () => {
-      let mockAssetAllocation;
-      let mockAsset;
+    describe("getAssetAllocationIds", async () => {
+      const allocations = [];
+      const numTokens = [4, 2, 2];
 
-      before("register asset allocations", async () => {
-        mockAssetAllocation = await deployMockContract(
-          deployer,
-          Erc20Allocation.abi
+      it("Gets correct list of IDs", async () => {
+        const erc20Id = await tvlManager.testEncodeAssetAllocationId(
+          erc20Allocation.address,
+          0
         );
-        mockAsset = await deployMockContract(deployer, IDetailedERC20.abi);
-        await mockAsset.mock.symbol.returns(mockSymbol);
-        await mockAsset.mock.decimals.returns(6);
-        await mockAsset.mock.balanceOf
-          .withArgs(randomUser.address)
-          .returns(123e6);
-        await mockAssetAllocation.mock.isErc20TokenRegistered
-          .withArgs(mockAsset.address)
-          .returns(true);
-        await mockAssetAllocation.mock.isErc20TokenRegistered
-          .withArgs(randomUser.address)
-          .returns(false);
-        await mockAssetAllocation.mock.tokens.returns([
-          { token: mockAsset.address, symbol: mockSymbol, decimals: 6 },
+        expect(await tvlManager.getAssetAllocationIds()).to.deep.equal([
+          erc20Id,
         ]);
 
-        await tvlManager
-          .connect(poolManager)
-          .registerAssetAllocation(mockAssetAllocation.address);
+        for (let i = 0; i < numTokens.length; i++) {
+          const allocation = await deployMockContract(
+            deployer,
+            IAssetAllocation.abi
+          );
+          allocation.mock.numberOfTokens.returns(numTokens[i]);
+          await tvlManager
+            .connect(lpSafe)
+            .registerAssetAllocation(allocation.address);
+          allocations.push(allocation);
+        }
+
+        const expectedResult = [erc20Id];
+        for (let i = 0; i < allocations.length; i++) {
+          const allocationAddress = allocations[i].address;
+          for (let j = 0; j < numTokens[i]; j++) {
+            const id = await tvlManager.testEncodeAssetAllocationId(
+              allocationAddress,
+              j
+            );
+            expectedResult.push(id);
+          }
+        }
+        const result = await tvlManager.getAssetAllocationIds();
+        expect(result).to.deep.equal(expectedResult);
       });
-
-      it("should fail on invalid asset allocation", async () => {
-        await expect(
-          tvlManager.getAssetAllocationId(randomAddress.address, 4)
-        ).to.be.revertedWith("INVALID_ASSET_ALLOCATION");
-      });
-
-      it("should fail with invalid token index", async () => {});
-
-      it("should successfully get the asset allocation id", async () => {});
     });
 
     describe("getAssetAllocation", async () => {
-      it("should revert when an asset allocation address does not exist", async () => {
+      it("should revert when an address is not registered", async () => {
+        const randomAddress = await generateContractAddress(deployer);
         const id = await tvlManager.testEncodeAssetAllocationId(
-          randomUser.address,
+          randomAddress,
           0
         );
         await expect(tvlManager.getAssetAllocation(id)).to.be.revertedWith(
@@ -601,7 +633,7 @@ describe("Contract: TvlManager", () => {
     let allocationId_0;
     let allocationId_1;
 
-    before("Setup allocation and IDs", async () => {
+    beforeEach("Setup allocation and IDs", async () => {
       allocation = await deployMockContract(deployer, IAssetAllocation.abi);
       await allocation.mock.numberOfTokens.returns(2);
 
