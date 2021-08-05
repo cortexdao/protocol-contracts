@@ -249,20 +249,25 @@ describe("Contract: TvlManager", () => {
 
     describe("removeAssetAllocation", () => {
       it("Pool manager can call", async () => {
+        const contractAddress = await generateContractAddress(deployer);
         await expect(
-          tvlManager.connect(lpSafe).removeAssetAllocation(FAKE_ADDRESS)
+          tvlManager.connect(lpSafe).removeAssetAllocation(contractAddress)
         ).to.not.be.reverted;
       });
 
       it("LP Safe can call", async () => {
+        const contractAddress = await generateContractAddress(deployer);
         await expect(
-          tvlManager.connect(lpSafe).removeAssetAllocation(FAKE_ADDRESS)
+          tvlManager.connect(lpSafe).removeAssetAllocation(contractAddress)
         ).to.not.be.reverted;
       });
 
       it("Unpermissioned cannot call", async () => {
+        const contractAddress = await generateContractAddress(deployer);
         await expect(
-          tvlManager.connect(randomUser).registerAssetAllocation(FAKE_ADDRESS)
+          tvlManager
+            .connect(randomUser)
+            .registerAssetAllocation(contractAddress)
         ).to.be.revertedWith("INVALID_ACCESS_CONTROL");
       });
 
