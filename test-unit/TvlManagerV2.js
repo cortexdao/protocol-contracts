@@ -10,7 +10,7 @@ async function generateContractAddress(signer) {
   return mockContract.address;
 }
 
-describe.only("Contract: TvlManager", () => {
+describe("Contract: TvlManager", () => {
   // signers
   let deployer;
   let poolManager;
@@ -499,6 +499,64 @@ describe.only("Contract: TvlManager", () => {
       it("should fail with invalid token index", async () => {});
 
       it("should successfully get the asset allocation id", async () => {});
+    });
+
+    describe("_getAssetAllocationIdCount", async () => {
+      it("should return zero when given an empty array", async () => {
+        const assetAllocations = [];
+        const length = assetAllocations.length;
+
+        const result = await tvlManager.testGetAssetAllocationIdCount(
+          assetAllocations
+        );
+
+        expect(result).to.equal(length);
+      });
+
+      it("should loop through all the asset allocations and get the length", async () => {
+        const length = 3;
+        const assetAllocations = await Promise.all(
+          [...new Array(length)].map(async () => {
+            const allocation = await deployMockContract(
+              deployer,
+              artifacts.readArtifactSync("IAssetAllocation").abi
+            );
+
+            await allocation.mock.numberOfTokens.returns(1);
+
+            return allocation.address;
+          })
+        );
+
+        const result = await tvlManager.testGetAssetAllocationIdCount(
+          assetAllocations
+        );
+
+        expect(result).to.equal(length);
+      });
+
+      it("should handle multiple allocations with different numbers of tokens", async () => {
+        const length = 3;
+        const assetAllocations = await Promise.all(
+          [...new Array(length)].map(async (_, index) => {
+            const allocation = await deployMockContract(
+              deployer,
+              artifacts.readArtifactSync("IAssetAllocation").abi
+            );
+
+            await allocation.mock.numberOfTokens.returns(index + 1);
+
+            return allocation.address;
+          })
+        );
+
+        const result = await tvlManager.testGetAssetAllocationIdCount(
+          assetAllocations
+        );
+
+        const totalLength = 6;
+        expect(result).to.equal(totalLength);
+      });
     });
   });
 });
