@@ -103,6 +103,20 @@ describe.only("Contract: TvlManager", () => {
     await tvlManager.deployed();
   });
 
+  describe("Constructor", () => {
+    it("Reverts on non-contract address for address registry", async () => {
+      await expect(
+        TvlManager.deploy(FAKE_ADDRESS, erc20Allocation.address)
+      ).to.be.revertedWith("INVALID_ADDRESS");
+    });
+
+    it("Reverts on non-contract address for ERC20 allocation", async () => {
+      await expect(
+        TvlManager.deploy(addressRegistry.address, FAKE_ADDRESS)
+      ).to.be.revertedWith("INVALID_ADDRESS");
+    });
+  });
+
   describe("Defaults", () => {
     it("Default admin role given to Emergency Safe", async () => {
       const DEFAULT_ADMIN_ROLE = await tvlManager.DEFAULT_ADMIN_ROLE();
