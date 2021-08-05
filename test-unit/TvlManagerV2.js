@@ -39,7 +39,7 @@ describe("Contract: TvlManager", () => {
   let addressRegistry;
   let erc20Allocation;
   let oracleAdapter;
-  let erc20Mock;
+
   const mockSymbol = "MOCK";
 
   // use EVM snapshots for test isolation
@@ -84,21 +84,8 @@ describe("Contract: TvlManager", () => {
       .returns(emergencySafe.address);
 
     erc20Allocation = await deployMockContract(deployer, Erc20Allocation.abi);
-    erc20Mock = await deployMockContract(deployer, IDetailedERC20.abi);
-    await erc20Mock.mock.symbol.returns(mockSymbol);
-    await erc20Mock.mock.decimals.returns(6);
-    await erc20Mock.mock.balanceOf.withArgs(randomUser.address).returns(123e6);
-    await erc20Allocation.mock.isErc20TokenRegistered
-      .withArgs(erc20Mock.address)
-      .returns(true);
-    await erc20Allocation.mock.isErc20TokenRegistered
-      .withArgs(randomUser.address)
-      .returns(false);
-    await erc20Allocation.mock.tokens.returns([
-      { token: erc20Mock.address, symbol: mockSymbol, decimals: 6 },
-    ]);
+    await erc20Allocation.mock.numberOfTokens.returns(1);
     await erc20Allocation.mock.symbolOf.withArgs(0).returns(mockSymbol);
-    await erc20Allocation.mock.symbolOf.withArgs(99).returns("");
 
     TvlManager = await ethers.getContractFactory("TestTvlManager");
     tvlManager = await TvlManager.deploy(
@@ -165,11 +152,18 @@ describe("Contract: TvlManager", () => {
   });
 
   describe("ERC20 allocations", () => {
-    it("ERC20 allocations can be checked", async () => {
-      expect(await tvlManager.isErc20TokenRegistered(erc20Mock.address)).to.be
+    it("isErc20TokenRegistered", async () => {
+      const mockErc20Address = await generateContractAddress(deployer);
+      await erc20Allocation.mock.isErc20TokenRegistered.returns(false);
+      await erc20Allocation.mock.isErc20TokenRegistered
+        .withArgs(mockErc20Address)
+        .returns(true);
+
+      expect(await tvlManager.isErc20TokenRegistered(mockErc20Address)).to.be
         .true;
 
-      expect(await tvlManager.isErc20TokenRegistered(randomUser.address)).to.be
+      const randomAddress = await generateContractAddress(deployer);
+      expect(await tvlManager.isErc20TokenRegistered(randomAddress)).to.be
         .false;
     });
 
@@ -514,7 +508,7 @@ describe("Contract: TvlManager", () => {
           99
         );
         await expect(tvlManager.getAssetAllocation(id)).to.be.revertedWith(
-          "INVALID_TOKEN"
+          "INVALID_TOKEN_INDEX"
         );
       });
 
