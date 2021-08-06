@@ -244,7 +244,7 @@ describe("Contract: TvlManager", () => {
           tvlManager
             .connect(randomUser)
             .registerAssetAllocation(contractAddress)
-        ).to.be.revertedWith("INVALID_ACCESS_CONTROL");
+        ).to.be.revertedWith("NOT_LP_OR_CONTRACT_ROLE");
       });
 
       it("Cannot register non-contract address", async () => {
@@ -312,7 +312,7 @@ describe("Contract: TvlManager", () => {
           tvlManager
             .connect(randomUser)
             .registerAssetAllocation(contractAddress)
-        ).to.be.revertedWith("INVALID_ACCESS_CONTROL");
+        ).to.be.revertedWith("NOT_LP_OR_CONTRACT_ROLE");
       });
 
       it("Cannot remove ERC20 allocation", async () => {

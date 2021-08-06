@@ -93,11 +93,8 @@ contract TvlManager is
         external
         override
         nonReentrant
+        onlyLpOrContractRole
     {
-        require(
-            hasRole(CONTRACT_ROLE, msg.sender) || hasRole(LP_ROLE, msg.sender),
-            "INVALID_ACCESS_CONTROL"
-        );
         require(assetAllocation.isContract(), "INVALID_ADDRESS");
         _assetAllocations.add(assetAllocation);
         _lockOracleAdapter();
@@ -112,12 +109,8 @@ contract TvlManager is
         external
         override
         nonReentrant
+        onlyLpOrContractRole
     {
-        require(
-            hasRole(CONTRACT_ROLE, msg.sender) || hasRole(LP_ROLE, msg.sender),
-            "INVALID_ACCESS_CONTROL"
-        );
-
         require(
             assetAllocation != address(erc20Allocation),
             "CANNOT_REMOVE_ALLOCATION"

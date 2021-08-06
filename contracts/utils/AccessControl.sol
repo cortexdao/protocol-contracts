@@ -35,4 +35,13 @@ contract AccessControl is OZAccessControl {
         require(hasRole(EMERGENCY_ROLE, _msgSender()), "NOT_EMERGENCY_ROLE");
         _;
     }
+
+    modifier onlyLpOrContractRole() {
+        require(
+            hasRole(LP_ROLE, _msgSender()) ||
+                hasRole(CONTRACT_ROLE, _msgSender()),
+            "NOT_LP_OR_CONTRACT_ROLE"
+        );
+        _;
+    }
 }
