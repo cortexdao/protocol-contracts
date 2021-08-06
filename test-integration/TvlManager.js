@@ -92,6 +92,35 @@ describe("Contract: TvlManager", () => {
     );
   });
 
+  describe("ERC20 allocation", () => {
+    let erc20Allocation;
+
+    before(async () => {
+      const erc20AllocationAddress = await tvlManager.erc20Allocation();
+      erc20Allocation = await ethers.getContractAt(
+        "Erc20Allocation",
+        erc20AllocationAddress,
+        lpSafe
+      );
+    });
+
+    it.only("TVL Manager can read registered ERC20", async () => {
+      const usdcAddress = getStablecoinAddress("USDC", "MAINNET");
+      await expect(tvlManager.symbolOf(usdcAddress)).to.be.reverted;
+
+      await erc20Allocation["registerErc20Token(address)"](usdcAddress);
+      expect(await erc20Allocation.tokens()).to.deep.equal([
+        [usdcAddress, "USDC", 6],
+      ]);
+
+      const allocationId = tvlManager.getAssetAllocationId(
+        erc20Allocation.address,
+        0
+      );
+      expect(await tvlManager.symbolOf(allocationId)).to.equal("USDC");
+    });
+  });
+
   describe("Curve allocation", () => {
     let CurveAllocation;
     let curve;
