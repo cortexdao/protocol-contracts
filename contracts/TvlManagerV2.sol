@@ -40,17 +40,18 @@ contract TvlManagerV2 is
     using Address for address;
 
     IAddressRegistryV2 public addressRegistry;
-    IErc20AllocationRegistry public erc20Allocation;
+    IErc20AllocationRegistry public override erc20Allocation;
 
     EnumerableSet.AddressSet private _assetAllocations;
 
     /**
      * @notice Constructor
      * @param addressRegistry_ the address registry to initialize with
+     * @param erc20Allocation_ the erc20 allocation to initialize with
      */
-    constructor(address addressRegistry_, address erc20Allocation) public {
+    constructor(address addressRegistry_, address erc20Allocation_) public {
         _setAddressRegistry(addressRegistry_);
-        _setErc20Allocation(erc20Allocation);
+        _setErc20Allocation(erc20Allocation_);
         _setupRole(
             DEFAULT_ADMIN_ROLE,
             addressRegistry.getAddress("emergencySafe")
@@ -75,13 +76,13 @@ contract TvlManagerV2 is
     /**
      * @notice Sets the ERC20 allocation contract
      * @dev only callable by owner
-     * @param erc20Allocation the address of ERC20 allocation
+     * @param erc20Allocation_ the address of ERC20 allocation
      */
-    function emergencySetErc20Allocation(address erc20Allocation)
+    function emergencySetErc20Allocation(address erc20Allocation_)
         external
         onlyEmergencyRole
     {
-        _setErc20Allocation(erc20Allocation);
+        _setErc20Allocation(erc20Allocation_);
     }
 
     /**
