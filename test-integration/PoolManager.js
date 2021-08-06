@@ -248,7 +248,7 @@ describe("Contract: PoolManager", () => {
     const erc20Allocation = await Erc20Allocation.deploy(
       addressRegistry.address
     );
-    const TvlManager = await ethers.getContractFactory("TvlManagerV2");
+    const TvlManager = await ethers.getContractFactory("TvlManager");
     tvlManager = await TvlManager.deploy(
       addressRegistry.address,
       erc20Allocation.address

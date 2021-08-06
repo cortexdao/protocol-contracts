@@ -10,7 +10,7 @@ import {IErc20AllocationRegistry} from "./IErc20AllocationRegistry.sol";
  * @notice These functions enable external systems to pull necessary info
  * to compute the TVL of the APY.Finance system.
  */
-interface ITvlManagerV2 {
+interface ITvlManager {
     event AssetAllocationRegistered(address assetAllocation);
     event AssetAllocationRemoved(address assetAllocation);
 

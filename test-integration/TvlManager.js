@@ -85,7 +85,7 @@ describe("Contract: TvlManager", () => {
       addressRegistry.address
     );
 
-    TvlManager = await ethers.getContractFactory("TvlManagerV2");
+    TvlManager = await ethers.getContractFactory("TvlManager");
     tvlManager = await TvlManager.deploy(
       addressRegistry.address,
       erc20Allocation.address

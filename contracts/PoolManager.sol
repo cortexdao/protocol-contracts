@@ -13,7 +13,7 @@ import {AccessControl} from "./utils/AccessControl.sol";
 import {
     IAssetAllocationRegistry
 } from "./interfaces/IAssetAllocationRegistry.sol";
-import {ITvlManagerV2} from "./interfaces/ITvlManagerV2.sol";
+import {ITvlManager} from "./interfaces/ITvlManager.sol";
 import {
     IErc20AllocationRegistry
 } from "./interfaces/IErc20AllocationRegistry.sol";
@@ -155,8 +155,8 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
      * @param pools list of pools whose underlyers will be registered
      */
     function _registerPoolUnderlyers(PoolTokenV2[] memory pools) internal {
-        ITvlManagerV2 tvlManager =
-            ITvlManagerV2(addressRegistry.getAddress("tvlManager"));
+        ITvlManager tvlManager =
+            ITvlManager(addressRegistry.getAddress("tvlManager"));
         IErc20AllocationRegistry erc20Registry =
             IErc20AllocationRegistry(tvlManager.erc20Allocation());
 

@@ -15,7 +15,7 @@ import {
 import {
     IErc20AllocationRegistry
 } from "./interfaces/IErc20AllocationRegistry.sol";
-import {ITvlManagerV2} from "./interfaces/ITvlManagerV2.sol";
+import {ITvlManager} from "./interfaces/ITvlManager.sol";
 import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 
@@ -30,10 +30,10 @@ import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
  * allocations registered. Any assets in the system that have been deployed,
  * but are not registered can have devastating and catastrophic effects on the TVL.
  */
-contract TvlManagerV2 is
+contract TvlManager is
     AccessControl,
     ReentrancyGuard,
-    ITvlManagerV2,
+    ITvlManager,
     IAssetAllocationRegistry
 {
     using EnumerableSet for EnumerableSet.AddressSet;

@@ -57,7 +57,7 @@ describe("Contract: PoolManager", () => {
 
     const tvlManagerMock = await deployMockContract(
       deployer,
-      artifacts.require("ITvlManagerV2").abi
+      artifacts.require("ITvlManager").abi
     );
     await tvlManagerMock.mock.erc20Allocation.returns(
       erc20AllocationMock.address
