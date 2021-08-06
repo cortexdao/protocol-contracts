@@ -148,28 +148,75 @@ describe("Contract: TvlManager", () => {
     });
   });
 
-  describe("ERC20 allocations", () => {
-    it("isErc20TokenRegistered", async () => {
-      const mockErc20Address = await generateContractAddress(deployer);
-      await erc20Allocation.mock.isErc20TokenRegistered.returns(false);
-      await erc20Allocation.mock.isErc20TokenRegistered
-        .withArgs(mockErc20Address)
-        .returns(true);
-
-      expect(await tvlManager.isErc20TokenRegistered(mockErc20Address)).to.be
-        .true;
-
-      const randomAddress = await generateContractAddress(deployer);
-      expect(await tvlManager.isErc20TokenRegistered(randomAddress)).to.be
-        .false;
-    });
-
-    it("ERC20 Allocation cannot be removed", async () => {
+  describe("emergencySetAddressRegistry", () => {
+    it("Emergency Safe can call", async () => {
+      const someContractAddress = await generateContractAddress(deployer);
       await expect(
         tvlManager
-          .connect(lpSafe)
-          .removeAssetAllocation(erc20Allocation.address)
-      ).to.be.revertedWith("CANNOT_REMOVE_ALLOCATION");
+          .connect(emergencySafe)
+          .emergencySetAddressRegistry(someContractAddress)
+      ).to.not.be.reverted;
+    });
+
+    it("Unpermissioned cannot call", async () => {
+      const someContractAddress = await generateContractAddress(deployer);
+      await expect(
+        tvlManager
+          .connect(randomUser)
+          .emergencySetAddressRegistry(someContractAddress)
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
+    });
+
+    it("Address can be set", async () => {
+      const someContractAddress = await generateContractAddress(deployer);
+      await tvlManager
+        .connect(emergencySafe)
+        .emergencySetAddressRegistry(someContractAddress);
+      expect(await tvlManager.addressRegistry()).to.equal(someContractAddress);
+    });
+
+    it("Cannot set to non-contract address", async () => {
+      await expect(
+        tvlManager
+          .connect(emergencySafe)
+          .emergencySetAddressRegistry(FAKE_ADDRESS)
+      ).to.be.revertedWith("INVALID_ADDRESS");
+    });
+  });
+
+  describe("emergencySetErc20Allocation", () => {
+    it("Emergency Safe can call", async () => {
+      const someContractAddress = await generateContractAddress(deployer);
+      await expect(
+        tvlManager
+          .connect(emergencySafe)
+          .emergencySetErc20Allocation(someContractAddress)
+      ).to.not.be.reverted;
+    });
+
+    it("Unpermissioned cannot call", async () => {
+      const someContractAddress = await generateContractAddress(deployer);
+      await expect(
+        tvlManager
+          .connect(randomUser)
+          .emergencySetErc20Allocation(someContractAddress)
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
+    });
+
+    it("Address can be set", async () => {
+      const someContractAddress = await generateContractAddress(deployer);
+      await tvlManager
+        .connect(emergencySafe)
+        .emergencySetErc20Allocation(someContractAddress);
+      expect(await tvlManager.erc20Allocation()).to.equal(someContractAddress);
+    });
+
+    it("Cannot set to non-contract address", async () => {
+      await expect(
+        tvlManager
+          .connect(emergencySafe)
+          .emergencySetErc20Allocation(FAKE_ADDRESS)
+      ).to.be.revertedWith("INVALID_ADDRESS");
     });
   });
 
