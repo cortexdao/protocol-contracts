@@ -80,13 +80,20 @@ describe("Contract: TvlManager", () => {
       oracleAdapter.address
     );
 
+    const Erc20Allocation = await ethers.getContractFactory("Erc20Allocation");
+    const erc20Allocation = await Erc20Allocation.deploy(
+      addressRegistry.address
+    );
+
     TvlManager = await ethers.getContractFactory("TvlManager");
-    tvlManager = await TvlManager.deploy(addressRegistry.address);
-    await tvlManager.deployed();
+    tvlManager = await TvlManager.deploy(
+      addressRegistry.address,
+      erc20Allocation.address
+    );
   });
 
-  describe("Curve periphery", () => {
-    let CurvePeriphery;
+  describe("Curve allocation", () => {
+    let CurveAllocation;
     let curve;
 
     // Curve 3Pool
@@ -94,16 +101,13 @@ describe("Contract: TvlManager", () => {
     let stableSwap;
     let gauge;
     let daiToken;
-    let encodedGetUnderlyerBalance;
     let lookupId;
 
-    const daiSymbol = "DAI";
-    const daiDecimals = 18;
     const daiIndex = 0;
 
     before("Deploy and attach to contracts", async () => {
-      CurvePeriphery = await ethers.getContractFactory("CurvePeriphery");
-      curve = await CurvePeriphery.deploy();
+      CurveAllocation = await ethers.getContractFactory("Curve3PoolAllocation");
+      curve = await CurveAllocation.deploy();
       await curve.deployed();
 
       lpToken = await ethers.getContractAt(
@@ -133,22 +137,8 @@ describe("Contract: TvlManager", () => {
     });
 
     before("Register asset allocation", async () => {
-      encodedGetUnderlyerBalance = CurvePeriphery.interface.encodeFunctionData(
-        "getUnderlyerBalance(address,address,address,address,uint256)",
-        [
-          lpSafe.address,
-          stableSwap.address,
-          gauge.address,
-          lpToken.address,
-          daiIndex,
-        ]
-      );
-      const data = [curve.address, encodedGetUnderlyerBalance];
-
-      await tvlManager
-        .connect(lpSafe)
-        .addAssetAllocation(data, daiSymbol, daiDecimals);
-      lookupId = await tvlManager.createId(data);
+      await tvlManager.connect(lpSafe).registerAssetAllocation(curve.address);
+      lookupId = await tvlManager.getAssetAllocationId(curve.address, 0);
     });
 
     it("Get underlyer balance from account holding", async () => {

@@ -8,9 +8,6 @@ const {
   getStablecoinAddress,
   getAggregatorAddress,
 } = require("../utils/helpers");
-const erc20Interface = new ethers.utils.Interface(
-  artifacts.require("ERC20").abi
-);
 const { STABLECOIN_POOLS } = require("../utils/constants");
 
 const IDetailedERC20UpgradeSafe = artifacts.require(
@@ -247,8 +244,15 @@ describe("Contract: PoolManager", () => {
     /******************************/
     /***** deploy TVL Manager *****/
     /******************************/
+    const Erc20Allocation = await ethers.getContractFactory("Erc20Allocation");
+    const erc20Allocation = await Erc20Allocation.deploy(
+      addressRegistry.address
+    );
     const TvlManager = await ethers.getContractFactory("TvlManager");
-    tvlManager = await TvlManager.deploy(addressRegistry.address);
+    tvlManager = await TvlManager.deploy(
+      addressRegistry.address,
+      erc20Allocation.address
+    );
 
     await addressRegistry.registerAddress(
       bytes32("tvlManager"),
@@ -455,15 +459,11 @@ describe("Contract: PoolManager", () => {
       /* Check pool manager registered asset allocations correctly */
       /*************************************************************/
 
-      const encodedBalanceOf = erc20Interface.encodeFunctionData(
-        "balanceOf(address)",
-        [lpSafeAddress]
+      const erc20AllocationAddress = await tvlManager.erc20Allocation();
+      const expectedDaiId = await tvlManager.getAssetAllocationId(
+        erc20AllocationAddress,
+        0
       );
-      const expectedDaiId = await tvlManager.createId([
-        daiToken.address,
-        encodedBalanceOf,
-      ]);
-
       const registeredIds = await tvlManager.getAssetAllocationIds();
       expect(registeredIds.length).to.equal(1);
       expect(registeredIds[0]).to.equal(expectedDaiId);
@@ -538,23 +538,19 @@ describe("Contract: PoolManager", () => {
       /* Check pool manager registered asset allocations correctly */
       /*************************************************************/
 
-      const encodedBalanceOf = erc20Interface.encodeFunctionData(
-        "balanceOf(address)",
-        [lpSafeAddress]
+      const erc20AllocationAddress = await tvlManager.erc20Allocation();
+      const expectedDaiId = await tvlManager.getAssetAllocationId(
+        erc20AllocationAddress,
+        0
       );
-      const expectedDaiId = await tvlManager.createId([
-        daiToken.address,
-        encodedBalanceOf,
-      ]);
-      const expectedUsdcId = await tvlManager.createId([
-        usdcToken.address,
-        encodedBalanceOf,
-      ]);
-      const expectedUsdtId = await tvlManager.createId([
-        usdtToken.address,
-        encodedBalanceOf,
-      ]);
-
+      const expectedUsdcId = await tvlManager.getAssetAllocationId(
+        erc20AllocationAddress,
+        1
+      );
+      const expectedUsdtId = await tvlManager.getAssetAllocationId(
+        erc20AllocationAddress,
+        2
+      );
       const registeredIds = await tvlManager.getAssetAllocationIds();
       expect(registeredIds.length).to.equal(3);
       expect(registeredIds[0]).to.equal(expectedDaiId);

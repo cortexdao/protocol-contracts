@@ -12,7 +12,8 @@ describe("Contract: Erc20Allocation", () => {
   // signers
   let deployer;
   let emergencySafe;
-  let tvlManager;
+  let lpSafe;
+  let poolManager;
   let user;
   let anotherUser;
 
@@ -52,13 +53,14 @@ describe("Contract: Erc20Allocation", () => {
     [
       deployer,
       emergencySafe,
-      tvlManager,
+      lpSafe,
+      poolManager,
       user,
       anotherUser,
     ] = await ethers.getSigners();
     Erc20Allocation = await ethers.getContractFactory(
       "Erc20Allocation",
-      tvlManager
+      lpSafe
     );
     const addressRegistryMock = await deployMockContract(
       deployer,
@@ -67,8 +69,9 @@ describe("Contract: Erc20Allocation", () => {
     await addressRegistryMock.mock.getAddress
       .withArgs(bytes32("emergencySafe"))
       .returns(emergencySafe.address);
-    await addressRegistryMock.mock.tvlManagerAddress.returns(
-      tvlManager.address
+    await addressRegistryMock.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistryMock.mock.poolManagerAddress.returns(
+      poolManager.address
     );
     erc20Allocation = await Erc20Allocation.deploy(addressRegistryMock.address);
 
@@ -103,13 +106,15 @@ describe("Contract: Erc20Allocation", () => {
       ).to.be.true;
     });
 
-    it("Contract role given to TVL Manager", async () => {
+    it("Contract role given to Pool Manager and LP Safe", async () => {
       const CONTRACT_ROLE = await erc20Allocation.CONTRACT_ROLE();
       const memberCount = await erc20Allocation.getRoleMemberCount(
         CONTRACT_ROLE
       );
-      expect(memberCount).to.equal(1);
-      expect(await erc20Allocation.hasRole(CONTRACT_ROLE, tvlManager.address))
+      expect(memberCount).to.equal(2);
+      expect(await erc20Allocation.hasRole(CONTRACT_ROLE, lpSafe.address)).to.be
+        .true;
+      expect(await erc20Allocation.hasRole(CONTRACT_ROLE, poolManager.address))
         .to.be.true;
     });
   });
@@ -119,7 +124,7 @@ describe("Contract: Erc20Allocation", () => {
       it("TVL Manager can call", async () => {
         await expect(
           erc20Allocation
-            .connect(tvlManager)
+            .connect(lpSafe)
             ["registerErc20Token(address,string,uint8)"](
               token_0.token,
               token_0.symbol,
@@ -128,7 +133,7 @@ describe("Contract: Erc20Allocation", () => {
         ).to.not.be.reverted;
         await expect(
           erc20Allocation
-            .connect(tvlManager)
+            .connect(lpSafe)
             ["registerErc20Token(address,string)"](
               token_0.token,
               token_0.symbol
@@ -136,7 +141,7 @@ describe("Contract: Erc20Allocation", () => {
         ).to.not.be.reverted;
         await expect(
           erc20Allocation
-            .connect(tvlManager)
+            .connect(lpSafe)
             ["registerErc20Token(address)"](token_0.token)
         ).to.not.be.reverted;
       });
@@ -194,7 +199,7 @@ describe("Contract: Erc20Allocation", () => {
       it("TVL Manager can call", async () => {
         await expect(
           erc20Allocation
-            .connect(tvlManager)
+            .connect(lpSafe)
             ["removeErc20Token(address)"](token_0.token)
         ).to.not.be.reverted;
       });

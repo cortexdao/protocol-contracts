@@ -16,7 +16,6 @@ describe("Contract: PoolManager", () => {
   let randomUser;
   let emergencySafe;
   let lpSafe;
-  let tvlManager;
 
   // contract factories
   let PoolManager;
@@ -43,17 +42,25 @@ describe("Contract: PoolManager", () => {
   });
 
   before(async () => {
-    [
-      deployer,
-      randomUser,
-      emergencySafe,
-      lpSafe,
-      tvlManager,
-    ] = await ethers.getSigners();
+    [deployer, randomUser, emergencySafe, lpSafe] = await ethers.getSigners();
 
     mAptMock = await deployMockContract(
       deployer,
       artifacts.require("MetaPoolToken").abi
+    );
+
+    const erc20AllocationMock = await deployMockContract(
+      deployer,
+      artifacts.require("IErc20AllocationRegistry").abi
+    );
+    await erc20AllocationMock.mock.isErc20TokenRegistered.returns(true);
+
+    const tvlManagerMock = await deployMockContract(
+      deployer,
+      artifacts.require("ITvlManager").abi
+    );
+    await tvlManagerMock.mock.erc20Allocation.returns(
+      erc20AllocationMock.address
     );
 
     addressRegistryMock = await deployMockContract(
@@ -63,7 +70,7 @@ describe("Contract: PoolManager", () => {
     await addressRegistryMock.mock.mAptAddress.returns(mAptMock.address);
     await addressRegistryMock.mock.getAddress
       .withArgs(bytes32("tvlManager"))
-      .returns(tvlManager.address);
+      .returns(tvlManagerMock.address);
     // these addresses need to be registered to setup roles
     // in the PoolManager constructor:
     // - emergencySafe (default admin role, emergency role)

@@ -1,8 +1,14 @@
 const { expect } = require("chai");
 const hre = require("hardhat");
-const { ethers } = hre;
+const { ethers, waffle } = hre;
+const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
-const { FAKE_ADDRESS, ANOTHER_FAKE_ADDRESS } = require("../utils/helpers");
+const { FAKE_ADDRESS } = require("../utils/helpers");
+
+async function generateContractAddress(signer) {
+  const mockContract = await deployMockContract(signer, []);
+  return mockContract.address;
+}
 
 describe("Contract: AssetAllocation", () => {
   // contract factories
@@ -15,12 +21,12 @@ describe("Contract: AssetAllocation", () => {
   let snapshotId;
 
   const token_0 = {
-    token: FAKE_ADDRESS,
+    token: undefined,
     symbol: "TOKEN",
     decimals: 6,
   };
   const token_1 = {
-    token: ANOTHER_FAKE_ADDRESS,
+    token: undefined,
     symbol: "ANOTHER_TOKEN",
     decimals: 18,
   };
@@ -35,6 +41,10 @@ describe("Contract: AssetAllocation", () => {
   });
 
   before(async () => {
+    const [deployer] = await ethers.getSigners();
+    token_0.token = await generateContractAddress(deployer);
+    token_1.token = await generateContractAddress(deployer);
+
     SimpleAssetAllocation = await ethers.getContractFactory(
       "SimpleAssetAllocation"
     );

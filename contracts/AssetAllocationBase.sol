@@ -5,6 +5,10 @@ pragma experimental ABIEncoderV2;
 import {IAssetAllocation} from "./interfaces/IAssetAllocation.sol";
 
 abstract contract AssetAllocationBase is IAssetAllocation {
+    function numberOfTokens() external view override returns (uint256) {
+        return tokens().length;
+    }
+
     function symbolOf(uint8 tokenIndex)
         public
         view

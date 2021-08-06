@@ -11,6 +11,8 @@ interface IAssetAllocation {
 
     function tokens() external view returns (TokenData[] memory);
 
+    function numberOfTokens() external view returns (uint256);
+
     /**
      * @dev Should be implemented by child contracts.
      * @dev Should work with any token from the `tokenAddresses` list.
