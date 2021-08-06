@@ -109,12 +109,10 @@ describe("Contract: TvlManager", () => {
     );
   });
 
-  describe.only("ERC20 allocation", () => {
-    describe("TVL Manager view functions read registered ERC20", () => {
+  describe("ERC20 allocation", () => {
+    describe("TVL Manager returns registered ERC20 info", () => {
       it("registerErc20Token(address)", async () => {
         const usdcAddress = getStablecoinAddress("USDC", "MAINNET");
-        await expect(tvlManager.symbolOf(usdcAddress)).to.be.reverted;
-
         await erc20Allocation["registerErc20Token(address)"](usdcAddress);
         expect(await erc20Allocation.tokens()).to.deep.equal([
           [usdcAddress, "USDC", 6],
@@ -135,8 +133,6 @@ describe("Contract: TvlManager", () => {
 
       it("registerErc20Token(address,string)", async () => {
         const usdcAddress = getStablecoinAddress("USDC", "MAINNET");
-        await expect(tvlManager.symbolOf(usdcAddress)).to.be.reverted;
-
         await erc20Allocation["registerErc20Token(address,string)"](
           usdcAddress,
           "USDC"
@@ -160,8 +156,6 @@ describe("Contract: TvlManager", () => {
 
       it("registerErc20Token(address,string,uint8)", async () => {
         const usdcAddress = getStablecoinAddress("USDC", "MAINNET");
-        await expect(tvlManager.symbolOf(usdcAddress)).to.be.reverted;
-
         await erc20Allocation["registerErc20Token(address,string,uint8)"](
           usdcAddress,
           "USDC",
@@ -182,6 +176,37 @@ describe("Contract: TvlManager", () => {
         const amount = tokenAmountToBigNumber(100, 6);
         await sendErc20Tokens("USDC", amount, lpSafe, deployer);
         expect(await tvlManager.balanceOf(allocationId)).to.equal(amount);
+      });
+    });
+
+    describe("TVL Manager reflects ERC20 removal", () => {
+      it("removeErc20Token", async () => {
+        const usdcAddress = getStablecoinAddress("USDC", "MAINNET");
+        const daiAddress = getStablecoinAddress("DAI", "MAINNET");
+
+        await erc20Allocation["registerErc20Token(address)"](usdcAddress);
+        await erc20Allocation["registerErc20Token(address)"](daiAddress);
+        expect(await erc20Allocation.tokens()).to.have.lengthOf(2);
+
+        const usdcId = tvlManager.getAssetAllocationId(
+          erc20Allocation.address,
+          0
+        );
+        expect(await tvlManager.symbolOf(usdcId)).to.equal("USDC");
+        const daiId = tvlManager.getAssetAllocationId(
+          erc20Allocation.address,
+          1
+        );
+        expect(await tvlManager.symbolOf(daiId)).to.equal("DAI");
+
+        await erc20Allocation.removeErc20Token(usdcAddress);
+        expect(await erc20Allocation.tokens()).to.have.lengthOf(1);
+
+        const allocationId = tvlManager.getAssetAllocationId(
+          erc20Allocation.address,
+          0
+        );
+        expect(await tvlManager.symbolOf(allocationId)).to.equal("DAI");
       });
     });
   });
