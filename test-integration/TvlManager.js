@@ -26,22 +26,7 @@ const STABLE_SWAP_ADDRESS = "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7";
 const LP_TOKEN_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
 const LIQUIDITY_GAUGE_ADDRESS = "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A";
 
-async function sendErc20Tokens(symbol, amount, recipient, ethFunder) {
-  if (!["DAI", "USDC", "USDT"].includes(symbol.toUpperCase())) {
-    throw Error("Unsupported ERC20 token.");
-  }
-  const tokenAddress = getStablecoinAddress(symbol, "MAINNET");
-  const token = await ethers.getContractAt("ERC20", tokenAddress);
-  await acquireToken(
-    STABLECOIN_POOLS[symbol],
-    recipient,
-    token,
-    amount,
-    ethFunder
-  );
-}
-
-describe("Contract: TvlManager", () => {
+describe.only("Contract: TvlManager", () => {
   /* signers */
   let deployer;
   let emergencySafe;
@@ -53,7 +38,6 @@ describe("Contract: TvlManager", () => {
 
   /* deployed contracts */
   let tvlManager;
-  let erc20Allocation;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -96,119 +80,16 @@ describe("Contract: TvlManager", () => {
       oracleAdapter.address
     );
 
-    const Erc20Allocation = await ethers.getContractFactory(
-      "Erc20Allocation",
-      lpSafe
+    const Erc20Allocation = await ethers.getContractFactory("Erc20Allocation");
+    const erc20Allocation = await Erc20Allocation.deploy(
+      addressRegistry.address
     );
-    erc20Allocation = await Erc20Allocation.deploy(addressRegistry.address);
 
     TvlManager = await ethers.getContractFactory("TvlManager");
     tvlManager = await TvlManager.deploy(
       addressRegistry.address,
       erc20Allocation.address
     );
-  });
-
-  describe("ERC20 allocation", () => {
-    describe("TVL Manager returns registered ERC20 info", () => {
-      it("registerErc20Token(address)", async () => {
-        const usdcAddress = getStablecoinAddress("USDC", "MAINNET");
-        await erc20Allocation["registerErc20Token(address)"](usdcAddress);
-        expect(await erc20Allocation.tokens()).to.deep.equal([
-          [usdcAddress, "USDC", 6],
-        ]);
-
-        const allocationId = tvlManager.getAssetAllocationId(
-          erc20Allocation.address,
-          0
-        );
-        expect(await tvlManager.symbolOf(allocationId)).to.equal("USDC");
-        expect(await tvlManager.decimalsOf(allocationId)).to.equal(6);
-
-        expect(await tvlManager.balanceOf(allocationId)).to.equal(0);
-        const amount = tokenAmountToBigNumber(100, 6);
-        await sendErc20Tokens("USDC", amount, lpSafe, deployer);
-        expect(await tvlManager.balanceOf(allocationId)).to.equal(amount);
-      });
-
-      it("registerErc20Token(address,string)", async () => {
-        const usdcAddress = getStablecoinAddress("USDC", "MAINNET");
-        await erc20Allocation["registerErc20Token(address,string)"](
-          usdcAddress,
-          "USDC"
-        );
-        expect(await erc20Allocation.tokens()).to.deep.equal([
-          [usdcAddress, "USDC", 6],
-        ]);
-
-        const allocationId = tvlManager.getAssetAllocationId(
-          erc20Allocation.address,
-          0
-        );
-        expect(await tvlManager.symbolOf(allocationId)).to.equal("USDC");
-        expect(await tvlManager.decimalsOf(allocationId)).to.equal(6);
-
-        expect(await tvlManager.balanceOf(allocationId)).to.equal(0);
-        const amount = tokenAmountToBigNumber(100, 6);
-        await sendErc20Tokens("USDC", amount, lpSafe, deployer);
-        expect(await tvlManager.balanceOf(allocationId)).to.equal(amount);
-      });
-
-      it("registerErc20Token(address,string,uint8)", async () => {
-        const usdcAddress = getStablecoinAddress("USDC", "MAINNET");
-        await erc20Allocation["registerErc20Token(address,string,uint8)"](
-          usdcAddress,
-          "USDC",
-          6
-        );
-        expect(await erc20Allocation.tokens()).to.deep.equal([
-          [usdcAddress, "USDC", 6],
-        ]);
-
-        const allocationId = tvlManager.getAssetAllocationId(
-          erc20Allocation.address,
-          0
-        );
-        expect(await tvlManager.symbolOf(allocationId)).to.equal("USDC");
-        expect(await tvlManager.decimalsOf(allocationId)).to.equal(6);
-
-        expect(await tvlManager.balanceOf(allocationId)).to.equal(0);
-        const amount = tokenAmountToBigNumber(100, 6);
-        await sendErc20Tokens("USDC", amount, lpSafe, deployer);
-        expect(await tvlManager.balanceOf(allocationId)).to.equal(amount);
-      });
-    });
-
-    describe("TVL Manager reflects ERC20 removal", () => {
-      it("removeErc20Token", async () => {
-        const usdcAddress = getStablecoinAddress("USDC", "MAINNET");
-        const daiAddress = getStablecoinAddress("DAI", "MAINNET");
-
-        await erc20Allocation["registerErc20Token(address)"](usdcAddress);
-        await erc20Allocation["registerErc20Token(address)"](daiAddress);
-        expect(await erc20Allocation.tokens()).to.have.lengthOf(2);
-
-        const usdcId = tvlManager.getAssetAllocationId(
-          erc20Allocation.address,
-          0
-        );
-        expect(await tvlManager.symbolOf(usdcId)).to.equal("USDC");
-        const daiId = tvlManager.getAssetAllocationId(
-          erc20Allocation.address,
-          1
-        );
-        expect(await tvlManager.symbolOf(daiId)).to.equal("DAI");
-
-        await erc20Allocation.removeErc20Token(usdcAddress);
-        expect(await erc20Allocation.tokens()).to.have.lengthOf(1);
-
-        const allocationId = tvlManager.getAssetAllocationId(
-          erc20Allocation.address,
-          0
-        );
-        expect(await tvlManager.symbolOf(allocationId)).to.equal("DAI");
-      });
-    });
   });
 
   describe("Curve allocation", () => {
