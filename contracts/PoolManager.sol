@@ -71,7 +71,7 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
      * @dev only callable with emergencyRole
      * @param addressRegistry_ the address of the registry
      */
-    function setAddressRegistry(address addressRegistry_)
+    function emergencySetAddressRegistry(address addressRegistry_)
         external
         onlyEmergencyRole
     {
