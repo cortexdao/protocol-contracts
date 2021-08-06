@@ -26,7 +26,7 @@ const STABLE_SWAP_ADDRESS = "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7";
 const LP_TOKEN_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
 const LIQUIDITY_GAUGE_ADDRESS = "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A";
 
-describe.only("Contract: TvlManager", () => {
+describe("Contract: TvlManager", () => {
   /* signers */
   let deployer;
   let emergencySafe;
@@ -80,6 +80,12 @@ describe.only("Contract: TvlManager", () => {
       oracleAdapter.address
     );
 
+    /* These registered addresses are setup for roles in the
+     * constructor for Erc20Allocation:
+     * - poolManager (contract role)
+     * - lpSafe (contract role)
+     * - emergencySafe (default admin role)
+     */
     const Erc20Allocation = await ethers.getContractFactory("Erc20Allocation");
     const erc20Allocation = await Erc20Allocation.deploy(
       addressRegistry.address
