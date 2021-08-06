@@ -155,25 +155,29 @@ describe("Contract: PoolManager", () => {
     });
   });
 
-  describe("Set address registry", () => {
+  describe("emergencySetAddressRegistry", () => {
     it("Emergency Safe can set to contract address", async () => {
       const contract = await deployMockContract(deployer, []);
       await poolManager
         .connect(emergencySafe)
-        .setAddressRegistry(contract.address);
+        .emergencySetAddressRegistry(contract.address);
       expect(await poolManager.addressRegistry()).to.equal(contract.address);
     });
 
     it("Unpermissioned cannot set", async () => {
       const contract = await deployMockContract(deployer, []);
       await expect(
-        poolManager.connect(randomUser).setAddressRegistry(contract.address)
+        poolManager
+          .connect(randomUser)
+          .emergencySetAddressRegistry(contract.address)
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
 
     it("Cannot set to non-contract address", async () => {
       await expect(
-        poolManager.connect(emergencySafe).setAddressRegistry(FAKE_ADDRESS)
+        poolManager
+          .connect(emergencySafe)
+          .emergencySetAddressRegistry(FAKE_ADDRESS)
       ).to.be.revertedWith("INVALID_ADDRESS");
     });
   });
