@@ -22,10 +22,14 @@ describe("Contract: PoolManager", () => {
 
   // deployed contracts
   let poolManager;
+
+  // mocked contracts
   let underlyerMocks;
   let poolMocks;
   let mAptMock;
   let addressRegistryMock;
+  let erc20AllocationMock;
+  let tvlManagerMock;
 
   const poolIds = ["daiPool", "usdcPool", "usdtPool"].map((id) => bytes32(id));
 
@@ -49,13 +53,13 @@ describe("Contract: PoolManager", () => {
       artifacts.require("MetaPoolToken").abi
     );
 
-    const erc20AllocationMock = await deployMockContract(
+    erc20AllocationMock = await deployMockContract(
       deployer,
       artifacts.require("IErc20AllocationRegistry").abi
     );
     await erc20AllocationMock.mock.isErc20TokenRegistered.returns(true);
 
-    const tvlManagerMock = await deployMockContract(
+    tvlManagerMock = await deployMockContract(
       deployer,
       artifacts.require("ITvlManager").abi
     );
@@ -213,7 +217,7 @@ describe("Contract: PoolManager", () => {
       });
     });
 
-    describe("_calculateMaptDeltas", async () => {
+    describe("_calculateMaptDeltas", () => {
       it("Revert if array lengths do not match", async () => {
         const pools = Object.values(poolMocks).map((p) => p.address);
         const amounts = new Array(pools.length - 1).fill(
@@ -293,7 +297,7 @@ describe("Contract: PoolManager", () => {
       });
     });
 
-    describe("getRebalanceAmounts", async () => {
+    describe("getRebalanceAmounts", () => {
       it("Return an empty array when give an empty array", async () => {
         const poolIds = [];
         const rebalanceAmounts = [];
@@ -318,7 +322,7 @@ describe("Contract: PoolManager", () => {
       });
     });
 
-    describe("_deployOrUnwindCapital", async () => {
+    describe("_deployOrUnwindCapital", () => {
       it("Revert if the account is a zero address", async () => {
         const account = ZERO_ADDRESS;
         const pools = [];
@@ -342,7 +346,7 @@ describe("Contract: PoolManager", () => {
       });
     });
 
-    describe("rebalanceReserves", async () => {
+    describe("rebalanceReserves", () => {
       it("LP Safe can call", async () => {
         await expect(poolManager.connect(lpSafe).rebalanceReserves([])).to.not
           .be.reverted;
@@ -362,7 +366,7 @@ describe("Contract: PoolManager", () => {
       });
     });
 
-    describe("emergencyRebalanceReserves", async () => {
+    describe("emergencyRebalanceReserves", () => {
       it("Emergency Safe can call", async () => {
         await expect(
           poolManager.connect(emergencySafe).emergencyRebalanceReserves([])
@@ -380,6 +384,66 @@ describe("Contract: PoolManager", () => {
         await expect(
           poolManager.connect(emergencySafe).emergencyRebalanceReserves([])
         ).to.be.revertedWith("INVALID_LP_SAFE");
+      });
+    });
+
+    describe("_registerPoolUnderlyers", () => {
+      it("Unregistered underlyers get registered", async () => {
+        const daiPool = poolMocks[bytes32("daiPool")];
+        const daiToken = underlyerMocks["dai"];
+
+        // set DAI as unregistered in ERC20 registry
+        await erc20AllocationMock.mock.isErc20TokenRegistered
+          .withArgs(daiToken.address)
+          .returns(false);
+
+        // revert on registration for DAI but not others
+        await erc20AllocationMock.mock["registerErc20Token(address)"].returns();
+        await erc20AllocationMock.mock["registerErc20Token(address)"]
+          .withArgs(daiToken.address)
+          .revertsWithReason("REGISTERED_DAI");
+
+        // expect revert since register function should be called
+        await expect(
+          poolManager.testRegisterPoolUnderlyers([daiPool.address])
+        ).to.be.revertedWith("REGISTERED_DAI");
+      });
+
+      it("Registered underlyers are skipped", async () => {
+        const daiPool = poolMocks[bytes32("daiPool")];
+        const daiToken = underlyerMocks["dai"];
+
+        const usdcPool = poolMocks[bytes32("usdcPool")];
+        const usdcToken = underlyerMocks["usdc"];
+
+        // set DAI as registered while USDC is not
+        await erc20AllocationMock.mock.isErc20TokenRegistered
+          .withArgs(daiToken.address)
+          .returns(true);
+        await erc20AllocationMock.mock.isErc20TokenRegistered
+          .withArgs(usdcToken.address)
+          .returns(false);
+
+        // revert on registration for DAI or USDC
+        await erc20AllocationMock.mock["registerErc20Token(address)"].returns();
+        await erc20AllocationMock.mock["registerErc20Token(address)"]
+          .withArgs(usdcToken.address)
+          .revertsWithReason("REGISTERED_USDC");
+        await erc20AllocationMock.mock["registerErc20Token(address)"]
+          .withArgs(daiToken.address)
+          .revertsWithReason("REGISTERED_DAI");
+
+        // should not revert since DAI should not be registered
+        await expect(poolManager.testRegisterPoolUnderlyers([daiPool.address]))
+          .to.not.be.reverted;
+
+        // should revert for USDC registration
+        await expect(
+          poolManager.testRegisterPoolUnderlyers([
+            daiPool.address,
+            usdcPool.address,
+          ])
+        ).to.be.revertedWith("REGISTERED_USDC");
       });
     });
   });
