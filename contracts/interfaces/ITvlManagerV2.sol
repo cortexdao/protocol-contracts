@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 
+import {IErc20AllocationRegistry} from "./IErc20AllocationRegistry.sol";
+
 /**
  * @title Interface for addition and removal of asset allocations
  * for account deployments
@@ -15,4 +17,6 @@ interface ITvlManagerV2 {
     function registerAssetAllocation(address assetAllocation) external;
 
     function removeAssetAllocation(address assetAllocation) external;
+
+    function erc20Allocation() external returns (IErc20AllocationRegistry);
 }
