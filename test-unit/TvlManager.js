@@ -141,7 +141,19 @@ describe("Contract: TvlManager", () => {
       expect(await tvlManager.hasRole(LP_ROLE, lpSafe.address)).to.be.true;
     });
 
-    it("ERC20 allocation was set", async () => {
+    it("addressRegistry was set", async () => {
+      expect(await tvlManager.addressRegistry()).to.equal(
+        addressRegistry.address
+      );
+    });
+
+    it("erc20Allocation was set", async () => {
+      expect(await tvlManager.erc20Allocation()).to.equal(
+        erc20Allocation.address
+      );
+    });
+
+    it("ERC20 allocation was registered", async () => {
       const allocations = await tvlManager.testGetAssetAllocations();
       expect(allocations).to.have.lengthOf(1);
       expect(allocations).to.include(erc20Allocation.address);

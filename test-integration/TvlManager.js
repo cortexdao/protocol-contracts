@@ -80,6 +80,12 @@ describe("Contract: TvlManager", () => {
       oracleAdapter.address
     );
 
+    /* These registered addresses are setup for roles in the
+     * constructor for Erc20Allocation:
+     * - poolManager (contract role)
+     * - lpSafe (contract role)
+     * - emergencySafe (default admin role)
+     */
     const Erc20Allocation = await ethers.getContractFactory("Erc20Allocation");
     const erc20Allocation = await Erc20Allocation.deploy(
       addressRegistry.address
