@@ -106,6 +106,40 @@ describe("Contract: OracleAdapter", () => {
   });
 
   describe("Constructor", () => {
+    it("Revert on invalid address registry", async () => {
+      const assets = [];
+      const sources = [];
+      const stalePeriod = 100;
+      const defaultLockPeriod = 100;
+      await expect(
+        OracleAdapter.deploy(
+          FAKE_ADDRESS,
+          tvlAggMock.address,
+          assets,
+          sources,
+          stalePeriod,
+          defaultLockPeriod
+        )
+      ).to.be.revertedWith("INVALID_ADDRESS");
+    });
+
+    it("Revert on invalid TVL agg", async () => {
+      const assets = [];
+      const sources = [];
+      const stalePeriod = 100;
+      const defaultLockPeriod = 100;
+      await expect(
+        OracleAdapter.deploy(
+          addressRegistryMock.address,
+          FAKE_ADDRESS,
+          assets,
+          sources,
+          stalePeriod,
+          defaultLockPeriod
+        )
+      ).to.be.revertedWith("INVALID_SOURCE");
+    });
+
     it("Revert on non-contract source address", async () => {
       const agg = await deployMockContract(deployer, []);
       const token_1 = await deployMockContract(deployer, []);
@@ -177,6 +211,12 @@ describe("Contract: OracleAdapter", () => {
         .to.be.true;
     });
 
+    it("Address registry is set", async () => {
+      expect(await oracleAdapter.addressRegistry()).to.equal(
+        addressRegistryMock.address
+      );
+    });
+
     it("Sources are set", async () => {
       expect(await oracleAdapter.tvlSource()).to.equal(tvlAggMock.address);
       expect(await oracleAdapter.assetSources(assetAddress_1)).to.equal(
@@ -195,6 +235,35 @@ describe("Contract: OracleAdapter", () => {
       expect(await oracleAdapter.defaultLockPeriod()).to.equal(
         defaultLockPeriod
       );
+    });
+  });
+
+  describe("emergencySetAddressRegistry", () => {
+    it("Cannot set to non-contract address", async () => {
+      await expect(
+        oracleAdapter
+          .connect(emergencySafe)
+          .emergencySetAddressRegistry(FAKE_ADDRESS)
+      ).to.be.revertedWith("INVALID_ADDRESS");
+    });
+
+    it("Emergency role can set", async () => {
+      const dummyContract = await deployMockContract(deployer, []);
+      await oracleAdapter
+        .connect(emergencySafe)
+        .emergencySetAddressRegistry(dummyContract.address);
+      expect(await oracleAdapter.addressRegistry()).to.equal(
+        dummyContract.address
+      );
+    });
+
+    it("Revert when unpermissioned calls", async () => {
+      const dummyContract = await deployMockContract(deployer, []);
+      await expect(
+        oracleAdapter
+          .connect(randomUser)
+          .emergencySetAddressRegistry(dummyContract.address)
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
   });
 
@@ -219,6 +288,41 @@ describe("Contract: OracleAdapter", () => {
         oracleAdapter
           .connect(randomUser)
           .emergencySetTvlSource(dummyContract.address)
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
+    });
+  });
+
+  describe("emergencySetAssetSource", () => {
+    it("Cannot set to non-contract address", async () => {
+      const asset = FAKE_ADDRESS;
+      const source = ANOTHER_FAKE_ADDRESS;
+      await expect(
+        oracleAdapter
+          .connect(emergencySafe)
+          .emergencySetAssetSource(asset, source)
+      ).to.be.revertedWith("INVALID_SOURCE");
+    });
+
+    it("Emergency role can set", async () => {
+      const asset = FAKE_ADDRESS;
+      const dummyContract = await deployMockContract(deployer, []);
+      const source = dummyContract.address;
+
+      await oracleAdapter
+        .connect(emergencySafe)
+        .emergencySetAssetSource(asset, source);
+      expect(await oracleAdapter.assetSources(FAKE_ADDRESS)).to.equal(
+        dummyContract.address
+      );
+    });
+
+    it("Revert when unpermissioned calls", async () => {
+      const asset = FAKE_ADDRESS;
+      const dummyContract = await deployMockContract(deployer, []);
+      const source = dummyContract.address;
+
+      await expect(
+        oracleAdapter.connect(randomUser).emergencySetAssetSource(asset, source)
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
   });
