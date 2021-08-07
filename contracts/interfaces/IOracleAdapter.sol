@@ -7,17 +7,17 @@ interface IOracleAdapter {
         uint256 periodEnd;
     }
 
-    function setTvl(uint256 value, uint256 period) external;
+    function emergencySetTvl(uint256 value, uint256 period) external;
 
-    function unsetTvl() external;
+    function emergencyUnsetTvl() external;
 
-    function setAssetValue(
+    function emergencySetAssetValue(
         address asset,
         uint256 value,
         uint256 period
     ) external;
 
-    function unsetAssetValue(address asset) external;
+    function emergencyUnsetAssetValue(address asset) external;
 
     function lock() external;
 

@@ -197,7 +197,7 @@ describe("Contract: MetaPoolToken", () => {
         .mint(randomUser.address, tokenAmountToBigNumber(100));
 
       // manually set TVL to zero
-      await oracleAdapter.connect(emergencySafe).setTvl(0, 100);
+      await oracleAdapter.connect(emergencySafe).emergencySetTvl(0, 100);
       await oracleAdapter.connect(emergencySafe).unlock();
 
       const mintAmount = await mApt.calculateMintAmount(

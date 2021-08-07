@@ -198,10 +198,10 @@ describe("Contract: OracleAdapter", () => {
     });
   });
 
-  describe("setTvlSource", () => {
+  describe("emergencySetTvlSource", () => {
     it("Cannot set to non-contract address", async () => {
       await expect(
-        oracleAdapter.connect(emergencySafe).setTvlSource(FAKE_ADDRESS)
+        oracleAdapter.connect(emergencySafe).emergencySetTvlSource(FAKE_ADDRESS)
       ).to.be.revertedWith("INVALID_SOURCE");
     });
 
@@ -209,14 +209,16 @@ describe("Contract: OracleAdapter", () => {
       const dummyContract = await deployMockContract(deployer, []);
       await oracleAdapter
         .connect(emergencySafe)
-        .setTvlSource(dummyContract.address);
+        .emergencySetTvlSource(dummyContract.address);
       expect(await oracleAdapter.tvlSource()).to.equal(dummyContract.address);
     });
 
     it("Revert when unpermissioned calls", async () => {
       const dummyContract = await deployMockContract(deployer, []);
       await expect(
-        oracleAdapter.connect(randomUser).setTvlSource(dummyContract.address)
+        oracleAdapter
+          .connect(randomUser)
+          .emergencySetTvlSource(dummyContract.address)
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
   });
@@ -226,7 +228,9 @@ describe("Contract: OracleAdapter", () => {
       const assets = [FAKE_ADDRESS];
       const sources = [ANOTHER_FAKE_ADDRESS];
       await expect(
-        oracleAdapter.connect(emergencySafe).setAssetSources(assets, sources)
+        oracleAdapter
+          .connect(emergencySafe)
+          .emergencySetAssetSources(assets, sources)
       ).to.be.revertedWith("INVALID_SOURCE");
     });
 
@@ -237,7 +241,7 @@ describe("Contract: OracleAdapter", () => {
 
       await oracleAdapter
         .connect(emergencySafe)
-        .setAssetSources(assets, sources);
+        .emergencySetAssetSources(assets, sources);
       expect(await oracleAdapter.assetSources(FAKE_ADDRESS)).to.equal(
         dummyContract.address
       );
@@ -249,7 +253,9 @@ describe("Contract: OracleAdapter", () => {
       const sources = [dummyContract.address];
 
       await expect(
-        oracleAdapter.connect(randomUser).setAssetSources(assets, sources)
+        oracleAdapter
+          .connect(randomUser)
+          .emergencySetAssetSources(assets, sources)
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
   });
@@ -343,46 +349,47 @@ describe("Contract: OracleAdapter", () => {
     });
   });
 
-  describe("setTvl", () => {
+  describe("emergencySetTvl", () => {
     it("Emergency role can set", async () => {
       const value = 1;
       const period = 5;
-      await expect(oracleAdapter.connect(emergencySafe).setTvl(value, period))
-        .to.not.be.reverted;
+      await expect(
+        oracleAdapter.connect(emergencySafe).emergencySetTvl(value, period)
+      ).to.not.be.reverted;
     });
 
     it("Revert when unpermissioned calls", async () => {
       const value = 1;
       const period = 5;
       await expect(
-        oracleAdapter.connect(randomUser).setTvl(value, period)
+        oracleAdapter.connect(randomUser).emergencySetTvl(value, period)
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
   });
 
-  describe("unsetTvl", () => {
+  describe("emergencyUnsetTvl", () => {
     it("Revert when TVL has not been set", async () => {
       expect(await oracleAdapter.hasTvlOverride()).to.be.false;
-      await expect(oracleAdapter.connect(emergencySafe).unsetTvl()).to.be
-        .reverted;
+      await expect(oracleAdapter.connect(emergencySafe).emergencyUnsetTvl()).to
+        .be.reverted;
     });
 
     it("Emergency role can unset", async () => {
       const value = 1;
       const period = 5;
-      await oracleAdapter.connect(emergencySafe).setTvl(value, period);
+      await oracleAdapter.connect(emergencySafe).emergencySetTvl(value, period);
       expect(await oracleAdapter.hasTvlOverride()).to.be.true;
 
-      await expect(oracleAdapter.connect(emergencySafe).unsetTvl()).to.not.be
-        .reverted;
+      await expect(oracleAdapter.connect(emergencySafe).emergencyUnsetTvl()).to
+        .not.be.reverted;
     });
 
     it("Revert when unpermissioned calls", async () => {
       const value = 1;
       const period = 5;
-      await oracleAdapter.connect(emergencySafe).setTvl(value, period);
+      await oracleAdapter.connect(emergencySafe).emergencySetTvl(value, period);
       await expect(
-        oracleAdapter.connect(randomUser).unsetTvl()
+        oracleAdapter.connect(randomUser).emergencyUnsetTvl()
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
   });
@@ -394,7 +401,7 @@ describe("Contract: OracleAdapter", () => {
       await expect(
         oracleAdapter
           .connect(emergencySafe)
-          .setAssetValue(assetAddress_1, value, period)
+          .emergencySetAssetValue(assetAddress_1, value, period)
       ).to.not.be.reverted;
     });
 
@@ -404,7 +411,7 @@ describe("Contract: OracleAdapter", () => {
       await expect(
         oracleAdapter
           .connect(randomUser)
-          .setAssetValue(assetAddress_1, value, period)
+          .emergencySetAssetValue(assetAddress_1, value, period)
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
   });
@@ -413,7 +420,7 @@ describe("Contract: OracleAdapter", () => {
     it("Revert when asset value has not been set", async () => {
       expect(await oracleAdapter.hasAssetOverride(assetAddress_1)).to.be.false;
       await expect(
-        oracleAdapter.connect(deployer).unsetAssetValue(assetAddress_1)
+        oracleAdapter.connect(deployer).emergencyUnsetAssetValue(assetAddress_1)
       ).to.be.reverted;
     });
 
@@ -422,11 +429,13 @@ describe("Contract: OracleAdapter", () => {
       const period = 5;
       await oracleAdapter
         .connect(emergencySafe)
-        .setAssetValue(assetAddress_1, value, period);
+        .emergencySetAssetValue(assetAddress_1, value, period);
       expect(await oracleAdapter.hasAssetOverride(assetAddress_1)).to.be.true;
 
       await expect(
-        oracleAdapter.connect(emergencySafe).unsetAssetValue(assetAddress_1)
+        oracleAdapter
+          .connect(emergencySafe)
+          .emergencyUnsetAssetValue(assetAddress_1)
       ).to.not.be.reverted;
       expect(await oracleAdapter.hasAssetOverride(assetAddress_1)).to.be.false;
     });
@@ -436,9 +445,11 @@ describe("Contract: OracleAdapter", () => {
       const period = 5;
       await oracleAdapter
         .connect(emergencySafe)
-        .setAssetValue(assetAddress_1, value, period);
+        .emergencySetAssetValue(assetAddress_1, value, period);
       await expect(
-        oracleAdapter.connect(randomUser).unsetAssetValue(assetAddress_1)
+        oracleAdapter
+          .connect(randomUser)
+          .emergencyUnsetAssetValue(assetAddress_1)
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
   });
@@ -556,7 +567,7 @@ describe("Contract: OracleAdapter", () => {
       const activePeriod = 2;
       await oracleAdapter
         .connect(emergencySafe)
-        .setTvl(manualValue, activePeriod); // advances 1 block
+        .emergencySetTvl(manualValue, activePeriod); // advances 1 block
 
       // TVL lock takes precedence over manual submission
       await expect(oracleAdapter.getTvl()).to.be.reverted;
@@ -699,7 +710,7 @@ describe("Contract: OracleAdapter", () => {
       const activePeriod = 2;
       await oracleAdapter
         .connect(emergencySafe)
-        .setAssetValue(assetAddress_1, manualValue, activePeriod); // advances 1 block
+        .emergencySetAssetValue(assetAddress_1, manualValue, activePeriod); // advances 1 block
 
       // TVL lock takes precedence over manual submission
       await expect(oracleAdapter.getAssetPrice(assetAddress_1)).to.be.reverted;

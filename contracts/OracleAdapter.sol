@@ -138,7 +138,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
      * @dev only callable by owner
      * @param addressRegistry_ the address of the registry
      */
-    function setAddressRegistry(address addressRegistry_)
+    function emergencySetAddressRegistry(address addressRegistry_)
         external
         onlyEmergencyRole
     {
@@ -149,7 +149,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
     // MANUAL SUBMISSION SETTERS
     //------------------------------------------------------------
 
-    function setAssetValue(
+    function emergencySetAssetValue(
         address asset,
         uint256 value,
         uint256 period
@@ -158,7 +158,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         submittedAssetValues[asset] = Value(value, block.number.add(period));
     }
 
-    function unsetAssetValue(address asset)
+    function emergencyUnsetAssetValue(address asset)
         external
         override
         onlyEmergencyRole
@@ -170,7 +170,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         submittedAssetValues[asset].periodEnd = block.number;
     }
 
-    function setTvl(uint256 value, uint256 period)
+    function emergencySetTvl(uint256 value, uint256 period)
         external
         override
         onlyEmergencyRole
@@ -179,7 +179,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         submittedTvlValue = Value(value, block.number.add(period));
     }
 
-    function unsetTvl() external override onlyEmergencyRole {
+    function emergencyUnsetTvl() external override onlyEmergencyRole {
         require(submittedTvlValue.periodEnd != 0, "NO_TVL_SET");
         submittedTvlValue.periodEnd = block.number;
     }
@@ -192,7 +192,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
      * @notice Set or replace the TVL source
      * @param source the TVL source address
      */
-    function setTvlSource(address source) external onlyEmergencyRole {
+    function emergencySetTvlSource(address source) external onlyEmergencyRole {
         _setTvlSource(source);
     }
 
@@ -201,10 +201,10 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
      * @param assets the array of assets token addresses
      * @param sources the array of price sources (aggregators)
      */
-    function setAssetSources(address[] memory assets, address[] memory sources)
-        external
-        onlyEmergencyRole
-    {
+    function emergencySetAssetSources(
+        address[] memory assets,
+        address[] memory sources
+    ) external onlyEmergencyRole {
         _setAssetSources(assets, sources);
     }
 
@@ -213,7 +213,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
      * @param asset asset token address
      * @param source the price source (aggregator)
      */
-    function setAssetSource(address asset, address source)
+    function emergencySetAssetSource(address asset, address source)
         external
         onlyEmergencyRole
     {

@@ -479,7 +479,9 @@ describe("Contract: PoolToken", () => {
 
           async function updateTvlAgg(usdDeployedValue) {
             if (usdDeployedValue.isZero()) {
-              await oracleAdapter.connect(emergencySafe).setTvl(0, 100);
+              await oracleAdapter
+                .connect(emergencySafe)
+                .emergencySetTvl(0, 100);
             }
             const lastRoundId = await tvlAgg.latestRound();
             const newRoundId = lastRoundId.add(1);
