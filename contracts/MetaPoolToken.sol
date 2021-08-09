@@ -137,7 +137,10 @@ contract MetaPoolToken is
     // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual onlyAdmin {}
 
-    function setAdminAddress(address adminAddress) external onlyEmergencyRole {
+    function emergencySetAdminAddress(address adminAddress)
+        external
+        onlyEmergencyRole
+    {
         _setAdminAddress(adminAddress);
     }
 
@@ -152,7 +155,7 @@ contract MetaPoolToken is
      * @dev only callable by owner
      * @param addressRegistry_ the address of the registry
      */
-    function setAddressRegistry(address addressRegistry_)
+    function emergencySetAddressRegistry(address addressRegistry_)
         external
         onlyEmergencyRole
     {

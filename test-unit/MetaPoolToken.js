@@ -184,21 +184,46 @@ describe("Contract: MetaPoolToken", () => {
     });
   });
 
-  describe("Set admin address", () => {
+  describe("emergencySetAddressRegistry", () => {
     it("Emergency Safe can set to valid address", async () => {
-      await mApt.connect(emergencySafe).setAdminAddress(randomUser.address);
+      const contractAddress = (await deployMockContract(deployer, [])).address;
+      await mApt
+        .connect(emergencySafe)
+        .emergencySetAddressRegistry(contractAddress);
+      expect(await mApt.addressRegistry()).to.equal(contractAddress);
+    });
+
+    it("Revert when unpermissioned attempts to set", async () => {
+      const contractAddress = (await deployMockContract(deployer, [])).address;
+      await expect(
+        mApt.connect(randomUser).emergencySetAddressRegistry(contractAddress)
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
+    });
+
+    it("Cannot set to non-contract address", async () => {
+      await expect(
+        mApt.connect(emergencySafe).emergencySetAddressRegistry(FAKE_ADDRESS)
+      ).to.be.revertedWith("INVALID_ADDRESS");
+    });
+  });
+
+  describe("emergencySetAdminAddress", () => {
+    it("Emergency Safe can set to valid address", async () => {
+      await mApt
+        .connect(emergencySafe)
+        .emergencySetAdminAddress(randomUser.address);
       expect(await mApt.proxyAdmin()).to.equal(randomUser.address);
     });
 
     it("Revert when unpermissioned attempts to set", async () => {
       await expect(
-        mApt.connect(randomUser).setAdminAddress(FAKE_ADDRESS)
+        mApt.connect(randomUser).emergencySetAdminAddress(FAKE_ADDRESS)
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
 
     it("Cannot set to zero address", async () => {
       await expect(
-        mApt.connect(emergencySafe).setAdminAddress(ZERO_ADDRESS)
+        mApt.connect(emergencySafe).emergencySetAdminAddress(ZERO_ADDRESS)
       ).to.be.revertedWith("INVALID_ADMIN");
     });
   });
