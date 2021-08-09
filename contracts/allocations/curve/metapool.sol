@@ -38,7 +38,7 @@ contract MetaPoolAllocationBase {
         IMetaPool metaPool,
         ILiquidityGauge gauge,
         uint256 coin
-    ) external view returns (uint256 balance) {
+    ) public view returns (uint256 balance) {
         require(address(metaPool) != address(0), "INVALID_POOL");
         require(address(gauge) != address(0), "INVALID_GAUGE");
 
