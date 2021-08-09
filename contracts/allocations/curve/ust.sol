@@ -8,25 +8,21 @@ import {ImmutableAssetAllocation} from "../../ImmutableAssetAllocation.sol";
 import {IMetaPool} from "./interfaces/IMetaPool.sol";
 import {ILiquidityGauge} from "./interfaces/ILiquidityGauge.sol";
 import {MetaPoolAllocationBase} from "./metapool.sol";
+import {Curve3PoolUnderlyerConstants} from "./3pool.sol";
 
-contract CurveUstConstants {
-    // TODO: update for UST-3CRV pool
+contract CurveUstConstants is Curve3PoolUnderlyerConstants {
     address public constant META_POOL_ADDRESS =
-        0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
+        0x890f4e345B1dAED0367A877a1612f86A1f86985f;
+    // sometimes a metapool is its own LP token; otherwise,
+    // you can obtain from `token` attribute
+    address public constant LP_TOKEN_ADDRESS =
+        0x94e131324b6054c0D789b190b2dAC504e4361b53;
     address public constant LIQUIDITY_GAUGE_ADDRESS =
-        0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A;
+        0x3B7020743Bc2A4ca9EaF9D0722d42E20d6935855;
 
     // metapool primary underlyer
     address public constant UST_ADDRESS =
         0xa47c8bf37f92aBed4A126BDA807A7b7498661acD;
-
-    // 3Pool underlyer addresses
-    address public constant DAI_ADDRESS =
-        0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    address public constant USDC_ADDRESS =
-        0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    address public constant USDT_ADDRESS =
-        0xdAC17F958D2ee523a2206206994597C13D831ec7;
 }
 
 contract CurveUstAllocation is
@@ -45,6 +41,7 @@ contract CurveUstAllocation is
                 account,
                 IMetaPool(META_POOL_ADDRESS),
                 ILiquidityGauge(LIQUIDITY_GAUGE_ADDRESS),
+                IERC20(LP_TOKEN_ADDRESS),
                 uint256(tokenIndex)
             );
     }

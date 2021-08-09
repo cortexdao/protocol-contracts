@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @notice the Curve metapool contract
- * @dev A metapool is its own LP token
+ * @dev A metapool is sometimes its own LP token
  */
 interface IMetaPool is IERC20 {
     /// @dev 1st coin is the protocol token, 2nd is the Curve base pool

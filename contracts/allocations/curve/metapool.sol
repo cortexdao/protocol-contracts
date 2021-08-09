@@ -37,14 +37,16 @@ contract MetaPoolAllocationBase {
         address account,
         IMetaPool metaPool,
         ILiquidityGauge gauge,
+        IERC20 lpToken,
         uint256 coin
     ) public view returns (uint256 balance) {
         require(address(metaPool) != address(0), "INVALID_POOL");
         require(address(gauge) != address(0), "INVALID_GAUGE");
+        require(address(lpToken) != address(0), "INVALID_LP_TOKEN");
 
         uint256 poolBalance = getPoolBalance(metaPool, coin);
         (uint256 lpTokenBalance, uint256 lpTokenSupply) =
-            getLpTokenShare(account, metaPool, gauge);
+            getLpTokenShare(account, metaPool, gauge, lpToken);
 
         balance = lpTokenBalance.mul(poolBalance).div(lpTokenSupply);
     }
@@ -68,13 +70,15 @@ contract MetaPoolAllocationBase {
     function getLpTokenShare(
         address account,
         IMetaPool metaPool,
-        ILiquidityGauge gauge
+        ILiquidityGauge gauge,
+        IERC20 lpToken
     ) public view returns (uint256 balance, uint256 totalSupply) {
         require(address(metaPool) != address(0), "INVALID_POOL");
         require(address(gauge) != address(0), "INVALID_GAUGE");
+        require(address(lpToken) != address(0), "INVALID_LP_TOKEN");
 
-        totalSupply = metaPool.totalSupply();
-        balance = metaPool.balanceOf(account);
+        totalSupply = lpToken.totalSupply();
+        balance = lpToken.balanceOf(account);
         balance = balance.add(gauge.balanceOf(account));
     }
 }
