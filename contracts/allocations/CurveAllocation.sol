@@ -87,16 +87,6 @@ contract Curve3PoolAllocation is CurveAllocationBase, ImmutableAssetAllocation {
     address public constant USDT_ADDRESS =
         0xdAC17F958D2ee523a2206206994597C13D831ec7;
 
-    constructor() public ImmutableAssetAllocation(_getTokenData()) {} // solhint-disable-line no-empty-blocks
-
-    function _getTokenData() internal returns (TokenData[] memory) {
-        TokenData[] memory tokens = new TokenData[](3);
-        tokens[0] = TokenData(DAI_ADDRESS, "DAI", 18);
-        tokens[1] = TokenData(USDC_ADDRESS, "USDC", 6);
-        tokens[2] = TokenData(USDT_ADDRESS, "USDT", 6);
-        return tokens;
-    }
-
     function balanceOf(address account, uint8 tokenIndex)
         public
         view
@@ -111,5 +101,18 @@ contract Curve3PoolAllocation is CurveAllocationBase, ImmutableAssetAllocation {
                 IERC20(LP_TOKEN_ADDRESS),
                 uint256(tokenIndex)
             );
+    }
+
+    function _getTokenData()
+        internal
+        pure
+        override
+        returns (TokenData[] memory)
+    {
+        TokenData[] memory tokens = new TokenData[](3);
+        tokens[0] = TokenData(DAI_ADDRESS, "DAI", 18);
+        tokens[1] = TokenData(USDC_ADDRESS, "USDC", 6);
+        tokens[2] = TokenData(USDT_ADDRESS, "USDT", 6);
+        return tokens;
     }
 }

@@ -67,8 +67,6 @@ interface IAaveLendingPool {
  */
 contract AaveAllocationBase {
     using SafeMath for uint256;
-    address public constant LENDING_POOL_ADDRESS =
-        0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9;
 
     /**
      * @notice Returns the balance of an underlying token represented by
@@ -78,7 +76,7 @@ contract AaveAllocationBase {
      * @return balance
      */
     function getUnderlyerBalance(address account, IERC20 aToken)
-        external
+        public
         view
         returns (uint256)
     {
@@ -97,22 +95,26 @@ contract AaveDaiAllocation is AaveAllocationBase, ImmutableAssetAllocation {
     address public constant AUSDT_ADDRESS =
         0x3Ed3B47Dd13EC9a98b44e6204A523E766B225811;
 
-    constructor() public ImmutableAssetAllocation(_getTokenData()) {} // solhint-disable-line no-empty-blocks
-
-    function _getTokenData() internal pure returns (TokenData[] memory) {
-        TokenData[] memory tokens = new TokenData[](3);
-        tokens[0] = TokenData(ADAI_ADDRESS, "DAI", 18);
-        tokens[1] = TokenData(AUSDC_ADDRESS, "USDC", 6);
-        tokens[2] = TokenData(AUSDT_ADDRESS, "USDT", 6);
-        return tokens;
-    }
-
     function balanceOf(address account, uint8 tokenIndex)
         external
         view
         override
         returns (uint256)
     {
-        return IERC20(addressOf(tokenIndex)).balanceOf(account);
+        IERC20 aToken = IERC20(addressOf(tokenIndex));
+        return super.getUnderlyerBalance(account, aToken);
+    }
+
+    function _getTokenData()
+        internal
+        pure
+        override
+        returns (TokenData[] memory)
+    {
+        TokenData[] memory tokens = new TokenData[](3);
+        tokens[0] = TokenData(ADAI_ADDRESS, "DAI", 18);
+        tokens[1] = TokenData(AUSDC_ADDRESS, "USDC", 6);
+        tokens[2] = TokenData(AUSDT_ADDRESS, "USDT", 6);
+        return tokens;
     }
 }

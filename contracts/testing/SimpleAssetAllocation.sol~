@@ -9,7 +9,7 @@ contract TestImmutableAssetAllocation is ImmutableAssetAllocation {
         return _getTokenData();
     }
 
-    // solhint-disable-next-line no-unused-vars
+    /** solhint-disable */
     function balanceOf(address account, uint8 tokenIndex)
         external
         view
@@ -18,6 +18,8 @@ contract TestImmutableAssetAllocation is ImmutableAssetAllocation {
     {
         return 42;
     }
+
+    /** solhint-enable */
 
     function _getTokenData()
         internal
@@ -39,7 +41,6 @@ contract TestImmutableAssetAllocation is ImmutableAssetAllocation {
         return tokens_;
     }
 
-    // solhint-disable-next-line no-unused-vars
     function _validateTokenAddress(address token) internal view override {
         return;
     }

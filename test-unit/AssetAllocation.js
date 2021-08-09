@@ -1,35 +1,18 @@
 const { expect } = require("chai");
 const hre = require("hardhat");
-const { ethers, waffle } = hre;
-const { deployMockContract } = waffle;
+const { ethers } = hre;
 const timeMachine = require("ganache-time-traveler");
 const { FAKE_ADDRESS } = require("../utils/helpers");
 
-async function generateContractAddress(signer) {
-  const mockContract = await deployMockContract(signer, []);
-  return mockContract.address;
-}
-
 describe("Contract: AssetAllocation", () => {
   // contract factories
-  let SimpleAssetAllocation;
+  let ImmutableAssetAllocation;
 
   // deployed contracts
-  let assetAllocation;
+  let allocation;
 
   // use EVM snapshots for test isolation
   let snapshotId;
-
-  const token_0 = {
-    token: undefined,
-    symbol: "TOKEN",
-    decimals: 6,
-  };
-  const token_1 = {
-    token: undefined,
-    symbol: "ANOTHER_TOKEN",
-    decimals: 18,
-  };
 
   beforeEach(async () => {
     let snapshot = await timeMachine.takeSnapshot();
@@ -41,25 +24,16 @@ describe("Contract: AssetAllocation", () => {
   });
 
   before(async () => {
-    const [deployer] = await ethers.getSigners();
-    token_0.token = await generateContractAddress(deployer);
-    token_1.token = await generateContractAddress(deployer);
-
-    SimpleAssetAllocation = await ethers.getContractFactory(
-      "SimpleAssetAllocation"
+    ImmutableAssetAllocation = await ethers.getContractFactory(
+      "TestImmutableAssetAllocation"
     );
-    assetAllocation = await SimpleAssetAllocation.deploy([token_0, token_1]);
+    allocation = await ImmutableAssetAllocation.deploy();
   });
 
   describe("Constructor", () => {
-    it("Can call constructor with no tokens", async () => {
-      const assetAllocation = await SimpleAssetAllocation.deploy([]);
-      expect(await assetAllocation.tokens()).to.be.empty;
-    });
-
     it("Constructor populates tokens correctly", async () => {
-      const result = await assetAllocation.tokens();
-      const expectedTokens = [token_0, token_1];
+      const result = await allocation.tokens();
+      const expectedTokens = await allocation.testGetTokenData();
       // have to check in this cumbersome manner rather than a deep
       // equal, because Ethers returns each struct as an *array*
       // with struct fields set as properties
@@ -73,18 +47,24 @@ describe("Contract: AssetAllocation", () => {
   });
 
   describe("View functions read token info correctly", () => {
+    let tokens;
+
+    before(async () => {
+      tokens = await allocation.tokens();
+    });
+
     it("symbolOf", async () => {
-      expect(await assetAllocation.symbolOf(0)).to.equal(token_0.symbol);
-      expect(await assetAllocation.symbolOf(1)).to.equal(token_1.symbol);
+      expect(await allocation.symbolOf(0)).to.equal(tokens[0].symbol);
+      expect(await allocation.symbolOf(1)).to.equal(tokens[1].symbol);
     });
 
     it("decimalsOf", async () => {
-      expect(await assetAllocation.decimalsOf(0)).to.equal(token_0.decimals);
-      expect(await assetAllocation.decimalsOf(1)).to.equal(token_1.decimals);
+      expect(await allocation.decimalsOf(0)).to.equal(tokens[0].decimals);
+      expect(await allocation.decimalsOf(1)).to.equal(tokens[1].decimals);
     });
 
     it("balanceOf", async () => {
-      expect(await assetAllocation.balanceOf(FAKE_ADDRESS, 0)).to.equal(42);
+      expect(await allocation.balanceOf(FAKE_ADDRESS, 0)).to.equal(42);
     });
   });
 });
