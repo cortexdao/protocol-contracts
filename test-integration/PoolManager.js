@@ -602,7 +602,7 @@ describe("Contract: PoolManager", () => {
       expect(await mApt.totalSupply()).to.be.gt(0);
 
       // adjust the TVL appropriately, as there is no Chainlink to update it
-      await oracleAdapter.connect(emergencySafe).unlock(); // needed to get value
+      await oracleAdapter.connect(emergencySafe).emergencyUnlock(); // needed to get value
       const tvl = await daiPool.getValueFromUnderlyerAmount(daiAmount);
       await oracleAdapter.connect(emergencySafe).emergencySetTvl(tvl, 100);
 
@@ -649,7 +649,7 @@ describe("Contract: PoolManager", () => {
       expect(await mApt.totalSupply()).to.be.gt(0);
 
       // adjust the TVL appropriately, as there is no Chainlink to update it
-      await oracleAdapter.connect(emergencySafe).unlock(); // needed to get value
+      await oracleAdapter.connect(emergencySafe).emergencyUnlock(); // needed to get value
       const daiValue = await daiPool.getValueFromUnderlyerAmount(daiAmount);
       const usdcValue = await usdcPool.getValueFromUnderlyerAmount(usdcAmount);
       const usdtValue = await usdtPool.getValueFromUnderlyerAmount(usdtAmount);
@@ -743,7 +743,7 @@ describe("Contract: PoolManager", () => {
       await poolManager.testRebalanceReserves([
         { poolId: bytes32("daiPool"), amount: amount.mul(-2) },
       ]);
-      await oracleAdapter.connect(emergencySafe).unlock();
+      await oracleAdapter.connect(emergencySafe).emergencyUnlock();
 
       await expect(
         poolManager
@@ -752,7 +752,7 @@ describe("Contract: PoolManager", () => {
             { poolId: bytes32("daiPool"), amount: amount },
           ])
       ).to.not.be.reverted;
-      await oracleAdapter.connect(emergencySafe).unlock();
+      await oracleAdapter.connect(emergencySafe).emergencyUnlock();
 
       await daiToken.connect(lpSafe).approve(poolManager.address, 0);
 
@@ -772,7 +772,7 @@ describe("Contract: PoolManager", () => {
       ]);
 
       // adjust the TVL appropriately, as there is no Chainlink to update it
-      await oracleAdapter.connect(emergencySafe).unlock(); // needed to get value
+      await oracleAdapter.connect(emergencySafe).emergencyUnlock(); // needed to get value
       const tvl = await daiPool.getValueFromUnderlyerAmount(transferAmount);
       await oracleAdapter.connect(emergencySafe).emergencySetTvl(tvl, 100);
 
@@ -813,7 +813,7 @@ describe("Contract: PoolManager", () => {
       ]);
 
       // adjust the TVL appropriately, as there is no Chainlink to update it
-      await oracleAdapter.connect(emergencySafe).unlock(); // needed to get value
+      await oracleAdapter.connect(emergencySafe).emergencyUnlock(); // needed to get value
       const daiValue = await daiPool.getValueFromUnderlyerAmount(
         daiTransferAmount
       );
@@ -925,7 +925,7 @@ describe("Contract: PoolManager", () => {
       totalTransferred = totalTransferred.add(transferAmount);
 
       // adjust the tvl appropriately, as there is no chainlink to update it
-      await oracleAdapter.connect(emergencySafe).unlock(); // needed to get value
+      await oracleAdapter.connect(emergencySafe).emergencyUnlock(); // needed to get value
       let tvl = await daiPool.getValueFromUnderlyerAmount(transferAmount);
       await oracleAdapter.connect(emergencySafe).emergencySetTvl(tvl, 100);
 
@@ -933,7 +933,7 @@ describe("Contract: PoolManager", () => {
       await poolManager.testRebalanceReserves([
         { poolId: bytes32("daiPool"), amount: transferAmount.mul(-1) },
       ]);
-      await oracleAdapter.connect(emergencySafe).unlock();
+      await oracleAdapter.connect(emergencySafe).emergencyUnlock();
       totalTransferred = totalTransferred.add(transferAmount);
 
       await expect(
@@ -955,7 +955,7 @@ describe("Contract: PoolManager", () => {
       totalTransferred = totalTransferred.add(transferAmount);
 
       // adjust the tvl appropriately, as there is no chainlink to update it
-      await oracleAdapter.connect(emergencySafe).unlock(); // needed to get value
+      await oracleAdapter.connect(emergencySafe).emergencyUnlock(); // needed to get value
       let tvl = await daiPool.getValueFromUnderlyerAmount(totalTransferred);
       await oracleAdapter.connect(emergencySafe).emergencySetTvl(tvl, 100);
 
@@ -963,11 +963,11 @@ describe("Contract: PoolManager", () => {
       await poolManager.testRebalanceReserves([
         { poolId: bytes32("daiPool"), amount: transferAmount.mul(-1) },
       ]);
-      await oracleAdapter.connect(emergencySafe).unlock();
+      await oracleAdapter.connect(emergencySafe).emergencyUnlock();
       totalTransferred = totalTransferred.add(transferAmount);
 
       // adjust the tvl appropriately, as there is no chainlink to update it
-      await oracleAdapter.connect(emergencySafe).unlock(); // needed to get value
+      await oracleAdapter.connect(emergencySafe).emergencyUnlock(); // needed to get value
       tvl = await daiPool.getValueFromUnderlyerAmount(totalTransferred);
       await oracleAdapter.connect(emergencySafe).emergencySetTvl(tvl, 100);
 
@@ -989,7 +989,7 @@ describe("Contract: PoolManager", () => {
       ]);
 
       // adjust the TVL appropriately, as there is no Chainlink to update it
-      await oracleAdapter.connect(emergencySafe).unlock(); // needed to get value
+      await oracleAdapter.connect(emergencySafe).emergencyUnlock(); // needed to get value
       const usdcValue = await usdcPool.getValueFromUnderlyerAmount(
         usdcTransferAmount
       );

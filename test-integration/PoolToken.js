@@ -497,7 +497,7 @@ describe("Contract: PoolToken", () => {
               .connect(poolManagerSigner)
               .mint(poolToken.address, mAptSupply);
             await updateTvlAgg(deployedValue);
-            await oracleAdapter.connect(emergencySafe).unlock();
+            await oracleAdapter.connect(emergencySafe).emergencyUnlock();
           });
 
           describe("Underlyer and mAPT integration with calculations", () => {
@@ -621,7 +621,7 @@ describe("Contract: PoolToken", () => {
                 .connect(poolManagerSigner)
                 .burn(poolToken.address, mAptSupply.div(4));
               // unlock oracle adapter after mint/burn
-              await oracleAdapter.connect(emergencySafe).unlock();
+              await oracleAdapter.connect(emergencySafe).emergencyUnlock();
               // must update agg so staleness check passes
               await updateTvlAgg(deployedValue);
               expect(await poolToken.getDeployedValue()).to.equal(
@@ -636,7 +636,7 @@ describe("Contract: PoolToken", () => {
                 .connect(poolManagerSigner)
                 .burn(poolToken.address, mAptSupply.div(4));
               // unlock oracle adapter after mint/burn
-              await oracleAdapter.connect(emergencySafe).unlock();
+              await oracleAdapter.connect(emergencySafe).emergencyUnlock();
               // must update agg so staleness check passes
               await updateTvlAgg(deployedValue);
               expect(await poolToken.getDeployedValue()).to.equal(

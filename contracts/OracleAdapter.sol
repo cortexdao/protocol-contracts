@@ -123,7 +123,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         _lockFor(defaultLockPeriod);
     }
 
-    function unlock() external override onlyEmergencyRole {
+    function emergencyUnlock() external override onlyEmergencyRole {
         _lockFor(0);
     }
 

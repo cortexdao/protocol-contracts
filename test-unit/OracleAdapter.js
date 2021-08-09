@@ -413,16 +413,16 @@ describe("Contract: OracleAdapter", () => {
     });
   });
 
-  describe("unlock", () => {
+  describe("emergencyUnlock", () => {
     it("Revert when non-permissioned calls", async () => {
       await expect(
-        oracleAdapter.connect(randomUser).unlock()
+        oracleAdapter.connect(randomUser).emergencyUnlock()
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
 
     it("Emergency role can call", async () => {
-      await expect(oracleAdapter.connect(emergencySafe).unlock()).to.not.be
-        .reverted;
+      await expect(oracleAdapter.connect(emergencySafe).emergencyUnlock()).to
+        .not.be.reverted;
     });
   });
 
@@ -648,7 +648,7 @@ describe("Contract: OracleAdapter", () => {
 
       await expect(oracleAdapter.getTvl()).to.be.revertedWith("ORACLE_LOCKED");
 
-      await oracleAdapter.connect(emergencySafe).unlock();
+      await oracleAdapter.connect(emergencySafe).emergencyUnlock();
       await expect(oracleAdapter.getTvl()).to.not.be.reverted;
     });
 
@@ -676,7 +676,7 @@ describe("Contract: OracleAdapter", () => {
       // TVL lock takes precedence over manual submission
       await expect(oracleAdapter.getTvl()).to.be.reverted;
 
-      await oracleAdapter.connect(emergencySafe).unlock(); // unlock; advances 1 block
+      await oracleAdapter.connect(emergencySafe).emergencyUnlock(); // advances 1 block
       // Manual submission takes precedence over Chainlink
       expect(await oracleAdapter.getTvl()).to.equal(manualValue);
 
@@ -788,7 +788,7 @@ describe("Contract: OracleAdapter", () => {
         oracleAdapter.getAssetPrice(assetAddress_1)
       ).to.be.revertedWith("ORACLE_LOCKED");
 
-      await oracleAdapter.connect(emergencySafe).unlock();
+      await oracleAdapter.connect(emergencySafe).emergencyUnlock();
       await expect(oracleAdapter.getAssetPrice(assetAddress_1)).to.not.be
         .reverted;
     });
@@ -819,7 +819,7 @@ describe("Contract: OracleAdapter", () => {
       // TVL lock takes precedence over manual submission
       await expect(oracleAdapter.getAssetPrice(assetAddress_1)).to.be.reverted;
 
-      await oracleAdapter.connect(emergencySafe).unlock(); // unlock; advances 1 block
+      await oracleAdapter.connect(emergencySafe).emergencyUnlock(); // advances 1 block
       // Manual submission takes precedence over Chainlink
       expect(await oracleAdapter.getAssetPrice(assetAddress_1)).to.equal(
         manualValue

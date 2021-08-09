@@ -179,7 +179,7 @@ describe("Contract: MetaPoolToken", () => {
       await tvlAgg.connect(oracle).submit(1, tvl);
 
       const expectedEthValue = tvl.mul(balance).div(totalSupply);
-      await oracleAdapter.connect(emergencySafe).unlock();
+      await oracleAdapter.connect(emergencySafe).emergencyUnlock();
       expect(await mApt.getDeployedValue(FAKE_ADDRESS)).to.equal(
         expectedEthValue
       );
@@ -198,7 +198,7 @@ describe("Contract: MetaPoolToken", () => {
 
       // manually set TVL to zero
       await oracleAdapter.connect(emergencySafe).emergencySetTvl(0, 100);
-      await oracleAdapter.connect(emergencySafe).unlock();
+      await oracleAdapter.connect(emergencySafe).emergencyUnlock();
 
       const mintAmount = await mApt.calculateMintAmount(
         usdcAmount,
@@ -236,7 +236,7 @@ describe("Contract: MetaPoolToken", () => {
       const totalSupply = tokenAmountToBigNumber(21);
       await mApt.connect(poolManager).mint(randomUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
-      await oracleAdapter.connect(emergencySafe).unlock();
+      await oracleAdapter.connect(emergencySafe).emergencyUnlock();
 
       let mintAmount = await mApt.calculateMintAmount(
         usdcAmount,
@@ -264,7 +264,7 @@ describe("Contract: MetaPoolToken", () => {
       const totalSupply = tokenAmountToBigNumber(21);
       await mApt.connect(poolManager).mint(randomUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
-      await oracleAdapter.connect(emergencySafe).unlock();
+      await oracleAdapter.connect(emergencySafe).emergencyUnlock();
 
       let poolAmount = await mApt.calculatePoolAmount(
         totalSupply,
@@ -301,7 +301,7 @@ describe("Contract: MetaPoolToken", () => {
       let expectedPoolAmount = expectedPoolValue.mul(usdc(1)).div(usdcUsdPrice);
       await mApt.connect(poolManager).mint(randomUser.address, totalSupply);
       await tvlAgg.connect(oracle).submit(1, tvl);
-      await oracleAdapter.connect(emergencySafe).unlock();
+      await oracleAdapter.connect(emergencySafe).emergencyUnlock();
 
       let poolAmount = await mApt.calculatePoolAmount(
         mAptAmount,
