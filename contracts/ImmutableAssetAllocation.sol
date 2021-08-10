@@ -8,9 +8,12 @@ import {AssetAllocationBase} from "./AssetAllocationBase.sol";
 abstract contract ImmutableAssetAllocation is AssetAllocationBase {
     using Address for address;
 
+    constructor() public {
+        _validateTokens(_getTokenData());
+    }
+
     function tokens() public view override returns (TokenData[] memory) {
         TokenData[] memory tokens_ = _getTokenData();
-        _validateTokens(tokens_);
         return tokens_;
     }
 
