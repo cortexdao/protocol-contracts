@@ -3,7 +3,7 @@ pragma solidity 0.6.11;
 
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {CurveAllocationBase} from "./Curve.sol";
+import {Curve3PoolAllocation} from "./3pool.sol";
 import {IMetaPool} from "./interfaces/IMetaPool.sol";
 import {IStableSwap} from "./interfaces/IStableSwap.sol";
 import {ILiquidityGauge} from "./interfaces/ILiquidityGauge.sol";
@@ -21,9 +21,11 @@ contract MetaPoolAllocationBase {
     using SafeMath for uint256;
 
     /// @dev all existing Curve metapools are paired with 3Pool
-    IStableSwap public curve3Pool;
-    ILiquidityGauge public curve3PoolGauge;
-    CurveAllocationBase public curveAllocationBase;
+    Curve3PoolAllocation public curve3PoolAllocation;
+
+    constructor(address curve3PoolAllocation_) public {
+        curve3PoolAllocation = Curve3PoolAllocation(curve3PoolAllocation_);
+    }
 
     /**
      * @notice Returns the balance of an underlying token represented by
@@ -57,18 +59,12 @@ contract MetaPoolAllocationBase {
         returns (uint256)
     {
         require(address(metaPool) != address(0), "INVALID_POOL");
+        require(coin < 256, "INVALID_COIN");
         if (coin == 0) {
             return metaPool.balances(0);
         }
         coin -= 1;
-        return
-            curveAllocationBase.getUnderlyerBalance(
-                address(metaPool),
-                curve3Pool,
-                curve3PoolGauge,
-                metaPool,
-                coin
-            );
+        return curve3PoolAllocation.balanceOf(address(metaPool), uint8(coin));
     }
 
     function getLpTokenShare(

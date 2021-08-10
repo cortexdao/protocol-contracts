@@ -30,6 +30,11 @@ contract CurveUstAllocation is
     ImmutableAssetAllocation,
     CurveUstConstants
 {
+    constructor(address curve3PoolAllocation_)
+        public
+        MetaPoolAllocationBase(curve3PoolAllocation_)
+    {} // solhint-disable-line no-empty-blocks
+
     function balanceOf(address account, uint8 tokenIndex)
         public
         view
