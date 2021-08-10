@@ -15,11 +15,6 @@ const IStableSwap = artifacts.readArtifactSync("IStableSwap");
 const IMetaPool = artifacts.readArtifactSync("IMetaPool");
 const ILiquidityGauge = artifacts.readArtifactSync("ILiquidityGauge");
 
-// 3Pool addresses:
-const BASE_POOL_ADDRESS = "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7";
-const BASE_LP_TOKEN_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
-const BASE_GAUGE_ADDRESS = "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A";
-
 // USDT Metapool addresses
 const META_POOL_ADDRESS = "0x890f4e345B1dAED0367A877a1612f86A1f86985f";
 //// sometimes a metapool is its own LP token; otherwise,
@@ -27,8 +22,14 @@ const META_POOL_ADDRESS = "0x890f4e345B1dAED0367A877a1612f86A1f86985f";
 const LP_TOKEN_ADDRESS = "0x94e131324b6054c0D789b190b2dAC504e4361b53";
 const LIQUIDITY_GAUGE_ADDRESS = "0x3B7020743Bc2A4ca9EaF9D0722d42E20d6935855";
 
+// 3Pool addresses:
+const BASE_POOL_ADDRESS = "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7";
+const BASE_LP_TOKEN_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
+
 // metapool primary underlyer
 const UST_ADDRESS = "0xa47c8bf37f92aBed4A126BDA807A7b7498661acD";
+// uniswap MIR_UST pool
+const UST_WHALE_ADDRESS = "0x87dA823B6fC8EB8575a235A824690fda94674c88";
 
 describe("Contract: MetaPoolAllocationBase", () => {
   // signers
@@ -67,15 +68,15 @@ describe("Contract: MetaPoolAllocationBase", () => {
   });
 
   describe("getUnderlyerBalance", () => {
-    let basePool;
-    let baseLpToken;
-    let baseGauge;
+    // UST metapool
     let metaPool;
     let lpToken;
     let gauge;
+    // 3Pool is the base pool
+    let basePool;
+    let baseLpToken;
 
-    const coinIndex = 0;
-    const stablecoins = {};
+    const coins = {};
 
     before("Setup contracts", async () => {
       baseLpToken = await ethers.getContractAt(
@@ -83,10 +84,6 @@ describe("Contract: MetaPoolAllocationBase", () => {
         BASE_LP_TOKEN_ADDRESS
       );
       basePool = await ethers.getContractAt(IStableSwap.abi, BASE_POOL_ADDRESS);
-      baseGauge = await ethers.getContractAt(
-        ILiquidityGauge.abi,
-        BASE_GAUGE_ADDRESS
-      );
 
       metaPool = await ethers.getContractAt(IMetaPool.abi, META_POOL_ADDRESS);
       lpToken = await ethers.getContractAt(
@@ -102,29 +99,31 @@ describe("Contract: MetaPoolAllocationBase", () => {
     beforeEach("Fund LP Safe with tokens", async () => {
       for (const symbol of ["DAI", "USDC", "USDT"]) {
         const stablecoinAddress = getStablecoinAddress(symbol, "MAINNET");
-        stablecoins[symbol] = await ethers.getContractAt(
-          "IDetailedERC20UpgradeSafe",
+        coins[symbol] = await ethers.getContractAt(
+          "IDetailedERC20",
           stablecoinAddress
         );
-      }
-
-      for (const symbol of Object.keys(stablecoins)) {
-        const token = stablecoins[symbol];
+        const token = coins[symbol];
         const decimals = await token.decimals();
         const amount = tokenAmountToBigNumber("10000", decimals);
         const sender = STABLECOIN_POOLS[symbol];
         await acquireToken(sender, lpSafe, token, amount, deployer);
       }
+      coins["UST"] = await ethers.getContractAt("IDetailedERC20", UST_ADDRESS);
+      const token = coins["UST"];
+      const decimals = await token.decimals();
+      const amount = tokenAmountToBigNumber("10000", decimals);
+      const sender = UST_WHALE_ADDRESS;
+      await acquireToken(sender, lpSafe, token, amount, deployer);
     });
 
     it.only("Get underlyer balance from account holding", async () => {
-      // deposit into 3Pool
       const daiAmount = tokenAmountToBigNumber("1000", 18);
       const daiIndex = 1;
       const minAmount = 0;
-      await stablecoins["DAI"]
-        .connect(lpSafe)
-        .approve(basePool.address, MAX_UINT256);
+
+      // deposit into 3Pool
+      await coins["DAI"].connect(lpSafe).approve(basePool.address, MAX_UINT256);
       await basePool
         .connect(lpSafe)
         .add_liquidity([daiAmount, "0", "0"], minAmount);
@@ -147,14 +146,8 @@ describe("Contract: MetaPoolAllocationBase", () => {
       const lpTotalSupply = await lpToken.totalSupply();
       baseLpBalance = lpBalance.mul(metaPoolBaseLpBalance).div(lpTotalSupply);
 
-      // better to recalculate this to avoid early truncation
-      // const expectedBalance = baseLpBalance
-      //   .mul(basePoolDaiBalance)
-      //  .div(basePoolLpTotalSupply);
-      const expectedBalance = lpBalance
-        .mul(metaPoolBaseLpBalance)
+      const expectedBalance = baseLpBalance
         .mul(basePoolDaiBalance)
-        .div(lpTotalSupply)
         .div(basePoolLpTotalSupply);
       expect(expectedBalance).to.be.gt(0);
 
@@ -171,14 +164,44 @@ describe("Contract: MetaPoolAllocationBase", () => {
       );
     });
 
+    it.only("Get underlyer balance from account holding", async () => {
+      const ustAmount = tokenAmountToBigNumber("1000", 18);
+      const ustIndex = 0;
+      const minAmount = 0;
+
+      // deposit UST into metapool
+      await coins["UST"].connect(lpSafe).approve(metaPool.address, MAX_UINT256);
+      await metaPool.connect(lpSafe).add_liquidity([ustAmount, "0"], minAmount);
+
+      // update LP Safe's base pool LP balance after depositing
+      // into the metapool, which will swap for some primary underlyer
+      const metaPoolUstBalance = await metaPool.balances(ustIndex);
+      const lpBalance = await lpToken.balanceOf(lpSafe.address);
+      const lpTotalSupply = await lpToken.totalSupply();
+      const expectedBalance = lpBalance
+        .mul(metaPoolUstBalance)
+        .div(lpTotalSupply);
+
+      const balance = await curve.getUnderlyerBalance(
+        lpSafe.address,
+        metaPool.address,
+        gauge.address,
+        lpToken.address,
+        ustIndex
+      );
+      // expect(balance).to.equal(expectedBalance);
+      expect(balance.sub(expectedBalance).abs()).to.be.lt(
+        tokenAmountToBigNumber("0.05", 18)
+      );
+    });
+
     it.only("Get underlyer balance from gauge holding", async () => {
-      // deposit into 3Pool
       const daiAmount = tokenAmountToBigNumber("1000", 18);
       const daiIndex = 1;
       const minAmount = 0;
-      await stablecoins["DAI"]
-        .connect(lpSafe)
-        .approve(basePool.address, MAX_UINT256);
+
+      // deposit into 3Pool
+      await coins["DAI"].connect(lpSafe).approve(basePool.address, MAX_UINT256);
       await basePool
         .connect(lpSafe)
         .add_liquidity([daiAmount, "0", "0"], minAmount);
@@ -209,14 +232,8 @@ describe("Contract: MetaPoolAllocationBase", () => {
         .mul(metaPoolBaseLpBalance)
         .div(lpTotalSupply);
 
-      // better to recalculate this to avoid early truncation
-      // const expectedBalance = baseLpBalance
-      //   .mul(basePoolDaiBalance)
-      //  .div(basePoolLpTotalSupply);
-      const expectedBalance = lpBalance
-        .mul(metaPoolBaseLpBalance)
+      const expectedBalance = baseLpBalance
         .mul(basePoolDaiBalance)
-        .div(lpTotalSupply)
         .div(basePoolLpTotalSupply);
       expect(expectedBalance).to.be.gt(0);
 
@@ -233,50 +250,67 @@ describe("Contract: MetaPoolAllocationBase", () => {
       );
     });
 
-    it("Get underlyer balance from combined holdings", async () => {
+    it.only("Get underlyer balance from combined holdings", async () => {
       const daiAmount = tokenAmountToBigNumber("1000", 18);
-      const daiIndex = 0;
+      const daiIndex = 1;
       const minAmount = 0;
-      await stablecoins["DAI"]
-        .connect(lpSafe)
-        .approve(basePool.address, MAX_UINT256);
+
+      // deposit into 3Pool
+      await coins["DAI"].connect(lpSafe).approve(basePool.address, MAX_UINT256);
       await basePool
         .connect(lpSafe)
         .add_liquidity([daiAmount, "0", "0"], minAmount);
 
+      // deposit 3Crv into metapool
+      let baseLpBalance = await baseLpToken.balanceOf(lpSafe.address);
+      console.log("3pool balance:", baseLpBalance.toString());
+      await baseLpToken.connect(lpSafe).approve(metaPool.address, MAX_UINT256);
+      await metaPool
+        .connect(lpSafe)
+        .add_liquidity(["0", baseLpBalance], minAmount);
+
       // split LP tokens between strategy and gauge
-      const totalLPBalance = await baseLpToken.balanceOf(lpSafe.address);
-      const strategyLpBalance = totalLPBalance.div(3);
-      const gaugeLpBalance = totalLPBalance.sub(strategyLpBalance);
+      const totalLpBalance = await lpToken.balanceOf(lpSafe.address);
+      const strategyLpBalance = totalLpBalance.div(3);
+      const gaugeLpBalance = totalLpBalance.sub(strategyLpBalance);
       expect(gaugeLpBalance).to.be.gt(0);
       expect(strategyLpBalance).to.be.gt(0);
 
-      await baseLpToken.connect(lpSafe).approve(baseGauge.address, MAX_UINT256);
-      await baseGauge.connect(lpSafe)["deposit(uint256)"](gaugeLpBalance);
+      // update LP Safe's base pool LP balance after depositing
+      // into the metapool, which will swap for some primary underlyer
+      const metaPoolBaseLpBalance = await metaPool.balances(1);
+      const lpTotalSupply = await lpToken.totalSupply();
+      baseLpBalance = totalLpBalance
+        .mul(metaPoolBaseLpBalance)
+        .div(lpTotalSupply);
 
-      expect(await baseLpToken.balanceOf(lpSafe.address)).to.equal(
+      await lpToken.connect(lpSafe).approve(gauge.address, MAX_UINT256);
+      await gauge.connect(lpSafe)["deposit(uint256)"](gaugeLpBalance);
+
+      expect(await lpToken.balanceOf(lpSafe.address)).to.equal(
         strategyLpBalance
       );
-      expect(await baseGauge.balanceOf(lpSafe.address)).to.equal(
-        gaugeLpBalance
-      );
+      expect(await gauge.balanceOf(lpSafe.address)).to.equal(gaugeLpBalance);
 
-      const poolBalance = await basePool.balances(daiIndex);
-      const lpTotalSupply = await baseLpToken.totalSupply();
+      const basePoolDaiBalance = await basePool.balances(daiIndex - 1);
+      const basePoolLpTotalSupply = await baseLpToken.totalSupply();
 
-      const expectedBalance = totalLPBalance
-        .mul(poolBalance)
-        .div(lpTotalSupply);
+      const expectedBalance = baseLpBalance
+        .mul(basePoolDaiBalance)
+        .div(basePoolLpTotalSupply);
       expect(expectedBalance).to.be.gt(0);
 
       const balance = await curve.getUnderlyerBalance(
         lpSafe.address,
-        basePool.address,
-        baseGauge.address,
-        baseLpToken.address,
-        coinIndex
+        metaPool.address,
+        gauge.address,
+        lpToken.address,
+        daiIndex
       );
-      expect(balance).to.equal(expectedBalance);
+      // expect(balance).to.equal(expectedBalance);
+      expect(balance.sub(expectedBalance).abs()).to.be.lt(
+        tokenAmountToBigNumber("0.05", 18)
+      );
     });
   });
 });
