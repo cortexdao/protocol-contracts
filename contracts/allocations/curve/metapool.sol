@@ -57,6 +57,10 @@ contract MetaPoolAllocationBase {
         returns (uint256)
     {
         require(address(metaPool) != address(0), "INVALID_POOL");
+        if (coin == 0) {
+            return metaPool.balances(0);
+        }
+        coin -= 1;
         return
             curveAllocationBase.getUnderlyerBalance(
                 address(metaPool),
