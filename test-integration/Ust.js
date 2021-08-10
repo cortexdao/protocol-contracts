@@ -15,10 +15,10 @@ const IStableSwap = artifacts.readArtifactSync("IStableSwap");
 const IMetaPool = artifacts.readArtifactSync("IMetaPool");
 const ILiquidityGauge = artifacts.readArtifactSync("ILiquidityGauge");
 
-// USDT Metapool addresses
+// UST Metapool addresses
 const META_POOL_ADDRESS = "0x890f4e345B1dAED0367A877a1612f86A1f86985f";
-//// sometimes a metapool is its own LP token; otherwise,
-//// you can obtain from `token` attribute
+// sometimes a metapool is its own LP token; otherwise,
+// you can obtain from `token` attribute
 const LP_TOKEN_ADDRESS = "0x94e131324b6054c0D789b190b2dAC504e4361b53";
 const LIQUIDITY_GAUGE_ADDRESS = "0x3B7020743Bc2A4ca9EaF9D0722d42E20d6935855";
 
