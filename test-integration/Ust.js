@@ -130,7 +130,6 @@ describe("Contract: MetaPoolAllocationBase", () => {
 
       // deposit 3Crv into metapool
       let baseLpBalance = await baseLpToken.balanceOf(lpSafe.address);
-      console.log("3pool balance:", baseLpBalance.toString());
       await baseLpToken.connect(lpSafe).approve(metaPool.address, MAX_UINT256);
       await metaPool
         .connect(lpSafe)
@@ -177,7 +176,6 @@ describe("Contract: MetaPoolAllocationBase", () => {
 
       // deposit 3Crv into metapool
       let baseLpBalance = await baseLpToken.balanceOf(lpSafe.address);
-      console.log("3pool balance:", baseLpBalance.toString());
       await baseLpToken.connect(lpSafe).approve(metaPool.address, MAX_UINT256);
       await metaPool
         .connect(lpSafe)
@@ -232,7 +230,6 @@ describe("Contract: MetaPoolAllocationBase", () => {
 
       // deposit 3Crv into metapool
       let baseLpBalance = await baseLpToken.balanceOf(lpSafe.address);
-      console.log("3pool balance:", baseLpBalance.toString());
       await baseLpToken.connect(lpSafe).approve(metaPool.address, MAX_UINT256);
       await metaPool
         .connect(lpSafe)
