@@ -157,10 +157,7 @@ describe("Contract: MetaPoolAllocationBase", () => {
         lpToken.address,
         daiIndex
       );
-      // expect(balance).to.equal(expectedBalance);
-      expect(balance.sub(expectedBalance).abs()).to.be.lt(
-        tokenAmountToBigNumber("0.05", 18)
-      );
+      expect(balance).to.equal(expectedBalance);
     });
 
     it("Get 3Pool underlyer balance from gauge holding", async () => {
@@ -211,10 +208,7 @@ describe("Contract: MetaPoolAllocationBase", () => {
         lpToken.address,
         daiIndex
       );
-      // expect(balance).to.equal(expectedBalance);
-      expect(balance.sub(expectedBalance).abs()).to.be.lt(
-        tokenAmountToBigNumber("0.05", 18)
-      );
+      expect(balance).to.equal(expectedBalance);
     });
 
     it("Get 3Pool underlyer balance from combined holdings", async () => {
@@ -273,10 +267,7 @@ describe("Contract: MetaPoolAllocationBase", () => {
         lpToken.address,
         daiIndex
       );
-      // expect(balance).to.equal(expectedBalance);
-      expect(balance.sub(expectedBalance).abs()).to.be.lt(
-        tokenAmountToBigNumber("0.05", 18)
-      );
+      expect(balance).to.equal(expectedBalance);
     });
 
     it("Get UST balance from account holding", async () => {
@@ -302,10 +293,7 @@ describe("Contract: MetaPoolAllocationBase", () => {
         lpToken.address,
         ustIndex
       );
-      // expect(balance).to.equal(expectedBalance);
-      expect(balance.sub(expectedBalance).abs()).to.be.lt(
-        tokenAmountToBigNumber("0.05", 18)
-      );
+      expect(balance).to.equal(expectedBalance);
     });
 
     it("Get UST balance from gauge holding", async () => {
@@ -338,10 +326,7 @@ describe("Contract: MetaPoolAllocationBase", () => {
         lpToken.address,
         ustIndex
       );
-      // expect(balance).to.equal(expectedBalance);
-      expect(balance.sub(expectedBalance).abs()).to.be.lt(
-        tokenAmountToBigNumber("0.05", 18)
-      );
+      expect(balance).to.equal(expectedBalance);
     });
 
     it("Get UST balance from combined holdings", async () => {
@@ -382,10 +367,7 @@ describe("Contract: MetaPoolAllocationBase", () => {
         lpToken.address,
         ustIndex
       );
-      // expect(balance).to.equal(expectedBalance);
-      expect(balance.sub(expectedBalance).abs()).to.be.lt(
-        tokenAmountToBigNumber("0.05", 18)
-      );
+      expect(balance).to.equal(expectedBalance);
     });
   });
 });

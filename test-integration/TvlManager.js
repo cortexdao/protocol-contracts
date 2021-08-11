@@ -356,10 +356,7 @@ describe("Contract: TvlManager", () => {
       expect(expectedBalance).to.be.gt(0);
 
       const balance = await tvlManager.balanceOf(daiAllocationId);
-      // expect(balance).to.equal(expectedBalance);
-      expect(balance.sub(expectedBalance).abs()).to.be.lt(
-        tokenAmountToBigNumber("0.05", 18)
-      );
+      expect(balance).to.equal(expectedBalance);
     });
 
     it("Get 3Pool underlyer balance from gauge holding", async () => {
@@ -403,10 +400,7 @@ describe("Contract: TvlManager", () => {
       expect(expectedBalance).to.be.gt(0);
 
       const balance = await tvlManager.balanceOf(daiAllocationId);
-      // expect(balance).to.equal(expectedBalance);
-      expect(balance.sub(expectedBalance).abs()).to.be.lt(
-        tokenAmountToBigNumber("0.05", 18)
-      );
+      expect(balance).to.equal(expectedBalance);
     });
 
     it("Get 3Pool underlyer balance from combined holdings", async () => {
@@ -458,10 +452,7 @@ describe("Contract: TvlManager", () => {
       expect(expectedBalance).to.be.gt(0);
 
       const balance = await tvlManager.balanceOf(daiAllocationId);
-      // expect(balance).to.equal(expectedBalance);
-      expect(balance.sub(expectedBalance).abs()).to.be.lt(
-        tokenAmountToBigNumber("0.05", 18)
-      );
+      expect(balance).to.equal(expectedBalance);
     });
 
     it("Get UST balance from account holding", async () => {
@@ -481,10 +472,7 @@ describe("Contract: TvlManager", () => {
         .div(lpTotalSupply);
 
       const balance = await tvlManager.balanceOf(ustAllocationId);
-      // expect(balance).to.equal(expectedBalance);
-      expect(balance.sub(expectedBalance).abs()).to.be.lt(
-        tokenAmountToBigNumber("0.05", 18)
-      );
+      expect(balance).to.equal(expectedBalance);
     });
 
     it("Get UST balance from gauge holding", async () => {
@@ -511,10 +499,7 @@ describe("Contract: TvlManager", () => {
         .div(lpTotalSupply);
 
       const balance = await tvlManager.balanceOf(ustAllocationId);
-      // expect(balance).to.equal(expectedBalance);
-      expect(balance.sub(expectedBalance).abs()).to.be.lt(
-        tokenAmountToBigNumber("0.05", 18)
-      );
+      expect(balance).to.equal(expectedBalance);
     });
 
     it("Get UST balance from combined holdings", async () => {
@@ -549,10 +534,7 @@ describe("Contract: TvlManager", () => {
         .div(lpTotalSupply);
 
       const balance = await tvlManager.balanceOf(ustAllocationId);
-      // expect(balance).to.equal(expectedBalance);
-      expect(balance.sub(expectedBalance).abs()).to.be.lt(
-        tokenAmountToBigNumber("0.05", 18)
-      );
+      expect(balance).to.equal(expectedBalance);
     });
   });
 });

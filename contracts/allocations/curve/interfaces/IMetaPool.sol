@@ -12,6 +12,9 @@ interface IMetaPool is IERC20 {
     /// @dev 1st coin is the protocol token, 2nd is the Curve base pool
     function balances(uint256 coin) external view returns (uint256);
 
+    /// @dev 1st coin is the protocol token, 2nd is the Curve base pool
+    function coins(uint256 coin) external view returns (address);
+
     /// @dev the number of coins is hard-coded in curve contracts
     // solhint-disable-next-line
     function add_liquidity(uint256[2] memory amounts, uint256 min_mint_amount)

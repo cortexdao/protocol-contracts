@@ -64,7 +64,15 @@ contract MetaPoolAllocationBase {
             return metaPool.balances(0);
         }
         coin -= 1;
-        return curve3PoolAllocation.balanceOf(address(metaPool), uint8(coin));
+        uint256 balance =
+            curve3PoolAllocation.balanceOf(address(metaPool), uint8(coin));
+        // renormalize using the pool's tracked 3Crv balance
+        IERC20 baseLpToken = IERC20(metaPool.coins(1));
+        uint256 adjustedBalance =
+            balance.mul(metaPool.balances(1)).div(
+                baseLpToken.balanceOf(address(metaPool))
+            );
+        return adjustedBalance;
     }
 
     function getLpTokenShare(
