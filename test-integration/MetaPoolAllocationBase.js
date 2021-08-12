@@ -157,7 +157,8 @@ describe("Contract: MetaPoolAllocationBase", () => {
         lpToken.address,
         daiIndex
       );
-      expect(balance).to.equal(expectedBalance);
+      // allow a few wei deviation
+      expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
     });
 
     it("Get 3Pool underlyer balance from gauge holding", async () => {
@@ -208,7 +209,8 @@ describe("Contract: MetaPoolAllocationBase", () => {
         lpToken.address,
         daiIndex
       );
-      expect(balance).to.equal(expectedBalance);
+      // allow a few wei deviation
+      expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
     });
 
     it("Get 3Pool underlyer balance from combined holdings", async () => {
@@ -267,7 +269,8 @@ describe("Contract: MetaPoolAllocationBase", () => {
         lpToken.address,
         daiIndex
       );
-      expect(balance).to.equal(expectedBalance);
+      // allow a few wei deviation
+      expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
     });
 
     it("Get UST balance from account holding", async () => {
@@ -293,7 +296,8 @@ describe("Contract: MetaPoolAllocationBase", () => {
         lpToken.address,
         ustIndex
       );
-      expect(balance).to.equal(expectedBalance);
+      // allow a few wei deviation
+      expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
     });
 
     it("Get UST balance from gauge holding", async () => {
@@ -326,7 +330,8 @@ describe("Contract: MetaPoolAllocationBase", () => {
         lpToken.address,
         ustIndex
       );
-      expect(balance).to.equal(expectedBalance);
+      // allow a few wei deviation
+      expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
     });
 
     it("Get UST balance from combined holdings", async () => {
@@ -367,7 +372,8 @@ describe("Contract: MetaPoolAllocationBase", () => {
         lpToken.address,
         ustIndex
       );
-      expect(balance).to.equal(expectedBalance);
+      // allow a few wei deviation
+      expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
     });
   });
 });
