@@ -25,6 +25,11 @@ const CurvePoolAllocations = [
     poolName: "3Pool",
     whaleAddress: STABLECOIN_POOLS["DAI"],
   },
+  {
+    contractName: "CurveIronBankAllocation",
+    poolName: "IronBank",
+    whaleAddress: "0xee8389d235E092b2945fE363e97CDBeD121A0439",
+  },
 ];
 
 const CurveMetaPoolAllocations = [
