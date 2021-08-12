@@ -21,7 +21,7 @@ contract CurveUstConstants is Curve3PoolUnderlyerConstants {
         0x3B7020743Bc2A4ca9EaF9D0722d42E20d6935855;
 
     // metapool primary underlyer
-    address public constant UST_ADDRESS =
+    address public constant PRIMARY_UNDERLYER_ADDRESS =
         0xa47c8bf37f92aBed4A126BDA807A7b7498661acD;
 }
 
@@ -58,7 +58,7 @@ contract CurveUstAllocation is
         returns (TokenData[] memory)
     {
         TokenData[] memory tokens = new TokenData[](4);
-        tokens[0] = TokenData(UST_ADDRESS, "UST", 18);
+        tokens[0] = TokenData(PRIMARY_UNDERLYER_ADDRESS, "UST", 18);
         tokens[1] = TokenData(DAI_ADDRESS, "DAI", 18);
         tokens[2] = TokenData(USDC_ADDRESS, "USDC", 6);
         tokens[3] = TokenData(USDT_ADDRESS, "USDT", 6);

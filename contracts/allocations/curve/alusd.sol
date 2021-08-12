@@ -21,7 +21,7 @@ contract CurveAlUsdConstants is Curve3PoolUnderlyerConstants {
         0x9582C4ADACB3BCE56Fea3e590F05c3ca2fb9C477;
 
     // metapool primary underlyer
-    address public constant ALUSD_ADDRESS =
+    address public constant PRIMARY_UNDERLYER_ADDRESS =
         0xBC6DA0FE9aD5f3b0d58160288917AA56653660E9;
 }
 
@@ -58,7 +58,7 @@ contract CurveAlUsdAllocation is
         returns (TokenData[] memory)
     {
         TokenData[] memory tokens = new TokenData[](4);
-        tokens[0] = TokenData(ALUSD_ADDRESS, "alUSD", 18);
+        tokens[0] = TokenData(PRIMARY_UNDERLYER_ADDRESS, "alUSD", 18);
         tokens[1] = TokenData(DAI_ADDRESS, "DAI", 18);
         tokens[2] = TokenData(USDC_ADDRESS, "USDC", 6);
         tokens[3] = TokenData(USDT_ADDRESS, "USDT", 6);
