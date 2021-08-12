@@ -13,15 +13,34 @@ const {
 } = require("../utils/helpers");
 const { STABLECOIN_POOLS } = require("../utils/constants");
 
-const dai = (amount) => tokenAmountToBigNumber(amount, "18");
-
 /* ************************ */
 /* set DEBUG log level here */
 /* ************************ */
 console.debugging = false;
 /* ************************ */
 
-describe.only("Contract: TvlManager", () => {
+const CurvePoolAllocations = [
+  {
+    contractName: "Curve3PoolAllocation",
+    poolName: "3Pool",
+    whaleAddress: STABLECOIN_POOLS["DAI"],
+  },
+];
+
+const CurveMetaPoolAllocations = [
+  {
+    contractName: "CurveUstAllocation",
+    primaryUnderlyerSymbol: "UST",
+    whaleAddress: "0x87dA823B6fC8EB8575a235A824690fda94674c88",
+  },
+  {
+    contractName: "CurveAlUsdAllocation",
+    primaryUnderlyerSymbol: "alUSD",
+    whaleAddress: "0xAB8e74017a8Cc7c15FFcCd726603790d26d7DeCa",
+  },
+];
+
+describe("Contract: TvlManager", () => {
   /* signers */
   let deployer;
   let emergencySafe;
@@ -93,158 +112,171 @@ describe.only("Contract: TvlManager", () => {
     );
   });
 
-  describe("Curve 3Pool allocation", () => {
-    let Curve3PoolAllocation;
-    let curve;
+  CurvePoolAllocations.forEach(function (allocationData) {
+    const { contractName, poolName, whaleAddress } = allocationData;
 
-    // Curve 3Pool
-    let lpToken;
-    let stableSwap;
-    let gauge;
-    let daiToken;
-    let lookupId;
+    describe(`Curve ${poolName} allocation`, () => {
+      let allocation;
 
-    const daiIndex = 0;
+      let lpToken;
+      let stableSwap;
+      let gauge;
 
-    // Curve 3Pool Mainnet addresses:
-    const STABLE_SWAP_ADDRESS = "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7";
-    const LP_TOKEN_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
-    const LIQUIDITY_GAUGE_ADDRESS =
-      "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A";
+      let underlyerToken;
+      const underlyerIndex = 0;
+      let lookupId;
 
-    before("Deploy and attach to contracts", async () => {
-      Curve3PoolAllocation = await ethers.getContractFactory(
-        "Curve3PoolAllocation"
-      );
-      curve = await Curve3PoolAllocation.deploy();
-      await curve.deployed();
+      before("Deploy allocation contract", async () => {
+        const CurvePoolAllocation = await ethers.getContractFactory(
+          contractName
+        );
+        allocation = await CurvePoolAllocation.deploy();
+        await allocation.deployed();
+      });
 
-      lpToken = await ethers.getContractAt(
-        "IDetailedERC20UpgradeSafe",
-        LP_TOKEN_ADDRESS
-      );
-      stableSwap = await ethers.getContractAt(
-        "IStableSwap",
-        STABLE_SWAP_ADDRESS
-      );
-      gauge = await ethers.getContractAt(
-        "ILiquidityGauge",
-        LIQUIDITY_GAUGE_ADDRESS
-      );
-    });
+      before("Attach to Mainnet Curve contracts", async () => {
+        const STABLE_SWAP_ADDRESS = await allocation.STABLE_SWAP_ADDRESS();
+        stableSwap = await ethers.getContractAt(
+          "IStableSwap",
+          STABLE_SWAP_ADDRESS
+        );
 
-    before("Prepare account 0 with DAI funds", async () => {
-      const daiAddress = getStablecoinAddress("DAI", "MAINNET");
-      daiToken = await ethers.getContractAt(
-        "IDetailedERC20UpgradeSafe",
-        daiAddress
-      );
+        const LP_TOKEN_ADDRESS = await allocation.LP_TOKEN_ADDRESS();
+        lpToken = await ethers.getContractAt(
+          "IDetailedERC20",
+          LP_TOKEN_ADDRESS
+        );
 
-      const amount = dai(500000);
-      const sender = STABLECOIN_POOLS["DAI"];
-      await acquireToken(sender, lpSafe, daiToken, amount, deployer);
-    });
+        const LIQUIDITY_GAUGE_ADDRESS = await allocation.LIQUIDITY_GAUGE_ADDRESS();
+        gauge = await ethers.getContractAt(
+          "ILiquidityGauge",
+          LIQUIDITY_GAUGE_ADDRESS
+        );
+      });
 
-    before("Register asset allocation", async () => {
-      await tvlManager.connect(lpSafe).registerAssetAllocation(curve.address);
-      lookupId = await tvlManager.getAssetAllocationId(curve.address, 0);
-    });
+      before("Fund account 0 with pool underlyer", async () => {
+        const underlyerAddress = await stableSwap.coins(underlyerIndex);
+        underlyerToken = await ethers.getContractAt(
+          "IDetailedERC20",
+          underlyerAddress
+        );
 
-    it("Get underlyer balance from account holding", async () => {
-      const daiAmount = dai("1000");
-      const minAmount = 0;
-      await daiToken.connect(lpSafe).approve(stableSwap.address, MAX_UINT256);
-      await stableSwap
-        .connect(lpSafe)
-        .add_liquidity([daiAmount, "0", "0"], minAmount);
+        const amount = tokenAmountToBigNumber(
+          500000,
+          await underlyerToken.decimals()
+        );
+        const sender = whaleAddress;
+        await acquireToken(sender, lpSafe, underlyerToken, amount, deployer);
+      });
 
-      const strategyLpBalance = await lpToken.balanceOf(lpSafe.address);
-      const poolBalance = await stableSwap.balances(daiIndex);
-      const lpTotalSupply = await lpToken.totalSupply();
+      before("Register asset allocation", async () => {
+        await tvlManager
+          .connect(lpSafe)
+          .registerAssetAllocation(allocation.address);
+        lookupId = await tvlManager.getAssetAllocationId(allocation.address, 0);
+      });
 
-      const expectedBalance = strategyLpBalance
-        .mul(poolBalance)
-        .div(lpTotalSupply);
-      expect(expectedBalance).to.be.gt(0);
+      it("Get underlyer balance from account holding", async () => {
+        const minAmount = 0;
+        const amounts = ["0", "0", "0"];
+        const underlyerAmount = tokenAmountToBigNumber(
+          1000,
+          await underlyerToken.decimals()
+        );
+        amounts[underlyerIndex] = underlyerAmount;
 
-      expect(await tvlManager.balanceOf(lookupId)).to.equal(expectedBalance);
-    });
+        await underlyerToken
+          .connect(lpSafe)
+          .approve(stableSwap.address, MAX_UINT256);
+        await stableSwap.connect(lpSafe).add_liquidity(amounts, minAmount);
 
-    it("Get underlyer balance from gauge holding", async () => {
-      const daiAmount = dai("1000");
-      const minAmount = 0;
-      await daiToken.connect(lpSafe).approve(stableSwap.address, MAX_UINT256);
-      await stableSwap
-        .connect(lpSafe)
-        .add_liquidity([daiAmount, "0", "0"], minAmount);
+        const strategyLpBalance = await lpToken.balanceOf(lpSafe.address);
+        const poolBalance = await stableSwap.balances(underlyerIndex);
+        const lpTotalSupply = await lpToken.totalSupply();
 
-      await lpToken.connect(lpSafe).approve(gauge.address, MAX_UINT256);
-      const strategyLpBalance = await lpToken.balanceOf(lpSafe.address);
-      await gauge.connect(lpSafe)["deposit(uint256)"](strategyLpBalance);
-      expect(await lpToken.balanceOf(lpSafe.address)).to.equal(0);
-      const gaugeLpBalance = await gauge.balanceOf(lpSafe.address);
-      expect(gaugeLpBalance).to.be.gt(0);
+        const expectedBalance = strategyLpBalance
+          .mul(poolBalance)
+          .div(lpTotalSupply);
+        expect(expectedBalance).to.be.gt(0);
 
-      const poolBalance = await stableSwap.balances(daiIndex);
-      const lpTotalSupply = await lpToken.totalSupply();
+        expect(await tvlManager.balanceOf(lookupId)).to.equal(expectedBalance);
+      });
 
-      const expectedBalance = gaugeLpBalance
-        .mul(poolBalance)
-        .div(lpTotalSupply);
-      expect(expectedBalance).to.be.gt(0);
+      it("Get underlyer balance from gauge holding", async () => {
+        const minAmount = 0;
+        const amounts = ["0", "0", "0"];
+        const underlyerAmount = tokenAmountToBigNumber(
+          1000,
+          await underlyerToken.decimals()
+        );
+        amounts[underlyerIndex] = underlyerAmount;
 
-      expect(await tvlManager.balanceOf(lookupId)).to.equal(expectedBalance);
-    });
+        await underlyerToken
+          .connect(lpSafe)
+          .approve(stableSwap.address, MAX_UINT256);
+        await stableSwap.connect(lpSafe).add_liquidity(amounts, minAmount);
 
-    it("Get underlyer balance from combined holdings", async () => {
-      const daiAmount = dai("1000");
-      const minAmount = 0;
-      await daiToken.connect(lpSafe).approve(stableSwap.address, MAX_UINT256);
-      await stableSwap
-        .connect(lpSafe)
-        .add_liquidity([daiAmount, "0", "0"], minAmount);
+        await lpToken.connect(lpSafe).approve(gauge.address, MAX_UINT256);
+        const strategyLpBalance = await lpToken.balanceOf(lpSafe.address);
+        await gauge.connect(lpSafe)["deposit(uint256)"](strategyLpBalance);
+        expect(await lpToken.balanceOf(lpSafe.address)).to.equal(0);
+        const gaugeLpBalance = await gauge.balanceOf(lpSafe.address);
+        expect(gaugeLpBalance).to.be.gt(0);
 
-      // split LP tokens between strategy and gauge
-      const totalLPBalance = await lpToken.balanceOf(lpSafe.address);
-      const strategyLpBalance = totalLPBalance.div(3);
-      const gaugeLpBalance = totalLPBalance.sub(strategyLpBalance);
-      expect(gaugeLpBalance).to.be.gt(0);
-      expect(strategyLpBalance).to.be.gt(0);
+        const poolBalance = await stableSwap.balances(underlyerIndex);
+        const lpTotalSupply = await lpToken.totalSupply();
 
-      await lpToken.connect(lpSafe).approve(gauge.address, MAX_UINT256);
-      await gauge.connect(lpSafe)["deposit(uint256)"](gaugeLpBalance);
+        const expectedBalance = gaugeLpBalance
+          .mul(poolBalance)
+          .div(lpTotalSupply);
+        expect(expectedBalance).to.be.gt(0);
 
-      expect(await lpToken.balanceOf(lpSafe.address)).to.equal(
-        strategyLpBalance
-      );
-      expect(await gauge.balanceOf(lpSafe.address)).to.equal(gaugeLpBalance);
+        expect(await tvlManager.balanceOf(lookupId)).to.equal(expectedBalance);
+      });
 
-      const poolBalance = await stableSwap.balances(daiIndex);
-      const lpTotalSupply = await lpToken.totalSupply();
+      it("Get underlyer balance from combined holdings", async () => {
+        const minAmount = 0;
+        const amounts = ["0", "0", "0"];
+        const underlyerAmount = tokenAmountToBigNumber(
+          1000,
+          await underlyerToken.decimals()
+        );
+        amounts[underlyerIndex] = underlyerAmount;
 
-      const expectedBalance = totalLPBalance
-        .mul(poolBalance)
-        .div(lpTotalSupply);
-      expect(expectedBalance).to.be.gt(0);
+        await underlyerToken
+          .connect(lpSafe)
+          .approve(stableSwap.address, MAX_UINT256);
+        await stableSwap.connect(lpSafe).add_liquidity(amounts, minAmount);
 
-      expect(await tvlManager.balanceOf(lookupId)).to.equal(expectedBalance);
+        // split LP tokens between strategy and gauge
+        const totalLPBalance = await lpToken.balanceOf(lpSafe.address);
+        const strategyLpBalance = totalLPBalance.div(3);
+        const gaugeLpBalance = totalLPBalance.sub(strategyLpBalance);
+        expect(gaugeLpBalance).to.be.gt(0);
+        expect(strategyLpBalance).to.be.gt(0);
+
+        await lpToken.connect(lpSafe).approve(gauge.address, MAX_UINT256);
+        await gauge.connect(lpSafe)["deposit(uint256)"](gaugeLpBalance);
+
+        expect(await lpToken.balanceOf(lpSafe.address)).to.equal(
+          strategyLpBalance
+        );
+        expect(await gauge.balanceOf(lpSafe.address)).to.equal(gaugeLpBalance);
+
+        const poolBalance = await stableSwap.balances(underlyerIndex);
+        const lpTotalSupply = await lpToken.totalSupply();
+
+        const expectedBalance = totalLPBalance
+          .mul(poolBalance)
+          .div(lpTotalSupply);
+        expect(expectedBalance).to.be.gt(0);
+
+        expect(await tvlManager.balanceOf(lookupId)).to.equal(expectedBalance);
+      });
     });
   });
 
-  const CurveMetaPoolAllocation = [
-    {
-      contractName: "CurveUstAllocation",
-      primaryUnderlyerSymbol: "UST",
-      whaleAddress: "0x87dA823B6fC8EB8575a235A824690fda94674c88",
-    },
-    {
-      contractName: "CurveAlUsdAllocation",
-      primaryUnderlyerSymbol: "alUSD",
-      whaleAddress: "0xAB8e74017a8Cc7c15FFcCd726603790d26d7DeCa",
-    },
-  ];
-
-  CurveMetaPoolAllocation.forEach(function (allocationData) {
+  CurveMetaPoolAllocations.forEach(function (allocationData) {
     const {
       contractName,
       primaryUnderlyerSymbol,
@@ -312,10 +344,7 @@ describe.only("Contract: TvlManager", () => {
         `Prepare account 0 with DAI and ${primaryUnderlyerSymbol} funds`,
         async () => {
           const daiAddress = getStablecoinAddress("DAI", "MAINNET");
-          daiToken = await ethers.getContractAt(
-            "IDetailedERC20UpgradeSafe",
-            daiAddress
-          );
+          daiToken = await ethers.getContractAt("IDetailedERC20", daiAddress);
           let amount = tokenAmountToBigNumber(
             500000,
             await daiToken.decimals()
@@ -325,7 +354,7 @@ describe.only("Contract: TvlManager", () => {
 
           const PRIMARY_UNDERLYER_ADDRESS = await allocation.PRIMARY_UNDERLYER_ADDRESS();
           primaryToken = await ethers.getContractAt(
-            "IDetailedERC20UpgradeSafe",
+            "IDetailedERC20",
             PRIMARY_UNDERLYER_ADDRESS
           );
           amount = tokenAmountToBigNumber(
