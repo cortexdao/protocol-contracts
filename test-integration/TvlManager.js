@@ -38,6 +38,11 @@ const CurveMetaPoolAllocations = [
     primaryUnderlyerSymbol: "alUSD",
     whaleAddress: "0xAB8e74017a8Cc7c15FFcCd726603790d26d7DeCa",
   },
+  {
+    contractName: "CurveUsdnAllocation",
+    primaryUnderlyerSymbol: "USDN",
+    whaleAddress: "0xB9fb4eb31a61CEbAc917c987496366F1Ec0F6aAe",
+  },
 ];
 
 describe("Contract: TvlManager", () => {
