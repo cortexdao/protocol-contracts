@@ -237,11 +237,11 @@ describe.only("Contract: TvlManager", () => {
       primaryUnderlyerSymbol: "UST",
       whaleAddress: "0x87dA823B6fC8EB8575a235A824690fda94674c88",
     },
-    // {
-    //   contractName: "CurveAlUsdAllocation",
-    //   primaryUnderlyerSymbol: "alUSD",
-    //   whaleAddress: undefined, // TODO
-    // },
+    {
+      contractName: "CurveAlUsdAllocation",
+      primaryUnderlyerSymbol: "alUSD",
+      whaleAddress: "0xAB8e74017a8Cc7c15FFcCd726603790d26d7DeCa",
+    },
   ];
 
   CurveMetaPoolAllocation.forEach(function (allocationData) {
@@ -386,7 +386,8 @@ describe.only("Contract: TvlManager", () => {
         expect(expectedBalance).to.be.gt(0);
 
         const balance = await tvlManager.balanceOf(daiAllocationId);
-        expect(balance).to.equal(expectedBalance);
+        // allow a few wei deviation
+        expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
       });
 
       it("Get 3Pool underlyer balance from gauge holding", async () => {
@@ -432,7 +433,8 @@ describe.only("Contract: TvlManager", () => {
         expect(expectedBalance).to.be.gt(0);
 
         const balance = await tvlManager.balanceOf(daiAllocationId);
-        expect(balance).to.equal(expectedBalance);
+        // allow a few wei deviation
+        expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
       });
 
       it("Get 3Pool underlyer balance from combined holdings", async () => {
@@ -486,7 +488,8 @@ describe.only("Contract: TvlManager", () => {
         expect(expectedBalance).to.be.gt(0);
 
         const balance = await tvlManager.balanceOf(daiAllocationId);
-        expect(balance).to.equal(expectedBalance);
+        // allow a few wei deviation
+        expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
       });
 
       it("Get UST balance from account holding", async () => {
@@ -510,7 +513,8 @@ describe.only("Contract: TvlManager", () => {
           .div(lpTotalSupply);
 
         const balance = await tvlManager.balanceOf(primaryAllocationId);
-        expect(balance).to.equal(expectedBalance);
+        // allow a few wei deviation
+        expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
       });
 
       it("Get UST balance from gauge holding", async () => {
@@ -541,7 +545,8 @@ describe.only("Contract: TvlManager", () => {
           .div(lpTotalSupply);
 
         const balance = await tvlManager.balanceOf(primaryAllocationId);
-        expect(balance).to.equal(expectedBalance);
+        // allow a few wei deviation
+        expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
       });
 
       it("Get UST balance from combined holdings", async () => {
@@ -580,7 +585,8 @@ describe.only("Contract: TvlManager", () => {
           .div(lpTotalSupply);
 
         const balance = await tvlManager.balanceOf(primaryAllocationId);
-        expect(balance).to.equal(expectedBalance);
+        // allow a few wei deviation
+        expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
       });
     });
   });
