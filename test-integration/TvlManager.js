@@ -47,7 +47,7 @@ const CurveMetaPoolAllocations = [
   {
     contractName: "CurveUsdnAllocation",
     primaryUnderlyerSymbol: "USDN",
-    whaleAddress: "0xB9fb4eb31a61CEbAc917c987496366F1Ec0F6aAe",
+    whaleAddress: "0xf855d905888fF48c1A716a0d184FF5Ca02909baf",
   },
 ];
 
@@ -173,7 +173,7 @@ describe("Contract: TvlManager", () => {
         );
 
         const amount = tokenAmountToBigNumber(
-          500000,
+          100000,
           await underlyerToken.decimals()
         );
         const sender = whaleAddress;
@@ -375,7 +375,7 @@ describe("Contract: TvlManager", () => {
           const daiAddress = getStablecoinAddress("DAI", "MAINNET");
           daiToken = await ethers.getContractAt("IDetailedERC20", daiAddress);
           let amount = tokenAmountToBigNumber(
-            500000,
+            100000,
             await daiToken.decimals()
           );
           let sender = STABLECOIN_POOLS["DAI"];
@@ -387,7 +387,7 @@ describe("Contract: TvlManager", () => {
             PRIMARY_UNDERLYER_ADDRESS
           );
           amount = tokenAmountToBigNumber(
-            500000,
+            100000,
             await primaryToken.decimals()
           );
           sender = whaleAddress;
