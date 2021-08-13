@@ -29,6 +29,7 @@ const CurvePoolAllocations = [
     contractName: "CurveIronBankAllocation",
     poolName: "IronBank",
     whaleAddress: "0xee8389d235E092b2945fE363e97CDBeD121A0439",
+    unwrap: true,
   },
 ];
 
@@ -123,7 +124,7 @@ describe("Contract: TvlManager", () => {
   });
 
   CurvePoolAllocations.forEach(function (allocationData) {
-    const { contractName, poolName, whaleAddress } = allocationData;
+    const { contractName, poolName, whaleAddress, unwrap } = allocationData;
 
     describe(`Curve ${poolName} allocation`, () => {
       let allocation;
@@ -204,9 +205,15 @@ describe("Contract: TvlManager", () => {
         const poolBalance = await stableSwap.balances(underlyerIndex);
         const lpTotalSupply = await lpToken.totalSupply();
 
-        const expectedBalance = strategyLpBalance
+        let expectedBalance = strategyLpBalance
           .mul(poolBalance)
           .div(lpTotalSupply);
+        if (unwrap) {
+          expectedBalance = await allocation.unwrapBalance(
+            expectedBalance,
+            underlyerIndex
+          );
+        }
         expect(expectedBalance).to.be.gt(0);
 
         expect(await tvlManager.balanceOf(lookupId)).to.equal(expectedBalance);
@@ -236,9 +243,15 @@ describe("Contract: TvlManager", () => {
         const poolBalance = await stableSwap.balances(underlyerIndex);
         const lpTotalSupply = await lpToken.totalSupply();
 
-        const expectedBalance = gaugeLpBalance
+        let expectedBalance = gaugeLpBalance
           .mul(poolBalance)
           .div(lpTotalSupply);
+        if (unwrap) {
+          expectedBalance = await allocation.unwrapBalance(
+            expectedBalance,
+            underlyerIndex
+          );
+        }
         expect(expectedBalance).to.be.gt(0);
 
         expect(await tvlManager.balanceOf(lookupId)).to.equal(expectedBalance);
@@ -259,9 +272,9 @@ describe("Contract: TvlManager", () => {
         await stableSwap.connect(lpSafe).add_liquidity(amounts, minAmount);
 
         // split LP tokens between strategy and gauge
-        const totalLPBalance = await lpToken.balanceOf(lpSafe.address);
-        const strategyLpBalance = totalLPBalance.div(3);
-        const gaugeLpBalance = totalLPBalance.sub(strategyLpBalance);
+        const totalLpBalance = await lpToken.balanceOf(lpSafe.address);
+        const strategyLpBalance = totalLpBalance.div(3);
+        const gaugeLpBalance = totalLpBalance.sub(strategyLpBalance);
         expect(gaugeLpBalance).to.be.gt(0);
         expect(strategyLpBalance).to.be.gt(0);
 
@@ -276,9 +289,15 @@ describe("Contract: TvlManager", () => {
         const poolBalance = await stableSwap.balances(underlyerIndex);
         const lpTotalSupply = await lpToken.totalSupply();
 
-        const expectedBalance = totalLPBalance
+        let expectedBalance = totalLpBalance
           .mul(poolBalance)
           .div(lpTotalSupply);
+        if (unwrap) {
+          expectedBalance = await allocation.unwrapBalance(
+            expectedBalance,
+            underlyerIndex
+          );
+        }
         expect(expectedBalance).to.be.gt(0);
 
         expect(await tvlManager.balanceOf(lookupId)).to.equal(expectedBalance);
