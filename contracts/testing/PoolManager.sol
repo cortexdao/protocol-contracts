@@ -32,37 +32,11 @@ contract TestPoolManager is PoolManager {
 
     /**
      * @notice Register an asset allocation for the account with each pool underlyer
-     * @param pools list of pools whose underlyers will be registered
+     * @param poolAmounts list of pools whose underlyers will be registered
      */
-    function testRegisterPoolUnderlyers(PoolTokenV2[] memory pools) public {
-        _registerPoolUnderlyers(pools);
-    }
-
-    function testRebalanceReserves(PoolAmount[] memory rebalanceAmounts)
+    function testRegisterPoolUnderlyers(PoolAmount[] memory poolAmounts)
         public
     {
-        _rebalanceReserves(rebalanceAmounts);
-    }
-
-    function testDeployOrUnwindCapital(
-        address account,
-        PoolTokenV2[] memory pools,
-        int256[] memory amounts
-    ) public {
-        _deployOrUnwindCapital(account, pools, amounts);
-    }
-
-    function testCalculateMaptDeltas(
-        MetaPoolToken mApt,
-        PoolTokenV2[] memory pools,
-        int256[] memory amounts
-    ) public view returns (int256[] memory) {
-        return _calculateMaptDeltas(mApt, pools, amounts);
-    }
-
-    function testGetPoolsAndAmounts(
-        ILpSafeFunder.PoolAmount[] memory poolAmounts
-    ) public view returns (PoolTokenV2[] memory, int256[] memory) {
-        return _getPoolsAndAmounts(poolAmounts);
+        _registerPoolUnderlyers(poolAmounts);
     }
 }

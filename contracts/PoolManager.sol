@@ -4,9 +4,6 @@ pragma experimental ABIEncoderV2;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {
-    SafeERC20 as SafeERC20UpgradeSafe
-} from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
-import {
     ReentrancyGuard
 } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {AccessControl} from "./utils/AccessControl.sol";
@@ -20,9 +17,6 @@ import {
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {SignedSafeMath} from "@openzeppelin/contracts/math/SignedSafeMath.sol";
-import {
-    IDetailedERC20UpgradeSafe
-} from "./interfaces/IDetailedERC20UpgradeSafe.sol";
 import {ILpSafeFunder} from "./interfaces/ILpSafeFunder.sol";
 import {PoolTokenV2} from "./PoolTokenV2.sol";
 import {MetaPoolToken} from "./MetaPoolToken.sol";
@@ -46,7 +40,6 @@ import {MetaPoolToken} from "./MetaPoolToken.sol";
 contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
-    using SafeERC20UpgradeSafe for IDetailedERC20UpgradeSafe;
 
     IAddressRegistryV2 public addressRegistry;
 
@@ -92,8 +85,11 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         nonReentrant
         onlyLpRole
     {
-        PoolAmount[] memory rebalanceAmounts = getRebalanceAmounts(poolIds);
-        _rebalanceReserves(rebalanceAmounts);
+        (
+            PoolAmount[] memory depositAmounts,
+            PoolAmount[] memory withdrawAmounts
+        ) = getRebalanceAmounts(poolIds);
+        _rebalanceReserves(depositAmounts, withdrawAmounts);
     }
 
     /**
@@ -101,23 +97,30 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
      *         Uses the same sign convention as in `getRebalanceAmounts`.
      * @dev LP Safe must approve the Pool Manager for transfers.
      *      Will throw if not called by role-permissioned address.
-     * @param rebalanceAmounts array of PoolAmount structs
+     * @param depositAmounts array of PoolAmount structs
+     * @param withdrawAmounts array of PoolAmount structs
      */
     function emergencyRebalanceReserves(
-        ILpSafeFunder.PoolAmount[] calldata rebalanceAmounts
+        ILpSafeFunder.PoolAmount[] calldata depositAmounts,
+        ILpSafeFunder.PoolAmount[] calldata withdrawAmounts
     ) external override nonReentrant onlyEmergencyRole {
-        _rebalanceReserves(rebalanceAmounts);
+        _rebalanceReserves(depositAmounts, withdrawAmounts);
     }
 
-    function _rebalanceReserves(PoolAmount[] memory rebalanceAmounts) internal {
+    function _rebalanceReserves(
+        PoolAmount[] memory depositAmounts,
+        PoolAmount[] memory withdrawAmounts
+    ) internal {
         address lpSafeAddress = addressRegistry.lpSafeAddress();
         require(lpSafeAddress != address(0), "INVALID_LP_SAFE"); // defensive check -- should never happen
 
-        (PoolTokenV2[] memory pools, int256[] memory amounts) =
-            _getPoolsAndAmounts(rebalanceAmounts);
+        MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAptAddress());
 
-        _deployOrUnwindCapital(lpSafeAddress, pools, amounts);
-        _registerPoolUnderlyers(pools);
+        mApt.mint(depositAmounts);
+        _registerPoolUnderlyers(depositAmounts);
+
+        mApt.burn(withdrawAmounts);
+        _registerPoolUnderlyers(withdrawAmounts);
     }
 
     /**
@@ -125,24 +128,44 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
      *         A positive (negative) sign means the reserve level is in
      *         deficit (excess) of required percentage.
      * @param poolIds array of pool identifiers
-     * @return array of structs holding pool ID and signed amount
+     * @return depositAmounts array of pool amounts that need to deposit
+     * @return withdrawAmounts array of pool amounts that need to withdraw
      */
     function getRebalanceAmounts(bytes32[] memory poolIds)
         public
         view
-        returns (PoolAmount[] memory)
+        returns (
+            PoolAmount[] memory depositAmounts,
+            PoolAmount[] memory withdrawAmounts
+        )
     {
-        PoolAmount[] memory rebalanceAmounts = new PoolAmount[](poolIds.length);
+        PoolTokenV2[] memory pools = new PoolTokenV2[](poolIds.length);
+        int256[] memory rebalanceAmounts = new int256[](poolIds.length);
+
+        uint256 depositCount = 0;
+        uint256 withdrawCount = 0;
 
         for (uint256 i = 0; i < poolIds.length; i++) {
-            rebalanceAmounts[i] = PoolAmount(
-                poolIds[i],
-                PoolTokenV2(addressRegistry.getAddress(poolIds[i]))
-                    .getReserveTopUpValue()
-            );
+            PoolTokenV2 pool =
+                PoolTokenV2(addressRegistry.getAddress(poolIds[i]));
+            int256 rebalanceAmount = pool.getReserveTopUpValue();
+
+            pools[i] = pool;
+            rebalanceAmounts[i] = rebalanceAmount;
+
+            if (rebalanceAmount < 0) {
+                depositCount++;
+            } else if (rebalanceAmount > 0) {
+                withdrawCount++;
+            }
         }
 
-        return rebalanceAmounts;
+        (depositAmounts, withdrawAmounts) = _getRebalanceAmounts(
+            pools,
+            rebalanceAmounts,
+            depositCount,
+            withdrawCount
+        );
     }
 
     function _setAddressRegistry(address addressRegistry_) internal {
@@ -152,16 +175,16 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
 
     /**
      * @notice Register an asset allocation for the account with each pool underlyer
-     * @param pools list of pools whose underlyers will be registered
+     * @param poolAmounts list of pool amounts whose pool underlyers will be registered
      */
-    function _registerPoolUnderlyers(PoolTokenV2[] memory pools) internal {
+    function _registerPoolUnderlyers(PoolAmount[] memory poolAmounts) internal {
         ITvlManager tvlManager =
             ITvlManager(addressRegistry.getAddress("tvlManager"));
         IErc20AllocationRegistry erc20Registry =
             IErc20AllocationRegistry(tvlManager.erc20Allocation());
 
-        for (uint256 i = 0; i < pools.length; i++) {
-            address underlyer = address(pools[i].underlyer());
+        for (uint256 i = 0; i < poolAmounts.length; i++) {
+            address underlyer = address(poolAmounts[i].pool.underlyer());
 
             if (!erc20Registry.isErc20TokenRegistered(underlyer)) {
                 erc20Registry.registerErc20Token(underlyer);
@@ -169,112 +192,42 @@ contract PoolManager is AccessControl, ReentrancyGuard, ILpSafeFunder {
         }
     }
 
-    /**
-     * @dev Transfers underlyer between pool and account while doing
-     *      a corresponding mAPT mint or burn.  Note no transfer occurs
-     *      when the mint/burn amount is zero.
-     */
-    function _deployOrUnwindCapital(
-        address account,
+    function _getRebalanceAmounts(
         PoolTokenV2[] memory pools,
-        int256[] memory amounts
-    ) internal {
-        require(account != address(0), "INVALID_ADDRESS");
-        require(pools.length == amounts.length, "LENGTHS_MUST_MATCH");
-
-        MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAptAddress());
-        int256[] memory mAptDeltas = _calculateMaptDeltas(mApt, pools, amounts);
-
-        // MUST do the actual minting after calculating *all* mint amounts,
-        // otherwise due to Chainlink not updating during a transaction,
-        // the totalSupply will change while TVL doesn't.
-        //
-        // Using the pre-mint TVL and totalSupply gives the same answer
-        // as using post-mint values.
-        for (uint256 i = 0; i < pools.length; i++) {
-            int256 delta = mAptDeltas[i];
-
-            PoolTokenV2 pool = pools[i];
-
-            if (delta < 0) {
-                mApt.mint(address(pool), uint256(-delta));
-            } else if (delta > 0) {
-                mApt.burn(address(pool), uint256(delta));
-            } else {
-                continue;
-            }
-
-            //NOTE: negative amount Pool to LPSafe; positive amount LpSafe to Pool
-            int256 transferAmount = amounts[i];
-            if (transferAmount < 0) {
-                pool.transferToLPSafe(uint256(transferAmount.mul(-1)));
-            } else {
-                IDetailedERC20UpgradeSafe underlyer = pool.underlyer();
-                underlyer.safeTransferFrom(
-                    account,
-                    address(pool),
-                    uint256(transferAmount)
-                );
-            }
-        }
-    }
-
-    /**
-     * @dev Calculates the mAPT mint/burn amounts for each given pool
-     *      and underlyer amount.
-     */
-    function _calculateMaptDeltas(
-        MetaPoolToken mApt,
-        PoolTokenV2[] memory pools,
-        int256[] memory amounts
-    ) internal view returns (int256[] memory) {
-        require(pools.length == amounts.length, "LENGTHS_MUST_MATCH");
-
-        int256[] memory mAptDeltas = new int256[](pools.length);
-
-        for (uint256 i = 0; i < pools.length; i++) {
-            int256 amountSign;
-
-            if (amounts[i] < 0) {
-                amountSign = int256(-1);
-            } else if (amounts[i] > 0) {
-                amountSign = int256(1);
-            } else {
-                mAptDeltas[i] = 0;
-                continue;
-            }
-
-            IDetailedERC20UpgradeSafe underlyer = pools[i].underlyer();
-            uint256 tokenPrice = pools[i].getUnderlyerPrice();
-            uint8 decimals = underlyer.decimals();
-
-            uint256 mAptDelta =
-                mApt.calculateMintAmount(
-                    uint256(amounts[i].mul(amountSign)),
-                    tokenPrice,
-                    decimals
-                );
-
-            mAptDeltas[i] = int256(mAptDelta).mul(amountSign);
-        }
-
-        return mAptDeltas;
-    }
-
-    /// @dev convenience function to destructure PoolAmount structs
-    function _getPoolsAndAmounts(ILpSafeFunder.PoolAmount[] memory poolAmounts)
+        int256[] memory rebalanceAmounts,
+        uint256 depositCount,
+        uint256 withdrawCount
+    )
         internal
         view
-        returns (PoolTokenV2[] memory, int256[] memory)
+        returns (
+            PoolAmount[] memory depositAmounts,
+            PoolAmount[] memory withdrawAmounts
+        )
     {
-        PoolTokenV2[] memory pools = new PoolTokenV2[](poolAmounts.length);
-        int256[] memory amounts = new int256[](poolAmounts.length);
-        for (uint256 i = 0; i < poolAmounts.length; i++) {
-            amounts[i] = poolAmounts[i].amount;
-            pools[i] = PoolTokenV2(
-                addressRegistry.getAddress(poolAmounts[i].poolId)
-            );
+        depositAmounts = new PoolAmount[](depositCount);
+        uint256 depositIndex = 0;
+
+        withdrawAmounts = new PoolAmount[](withdrawCount);
+        uint256 withdrawIndex = 0;
+
+        for (uint256 j = 0; j < pools.length; j++) {
+            PoolTokenV2 pool = pools[j];
+            int256 rebalanceAmount = rebalanceAmounts[j];
+
+            if (rebalanceAmount < 0) {
+                depositAmounts[depositIndex] = PoolAmount(
+                    pool,
+                    uint256(-rebalanceAmount)
+                );
+                depositIndex++;
+            } else if (rebalanceAmount > 0) {
+                withdrawAmounts[withdrawIndex] = PoolAmount(
+                    pool,
+                    uint256(rebalanceAmount)
+                );
+                withdrawIndex++;
+            }
         }
-        return (pools, amounts);
     }
 }

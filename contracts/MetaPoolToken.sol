@@ -8,6 +8,7 @@ import {
 import {
     SafeMath
 } from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import {SignedSafeMath} from "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import {
     Initializable
 } from "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
@@ -18,12 +19,20 @@ import {
     ReentrancyGuardUpgradeSafe
 } from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import {
+    IDetailedERC20UpgradeSafe
+} from "./interfaces/IDetailedERC20UpgradeSafe.sol";
+import {
     ERC20UpgradeSafe
 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
+import {
+    SafeERC20 as SafeERC20UpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 import {IMintable} from "./interfaces/IMintable.sol";
 import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
+import {ILpSafeFunder} from "./interfaces/ILpSafeFunder.sol";
+import {PoolTokenV2} from "./PoolTokenV2.sol";
 
 /**
  * @title Meta Pool Token
@@ -65,6 +74,8 @@ contract MetaPoolToken is
     IMintable
 {
     using SafeMath for uint256;
+    using SignedSafeMath for int256;
+    using SafeERC20UpgradeSafe for IDetailedERC20UpgradeSafe;
 
     uint256 public constant DEFAULT_MAPT_TO_UNDERLYER_FACTOR = 1000;
 
@@ -172,42 +183,60 @@ contract MetaPoolToken is
         addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
 
-    /**
-     * @notice Mint specified amount of mAPT to the given account.
-     * @dev Only the manager can call this.
-     * @param account address to mint to
-     * @param amount mint amount
-     */
-    function mint(address account, uint256 amount)
+    function mint(ILpSafeFunder.PoolAmount[] calldata depositAmounts)
         external
         override
         nonReentrant
         onlyContractRole
     {
-        require(amount > 0, "INVALID_MINT_AMOUNT");
+        uint256[] memory deltas = _calculateDeltas(depositAmounts);
+
+        for (uint256 j = 0; j < depositAmounts.length; j++) {
+            if (deltas[j] == 0) {
+                continue;
+            }
+
+            PoolTokenV2 pool = depositAmounts[j].pool;
+            uint256 amount = depositAmounts[j].amount;
+
+            _mint(address(pool), deltas[j]);
+            pool.transferToLpSafe(amount);
+
+            emit Mint(address(pool), amount);
+        }
+
         IOracleAdapter oracleAdapter = _getOracleAdapter();
         oracleAdapter.lock();
-        _mint(account, amount);
-        emit Mint(account, amount);
     }
 
-    /**
-     * @notice Burn specified amount of mAPT from the given account.
-     * @dev Only the manager can call this.
-     * @param account address to burn from
-     * @param amount burn amount
-     */
-    function burn(address account, uint256 amount)
+    function burn(ILpSafeFunder.PoolAmount[] calldata withdrawAmounts)
         external
         override
         nonReentrant
         onlyContractRole
     {
-        require(amount > 0, "INVALID_BURN_AMOUNT");
+        address lpSafe = addressRegistry.lpSafeAddress();
+
+        uint256[] memory deltas = _calculateDeltas(withdrawAmounts);
+
+        for (uint256 j = 0; j < withdrawAmounts.length; j++) {
+            if (deltas[j] == 0) {
+                continue;
+            }
+
+            PoolTokenV2 pool = withdrawAmounts[j].pool;
+            uint256 amount = withdrawAmounts[j].amount;
+
+            _burn(address(pool), amount);
+
+            IDetailedERC20UpgradeSafe underlyer = pool.underlyer();
+            underlyer.safeTransferFrom(lpSafe, address(pool), amount);
+
+            emit Burn(lpSafe, amount);
+        }
+
         IOracleAdapter oracleAdapter = _getOracleAdapter();
         oracleAdapter.lock();
-        _burn(account, amount);
-        emit Burn(account, amount);
     }
 
     /**
@@ -228,27 +257,6 @@ contract MetaPoolToken is
     function getTvl() public view returns (uint256) {
         IOracleAdapter oracleAdapter = _getOracleAdapter();
         return oracleAdapter.getTvl();
-    }
-
-    /**
-     * @notice Calculate mAPT amount to be minted for given pool's underlyer amount.
-     * @param depositAmount Pool underlyer amount to be converted
-     * @param tokenPrice Pool underlyer's USD price (in wei) per underlyer token
-     * @param decimals Pool underlyer's number of decimals
-     * @dev Price parameter is in units of wei per token ("big" unit), since
-     * attempting to express wei per token bit ("small" unit) will be
-     * fractional, requiring fixed-point representation.  This means we need
-     * to also pass in the underlyer's number of decimals to do the appropriate
-     * multiplication in the calculation.
-     */
-    function calculateMintAmount(
-        uint256 depositAmount,
-        uint256 tokenPrice,
-        uint256 decimals
-    ) external view returns (uint256) {
-        uint256 depositValue = depositAmount.mul(tokenPrice).div(10**decimals);
-        uint256 totalValue = getTvl();
-        return _calculateMintAmount(depositValue, totalValue);
     }
 
     /**
@@ -292,7 +300,36 @@ contract MetaPoolToken is
         return IOracleAdapter(oracleAdapterAddress);
     }
 
+    function _calculateDeltas(ILpSafeFunder.PoolAmount[] memory amounts)
+        internal
+        returns (uint256[] memory)
+    {
+        uint256[] memory deltas = new uint256[](amounts.length);
+
+        for (uint256 i = 0; i < amounts.length; i++) {
+            PoolTokenV2 pool = amounts[i].pool;
+            uint256 amount = amounts[i].amount;
+
+            IDetailedERC20UpgradeSafe underlyer = pool.underlyer();
+            uint256 tokenPrice = pool.getUnderlyerPrice();
+            uint8 decimals = underlyer.decimals();
+
+            deltas[i] = _calculateDelta(amount, tokenPrice, decimals);
+        }
+
+        return deltas;
+    }
+
     /**
+     * @notice Calculate mAPT amount for given pool's underlyer amount.
+     * @param amount Pool underlyer amount to be converted
+     * @param tokenPrice Pool underlyer's USD price (in wei) per underlyer token
+     * @param decimals Pool underlyer's number of decimals
+     * @dev Price parameter is in units of wei per token ("big" unit), since
+     * attempting to express wei per token bit ("small" unit) will be
+     * fractional, requiring fixed-point representation.  This means we need
+     * to also pass in the underlyer's number of decimals to do the appropriate
+     * multiplication in the calculation.
      * @dev amount of APT minted should be in same ratio to APT supply
      * as deposit value is to pool's total value, i.e.:
      *
@@ -303,17 +340,19 @@ contract MetaPoolToken is
      * The important thing is they are consistent, i.e. both pre-deposit
      * or both post-deposit.
      */
-    function _calculateMintAmount(uint256 depositValue, uint256 totalValue)
-        internal
-        view
-        returns (uint256)
-    {
+    function _calculateDelta(
+        uint256 amount,
+        uint256 tokenPrice,
+        uint8 decimals
+    ) internal view returns (uint256) {
+        uint256 value = amount.mul(tokenPrice).div(10**uint256(decimals));
+        uint256 totalValue = getTvl();
         uint256 totalSupply = totalSupply();
 
         if (totalValue == 0 || totalSupply == 0) {
-            return depositValue.mul(DEFAULT_MAPT_TO_UNDERLYER_FACTOR);
+            return value.mul(DEFAULT_MAPT_TO_UNDERLYER_FACTOR);
         }
 
-        return depositValue.mul(totalSupply).div(totalValue);
+        return value.mul(totalSupply).div(totalValue);
     }
 }
