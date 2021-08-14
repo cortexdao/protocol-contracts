@@ -47,7 +47,12 @@ const CurveMetaPoolAllocations = [
   {
     contractName: "CurveUsdnAllocation",
     primaryUnderlyerSymbol: "USDN",
-    whaleAddress: "0xf855d905888fF48c1A716a0d184FF5Ca02909baf",
+    // using Curve USDN pool itself as the "whale" -- this should
+    // be ok since the pool's actual balances (vs the tracked internal
+    // balances) are only used for admin balances and to determine
+    // deposit amounts for "fee" assets.  For the USDN pool, only
+    // Tether is a fee asset.
+    whaleAddress: "0x0f9cb53Ebe405d49A0bbdBD291A65Ff571bC83e1",
   },
 ];
 
