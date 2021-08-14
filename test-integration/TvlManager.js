@@ -24,12 +24,13 @@ const CurvePoolAllocations = [
     contractName: "Curve3PoolAllocation",
     poolName: "3Pool",
     numberOfCoins: 3,
-    // Curve sUSDv2 pool
+    // Curve sUSDv2 pool, holds DAI
     whaleAddress: STABLECOIN_POOLS["DAI"],
   },
   {
     contractName: "CurveIronBankAllocation",
     poolName: "IronBank",
+    // ibDAIv2, holds cyDAI
     whaleAddress: "0xee8389d235E092b2945fE363e97CDBeD121A0439",
     numberOfCoins: 3,
     unwrap: true,
@@ -37,21 +38,37 @@ const CurvePoolAllocations = [
   {
     contractName: "CurveSaaveAllocation",
     poolName: "sAAVE",
+    // Aave whale, holds aDAI
     whaleAddress: "0x3DdfA8eC3052539b6C9549F12cEA2C295cfF5296",
     numberOfCoins: 2,
   },
   {
     contractName: "CurveAaveAllocation",
     poolName: "AAVE",
+    // mStable: mUSD Aave integration, holds aDAI
     whaleAddress: "0xA2a3CAe63476891AB2d640d9a5A800755Ee79d6E",
     numberOfCoins: 3,
   },
   {
     contractName: "CurveSusdV2Allocation",
     poolName: "sUSDv2",
-    // Compound: cDAI Token
-    whaleAddress: "0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643",
+    // 3Pool, holds DAI
+    whaleAddress: "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7",
     numberOfCoins: 4,
+    interfaceOverride: {
+      IStableSwap: "IOldStableSwap",
+    },
+  },
+  {
+    contractName: "CurveCompoundAllocation",
+    poolName: "Compound",
+    // Compound whale, holds cDAI
+    whaleAddress: "0x3DdfA8eC3052539b6C9549F12cEA2C295cfF5296",
+    numberOfCoins: 2,
+    unwrap: true,
+    interfaceOverride: {
+      IStableSwap: "IOldStableSwap",
+    },
   },
 ];
 
@@ -157,6 +174,7 @@ describe("Contract: TvlManager", () => {
       whaleAddress,
       numberOfCoins,
       unwrap,
+      interfaceOverride,
     } = allocationData;
 
     describe(`Curve ${poolName} allocation`, () => {
@@ -180,8 +198,14 @@ describe("Contract: TvlManager", () => {
 
       before("Attach to Mainnet Curve contracts", async () => {
         const STABLE_SWAP_ADDRESS = await allocation.STABLE_SWAP_ADDRESS();
-        const ifaceName = "IStableSwap" + (numberOfCoins || "").toString();
-        stableSwap = await ethers.getContractAt(ifaceName, STABLE_SWAP_ADDRESS);
+        let poolInterfaceName = interfaceOverride
+          ? interfaceOverride["IStableSwap"]
+          : "IStableSwap";
+        poolInterfaceName += (numberOfCoins || "").toString();
+        stableSwap = await ethers.getContractAt(
+          poolInterfaceName,
+          STABLE_SWAP_ADDRESS
+        );
 
         const LP_TOKEN_ADDRESS = await allocation.LP_TOKEN_ADDRESS();
         lpToken = await ethers.getContractAt(
