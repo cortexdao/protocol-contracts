@@ -7,7 +7,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 /**
  * @notice the stablecoin pool contract
  */
-interface IStableSwap {
+interface IStableSwap2 {
     function balances(uint256 coin) external view returns (uint256);
 
     function coins(uint256 coin) external view returns (address);
@@ -16,14 +16,14 @@ interface IStableSwap {
      * @dev the number of coins is hard-coded in curve contracts
      */
     // solhint-disable-next-line
-    function add_liquidity(uint256[3] memory amounts, uint256 min_mint_amount)
+    function add_liquidity(uint256[2] memory amounts, uint256 min_mint_amount)
         external;
 
     /**
      * @dev the number of coins is hard-coded in curve contracts
      */
     // solhint-disable-next-line
-    function remove_liquidity(uint256 _amount, uint256[3] memory min_amounts)
+    function remove_liquidity(uint256 _amount, uint256[2] memory min_amounts)
         external;
 
     // solhint-disable-next-line
@@ -37,9 +37,4 @@ interface IStableSwap {
      * @dev For newest curve pools like aave; older pools refer to a private `token` variable.
      */
     // function lp_token() external view returns (address); // solhint-disable-line func-name-mixedcase
-}
-
-// solhint-disable-next-line no-empty-blocks
-interface IStableSwap3 is IStableSwap {
-
 }

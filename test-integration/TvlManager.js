@@ -23,13 +23,21 @@ const CurvePoolAllocations = [
   {
     contractName: "Curve3PoolAllocation",
     poolName: "3Pool",
+    numberOfCoins: 3,
     whaleAddress: STABLECOIN_POOLS["DAI"],
   },
   {
     contractName: "CurveIronBankAllocation",
     poolName: "IronBank",
     whaleAddress: "0xee8389d235E092b2945fE363e97CDBeD121A0439",
+    numberOfCoins: 3,
     unwrap: true,
+  },
+  {
+    contractName: "CurveSaaveAllocation",
+    poolName: "sAAVE",
+    whaleAddress: "0x3DdfA8eC3052539b6C9549F12cEA2C295cfF5296",
+    numberOfCoins: 2,
   },
 ];
 
@@ -129,7 +137,13 @@ describe("Contract: TvlManager", () => {
   });
 
   CurvePoolAllocations.forEach(function (allocationData) {
-    const { contractName, poolName, whaleAddress, unwrap } = allocationData;
+    const {
+      contractName,
+      poolName,
+      whaleAddress,
+      numberOfCoins,
+      unwrap,
+    } = allocationData;
 
     describe(`Curve ${poolName} allocation`, () => {
       let allocation;
@@ -152,10 +166,8 @@ describe("Contract: TvlManager", () => {
 
       before("Attach to Mainnet Curve contracts", async () => {
         const STABLE_SWAP_ADDRESS = await allocation.STABLE_SWAP_ADDRESS();
-        stableSwap = await ethers.getContractAt(
-          "IStableSwap",
-          STABLE_SWAP_ADDRESS
-        );
+        const ifaceName = "IStableSwap" + (numberOfCoins || "").toString();
+        stableSwap = await ethers.getContractAt(ifaceName, STABLE_SWAP_ADDRESS);
 
         const LP_TOKEN_ADDRESS = await allocation.LP_TOKEN_ADDRESS();
         lpToken = await ethers.getContractAt(
@@ -194,7 +206,7 @@ describe("Contract: TvlManager", () => {
 
       it("Get underlyer balance from account holding", async () => {
         const minAmount = 0;
-        const amounts = ["0", "0", "0"];
+        const amounts = new Array(numberOfCoins).fill("0");
         const underlyerAmount = tokenAmountToBigNumber(
           1000,
           await underlyerToken.decimals()
@@ -226,7 +238,7 @@ describe("Contract: TvlManager", () => {
 
       it("Get underlyer balance from gauge holding", async () => {
         const minAmount = 0;
-        const amounts = ["0", "0", "0"];
+        const amounts = new Array(numberOfCoins).fill("0");
         const underlyerAmount = tokenAmountToBigNumber(
           1000,
           await underlyerToken.decimals()
@@ -264,7 +276,7 @@ describe("Contract: TvlManager", () => {
 
       it("Get underlyer balance from combined holdings", async () => {
         const minAmount = 0;
-        const amounts = ["0", "0", "0"];
+        const amounts = new Array(numberOfCoins).fill("0");
         const underlyerAmount = tokenAmountToBigNumber(
           1000,
           await underlyerToken.decimals()
