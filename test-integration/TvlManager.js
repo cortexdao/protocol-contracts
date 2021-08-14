@@ -39,6 +39,12 @@ const CurvePoolAllocations = [
     whaleAddress: "0x3DdfA8eC3052539b6C9549F12cEA2C295cfF5296",
     numberOfCoins: 2,
   },
+  {
+    contractName: "CurveAaveAllocation",
+    poolName: "AAVE",
+    whaleAddress: "0xA2a3CAe63476891AB2d640d9a5A800755Ee79d6E",
+    numberOfCoins: 3,
+  },
 ];
 
 const CurveMetaPoolAllocations = [

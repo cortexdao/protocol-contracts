@@ -71,3 +71,8 @@ contract CurveAllocationBase {
         balance = balance.add(gauge.balanceOf(account));
     }
 }
+
+// solhint-disable-next-line no-empty-blocks
+contract CurveAllocationBase3 is CurveAllocationBase {
+
+}
