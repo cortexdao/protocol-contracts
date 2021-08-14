@@ -24,6 +24,7 @@ const CurvePoolAllocations = [
     contractName: "Curve3PoolAllocation",
     poolName: "3Pool",
     numberOfCoins: 3,
+    // Curve sUSDv2 pool
     whaleAddress: STABLECOIN_POOLS["DAI"],
   },
   {
@@ -44,6 +45,13 @@ const CurvePoolAllocations = [
     poolName: "AAVE",
     whaleAddress: "0xA2a3CAe63476891AB2d640d9a5A800755Ee79d6E",
     numberOfCoins: 3,
+  },
+  {
+    contractName: "CurveSusdV2Allocation",
+    poolName: "sUSDv2",
+    // Compound: cDAI Token
+    whaleAddress: "0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643",
+    numberOfCoins: 4,
   },
 ];
 

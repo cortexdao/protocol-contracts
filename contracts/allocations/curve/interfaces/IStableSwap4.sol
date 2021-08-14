@@ -10,6 +10,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 interface IStableSwap4 {
     function balances(uint256 coin) external view returns (uint256);
 
+    function coins(uint256 coin) external view returns (address);
+
     /**
      * @dev the number of coins is hard-coded in curve contracts
      */

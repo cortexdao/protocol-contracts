@@ -1,0 +1,63 @@
+// SPDX-License-Identifier: BUSDL-1.1
+pragma solidity 0.6.11;
+pragma experimental ABIEncoderV2;
+
+import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ImmutableAssetAllocation} from "contracts/ImmutableAssetAllocation.sol";
+import {
+    IStableSwap4
+} from "contracts/allocations/curve/interfaces/IStableSwap4.sol";
+import {
+    ILiquidityGauge
+} from "contracts/allocations/curve/interfaces/ILiquidityGauge.sol";
+import {CurveAllocationBase4} from "contracts/allocations/curve/Curve4.sol";
+import {Curve3PoolUnderlyerConstants} from "./3pool.sol";
+
+contract CurveSusdV2Constants is Curve3PoolUnderlyerConstants {
+    address public constant STABLE_SWAP_ADDRESS =
+        0xA5407eAE9Ba41422680e2e00537571bcC53efBfD;
+    address public constant LP_TOKEN_ADDRESS =
+        0xC25a3A3b969415c80451098fa907EC722572917F;
+    address public constant LIQUIDITY_GAUGE_ADDRESS =
+        0xA90996896660DEcC6E997655E065b23788857849;
+
+    address public constant SUSD_ADDRESS =
+        0x57Ab1ec28D129707052df4dF418D58a2D46d5f51;
+}
+
+contract CurveSusdV2Allocation is
+    CurveAllocationBase4,
+    ImmutableAssetAllocation,
+    CurveSusdV2Constants
+{
+    function balanceOf(address account, uint8 tokenIndex)
+        public
+        view
+        override
+        returns (uint256)
+    {
+        return
+            super.getUnderlyerBalance(
+                account,
+                IStableSwap4(STABLE_SWAP_ADDRESS),
+                ILiquidityGauge(LIQUIDITY_GAUGE_ADDRESS),
+                IERC20(LP_TOKEN_ADDRESS),
+                uint256(tokenIndex)
+            );
+    }
+
+    function _getTokenData()
+        internal
+        pure
+        override
+        returns (TokenData[] memory)
+    {
+        TokenData[] memory tokens = new TokenData[](4);
+        tokens[0] = TokenData(DAI_ADDRESS, "DAI", 18);
+        tokens[1] = TokenData(USDC_ADDRESS, "USDC", 6);
+        tokens[2] = TokenData(USDT_ADDRESS, "USDT", 6);
+        tokens[3] = TokenData(SUSD_ADDRESS, "sUSD", 18);
+        return tokens;
+    }
+}
