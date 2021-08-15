@@ -93,6 +93,16 @@ const CurveMetaPoolAllocations = [
     // Tether is a fee asset.
     whaleAddress: "0x0f9cb53Ebe405d49A0bbdBD291A65Ff571bC83e1",
   },
+  {
+    contractName: "CurveUsdpAllocation",
+    primaryUnderlyerSymbol: "USDP",
+    // using Curve USDP pool itself as the "whale" -- this should
+    // be ok since the pool's actual balances (vs the tracked internal
+    // balances) are only used for admin balances and to determine
+    // deposit amounts for "fee" assets.  For the USDP pool, only
+    // Tether is a fee asset.
+    whaleAddress: "0x42d7025938bec20b69cbae5a77421082407f053a",
+  },
 ];
 
 describe("Contract: TvlManager", () => {
