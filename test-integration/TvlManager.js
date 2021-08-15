@@ -111,6 +111,12 @@ const CurveMetaPoolAllocations = [
     // using the Curve pool itself as the "whale": see prior note
     whaleAddress: "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B",
   },
+  {
+    contractName: "CurveBusdV2Allocation",
+    primaryUnderlyerSymbol: "BUSD",
+    // using the Curve pool itself as the "whale": see prior note
+    whaleAddress: "0x4807862AA8b2bF68830e4C8dc86D0e9A998e085a",
+  },
 ];
 
 describe("Contract: TvlManager", () => {
