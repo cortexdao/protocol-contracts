@@ -86,22 +86,24 @@ const CurveMetaPoolAllocations = [
   {
     contractName: "CurveUsdnAllocation",
     primaryUnderlyerSymbol: "USDN",
-    // using Curve USDN pool itself as the "whale" -- this should
-    // be ok since the pool's actual balances (vs the tracked internal
-    // balances) are only used for admin balances and to determine
-    // deposit amounts for "fee" assets.  For the USDN pool, only
+    // using the Curve pool itself as the "whale":
+    // should be ok since the pool's external balances (vs the pool's
+    // internal balances) are only used for admin balances and determining
+    // deposit amounts for "fee" assets.  For this metapool, only
     // Tether is a fee asset.
     whaleAddress: "0x0f9cb53Ebe405d49A0bbdBD291A65Ff571bC83e1",
   },
   {
     contractName: "CurveUsdpAllocation",
     primaryUnderlyerSymbol: "USDP",
-    // using Curve USDP pool itself as the "whale" -- this should
-    // be ok since the pool's actual balances (vs the tracked internal
-    // balances) are only used for admin balances and to determine
-    // deposit amounts for "fee" assets.  For the USDP pool, only
-    // Tether is a fee asset.
+    // using the Curve pool itself as the "whale": see prior note
     whaleAddress: "0x42d7025938bec20b69cbae5a77421082407f053a",
+  },
+  {
+    contractName: "CurveMusdAllocation",
+    primaryUnderlyerSymbol: "mUSD",
+    // using the Curve pool itself as the "whale": see prior note
+    whaleAddress: "0x8474DdbE98F5aA3179B3B3F5942D724aFcdec9f6",
   },
 ];
 
