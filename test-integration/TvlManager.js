@@ -105,6 +105,12 @@ const CurveMetaPoolAllocations = [
     // using the Curve pool itself as the "whale": see prior note
     whaleAddress: "0x8474DdbE98F5aA3179B3B3F5942D724aFcdec9f6",
   },
+  {
+    contractName: "CurveFraxAllocation",
+    primaryUnderlyerSymbol: "FRAX",
+    // using the Curve pool itself as the "whale": see prior note
+    whaleAddress: "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B",
+  },
 ];
 
 describe("Contract: TvlManager", () => {
