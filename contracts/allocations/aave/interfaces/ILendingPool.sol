@@ -1,11 +1,13 @@
-// SPDX-License-Identifier: BUSDL-1.1
+// SPDX-License-Identifier: agpl-3.0
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
+
+import {DataTypes} from "../DataTypes.sol";
 
 /**
  * @notice the lending pool contract
  */
-interface IAaveLendingPool {
+interface ILendingPool {
     /**
      * @notice Deposits a certain amount of an asset into the protocol, minting
      * the same amount of corresponding aTokens, and transferring them
@@ -50,4 +52,14 @@ interface IAaveLendingPool {
         uint256 amount,
         address to
     ) external returns (uint256);
+
+    /**
+     * @dev Returns the state and configuration of the reserve
+     * @param asset The address of the underlying asset of the reserve
+     * @return The state of the reserve
+     **/
+    function getReserveData(address asset)
+        external
+        view
+        returns (DataTypes.ReserveData memory);
 }

@@ -245,6 +245,78 @@ describe("Contract: TvlManager", () => {
     );
   });
 
+  describe("Aave stablecoin allocation", () => {
+    let allocation;
+
+    let lendingPool;
+
+    let underlyerToken;
+    const underlyerIndex = 0;
+    let lookupId;
+
+    before("Deploy allocation contract", async () => {
+      const AaveStableCoinAllocation = await ethers.getContractFactory(
+        "AaveStableCoinAllocation"
+      );
+      allocation = await AaveStableCoinAllocation.deploy();
+      await allocation.deployed();
+    });
+
+    before("Attach to Mainnet Aave contracts", async () => {
+      const LENDING_POOL_ADDRESS = await allocation.LENDING_POOL_ADDRESS();
+      lendingPool = await ethers.getContractAt(
+        "ILendingPool",
+        LENDING_POOL_ADDRESS,
+        lpSafe
+      );
+    });
+
+    before("Fund account 0 with pool underlyer", async () => {
+      const tokens = await allocation.tokens();
+      const underlyerAddress = tokens[underlyerIndex].token;
+      underlyerToken = await ethers.getContractAt(
+        "IDetailedERC20",
+        underlyerAddress
+      );
+
+      const amount = tokenAmountToBigNumber(
+        100000,
+        await underlyerToken.decimals()
+      );
+      const sender = STABLECOIN_POOLS["DAI"];
+      await acquireToken(sender, lpSafe, underlyerToken, amount, deployer);
+    });
+
+    before("Register asset allocation", async () => {
+      await tvlManager
+        .connect(lpSafe)
+        .registerAssetAllocation(allocation.address);
+      lookupId = await tvlManager.getAssetAllocationId(
+        allocation.address,
+        underlyerIndex
+      );
+    });
+
+    it("Get underlyer balance from account holding", async () => {
+      const underlyerAmount = tokenAmountToBigNumber(
+        1000,
+        await underlyerToken.decimals()
+      );
+
+      await underlyerToken
+        .connect(lpSafe)
+        .approve(lendingPool.address, MAX_UINT256);
+      await lendingPool.deposit(
+        underlyerToken.address,
+        underlyerAmount,
+        lpSafe.address,
+        0
+      );
+
+      expect(await tvlManager.balanceOf(lookupId)).to.equal(underlyerAmount);
+    });
+  });
+
   CurvePoolAllocations.forEach(function (allocationData) {
     const {
       contractName,
@@ -319,7 +391,10 @@ describe("Contract: TvlManager", () => {
         await tvlManager
           .connect(lpSafe)
           .registerAssetAllocation(allocation.address);
-        lookupId = await tvlManager.getAssetAllocationId(allocation.address, 0);
+        lookupId = await tvlManager.getAssetAllocationId(
+          allocation.address,
+          underlyerIndex
+        );
       });
 
       it("Get underlyer balance from account holding", async () => {
