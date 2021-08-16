@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
-
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+pragma experimental ABIEncoderV2;
 
 /**
  * @notice the lending pool contract
@@ -52,35 +50,4 @@ interface IAaveLendingPool {
         uint256 amount,
         address to
     ) external returns (uint256);
-}
-
-/**
- * @title Periphery Contract for the Aave lending pool
- * @author APY.Finance
- * @notice This contract enables the APY.Finance system to retrieve the balance
- * of an underlyer of an Aave lending token. The balance is used as part
- * of the Chainlink computation of the deployed TVL.  The primary
- * `getUnderlyerBalance` function is invoked indirectly when a
- * Chainlink node calls `balanceOf` on the APYAssetAllocationRegistry.
- */
-contract AavePeriphery {
-    using SafeMath for uint256;
-
-    /**
-     * @notice Returns the balance of an underlying token represented by
-     * an account's aToken balance
-     * @dev aTokens represent the underlyer amount at par (1-1), growing with interest.
-     * @param aToken the LP token representing the share of the pool
-     * @return balance
-     */
-    function getUnderlyerBalance(address account, IERC20 aToken)
-        external
-        view
-        returns (uint256)
-    {
-        require(account != address(0), "INVALID_ACCOUNT");
-        require(address(aToken) != address(0), "INVALID_AAVE_TOKEN");
-
-        return aToken.balanceOf(account);
-    }
 }
