@@ -21,7 +21,7 @@ contract MetaPoolAllocationBase {
     using SafeMath for uint256;
 
     /// @dev all existing Curve metapools are paired with 3Pool
-    Curve3PoolAllocation public curve3PoolAllocation;
+    Curve3PoolAllocation public immutable curve3PoolAllocation;
 
     constructor(address curve3PoolAllocation_) public {
         curve3PoolAllocation = Curve3PoolAllocation(curve3PoolAllocation_);
