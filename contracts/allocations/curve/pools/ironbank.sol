@@ -17,7 +17,7 @@ import {
 } from "contracts/allocations/curve/interfaces/CTokenInterface.sol";
 import {Curve3PoolUnderlyerConstants} from "./3pool.sol";
 
-contract CurveIronBankConstants is Curve3PoolUnderlyerConstants {
+abstract contract CurveIronBankConstants is Curve3PoolUnderlyerConstants {
     address public constant STABLE_SWAP_ADDRESS =
         0x2dded6Da1BF5DBdF597C45fcFaa3194e53EcfeAF;
     address public constant LP_TOKEN_ADDRESS =

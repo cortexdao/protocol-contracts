@@ -14,7 +14,7 @@ import {
 import {CurveAllocationBase2} from "contracts/allocations/curve/Curve2.sol";
 import {Curve3PoolUnderlyerConstants} from "./3pool.sol";
 
-contract CurveSaaveConstants is Curve3PoolUnderlyerConstants {
+abstract contract CurveSaaveConstants is Curve3PoolUnderlyerConstants {
     address public constant STABLE_SWAP_ADDRESS =
         0xEB16Ae0052ed37f479f7fe63849198Df1765a733;
     address public constant LP_TOKEN_ADDRESS =

@@ -13,7 +13,7 @@ import {
 } from "contracts/allocations/curve/interfaces/ILiquidityGauge.sol";
 import {CurveAllocationBase} from "contracts/allocations/curve/Curve.sol";
 
-contract Curve3PoolUnderlyerConstants {
+abstract contract Curve3PoolUnderlyerConstants {
     // underlyer addresses
     address public constant DAI_ADDRESS =
         0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -23,7 +23,7 @@ contract Curve3PoolUnderlyerConstants {
         0xdAC17F958D2ee523a2206206994597C13D831ec7;
 }
 
-contract Curve3PoolConstants is Curve3PoolUnderlyerConstants {
+abstract contract Curve3PoolConstants is Curve3PoolUnderlyerConstants {
     address public constant STABLE_SWAP_ADDRESS =
         0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
     address public constant LP_TOKEN_ADDRESS =

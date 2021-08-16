@@ -12,7 +12,7 @@ import {
 import {MetaPoolAllocationBase} from "contracts/allocations/curve/metapool.sol";
 import {Curve3PoolUnderlyerConstants} from "./3pool.sol";
 
-contract CurveBusdV2Constants is Curve3PoolUnderlyerConstants {
+abstract contract CurveBusdV2Constants is Curve3PoolUnderlyerConstants {
     address public constant META_POOL_ADDRESS =
         0x4807862AA8b2bF68830e4C8dc86D0e9A998e085a;
     // sometimes a metapool is its own LP token; otherwise,
