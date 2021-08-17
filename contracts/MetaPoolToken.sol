@@ -292,66 +292,50 @@ contract MetaPoolToken is
         return (pools, rebalanceAmounts);
     }
 
-    function _mintAndTransfer(
-        PoolTokenV2[] memory pools,
-        uint256[] memory amounts
-    ) internal {
-        uint256[] memory deltas = _calculateDeltas(pools, amounts);
-
-        for (uint256 i = 0; i < pools.length; i++) {
-            if (deltas[i] == 0) {
-                continue;
-            }
-
-            PoolTokenV2 pool = pools[i];
-            uint256 amount = amounts[i];
-
-            _mint(address(pool), deltas[i]);
-            pool.transferToLpSafe(amount);
-
-            emit Mint(address(pool), amount);
-        }
-
-        IOracleAdapter oracleAdapter = _getOracleAdapter();
-        oracleAdapter.lock();
-    }
-
-    function _burnAndTransfer(
-        PoolTokenV2[] memory pools,
-        uint256[] memory amounts
-    ) internal {
-        address lpSafe = addressRegistry.lpSafeAddress();
-
-        uint256[] memory deltas = _calculateDeltas(pools, amounts);
-
-        for (uint256 j = 0; j < pools.length; j++) {
-            if (deltas[j] == 0) {
-                continue;
-            }
-
-            PoolTokenV2 pool = pools[j];
-            uint256 amount = amounts[j];
-
-            _burn(address(pool), amount);
-
-            IDetailedERC20UpgradeSafe underlyer = pool.underlyer();
-            underlyer.safeTransferFrom(lpSafe, address(pool), amount);
-
-            emit Burn(lpSafe, amount);
-        }
-
-        IOracleAdapter oracleAdapter = _getOracleAdapter();
-        oracleAdapter.lock();
-    }
-
     function _fundLp(PoolTokenV2[] memory pools, uint256[] memory amounts)
         internal
     {
         address lpSafeAddress = addressRegistry.lpSafeAddress();
         require(lpSafeAddress != address(0), "INVALID_LP_SAFE"); // defensive check -- should never happen
 
-        _mintAndTransfer(pools, amounts);
+        _multipleMintAndTransfer(pools, amounts);
         _registerPoolUnderlyers(pools);
+    }
+
+    function _multipleMintAndTransfer(
+        PoolTokenV2[] memory pools,
+        uint256[] memory amounts
+    ) internal {
+        uint256[] memory deltas = _calculateDeltas(pools, amounts);
+
+        // MUST do the actual minting after calculating *all* mint amounts,
+        // otherwise due to Chainlink not updating during a transaction,
+        // the totalSupply will change while TVL doesn't.
+        //
+        // Using the pre-mint TVL and totalSupply gives the same answer
+        // as using post-mint values.
+        for (uint256 i = 0; i < pools.length; i++) {
+            PoolTokenV2 pool = pools[i];
+            uint256 mintAmount = deltas[i];
+            uint256 transferAmount = amounts[i];
+            _mintAndTransfer(pool, mintAmount, transferAmount);
+        }
+
+        IOracleAdapter oracleAdapter = _getOracleAdapter();
+        oracleAdapter.lock();
+    }
+
+    function _mintAndTransfer(
+        PoolTokenV2 pool,
+        uint256 mintAmount,
+        uint256 transferAmount
+    ) internal {
+        if (mintAmount == 0) {
+            return;
+        }
+        _mint(address(pool), mintAmount);
+        pool.transferToLpSafe(transferAmount);
+        emit Mint(address(pool), transferAmount);
     }
 
     function _withdrawLp(PoolTokenV2[] memory pools, uint256[] memory amounts)
@@ -360,8 +344,47 @@ contract MetaPoolToken is
         address lpSafeAddress = addressRegistry.lpSafeAddress();
         require(lpSafeAddress != address(0), "INVALID_LP_SAFE"); // defensive check -- should never happen
 
-        _burnAndTransfer(pools, amounts);
+        _multipleBurnAndTransfer(pools, amounts);
         _registerPoolUnderlyers(pools);
+    }
+
+    function _multipleBurnAndTransfer(
+        PoolTokenV2[] memory pools,
+        uint256[] memory amounts
+    ) internal {
+        uint256[] memory deltas = _calculateDeltas(pools, amounts);
+
+        // MUST do the actual burning after calculating *all* burn amounts,
+        // otherwise due to Chainlink not updating during a transaction,
+        // the totalSupply will change while TVL doesn't.
+        //
+        // Using the pre-burn TVL and totalSupply gives the same answer
+        // as using post-burn values.
+        address lpSafe = addressRegistry.lpSafeAddress();
+        for (uint256 i = 0; i < pools.length; i++) {
+            PoolTokenV2 pool = pools[i];
+            uint256 burnAmount = deltas[i];
+            uint256 transferAmount = amounts[i];
+            _burnAndTransfer(pool, lpSafe, burnAmount, transferAmount);
+        }
+
+        IOracleAdapter oracleAdapter = _getOracleAdapter();
+        oracleAdapter.lock();
+    }
+
+    function _burnAndTransfer(
+        PoolTokenV2 pool,
+        address lpSafe,
+        uint256 burnAmount,
+        uint256 transferAmount
+    ) internal {
+        if (burnAmount == 0) {
+            return;
+        }
+        _burn(address(pool), burnAmount);
+        IDetailedERC20UpgradeSafe underlyer = pool.underlyer();
+        underlyer.safeTransferFrom(lpSafe, address(pool), transferAmount);
+        emit Burn(address(pool), burnAmount);
     }
 
     /**
