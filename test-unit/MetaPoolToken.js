@@ -9,7 +9,9 @@ const {
   bytes32,
 } = require("../utils/helpers");
 const { deployMockContract } = waffle;
-const OracleAdapter = artifacts.require("OracleAdapter");
+const OracleAdapter = artifacts.readArtifactSync("OracleAdapter");
+const PoolTokenV2 = artifacts.readArtifactSync("PoolTokenV2");
+const IERC20 = artifacts.readArtifactSync("IDetailedERC20");
 
 const DUMMY_ADDRESS = web3.utils.toChecksumAddress(
   "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
@@ -224,18 +226,142 @@ describe.only("Contract: MetaPoolToken", () => {
     });
   });
 
-  describe("Minting and burning", () => {
-    it("Revert when minting zero", async () => {
+  describe.only("_mintAndTransfer", () => {
+    it("No minting or transfers for zero mint amount", async () => {
+      const pool = await deployMockContract(deployer, PoolTokenV2.abi);
+      await pool.mock.transferToLpSafe.reverts();
+
+      const mintAmount = 0;
+      const transferAmount = 100;
+
+      const prevTotalSupply = await mApt.totalSupply();
       await expect(
-        mApt.connect(lpSafe).mint(randomUser.address, 0)
-      ).to.be.revertedWith("INVALID_MINT_AMOUNT");
+        mApt.testMintAndTransfer(pool.address, mintAmount, transferAmount)
+      ).to.not.be.reverted;
+      expect(await mApt.totalSupply()).to.equal(prevTotalSupply);
     });
 
-    it("Revert when burning zero", async () => {
+    it("Transfer if there is minting", async () => {
+      const pool = await deployMockContract(deployer, PoolTokenV2.abi);
+
+      const mintAmount = tokenAmountToBigNumber(10, await mApt.decimals());
+      const transferAmount = 100;
+
+      // check pool's transfer funciton gets called
+      await pool.mock.transferToLpSafe.revertsWithReason("TRANSFER_TO_LP_SAFE");
       await expect(
-        mApt.connect(lpSafe).burn(randomUser.address, 0)
-      ).to.be.revertedWith("INVALID_BURN_AMOUNT");
+        mApt.testMintAndTransfer(pool.address, mintAmount, transferAmount)
+      ).to.be.revertedWith("TRANSFER_TO_LP_SAFE");
+
+      const expectedSupply = (await mApt.totalSupply()).add(mintAmount);
+      // reset pool mock to check if supply changes as expected
+      await pool.mock.transferToLpSafe.returns();
+      await mApt.testMintAndTransfer(pool.address, mintAmount, transferAmount);
+      expect(await mApt.totalSupply()).to.equal(expectedSupply);
     });
+
+    it("No minting if transfer reverts", async () => {
+      const pool = await deployMockContract(deployer, PoolTokenV2.abi);
+      await pool.mock.transferToLpSafe.revertsWithReason("TRANSFER_FAILED");
+
+      const mintAmount = tokenAmountToBigNumber(10, await mApt.decimals());
+      const transferAmount = 100;
+
+      const prevTotalSupply = await mApt.totalSupply();
+      await expect(
+        mApt.testMintAndTransfer(pool.address, mintAmount, transferAmount)
+      ).to.be.revertedWith("TRANSFER_FAILED");
+      expect(await mApt.totalSupply()).to.equal(prevTotalSupply);
+    });
+  });
+
+  describe.only("_burnAndTransfer", () => {
+    it("No burning or transfers for zero burn amount", async () => {
+      const pool = await deployMockContract(deployer, PoolTokenV2.abi);
+      await pool.mock.underlyer.reverts();
+
+      const burnAmount = 0;
+      const transferAmount = 100;
+
+      const prevTotalSupply = await mApt.totalSupply();
+      await expect(
+        mApt.testBurnAndTransfer(
+          pool.address,
+          lpSafe.address,
+          burnAmount,
+          transferAmount
+        )
+      ).to.not.be.reverted;
+      expect(await mApt.totalSupply()).to.equal(prevTotalSupply);
+    });
+
+    it("Transfer if there is burning", async () => {
+      const pool = await deployMockContract(deployer, PoolTokenV2.abi);
+      const underlyer = await deployMockContract(deployer, IERC20.abi);
+      await pool.mock.underlyer.returns(underlyer.address);
+
+      const burnAmount = tokenAmountToBigNumber(10, await mApt.decimals());
+      const transferAmount = 100;
+
+      await mApt.testMint(pool.address, burnAmount);
+
+      // check pool's transfer function gets called
+      await underlyer.mock.transferFrom.reverts();
+      await expect(
+        mApt.testBurnAndTransfer(
+          pool.address,
+          lpSafe.address,
+          burnAmount,
+          transferAmount
+        )
+      ).to.be.revertedWith("SafeERC20: low-level call failed");
+
+      const expectedSupply = (await mApt.totalSupply()).sub(burnAmount);
+      // reset underlyer mock to check if supply changes as expected
+      await underlyer.mock.transferFrom.returns(true);
+      await mApt.testBurnAndTransfer(
+        pool.address,
+        lpSafe.address,
+        burnAmount,
+        transferAmount
+      );
+      expect(await mApt.totalSupply()).to.equal(expectedSupply);
+    });
+
+    it("No burning if transfer reverts", async () => {
+      const pool = await deployMockContract(deployer, PoolTokenV2.abi);
+      const underlyer = await deployMockContract(deployer, IERC20.abi);
+      await pool.mock.underlyer.returns(underlyer.address);
+      await underlyer.mock.transferFrom.reverts();
+
+      const burnAmount = tokenAmountToBigNumber(10, await mApt.decimals());
+      const transferAmount = 100;
+
+      await mApt.testMint(pool.address, burnAmount);
+
+      const prevTotalSupply = await mApt.totalSupply();
+      await expect(
+        mApt.testBurnAndTransfer(
+          pool.address,
+          lpSafe.address,
+          burnAmount,
+          transferAmount
+        )
+      ).to.be.revertedWith("SafeERC20: low-level call failed");
+      expect(await mApt.totalSupply()).to.equal(prevTotalSupply);
+    });
+  });
+
+  describe("_multipleMintAndTransfer", () => {
+    it("Locks after minting", async () => {
+      //
+    });
+  });
+
+  describe("_multipleBurnAndTransfer", () => {
+    it("Locks after burning", async () => [
+      //
+    ]);
   });
 
   describe("getDeployedValue", () => {
@@ -273,7 +399,7 @@ describe.only("Contract: MetaPoolToken", () => {
 
       await mApt.testMint(anotherUser.address, tokenAmountToBigNumber(100));
 
-      const mintAmount = await mApt.calculateMintAmount(
+      const mintAmount = await mApt.testCalculateDelta(
         usdcAmount,
         usdcEthPrice,
         "6"
@@ -290,7 +416,7 @@ describe.only("Contract: MetaPoolToken", () => {
       let usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
       await oracleAdapterMock.mock.getTvl.returns(1);
 
-      const mintAmount = await mApt.calculateMintAmount(
+      const mintAmount = await mApt.testCalculateDelta(
         usdcAmount,
         usdcEthPrice,
         "6"
@@ -310,7 +436,7 @@ describe.only("Contract: MetaPoolToken", () => {
       const totalSupply = tokenAmountToBigNumber(21);
       await mApt.testMint(anotherUser.address, totalSupply);
 
-      let mintAmount = await mApt.calculateMintAmount(
+      let mintAmount = await mApt.testCalculateDelta(
         usdcAmount,
         usdcEthPrice,
         "6"
@@ -320,11 +446,7 @@ describe.only("Contract: MetaPoolToken", () => {
       tvl = usdcEthPrice.mul(usdcAmount.mul(2)).div(usdc(1));
       await oracleAdapterMock.mock.getTvl.returns(tvl);
       const expectedMintAmount = totalSupply.div(2);
-      mintAmount = await mApt.calculateMintAmount(
-        usdcAmount,
-        usdcEthPrice,
-        "6"
-      );
+      mintAmount = await mApt.testCalculateDelta(usdcAmount, usdcEthPrice, "6");
       expect(mintAmount).to.be.equal(expectedMintAmount);
     });
 
