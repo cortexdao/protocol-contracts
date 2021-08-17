@@ -22,8 +22,8 @@ const ether = (amount) => tokenAmountToBigNumber(amount, "18");
 describe("Contract: MetaPoolToken", () => {
   // signers
   let deployer;
-  let poolManager;
   let emergencySafe;
+  let lpSafe;
   let randomUser;
   let anotherUser;
 
@@ -59,8 +59,8 @@ describe("Contract: MetaPoolToken", () => {
   before(async () => {
     [
       deployer,
-      poolManager,
       emergencySafe,
+      lpSafe,
       randomUser,
       anotherUser,
     ] = await ethers.getSigners();
@@ -69,18 +69,14 @@ describe("Contract: MetaPoolToken", () => {
     MetaPoolTokenProxy = await ethers.getContractFactory("MetaPoolTokenProxy");
     MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
 
-    // Mock out the pool manager and oracle adapter addresses
-    // in the address registry.
     addressRegistryMock = await deployMockContract(
       deployer,
       artifacts.require("IAddressRegistryV2").abi
     );
-    await addressRegistryMock.mock.poolManagerAddress.returns(
-      poolManager.address
-    );
     await addressRegistryMock.mock.getAddress
       .withArgs(bytes32("emergencySafe"))
       .returns(emergencySafe.address);
+    await addressRegistryMock.mock.lpSafeAddress.returns(lpSafe.address);
 
     oracleAdapterMock = await deployMockContract(deployer, OracleAdapter.abi);
     await addressRegistryMock.mock.oracleAdapterAddress.returns(
@@ -146,11 +142,11 @@ describe("Contract: MetaPoolToken", () => {
         .be.true;
     });
 
-    it("Contract role given to Pool Manager", async () => {
-      const CONTRACT_ROLE = await mApt.CONTRACT_ROLE();
-      const memberCount = await mApt.getRoleMemberCount(CONTRACT_ROLE);
+    it("LP role given to LP Safe", async () => {
+      const LP_ROLE = await mApt.LP_ROLE();
+      const memberCount = await mApt.getRoleMemberCount(LP_ROLE);
       expect(memberCount).to.equal(1);
-      expect(await mApt.hasRole(CONTRACT_ROLE, poolManager.address)).to.be.true;
+      expect(await mApt.hasRole(LP_ROLE, lpSafe.address)).to.be.true;
     });
 
     it("Emergency role given to Emergency Safe", async () => {
@@ -231,9 +227,8 @@ describe("Contract: MetaPoolToken", () => {
   describe("Minting and burning", () => {
     it("Manager can mint", async () => {
       const mintAmount = tokenAmountToBigNumber("100");
-      await expect(
-        mApt.connect(poolManager).mint(randomUser.address, mintAmount)
-      ).to.not.be.reverted;
+      await expect(mApt.connect(lpSafe).mint(randomUser.address, mintAmount)).to
+        .not.be.reverted;
 
       expect(await mApt.balanceOf(randomUser.address)).to.equal(mintAmount);
     });
@@ -241,10 +236,9 @@ describe("Contract: MetaPoolToken", () => {
     it("Manager can burn", async () => {
       const mintAmount = tokenAmountToBigNumber("100");
       const burnAmount = tokenAmountToBigNumber("90");
-      await mApt.connect(poolManager).mint(randomUser.address, mintAmount);
-      await expect(
-        mApt.connect(poolManager).burn(randomUser.address, burnAmount)
-      ).to.not.be.reverted;
+      await mApt.connect(lpSafe).mint(randomUser.address, mintAmount);
+      await expect(mApt.connect(lpSafe).burn(randomUser.address, burnAmount)).to
+        .not.be.reverted;
 
       expect(await mApt.balanceOf(randomUser.address)).to.equal(
         mintAmount.sub(burnAmount)
@@ -279,13 +273,13 @@ describe("Contract: MetaPoolToken", () => {
 
     it("Revert when minting zero", async () => {
       await expect(
-        mApt.connect(poolManager).mint(randomUser.address, 0)
+        mApt.connect(lpSafe).mint(randomUser.address, 0)
       ).to.be.revertedWith("INVALID_MINT_AMOUNT");
     });
 
     it("Revert when burning zero", async () => {
       await expect(
-        mApt.connect(poolManager).burn(randomUser.address, 0)
+        mApt.connect(lpSafe).burn(randomUser.address, 0)
       ).to.be.revertedWith("INVALID_BURN_AMOUNT");
     });
   });
@@ -298,7 +292,7 @@ describe("Contract: MetaPoolToken", () => {
 
     it("Return 0 if zero mAPT balance", async () => {
       await mApt
-        .connect(poolManager)
+        .connect(lpSafe)
         .mint(FAKE_ADDRESS, tokenAmountToBigNumber(1000));
       expect(await mApt.getDeployedValue(ANOTHER_FAKE_ADDRESS)).to.equal(0);
     });
@@ -310,10 +304,8 @@ describe("Contract: MetaPoolToken", () => {
       const totalSupply = balance.add(anotherBalance);
 
       await oracleAdapterMock.mock.getTvl.returns(tvl);
-      await mApt.connect(poolManager).mint(FAKE_ADDRESS, balance);
-      await mApt
-        .connect(poolManager)
-        .mint(ANOTHER_FAKE_ADDRESS, anotherBalance);
+      await mApt.connect(lpSafe).mint(FAKE_ADDRESS, balance);
+      await mApt.connect(lpSafe).mint(ANOTHER_FAKE_ADDRESS, anotherBalance);
 
       const expectedValue = tvl.mul(balance).div(totalSupply);
       expect(await mApt.getDeployedValue(FAKE_ADDRESS)).to.equal(expectedValue);
@@ -328,7 +320,7 @@ describe("Contract: MetaPoolToken", () => {
       await oracleAdapterMock.mock.getTvl.returns(0);
 
       await mApt
-        .connect(poolManager)
+        .connect(lpSafe)
         .mint(anotherUser.address, tokenAmountToBigNumber(100));
 
       const mintAmount = await mApt.calculateMintAmount(
@@ -366,7 +358,7 @@ describe("Contract: MetaPoolToken", () => {
       await oracleAdapterMock.mock.getTvl.returns(tvl);
 
       const totalSupply = tokenAmountToBigNumber(21);
-      await mApt.connect(poolManager).mint(anotherUser.address, totalSupply);
+      await mApt.connect(lpSafe).mint(anotherUser.address, totalSupply);
 
       let mintAmount = await mApt.calculateMintAmount(
         usdcAmount,
@@ -393,7 +385,7 @@ describe("Contract: MetaPoolToken", () => {
       await oracleAdapterMock.mock.getTvl.returns(tvl);
 
       const totalSupply = tokenAmountToBigNumber(21);
-      await mApt.connect(poolManager).mint(anotherUser.address, totalSupply);
+      await mApt.connect(lpSafe).mint(anotherUser.address, totalSupply);
 
       let poolAmount = await mApt.calculatePoolAmount(
         totalSupply,
@@ -429,7 +421,7 @@ describe("Contract: MetaPoolToken", () => {
       let mAptAmount = tokenAmountToBigNumber(10);
       let expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
       let expectedPoolAmount = expectedPoolValue.mul(usdc(1)).div(usdcEthPrice);
-      await mApt.connect(poolManager).mint(anotherUser.address, totalSupply);
+      await mApt.connect(lpSafe).mint(anotherUser.address, totalSupply);
       let poolAmount = await mApt.calculatePoolAmount(
         mAptAmount,
         usdcEthPrice,
