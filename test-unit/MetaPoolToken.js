@@ -525,4 +525,43 @@ describe.only("Contract: MetaPoolToken", () => {
       await expect(mApt.testGetTvl()).to.be.revertedWith("SOMETHING_WRONG");
     });
   });
+  describe("emergencyFundLp", () => {
+    it("Emergency Safe can call", async () => {
+      await expect(mApt.connect(emergencySafe).emergencyFundLp([], [])).to.not
+        .be.reverted;
+    });
+
+    it("Unpermissioned cannot call", async () => {
+      await expect(
+        mApt.connect(randomUser).emergencyFundLp([], [])
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
+    });
+
+    it("Revert on unregistered LP Safe address", async () => {
+      await addressRegistryMock.mock.lpSafeAddress.returns(ZERO_ADDRESS);
+      await expect(
+        mApt.connect(emergencySafe).emergencyFundLp([], [])
+      ).to.be.revertedWith("INVALID_LP_SAFE");
+    });
+  });
+
+  describe("emergencyWithdrawLp", () => {
+    it("Emergency Safe can call", async () => {
+      await expect(mApt.connect(emergencySafe).emergencyWithdrawLp([], [])).to
+        .not.be.reverted;
+    });
+
+    it("Unpermissioned cannot call", async () => {
+      await expect(
+        mApt.connect(randomUser).emergencyWithdrawLp([], [])
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
+    });
+
+    it("Revert on unregistered LP Safe address", async () => {
+      await addressRegistryMock.mock.lpSafeAddress.returns(ZERO_ADDRESS);
+      await expect(
+        mApt.connect(emergencySafe).emergencyWithdrawLp([], [])
+      ).to.be.revertedWith("INVALID_LP_SAFE");
+    });
+  });
 });
