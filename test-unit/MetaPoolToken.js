@@ -660,6 +660,44 @@ describe("Contract: MetaPoolToken", () => {
     });
   });
 
+  describe("fundLp", () => {
+    it("LP Safe can call", async () => {
+      await expect(mApt.connect(lpSafe).fundLp([])).to.not.be.reverted;
+    });
+
+    it("Unpermissioned cannot call", async () => {
+      await expect(mApt.connect(randomUser).fundLp([])).to.be.revertedWith(
+        "NOT_LP_ROLE"
+      );
+    });
+
+    it("Revert on unregistered LP Safe address", async () => {
+      await addressRegistryMock.mock.lpSafeAddress.returns(ZERO_ADDRESS);
+      await expect(mApt.connect(lpSafe).fundLp([])).to.be.revertedWith(
+        "INVALID_LP_SAFE"
+      );
+    });
+  });
+
+  describe("withdrawLp", () => {
+    it("LP Safe can call", async () => {
+      await expect(mApt.connect(lpSafe).withdrawLp([])).to.not.be.reverted;
+    });
+
+    it("Unpermissioned cannot call", async () => {
+      await expect(mApt.connect(randomUser).withdrawLp([])).to.be.revertedWith(
+        "NOT_LP_ROLE"
+      );
+    });
+
+    it("Revert on unregistered LP Safe address", async () => {
+      await addressRegistryMock.mock.lpSafeAddress.returns(ZERO_ADDRESS);
+      await expect(mApt.connect(lpSafe).withdrawLp([])).to.be.revertedWith(
+        "INVALID_LP_SAFE"
+      );
+    });
+  });
+
   describe("emergencyFundLp", () => {
     it("Emergency Safe can call", async () => {
       await expect(mApt.connect(emergencySafe).emergencyFundLp([], [])).to.not
@@ -697,6 +735,38 @@ describe("Contract: MetaPoolToken", () => {
       await expect(
         mApt.connect(emergencySafe).emergencyWithdrawLp([], [])
       ).to.be.revertedWith("INVALID_LP_SAFE");
+    });
+  });
+
+  describe("getRebalanceAmounts", () => {
+    it("Return pair of empty arrays when give an empty array", async () => {
+      const result = await mApt.getRebalanceAmounts([]);
+      expect(result).to.deep.equal([[], []]);
+    });
+
+    it("Return array of top-up PoolAmounts from specified pools", async () => {
+      const daiPool = await deployMockContract(deployer, PoolTokenV2.abi);
+      const daiRebalanceAmount = tokenAmountToBigNumber("1234888", "18");
+      await daiPool.mock.getReserveTopUpValue.returns(daiRebalanceAmount);
+      await addressRegistryMock.mock.getAddress
+        .withArgs(bytes32("daiPool"))
+        .returns(daiPool.address);
+
+      const usdcPool = await deployMockContract(deployer, PoolTokenV2.abi);
+      const usdcRebalanceAmount = tokenAmountToBigNumber("459999", "6");
+      await usdcPool.mock.getReserveTopUpValue.returns(usdcRebalanceAmount);
+      await addressRegistryMock.mock.getAddress
+        .withArgs(bytes32("usdcPool"))
+        .returns(usdcPool.address);
+
+      const result = await mApt.getRebalanceAmounts([
+        bytes32("daiPool"),
+        bytes32("usdcPool"),
+      ]);
+      expect(result).to.deep.equal([
+        [daiPool.address, usdcPool.address],
+        [daiRebalanceAmount, usdcRebalanceAmount],
+      ]);
     });
   });
 });
