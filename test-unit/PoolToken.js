@@ -11,6 +11,8 @@ const {
   FAKE_ADDRESS,
   tokenAmountToBigNumber,
   bytes32,
+  impersonateAccount,
+  forciblySendEth,
 } = require("../utils/helpers");
 
 const IDetailedERC20UpgradeSafe = artifacts.require(
@@ -25,7 +27,7 @@ describe("Contract: PoolTokenV2", () => {
   let deployer;
   let adminSafe;
   let emergencySafe;
-  let poolManager;
+  let mApt;
   let lpSafe;
   let randomUser;
   let anotherUser;
@@ -63,7 +65,6 @@ describe("Contract: PoolTokenV2", () => {
       deployer,
       adminSafe,
       emergencySafe,
-      poolManager,
       lpSafe,
       randomUser,
       anotherUser,
@@ -93,26 +94,33 @@ describe("Contract: PoolTokenV2", () => {
     const logicV2 = await PoolTokenV2.deploy();
     await logicV2.deployed();
 
-    mAptMock = await deployMockContract(deployer, MetaPoolToken.abi);
-    oracleAdapterMock = await deployMockContract(deployer, OracleAdapter.abi);
     addressRegistryMock = await deployMockContract(
       deployer,
       AddressRegistry.abi
     );
+
+    mAptMock = await deployMockContract(deployer, MetaPoolToken.abi);
     await addressRegistryMock.mock.mAptAddress.returns(mAptMock.address);
+
+    oracleAdapterMock = await deployMockContract(deployer, OracleAdapter.abi);
     await addressRegistryMock.mock.oracleAdapterAddress.returns(
       oracleAdapterMock.address
     );
+
     await addressRegistryMock.mock.getAddress
       .withArgs(bytes32("adminSafe"))
       .returns(adminSafe.address);
     await addressRegistryMock.mock.getAddress
       .withArgs(bytes32("emergencySafe"))
       .returns(emergencySafe.address);
-    await addressRegistryMock.mock.poolManagerAddress.returns(
-      poolManager.address
-    );
     await addressRegistryMock.mock.lpSafeAddress.returns(lpSafe.address);
+
+    mApt = await impersonateAccount(mAptMock.address);
+    await forciblySendEth(
+      mApt.address,
+      tokenAmountToBigNumber("10"),
+      deployer.address
+    );
 
     const initData = PoolTokenV2.interface.encodeFunctionData(
       "initializeUpgrade(address)",
@@ -180,12 +188,11 @@ describe("Contract: PoolTokenV2", () => {
       expect(await poolToken.hasRole(ADMIN_ROLE, adminSafe.address)).to.be.true;
     });
 
-    it("Contract role given to pool manager", async () => {
+    it("Contract role given to mAPT", async () => {
       const CONTRACT_ROLE = await poolToken.CONTRACT_ROLE();
       const memberCount = await poolToken.getRoleMemberCount(CONTRACT_ROLE);
       expect(memberCount).to.equal(1);
-      expect(await poolToken.hasRole(CONTRACT_ROLE, poolManager.address)).to.be
-        .true;
+      expect(await poolToken.hasRole(CONTRACT_ROLE, mApt.address)).to.be.true;
     });
 
     it("Emergency role given to Emergency Safe", async () => {
@@ -334,11 +341,11 @@ describe("Contract: PoolTokenV2", () => {
       );
     });
 
-    it("Revert when calling transferToLPSafe on locked pool from poolManager", async () => {
+    it("Revert when calling transferToLpSafe on locked pool from mAPT", async () => {
       await poolToken.connect(emergencySafe).lock();
 
       await expect(
-        poolToken.connect(poolManager).transferToLPSafe(100)
+        poolToken.connect(mApt).transferToLpSafe(100)
       ).to.revertedWith("Pausable: paused");
     });
   });
@@ -348,14 +355,13 @@ describe("Contract: PoolTokenV2", () => {
       await underlyerMock.mock.transfer.returns(true);
     });
 
-    it("Pool Manager can call transferToLPSafe", async () => {
-      // await expect(
-      await poolToken.connect(poolManager).transferToLPSafe(100);
-      // ).to.not.be.reverted;
+    it("mAPT can call transferToLpSafe", async () => {
+      await expect(poolToken.connect(mApt).transferToLpSafe(100)).to.not.be
+        .reverted;
     });
 
-    it("Revert when unpermissioned account calls transferToLPSafe", async () => {
-      await expect(poolToken.connect(randomUser).transferToLPSafe(100)).to.be
+    it("Revert when unpermissioned account calls transferToLpSafe", async () => {
+      await expect(poolToken.connect(randomUser).transferToLpSafe(100)).to.be
         .reverted;
     });
   });
@@ -714,7 +720,9 @@ describe("Contract: PoolTokenV2", () => {
 
       await mAptMock.mock.balanceOf.returns(tokenAmountToBigNumber(10));
       await mAptMock.mock.totalSupply.returns(tokenAmountToBigNumber(1000));
-      await mAptMock.mock.getTvl.returns(tokenAmountToBigNumber(271828));
+      await mAptMock.mock.getDeployedValue.returns(
+        tokenAmountToBigNumber(10000000)
+      );
 
       await poolToken.mint(poolToken.address, aptTotalSupply);
 

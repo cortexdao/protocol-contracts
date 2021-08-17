@@ -196,7 +196,7 @@ contract PoolTokenV2 is
         );
         _setupRole(ADMIN_ROLE, addressRegistry.getAddress("adminSafe"));
         _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
-        _setupRole(CONTRACT_ROLE, addressRegistry.poolManagerAddress());
+        _setupRole(CONTRACT_ROLE, addressRegistry.mAptAddress());
 
         feePeriod = 1 days;
         feePercentage = 5;
