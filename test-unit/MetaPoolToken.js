@@ -11,7 +11,7 @@ const {
 const { deployMockContract } = waffle;
 const OracleAdapter = artifacts.readArtifactSync("OracleAdapter");
 const PoolTokenV2 = artifacts.readArtifactSync("PoolTokenV2");
-const IERC20 = artifacts.readArtifactSync("IDetailedERC20");
+const IDetailedERC20 = artifacts.readArtifactSync("IDetailedERC20");
 
 const DUMMY_ADDRESS = web3.utils.toChecksumAddress(
   "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
@@ -21,7 +21,7 @@ const usdc = (amount) => tokenAmountToBigNumber(amount, "6");
 const dai = (amount) => tokenAmountToBigNumber(amount, "18");
 const ether = (amount) => tokenAmountToBigNumber(amount, "18");
 
-describe.only("Contract: MetaPoolToken", () => {
+describe("Contract: MetaPoolToken", () => {
   // signers
   let deployer;
   let emergencySafe;
@@ -226,7 +226,7 @@ describe.only("Contract: MetaPoolToken", () => {
     });
   });
 
-  describe.only("_mintAndTransfer", () => {
+  describe("_mintAndTransfer", () => {
     it("No minting or transfers for zero mint amount", async () => {
       const pool = await deployMockContract(deployer, PoolTokenV2.abi);
       await pool.mock.transferToLpSafe.reverts();
@@ -275,7 +275,7 @@ describe.only("Contract: MetaPoolToken", () => {
     });
   });
 
-  describe.only("_burnAndTransfer", () => {
+  describe("_burnAndTransfer", () => {
     it("No burning or transfers for zero burn amount", async () => {
       const pool = await deployMockContract(deployer, PoolTokenV2.abi);
       await pool.mock.underlyer.reverts();
@@ -297,7 +297,7 @@ describe.only("Contract: MetaPoolToken", () => {
 
     it("Transfer if there is burning", async () => {
       const pool = await deployMockContract(deployer, PoolTokenV2.abi);
-      const underlyer = await deployMockContract(deployer, IERC20.abi);
+      const underlyer = await deployMockContract(deployer, IDetailedERC20.abi);
       await pool.mock.underlyer.returns(underlyer.address);
 
       const burnAmount = tokenAmountToBigNumber(10, await mApt.decimals());
@@ -330,7 +330,7 @@ describe.only("Contract: MetaPoolToken", () => {
 
     it("No burning if transfer reverts", async () => {
       const pool = await deployMockContract(deployer, PoolTokenV2.abi);
-      const underlyer = await deployMockContract(deployer, IERC20.abi);
+      const underlyer = await deployMockContract(deployer, IDetailedERC20.abi);
       await pool.mock.underlyer.returns(underlyer.address);
       await underlyer.mock.transferFrom.reverts();
 
@@ -352,16 +352,63 @@ describe.only("Contract: MetaPoolToken", () => {
     });
   });
 
-  describe("_multipleMintAndTransfer", () => {
-    it("Locks after minting", async () => {
-      //
-    });
-  });
+  describe("Multiple mints and burns", () => {
+    let pool;
+    let underlyer;
 
-  describe("_multipleBurnAndTransfer", () => {
-    it("Locks after burning", async () => [
-      //
-    ]);
+    before("Setup mocks", async () => {
+      pool = await deployMockContract(deployer, PoolTokenV2.abi);
+      await pool.mock.transferToLpSafe.returns();
+      await pool.mock.getUnderlyerPrice.returns(tokenAmountToBigNumber("1", 8));
+
+      underlyer = await deployMockContract(deployer, IDetailedERC20.abi);
+      await pool.mock.underlyer.returns(underlyer.address);
+
+      await underlyer.mock.transferFrom.returns(true);
+      await underlyer.mock.decimals.returns(18);
+
+      await oracleAdapterMock.mock.getTvl.returns(
+        tokenAmountToBigNumber("12345678", 8)
+      );
+    });
+
+    describe("_multipleMintAndTransfer", () => {
+      it("Mints calculated amount", async () => {
+        //
+      });
+
+      it("Locks after minting", async () => {
+        const transferAmount = 100;
+
+        await oracleAdapterMock.mock.lock.revertsWithReason("ORACLE_LOCKED");
+        await expect(
+          mApt.testMultipleMintAndTransfer([pool.address], [transferAmount])
+        ).to.be.revertedWith("ORACLE_LOCKED");
+      });
+    });
+
+    describe("_multipleBurnAndTransfer", () => {
+      it("Mints calculated amount", async () => {
+        //
+      });
+
+      it("Locks after burning", async () => {
+        const price = await pool.getUnderlyerPrice();
+        const decimals = await underlyer.decimals();
+        const transferAmount = tokenAmountToBigNumber("100", decimals);
+        const burnAmount = await mApt.testCalculateDelta(
+          transferAmount,
+          price,
+          decimals
+        );
+        await mApt.testMint(pool.address, burnAmount);
+
+        await oracleAdapterMock.mock.lock.revertsWithReason("ORACLE_LOCKED");
+        await expect(
+          mApt.testMultipleBurnAndTransfer([pool.address], [transferAmount])
+        ).to.be.revertedWith("ORACLE_LOCKED");
+      });
+    });
   });
 
   describe("getDeployedValue", () => {
@@ -525,6 +572,94 @@ describe.only("Contract: MetaPoolToken", () => {
       await expect(mApt.testGetTvl()).to.be.revertedWith("SOMETHING_WRONG");
     });
   });
+
+  describe("_registerPoolUnderlyers", () => {
+    let daiPool;
+    let daiToken;
+    let usdcPool;
+    let usdcToken;
+
+    let tvlManagerMock;
+    let erc20AllocationMock;
+
+    before("Setup mocks", async () => {
+      daiPool = await deployMockContract(deployer, PoolTokenV2.abi);
+      daiToken = await deployMockContract(deployer, IDetailedERC20.abi);
+      await daiPool.mock.underlyer.returns(daiToken.address);
+      await daiToken.mock.decimals.returns(18);
+      await daiToken.mock.symbol.returns("DAI");
+
+      usdcPool = await deployMockContract(deployer, PoolTokenV2.abi);
+      usdcToken = await deployMockContract(deployer, IDetailedERC20.abi);
+      await usdcPool.mock.underlyer.returns(usdcToken.address);
+      await usdcToken.mock.decimals.returns(6);
+      await usdcToken.mock.symbol.returns("USDC");
+
+      erc20AllocationMock = await deployMockContract(
+        deployer,
+        artifacts.require("IErc20AllocationRegistry").abi
+      );
+      await erc20AllocationMock.mock.isErc20TokenRegistered.returns(true);
+
+      tvlManagerMock = await deployMockContract(
+        deployer,
+        artifacts.readArtifactSync("ITvlManager").abi
+      );
+      await tvlManagerMock.mock.erc20Allocation.returns(
+        erc20AllocationMock.address
+      );
+      await addressRegistryMock.mock.getAddress
+        .withArgs(bytes32("tvlManager"))
+        .returns(tvlManagerMock.address);
+    });
+
+    it("Unregistered underlyers get registered", async () => {
+      // set DAI as unregistered in ERC20 registry
+      await erc20AllocationMock.mock.isErc20TokenRegistered
+        .withArgs(daiToken.address)
+        .returns(false);
+
+      // revert on registration for DAI but not others
+      await erc20AllocationMock.mock["registerErc20Token(address)"].returns();
+      await erc20AllocationMock.mock["registerErc20Token(address)"]
+        .withArgs(daiToken.address)
+        .revertsWithReason("REGISTERED_DAI");
+
+      // expect revert since register function should be called
+      await expect(
+        mApt.testRegisterPoolUnderlyers([daiPool.address])
+      ).to.be.revertedWith("REGISTERED_DAI");
+    });
+
+    it("Registered underlyers are skipped", async () => {
+      // set DAI as registered while USDC is not
+      await erc20AllocationMock.mock.isErc20TokenRegistered
+        .withArgs(daiToken.address)
+        .returns(true);
+      await erc20AllocationMock.mock.isErc20TokenRegistered
+        .withArgs(usdcToken.address)
+        .returns(false);
+
+      // revert on registration for DAI or USDC
+      await erc20AllocationMock.mock["registerErc20Token(address)"].returns();
+      await erc20AllocationMock.mock["registerErc20Token(address)"]
+        .withArgs(usdcToken.address)
+        .revertsWithReason("REGISTERED_USDC");
+      await erc20AllocationMock.mock["registerErc20Token(address)"]
+        .withArgs(daiToken.address)
+        .revertsWithReason("REGISTERED_DAI");
+
+      // should not revert since DAI should not be registered
+      await expect(mApt.testRegisterPoolUnderlyers([daiPool.address])).to.not.be
+        .reverted;
+
+      // should revert for USDC registration
+      await expect(
+        mApt.testRegisterPoolUnderlyers([daiPool.address, usdcPool.address])
+      ).to.be.revertedWith("REGISTERED_USDC");
+    });
+  });
+
   describe("emergencyFundLp", () => {
     it("Emergency Safe can call", async () => {
       await expect(mApt.connect(emergencySafe).emergencyFundLp([], [])).to.not

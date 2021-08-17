@@ -50,6 +50,10 @@ contract TestMetaPoolToken is MetaPoolToken {
         _burnAndTransfer(pool, lpSafe, burnAmount, transferAmount);
     }
 
+    function testRegisterPoolUnderlyers(PoolTokenV2[] memory pools) public {
+        _registerPoolUnderlyers(pools);
+    }
+
     function testGetTvl() public view returns (uint256) {
         return _getTvl();
     }
