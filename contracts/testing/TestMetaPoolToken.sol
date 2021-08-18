@@ -58,11 +58,34 @@ contract TestMetaPoolToken is MetaPoolToken {
         return _getTvl();
     }
 
+    function testCalculateDeltas(
+        PoolTokenV2[] memory pools,
+        uint256[] memory amounts
+    ) public view returns (uint256[] memory) {
+        return _calculateDeltas(pools, amounts);
+    }
+
     function testCalculateDelta(
         uint256 amount,
         uint256 tokenPrice,
         uint8 decimals
     ) public view returns (uint256) {
         return _calculateDelta(amount, tokenPrice, decimals);
+    }
+
+    function testGetFundAmounts(int256[] memory amounts)
+        public
+        pure
+        returns (uint256[] memory)
+    {
+        return _getFundAmounts(amounts);
+    }
+
+    function testGetWithdrawAmounts(int256[] memory amounts)
+        public
+        pure
+        returns (uint256[] memory)
+    {
+        return _getWithdrawAmounts(amounts);
     }
 }

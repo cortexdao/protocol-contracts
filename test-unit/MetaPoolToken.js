@@ -119,19 +119,19 @@ describe("Contract: MetaPoolToken", () => {
         MetaPoolTokenProxy.connect(deployer).deploy(
           logic.address,
           ZERO_ADDRESS,
-          DUMMY_ADDRESS
+          addressRegistryMock.address
         )
-      ).to.be.reverted;
+      ).to.be.revertedWith("INVALID_ADMIN");
     });
 
-    it("Revert when address registry is zero address", async () => {
+    it("Revert when address registry is not a contract address", async () => {
       await expect(
         MetaPoolTokenProxy.connect(deployer).deploy(
           logic.address,
-          DUMMY_ADDRESS,
-          ZERO_ADDRESS
+          proxyAdmin.address,
+          DUMMY_ADDRESS
         )
-      ).to.be.reverted;
+      ).to.be.revertedWith("INVALID_ADDRESS");
     });
   });
 
@@ -359,13 +359,15 @@ describe("Contract: MetaPoolToken", () => {
     before("Setup mocks", async () => {
       pool = await deployMockContract(deployer, PoolTokenV2.abi);
       await pool.mock.transferToLpSafe.returns();
-      await pool.mock.getUnderlyerPrice.returns(tokenAmountToBigNumber("1", 8));
+      await pool.mock.getUnderlyerPrice.returns(
+        tokenAmountToBigNumber("0.998", 8)
+      );
 
       underlyer = await deployMockContract(deployer, IDetailedERC20.abi);
       await pool.mock.underlyer.returns(underlyer.address);
 
       await underlyer.mock.transferFrom.returns(true);
-      await underlyer.mock.decimals.returns(18);
+      await underlyer.mock.decimals.returns(6);
 
       await oracleAdapterMock.mock.getTvl.returns(
         tokenAmountToBigNumber("12345678", 8)
@@ -374,7 +376,22 @@ describe("Contract: MetaPoolToken", () => {
 
     describe("_multipleMintAndTransfer", () => {
       it("Mints calculated amount", async () => {
-        //
+        const price = await pool.getUnderlyerPrice();
+        const decimals = await underlyer.decimals();
+        const transferAmount = tokenAmountToBigNumber("1988", decimals);
+        const expectedMintAmount = await mApt.testCalculateDelta(
+          transferAmount,
+          price,
+          decimals
+        );
+        const prevBalance = await mApt.balanceOf(pool.address);
+        const expectedBalance = prevBalance.add(expectedMintAmount);
+
+        await mApt.testMultipleMintAndTransfer(
+          [pool.address],
+          [transferAmount]
+        );
+        expect(await mApt.balanceOf(pool.address)).to.equal(expectedBalance);
       });
 
       it("Locks after minting", async () => {
@@ -388,20 +405,37 @@ describe("Contract: MetaPoolToken", () => {
     });
 
     describe("_multipleBurnAndTransfer", () => {
-      it("Mints calculated amount", async () => {
-        //
-      });
+      it("Burns calculated amount", async () => {
+        // make supply non-zero so burn calc will use proper share logic,
+        // not the default multiplier.
+        await mApt.testMint(pool.address, tokenAmountToBigNumber("1105"));
 
-      it("Locks after burning", async () => {
         const price = await pool.getUnderlyerPrice();
         const decimals = await underlyer.decimals();
-        const transferAmount = tokenAmountToBigNumber("100", decimals);
-        const burnAmount = await mApt.testCalculateDelta(
+        const transferAmount = tokenAmountToBigNumber("1988", decimals);
+        const expectedBurnAmount = await mApt.testCalculateDelta(
           transferAmount,
           price,
           decimals
         );
-        await mApt.testMint(pool.address, burnAmount);
+
+        const prevBalance = await mApt.balanceOf(pool.address);
+        const expectedBalance = prevBalance.sub(expectedBurnAmount);
+
+        await mApt.testMultipleBurnAndTransfer(
+          [pool.address],
+          [transferAmount]
+        );
+        expect(await mApt.balanceOf(pool.address)).to.equal(expectedBalance);
+      });
+
+      it("Locks after burning", async () => {
+        // make supply non-zero so burn calc will use proper share logic,
+        // not the default multiplier.
+        await mApt.testMint(pool.address, tokenAmountToBigNumber("1105"));
+
+        const decimals = await underlyer.decimals();
+        const transferAmount = tokenAmountToBigNumber("100", decimals);
 
         await oracleAdapterMock.mock.lock.revertsWithReason("ORACLE_LOCKED");
         await expect(
@@ -411,152 +445,251 @@ describe("Contract: MetaPoolToken", () => {
     });
   });
 
-  describe("getDeployedValue", () => {
-    it("Return 0 if zero mAPT supply", async () => {
-      expect(await mApt.totalSupply()).to.equal("0");
-      expect(await mApt.getDeployedValue(FAKE_ADDRESS)).to.equal("0");
-    });
-
-    it("Return 0 if zero mAPT balance", async () => {
-      await mApt.testMint(FAKE_ADDRESS, tokenAmountToBigNumber(1000));
-      expect(await mApt.getDeployedValue(ANOTHER_FAKE_ADDRESS)).to.equal(0);
-    });
-
-    it("Returns calculated value for non-zero mAPT balance", async () => {
-      const tvl = ether("502300");
-      const balance = tokenAmountToBigNumber("1000");
-      const anotherBalance = tokenAmountToBigNumber("12345");
-      const totalSupply = balance.add(anotherBalance);
-
-      await oracleAdapterMock.mock.getTvl.returns(tvl);
-      await mApt.testMint(FAKE_ADDRESS, balance);
-      await mApt.testMint(ANOTHER_FAKE_ADDRESS, anotherBalance);
-
-      const expectedValue = tvl.mul(balance).div(totalSupply);
-      expect(await mApt.getDeployedValue(FAKE_ADDRESS)).to.equal(expectedValue);
-    });
-  });
-
   describe("Calculations", () => {
-    it("Calculate mint amount with zero deployed TVL", async () => {
-      const usdcEthPrice = tokenAmountToBigNumber("1602950450000000");
-      let usdcAmount = usdc(107);
-      let usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
-      await oracleAdapterMock.mock.getTvl.returns(0);
+    describe("getDeployedValue", () => {
+      it("Return 0 if zero mAPT supply", async () => {
+        expect(await mApt.totalSupply()).to.equal("0");
+        expect(await mApt.getDeployedValue(FAKE_ADDRESS)).to.equal("0");
+      });
 
-      await mApt.testMint(anotherUser.address, tokenAmountToBigNumber(100));
+      it("Return 0 if zero mAPT balance", async () => {
+        await mApt.testMint(FAKE_ADDRESS, tokenAmountToBigNumber(1000));
+        expect(await mApt.getDeployedValue(ANOTHER_FAKE_ADDRESS)).to.equal(0);
+      });
 
-      const mintAmount = await mApt.testCalculateDelta(
-        usdcAmount,
-        usdcEthPrice,
-        "6"
-      );
-      const expectedMintAmount = usdcValue.mul(
-        await mApt.DEFAULT_MAPT_TO_UNDERLYER_FACTOR()
-      );
-      expect(mintAmount).to.be.equal(expectedMintAmount);
+      it("Returns calculated value for non-zero mAPT balance", async () => {
+        const tvl = ether("502300");
+        const balance = tokenAmountToBigNumber("1000");
+        const anotherBalance = tokenAmountToBigNumber("12345");
+        const totalSupply = balance.add(anotherBalance);
+
+        await oracleAdapterMock.mock.getTvl.returns(tvl);
+        await mApt.testMint(FAKE_ADDRESS, balance);
+        await mApt.testMint(ANOTHER_FAKE_ADDRESS, anotherBalance);
+
+        const expectedValue = tvl.mul(balance).div(totalSupply);
+        expect(await mApt.getDeployedValue(FAKE_ADDRESS)).to.equal(
+          expectedValue
+        );
+      });
     });
 
-    it("Calculate mint amount with zero total supply", async () => {
-      const usdcEthPrice = tokenAmountToBigNumber("1602950450000000");
-      let usdcAmount = usdc(107);
-      let usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
-      await oracleAdapterMock.mock.getTvl.returns(1);
+    describe("_calculateDelta", () => {
+      it("Calculate mint amount with zero deployed TVL", async () => {
+        const usdcEthPrice = tokenAmountToBigNumber("1602950450000000");
+        let usdcAmount = usdc(107);
+        let usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
+        await oracleAdapterMock.mock.getTvl.returns(0);
 
-      const mintAmount = await mApt.testCalculateDelta(
-        usdcAmount,
-        usdcEthPrice,
-        "6"
-      );
-      const expectedMintAmount = usdcValue.mul(
-        await mApt.DEFAULT_MAPT_TO_UNDERLYER_FACTOR()
-      );
-      expect(mintAmount).to.be.equal(expectedMintAmount);
+        await mApt.testMint(anotherUser.address, tokenAmountToBigNumber(100));
+
+        const mintAmount = await mApt.testCalculateDelta(
+          usdcAmount,
+          usdcEthPrice,
+          "6"
+        );
+        const expectedMintAmount = usdcValue.mul(
+          await mApt.DEFAULT_MAPT_TO_UNDERLYER_FACTOR()
+        );
+        expect(mintAmount).to.be.equal(expectedMintAmount);
+      });
+
+      it("Calculate mint amount with zero total supply", async () => {
+        const usdcEthPrice = tokenAmountToBigNumber("1602950450000000");
+        let usdcAmount = usdc(107);
+        let usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
+        await oracleAdapterMock.mock.getTvl.returns(1);
+
+        const mintAmount = await mApt.testCalculateDelta(
+          usdcAmount,
+          usdcEthPrice,
+          "6"
+        );
+        const expectedMintAmount = usdcValue.mul(
+          await mApt.DEFAULT_MAPT_TO_UNDERLYER_FACTOR()
+        );
+        expect(mintAmount).to.be.equal(expectedMintAmount);
+      });
+
+      it("Calculate mint amount with non-zero total supply", async () => {
+        const usdcEthPrice = tokenAmountToBigNumber("1602950450000000");
+        let usdcAmount = usdc(107);
+        let tvl = usdcEthPrice.mul(usdcAmount).div(usdc(1));
+        await oracleAdapterMock.mock.getTvl.returns(tvl);
+
+        const totalSupply = tokenAmountToBigNumber(21);
+        await mApt.testMint(anotherUser.address, totalSupply);
+
+        let mintAmount = await mApt.testCalculateDelta(
+          usdcAmount,
+          usdcEthPrice,
+          "6"
+        );
+        expect(mintAmount).to.be.equal(totalSupply);
+
+        tvl = usdcEthPrice.mul(usdcAmount.mul(2)).div(usdc(1));
+        await oracleAdapterMock.mock.getTvl.returns(tvl);
+        const expectedMintAmount = totalSupply.div(2);
+        mintAmount = await mApt.testCalculateDelta(
+          usdcAmount,
+          usdcEthPrice,
+          "6"
+        );
+        expect(mintAmount).to.be.equal(expectedMintAmount);
+      });
     });
 
-    it("Calculate mint amount with non-zero total supply", async () => {
-      const usdcEthPrice = tokenAmountToBigNumber("1602950450000000");
-      let usdcAmount = usdc(107);
-      let tvl = usdcEthPrice.mul(usdcAmount).div(usdc(1));
-      await oracleAdapterMock.mock.getTvl.returns(tvl);
+    describe("calculatePoolAmount", () => {
+      it("Calculate pool amount with 1 pool", async () => {
+        const usdcEthPrice = tokenAmountToBigNumber("1602950450000000");
+        const usdcAmount = usdc(107);
+        const tvl = usdcEthPrice.mul(usdcAmount).div(usdc(1));
+        await oracleAdapterMock.mock.getTvl.returns(tvl);
 
-      const totalSupply = tokenAmountToBigNumber(21);
-      await mApt.testMint(anotherUser.address, totalSupply);
+        const totalSupply = tokenAmountToBigNumber(21);
+        await mApt.testMint(anotherUser.address, totalSupply);
 
-      let mintAmount = await mApt.testCalculateDelta(
-        usdcAmount,
-        usdcEthPrice,
-        "6"
-      );
-      expect(mintAmount).to.be.equal(totalSupply);
+        let poolAmount = await mApt.calculatePoolAmount(
+          totalSupply,
+          usdcEthPrice,
+          "6"
+        );
+        expect(poolAmount).to.be.equal(usdcAmount);
 
-      tvl = usdcEthPrice.mul(usdcAmount.mul(2)).div(usdc(1));
-      await oracleAdapterMock.mock.getTvl.returns(tvl);
-      const expectedMintAmount = totalSupply.div(2);
-      mintAmount = await mApt.testCalculateDelta(usdcAmount, usdcEthPrice, "6");
-      expect(mintAmount).to.be.equal(expectedMintAmount);
+        const mAptAmount = tokenAmountToBigNumber(5);
+        const expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
+        const expectedPoolAmount = expectedPoolValue
+          .mul(usdc(1))
+          .div(usdcEthPrice);
+        poolAmount = await mApt.calculatePoolAmount(
+          mAptAmount,
+          usdcEthPrice,
+          "6"
+        );
+        expect(poolAmount).to.be.equal(expectedPoolAmount);
+      });
+
+      it("Calculate pool amount with 2 pools", async () => {
+        const usdcEthPrice = tokenAmountToBigNumber("1602950450000000");
+        const daiEthPrice = tokenAmountToBigNumber("1603100000000000");
+        const usdcAmount = usdc(107);
+        const daiAmount = dai(10);
+        const usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
+        const daiValue = daiEthPrice.mul(daiAmount).div(dai(1));
+        const tvl = usdcValue.add(daiValue);
+        await oracleAdapterMock.mock.getTvl.returns(tvl);
+
+        const totalSupply = tokenAmountToBigNumber(21);
+        let mAptAmount = tokenAmountToBigNumber(10);
+        let expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
+        let expectedPoolAmount = expectedPoolValue
+          .mul(usdc(1))
+          .div(usdcEthPrice);
+        await mApt.testMint(anotherUser.address, totalSupply);
+        let poolAmount = await mApt.calculatePoolAmount(
+          mAptAmount,
+          usdcEthPrice,
+          "6"
+        );
+        expect(poolAmount).to.be.equal(expectedPoolAmount);
+
+        mAptAmount = totalSupply.sub(mAptAmount);
+        expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
+        expectedPoolAmount = expectedPoolValue.mul(dai(1)).div(daiEthPrice);
+        poolAmount = await mApt.calculatePoolAmount(
+          mAptAmount,
+          daiEthPrice,
+          "18"
+        );
+        expect(poolAmount).to.be.equal(expectedPoolAmount);
+      });
     });
 
-    it("Calculate pool amount with 1 pool", async () => {
-      const usdcEthPrice = tokenAmountToBigNumber("1602950450000000");
-      const usdcAmount = usdc(107);
-      const tvl = usdcEthPrice.mul(usdcAmount).div(usdc(1));
-      await oracleAdapterMock.mock.getTvl.returns(tvl);
+    describe("_calculateDeltas", () => {
+      let pools;
+      const underlyerPrice = tokenAmountToBigNumber("1.015", 8);
 
-      const totalSupply = tokenAmountToBigNumber(21);
-      await mApt.testMint(anotherUser.address, totalSupply);
+      before("Mock pools and underlyers", async () => {
+        const daiPool = await deployMockContract(deployer, PoolTokenV2.abi);
+        await daiPool.mock.getUnderlyerPrice.returns(underlyerPrice);
+        const daiToken = await deployMockContract(deployer, IDetailedERC20.abi);
+        await daiPool.mock.underlyer.returns(daiToken.address);
+        await daiToken.mock.decimals.returns(18);
 
-      let poolAmount = await mApt.calculatePoolAmount(
-        totalSupply,
-        usdcEthPrice,
-        "6"
-      );
-      expect(poolAmount).to.be.equal(usdcAmount);
+        const usdcPool = await deployMockContract(deployer, PoolTokenV2.abi);
+        await usdcPool.mock.getUnderlyerPrice.returns(underlyerPrice);
+        const usdcToken = await deployMockContract(
+          deployer,
+          IDetailedERC20.abi
+        );
+        await usdcPool.mock.underlyer.returns(usdcToken.address);
+        await usdcToken.mock.decimals.returns(6);
 
-      const mAptAmount = tokenAmountToBigNumber(5);
-      const expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
-      const expectedPoolAmount = expectedPoolValue
-        .mul(usdc(1))
-        .div(usdcEthPrice);
-      poolAmount = await mApt.calculatePoolAmount(
-        mAptAmount,
-        usdcEthPrice,
-        "6"
-      );
-      expect(poolAmount).to.be.equal(expectedPoolAmount);
-    });
+        const usdtPool = await deployMockContract(deployer, PoolTokenV2.abi);
+        await usdtPool.mock.getUnderlyerPrice.returns(underlyerPrice);
+        const usdtToken = await deployMockContract(
+          deployer,
+          IDetailedERC20.abi
+        );
+        await usdtPool.mock.underlyer.returns(usdtToken.address);
+        await usdtToken.mock.decimals.returns(6);
 
-    it("Calculate pool amount with 2 pools", async () => {
-      const usdcEthPrice = tokenAmountToBigNumber("1602950450000000");
-      const daiEthPrice = tokenAmountToBigNumber("1603100000000000");
-      const usdcAmount = usdc(107);
-      const daiAmount = dai(10);
-      const usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
-      const daiValue = daiEthPrice.mul(daiAmount).div(dai(1));
-      const tvl = usdcValue.add(daiValue);
-      await oracleAdapterMock.mock.getTvl.returns(tvl);
+        pools = [daiPool.address, usdcPool.address, usdtPool.address];
+      });
 
-      const totalSupply = tokenAmountToBigNumber(21);
-      let mAptAmount = tokenAmountToBigNumber(10);
-      let expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
-      let expectedPoolAmount = expectedPoolValue.mul(usdc(1)).div(usdcEthPrice);
-      await mApt.testMint(anotherUser.address, totalSupply);
-      let poolAmount = await mApt.calculatePoolAmount(
-        mAptAmount,
-        usdcEthPrice,
-        "6"
-      );
-      expect(poolAmount).to.be.equal(expectedPoolAmount);
+      before("Set TVL", async () => {
+        const tvl = tokenAmountToBigNumber("502300", 8);
+        await oracleAdapterMock.mock.getTvl.returns(tvl);
+      });
 
-      mAptAmount = totalSupply.sub(mAptAmount);
-      expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
-      expectedPoolAmount = expectedPoolValue.mul(dai(1)).div(daiEthPrice);
-      poolAmount = await mApt.calculatePoolAmount(
-        mAptAmount,
-        daiEthPrice,
-        "18"
-      );
-      expect(poolAmount).to.be.equal(expectedPoolAmount);
+      it("Revert if array lengths do not match", async () => {
+        const amounts = new Array(pools.length - 1).fill(
+          tokenAmountToBigNumber("1", "18")
+        );
+
+        await expect(
+          mApt.testCalculateDeltas(pools, amounts)
+        ).to.be.revertedWith("LENGTHS_MUST_MATCH");
+      });
+
+      it("Return an empty array when given empty arrays", async () => {
+        const result = await mApt.testCalculateDeltas([], []);
+        expect(result).to.deep.equal([]);
+      });
+
+      it("Returns expected amounts from _calculateDelta", async () => {
+        const amounts = [
+          tokenAmountToBigNumber(384, 18), // DAI
+          tokenAmountToBigNumber(9899, 6), // Tether
+        ];
+        const expectedAmounts = [
+          await mApt.testCalculateDelta(amounts[0], underlyerPrice, 18),
+          await mApt.testCalculateDelta(amounts[1], underlyerPrice, 6),
+        ];
+
+        const result = await mApt.testCalculateDeltas(
+          [pools[0], pools[2]],
+          amounts
+        );
+        expect(result[0]).to.equal(expectedAmounts[0]);
+        expect(result[1]).to.equal(expectedAmounts[1]);
+        expect(result).to.deep.equal(expectedAmounts);
+      });
+
+      it("Get zero mint amount for zero transfer", async () => {
+        const amounts = [0, tokenAmountToBigNumber(347, 6), 0];
+        const result = await mApt.testCalculateDeltas(pools, amounts);
+
+        const expectedAmount = await mApt.testCalculateDelta(
+          amounts[1],
+          underlyerPrice,
+          6
+        );
+
+        expect(result[0]).to.equal(0);
+        expect(result[1]).to.be.equal(expectedAmount);
+        expect(result[2]).to.equal(0);
+      });
     });
   });
 
@@ -767,6 +900,100 @@ describe("Contract: MetaPoolToken", () => {
         [daiPool.address, usdcPool.address],
         [daiRebalanceAmount, usdcRebalanceAmount],
       ]);
+    });
+  });
+
+  describe("_getFundAmounts", () => {
+    it("Returns empty array given empty array", async () => {
+      const result = await mApt.testGetFundAmounts([]);
+      expect(result).to.be.empty;
+    });
+
+    it("Replaces negatives with positives, positives with zeros", async () => {
+      let amounts = [
+        tokenAmountToBigNumber("159"),
+        tokenAmountToBigNumber("1777"),
+        tokenAmountToBigNumber("11"),
+        tokenAmountToBigNumber("122334"),
+      ];
+      let expectedResult = [
+        tokenAmountToBigNumber("0"),
+        tokenAmountToBigNumber("0"),
+        tokenAmountToBigNumber("0"),
+        tokenAmountToBigNumber("0"),
+      ];
+      let result = await mApt.testGetFundAmounts(amounts);
+      expect(result).to.deep.equal(expectedResult);
+
+      amounts = [
+        tokenAmountToBigNumber("-159"),
+        tokenAmountToBigNumber("-1777"),
+        tokenAmountToBigNumber("-11"),
+      ];
+      expectedResult = [
+        tokenAmountToBigNumber("159"),
+        tokenAmountToBigNumber("1777"),
+        tokenAmountToBigNumber("11"),
+      ];
+      result = await mApt.testGetFundAmounts(amounts);
+      expect(result).to.deep.equal(expectedResult);
+
+      amounts = [
+        tokenAmountToBigNumber("159"),
+        tokenAmountToBigNumber("0"),
+        tokenAmountToBigNumber("-1777"),
+        tokenAmountToBigNumber("-11"),
+        tokenAmountToBigNumber("122334"),
+        tokenAmountToBigNumber("0"),
+      ];
+      expectedResult = [
+        tokenAmountToBigNumber("0"),
+        tokenAmountToBigNumber("0"),
+        tokenAmountToBigNumber("1777"),
+        tokenAmountToBigNumber("11"),
+        tokenAmountToBigNumber("0"),
+        tokenAmountToBigNumber("0"),
+      ];
+      result = await mApt.testGetFundAmounts(amounts);
+      expect(result).to.deep.equal(expectedResult);
+    });
+  });
+
+  describe("_getWithdrawAmounts", () => {
+    it("Returns empty array given empty array", async () => {
+      const result = await mApt.testGetWithdrawAmounts([]);
+      expect(result).to.be.empty;
+    });
+
+    it("Replaces negatives with zeros", async () => {
+      let amounts = [
+        tokenAmountToBigNumber("159"),
+        tokenAmountToBigNumber("1777"),
+        tokenAmountToBigNumber("11"),
+        tokenAmountToBigNumber("122334"),
+      ];
+      let expectedResult = amounts;
+      let result = await mApt.testGetWithdrawAmounts(amounts);
+      expect(result).to.deep.equal(expectedResult);
+
+      amounts = [
+        tokenAmountToBigNumber("159"),
+        tokenAmountToBigNumber("0"),
+        tokenAmountToBigNumber("-1777"),
+        tokenAmountToBigNumber("-11"),
+        tokenAmountToBigNumber("122334"),
+        tokenAmountToBigNumber("0"),
+      ];
+      expectedResult = [
+        tokenAmountToBigNumber("159"),
+        tokenAmountToBigNumber("0"),
+        tokenAmountToBigNumber("0"),
+        tokenAmountToBigNumber("0"),
+        tokenAmountToBigNumber("122334"),
+        tokenAmountToBigNumber("0"),
+      ];
+      result = await mApt.testGetWithdrawAmounts(amounts);
+      expect(result).to.deep.equal(expectedResult);
     });
   });
 });

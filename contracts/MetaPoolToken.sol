@@ -435,6 +435,7 @@ contract MetaPoolToken is
         PoolTokenV2[] memory pools,
         uint256[] memory amounts
     ) internal view returns (uint256[] memory) {
+        require(pools.length == amounts.length, "LENGTHS_MUST_MATCH");
         uint256[] memory deltas = new uint256[](pools.length);
 
         for (uint256 i = 0; i < pools.length; i++) {
