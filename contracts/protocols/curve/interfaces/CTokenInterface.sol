@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: BSD 3-Clause
+/*
+ * https://github.com/compound-finance/compound-protocol/blob/master/contracts/CTokenInterfaces.sol
+ */
 pragma solidity 0.6.11;
 
 interface CTokenInterface {

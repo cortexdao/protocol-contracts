@@ -4,9 +4,9 @@ pragma experimental ABIEncoderV2;
 
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ImmutableAssetAllocation} from "../../ImmutableAssetAllocation.sol";
-import {IStableSwap2} from "./interfaces/IStableSwap2.sol";
-import {ILiquidityGauge} from "./interfaces/ILiquidityGauge.sol";
+import {ImmutableAssetAllocation} from "contracts/ImmutableAssetAllocation.sol";
+import {IOldStableSwap2} from "../interfaces/IOldStableSwap2.sol";
+import {ILiquidityGauge} from "../interfaces/ILiquidityGauge.sol";
 
 /**
  * @title Periphery Contract for the Curve 3pool
@@ -17,7 +17,7 @@ import {ILiquidityGauge} from "./interfaces/ILiquidityGauge.sol";
  * `getUnderlyerBalance` function is invoked indirectly when a
  * Chainlink node calls `balanceOf` on the APYAssetAllocationRegistry.
  */
-contract CurveAllocationBase2 {
+contract OldCurveAllocationBase2 {
     using SafeMath for uint256;
 
     /**
@@ -31,10 +31,10 @@ contract CurveAllocationBase2 {
      */
     function getUnderlyerBalance(
         address account,
-        IStableSwap2 stableSwap,
+        IOldStableSwap2 stableSwap,
         ILiquidityGauge gauge,
         IERC20 lpToken,
-        uint256 coin
+        int128 coin
     ) public view returns (uint256 balance) {
         require(address(stableSwap) != address(0), "INVALID_STABLESWAP");
         require(address(gauge) != address(0), "INVALID_GAUGE");
@@ -47,7 +47,7 @@ contract CurveAllocationBase2 {
         balance = lpTokenBalance.mul(poolBalance).div(lpTokenSupply);
     }
 
-    function getPoolBalance(IStableSwap2 stableSwap, uint256 coin)
+    function getPoolBalance(IOldStableSwap2 stableSwap, int128 coin)
         public
         view
         returns (uint256)
@@ -58,7 +58,7 @@ contract CurveAllocationBase2 {
 
     function getLpTokenShare(
         address account,
-        IStableSwap2 stableSwap,
+        IOldStableSwap2 stableSwap,
         ILiquidityGauge gauge,
         IERC20 lpToken
     ) public view returns (uint256 balance, uint256 totalSupply) {

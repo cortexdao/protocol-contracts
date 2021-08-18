@@ -5,32 +5,34 @@ pragma experimental ABIEncoderV2;
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ImmutableAssetAllocation} from "contracts/ImmutableAssetAllocation.sol";
-import {IMetaPool} from "contracts/allocations/curve/interfaces/IMetaPool.sol";
+import {IMetaPool} from "contracts/protocols/curve/interfaces/IMetaPool.sol";
 import {
     ILiquidityGauge
-} from "contracts/allocations/curve/interfaces/ILiquidityGauge.sol";
-import {MetaPoolAllocationBase} from "contracts/allocations/curve/metapool.sol";
+} from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
+import {
+    MetaPoolAllocationBase
+} from "contracts/protocols/curve/allocations/metapool.sol";
 import {Curve3PoolUnderlyerConstants} from "./3pool.sol";
 
-abstract contract CurveUstConstants is Curve3PoolUnderlyerConstants {
+abstract contract CurveBusdV2Constants is Curve3PoolUnderlyerConstants {
     address public constant META_POOL_ADDRESS =
-        0x890f4e345B1dAED0367A877a1612f86A1f86985f;
+        0x4807862AA8b2bF68830e4C8dc86D0e9A998e085a;
     // sometimes a metapool is its own LP token; otherwise,
     // you can obtain from `token` attribute
     address public constant LP_TOKEN_ADDRESS =
-        0x94e131324b6054c0D789b190b2dAC504e4361b53;
+        0x4807862AA8b2bF68830e4C8dc86D0e9A998e085a;
     address public constant LIQUIDITY_GAUGE_ADDRESS =
-        0x3B7020743Bc2A4ca9EaF9D0722d42E20d6935855;
+        0xd4B22fEdcA85E684919955061fDf353b9d38389b;
 
     // metapool primary underlyer
     address public constant PRIMARY_UNDERLYER_ADDRESS =
-        0xa47c8bf37f92aBed4A126BDA807A7b7498661acD;
+        0x4Fabb145d64652a948d72533023f6E7A623C7C53;
 }
 
-contract CurveUstAllocation is
+contract CurveBusdV2Allocation is
     MetaPoolAllocationBase,
     ImmutableAssetAllocation,
-    CurveUstConstants
+    CurveBusdV2Constants
 {
     constructor(address curve3PoolAllocation_)
         public
@@ -60,7 +62,7 @@ contract CurveUstAllocation is
         returns (TokenData[] memory)
     {
         TokenData[] memory tokens = new TokenData[](4);
-        tokens[0] = TokenData(PRIMARY_UNDERLYER_ADDRESS, "UST", 18);
+        tokens[0] = TokenData(PRIMARY_UNDERLYER_ADDRESS, "BUSD", 18);
         tokens[1] = TokenData(DAI_ADDRESS, "DAI", 18);
         tokens[2] = TokenData(USDC_ADDRESS, "USDC", 6);
         tokens[3] = TokenData(USDT_ADDRESS, "USDT", 6);

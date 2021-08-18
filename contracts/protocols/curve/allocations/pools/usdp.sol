@@ -5,32 +5,34 @@ pragma experimental ABIEncoderV2;
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ImmutableAssetAllocation} from "contracts/ImmutableAssetAllocation.sol";
-import {IMetaPool} from "contracts/allocations/curve/interfaces/IMetaPool.sol";
+import {IMetaPool} from "contracts/protocols/curve/interfaces/IMetaPool.sol";
 import {
     ILiquidityGauge
-} from "contracts/allocations/curve/interfaces/ILiquidityGauge.sol";
-import {MetaPoolAllocationBase} from "contracts/allocations/curve/metapool.sol";
+} from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
+import {
+    MetaPoolAllocationBase
+} from "contracts/protocols/curve/allocations/metapool.sol";
 import {Curve3PoolUnderlyerConstants} from "./3pool.sol";
 
-abstract contract CurveBusdV2Constants is Curve3PoolUnderlyerConstants {
+abstract contract CurveUsdpConstants is Curve3PoolUnderlyerConstants {
     address public constant META_POOL_ADDRESS =
-        0x4807862AA8b2bF68830e4C8dc86D0e9A998e085a;
+        0x42d7025938bEc20B69cBae5A77421082407f053A;
     // sometimes a metapool is its own LP token; otherwise,
     // you can obtain from `token` attribute
     address public constant LP_TOKEN_ADDRESS =
-        0x4807862AA8b2bF68830e4C8dc86D0e9A998e085a;
+        0x7Eb40E450b9655f4B3cC4259BCC731c63ff55ae6;
     address public constant LIQUIDITY_GAUGE_ADDRESS =
-        0xd4B22fEdcA85E684919955061fDf353b9d38389b;
+        0x055be5DDB7A925BfEF3417FC157f53CA77cA7222;
 
     // metapool primary underlyer
     address public constant PRIMARY_UNDERLYER_ADDRESS =
-        0x4Fabb145d64652a948d72533023f6E7A623C7C53;
+        0x1456688345527bE1f37E9e627DA0837D6f08C925;
 }
 
-contract CurveBusdV2Allocation is
+contract CurveUsdpAllocation is
     MetaPoolAllocationBase,
     ImmutableAssetAllocation,
-    CurveBusdV2Constants
+    CurveUsdpConstants
 {
     constructor(address curve3PoolAllocation_)
         public
@@ -60,7 +62,7 @@ contract CurveBusdV2Allocation is
         returns (TokenData[] memory)
     {
         TokenData[] memory tokens = new TokenData[](4);
-        tokens[0] = TokenData(PRIMARY_UNDERLYER_ADDRESS, "BUSD", 18);
+        tokens[0] = TokenData(PRIMARY_UNDERLYER_ADDRESS, "USDP", 18);
         tokens[1] = TokenData(DAI_ADDRESS, "DAI", 18);
         tokens[2] = TokenData(USDC_ADDRESS, "USDC", 6);
         tokens[3] = TokenData(USDT_ADDRESS, "USDT", 6);

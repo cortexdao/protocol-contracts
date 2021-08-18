@@ -6,27 +6,29 @@ import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ImmutableAssetAllocation} from "contracts/ImmutableAssetAllocation.sol";
 import {
-    IStableSwap3
-} from "contracts/allocations/curve/interfaces/IStableSwap.sol";
+    IStableSwap2
+} from "contracts/protocols/curve/interfaces/IStableSwap2.sol";
 import {
     ILiquidityGauge
-} from "contracts/allocations/curve/interfaces/ILiquidityGauge.sol";
-import {CurveAllocationBase3} from "contracts/allocations/curve/Curve.sol";
+} from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
+import {
+    CurveAllocationBase2
+} from "contracts/protocols/curve/allocations/Curve2.sol";
 import {Curve3PoolUnderlyerConstants} from "./3pool.sol";
 
-abstract contract CurveAaveConstants is Curve3PoolUnderlyerConstants {
+abstract contract CurveSaaveConstants is Curve3PoolUnderlyerConstants {
     address public constant STABLE_SWAP_ADDRESS =
-        0xDeBF20617708857ebe4F679508E7b7863a8A8EeE;
+        0xEB16Ae0052ed37f479f7fe63849198Df1765a733;
     address public constant LP_TOKEN_ADDRESS =
-        0xFd2a8fA60Abd58Efe3EeE34dd494cD491dC14900;
+        0x02d341CcB60fAaf662bC0554d13778015d1b285C;
     address public constant LIQUIDITY_GAUGE_ADDRESS =
-        0xd662908ADA2Ea1916B3318327A97eB18aD588b5d;
+        0x462253b8F74B72304c145DB0e4Eebd326B22ca39;
 }
 
-contract CurveAaveAllocation is
-    CurveAllocationBase3,
+contract CurveSaaveAllocation is
+    CurveAllocationBase2,
     ImmutableAssetAllocation,
-    CurveAaveConstants
+    CurveSaaveConstants
 {
     function balanceOf(address account, uint8 tokenIndex)
         public
@@ -40,7 +42,7 @@ contract CurveAaveAllocation is
         return
             super.getUnderlyerBalance(
                 account,
-                IStableSwap3(STABLE_SWAP_ADDRESS),
+                IStableSwap2(STABLE_SWAP_ADDRESS),
                 ILiquidityGauge(LIQUIDITY_GAUGE_ADDRESS),
                 IERC20(LP_TOKEN_ADDRESS),
                 uint256(tokenIndex)
@@ -53,10 +55,9 @@ contract CurveAaveAllocation is
         override
         returns (TokenData[] memory)
     {
-        TokenData[] memory tokens = new TokenData[](3);
+        TokenData[] memory tokens = new TokenData[](2);
         tokens[0] = TokenData(DAI_ADDRESS, "DAI", 18);
-        tokens[1] = TokenData(USDC_ADDRESS, "USDC", 6);
-        tokens[2] = TokenData(USDT_ADDRESS, "USDT", 6);
+        tokens[1] = TokenData(USDC_ADDRESS, "sUSD", 18);
         return tokens;
     }
 }

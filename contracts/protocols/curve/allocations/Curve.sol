@@ -4,9 +4,9 @@ pragma experimental ABIEncoderV2;
 
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ImmutableAssetAllocation} from "../../ImmutableAssetAllocation.sol";
-import {IStableSwap4} from "./interfaces/IStableSwap4.sol";
-import {ILiquidityGauge} from "./interfaces/ILiquidityGauge.sol";
+import {ImmutableAssetAllocation} from "contracts/ImmutableAssetAllocation.sol";
+import {IStableSwap} from "../interfaces/IStableSwap.sol";
+import {ILiquidityGauge} from "../interfaces/ILiquidityGauge.sol";
 
 /**
  * @title Periphery Contract for the Curve 3pool
@@ -17,7 +17,7 @@ import {ILiquidityGauge} from "./interfaces/ILiquidityGauge.sol";
  * `getUnderlyerBalance` function is invoked indirectly when a
  * Chainlink node calls `balanceOf` on the APYAssetAllocationRegistry.
  */
-contract CurveAllocationBase4 {
+contract CurveAllocationBase {
     using SafeMath for uint256;
 
     /**
@@ -31,7 +31,7 @@ contract CurveAllocationBase4 {
      */
     function getUnderlyerBalance(
         address account,
-        IStableSwap4 stableSwap,
+        IStableSwap stableSwap,
         ILiquidityGauge gauge,
         IERC20 lpToken,
         uint256 coin
@@ -47,7 +47,7 @@ contract CurveAllocationBase4 {
         balance = lpTokenBalance.mul(poolBalance).div(lpTokenSupply);
     }
 
-    function getPoolBalance(IStableSwap4 stableSwap, uint256 coin)
+    function getPoolBalance(IStableSwap stableSwap, uint256 coin)
         public
         view
         returns (uint256)
@@ -58,7 +58,7 @@ contract CurveAllocationBase4 {
 
     function getLpTokenShare(
         address account,
-        IStableSwap4 stableSwap,
+        IStableSwap stableSwap,
         ILiquidityGauge gauge,
         IERC20 lpToken
     ) public view returns (uint256 balance, uint256 totalSupply) {
@@ -70,4 +70,9 @@ contract CurveAllocationBase4 {
         balance = lpToken.balanceOf(account);
         balance = balance.add(gauge.balanceOf(account));
     }
+}
+
+// solhint-disable-next-line no-empty-blocks
+contract CurveAllocationBase3 is CurveAllocationBase {
+
 }

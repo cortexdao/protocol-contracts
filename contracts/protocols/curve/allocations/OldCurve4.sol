@@ -4,9 +4,9 @@ pragma experimental ABIEncoderV2;
 
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ImmutableAssetAllocation} from "../../ImmutableAssetAllocation.sol";
-import {IOldStableSwap2} from "./interfaces/IOldStableSwap2.sol";
-import {ILiquidityGauge} from "./interfaces/ILiquidityGauge.sol";
+import {ImmutableAssetAllocation} from "contracts/ImmutableAssetAllocation.sol";
+import {IOldStableSwap4} from "../interfaces/IOldStableSwap4.sol";
+import {ILiquidityGauge} from "../interfaces/ILiquidityGauge.sol";
 
 /**
  * @title Periphery Contract for the Curve 3pool
@@ -17,7 +17,7 @@ import {ILiquidityGauge} from "./interfaces/ILiquidityGauge.sol";
  * `getUnderlyerBalance` function is invoked indirectly when a
  * Chainlink node calls `balanceOf` on the APYAssetAllocationRegistry.
  */
-contract OldCurveAllocationBase2 {
+contract OldCurveAllocationBase4 {
     using SafeMath for uint256;
 
     /**
@@ -31,7 +31,7 @@ contract OldCurveAllocationBase2 {
      */
     function getUnderlyerBalance(
         address account,
-        IOldStableSwap2 stableSwap,
+        IOldStableSwap4 stableSwap,
         ILiquidityGauge gauge,
         IERC20 lpToken,
         int128 coin
@@ -47,7 +47,7 @@ contract OldCurveAllocationBase2 {
         balance = lpTokenBalance.mul(poolBalance).div(lpTokenSupply);
     }
 
-    function getPoolBalance(IOldStableSwap2 stableSwap, int128 coin)
+    function getPoolBalance(IOldStableSwap4 stableSwap, int128 coin)
         public
         view
         returns (uint256)
@@ -58,7 +58,7 @@ contract OldCurveAllocationBase2 {
 
     function getLpTokenShare(
         address account,
-        IOldStableSwap2 stableSwap,
+        IOldStableSwap4 stableSwap,
         ILiquidityGauge gauge,
         IERC20 lpToken
     ) public view returns (uint256 balance, uint256 totalSupply) {

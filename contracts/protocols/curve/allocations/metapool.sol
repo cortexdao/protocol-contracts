@@ -4,9 +4,9 @@ pragma solidity 0.6.11;
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Curve3PoolAllocation} from "./pools/3pool.sol";
-import {IMetaPool} from "./interfaces/IMetaPool.sol";
-import {IStableSwap} from "./interfaces/IStableSwap.sol";
-import {ILiquidityGauge} from "./interfaces/ILiquidityGauge.sol";
+import {IMetaPool} from "../interfaces/IMetaPool.sol";
+import {IStableSwap} from "../interfaces/IStableSwap.sol";
+import {ILiquidityGauge} from "../interfaces/ILiquidityGauge.sol";
 
 /**
  * @title Periphery Contract for a Curve metapool

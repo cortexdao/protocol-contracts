@@ -5,11 +5,13 @@ pragma experimental ABIEncoderV2;
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ImmutableAssetAllocation} from "contracts/ImmutableAssetAllocation.sol";
-import {IMetaPool} from "contracts/allocations/curve/interfaces/IMetaPool.sol";
+import {IMetaPool} from "contracts/protocols/curve/interfaces/IMetaPool.sol";
 import {
     ILiquidityGauge
-} from "contracts/allocations/curve/interfaces/ILiquidityGauge.sol";
-import {MetaPoolAllocationBase} from "contracts/allocations/curve/metapool.sol";
+} from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
+import {
+    MetaPoolAllocationBase
+} from "contracts/protocols/curve/allocations/metapool.sol";
 import {Curve3PoolUnderlyerConstants} from "./3pool.sol";
 
 abstract contract CurveFraxConstants is Curve3PoolUnderlyerConstants {

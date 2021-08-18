@@ -6,32 +6,32 @@ import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ImmutableAssetAllocation} from "contracts/ImmutableAssetAllocation.sol";
 import {
-    IOldStableSwap4
-} from "contracts/allocations/curve/interfaces/IOldStableSwap4.sol";
+    IStableSwap
+} from "contracts/protocols/curve/interfaces/IStableSwap.sol";
 import {
     ILiquidityGauge
-} from "contracts/allocations/curve/interfaces/ILiquidityGauge.sol";
+} from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
 import {
-    OldCurveAllocationBase4
-} from "contracts/allocations/curve/OldCurve4.sol";
+    CurveAllocationBase
+} from "contracts/protocols/curve/allocations/Curve.sol";
+import {
+    CTokenInterface
+} from "contracts/protocols/curve/interfaces/CTokenInterface.sol";
 import {Curve3PoolUnderlyerConstants} from "./3pool.sol";
 
-abstract contract CurveSusdV2Constants is Curve3PoolUnderlyerConstants {
+abstract contract CurveIronBankConstants is Curve3PoolUnderlyerConstants {
     address public constant STABLE_SWAP_ADDRESS =
-        0xA5407eAE9Ba41422680e2e00537571bcC53efBfD;
+        0x2dded6Da1BF5DBdF597C45fcFaa3194e53EcfeAF;
     address public constant LP_TOKEN_ADDRESS =
-        0xC25a3A3b969415c80451098fa907EC722572917F;
+        0x5282a4eF67D9C33135340fB3289cc1711c13638C;
     address public constant LIQUIDITY_GAUGE_ADDRESS =
-        0xA90996896660DEcC6E997655E065b23788857849;
-
-    address public constant SUSD_ADDRESS =
-        0x57Ab1ec28D129707052df4dF418D58a2D46d5f51;
+        0xF5194c3325202F456c95c1Cf0cA36f8475C1949F;
 }
 
-contract CurveSusdV2Allocation is
-    OldCurveAllocationBase4,
+contract CurveIronBankAllocation is
+    CurveAllocationBase,
     ImmutableAssetAllocation,
-    CurveSusdV2Constants
+    CurveIronBankConstants
 {
     function balanceOf(address account, uint8 tokenIndex)
         public
@@ -39,14 +39,25 @@ contract CurveSusdV2Allocation is
         override
         returns (uint256)
     {
-        return
+        uint256 cyBalance =
             super.getUnderlyerBalance(
                 account,
-                IOldStableSwap4(STABLE_SWAP_ADDRESS),
+                IStableSwap(STABLE_SWAP_ADDRESS),
                 ILiquidityGauge(LIQUIDITY_GAUGE_ADDRESS),
                 IERC20(LP_TOKEN_ADDRESS),
-                tokenIndex
+                uint256(tokenIndex)
             );
+        return unwrapBalance(cyBalance, tokenIndex);
+    }
+
+    function unwrapBalance(uint256 balance, uint8 tokenIndex)
+        public
+        view
+        returns (uint256)
+    {
+        IStableSwap pool = IStableSwap(STABLE_SWAP_ADDRESS);
+        CTokenInterface cyToken = CTokenInterface(pool.coins(tokenIndex));
+        return balance.mul(cyToken.exchangeRateStored());
     }
 
     function _getTokenData()
@@ -55,11 +66,10 @@ contract CurveSusdV2Allocation is
         override
         returns (TokenData[] memory)
     {
-        TokenData[] memory tokens = new TokenData[](4);
+        TokenData[] memory tokens = new TokenData[](3);
         tokens[0] = TokenData(DAI_ADDRESS, "DAI", 18);
         tokens[1] = TokenData(USDC_ADDRESS, "USDC", 6);
         tokens[2] = TokenData(USDT_ADDRESS, "USDT", 6);
-        tokens[3] = TokenData(SUSD_ADDRESS, "sUSD", 18);
         return tokens;
     }
 }

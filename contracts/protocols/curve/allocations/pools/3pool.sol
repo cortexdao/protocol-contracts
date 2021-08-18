@@ -7,11 +7,13 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ImmutableAssetAllocation} from "contracts/ImmutableAssetAllocation.sol";
 import {
     IStableSwap
-} from "contracts/allocations/curve/interfaces/IStableSwap.sol";
+} from "contracts/protocols/curve/interfaces/IStableSwap.sol";
 import {
     ILiquidityGauge
-} from "contracts/allocations/curve/interfaces/ILiquidityGauge.sol";
-import {CurveAllocationBase} from "contracts/allocations/curve/Curve.sol";
+} from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
+import {
+    CurveAllocationBase
+} from "contracts/protocols/curve/allocations/Curve.sol";
 
 abstract contract Curve3PoolUnderlyerConstants {
     // underlyer addresses
