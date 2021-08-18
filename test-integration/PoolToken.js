@@ -1,7 +1,12 @@
 const { assert, expect } = require("chai");
 const { ethers } = require("hardhat");
 const { AddressZero: ZERO_ADDRESS, MaxUint256: MAX_UINT256 } = ethers.constants;
-const { impersonateAccount, bytes32 } = require("../utils/helpers");
+const {
+  impersonateAccount,
+  bytes32,
+  getAggregatorAddress,
+  getStablecoinAddress,
+} = require("../utils/helpers");
 const timeMachine = require("ganache-time-traveler");
 const { STABLECOIN_POOLS } = require("../utils/constants");
 const {
@@ -45,25 +50,16 @@ describe("Contract: PoolToken", () => {
     ] = await ethers.getSigners();
   });
 
-  // for Chainlink aggregator (price feed) addresses, see the Mainnet
-  // section of: https://docs.chain.link/docs/ethereum-addresses
-  const tokenParams = [
-    {
-      symbol: "USDC",
-      tokenAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-      aggAddress: "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6",
-    },
-    {
-      symbol: "DAI",
-      tokenAddress: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
-      aggAddress: "0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9",
-    },
-    {
-      symbol: "USDT",
-      tokenAddress: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      aggAddress: "0x3E7d1eAB13ad0104d2750B8863b489D65364e32D",
-    },
-  ];
+  const NETWORK = "MAINNET";
+  const SYMBOLS = ["DAI", "USDC", "USDT"];
+
+  const tokenParams = SYMBOLS.map((symbol) => {
+    return {
+      symbol: symbol,
+      tokenAddress: getStablecoinAddress(symbol, NETWORK),
+      aggAddress: getAggregatorAddress(`${symbol}-USD`, NETWORK),
+    };
+  });
 
   // use EVM snapshots for test isolation
   let snapshotId;

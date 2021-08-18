@@ -15,6 +15,8 @@ const CHAIN_IDS = {
   TESTNET: "1",
 };
 
+// for Chainlink aggregator (price feed) addresses, see the Mainnet
+// section of: https://docs.chain.link/docs/ethereum-addresses
 const AGG_MAP = {
   MAINNET: {
     TVL: "0xDb299D394817D8e7bBe297E84AFfF7106CF92F5f",
