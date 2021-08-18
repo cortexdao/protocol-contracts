@@ -48,6 +48,8 @@ jobs:
       if: steps.yarn-cache.outputs.cache-hit != 'true'
     - name: Lint smart contracts
       run: yarn lint
+    - name: Compile smart contracts
+      run: yarn clean; yarn compile
     - name: Unit tests
       run: yarn test:unit
     - name: Integration tests 
