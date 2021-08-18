@@ -131,21 +131,17 @@ describe("Contract: PoolManager", () => {
      * to setup the roles for access control in the contract
      * constructors:
      *
-     * PoolManager
+     * MetaPoolToken
      * - lpSafe (LP role)
      * - emergencySafe (emergency role, default admin role)
      *
      * PoolTokenV2
      * - adminSafe (admin role)
-     * - poolManager (contract role)
-     * - emergencySafe (emergency role, default admin role)
-     *
-     * MetaPoolToken
-     * - poolManager (contract role)
+     * - mAPT (contract role)
      * - emergencySafe (emergency role, default admin role)
      *
      * TvlManager
-     * - poolManager (contract role)
+     * - mAPT (contract role)
      * - lpSafe (LP role)
      * - emergencySafe (emergency role, default admin role)
      *
