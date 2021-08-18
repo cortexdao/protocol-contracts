@@ -511,7 +511,7 @@ describe("Contract: PoolTokenV2", () => {
     });
 
     it("Returns correct value", async () => {
-      await poolToken.mint(randomUser.address, 100);
+      await poolToken.testMint(randomUser.address, 100);
       await underlyerMock.mock.decimals.returns(0);
       await underlyerMock.mock.balanceOf.returns(100);
 
@@ -697,7 +697,7 @@ describe("Contract: PoolTokenV2", () => {
       await underlyerMock.mock.balanceOf.returns(poolBalance);
       await underlyerMock.mock.decimals.returns(decimals);
 
-      await poolToken.mint(poolToken.address, aptTotalSupply);
+      await poolToken.testMint(poolToken.address, aptTotalSupply);
       const expectedMintAmount = aptTotalSupply
         .mul(depositAmount)
         .div(poolBalance);
@@ -724,7 +724,7 @@ describe("Contract: PoolTokenV2", () => {
         tokenAmountToBigNumber(10000000)
       );
 
-      await poolToken.mint(poolToken.address, aptTotalSupply);
+      await poolToken.testMint(poolToken.address, aptTotalSupply);
 
       const depositValue = depositAmount.mul(price).div(10 ** decimals);
       const poolTotalValue = await poolToken.getPoolTotalValue();
@@ -764,7 +764,7 @@ describe("Contract: PoolTokenV2", () => {
       );
 
       const aptAmount = tokenAmountToBigNumber(1, 18);
-      await poolToken.mint(randomUser.address, aptAmount);
+      await poolToken.testMint(randomUser.address, aptAmount);
       const totalSupply = await poolToken.totalSupply();
       const underlyerAmount = await poolToken.getUnderlyerAmount(aptAmount);
 
@@ -1039,7 +1039,7 @@ describe("Contract: PoolTokenV2", () => {
     });
 
     it("Revert if APT balance is less than withdraw", async () => {
-      await poolToken.mint(randomUser.address, 1);
+      await poolToken.testMint(randomUser.address, 1);
       await expect(poolToken.connect(randomUser).redeem(2)).to.be.revertedWith(
         "BALANCE_INSUFFICIENT"
       );
@@ -1084,12 +1084,12 @@ describe("Contract: PoolTokenV2", () => {
           await underlyerMock.mock.transfer.returns(true);
 
           // Mint APT supply to go along with pool's total ETH value.
-          await poolToken.mint(deployer.address, aptSupply);
+          await poolToken.testMint(deployer.address, aptSupply);
           // Transfer reserve APT amount to user; must do a burn and mint
           // since inter-user transfer is blocked.
           reserveAptAmount = await poolToken.calculateMintAmount(poolBalance);
-          await poolToken.burn(deployer.address, reserveAptAmount);
-          await poolToken.mint(randomUser.address, reserveAptAmount);
+          await poolToken.testBurn(deployer.address, reserveAptAmount);
+          await poolToken.testMint(randomUser.address, reserveAptAmount);
           aptAmount = reserveAptAmount;
         });
 
@@ -1187,8 +1187,8 @@ describe("Contract: PoolTokenV2", () => {
           // this "transfer" pushes the user's corresponding underlyer amount
           // for his APT higher than the reserve balance.
           const smallAptAmount = 10;
-          await poolToken.burn(deployer.address, smallAptAmount);
-          await poolToken.mint(randomUser.address, smallAptAmount);
+          await poolToken.testBurn(deployer.address, smallAptAmount);
+          await poolToken.testMint(randomUser.address, smallAptAmount);
 
           await expect(
             poolToken
