@@ -31,14 +31,14 @@ contract Erc20Allocation is
             DEFAULT_ADMIN_ROLE,
             addressRegistry.getAddress("emergencySafe")
         );
-        _setupRole(CONTRACT_ROLE, addressRegistry.poolManagerAddress());
-        _setupRole(CONTRACT_ROLE, addressRegistry.lpSafeAddress());
+        _setupRole(CONTRACT_ROLE, addressRegistry.mAptAddress());
+        _setupRole(LP_ROLE, addressRegistry.lpSafeAddress());
     }
 
     function registerErc20Token(address token)
         external
         override
-        onlyContractRole
+        onlyLpOrContractRole
     {
         string memory symbol = IDetailedERC20(token).symbol();
         uint8 decimals = IDetailedERC20(token).decimals();
@@ -48,7 +48,7 @@ contract Erc20Allocation is
     function registerErc20Token(address token, string calldata symbol)
         external
         override
-        onlyContractRole
+        onlyLpRole
     {
         uint8 decimals = IDetailedERC20(token).decimals();
         _registerErc20Token(token, symbol, decimals);
@@ -58,7 +58,7 @@ contract Erc20Allocation is
         address token,
         string calldata symbol,
         uint8 decimals
-    ) external override onlyContractRole {
+    ) external override onlyLpRole {
         _registerErc20Token(token, symbol, decimals);
     }
 
@@ -73,11 +73,7 @@ contract Erc20Allocation is
         _tokenToData[token] = TokenData(token, symbol, decimals);
     }
 
-    function removeErc20Token(address token)
-        external
-        override
-        onlyContractRole
-    {
+    function removeErc20Token(address token) external override onlyLpRole {
         _tokenAddresses.remove(token);
         delete _tokenToData[token];
     }

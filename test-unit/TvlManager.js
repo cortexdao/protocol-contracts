@@ -23,7 +23,6 @@ async function generateContractAddress(signer) {
 describe("Contract: TvlManager", () => {
   // signers
   let deployer;
-  let poolManager;
   let lpSafe;
   let emergencySafe;
   let randomUser;
@@ -53,13 +52,7 @@ describe("Contract: TvlManager", () => {
   });
 
   before(async () => {
-    [
-      deployer,
-      poolManager,
-      lpSafe,
-      emergencySafe,
-      randomUser,
-    ] = await ethers.getSigners();
+    [deployer, lpSafe, emergencySafe, randomUser] = await ethers.getSigners();
 
     addressRegistry = await deployMockContract(
       deployer,
@@ -74,7 +67,6 @@ describe("Contract: TvlManager", () => {
 
     // These registered addresses are setup for roles in the
     // constructor for TvlManager
-    await addressRegistry.mock.poolManagerAddress.returns(poolManager.address);
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("emergencySafe"))
@@ -124,14 +116,6 @@ describe("Contract: TvlManager", () => {
       expect(memberCount).to.equal(1);
       expect(await tvlManager.hasRole(EMERGENCY_ROLE, emergencySafe.address)).to
         .be.true;
-    });
-
-    it("Contract role given to Pool Manager", async () => {
-      const CONTRACT_ROLE = await tvlManager.CONTRACT_ROLE();
-      const memberCount = await tvlManager.getRoleMemberCount(CONTRACT_ROLE);
-      expect(memberCount).to.equal(1);
-      expect(await tvlManager.hasRole(CONTRACT_ROLE, poolManager.address)).to.be
-        .true;
     });
 
     it("LP role given to LP Safe", async () => {
@@ -234,15 +218,6 @@ describe("Contract: TvlManager", () => {
 
   describe("Adding and removing asset allocations", () => {
     describe("registerAssetAllocation", () => {
-      it("Pool manager can call", async () => {
-        const contractAddress = await generateContractAddress(deployer);
-        await expect(
-          tvlManager
-            .connect(poolManager)
-            .registerAssetAllocation(contractAddress)
-        ).to.not.be.reverted;
-      });
-
       it("LP Safe can call", async () => {
         const contractAddress = await generateContractAddress(deployer);
         await expect(
@@ -489,7 +464,7 @@ describe("Contract: TvlManager", () => {
         await allocation.mock.numberOfTokens.returns(numTokens);
 
         await tvlManager
-          .connect(poolManager)
+          .connect(lpSafe)
           .registerAssetAllocation(allocation.address);
       });
 

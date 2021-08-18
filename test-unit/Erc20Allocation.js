@@ -13,7 +13,7 @@ describe("Contract: Erc20Allocation", () => {
   let deployer;
   let emergencySafe;
   let lpSafe;
-  let poolManager;
+  let mApt;
   let user;
   let anotherUser;
 
@@ -54,7 +54,7 @@ describe("Contract: Erc20Allocation", () => {
       deployer,
       emergencySafe,
       lpSafe,
-      poolManager,
+      mApt,
       user,
       anotherUser,
     ] = await ethers.getSigners();
@@ -70,9 +70,7 @@ describe("Contract: Erc20Allocation", () => {
       .withArgs(bytes32("emergencySafe"))
       .returns(emergencySafe.address);
     await addressRegistryMock.mock.lpSafeAddress.returns(lpSafe.address);
-    await addressRegistryMock.mock.poolManagerAddress.returns(
-      poolManager.address
-    );
+    await addressRegistryMock.mock.mAptAddress.returns(mApt.address);
     erc20Allocation = await Erc20Allocation.deploy(addressRegistryMock.address);
 
     // setup each mock ERC20 token
@@ -106,22 +104,27 @@ describe("Contract: Erc20Allocation", () => {
       ).to.be.true;
     });
 
-    it("Contract role given to Pool Manager and LP Safe", async () => {
+    it("Contract role given to mAPT", async () => {
       const CONTRACT_ROLE = await erc20Allocation.CONTRACT_ROLE();
       const memberCount = await erc20Allocation.getRoleMemberCount(
         CONTRACT_ROLE
       );
-      expect(memberCount).to.equal(2);
-      expect(await erc20Allocation.hasRole(CONTRACT_ROLE, lpSafe.address)).to.be
+      expect(memberCount).to.equal(1);
+      expect(await erc20Allocation.hasRole(CONTRACT_ROLE, mApt.address)).to.be
         .true;
-      expect(await erc20Allocation.hasRole(CONTRACT_ROLE, poolManager.address))
-        .to.be.true;
+    });
+
+    it("LP role given to LP Safe", async () => {
+      const LP_ROLE = await erc20Allocation.LP_ROLE();
+      const memberCount = await erc20Allocation.getRoleMemberCount(LP_ROLE);
+      expect(memberCount).to.equal(1);
+      expect(await erc20Allocation.hasRole(LP_ROLE, lpSafe.address)).to.be.true;
     });
   });
 
   describe("Adding and removing tokens", () => {
     describe("registerErc20Token", () => {
-      it("TVL Manager can call", async () => {
+      it("LP Safe can call", async () => {
         await expect(
           erc20Allocation
             .connect(lpSafe)
@@ -146,6 +149,31 @@ describe("Contract: Erc20Allocation", () => {
         ).to.not.be.reverted;
       });
 
+      it("mAPT can call single arg version only", async () => {
+        await expect(
+          erc20Allocation
+            .connect(mApt)
+            ["registerErc20Token(address,string,uint8)"](
+              token_0.token,
+              token_0.symbol,
+              token_0.decimals
+            )
+        ).to.be.revertedWith("NOT_LP_ROLE");
+        await expect(
+          erc20Allocation
+            .connect(mApt)
+            ["registerErc20Token(address,string)"](
+              token_0.token,
+              token_0.symbol
+            )
+        ).to.be.revertedWith("NOT_LP_ROLE");
+        await expect(
+          erc20Allocation
+            .connect(mApt)
+            ["registerErc20Token(address)"](token_0.token)
+        ).to.not.be.reverted;
+      });
+
       it("Unpermissioned cannot call", async () => {
         await expect(
           erc20Allocation
@@ -155,7 +183,7 @@ describe("Contract: Erc20Allocation", () => {
               token_0.symbol,
               token_0.decimals
             )
-        ).to.be.revertedWith("NOT_CONTRACT_ROLE");
+        ).to.be.revertedWith("NOT_LP_ROLE");
         await expect(
           erc20Allocation
             .connect(user)
@@ -163,12 +191,12 @@ describe("Contract: Erc20Allocation", () => {
               token_0.token,
               token_0.symbol
             )
-        ).to.be.revertedWith("NOT_CONTRACT_ROLE");
+        ).to.be.revertedWith("NOT_LP_ROLE");
         await expect(
           erc20Allocation
             .connect(user)
             ["registerErc20Token(address)"](token_0.token)
-        ).to.be.revertedWith("NOT_CONTRACT_ROLE");
+        ).to.be.revertedWith("NOT_LP_OR_CONTRACT_ROLE");
       });
 
       it("registerErc20Token populates tokens correctly", async () => {
@@ -196,7 +224,7 @@ describe("Contract: Erc20Allocation", () => {
     });
 
     describe("removeErc20Token", () => {
-      it("TVL Manager can call", async () => {
+      it("LP Safe can call", async () => {
         await expect(
           erc20Allocation
             .connect(lpSafe)
@@ -209,7 +237,7 @@ describe("Contract: Erc20Allocation", () => {
           erc20Allocation
             .connect(user)
             ["removeErc20Token(address)"](token_0.token)
-        ).to.be.revertedWith("NOT_CONTRACT_ROLE");
+        ).to.be.revertedWith("NOT_LP_ROLE");
       });
 
       it("removeErc20Token", async () => {

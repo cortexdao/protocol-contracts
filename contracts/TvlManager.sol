@@ -56,7 +56,6 @@ contract TvlManager is
             DEFAULT_ADMIN_ROLE,
             addressRegistry.getAddress("emergencySafe")
         );
-        _setupRole(CONTRACT_ROLE, addressRegistry.poolManagerAddress());
         _setupRole(LP_ROLE, addressRegistry.lpSafeAddress());
         _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
     }
