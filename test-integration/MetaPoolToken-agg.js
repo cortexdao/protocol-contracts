@@ -28,7 +28,7 @@ const usdc = (amount) => tokenAmountToBigNumber(amount, "6");
 console.debugging = false;
 /* ************************ */
 
-describe("Contract: MetaPoolToken", () => {
+describe("Contract: MetaPoolToken - TVL aggregator integration", () => {
   // accounts
   let deployer;
   let tvlManager;

@@ -38,7 +38,7 @@ const USDT_TOKEN = getStablecoinAddress("USDT", NETWORK);
 const daiPoolId = bytes32("daiPool");
 const usdtPoolId = bytes32("usdtPool");
 
-describe.only("Contract: PoolManager", () => {
+describe("Contract: MetaPoolToken - funding and withdrawing", () => {
   // to-be-deployed contracts
   let tvlManager;
   let mApt;
