@@ -26,6 +26,8 @@ contract Curve3PoolZap is IZap, Curve3PoolConstants {
     uint256 private constant _DENOMINATOR = 10000;
     uint256 private constant _SLIPPAGE = 100;
 
+    uint256 public constant N_COINS = 3;
+
     /// @param amounts array of underlyer amounts
     function deployLiquidity(uint256[] calldata amounts) external override {
         IStableSwap stableSwap = IStableSwap(STABLE_SWAP_ADDRESS);
@@ -39,16 +41,22 @@ contract Curve3PoolZap is IZap, Curve3PoolConstants {
         uint256 v = totalAmount.mul(1e18).div(stableSwap.get_virtual_price());
         uint256 minAmount =
             v.mul(_DENOMINATOR.sub(_SLIPPAGE)).div(_DENOMINATOR);
-        // uint256 minAmount = 0;
 
-        // TODO: approve stableswap for deposit amounts
+        for (uint256 i = 0; i < N_COINS; i++) {
+            if (amounts_[i] == 0) continue;
+
+            address underlyerAddress =
+                IStableSwap(STABLE_SWAP_ADDRESS).coins(i);
+            IERC20(underlyerAddress).approve(STABLE_SWAP_ADDRESS, 0);
+            IERC20(underlyerAddress).approve(STABLE_SWAP_ADDRESS, amounts_[i]);
+        }
         stableSwap.add_liquidity(amounts_, minAmount);
 
         ILiquidityGauge liquidityGauge =
             ILiquidityGauge(LIQUIDITY_GAUGE_ADDRESS);
 
         uint256 lpBalance = IERC20(LP_TOKEN_ADDRESS).balanceOf(address(this));
-        // TODO: approve gauge for deposit amount
+        IERC20(LP_TOKEN_ADDRESS).approve(LIQUIDITY_GAUGE_ADDRESS, lpBalance);
         liquidityGauge.deposit(lpBalance);
     }
 
@@ -59,7 +67,7 @@ contract Curve3PoolZap is IZap, Curve3PoolConstants {
     function sortedSymbols() public view override returns (string[] memory) {
         // N_COINS is not available as a public function
         // so we have to hardcode the number here
-        string[] memory symbols = new string[](3);
+        string[] memory symbols = new string[](N_COINS);
         for (uint256 i = 0; i < symbols.length; i++) {
             address underlyerAddress =
                 IStableSwap(STABLE_SWAP_ADDRESS).coins(i);

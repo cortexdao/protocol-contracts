@@ -6,7 +6,6 @@ const timeMachine = require("ganache-time-traveler");
 const {
   console,
   tokenAmountToBigNumber,
-  getStablecoinAddress,
   acquireToken,
   MAX_UINT256,
   bytes32,
@@ -167,9 +166,9 @@ describe.only("Zaps", () => {
         tokenAmountToBigNumber(1),
         deployer.address
       );
-      await underlyerToken
-        .connect(zapSigner)
-        .approve(stableSwap.address, MAX_UINT256);
+      // await underlyerToken
+      //   .connect(zapSigner)
+      //   .approve(stableSwap.address, MAX_UINT256);
       // const allowance = await underlyerToken.allowance(
       //   zap.address,
       //   stableSwap.address
