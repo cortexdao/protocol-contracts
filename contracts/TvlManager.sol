@@ -171,7 +171,7 @@ contract TvlManager is
     }
 
     /// @dev Validates and encodes the given args into an allocation ID.
-    function getAssetAllocationId(address assetAllocation, uint8 tokenIndex)
+    function encodeAssetAllocationId(address assetAllocation, uint8 tokenIndex)
         external
         view
         override
@@ -202,7 +202,7 @@ contract TvlManager is
         returns (uint256)
     {
         (address assetAllocation, uint8 tokenIndex) =
-            getAssetAllocation(allocationId);
+            decodeAssetAllocationId(allocationId);
         return
             IAssetAllocation(assetAllocation).balanceOf(
                 addressRegistry.lpSafeAddress(),
@@ -222,7 +222,7 @@ contract TvlManager is
         returns (string memory)
     {
         (address assetAllocation, uint8 tokenIndex) =
-            getAssetAllocation(allocationId);
+            decodeAssetAllocationId(allocationId);
         return IAssetAllocation(assetAllocation).symbolOf(tokenIndex);
     }
 
@@ -238,12 +238,12 @@ contract TvlManager is
         returns (uint256)
     {
         (address assetAllocation, uint8 tokenIndex) =
-            getAssetAllocation(allocationId);
+            decodeAssetAllocationId(allocationId);
         return IAssetAllocation(assetAllocation).decimalsOf(tokenIndex);
     }
 
     /// @dev decodes the given allocation ID and validates
-    function getAssetAllocation(bytes32 id)
+    function decodeAssetAllocationId(bytes32 id)
         public
         view
         override

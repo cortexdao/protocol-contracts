@@ -401,7 +401,7 @@ describe("Contract: TvlManager", () => {
   });
 
   describe("Asset allocation IDs", () => {
-    describe("encodeAssetAllocationId", () => {
+    describe("_encodeAssetAllocationId", () => {
       it("should pack the address and index into a bytes32", async () => {
         const address = randomUser.address;
         const tokenIndex = 2;
@@ -420,7 +420,7 @@ describe("Contract: TvlManager", () => {
       });
     });
 
-    describe("decodeAssetAllocationId", () => {
+    describe("_decodeAssetAllocationId", () => {
       it("should decode an ID into an address and index", async () => {
         const address = randomUser.address;
         const tokenIndex = 2;
@@ -455,7 +455,7 @@ describe("Contract: TvlManager", () => {
       });
     });
 
-    describe("getAssetAllocationId", async () => {
+    describe("encodeAssetAllocationId", async () => {
       let allocation;
       let numTokens = 4;
 
@@ -471,20 +471,21 @@ describe("Contract: TvlManager", () => {
       it("should fail on unregistered address", async () => {
         const unregisteredAddress = await generateContractAddress(deployer);
         await expect(
-          tvlManager.getAssetAllocationId(unregisteredAddress, 0)
+          tvlManager.encodeAssetAllocationId(unregisteredAddress, 0)
         ).to.be.revertedWith("INVALID_ASSET_ALLOCATION");
       });
 
       it("should fail with invalid token index", async () => {
         await expect(
-          tvlManager.getAssetAllocationId(allocation.address, numTokens)
+          tvlManager.encodeAssetAllocationId(allocation.address, numTokens)
         ).to.be.revertedWith("INVALID_TOKEN_INDEX");
       });
 
       it("Successfully get ID for registered allocation and valid index", async () => {
         for (let i = 0; i < numTokens; i++) {
-          await expect(tvlManager.getAssetAllocationId(allocation.address, i))
-            .to.not.be.reverted;
+          await expect(
+            tvlManager.encodeAssetAllocationId(allocation.address, i)
+          ).to.not.be.reverted;
         }
       });
     });
@@ -561,14 +562,14 @@ describe("Contract: TvlManager", () => {
       });
     });
 
-    describe("getAssetAllocation", async () => {
+    describe("decodeAssetAllocationId", async () => {
       it("should revert when an address is not registered", async () => {
         const randomAddress = await generateContractAddress(deployer);
         const id = await tvlManager.testEncodeAssetAllocationId(
           randomAddress,
           0
         );
-        await expect(tvlManager.getAssetAllocation(id)).to.be.revertedWith(
+        await expect(tvlManager.decodeAssetAllocationId(id)).to.be.revertedWith(
           "INVALID_ASSET_ALLOCATION"
         );
       });
@@ -578,7 +579,7 @@ describe("Contract: TvlManager", () => {
           erc20Allocation.address,
           99
         );
-        await expect(tvlManager.getAssetAllocation(id)).to.be.revertedWith(
+        await expect(tvlManager.decodeAssetAllocationId(id)).to.be.revertedWith(
           "INVALID_TOKEN_INDEX"
         );
       });
@@ -589,7 +590,7 @@ describe("Contract: TvlManager", () => {
           0
         );
 
-        const result = await tvlManager.getAssetAllocation(id);
+        const result = await tvlManager.decodeAssetAllocationId(id);
 
         expect(result).to.deep.equal([erc20Allocation.address, 0]);
       });

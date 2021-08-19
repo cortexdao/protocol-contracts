@@ -104,7 +104,7 @@ describe("Contract: Erc20Allocation", () => {
       [usdcAddress, "USDC", 6],
     ]);
 
-    const allocationId = tvlManager.getAssetAllocationId(
+    const allocationId = tvlManager.encodeAssetAllocationId(
       erc20Allocation.address,
       0
     );
@@ -127,7 +127,7 @@ describe("Contract: Erc20Allocation", () => {
       [usdcAddress, "USDC", 6],
     ]);
 
-    const allocationId = tvlManager.getAssetAllocationId(
+    const allocationId = tvlManager.encodeAssetAllocationId(
       erc20Allocation.address,
       0
     );
@@ -151,7 +151,7 @@ describe("Contract: Erc20Allocation", () => {
       [usdcAddress, "USDC", 6],
     ]);
 
-    const allocationId = tvlManager.getAssetAllocationId(
+    const allocationId = tvlManager.encodeAssetAllocationId(
       erc20Allocation.address,
       0
     );
@@ -172,9 +172,15 @@ describe("Contract: Erc20Allocation", () => {
     await erc20Allocation["registerErc20Token(address)"](daiAddress);
     expect(await erc20Allocation.tokens()).to.have.lengthOf(2);
 
-    const usdcId = tvlManager.getAssetAllocationId(erc20Allocation.address, 0);
+    const usdcId = tvlManager.encodeAssetAllocationId(
+      erc20Allocation.address,
+      0
+    );
     expect(await tvlManager.symbolOf(usdcId)).to.equal("USDC");
-    const daiId = tvlManager.getAssetAllocationId(erc20Allocation.address, 1);
+    const daiId = tvlManager.encodeAssetAllocationId(
+      erc20Allocation.address,
+      1
+    );
     expect(await tvlManager.symbolOf(daiId)).to.equal("DAI");
 
     await erc20Allocation.removeErc20Token(usdcAddress);
@@ -182,7 +188,7 @@ describe("Contract: Erc20Allocation", () => {
       [daiAddress, "DAI", 18],
     ]);
 
-    const allocationId = tvlManager.getAssetAllocationId(
+    const allocationId = tvlManager.encodeAssetAllocationId(
       erc20Allocation.address,
       0
     );

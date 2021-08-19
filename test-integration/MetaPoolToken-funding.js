@@ -476,7 +476,7 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
       /*************************************************************/
 
       const erc20AllocationAddress = await tvlManager.erc20Allocation();
-      const expectedDaiId = await tvlManager.getAssetAllocationId(
+      const expectedDaiId = await tvlManager.encodeAssetAllocationId(
         erc20AllocationAddress,
         0
       );
@@ -554,15 +554,15 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
       /*************************************************************/
 
       const erc20AllocationAddress = await tvlManager.erc20Allocation();
-      const expectedDaiId = await tvlManager.getAssetAllocationId(
+      const expectedDaiId = await tvlManager.encodeAssetAllocationId(
         erc20AllocationAddress,
         0
       );
-      const expectedUsdcId = await tvlManager.getAssetAllocationId(
+      const expectedUsdcId = await tvlManager.encodeAssetAllocationId(
         erc20AllocationAddress,
         1
       );
-      const expectedUsdtId = await tvlManager.getAssetAllocationId(
+      const expectedUsdtId = await tvlManager.encodeAssetAllocationId(
         erc20AllocationAddress,
         2
       );

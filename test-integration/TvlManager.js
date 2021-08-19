@@ -290,7 +290,7 @@ describe("Contract: TvlManager", () => {
       await tvlManager
         .connect(lpSafe)
         .registerAssetAllocation(allocation.address);
-      lookupId = await tvlManager.getAssetAllocationId(
+      lookupId = await tvlManager.encodeAssetAllocationId(
         allocation.address,
         underlyerIndex
       );
@@ -392,7 +392,7 @@ describe("Contract: TvlManager", () => {
         await tvlManager
           .connect(lpSafe)
           .registerAssetAllocation(allocation.address);
-        lookupId = await tvlManager.getAssetAllocationId(
+        lookupId = await tvlManager.encodeAssetAllocationId(
           allocation.address,
           underlyerIndex
         );
@@ -634,11 +634,11 @@ describe("Contract: TvlManager", () => {
         await tvlManager
           .connect(lpSafe)
           .registerAssetAllocation(allocation.address);
-        primaryAllocationId = await tvlManager.getAssetAllocationId(
+        primaryAllocationId = await tvlManager.encodeAssetAllocationId(
           allocation.address,
           primaryIndex
         );
-        daiAllocationId = await tvlManager.getAssetAllocationId(
+        daiAllocationId = await tvlManager.encodeAssetAllocationId(
           allocation.address,
           daiIndex
         );
