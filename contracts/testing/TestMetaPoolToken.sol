@@ -19,6 +19,19 @@ contract TestMetaPoolToken is MetaPoolToken {
         _burn(account, amount);
     }
 
+    function testFundLp(PoolTokenV2[] memory pools, uint256[] memory amounts)
+        public
+    {
+        _fundLp(pools, amounts);
+    }
+
+    function testWithdrawLp(
+        PoolTokenV2[] memory pools,
+        uint256[] memory amounts
+    ) public {
+        _withdrawLp(pools, amounts);
+    }
+
     function testMultipleMintAndTransfer(
         PoolTokenV2[] memory pools,
         uint256[] memory amounts
