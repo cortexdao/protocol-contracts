@@ -37,14 +37,18 @@ contract Curve3PoolZap is IZap, Curve3PoolConstants {
         }
 
         uint256 v = totalAmount.mul(1e18).div(stableSwap.get_virtual_price());
-        uint256 mintMint = v.mul(_DENOMINATOR.sub(_SLIPPAGE)).div(_DENOMINATOR);
+        uint256 minAmount =
+            v.mul(_DENOMINATOR.sub(_SLIPPAGE)).div(_DENOMINATOR);
+        // uint256 minAmount = 0;
 
-        stableSwap.add_liquidity(amounts_, mintMint);
+        // TODO: approve stableswap for deposit amounts
+        stableSwap.add_liquidity(amounts_, minAmount);
 
         ILiquidityGauge liquidityGauge =
             ILiquidityGauge(LIQUIDITY_GAUGE_ADDRESS);
 
         uint256 lpBalance = IERC20(LP_TOKEN_ADDRESS).balanceOf(address(this));
+        // TODO: approve gauge for deposit amount
         liquidityGauge.deposit(lpBalance);
     }
 
