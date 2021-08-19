@@ -95,6 +95,7 @@ contract MetaPoolToken is
     event Mint(address acccount, uint256 amount);
     event Burn(address acccount, uint256 amount);
     event AdminChanged(address);
+    event AddressRegistryChanged(address);
 
     /**
      * @dev Throws if called by any account other than the proxy admin.
@@ -184,6 +185,7 @@ contract MetaPoolToken is
     function _setAddressRegistry(address addressRegistry_) internal {
         require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
+        emit AddressRegistryChanged(addressRegistry_);
     }
 
     function fundLp(bytes32[] calldata poolIds)
