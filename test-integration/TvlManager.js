@@ -312,7 +312,9 @@ describe("Contract: TvlManager", () => {
         0
       );
 
-      expect(await tvlManager.balanceOf(lookupId)).to.equal(underlyerAmount);
+      const balance = await tvlManager.balanceOf(lookupId);
+      // allow a few wei deviation
+      expect(balance.sub(underlyerAmount).abs()).to.be.lt(3);
     });
   });
 
@@ -425,7 +427,9 @@ describe("Contract: TvlManager", () => {
         }
         expect(expectedBalance).to.be.gt(0);
 
-        expect(await tvlManager.balanceOf(lookupId)).to.equal(expectedBalance);
+        const balance = await tvlManager.balanceOf(lookupId);
+        // allow a few wei deviation
+        expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
       });
 
       it("Get underlyer balance from gauge holding", async () => {
@@ -463,7 +467,9 @@ describe("Contract: TvlManager", () => {
         }
         expect(expectedBalance).to.be.gt(0);
 
-        expect(await tvlManager.balanceOf(lookupId)).to.equal(expectedBalance);
+        const balance = await tvlManager.balanceOf(lookupId);
+        // allow a few wei deviation
+        expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
       });
 
       it("Get underlyer balance from combined holdings", async () => {
@@ -509,7 +515,9 @@ describe("Contract: TvlManager", () => {
         }
         expect(expectedBalance).to.be.gt(0);
 
-        expect(await tvlManager.balanceOf(lookupId)).to.equal(expectedBalance);
+        const balance = await tvlManager.balanceOf(lookupId);
+        // allow a few wei deviation
+        expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
       });
     });
   });
