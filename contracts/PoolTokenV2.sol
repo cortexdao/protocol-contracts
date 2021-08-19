@@ -122,6 +122,7 @@ contract PoolTokenV2 is
     /* ------------------------------- */
 
     event AdminChanged(address);
+    event AddressRegistryChanged(address);
 
     /**
      * @dev Throws if called by any account other than the proxy admin.
@@ -584,6 +585,7 @@ contract PoolTokenV2 is
     function _setAddressRegistry(address addressRegistry_) internal {
         require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
+        emit AddressRegistryChanged(addressRegistry_);
     }
 
     /**

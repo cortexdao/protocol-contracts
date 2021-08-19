@@ -73,6 +73,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
     event AssetSourceUpdated(address indexed asset, address indexed source);
     event TvlSourceUpdated(address indexed source);
     event ChainlinkStalePeriodUpdated(uint256 period);
+    event AddressRegistryChanged(address);
 
     modifier unlocked() {
         require(!isLocked(), "ORACLE_LOCKED");
@@ -305,6 +306,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
     function _setAddressRegistry(address addressRegistry_) internal {
         require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
+        emit AddressRegistryChanged(addressRegistry_);
     }
 
     function _setChainlinkStalePeriod(uint256 chainlinkStalePeriod_) internal {

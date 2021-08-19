@@ -44,6 +44,8 @@ contract TvlManager is
 
     EnumerableSet.AddressSet private _assetAllocations;
 
+    event AddressRegistryChanged(address);
+
     /**
      * @notice Constructor
      * @param addressRegistry_ the address registry to initialize with
@@ -253,6 +255,7 @@ contract TvlManager is
     function _setAddressRegistry(address addressRegistry_) internal {
         require(addressRegistry_.isContract(), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
+        emit AddressRegistryChanged(addressRegistry_);
     }
 
     function _setErc20Allocation(address erc20Allocation_) internal {
