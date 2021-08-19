@@ -12,22 +12,16 @@ import {
 import {
     ILiquidityGauge
 } from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
+import {
+    Curve3PoolConstants
+} from "contracts/protocols/curve/allocations/pools/3pool.sol";
 
-contract Curve3PoolZap is IZap {
+contract Curve3PoolZap is IZap, Curve3PoolConstants {
     using SafeMath for uint256;
 
     string public constant override NAME = "Curve_3Pool";
 
     address public constant ALLOCATION_ADDRESS = address(0);
-
-    address public constant STABLE_SWAP_ADDRESS =
-        0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
-
-    address public constant LP_TOKEN_ADDRESS =
-        0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
-
-    address public constant LIQUIDITY_GAUGE_ADDRESS =
-        0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A;
 
     uint256 private constant _DENOMINATOR = 10000;
     uint256 private constant _SLIPPAGE = 100;
