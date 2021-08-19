@@ -61,8 +61,19 @@ contract Curve3PoolZap is IZap, Curve3PoolConstants {
     }
 
     /// @param amount LP token amount
-    // solhint-disable-next-line no-empty-blocks
-    function unwindLiquidity(uint256 amount) external override {}
+    function unwindLiquidity(uint256 amount) external override {
+        ILiquidityGauge liquidityGauge =
+            ILiquidityGauge(LIQUIDITY_GAUGE_ADDRESS);
+        liquidityGauge.withdraw(amount);
+
+        uint256 lpBalance = IERC20(LP_TOKEN_ADDRESS).balanceOf(address(this));
+
+        IStableSwap stableSwap = IStableSwap(STABLE_SWAP_ADDRESS);
+        stableSwap.remove_liquidity(
+            lpBalance,
+            [uint256(0), uint256(0), uint256(0)]
+        );
+    }
 
     function sortedSymbols() public view override returns (string[] memory) {
         // N_COINS is not available as a public function

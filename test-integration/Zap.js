@@ -160,26 +160,17 @@ describe("Zaps", () => {
       );
       amounts[underlyerIndex] = underlyerAmount;
 
-      const zapSigner = await impersonateAccount(zap.address);
-      await forciblySendEth(
-        zap.address,
-        tokenAmountToBigNumber(1),
-        deployer.address
-      );
-      // await underlyerToken
-      //   .connect(zapSigner)
-      //   .approve(stableSwap.address, MAX_UINT256);
-      // const allowance = await underlyerToken.allowance(
-      //   zap.address,
-      //   stableSwap.address
-      // );
-      // console.log("Allowance", allowance.toString());
       await zap.deployLiquidity(amounts);
 
       const zapLpBalance = await lpToken.balanceOf(zap.address);
       console.log("zap LP token balance:", zapLpBalance.toString());
       const gaugeLpBalance = await gauge.balanceOf(zap.address);
       console.log("gauge LP token balance:", gaugeLpBalance.toString());
+
+      await zap.unwindLiquidity(gaugeLpBalance);
+      // TODO: check all balances
+      const zapUnderlyerBalance = await underlyerToken.balanceOf(zap.address);
+      console.log("zap underlyer balance:", zapUnderlyerBalance.toString());
     });
   });
 });
