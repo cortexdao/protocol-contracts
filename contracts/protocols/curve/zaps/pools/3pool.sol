@@ -8,10 +8,10 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IDetailedERC20} from "contracts/interfaces/IDetailedERC20.sol";
 import {
     IStableSwap
-} from "contracts/allocations/curve/interfaces/IStableSwap.sol";
+} from "contracts/protocols/curve/interfaces/IStableSwap.sol";
 import {
     ILiquidityGauge
-} from "contracts/allocations/curve/interfaces/ILiquidityGauge.sol";
+} from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
 
 contract Curve3PoolZap is IZap {
     using SafeMath for uint256;

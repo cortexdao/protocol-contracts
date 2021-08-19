@@ -1,4 +1,6 @@
+// SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
+pragma experimental ABIEncoderV2;
 
 interface IZap {
     // TODO: How to associate asset allocations...
@@ -14,16 +16,17 @@ interface IZap {
 
 interface LpAccount {
     // delegatecall to IZap.deployLiquidity
-    function deployStrategy(string id, uint256[] calldata amounts) external;
+    function deployStrategy(string calldata name, uint256[] calldata amounts)
+        external;
 
-    function unwindStrategy(string id, uint256 amount) external;
+    function unwindStrategy(string calldata name, uint256 amount) external;
 }
 
 interface IZapRegistry {
     // ID should be human readable
-    function registerZap(string id, address zap) external;
+    function registerZap(string calldata name, address zap) external;
 
-    function removeZap(string id) external;
+    function removeZap(string calldata name) external;
 
-    function ids() external returns (string[] calldata);
+    function names() external returns (string[] calldata);
 }
