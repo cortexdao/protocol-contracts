@@ -200,6 +200,8 @@ contract MetaPoolToken is
         uint256[] memory fundAmounts = _getFundAmounts(amounts);
 
         _fundLp(pools, fundAmounts);
+
+        emit FundLp(poolIds);
     }
 
     function emergencyFundLp(
@@ -207,6 +209,7 @@ contract MetaPoolToken is
         uint256[] calldata amounts
     ) external override nonReentrant onlyEmergencyRole {
         _fundLp(pools, amounts);
+        emit EmergencyFundLp(pools, amounts);
     }
 
     function withdrawLp(bytes32[] calldata poolIds)
@@ -221,6 +224,7 @@ contract MetaPoolToken is
         uint256[] memory withdrawAmounts = _getWithdrawAmounts(amounts);
 
         _withdrawLp(pools, withdrawAmounts);
+        emit WithdrawLp(poolIds);
     }
 
     function emergencyWithdrawLp(
@@ -228,6 +232,7 @@ contract MetaPoolToken is
         uint256[] calldata amounts
     ) external override nonReentrant onlyEmergencyRole {
         _withdrawLp(pools, amounts);
+        emit EmergencyWithdrawLp(pools, amounts);
     }
 
     /**
