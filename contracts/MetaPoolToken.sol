@@ -342,7 +342,7 @@ contract MetaPoolToken is
         }
         _mint(address(pool), mintAmount);
         pool.transferToLpSafe(transferAmount);
-        emit Mint(address(pool), transferAmount);
+        emit Mint(address(pool), mintAmount);
     }
 
     function _withdrawLp(PoolTokenV2[] memory pools, uint256[] memory amounts)
