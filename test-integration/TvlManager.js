@@ -178,7 +178,7 @@ describe("Contract: TvlManager", () => {
   let deployer;
   let emergencySafe;
   let lpSafe;
-  let poolManager;
+  let mApt;
 
   /* contract factories */
   let TvlManager;
@@ -199,24 +199,12 @@ describe("Contract: TvlManager", () => {
   });
 
   before(async () => {
-    [deployer, emergencySafe, lpSafe, poolManager] = await ethers.getSigners();
+    [deployer, emergencySafe, lpSafe, mApt] = await ethers.getSigners();
 
     const addressRegistry = await deployMockContract(
       deployer,
       artifacts.require("IAddressRegistryV2").abi
     );
-    /* These registered addresses are setup for roles in the
-     * constructor for TvlManager
-     * TvlManager
-     * - poolManager (contract role)
-     * - lpSafe (LP role)
-     * - emergencySafe (emergency role, default admin role)
-     */
-    await addressRegistry.mock.poolManagerAddress.returns(poolManager.address);
-    await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("emergencySafe"))
-      .returns(emergencySafe.address);
 
     const oracleAdapter = await deployMockContract(
       deployer,
@@ -229,15 +217,26 @@ describe("Contract: TvlManager", () => {
 
     /* These registered addresses are setup for roles in the
      * constructor for Erc20Allocation:
-     * - poolManager (contract role)
-     * - lpSafe (contract role)
      * - emergencySafe (default admin role)
+     * - lpSafe (LP role)
+     * - mApt (contract role)
      */
+    await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("emergencySafe"))
+      .returns(emergencySafe.address);
+    await addressRegistry.mock.mAptAddress.returns(mApt.address);
+
     const Erc20Allocation = await ethers.getContractFactory("Erc20Allocation");
     const erc20Allocation = await Erc20Allocation.deploy(
       addressRegistry.address
     );
 
+    /* These registered addresses are setup for roles in the
+     * constructor for TvlManager
+     * - lpSafe (LP role)
+     * - emergencySafe (emergency role, default admin role)
+     */
     TvlManager = await ethers.getContractFactory("TvlManager");
     tvlManager = await TvlManager.deploy(
       addressRegistry.address,
@@ -689,7 +688,6 @@ describe("Contract: TvlManager", () => {
 
         await lpToken.connect(lpSafe).approve(gauge.address, MAX_UINT256);
         const lpBalance = await lpToken.balanceOf(lpSafe.address);
-        console.log(gauge);
         await gauge["deposit(uint256)"](lpBalance);
         expect(await lpToken.balanceOf(lpSafe.address)).to.equal(0);
         const gaugeLpBalance = await gauge.balanceOf(lpSafe.address);

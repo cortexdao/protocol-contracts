@@ -8,14 +8,6 @@ import {PoolTokenV2} from "../PoolTokenV2.sol";
  * Should not be used other than in test files!
  */
 contract TestPoolTokenV2 is PoolTokenV2 {
-    function mint(address account, uint256 amount) public {
-        _mint(account, amount);
-    }
-
-    function burn(address account, uint256 amount) public {
-        _burn(account, amount);
-    }
-
     function testMint(address account, uint256 amount) public {
         _mint(account, amount);
     }

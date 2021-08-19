@@ -17,14 +17,21 @@ jobs:
       matrix:
         node-version: [12.x]
         os: [ubuntu-latest]
-        
+
     # The type of runner that the job will run on
     runs-on: ${{ matrix.os }}
+
+    # Defaults across all steps
+    defaults:
+      run:
+        shell: bash
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
+      with:
+        clean: true
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v1
       with:
@@ -48,6 +55,11 @@ jobs:
       if: steps.yarn-cache.outputs.cache-hit != 'true'
     - name: Lint smart contracts
       run: yarn lint
+    - name: Compile smart contracts
+      run: |
+        yarn config set script-shell /bin/bash
+        yarn clean
+        yarn compile
     - name: Unit tests
       run: yarn test:unit
     - name: Integration tests 

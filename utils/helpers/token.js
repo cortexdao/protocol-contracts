@@ -112,4 +112,5 @@ module.exports = {
   getERC20Balance,
   console,
   acquireToken,
+  forciblySendEth,
 };

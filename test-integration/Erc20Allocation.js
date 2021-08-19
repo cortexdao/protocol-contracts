@@ -38,7 +38,7 @@ describe("Contract: Erc20Allocation", () => {
   let deployer;
   let emergencySafe;
   let lpSafe;
-  let poolManager;
+  let mApt;
 
   /* contract factories */
   let Erc20Allocation;
@@ -60,36 +60,36 @@ describe("Contract: Erc20Allocation", () => {
   });
 
   before(async () => {
-    [deployer, emergencySafe, lpSafe, poolManager] = await ethers.getSigners();
+    [deployer, emergencySafe, lpSafe, mApt] = await ethers.getSigners();
 
     const addressRegistry = await deployMockContract(
       deployer,
       artifacts.require("IAddressRegistryV2").abi
     );
+
     /* These registered addresses are setup for roles in the
-     * constructor for TvlManager:
-     * - poolManager (contract role)
+     * constructor for Erc20Allocation:
      * - lpSafe (LP role)
-     * - emergencySafe (emergency role, default admin role)
+     * - emergencySafe (default admin role)
+     * - mApt (contract role)
      */
-    await addressRegistry.mock.poolManagerAddress.returns(poolManager.address);
+    await addressRegistry.mock.mAptAddress.returns(mApt.address);
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("emergencySafe"))
       .returns(emergencySafe.address);
 
-    /* These registered addresses are setup for roles in the
-     * constructor for Erc20Allocation:
-     * - poolManager (contract role)
-     * - lpSafe (contract role)
-     * - emergencySafe (default admin role)
-     */
     Erc20Allocation = await ethers.getContractFactory(
       "Erc20Allocation",
       lpSafe
     );
     erc20Allocation = await Erc20Allocation.deploy(addressRegistry.address);
 
+    /* These registered addresses are setup for roles in the
+     * constructor for TvlManager:
+     * - lpSafe (LP role)
+     * - emergencySafe (emergency role, default admin role)
+     */
     const TvlManager = await ethers.getContractFactory("TvlManager");
     tvlManager = await TvlManager.deploy(
       addressRegistry.address,

@@ -11,6 +11,8 @@ const {
   FAKE_ADDRESS,
   tokenAmountToBigNumber,
   bytes32,
+  impersonateAccount,
+  forciblySendEth,
 } = require("../utils/helpers");
 
 const IDetailedERC20UpgradeSafe = artifacts.require(
@@ -25,7 +27,7 @@ describe("Contract: PoolTokenV2", () => {
   let deployer;
   let adminSafe;
   let emergencySafe;
-  let poolManager;
+  let mApt;
   let lpSafe;
   let randomUser;
   let anotherUser;
@@ -63,7 +65,6 @@ describe("Contract: PoolTokenV2", () => {
       deployer,
       adminSafe,
       emergencySafe,
-      poolManager,
       lpSafe,
       randomUser,
       anotherUser,
@@ -93,26 +94,33 @@ describe("Contract: PoolTokenV2", () => {
     const logicV2 = await PoolTokenV2.deploy();
     await logicV2.deployed();
 
-    mAptMock = await deployMockContract(deployer, MetaPoolToken.abi);
-    oracleAdapterMock = await deployMockContract(deployer, OracleAdapter.abi);
     addressRegistryMock = await deployMockContract(
       deployer,
       AddressRegistry.abi
     );
+
+    mAptMock = await deployMockContract(deployer, MetaPoolToken.abi);
     await addressRegistryMock.mock.mAptAddress.returns(mAptMock.address);
+
+    oracleAdapterMock = await deployMockContract(deployer, OracleAdapter.abi);
     await addressRegistryMock.mock.oracleAdapterAddress.returns(
       oracleAdapterMock.address
     );
+
     await addressRegistryMock.mock.getAddress
       .withArgs(bytes32("adminSafe"))
       .returns(adminSafe.address);
     await addressRegistryMock.mock.getAddress
       .withArgs(bytes32("emergencySafe"))
       .returns(emergencySafe.address);
-    await addressRegistryMock.mock.poolManagerAddress.returns(
-      poolManager.address
-    );
     await addressRegistryMock.mock.lpSafeAddress.returns(lpSafe.address);
+
+    mApt = await impersonateAccount(mAptMock.address);
+    await forciblySendEth(
+      mApt.address,
+      tokenAmountToBigNumber("10"),
+      deployer.address
+    );
 
     const initData = PoolTokenV2.interface.encodeFunctionData(
       "initializeUpgrade(address)",
@@ -180,12 +188,11 @@ describe("Contract: PoolTokenV2", () => {
       expect(await poolToken.hasRole(ADMIN_ROLE, adminSafe.address)).to.be.true;
     });
 
-    it("Contract role given to pool manager", async () => {
+    it("Contract role given to mAPT", async () => {
       const CONTRACT_ROLE = await poolToken.CONTRACT_ROLE();
       const memberCount = await poolToken.getRoleMemberCount(CONTRACT_ROLE);
       expect(memberCount).to.equal(1);
-      expect(await poolToken.hasRole(CONTRACT_ROLE, poolManager.address)).to.be
-        .true;
+      expect(await poolToken.hasRole(CONTRACT_ROLE, mApt.address)).to.be.true;
     });
 
     it("Emergency role given to Emergency Safe", async () => {
@@ -334,11 +341,11 @@ describe("Contract: PoolTokenV2", () => {
       );
     });
 
-    it("Revert when calling transferToLPSafe on locked pool from poolManager", async () => {
+    it("Revert when calling transferToLpSafe on locked pool from mAPT", async () => {
       await poolToken.connect(emergencySafe).lock();
 
       await expect(
-        poolToken.connect(poolManager).transferToLPSafe(100)
+        poolToken.connect(mApt).transferToLpSafe(100)
       ).to.revertedWith("Pausable: paused");
     });
   });
@@ -348,14 +355,13 @@ describe("Contract: PoolTokenV2", () => {
       await underlyerMock.mock.transfer.returns(true);
     });
 
-    it("Pool Manager can call transferToLPSafe", async () => {
-      // await expect(
-      await poolToken.connect(poolManager).transferToLPSafe(100);
-      // ).to.not.be.reverted;
+    it("mAPT can call transferToLpSafe", async () => {
+      await expect(poolToken.connect(mApt).transferToLpSafe(100)).to.not.be
+        .reverted;
     });
 
-    it("Revert when unpermissioned account calls transferToLPSafe", async () => {
-      await expect(poolToken.connect(randomUser).transferToLPSafe(100)).to.be
+    it("Revert when unpermissioned account calls transferToLpSafe", async () => {
+      await expect(poolToken.connect(randomUser).transferToLpSafe(100)).to.be
         .reverted;
     });
   });
@@ -505,7 +511,7 @@ describe("Contract: PoolTokenV2", () => {
     });
 
     it("Returns correct value", async () => {
-      await poolToken.mint(randomUser.address, 100);
+      await poolToken.testMint(randomUser.address, 100);
       await underlyerMock.mock.decimals.returns(0);
       await underlyerMock.mock.balanceOf.returns(100);
 
@@ -691,7 +697,7 @@ describe("Contract: PoolTokenV2", () => {
       await underlyerMock.mock.balanceOf.returns(poolBalance);
       await underlyerMock.mock.decimals.returns(decimals);
 
-      await poolToken.mint(poolToken.address, aptTotalSupply);
+      await poolToken.testMint(poolToken.address, aptTotalSupply);
       const expectedMintAmount = aptTotalSupply
         .mul(depositAmount)
         .div(poolBalance);
@@ -714,9 +720,11 @@ describe("Contract: PoolTokenV2", () => {
 
       await mAptMock.mock.balanceOf.returns(tokenAmountToBigNumber(10));
       await mAptMock.mock.totalSupply.returns(tokenAmountToBigNumber(1000));
-      await mAptMock.mock.getTvl.returns(tokenAmountToBigNumber(271828));
+      await mAptMock.mock.getDeployedValue.returns(
+        tokenAmountToBigNumber(10000000)
+      );
 
-      await poolToken.mint(poolToken.address, aptTotalSupply);
+      await poolToken.testMint(poolToken.address, aptTotalSupply);
 
       const depositValue = depositAmount.mul(price).div(10 ** decimals);
       const poolTotalValue = await poolToken.getPoolTotalValue();
@@ -756,7 +764,7 @@ describe("Contract: PoolTokenV2", () => {
       );
 
       const aptAmount = tokenAmountToBigNumber(1, 18);
-      await poolToken.mint(randomUser.address, aptAmount);
+      await poolToken.testMint(randomUser.address, aptAmount);
       const totalSupply = await poolToken.totalSupply();
       const underlyerAmount = await poolToken.getUnderlyerAmount(aptAmount);
 
@@ -1031,7 +1039,7 @@ describe("Contract: PoolTokenV2", () => {
     });
 
     it("Revert if APT balance is less than withdraw", async () => {
-      await poolToken.mint(randomUser.address, 1);
+      await poolToken.testMint(randomUser.address, 1);
       await expect(poolToken.connect(randomUser).redeem(2)).to.be.revertedWith(
         "BALANCE_INSUFFICIENT"
       );
@@ -1076,12 +1084,12 @@ describe("Contract: PoolTokenV2", () => {
           await underlyerMock.mock.transfer.returns(true);
 
           // Mint APT supply to go along with pool's total ETH value.
-          await poolToken.mint(deployer.address, aptSupply);
+          await poolToken.testMint(deployer.address, aptSupply);
           // Transfer reserve APT amount to user; must do a burn and mint
           // since inter-user transfer is blocked.
           reserveAptAmount = await poolToken.calculateMintAmount(poolBalance);
-          await poolToken.burn(deployer.address, reserveAptAmount);
-          await poolToken.mint(randomUser.address, reserveAptAmount);
+          await poolToken.testBurn(deployer.address, reserveAptAmount);
+          await poolToken.testMint(randomUser.address, reserveAptAmount);
           aptAmount = reserveAptAmount;
         });
 
@@ -1179,8 +1187,8 @@ describe("Contract: PoolTokenV2", () => {
           // this "transfer" pushes the user's corresponding underlyer amount
           // for his APT higher than the reserve balance.
           const smallAptAmount = 10;
-          await poolToken.burn(deployer.address, smallAptAmount);
-          await poolToken.mint(randomUser.address, smallAptAmount);
+          await poolToken.testBurn(deployer.address, smallAptAmount);
+          await poolToken.testMint(randomUser.address, smallAptAmount);
 
           await expect(
             poolToken

@@ -8,6 +8,7 @@ import {
 import {
     SafeMath
 } from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import {SignedSafeMath} from "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import {
     Initializable
 } from "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
@@ -18,12 +19,23 @@ import {
     ReentrancyGuardUpgradeSafe
 } from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import {
+    IDetailedERC20UpgradeSafe
+} from "./interfaces/IDetailedERC20UpgradeSafe.sol";
+import {
     ERC20UpgradeSafe
 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
+import {
+    SafeERC20 as SafeERC20UpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
-import {IMintable} from "./interfaces/IMintable.sol";
 import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
+import {ILpSafeFunder} from "./interfaces/ILpSafeFunder.sol";
+import {ITvlManager} from "./interfaces/ITvlManager.sol";
+import {
+    IErc20AllocationRegistry
+} from "./interfaces/IErc20AllocationRegistry.sol";
+import {PoolTokenV2} from "./PoolTokenV2.sol";
 
 /**
  * @title Meta Pool Token
@@ -62,9 +74,11 @@ contract MetaPoolToken is
     ReentrancyGuardUpgradeSafe,
     PausableUpgradeSafe,
     ERC20UpgradeSafe,
-    IMintable
+    ILpSafeFunder
 {
     using SafeMath for uint256;
+    using SignedSafeMath for int256;
+    using SafeERC20UpgradeSafe for IDetailedERC20UpgradeSafe;
 
     uint256 public constant DEFAULT_MAPT_TO_UNDERLYER_FACTOR = 1000;
 
@@ -122,7 +136,7 @@ contract MetaPoolToken is
             DEFAULT_ADMIN_ROLE,
             addressRegistry.getAddress("emergencySafe")
         );
-        _setupRole(CONTRACT_ROLE, addressRegistry.poolManagerAddress());
+        _setupRole(LP_ROLE, addressRegistry.lpSafeAddress());
         _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
     }
 
@@ -172,83 +186,46 @@ contract MetaPoolToken is
         addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
 
-    /**
-     * @notice Mint specified amount of mAPT to the given account.
-     * @dev Only the manager can call this.
-     * @param account address to mint to
-     * @param amount mint amount
-     */
-    function mint(address account, uint256 amount)
+    function fundLp(bytes32[] calldata poolIds)
         external
         override
         nonReentrant
-        onlyContractRole
+        onlyLpRole
     {
-        require(amount > 0, "INVALID_MINT_AMOUNT");
-        IOracleAdapter oracleAdapter = _getOracleAdapter();
-        oracleAdapter.lock();
-        _mint(account, amount);
-        emit Mint(account, amount);
+        (PoolTokenV2[] memory pools, int256[] memory amounts) =
+            getRebalanceAmounts(poolIds);
+
+        uint256[] memory fundAmounts = _getFundAmounts(amounts);
+
+        _fundLp(pools, fundAmounts);
     }
 
-    /**
-     * @notice Burn specified amount of mAPT from the given account.
-     * @dev Only the manager can call this.
-     * @param account address to burn from
-     * @param amount burn amount
-     */
-    function burn(address account, uint256 amount)
+    function emergencyFundLp(
+        PoolTokenV2[] calldata pools,
+        uint256[] calldata amounts
+    ) external override nonReentrant onlyEmergencyRole {
+        _fundLp(pools, amounts);
+    }
+
+    function withdrawLp(bytes32[] calldata poolIds)
         external
         override
         nonReentrant
-        onlyContractRole
+        onlyLpRole
     {
-        require(amount > 0, "INVALID_BURN_AMOUNT");
-        IOracleAdapter oracleAdapter = _getOracleAdapter();
-        oracleAdapter.lock();
-        _burn(account, amount);
-        emit Burn(account, amount);
+        (PoolTokenV2[] memory pools, int256[] memory amounts) =
+            getRebalanceAmounts(poolIds);
+
+        uint256[] memory withdrawAmounts = _getWithdrawAmounts(amounts);
+
+        _withdrawLp(pools, withdrawAmounts);
     }
 
-    /**
-     * @notice Get the USD value of all assets in the system, not just those
-     * being managed by the AccountManager but also the pool underlyers.
-     *
-     * Note this is NOT the same as the total value represented by the
-     * total mAPT supply, i.e. the "deployed capital".
-     *
-     * @dev Chainlink nodes read from the TVLManager, pull the
-     * prices from market feeds, and submits the calculated total value
-     * to an aggregator contract.
-     *
-     * USD prices have 8 decimals.
-     *
-     * @return "Total Value Locked", the USD value of all APY Finance assets.
-     */
-    function getTvl() public view returns (uint256) {
-        IOracleAdapter oracleAdapter = _getOracleAdapter();
-        return oracleAdapter.getTvl();
-    }
-
-    /**
-     * @notice Calculate mAPT amount to be minted for given pool's underlyer amount.
-     * @param depositAmount Pool underlyer amount to be converted
-     * @param tokenPrice Pool underlyer's USD price (in wei) per underlyer token
-     * @param decimals Pool underlyer's number of decimals
-     * @dev Price parameter is in units of wei per token ("big" unit), since
-     * attempting to express wei per token bit ("small" unit) will be
-     * fractional, requiring fixed-point representation.  This means we need
-     * to also pass in the underlyer's number of decimals to do the appropriate
-     * multiplication in the calculation.
-     */
-    function calculateMintAmount(
-        uint256 depositAmount,
-        uint256 tokenPrice,
-        uint256 decimals
-    ) external view returns (uint256) {
-        uint256 depositValue = depositAmount.mul(tokenPrice).div(10**decimals);
-        uint256 totalValue = getTvl();
-        return _calculateMintAmount(depositValue, totalValue);
+    function emergencyWithdrawLp(
+        PoolTokenV2[] calldata pools,
+        uint256[] calldata amounts
+    ) external override nonReentrant onlyEmergencyRole {
+        _withdrawLp(pools, amounts);
     }
 
     /**
@@ -269,7 +246,7 @@ contract MetaPoolToken is
     ) external view returns (uint256) {
         if (mAptAmount == 0) return 0;
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        uint256 poolValue = mAptAmount.mul(getTvl()).div(totalSupply());
+        uint256 poolValue = mAptAmount.mul(_getTvl()).div(totalSupply());
         uint256 poolAmount = poolValue.mul(10**decimals).div(tokenPrice);
         return poolAmount;
     }
@@ -284,7 +261,169 @@ contract MetaPoolToken is
         uint256 totalSupply = totalSupply();
         if (totalSupply == 0 || balance == 0) return 0;
 
-        return getTvl().mul(balance).div(totalSupply);
+        return _getTvl().mul(balance).div(totalSupply);
+    }
+
+    /**
+     * @notice Returns the (signed) top-up amount for each pool ID given.
+     *         A positive (negative) sign means the reserve level is in
+     *         deficit (excess) of required percentage.
+     * @param poolIds array of pool identifiers
+     * @return depositAmounts array of pool amounts that need to deposit
+     * @return withdrawAmounts array of pool amounts that need to withdraw
+     */
+    function getRebalanceAmounts(bytes32[] memory poolIds)
+        public
+        view
+        returns (PoolTokenV2[] memory, int256[] memory)
+    {
+        PoolTokenV2[] memory pools = new PoolTokenV2[](poolIds.length);
+        int256[] memory rebalanceAmounts = new int256[](poolIds.length);
+
+        for (uint256 i = 0; i < poolIds.length; i++) {
+            PoolTokenV2 pool =
+                PoolTokenV2(addressRegistry.getAddress(poolIds[i]));
+            int256 rebalanceAmount = pool.getReserveTopUpValue();
+
+            pools[i] = pool;
+            rebalanceAmounts[i] = rebalanceAmount;
+        }
+
+        return (pools, rebalanceAmounts);
+    }
+
+    function _fundLp(PoolTokenV2[] memory pools, uint256[] memory amounts)
+        internal
+    {
+        address lpSafeAddress = addressRegistry.lpSafeAddress();
+        require(lpSafeAddress != address(0), "INVALID_LP_SAFE"); // defensive check -- should never happen
+
+        _multipleMintAndTransfer(pools, amounts);
+        _registerPoolUnderlyers(pools);
+    }
+
+    function _multipleMintAndTransfer(
+        PoolTokenV2[] memory pools,
+        uint256[] memory amounts
+    ) internal {
+        uint256[] memory deltas = _calculateDeltas(pools, amounts);
+
+        // MUST do the actual minting after calculating *all* mint amounts,
+        // otherwise due to Chainlink not updating during a transaction,
+        // the totalSupply will change while TVL doesn't.
+        //
+        // Using the pre-mint TVL and totalSupply gives the same answer
+        // as using post-mint values.
+        for (uint256 i = 0; i < pools.length; i++) {
+            PoolTokenV2 pool = pools[i];
+            uint256 mintAmount = deltas[i];
+            uint256 transferAmount = amounts[i];
+            _mintAndTransfer(pool, mintAmount, transferAmount);
+        }
+
+        IOracleAdapter oracleAdapter = _getOracleAdapter();
+        oracleAdapter.lock();
+    }
+
+    function _mintAndTransfer(
+        PoolTokenV2 pool,
+        uint256 mintAmount,
+        uint256 transferAmount
+    ) internal {
+        if (mintAmount == 0) {
+            return;
+        }
+        _mint(address(pool), mintAmount);
+        pool.transferToLpSafe(transferAmount);
+        emit Mint(address(pool), transferAmount);
+    }
+
+    function _withdrawLp(PoolTokenV2[] memory pools, uint256[] memory amounts)
+        internal
+    {
+        address lpSafeAddress = addressRegistry.lpSafeAddress();
+        require(lpSafeAddress != address(0), "INVALID_LP_SAFE"); // defensive check -- should never happen
+
+        _multipleBurnAndTransfer(pools, amounts);
+        _registerPoolUnderlyers(pools);
+    }
+
+    function _multipleBurnAndTransfer(
+        PoolTokenV2[] memory pools,
+        uint256[] memory amounts
+    ) internal {
+        uint256[] memory deltas = _calculateDeltas(pools, amounts);
+
+        // MUST do the actual burning after calculating *all* burn amounts,
+        // otherwise due to Chainlink not updating during a transaction,
+        // the totalSupply will change while TVL doesn't.
+        //
+        // Using the pre-burn TVL and totalSupply gives the same answer
+        // as using post-burn values.
+        address lpSafe = addressRegistry.lpSafeAddress();
+        for (uint256 i = 0; i < pools.length; i++) {
+            PoolTokenV2 pool = pools[i];
+            uint256 burnAmount = deltas[i];
+            uint256 transferAmount = amounts[i];
+            _burnAndTransfer(pool, lpSafe, burnAmount, transferAmount);
+        }
+
+        IOracleAdapter oracleAdapter = _getOracleAdapter();
+        oracleAdapter.lock();
+    }
+
+    function _burnAndTransfer(
+        PoolTokenV2 pool,
+        address lpSafe,
+        uint256 burnAmount,
+        uint256 transferAmount
+    ) internal {
+        if (burnAmount == 0) {
+            return;
+        }
+        _burn(address(pool), burnAmount);
+        IDetailedERC20UpgradeSafe underlyer = pool.underlyer();
+        underlyer.safeTransferFrom(lpSafe, address(pool), transferAmount);
+        emit Burn(address(pool), burnAmount);
+    }
+
+    /**
+     * @notice Register an asset allocation for the account with each pool underlyer
+     * @param pools list of pool amounts whose pool underlyers will be registered
+     */
+    function _registerPoolUnderlyers(PoolTokenV2[] memory pools) internal {
+        ITvlManager tvlManager =
+            ITvlManager(addressRegistry.getAddress("tvlManager"));
+        IErc20AllocationRegistry erc20Registry =
+            IErc20AllocationRegistry(tvlManager.erc20Allocation());
+
+        for (uint256 i = 0; i < pools.length; i++) {
+            address underlyer = address(pools[i].underlyer());
+
+            if (!erc20Registry.isErc20TokenRegistered(underlyer)) {
+                erc20Registry.registerErc20Token(underlyer);
+            }
+        }
+    }
+
+    /**
+     * @notice Get the USD value of all assets in the system, not just those
+     * being managed by the AccountManager but also the pool underlyers.
+     *
+     * Note this is NOT the same as the total value represented by the
+     * total mAPT supply, i.e. the "deployed capital".
+     *
+     * @dev Chainlink nodes read from the TVLManager, pull the
+     * prices from market feeds, and submits the calculated total value
+     * to an aggregator contract.
+     *
+     * USD prices have 8 decimals.
+     *
+     * @return "Total Value Locked", the USD value of all APY Finance assets.
+     */
+    function _getTvl() internal view returns (uint256) {
+        IOracleAdapter oracleAdapter = _getOracleAdapter();
+        return oracleAdapter.getTvl();
     }
 
     function _getOracleAdapter() internal view returns (IOracleAdapter) {
@@ -292,7 +431,37 @@ contract MetaPoolToken is
         return IOracleAdapter(oracleAdapterAddress);
     }
 
+    function _calculateDeltas(
+        PoolTokenV2[] memory pools,
+        uint256[] memory amounts
+    ) internal view returns (uint256[] memory) {
+        require(pools.length == amounts.length, "LENGTHS_MUST_MATCH");
+        uint256[] memory deltas = new uint256[](pools.length);
+
+        for (uint256 i = 0; i < pools.length; i++) {
+            PoolTokenV2 pool = pools[i];
+            uint256 amount = amounts[i];
+
+            IDetailedERC20UpgradeSafe underlyer = pool.underlyer();
+            uint256 tokenPrice = pool.getUnderlyerPrice();
+            uint8 decimals = underlyer.decimals();
+
+            deltas[i] = _calculateDelta(amount, tokenPrice, decimals);
+        }
+
+        return deltas;
+    }
+
     /**
+     * @notice Calculate mAPT amount for given pool's underlyer amount.
+     * @param amount Pool underlyer amount to be converted
+     * @param tokenPrice Pool underlyer's USD price (in wei) per underlyer token
+     * @param decimals Pool underlyer's number of decimals
+     * @dev Price parameter is in units of wei per token ("big" unit), since
+     * attempting to express wei per token bit ("small" unit) will be
+     * fractional, requiring fixed-point representation.  This means we need
+     * to also pass in the underlyer's number of decimals to do the appropriate
+     * multiplication in the calculation.
      * @dev amount of APT minted should be in same ratio to APT supply
      * as deposit value is to pool's total value, i.e.:
      *
@@ -303,17 +472,51 @@ contract MetaPoolToken is
      * The important thing is they are consistent, i.e. both pre-deposit
      * or both post-deposit.
      */
-    function _calculateMintAmount(uint256 depositValue, uint256 totalValue)
-        internal
-        view
-        returns (uint256)
-    {
+    function _calculateDelta(
+        uint256 amount,
+        uint256 tokenPrice,
+        uint8 decimals
+    ) internal view returns (uint256) {
+        uint256 value = amount.mul(tokenPrice).div(10**uint256(decimals));
+        uint256 totalValue = _getTvl();
         uint256 totalSupply = totalSupply();
 
         if (totalValue == 0 || totalSupply == 0) {
-            return depositValue.mul(DEFAULT_MAPT_TO_UNDERLYER_FACTOR);
+            return value.mul(DEFAULT_MAPT_TO_UNDERLYER_FACTOR);
         }
 
-        return depositValue.mul(totalSupply).div(totalValue);
+        return value.mul(totalSupply).div(totalValue);
+    }
+
+    function _getFundAmounts(int256[] memory amounts)
+        internal
+        pure
+        returns (uint256[] memory)
+    {
+        uint256[] memory fundAmounts = new uint256[](amounts.length);
+
+        for (uint256 i = 0; i < amounts.length; i++) {
+            int256 amount = amounts[i];
+
+            fundAmounts[i] = amount < 0 ? uint256(-amount) : 0;
+        }
+
+        return fundAmounts;
+    }
+
+    function _getWithdrawAmounts(int256[] memory amounts)
+        internal
+        pure
+        returns (uint256[] memory)
+    {
+        uint256[] memory withdrawAmounts = new uint256[](amounts.length);
+
+        for (uint256 i = 0; i < amounts.length; i++) {
+            int256 amount = amounts[i];
+
+            withdrawAmounts[i] = amount > 0 ? uint256(amount) : 0;
+        }
+
+        return withdrawAmounts;
     }
 }
