@@ -740,7 +740,9 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
         usdtPoolMintAmount
       );
     });
+  });
 
+  describe("_withdrawLp", () => {
     it("Revert for insufficient allowance from LP Safe", async () => {
       const amount = tokenAmountToBigNumber(100);
       // await daiToken.connect(deployer).transfer(lpSafeAddress, amount);
