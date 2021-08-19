@@ -23,6 +23,9 @@ contract Erc20Allocation is
     EnumerableSet.AddressSet private _tokenAddresses;
     mapping(address => TokenData) private _tokenToData;
 
+    event Erc20TokenRegistered(address token, string symbol, uint8 decimals);
+    event Erc20TokenRemoved(address token);
+
     constructor(address addressRegistry_) public {
         require(addressRegistry_.isContract(), "INVALID_ADDRESS_REGISTRY");
         IAddressRegistryV2 addressRegistry =
@@ -71,11 +74,15 @@ contract Erc20Allocation is
         require(bytes(symbol).length != 0, "INVALID_SYMBOL");
         _tokenAddresses.add(token);
         _tokenToData[token] = TokenData(token, symbol, decimals);
+
+        emit Erc20TokenRegistered(token, symbol, decimals);
     }
 
     function removeErc20Token(address token) external override onlyLpRole {
         _tokenAddresses.remove(token);
         delete _tokenToData[token];
+
+        emit Erc20TokenRemoved(token);
     }
 
     function isErc20TokenRegistered(address token)
