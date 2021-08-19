@@ -147,10 +147,10 @@ describe("APT V2 uses V1 storage slot positions", () => {
 
     poolToken = await PoolTokenV2.attach(proxy.address);
 
-    await poolToken.connect(emergencySafe).lock();
+    await poolToken.connect(emergencySafe).emergencyLock();
     await poolToken.testMint(deployer.address, minted);
-    await poolToken.connect(emergencySafe).lockAddLiquidity();
-    await poolToken.connect(emergencySafe).lockRedeem();
+    await poolToken.connect(emergencySafe).emergencyLockAddLiquidity();
+    await poolToken.connect(emergencySafe).emergencyLockRedeem();
     await poolToken.testTransfer(deployer.address, user.address, transferred);
     await poolToken.approve(otherUser.address, allowance);
   });

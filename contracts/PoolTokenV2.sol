@@ -207,7 +207,7 @@ contract PoolTokenV2 is
      * @notice Disable both depositing and withdrawals.
      * Note that `addLiquidity` and `redeem` also have individual locks.
      */
-    function lock() external onlyEmergencyRole {
+    function emergencyLock() external onlyEmergencyRole {
         _pause();
     }
 
@@ -215,7 +215,7 @@ contract PoolTokenV2 is
      * @notice Re-enable both depositing and withdrawals.
      * Note that `addLiquidity` and `redeem` also have individual locks.
      */
-    function unlock() external onlyEmergencyRole {
+    function emergencyUnlock() external onlyEmergencyRole {
         _unpause();
     }
 
@@ -260,13 +260,13 @@ contract PoolTokenV2 is
     }
 
     /** @notice Disable deposits. */
-    function lockAddLiquidity() external onlyEmergencyRole {
+    function emergencyLockAddLiquidity() external onlyEmergencyRole {
         addLiquidityLock = true;
         emit AddLiquidityLocked();
     }
 
     /** @notice Enable deposits. */
-    function unlockAddLiquidity() external onlyEmergencyRole {
+    function emergencyUnlockAddLiquidity() external onlyEmergencyRole {
         addLiquidityLock = false;
         emit AddLiquidityUnlocked();
     }
@@ -307,13 +307,13 @@ contract PoolTokenV2 is
     }
 
     /** @notice Disable APT redeeming. */
-    function lockRedeem() external onlyEmergencyRole {
+    function emergencyLockRedeem() external onlyEmergencyRole {
         redeemLock = true;
         emit RedeemLocked();
     }
 
     /** @notice Enable APT redeeming. */
-    function unlockRedeem() external onlyEmergencyRole {
+    function emergencyUnlockRedeem() external onlyEmergencyRole {
         redeemLock = false;
         emit RedeemUnlocked();
     }
@@ -332,11 +332,14 @@ contract PoolTokenV2 is
         underlyer.safeTransfer(addressRegistry.lpSafeAddress(), amount);
     }
 
-    function setAdminAddress(address adminAddress) external onlyEmergencyRole {
+    function emergencySetAdminAddress(address adminAddress)
+        external
+        onlyEmergencyRole
+    {
         _setAdminAddress(adminAddress);
     }
 
-    function setAddressRegistry(address addressRegistry_)
+    function emergencySetAddressRegistry(address addressRegistry_)
         external
         onlyEmergencyRole
     {

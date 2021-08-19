@@ -248,19 +248,21 @@ describe("Contract: PoolTokenV2", () => {
 
   describe("Set admin address", () => {
     it("Emergency Safe can set admin", async () => {
-      await poolToken.connect(emergencySafe).setAdminAddress(FAKE_ADDRESS);
+      await poolToken
+        .connect(emergencySafe)
+        .emergencySetAdminAddress(FAKE_ADDRESS);
       assert.equal(await poolToken.proxyAdmin(), FAKE_ADDRESS);
     });
 
     it("Revert on setting to zero address", async () => {
       await expect(
-        poolToken.connect(emergencySafe).setAdminAddress(ZERO_ADDRESS)
+        poolToken.connect(emergencySafe).emergencySetAdminAddress(ZERO_ADDRESS)
       ).to.be.reverted;
     });
 
     it("Revert when unpermissioned account attempts to set address", async () => {
       await expect(
-        poolToken.connect(randomUser).setAdminAddress(FAKE_ADDRESS)
+        poolToken.connect(randomUser).emergencySetAdminAddress(FAKE_ADDRESS)
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
   });
@@ -270,20 +272,24 @@ describe("Contract: PoolTokenV2", () => {
       const dummyContract = await deployMockContract(deployer, []);
       await poolToken
         .connect(emergencySafe)
-        .setAddressRegistry(dummyContract.address);
+        .emergencySetAddressRegistry(dummyContract.address);
       assert.equal(await poolToken.addressRegistry(), dummyContract.address);
     });
 
     it("Revert on non-contract address", async () => {
       await expect(
-        poolToken.connect(emergencySafe).setAddressRegistry(FAKE_ADDRESS)
+        poolToken
+          .connect(emergencySafe)
+          .emergencySetAddressRegistry(FAKE_ADDRESS)
       ).to.be.revertedWith("INVALID_ADDRESS");
     });
 
     it("Revert when unpermissioned account attempts to set", async () => {
       const dummyContract = await deployMockContract(deployer, []);
       await expect(
-        poolToken.connect(randomUser).setAddressRegistry(dummyContract.address)
+        poolToken
+          .connect(randomUser)
+          .emergencySetAddressRegistry(dummyContract.address)
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
   });
@@ -307,30 +313,30 @@ describe("Contract: PoolTokenV2", () => {
 
   describe("Lock pool", () => {
     it("Emergency Safe can lock and unlock pool", async () => {
-      await expect(poolToken.connect(emergencySafe).lock()).to.emit(
+      await expect(poolToken.connect(emergencySafe).emergencyLock()).to.emit(
         poolToken,
         "Paused"
       );
-      await expect(poolToken.connect(emergencySafe).unlock()).to.emit(
+      await expect(poolToken.connect(emergencySafe).emergencyUnlock()).to.emit(
         poolToken,
         "Unpaused"
       );
     });
 
     it("Revert when unpermissioned account attempts to lock", async () => {
-      await expect(poolToken.connect(randomUser).lock()).to.be.revertedWith(
-        "NOT_EMERGENCY_ROLE"
-      );
+      await expect(
+        poolToken.connect(randomUser).emergencyLock()
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
 
     it("Revert when unpermissioned account attempts to unlock", async () => {
-      await expect(poolToken.connect(randomUser).unlock()).to.be.revertedWith(
-        "NOT_EMERGENCY_ROLE"
-      );
+      await expect(
+        poolToken.connect(randomUser).emergencyUnlock()
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
 
     it("Revert when calling addLiquidity/redeem on locked pool", async () => {
-      await poolToken.connect(emergencySafe).lock();
+      await poolToken.connect(emergencySafe).emergencyLock();
 
       await expect(
         poolToken.connect(randomUser).addLiquidity(50)
@@ -342,7 +348,7 @@ describe("Contract: PoolTokenV2", () => {
     });
 
     it("Revert when calling transferToLpSafe on locked pool from mAPT", async () => {
-      await poolToken.connect(emergencySafe).lock();
+      await poolToken.connect(emergencySafe).emergencyLock();
 
       await expect(
         poolToken.connect(mApt).transferToLpSafe(100)
@@ -986,8 +992,8 @@ describe("Contract: PoolTokenV2", () => {
         });
 
         it("Deposit should work after unlock", async () => {
-          await poolToken.connect(emergencySafe).lockAddLiquidity();
-          await poolToken.connect(emergencySafe).unlockAddLiquidity();
+          await poolToken.connect(emergencySafe).emergencyLockAddLiquidity();
+          await poolToken.connect(emergencySafe).emergencyUnlockAddLiquidity();
 
           await expect(
             poolToken.connect(randomUser).addLiquidity(depositAmount)
@@ -999,30 +1005,30 @@ describe("Contract: PoolTokenV2", () => {
     describe("Locking", () => {
       it("Emergency Safe can lock", async () => {
         await expect(
-          poolToken.connect(emergencySafe).lockAddLiquidity()
+          poolToken.connect(emergencySafe).emergencyLockAddLiquidity()
         ).to.emit(poolToken, "AddLiquidityLocked");
       });
 
       it("Emergency Safe can unlock", async () => {
         await expect(
-          poolToken.connect(emergencySafe).unlockAddLiquidity()
+          poolToken.connect(emergencySafe).emergencyUnlockAddLiquidity()
         ).to.emit(poolToken, "AddLiquidityUnlocked");
       });
 
       it("Revert if unpermissioned account attempts to lock", async () => {
         await expect(
-          poolToken.connect(randomUser).lockAddLiquidity()
+          poolToken.connect(randomUser).emergencyLockAddLiquidity()
         ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
       });
 
       it("Revert if unpermissioned account attempts to unlock", async () => {
         await expect(
-          poolToken.connect(randomUser).unlockAddLiquidity()
+          poolToken.connect(randomUser).emergencyUnlockAddLiquidity()
         ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
       });
 
       it("Revert deposit when pool is locked", async () => {
-        await poolToken.connect(emergencySafe).lockAddLiquidity();
+        await poolToken.connect(emergencySafe).emergencyLockAddLiquidity();
 
         await expect(
           poolToken.connect(randomUser).addLiquidity(1)
@@ -1172,8 +1178,8 @@ describe("Contract: PoolTokenV2", () => {
         });
 
         it("Redeem should work after unlock", async () => {
-          await poolToken.connect(emergencySafe).lockRedeem();
-          await poolToken.connect(emergencySafe).unlockRedeem();
+          await poolToken.connect(emergencySafe).emergencyLockRedeem();
+          await poolToken.connect(emergencySafe).emergencyUnlockRedeem();
 
           await expect(poolToken.connect(randomUser).redeem(aptAmount)).to.not
             .be.reverted;
@@ -1201,33 +1207,31 @@ describe("Contract: PoolTokenV2", () => {
 
     describe("Locking", () => {
       it("Emergency Safe can lock", async () => {
-        await expect(poolToken.connect(emergencySafe).lockRedeem()).to.emit(
-          poolToken,
-          "RedeemLocked"
-        );
+        await expect(
+          poolToken.connect(emergencySafe).emergencyLockRedeem()
+        ).to.emit(poolToken, "RedeemLocked");
       });
 
       it("Emergency Safe can unlock", async () => {
-        await expect(poolToken.connect(emergencySafe).unlockRedeem()).to.emit(
-          poolToken,
-          "RedeemUnlocked"
-        );
+        await expect(
+          poolToken.connect(emergencySafe).emergencyUnlockRedeem()
+        ).to.emit(poolToken, "RedeemUnlocked");
       });
 
       it("Revert if unpermissioned account attempts to lock", async () => {
         await expect(
-          poolToken.connect(randomUser).lockRedeem()
+          poolToken.connect(randomUser).emergencyLockRedeem()
         ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
       });
 
       it("Revert if unpermissioned account attempts to unlock", async () => {
         await expect(
-          poolToken.connect(randomUser).unlockRedeem()
+          poolToken.connect(randomUser).emergencyUnlockRedeem()
         ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
       });
 
       it("Revert redeem when pool is locked", async () => {
-        await poolToken.connect(emergencySafe).lockRedeem();
+        await poolToken.connect(emergencySafe).emergencyLockRedeem();
 
         await expect(
           poolToken.connect(randomUser).redeem(1)
