@@ -34,6 +34,10 @@ interface ILiquidityPoolV2 {
     event RedeemLocked();
     event RedeemUnlocked();
 
+    event FeePeriodChanged(uint256);
+    event FeePercentageChanged(uint256);
+    event ReservePercentageChanged(uint256);
+
     /**
      * @notice Mint corresponding amount of APT tokens for deposited stablecoin.
      * @param amount Amount to deposit of the underlying stablecoin

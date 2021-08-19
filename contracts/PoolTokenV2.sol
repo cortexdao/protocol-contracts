@@ -349,10 +349,12 @@ contract PoolTokenV2 is
 
     function setFeePeriod(uint256 feePeriod_) external onlyAdminRole {
         feePeriod = feePeriod_;
+        emit FeePeriodChanged(feePeriod_);
     }
 
     function setFeePercentage(uint256 feePercentage_) external onlyAdminRole {
         feePercentage = feePercentage_;
+        emit FeePercentageChanged(feePercentage_);
     }
 
     function setReservePercentage(uint256 reservePercentage_)
@@ -360,6 +362,7 @@ contract PoolTokenV2 is
         onlyAdminRole
     {
         reservePercentage = reservePercentage_;
+        emit ReservePercentageChanged(reservePercentage_);
     }
 
     /**
