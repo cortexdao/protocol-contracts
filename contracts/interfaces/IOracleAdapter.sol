@@ -7,6 +7,9 @@ interface IOracleAdapter {
         uint256 periodEnd;
     }
 
+    event DefaultLockPeriodChanged(uint256);
+    event LockFor(uint256);
+
     function emergencySetTvl(uint256 value, uint256 period) external;
 
     function emergencyUnsetTvl() external;

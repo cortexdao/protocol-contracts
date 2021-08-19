@@ -118,6 +118,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         onlyAdminRole
     {
         _setDefaultLockPeriod(newPeriod);
+        emit DefaultLockPeriodChanged(newPeriod);
     }
 
     function lock() external override onlyContractRole {
@@ -301,6 +302,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
 
     function _lockFor(uint256 activePeriod) internal {
         lockEnd = block.number.add(activePeriod);
+        emit LockFor(activePeriod);
     }
 
     function _setAddressRegistry(address addressRegistry_) internal {
