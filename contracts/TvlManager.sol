@@ -22,13 +22,14 @@ import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 /**
  r @title TVL Manager
  * @author APY.Finance
- * @notice Deployed assets can exist across various platforms within the
- * defi ecosystem: pools, accounts, defi protocols, etc. This contract
- * tracks deployed capital by registering the look up functions so that
- * the TVL can be properly computed.
- * @dev It is imperative that this manager has the most up to date asset
- * allocations registered. Any assets in the system that have been deployed,
- * but are not registered can have devastating and catastrophic effects on the TVL.
+ * @notice Assets can be deployed in a variety of ways within the DeFi
+ *         ecosystem: accounts, pools, vaults, gauges, etc. This contract
+ *         tracks deployed capital by registering functions that allow
+ *         position balances to be priced and aggregated by Chainlink
+ *         into the deployed TVL.
+ * @dev It is imperative that the registered asset allocations are up-to-date.
+ *      Any assets in the system that have been deployed but are not
+ *      registered could lead to significant misreporting of the TVL.
  */
 contract TvlManager is
     AccessControl,
@@ -47,9 +48,10 @@ contract TvlManager is
     event AddressRegistryChanged(address);
 
     /**
-     * @notice Constructor
-     * @param addressRegistry_ the address registry to initialize with
-     * @param erc20Allocation_ the erc20 allocation to initialize with
+     * @dev The ERC20 allocation is required in order to ensure that
+     *      funds in the LP Safe will properly reflect in the TVL.
+     * @param addressRegistry_ the Address Registry
+     * @param erc20Allocation_ the ERC20 allocation
      */
     constructor(address addressRegistry_, address erc20Allocation_) public {
         _setAddressRegistry(addressRegistry_);
@@ -63,9 +65,9 @@ contract TvlManager is
     }
 
     /**
-     * @notice Sets the address registry
-     * @dev only callable by owner
-     * @param addressRegistry_ the address of the registry
+     * @notice Sets the new Address Registry
+     * @dev Only callable by the Emergency Safe
+     * @param addressRegistry_ new address of the Address Registry
      */
     function emergencySetAddressRegistry(address addressRegistry_)
         external
@@ -75,9 +77,9 @@ contract TvlManager is
     }
 
     /**
-     * @notice Sets the ERC20 allocation contract
-     * @dev only callable by owner
-     * @param erc20Allocation_ the address of ERC20 allocation
+     * @notice Sets the new ERC20 allocation contract
+     * @dev Only callable by Emergency Safe
+     * @param erc20Allocation_ new address of the ERC20 allocation
      */
     function emergencySetErc20Allocation(address erc20Allocation_)
         external
@@ -88,7 +90,7 @@ contract TvlManager is
 
     /**
      * @notice Register a new asset allocation
-     * @dev only permissioned accounts can call.
+     * @dev Only permissioned accounts can call.
      */
     function registerAssetAllocation(address assetAllocation)
         external
@@ -104,7 +106,7 @@ contract TvlManager is
 
     /**
      * @notice Remove a new asset allocation
-     * @dev only permissioned accounts can call.
+     * @dev Only permissioned accounts can call.
      */
     function removeAssetAllocation(address assetAllocation)
         external
@@ -124,6 +126,14 @@ contract TvlManager is
         emit AssetAllocationRemoved(assetAllocation);
     }
 
+    /**
+     * @notice Returns a list of all identifiers coming from registered
+     *         asset allocations.
+     * @dev The list contains no duplicate identifiers. Note that IDs
+     *      are not static, e.g. a particular position's ID may change
+     *      from updates to asset allocation contracts.
+     * @return list of all the registered identifiers
+     */
     function getAssetAllocationIds()
         external
         view
@@ -160,6 +170,7 @@ contract TvlManager is
         return assetAllocationIds;
     }
 
+    /// @dev Validates and encodes the given args into an allocation ID.
     function getAssetAllocationId(address assetAllocation, uint8 tokenIndex)
         external
         view
@@ -231,6 +242,7 @@ contract TvlManager is
         return IAssetAllocation(assetAllocation).decimalsOf(tokenIndex);
     }
 
+    /// @dev decodes the given allocation ID and validates
     function getAssetAllocation(bytes32 id)
         public
         view
@@ -271,6 +283,7 @@ contract TvlManager is
         oracleAdapter.lock();
     }
 
+    /// @dev Returns the total number of asset allocation IDs.
     function _getAssetAllocationIdCount(IAssetAllocation[] memory allocations)
         internal
         view
@@ -285,6 +298,7 @@ contract TvlManager is
         return idsLength;
     }
 
+    /// @dev Returns the list of asset allocation contracts.
     function _getAssetAllocations()
         internal
         view
