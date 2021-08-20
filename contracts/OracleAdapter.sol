@@ -52,6 +52,11 @@ import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
  * could be lost.
  */
 contract OracleAdapter is AccessControl, IOracleAdapter {
+    struct Value {
+        uint256 value;
+        uint256 periodEnd;
+    }
+
     using SafeMath for uint256;
     using Address for address;
 
@@ -74,6 +79,17 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
     event TvlSourceUpdated(address indexed source);
     event ChainlinkStalePeriodUpdated(uint256 period);
     event AddressRegistryChanged(address);
+    event DefaultLockPeriodChanged(uint256 newPeriod);
+    event Unlocked();
+    event AssetValueSet(
+        address asset,
+        uint256 value,
+        uint256 period,
+        uint256 periodEnd
+    );
+    event AssetValueUnset(address asset);
+    event TvlSet(uint256 value, uint256 period, uint256 periodEnd);
+    event TvlUnset();
 
     modifier unlocked() {
         require(!isLocked(), "ORACLE_LOCKED");
@@ -112,27 +128,26 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
     }
 
-    function setDefaultLockPeriod(uint256 newPeriod)
-        external
-        override
-        onlyAdminRole
-    {
+    function setDefaultLockPeriod(uint256 newPeriod) external onlyAdminRole {
         _setDefaultLockPeriod(newPeriod);
         emit DefaultLockPeriodChanged(newPeriod);
     }
 
     function lock() external override onlyContractRole {
         _lockFor(defaultLockPeriod);
+        emit DefaultLocked(msg.sender, defaultLockPeriod, lockEnd);
     }
 
-    function emergencyUnlock() external override onlyEmergencyRole {
+    function emergencyUnlock() external onlyEmergencyRole {
         _lockFor(0);
+        emit Unlocked();
     }
 
     function lockFor(uint256 activePeriod) external override onlyContractRole {
         uint256 oldLockEnd = lockEnd;
         _lockFor(activePeriod);
         require(lockEnd > oldLockEnd, "CANNOT_SHORTEN_LOCK");
+        emit Locked(msg.sender, activePeriod, lockEnd);
     }
 
     /**
@@ -155,14 +170,15 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         address asset,
         uint256 value,
         uint256 period
-    ) external override onlyEmergencyRole {
+    ) external onlyEmergencyRole {
         // We do allow 0 values for submitted values
-        submittedAssetValues[asset] = Value(value, block.number.add(period));
+        uint256 periodEnd = block.number.add(period);
+        submittedAssetValues[asset] = Value(value, periodEnd);
+        emit AssetValueSet(asset, value, period, periodEnd);
     }
 
     function emergencyUnsetAssetValue(address asset)
         external
-        override
         onlyEmergencyRole
     {
         require(
@@ -170,20 +186,23 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
             "NO_ASSET_VALUE_SET"
         );
         submittedAssetValues[asset].periodEnd = block.number;
+        emit AssetValueUnset(asset);
     }
 
     function emergencySetTvl(uint256 value, uint256 period)
         external
-        override
         onlyEmergencyRole
     {
         // We do allow 0 values for submitted values
-        submittedTvlValue = Value(value, block.number.add(period));
+        uint256 periodEnd = block.number.add(period);
+        submittedTvlValue = Value(value, periodEnd);
+        emit TvlSet(value, period, periodEnd);
     }
 
-    function emergencyUnsetTvl() external override onlyEmergencyRole {
+    function emergencyUnsetTvl() external onlyEmergencyRole {
         require(submittedTvlValue.periodEnd != 0, "NO_TVL_SET");
         submittedTvlValue.periodEnd = block.number;
+        emit TvlUnset();
     }
 
     //------------------------------------------------------------
@@ -302,7 +321,6 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
 
     function _lockFor(uint256 activePeriod) internal {
         lockEnd = block.number.add(activePeriod);
-        emit LockFor(activePeriod);
     }
 
     function _setAddressRegistry(address addressRegistry_) internal {
