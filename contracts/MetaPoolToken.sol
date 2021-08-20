@@ -30,7 +30,7 @@ import {
 import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
-import {ILpSafeFunder} from "./interfaces/ILpSafeFunder.sol";
+import {ILpFunder} from "./interfaces/ILpFunder.sol";
 import {ITvlManager} from "./interfaces/ITvlManager.sol";
 import {
     IErc20AllocationRegistry
@@ -74,7 +74,7 @@ contract MetaPoolToken is
     ReentrancyGuardUpgradeSafe,
     PausableUpgradeSafe,
     ERC20UpgradeSafe,
-    ILpSafeFunder
+    ILpFunder
 {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
@@ -201,7 +201,7 @@ contract MetaPoolToken is
 
         _fundLp(pools, fundAmounts);
 
-        emit FundLp(poolIds);
+        emit FundLp(poolIds, fundAmounts);
     }
 
     function emergencyFundLp(
@@ -224,7 +224,7 @@ contract MetaPoolToken is
         uint256[] memory withdrawAmounts = _getWithdrawAmounts(amounts);
 
         _withdrawLp(pools, withdrawAmounts);
-        emit WithdrawLp(poolIds);
+        emit WithdrawLp(poolIds, withdrawAmounts);
     }
 
     function emergencyWithdrawLp(
