@@ -46,6 +46,7 @@ contract TvlManager is
     EnumerableSet.AddressSet private _assetAllocations;
 
     event AddressRegistryChanged(address);
+    event Erc20AllocationChanged(address);
 
     /**
      * @dev The ERC20 allocation is required in order to ensure that
@@ -275,6 +276,7 @@ contract TvlManager is
         _assetAllocations.remove(address(erc20Allocation));
         _assetAllocations.add(erc20Allocation_);
         erc20Allocation = IErc20AllocationRegistry(erc20Allocation_);
+        emit Erc20AllocationChanged(erc20Allocation_);
     }
 
     function _lockOracleAdapter() internal {
