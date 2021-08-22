@@ -148,14 +148,14 @@ contract LpAccount is
 
     function names() external view override returns (string[] calldata) {
         uint256 length = _zaps.length;
-        string[] memory names = new string[](length);
+        string[] memory names_ = new string[](length);
 
         for (uint256 i = 0; i < length; i++) {
             IZap zap = IZap(_zaps.get(i));
-            names[i] = zap.NAME();
+            names_[i] = zap.NAME();
         }
 
-        return names;
+        return names_;
     }
 
     function _setAdminAddress(address adminAddress) internal {
