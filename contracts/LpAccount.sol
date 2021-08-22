@@ -149,11 +149,11 @@ contract LpAccount is
     }
 
     function names() external view override returns (string[] calldata) {
-        uint256 length = _zaps.length;
+        uint256 length = _zaps.length();
         string[] memory names_ = new string[](length);
 
         for (uint256 i = 0; i < length; i++) {
-            IZap zap = IZap(_zaps.get(i));
+            IZap zap = IZap(_zaps.at(i));
             names_[i] = zap.NAME();
         }
 
