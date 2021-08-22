@@ -130,7 +130,7 @@ contract LpAccount is
     }
 
     function registerZap(IZap zap) external override onlyAdminRole {
-        require(address(zap).isContract(), "INVALID_ADDRESS");
+        require(Address.isContract(address(zap)), "INVALID_ADDRESS");
 
         string memory name = zap.NAME();
         require(bytes(name).length != 0, "INVALID_ZAP_NAME");
@@ -171,7 +171,7 @@ contract LpAccount is
      * @param addressRegistry_ the address of the registry
      */
     function _setAddressRegistry(address addressRegistry_) internal {
-        require(addressRegistry_.isContract(), "INVALID_ADDRESS");
+        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
         emit AddressRegistryChanged(addressRegistry_);
     }
