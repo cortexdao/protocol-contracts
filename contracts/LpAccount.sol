@@ -140,11 +140,11 @@ contract LpAccount is
     }
 
     function removeZap(string calldata name) external override onlyAdminRole {
-        address zap = _zapNames[name];
+        address zap = _zapNameLookup[name];
         require(zap != address(0), "INVALID_ZAP_NAME");
         require(_zaps.remove(zap), "ZAP_DOES_NOT_EXIST");
 
-        delete _zapNameLookup[zap];
+        delete _zapNameLookup[name];
     }
 
     function names() external view override returns (string[] calldata) {
