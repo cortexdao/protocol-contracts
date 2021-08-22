@@ -148,7 +148,7 @@ contract LpAccount is
         delete _zapNameLookup[name];
     }
 
-    function names() external view override returns (string[] calldata) {
+    function names() external view override returns (string[] memory) {
         uint256 length = _zaps.length();
         string[] memory names_ = new string[](length);
 

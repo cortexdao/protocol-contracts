@@ -10,5 +10,5 @@ interface IZapRegistry {
 
     function removeZap(string calldata name) external;
 
-    function names() external view returns (string[] calldata);
+    function names() external view returns (string[] memory);
 }
