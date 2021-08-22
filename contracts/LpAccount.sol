@@ -10,6 +10,7 @@ import {
     ReentrancyGuardUpgradeSafe
 } from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
+import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 import {IZap} from "./interfaces/IZap.sol";
 import {ILpAccount} from "./interfaces/ILpAccount.sol";
 import {IZapRegistry} from "./interfaces/IZapRegistry.sol";
