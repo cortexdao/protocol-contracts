@@ -5,7 +5,6 @@ pragma experimental ABIEncoderV2;
 import {
     ReentrancyGuard
 } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {EnumerableSet} from "./utils/EnumerableSet.sol";
 import {AccessControl} from "./utils/AccessControl.sol";
 import {IAssetAllocation} from "./interfaces/IAssetAllocation.sol";
@@ -38,7 +37,6 @@ contract TvlManager is
     IAssetAllocationRegistry
 {
     using EnumerableSet for EnumerableSet.AddressSet;
-    using Address for address;
 
     IAddressRegistryV2 public addressRegistry;
     IErc20AllocationRegistry public override erc20Allocation;
