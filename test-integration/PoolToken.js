@@ -533,17 +533,6 @@ describe("Contract: PoolToken", () => {
               assert(val.gt(0));
             });
 
-            it("getUnderlyerAmountFromValue returns value", async () => {
-              const usdValue = tokenAmountToBigNumber("500", "8");
-              const tokenAmount = await poolToken.getUnderlyerAmountFromValue(
-                usdValue
-              );
-              console.debug(
-                `\tToken Amount from Eth Value: ${tokenAmount.toString()}`
-              );
-              assert(tokenAmount.gt(0));
-            });
-
             it("getValueFromUnderlyerAmount returns value", async () => {
               const amount = tokenAmountToBigNumber(
                 5000,
@@ -571,14 +560,14 @@ describe("Contract: PoolToken", () => {
               assert(underlyerAmount.gt(0));
             });
 
-            it("getUnderlyerValue returns correct value", async () => {
+            it("_getPoolUnderlyerValue returns correct value", async () => {
               let underlyerBalance = await underlyer.balanceOf(
                 poolToken.address
               );
               let expectedUnderlyerValue = await poolToken.getValueFromUnderlyerAmount(
                 underlyerBalance
               );
-              expect(await poolToken.getPoolUnderlyerValue()).to.equal(
+              expect(await poolToken.testGetPoolUnderlyerValue()).to.equal(
                 expectedUnderlyerValue
               );
 
@@ -594,13 +583,13 @@ describe("Contract: PoolToken", () => {
               expectedUnderlyerValue = await poolToken.getValueFromUnderlyerAmount(
                 underlyerBalance
               );
-              expect(await poolToken.getPoolUnderlyerValue()).to.equal(
+              expect(await poolToken.testGetPoolUnderlyerValue()).to.equal(
                 expectedUnderlyerValue
               );
             });
 
-            it("getDeployedValue returns correct value", async () => {
-              expect(await poolToken.getDeployedValue()).to.equal(
+            it("_getDeployedValue returns correct value", async () => {
+              expect(await poolToken.testGetDeployedValue()).to.equal(
                 deployedValue
               );
 
@@ -611,7 +600,7 @@ describe("Contract: PoolToken", () => {
               await oracleAdapter.connect(emergencySafe).emergencyUnlock();
               // must update agg so staleness check passes
               await updateTvlAgg(deployedValue);
-              expect(await poolToken.getDeployedValue()).to.equal(
+              expect(await poolToken.testGetDeployedValue()).to.equal(
                 deployedValue.mul(3).div(4)
               );
 
@@ -622,7 +611,7 @@ describe("Contract: PoolToken", () => {
               await oracleAdapter.connect(emergencySafe).emergencyUnlock();
               // must update agg so staleness check passes
               await updateTvlAgg(deployedValue);
-              expect(await poolToken.getDeployedValue()).to.equal(
+              expect(await poolToken.testGetDeployedValue()).to.equal(
                 deployedValue.div(2)
               );
             });
@@ -638,7 +627,7 @@ describe("Contract: PoolToken", () => {
                 expect(topUpValue).to.be.gt(0);
               }
 
-              const poolUnderlyerValue = await poolToken.getPoolUnderlyerValue();
+              const poolUnderlyerValue = await poolToken.testGetPoolUnderlyerValue();
               // assuming we unwind the top-up value from the pool's deployed
               // capital, the reserve percentage of resulting deployed value
               // is what we are targeting
