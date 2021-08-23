@@ -30,6 +30,8 @@ import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
 import {ILiquidityPoolV2} from "./interfaces/ILiquidityPoolV2.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {IDetailedERC20} from "./interfaces/IDetailedERC20.sol";
+import {IReservePool} from "./interfaces/IReservePool.sol";
+import {IWithdrawFeePool} from "./interfaces/IWithdrawFeePool.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
 import {MetaPoolToken} from "./MetaPoolToken.sol";
@@ -70,6 +72,8 @@ import {MetaPoolToken} from "./MetaPoolToken.sol";
  */
 contract PoolTokenV2 is
     ILiquidityPoolV2,
+    IReservePool,
+    IWithdrawFeePool,
     Initializable,
     AccessControlUpgradeSafe,
     ReentrancyGuardUpgradeSafe,
@@ -107,13 +111,13 @@ contract PoolTokenV2 is
      */
     IAddressRegistryV2 public addressRegistry;
     /** @notice seconds since last deposit during which withdrawal fee is charged */
-    uint256 public feePeriod;
+    uint256 public override feePeriod;
     /** @notice percentage charged for withdrawal fee */
-    uint256 public feePercentage;
+    uint256 public override feePercentage;
     /** @notice time of last deposit */
     mapping(address => uint256) public lastDepositTime;
     /** @notice percentage of pool total value available for immediate withdrawal */
-    uint256 public reservePercentage;
+    uint256 public override reservePercentage;
 
     /* ------------------------------- */
 
@@ -337,18 +341,23 @@ contract PoolTokenV2 is
         _setAddressRegistry(addressRegistry_);
     }
 
-    function setFeePeriod(uint256 feePeriod_) external onlyAdminRole {
+    function setFeePeriod(uint256 feePeriod_) external override onlyAdminRole {
         feePeriod = feePeriod_;
         emit FeePeriodChanged(feePeriod_);
     }
 
-    function setFeePercentage(uint256 feePercentage_) external onlyAdminRole {
+    function setFeePercentage(uint256 feePercentage_)
+        external
+        override
+        onlyAdminRole
+    {
         feePercentage = feePercentage_;
         emit FeePercentageChanged(feePercentage_);
     }
 
     function setReservePercentage(uint256 reservePercentage_)
         external
+        override
         onlyAdminRole
     {
         reservePercentage = reservePercentage_;
@@ -427,7 +436,7 @@ contract PoolTokenV2 is
      * the waiting period is restarted on each deposit.
      * @return "true" when fee will apply, "false" when it won't.
      */
-    function isEarlyRedeem() public view returns (bool) {
+    function isEarlyRedeem() public view override returns (bool) {
         // solhint-disable-next-line not-rely-on-time
         return block.timestamp.sub(lastDepositTime[msg.sender]) < feePeriod;
     }
@@ -518,7 +527,7 @@ contract PoolTokenV2 is
      *
      * @return int256 The underlyer value to top-up the pool's reserve
      */
-    function getReserveTopUpValue() external view returns (int256) {
+    function getReserveTopUpValue() external view override returns (int256) {
         uint256 unnormalizedTargetValue =
             _getDeployedValue().mul(reservePercentage);
         uint256 unnormalizedUnderlyerValue = _getPoolUnderlyerValue().mul(100);
