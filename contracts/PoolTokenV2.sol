@@ -472,21 +472,6 @@ contract PoolTokenV2 is
     }
 
     /**
-     * @notice Get the underlyer amount equivalent to given USD-denominated value (in bits).
-     * @param value USD value
-     * @return amount of underlying stablecoin
-     */
-    function getUnderlyerAmountFromValue(uint256 value)
-        external
-        view
-        returns (uint256)
-    {
-        uint256 underlyerPrice = getUnderlyerPrice();
-        uint256 decimals = underlyer.decimals();
-        return (10**decimals).mul(value).div(underlyerPrice);
-    }
-
-    /**
      * @notice Get the underlyer stablecoin's USD price (in bits).
      * @return USD price
      */

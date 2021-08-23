@@ -2,7 +2,6 @@ const { assert, expect } = require("chai");
 const hre = require("hardhat");
 const { artifacts, ethers, waffle } = hre;
 const { deployMockContract } = waffle;
-const { BigNumber } = ethers;
 
 const timeMachine = require("ganache-time-traveler");
 
@@ -407,23 +406,6 @@ describe("Contract: PoolTokenV2", () => {
     it("Revert if unpermissioned account attempts to set", async () => {
       await expect(poolToken.connect(randomUser).setReservePercentage(10)).to.be
         .reverted;
-    });
-  });
-
-  describe("getUnderlyerAmountFromValue", () => {
-    it("Returns correct value", async () => {
-      const decimals = 0;
-      await underlyerMock.mock.decimals.returns(decimals);
-      const price = 25;
-      await oracleAdapterMock.mock.getAssetPrice.returns(price);
-      const ethValue = 100;
-      // ((10 ^ 0) * 100) / 25
-      const expectedUnderlyerAmount = BigNumber.from(10 ** decimals)
-        .mul(ethValue)
-        .div(price);
-      expect(await poolToken.getUnderlyerAmountFromValue(ethValue)).to.equal(
-        expectedUnderlyerAmount
-      );
     });
   });
 
