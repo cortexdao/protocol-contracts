@@ -3,8 +3,6 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 interface IZap {
-    // TODO: How to associate asset allocations...
-
     // array of underlyer amounts
     function deployLiquidity(uint256[] calldata amounts) external;
 
@@ -16,4 +14,10 @@ interface IZap {
 
     // Order of token amounts
     function sortedSymbols() external view returns (string[] memory);
+
+    // Asset allocation contracts required for the strategy
+    function assetAllocations() external view returns (address[] memory);
+
+    // ERC20 asset allocation tokens required for the strategy
+    function erc20Allocations() external view returns (address[] memory);
 }
