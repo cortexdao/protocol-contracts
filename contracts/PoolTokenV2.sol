@@ -176,11 +176,7 @@ contract PoolTokenV2 is
      * this function can only be called as part of a delegate call
      * during upgrades, i.e. in ProxyAdmin's `upgradeAndCall`.
      */
-    function initializeUpgrade(address addressRegistry_)
-        external
-        virtual
-        onlyAdmin
-    {
+    function initializeUpgrade(address addressRegistry_) external onlyAdmin {
         _setAddressRegistry(addressRegistry_);
 
         // Sadly, the AccessControl init is protected by `initializer` so can't
@@ -223,7 +219,6 @@ contract PoolTokenV2 is
      */
     function addLiquidity(uint256 depositAmount)
         external
-        virtual
         override
         nonReentrant
         whenNotPaused
@@ -275,7 +270,6 @@ contract PoolTokenV2 is
      */
     function redeem(uint256 aptAmount)
         external
-        virtual
         override
         nonReentrant
         whenNotPaused
@@ -444,7 +438,7 @@ contract PoolTokenV2 is
      * capital that is owed to it.
      * @return USD value
      */
-    function getPoolTotalValue() public view virtual returns (uint256) {
+    function getPoolTotalValue() public view returns (uint256) {
         uint256 underlyerValue = _getPoolUnderlyerValue();
         uint256 mAptValue = _getDeployedValue();
         return underlyerValue.add(mAptValue);
@@ -577,7 +571,7 @@ contract PoolTokenV2 is
         address from,
         address to,
         uint256 amount
-    ) internal virtual override {
+    ) internal override {
         super._beforeTokenTransfer(from, to, amount);
         // allow minting and burning
         if (from == address(0) || to == address(0)) return;
@@ -615,7 +609,7 @@ contract PoolTokenV2 is
      * underlyer balance.
      * @return USD value
      */
-    function _getPoolUnderlyerValue() internal view virtual returns (uint256) {
+    function _getPoolUnderlyerValue() internal view returns (uint256) {
         return getValueFromUnderlyerAmount(underlyer.balanceOf(address(this)));
     }
 
@@ -624,7 +618,7 @@ contract PoolTokenV2 is
      * of the deployed capital, as tracked by the mAPT token.
      * @return USD value
      */
-    function _getDeployedValue() internal view virtual returns (uint256) {
+    function _getDeployedValue() internal view returns (uint256) {
         MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAptAddress());
         return mApt.getDeployedValue(address(this));
     }
