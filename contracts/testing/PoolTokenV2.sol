@@ -24,4 +24,12 @@ contract TestPoolTokenV2 is PoolTokenV2 {
         testBurn(from, amount);
         testMint(to, amount);
     }
+
+    function testGetDeployedValue() public view returns (uint256) {
+        return _getDeployedValue();
+    }
+
+    function testGetPoolUnderlyerValue() public view returns (uint256) {
+        return _getPoolUnderlyerValue();
+    }
 }

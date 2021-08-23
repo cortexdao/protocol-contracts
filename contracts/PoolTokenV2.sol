@@ -445,28 +445,9 @@ contract PoolTokenV2 is
      * @return USD value
      */
     function getPoolTotalValue() public view virtual returns (uint256) {
-        uint256 underlyerValue = getPoolUnderlyerValue();
-        uint256 mAptValue = getDeployedValue();
+        uint256 underlyerValue = _getPoolUnderlyerValue();
+        uint256 mAptValue = _getDeployedValue();
         return underlyerValue.add(mAptValue);
-    }
-
-    /**
-     * @notice Get the USD-denominated value (in bits) of the pool's
-     * underlyer balance.
-     * @return USD value
-     */
-    function getPoolUnderlyerValue() public view virtual returns (uint256) {
-        return getValueFromUnderlyerAmount(underlyer.balanceOf(address(this)));
-    }
-
-    /**
-     * @notice Get the USD-denominated value (in bits) of the pool's share
-     * of the deployed capital, as tracked by the mAPT token.
-     * @return USD value
-     */
-    function getDeployedValue() public view virtual returns (uint256) {
-        MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAptAddress());
-        return mApt.getDeployedValue(address(this));
     }
 
     /**
@@ -560,8 +541,8 @@ contract PoolTokenV2 is
      */
     function getReserveTopUpValue() external view returns (int256) {
         uint256 unnormalizedTargetValue =
-            getDeployedValue().mul(reservePercentage);
-        uint256 unnormalizedUnderlyerValue = getPoolUnderlyerValue().mul(100);
+            _getDeployedValue().mul(reservePercentage);
+        uint256 unnormalizedUnderlyerValue = _getPoolUnderlyerValue().mul(100);
 
         require(unnormalizedTargetValue <= _MAX_INT256, "SIGNED_INT_OVERFLOW");
         require(
@@ -627,5 +608,24 @@ contract PoolTokenV2 is
         }
 
         return (depositValue.mul(totalSupply)).div(poolTotalValue);
+    }
+
+    /**
+     * @notice Get the USD-denominated value (in bits) of the pool's
+     * underlyer balance.
+     * @return USD value
+     */
+    function _getPoolUnderlyerValue() internal view virtual returns (uint256) {
+        return getValueFromUnderlyerAmount(underlyer.balanceOf(address(this)));
+    }
+
+    /**
+     * @notice Get the USD-denominated value (in bits) of the pool's share
+     * of the deployed capital, as tracked by the mAPT token.
+     * @return USD value
+     */
+    function _getDeployedValue() internal view virtual returns (uint256) {
+        MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAptAddress());
+        return mApt.getDeployedValue(address(this));
     }
 }
