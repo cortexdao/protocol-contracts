@@ -18,7 +18,6 @@ const LINK_ADDRESS = "0x514910771AF9Ca656af840dff83E8264EcF986CA";
 // https://etherscan.io/address/0x3dfd23a6c5e8bbcfc9581d2e864a68feb6a076d3
 const WHALE_ADDRESS = "0x3dfd23A6c5E8BbcFc9581d2E864a68feb6a076d3";
 
-const dai = (amount) => tokenAmountToBigNumber(amount, "18");
 const link = (amount) => tokenAmountToBigNumber(amount, "18");
 const usdc = (amount) => tokenAmountToBigNumber(amount, "6");
 
@@ -244,71 +243,6 @@ describe("Contract: MetaPoolToken - TVL aggregator integration", () => {
       const expectedMintAmount = totalSupply.div(2);
       mintAmount = await mApt.testCalculateDelta(usdcAmount, usdcUsdPrice, "6");
       expect(mintAmount).to.be.equal(expectedMintAmount);
-    });
-
-    it("Calculate pool amount with 1 pool", async () => {
-      const usdcUsdPrice = BigNumber.from("101260000");
-      const usdcAmount = usdc(107);
-      const tvl = usdcUsdPrice.mul(usdcAmount).div(usdc(1));
-
-      const totalSupply = tokenAmountToBigNumber(21);
-      await mApt.testMint(randomUser.address, totalSupply);
-      await tvlAgg.connect(oracle).submit(1, tvl);
-      await oracleAdapter.connect(emergencySafe).emergencyUnlock();
-
-      let poolAmount = await mApt.calculatePoolAmount(
-        totalSupply,
-        usdcUsdPrice,
-        "6"
-      );
-      expect(poolAmount).to.be.equal(usdcAmount);
-
-      const mAptAmount = tokenAmountToBigNumber(5);
-      const expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
-      const expectedPoolAmount = expectedPoolValue
-        .mul(usdc(1))
-        .div(usdcUsdPrice);
-      poolAmount = await mApt.calculatePoolAmount(
-        mAptAmount,
-        usdcUsdPrice,
-        "6"
-      );
-      expect(poolAmount).to.be.equal(expectedPoolAmount);
-    });
-
-    it("Calculate pool amount with 2 pools", async () => {
-      const usdcUsdPrice = BigNumber.from("101260000");
-      const daiUsdPrice = BigNumber.from("103030000");
-      const usdcAmount = usdc(107);
-      const daiAmount = dai(10);
-      const usdcValue = usdcUsdPrice.mul(usdcAmount).div(usdc(1));
-      const daiValue = daiUsdPrice.mul(daiAmount).div(dai(1));
-      const tvl = usdcValue.add(daiValue);
-
-      const totalSupply = tokenAmountToBigNumber(21);
-      let mAptAmount = tokenAmountToBigNumber(10);
-      let expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
-      let expectedPoolAmount = expectedPoolValue.mul(usdc(1)).div(usdcUsdPrice);
-      await mApt.testMint(randomUser.address, totalSupply);
-      await tvlAgg.connect(oracle).submit(1, tvl);
-      await oracleAdapter.connect(emergencySafe).emergencyUnlock();
-
-      let poolAmount = await mApt.calculatePoolAmount(
-        mAptAmount,
-        usdcUsdPrice,
-        "6"
-      );
-      expect(poolAmount).to.be.equal(expectedPoolAmount);
-
-      mAptAmount = totalSupply.sub(mAptAmount);
-      expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
-      expectedPoolAmount = expectedPoolValue.mul(dai(1)).div(daiUsdPrice);
-      poolAmount = await mApt.calculatePoolAmount(
-        mAptAmount,
-        daiUsdPrice,
-        "18"
-      );
-      expect(poolAmount).to.be.equal(expectedPoolAmount);
     });
   });
 });

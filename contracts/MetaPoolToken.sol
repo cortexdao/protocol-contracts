@@ -234,29 +234,6 @@ contract MetaPoolToken is
     }
 
     /**
-     * @notice Calculate amount in pool's underlyer token from given mAPT amount.
-     * @param mAptAmount mAPT amount to be converted
-     * @param tokenPrice Pool underlyer's USD price (in wei) per underlyer token
-     * @param decimals Pool underlyer's number of decimals
-     * @dev Price parameter is in units of wei per token ("big" unit), since
-     * attempting to express wei per token bit ("small" unit) will be
-     * fractional, requiring fixed-point representation.  This means we need
-     * to also pass in the underlyer's number of decimals to do the appropriate
-     * multiplication in the calculation.
-     */
-    function calculatePoolAmount(
-        uint256 mAptAmount,
-        uint256 tokenPrice,
-        uint256 decimals
-    ) external view returns (uint256) {
-        if (mAptAmount == 0) return 0;
-        require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        uint256 poolValue = mAptAmount.mul(_getTvl()).div(totalSupply());
-        uint256 poolAmount = poolValue.mul(10**decimals).div(tokenPrice);
-        return poolAmount;
-    }
-
-    /**
      * @notice Get the USD-denominated value (in wei) of the pool's share
      * of the deployed capital, as tracked by the mAPT token.
      * @return uint256

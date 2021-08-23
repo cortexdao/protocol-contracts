@@ -18,7 +18,6 @@ const DUMMY_ADDRESS = web3.utils.toChecksumAddress(
 );
 
 const usdc = (amount) => tokenAmountToBigNumber(amount, "6");
-const dai = (amount) => tokenAmountToBigNumber(amount, "18");
 const ether = (amount) => tokenAmountToBigNumber(amount, "18");
 
 describe("Contract: MetaPoolToken", () => {
@@ -540,72 +539,6 @@ describe("Contract: MetaPoolToken", () => {
           "6"
         );
         expect(mintAmount).to.be.equal(expectedMintAmount);
-      });
-    });
-
-    describe("calculatePoolAmount", () => {
-      it("Calculate pool amount with 1 pool", async () => {
-        const usdcEthPrice = tokenAmountToBigNumber("1602950450000000");
-        const usdcAmount = usdc(107);
-        const tvl = usdcEthPrice.mul(usdcAmount).div(usdc(1));
-        await oracleAdapterMock.mock.getTvl.returns(tvl);
-
-        const totalSupply = tokenAmountToBigNumber(21);
-        await mApt.testMint(anotherUser.address, totalSupply);
-
-        let poolAmount = await mApt.calculatePoolAmount(
-          totalSupply,
-          usdcEthPrice,
-          "6"
-        );
-        expect(poolAmount).to.be.equal(usdcAmount);
-
-        const mAptAmount = tokenAmountToBigNumber(5);
-        const expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
-        const expectedPoolAmount = expectedPoolValue
-          .mul(usdc(1))
-          .div(usdcEthPrice);
-        poolAmount = await mApt.calculatePoolAmount(
-          mAptAmount,
-          usdcEthPrice,
-          "6"
-        );
-        expect(poolAmount).to.be.equal(expectedPoolAmount);
-      });
-
-      it("Calculate pool amount with 2 pools", async () => {
-        const usdcEthPrice = tokenAmountToBigNumber("1602950450000000");
-        const daiEthPrice = tokenAmountToBigNumber("1603100000000000");
-        const usdcAmount = usdc(107);
-        const daiAmount = dai(10);
-        const usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
-        const daiValue = daiEthPrice.mul(daiAmount).div(dai(1));
-        const tvl = usdcValue.add(daiValue);
-        await oracleAdapterMock.mock.getTvl.returns(tvl);
-
-        const totalSupply = tokenAmountToBigNumber(21);
-        let mAptAmount = tokenAmountToBigNumber(10);
-        let expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
-        let expectedPoolAmount = expectedPoolValue
-          .mul(usdc(1))
-          .div(usdcEthPrice);
-        await mApt.testMint(anotherUser.address, totalSupply);
-        let poolAmount = await mApt.calculatePoolAmount(
-          mAptAmount,
-          usdcEthPrice,
-          "6"
-        );
-        expect(poolAmount).to.be.equal(expectedPoolAmount);
-
-        mAptAmount = totalSupply.sub(mAptAmount);
-        expectedPoolValue = tvl.mul(mAptAmount).div(totalSupply);
-        expectedPoolAmount = expectedPoolValue.mul(dai(1)).div(daiEthPrice);
-        poolAmount = await mApt.calculatePoolAmount(
-          mAptAmount,
-          daiEthPrice,
-          "18"
-        );
-        expect(poolAmount).to.be.equal(expectedPoolAmount);
       });
     });
 
