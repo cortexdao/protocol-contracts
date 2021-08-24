@@ -134,9 +134,11 @@ contract LpAccount is
 
     function registerZap(IZap zap) external override onlyAdminRole {
         require(Address.isContract(address(zap)), "INVALID_ADDRESS");
+        require(!_zaps.contains(zap), "DUPLICATE_ZAP");
 
         string memory name = zap.NAME();
         require(bytes(name).length != 0, "INVALID_ZAP_NAME");
+        require(_zapNameLookup[name] != address(0), "DUPLICATE_ZAP_NAME");
 
         _zaps.add(address(zap));
         _zapNameLookup[name] = address(zap);
