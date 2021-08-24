@@ -5,9 +5,9 @@ pragma experimental ABIEncoderV2;
 import {
     ReentrancyGuard
 } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {EnumerableSet} from "./utils/EnumerableSet.sol";
 import {AccessControl} from "./utils/AccessControl.sol";
 import {IAssetAllocation} from "./interfaces/IAssetAllocation.sol";
+import {NamedAddressSet} from "./libraries/NamedAddressSet.sol";
 import {
     IAssetAllocationRegistry
 } from "./interfaces/IAssetAllocationRegistry.sol";
@@ -35,12 +35,11 @@ contract TvlManager is
     IAssetAllocationRegistry,
     Erc20AllocationConstants
 {
-    using EnumerableSet for EnumerableSet.AddressSet;
+    using NamedAddressSet for NamedAddressSet.AssetAllocationSet;
 
     IAddressRegistryV2 public addressRegistry;
 
-    EnumerableSet.AddressSet private _assetAllocations;
-    mapping(string => address) private _nameLookup;
+    NamedAddressSet.AssetAllocationSet private _assetAllocations;
 
     event AddressRegistryChanged(address);
     event Erc20AllocationChanged(address);
@@ -89,21 +88,16 @@ contract TvlManager is
      * @notice Register a new asset allocation
      * @dev Only permissioned accounts can call.
      */
-    function registerAssetAllocation(address assetAllocation)
+    function registerAssetAllocation(IAssetAllocation assetAllocation)
         external
         override
         nonReentrant
         onlyLpOrContractRole
     {
-        require(assetAllocation.isContract(), "INVALID_ADDRESS");
-
-        string memory name = IAssetAllocation(assetAllocation).NAME();
-        require(_nameLookup[name] == address(0), "DUPLICATE_NAME");
-
         _assetAllocations.add(assetAllocation);
-        _nameLookup[name] = assetAllocation;
 
         _lockOracleAdapter();
+
         emit AssetAllocationRegistered(assetAllocation);
     }
 
@@ -117,20 +111,17 @@ contract TvlManager is
         nonReentrant
         onlyLpOrContractRole
     {
-        address assetAllocation = _nameLookup[name];
-        require(assetAllocation != address(0), "INVALID_NAME");
         require(
             keccak256(abi.encodePacked(name)) !=
                 keccak256(abi.encodePacked(Erc20AllocationConstants.NAME)),
             "CANNOT_REMOVE_ALLOCATION"
         );
 
-        _assetAllocations.remove(assetAllocation);
-        delete _nameLookup[name];
+        _assetAllocations.remove(name);
 
         _lockOracleAdapter();
 
-        emit AssetAllocationRemoved(assetAllocation);
+        emit AssetAllocationRemoved(name);
     }
 
 <<<<<<< HEAD
@@ -147,12 +138,9 @@ contract TvlManager is
         external
         view
         override
-        returns (address)
+        returns (IAssetAllocation)
     {
-        address assetAllocation = _nameLookup[name];
-        require(assetAllocation != address(0), "INVALID_NAME");
-
-        return assetAllocation;
+        return _assetAllocations.get(name);
     }
 
 >>>>>>> New interfaces to support ERC20 allocations
@@ -166,12 +154,9 @@ contract TvlManager is
         return _getAssetAllocationsIds(allocations);
     }
 
-    function isAssetAllocationRegistered(address[] calldata assetAllocations)
-        external
-        view
-        override
-        returns (bool)
-    {
+    function isAssetAllocationRegistered(
+        IAssetAllocation[] calldata assetAllocations
+    ) external view override returns (bool) {
         uint256 length = assetAllocations.length;
         for (uint256 i = 0; i < length; i++) {
             if (!_assetAllocations.contains(assetAllocations[i])) {
@@ -194,10 +179,10 @@ contract TvlManager is
         override
         returns (uint256)
     {
-        (address assetAllocation, uint8 tokenIndex) =
+        (IAssetAllocation assetAllocation, uint8 tokenIndex) =
             _getAssetAllocation(allocationId);
         return
-            IAssetAllocation(assetAllocation).balanceOf(
+            assetAllocation.balanceOf(
                 addressRegistry.lpSafeAddress(),
                 tokenIndex
             );
@@ -214,9 +199,9 @@ contract TvlManager is
         override
         returns (string memory)
     {
-        (address assetAllocation, uint8 tokenIndex) =
+        (IAssetAllocation assetAllocation, uint8 tokenIndex) =
             _getAssetAllocation(allocationId);
-        return IAssetAllocation(assetAllocation).symbolOf(tokenIndex);
+        return assetAllocation.symbolOf(tokenIndex);
     }
 
     /**
@@ -230,9 +215,9 @@ contract TvlManager is
         override
         returns (uint256)
     {
-        (address assetAllocation, uint8 tokenIndex) =
+        (IAssetAllocation assetAllocation, uint8 tokenIndex) =
             _getAssetAllocation(allocationId);
-        return IAssetAllocation(assetAllocation).decimalsOf(tokenIndex);
+        return assetAllocation.decimalsOf(tokenIndex);
     }
 
     function _setAddressRegistry(address addressRegistry_) internal {
@@ -287,17 +272,20 @@ contract TvlManager is
     function _getAssetAllocation(bytes32 id)
         internal
         view
-        returns (address, uint8)
+        returns (IAssetAllocation, uint8)
     {
-        (address assetAllocation, uint8 tokenIndex) =
+        (address assetAllocationAddress, uint8 tokenIndex) =
             _decodeAssetAllocationId(id);
+
+        IAssetAllocation assetAllocation =
+            IAssetAllocation(assetAllocationAddress);
 
         require(
             _assetAllocations.contains(assetAllocation),
             "INVALID_ASSET_ALLOCATION"
         );
         require(
-            IAssetAllocation(assetAllocation).numberOfTokens() > tokenIndex,
+            assetAllocation.numberOfTokens() > tokenIndex,
             "INVALID_TOKEN_INDEX"
         );
 
@@ -311,8 +299,7 @@ contract TvlManager is
     {
         uint256 idsLength = 0;
         for (uint256 i = 0; i < allocations.length; i++) {
-            IAssetAllocation allocation = IAssetAllocation(allocations[i]);
-            idsLength += allocation.numberOfTokens();
+            idsLength += allocations[i].numberOfTokens();
         }
 
         return idsLength;
@@ -329,7 +316,7 @@ contract TvlManager is
             new IAssetAllocation[](numAllocations);
 
         for (uint256 i = 0; i < numAllocations; i++) {
-            allocations[i] = IAssetAllocation(_assetAllocations.at(i));
+            allocations[i] = _assetAllocations.at(i);
         }
 
         return allocations;

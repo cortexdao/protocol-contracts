@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 
+import {IAssetAllocation} from "./IAssetAllocation.sol";
+
 /**
  * @title Interface to Access APY.Finance's Asset Allocations
  * @author APY.Finance
@@ -8,20 +10,19 @@ pragma solidity 0.6.11;
  * in order to compute the TVL across the entire APY.Finance system.
  */
 interface IAssetAllocationRegistry {
-    event AssetAllocationRegistered(address assetAllocation);
-    event AssetAllocationRemoved(address assetAllocation);
+    event AssetAllocationRegistered(IAssetAllocation assetAllocation);
+    event AssetAllocationRemoved(string name);
 
-    function registerAssetAllocation(address assetAllocation) external;
+    function registerAssetAllocation(IAssetAllocation assetAllocation) external;
 
     function removeAssetAllocation(string memory name) external;
 
-    function isAssetAllocationRegistered(address[] calldata assetAllocations)
-        external
-        view
-        returns (bool);
+    function isAssetAllocationRegistered(
+        IAssetAllocation[] calldata assetAllocations
+    ) external view returns (bool);
 
     function getAssetAllocation(string calldata name)
         external
         view
-        returns (address);
+        returns (IAssetAllocation);
 }
