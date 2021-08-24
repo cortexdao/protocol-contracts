@@ -3,7 +3,6 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import {
     Initializable
 } from "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
@@ -17,6 +16,7 @@ import {
     IAssetAllocationRegistry
 } from "./interfaces/IAssetAllocationRegistry.sol";
 import {Erc20AllocationConstants} from "./Erc20Allocation.sol";
+import {NamedAddressSet} from "./libraries/NamedAddressSet.sol";
 import {IZap} from "./interfaces/IZap.sol";
 import {ILpAccount} from "./interfaces/ILpAccount.sol";
 import {IZapRegistry} from "./interfaces/IZapRegistry.sol";
@@ -30,13 +30,12 @@ contract LpAccount is
     Erc20AllocationConstants
 {
     using Address for address;
-    using EnumerableSet for EnumerableSet.AddressSet;
+    using NamedAddressSet for NamedAddressSet.Set;
 
     address public proxyAdmin;
     IAddressRegistryV2 public addressRegistry;
 
-    EnumerableSet.AddressSet private _zaps;
-    mapping(string => address) private _zapNameLookup;
+    NamedAddressSet.Set private _zaps;
 
     event AdminChanged(address);
     event AddressRegistryChanged(address);
@@ -120,7 +119,7 @@ contract LpAccount is
         nonReentrant
         onlyLpRole
     {
-        IZap zap = IZap(_zapNameLookup[name]);
+        IZap zap = IZap(address(_zaps.get(name)));
 
         IAssetAllocationRegistry tvlManager =
             IAssetAllocationRegistry(addressRegistry.getAddress("tvlManager"));
@@ -154,43 +153,26 @@ contract LpAccount is
         nonReentrant
         onlyLpRole
     {
-        address zap = _zapNameLookup[name];
+        address zap = address(_zaps.get(name));
         zap.functionDelegateCall(
             abi.encodeWithSelector(IZap.unwindLiquidity.selector, amount)
         );
     }
 
     function registerZap(IZap zap) external override onlyAdminRole {
-        require(Address.isContract(address(zap)), "INVALID_ADDRESS");
-        require(!_zaps.contains(address(zap)), "DUPLICATE_ZAP");
+        _zaps.add(zap);
 
-        string memory name = zap.NAME();
-        require(bytes(name).length != 0, "INVALID_ZAP_NAME");
-        require(_zapNameLookup[name] != address(0), "DUPLICATE_ZAP_NAME");
-
-        _zaps.add(address(zap));
-        _zapNameLookup[name] = address(zap);
+        emit ZapRegistered(zap);
     }
 
-    // TODO: mention invariant relationship between _zapNameLookup and _zaps in NATSPEC
     function removeZap(string calldata name) external override onlyAdminRole {
-        address zap = _zapNameLookup[name];
-        require(zap != address(0), "INVALID_ZAP_NAME");
+        _zaps.remove(name);
 
-        _zaps.remove(zap);
-        delete _zapNameLookup[name];
+        emit ZapRemoved(name);
     }
 
     function names() external view override returns (string[] memory) {
-        uint256 length = _zaps.length();
-        string[] memory names_ = new string[](length);
-
-        for (uint256 i = 0; i < length; i++) {
-            IZap zap = IZap(_zaps.at(i));
-            names_[i] = zap.NAME();
-        }
-
-        return names_;
+        return _zaps.names();
     }
 
     function _setAdminAddress(address adminAddress) internal {
