@@ -30,12 +30,12 @@ contract LpAccount is
     Erc20AllocationConstants
 {
     using Address for address;
-    using NamedAddressSet for NamedAddressSet.Set;
+    using NamedAddressSet for NamedAddressSet.ZapSet;
 
     address public proxyAdmin;
     IAddressRegistryV2 public addressRegistry;
 
-    NamedAddressSet.Set private _zaps;
+    NamedAddressSet.ZapSet private _zaps;
 
     event AdminChanged(address);
     event AddressRegistryChanged(address);
@@ -119,7 +119,7 @@ contract LpAccount is
         nonReentrant
         onlyLpRole
     {
-        IZap zap = IZap(address(_zaps.get(name)));
+        IZap zap = _zaps.get(name);
 
         IAssetAllocationRegistry tvlManager =
             IAssetAllocationRegistry(addressRegistry.getAddress("tvlManager"));
