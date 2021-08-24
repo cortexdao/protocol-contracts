@@ -324,18 +324,11 @@ contract TvlManager is
         view
         returns (IAssetAllocation[] memory)
     {
-        IAssetAllocation erc20Allocation =
-            IAssetAllocation(addressRegistry.getAddress("erc20Allocation"));
-
         uint256 numAllocations = _assetAllocations.length();
-
-        // Add 1 to the length for the ERC20 allocation
         IAssetAllocation[] memory allocations =
-            new IAssetAllocation[](numAllocations + 1);
+            new IAssetAllocation[](numAllocations);
 
-        allocations[0] = erc20Allocation;
-
-        for (uint256 i = 1; i < numAllocations; i++) {
+        for (uint256 i = 0; i < numAllocations; i++) {
             allocations[i] = IAssetAllocation(_assetAllocations.at(i));
         }
 
