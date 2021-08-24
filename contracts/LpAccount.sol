@@ -130,6 +130,8 @@ contract LpAccount is
             "MISSING_ASSET_ALLOCATIONS"
         );
 
+        // TODO: If the asset allocation is deployed, but not registered, register it
+
         IErc20Allocation erc20Registry =
             IErc20Allocation(
                 tvlManager.getAssetAllocation(Erc20AllocationConstants.NAME)
