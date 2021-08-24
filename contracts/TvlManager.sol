@@ -14,7 +14,7 @@ import {
 import {
     IErc20AllocationRegistry
 } from "./interfaces/IErc20AllocationRegistry.sol";
-import {ITvlManager} from "./interfaces/ITvlManager.sol";
+import {IChainlinkRegistry} from "./interfaces/IChainlinkRegistry.sol";
 import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 
@@ -33,7 +33,7 @@ import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 contract TvlManager is
     AccessControl,
     ReentrancyGuard,
-    ITvlManager,
+    IChainlinkRegistry,
     IAssetAllocationRegistry
 {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -169,25 +169,6 @@ contract TvlManager is
         return assetAllocationIds;
     }
 
-    /// @dev Validates and encodes the given args into an allocation ID.
-    function encodeAssetAllocationId(address assetAllocation, uint8 tokenIndex)
-        external
-        view
-        override
-        returns (bytes32)
-    {
-        require(
-            _assetAllocations.contains(assetAllocation),
-            "INVALID_ASSET_ALLOCATION"
-        );
-        require(
-            IAssetAllocation(assetAllocation).numberOfTokens() > tokenIndex,
-            "INVALID_TOKEN_INDEX"
-        );
-
-        return _encodeAssetAllocationId(assetAllocation, tokenIndex);
-    }
-
     /**
      * @notice Executes the bytes lookup data registered under an id
      * @dev The balance of an id may be aggregated from multiple contracts
@@ -201,7 +182,7 @@ contract TvlManager is
         returns (uint256)
     {
         (address assetAllocation, uint8 tokenIndex) =
-            decodeAssetAllocationId(allocationId);
+            _getAssetAllocation(allocationId);
         return
             IAssetAllocation(assetAllocation).balanceOf(
                 addressRegistry.lpSafeAddress(),
@@ -221,7 +202,7 @@ contract TvlManager is
         returns (string memory)
     {
         (address assetAllocation, uint8 tokenIndex) =
-            decodeAssetAllocationId(allocationId);
+            _getAssetAllocation(allocationId);
         return IAssetAllocation(assetAllocation).symbolOf(tokenIndex);
     }
 
@@ -237,30 +218,8 @@ contract TvlManager is
         returns (uint256)
     {
         (address assetAllocation, uint8 tokenIndex) =
-            decodeAssetAllocationId(allocationId);
+            _getAssetAllocation(allocationId);
         return IAssetAllocation(assetAllocation).decimalsOf(tokenIndex);
-    }
-
-    /// @dev decodes the given allocation ID and validates
-    function decodeAssetAllocationId(bytes32 id)
-        public
-        view
-        override
-        returns (address, uint8)
-    {
-        (address assetAllocation, uint8 tokenIndex) =
-            _decodeAssetAllocationId(id);
-
-        require(
-            _assetAllocations.contains(assetAllocation),
-            "INVALID_ASSET_ALLOCATION"
-        );
-        require(
-            IAssetAllocation(assetAllocation).numberOfTokens() > tokenIndex,
-            "INVALID_TOKEN_INDEX"
-        );
-
-        return (assetAllocation, tokenIndex);
     }
 
     function _setAddressRegistry(address addressRegistry_) internal {
@@ -283,7 +242,26 @@ contract TvlManager is
         oracleAdapter.lock();
     }
 
-    /// @dev Returns the total number of asset allocation IDs.
+    function _getAssetAllocation(bytes32 id)
+        internal
+        view
+        returns (address, uint8)
+    {
+        (address assetAllocation, uint8 tokenIndex) =
+            _decodeAssetAllocationId(id);
+
+        require(
+            _assetAllocations.contains(assetAllocation),
+            "INVALID_ASSET_ALLOCATION"
+        );
+        require(
+            IAssetAllocation(assetAllocation).numberOfTokens() > tokenIndex,
+            "INVALID_TOKEN_INDEX"
+        );
+
+        return (assetAllocation, tokenIndex);
+    }
+
     function _getAssetAllocationIdCount(IAssetAllocation[] memory allocations)
         internal
         view
