@@ -131,12 +131,14 @@ contract LpAccount is
 
         // TODO: If the asset allocation is deployed, but not registered, register it
 
-        IErc20Allocation erc20Registry =
+        IErc20Allocation erc20Allocation =
             IErc20Allocation(
-                tvlManager.getAssetAllocation(Erc20AllocationConstants.NAME)
+                address(
+                    tvlManager.getAssetAllocation(Erc20AllocationConstants.NAME)
+                )
             );
         require(
-            erc20Registry.isErc20TokenRegistered(zap.erc20Allocations()),
+            erc20Allocation.isErc20TokenRegistered(zap.erc20Allocations()),
             "MISSING_ERC20_ALLOCATIONS"
         );
 
