@@ -18,6 +18,7 @@ import {
 import {
     ReentrancyGuardUpgradeSafe
 } from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
+import {IDetailedERC20} from "./interfaces/IDetailedERC20.sol";
 import {
     IDetailedERC20UpgradeSafe
 } from "./interfaces/IDetailedERC20UpgradeSafe.sol";
@@ -407,16 +408,19 @@ contract MetaPoolToken is
     function _registerPoolUnderlyers(PoolTokenV2[] memory pools) internal {
         IAssetAllocationRegistry tvlManager =
             IAssetAllocationRegistry(addressRegistry.getAddress("tvlManager"));
-        IErc20Allocation erc20Registry =
+        IErc20Allocation erc20Allocation =
             IErc20Allocation(
-                tvlManager.getAssetAllocation(Erc20AllocationConstants.NAME)
+                address(
+                    tvlManager.getAssetAllocation(Erc20AllocationConstants.NAME)
+                )
             );
 
         for (uint256 i = 0; i < pools.length; i++) {
-            address underlyer = address(pools[i].underlyer());
+            IDetailedERC20 underlyer =
+                IDetailedERC20(address(pools[i].underlyer()));
 
-            if (!erc20Registry.isErc20TokenRegistered(underlyer)) {
-                erc20Registry.registerErc20Token(underlyer);
+            if (!erc20Allocation.isErc20TokenRegistered(underlyer)) {
+                erc20Allocation.registerErc20Token(underlyer);
             }
         }
     }
