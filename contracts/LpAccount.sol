@@ -144,11 +144,12 @@ contract LpAccount is
         _zapNameLookup[name] = address(zap);
     }
 
+    // TODO: mention invariant relationship between _zapNameLookup and _zaps in NATSPEC
     function removeZap(string calldata name) external override onlyAdminRole {
         address zap = _zapNameLookup[name];
         require(zap != address(0), "INVALID_ZAP_NAME");
-        require(_zaps.remove(zap), "ZAP_DOES_NOT_EXIST");
 
+        _zaps.remove(zap);
         delete _zapNameLookup[name];
     }
 
