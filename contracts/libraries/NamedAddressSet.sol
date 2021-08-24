@@ -4,6 +4,8 @@ pragma solidity 0.6.11;
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import {INameIdentifier} from "contracts/interfaces/INameIdentifier.sol";
+import {IAssetAllocation} from "contracts/interfaces/IAssetAllocation.sol";
+import {IZap} from "contracts/interfaces/IZap.sol";
 
 library NamedAddressSet {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -13,7 +15,15 @@ library NamedAddressSet {
         mapping(string => INameIdentifier) _nameLookup;
     }
 
-    function add(Set storage set, INameIdentifier namedAddress) internal {
+    struct AssetAllocationSet {
+        Set _inner;
+    }
+
+    struct ZapSet {
+        Set _inner;
+    }
+
+    function _add(Set storage set, INameIdentifier namedAddress) private {
         require(Address.isContract(address(namedAddress)), "INVALID_ADDRESS");
         require(
             !set._namedAddresses.contains(address(namedAddress)),
@@ -28,7 +38,7 @@ library NamedAddressSet {
         set._nameLookup[name] = namedAddress;
     }
 
-    function remove(Set storage set, string memory name) internal {
+    function _remove(Set storage set, string memory name) private {
         address namedAddress = address(set._nameLookup[name]);
         require(namedAddress != address(0), "INVALID_NAME");
 
@@ -36,24 +46,127 @@ library NamedAddressSet {
         delete set._nameLookup[name];
     }
 
-    function get(Set storage set, string memory name)
-        internal
+    function _contains(Set storage set, INameIdentifier namedAddress)
+        private
+        returns (bool)
+    {
+        return set._namedAddresses.contains(address(namedAddress));
+    }
+
+    function _length(Set storage set) private returns (uint256) {
+        return set._namedAddresses.length();
+    }
+
+    function _at(Set storage set, uint256 index)
+        private
+        view
+        returns (INameIdentifier)
+    {
+        return INameIdentifier(set._namedAddresses.at(index));
+    }
+
+    function _get(Set storage set, string memory name)
+        private
         view
         returns (INameIdentifier)
     {
         return set._nameLookup[name];
     }
 
-    function names(Set storage set) internal view returns (string[] memory) {
-        uint256 length = set._namedAddresses.length();
-        string[] memory names_ = new string[](length);
+    function _names(Set storage set) private view returns (string[] memory) {
+        uint256 length_ = set._namedAddresses.length();
+        string[] memory names_ = new string[](length_);
 
-        for (uint256 i = 0; i < length; i++) {
+        for (uint256 i = 0; i < length_; i++) {
             INameIdentifier namedAddress =
                 INameIdentifier(set._namedAddresses.at(i));
             names_[i] = namedAddress.NAME();
         }
 
         return names_;
+    }
+
+    function add(
+        AssetAllocationSet storage set,
+        IAssetAllocation assetAllocation
+    ) internal {
+        _add(set._inner, assetAllocation);
+    }
+
+    function remove(AssetAllocationSet storage set, string memory name)
+        internal
+    {
+        _remove(set._inner, name);
+    }
+
+    function contains(
+        AssetAllocationSet storage set,
+        IAssetAllocation assetAllocation
+    ) internal returns (bool) {
+        _contains(set._inner, assetAllocation);
+    }
+
+    function length(AssetAllocationSet storage set) internal returns (uint256) {
+        return _length(set._inner);
+    }
+
+    function at(AssetAllocationSet storage set, uint256 index)
+        internal
+        view
+        returns (IAssetAllocation)
+    {
+        return IAssetAllocation(address(_at(set._inner, index)));
+    }
+
+    function get(AssetAllocationSet storage set, string memory name)
+        internal
+        view
+        returns (IAssetAllocation)
+    {
+        return IAssetAllocation(address(_get(set._inner, name)));
+    }
+
+    function names(AssetAllocationSet storage set)
+        internal
+        view
+        returns (string[] memory)
+    {
+        return _names(set._inner);
+    }
+
+    function add(ZapSet storage set, IZap zap) internal {
+        _add(set._inner, zap);
+    }
+
+    function remove(ZapSet storage set, string memory name) internal {
+        _remove(set._inner, name);
+    }
+
+    function contains(ZapSet storage set, IZap zap) internal returns (bool) {
+        _contains(set._inner, zap);
+    }
+
+    function length(ZapSet storage set) internal returns (uint256) {
+        return _length(set._inner);
+    }
+
+    function at(ZapSet storage set, uint256 index)
+        internal
+        view
+        returns (IZap)
+    {
+        return IZap(address(_at(set._inner, index)));
+    }
+
+    function get(ZapSet storage set, string memory name)
+        internal
+        view
+        returns (IZap)
+    {
+        return IZap(address(_get(set._inner, name)));
+    }
+
+    function names(ZapSet storage set) internal view returns (string[] memory) {
+        return _names(set._inner);
     }
 }
