@@ -8,6 +8,7 @@ import {AssetAllocationBase} from "./AssetAllocationBase.sol";
 import {INameIdentifier} from "./interfaces/INameIdentifier.sol";
 import {IErc20Allocation} from "./interfaces/IErc20Allocation.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IDetailedERC20} from "./interfaces/IDetailedERC20.sol";
 import {AccessControl} from "./utils/AccessControl.sol";
 
@@ -39,27 +40,27 @@ contract Erc20Allocation is
         _setupRole(LP_ROLE, addressRegistry.lpSafeAddress());
     }
 
-    function registerErc20Token(address token)
+    function registerErc20Token(IDetailedERC20 token)
         external
         override
         onlyLpOrContractRole
     {
-        string memory symbol = IDetailedERC20(token).symbol();
-        uint8 decimals = IDetailedERC20(token).decimals();
+        string memory symbol = token.symbol();
+        uint8 decimals = token.decimals();
         _registerErc20Token(token, symbol, decimals);
     }
 
-    function registerErc20Token(address token, string calldata symbol)
+    function registerErc20Token(IDetailedERC20 token, string calldata symbol)
         external
         override
         onlyLpRole
     {
-        uint8 decimals = IDetailedERC20(token).decimals();
+        uint8 decimals = token.decimals();
         _registerErc20Token(token, symbol, decimals);
     }
 
     function registerErc20Token(
-        address token,
+        IERC20 token,
         string calldata symbol,
         uint8 decimals
     ) external override onlyLpRole {
@@ -67,35 +68,39 @@ contract Erc20Allocation is
     }
 
     function _registerErc20Token(
-        address token,
+        IERC20 token,
         string memory symbol,
         uint8 decimals
     ) internal {
-        require(Address.isContract(token), "INVALID_ADDRESS");
+        require(address(token).isContract(), "INVALID_ADDRESS");
         require(bytes(symbol).length != 0, "INVALID_SYMBOL");
-        _tokenAddresses.add(token);
-        _tokenToData[token] = TokenData(token, symbol, decimals);
+        _tokenAddresses.add(address(token));
+        _tokenToData[address(token)] = TokenData(
+            address(token),
+            symbol,
+            decimals
+        );
 
         emit Erc20TokenRegistered(token, symbol, decimals);
     }
 
-    function removeErc20Token(address token) external override onlyLpRole {
-        _tokenAddresses.remove(token);
-        delete _tokenToData[token];
+    function removeErc20Token(IERC20 token) external override onlyLpRole {
+        _tokenAddresses.remove(address(token));
+        delete _tokenToData[address(token)];
 
         emit Erc20TokenRemoved(token);
     }
 
-    function isErc20TokenRegistered(address token)
+    function isErc20TokenRegistered(IERC20 token)
         external
         view
         override
         returns (bool)
     {
-        return _tokenAddresses.contains(token);
+        return _tokenAddresses.contains(address(token));
     }
 
-    function isErc20TokenRegistered(address[] calldata tokens)
+    function isErc20TokenRegistered(IERC20[] calldata tokens)
         external
         view
         override
@@ -103,7 +108,7 @@ contract Erc20Allocation is
     {
         uint256 length = tokens.length;
         for (uint256 i = 0; i < length; i++) {
-            if (!_tokenAddresses.contains(tokens[i])) {
+            if (!_tokenAddresses.contains(address(tokens[i]))) {
                 return false;
             }
         }
@@ -118,7 +123,7 @@ contract Erc20Allocation is
         returns (uint256)
     {
         address token = addressOf(tokenIndex);
-        return IDetailedERC20(token).balanceOf(account);
+        return IERC20(token).balanceOf(account);
     }
 
     function tokens() public view override returns (TokenData[] memory) {
