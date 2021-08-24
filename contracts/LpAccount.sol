@@ -111,6 +111,7 @@ contract LpAccount is
     function deployStrategy(string calldata name, uint256[] calldata amounts)
         external
         override
+        nonReentrant
         onlyLpRole
     {
         address zap = _zapNameLookup[name];
@@ -122,6 +123,7 @@ contract LpAccount is
     function unwindStrategy(string calldata name, uint256 amount)
         external
         override
+        nonReentrant
         onlyLpRole
     {
         address zap = _zapNameLookup[name];
