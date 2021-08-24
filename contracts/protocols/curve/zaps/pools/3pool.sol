@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {IZap} from "contracts/interfaces/IZap.sol";
+import {IAssetAllocation} from "contracts/interfaces/IAssetAllocation.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IDetailedERC20} from "contracts/interfaces/IDetailedERC20.sol";
 import {
@@ -91,21 +92,16 @@ contract Curve3PoolZap is IZap, Curve3PoolConstants {
         public
         view
         override
-        returns (address[] memory)
+        returns (IAssetAllocation[] memory)
     {
-        address[] memory allocations = new address[](1);
-        allocations[0] = ALLOCATION_ADDRESS;
+        IAssetAllocation[] memory allocations = new IAssetAllocation[](1);
+        allocations[0] = IAssetAllocation(ALLOCATION_ADDRESS);
         return allocations;
     }
 
-    function erc20Allocations()
-        public
-        view
-        override
-        returns (address[] memory)
-    {
-        address[] memory allocations = new address[](1);
-        allocations[0] = CRV_ADDRESS;
+    function erc20Allocations() public view override returns (IERC20[] memory) {
+        IERC20[] memory allocations = new IERC20[](1);
+        allocations[0] = IERC20(CRV_ADDRESS);
         return allocations;
     }
 }
