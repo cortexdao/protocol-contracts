@@ -730,17 +730,19 @@ describe("Contract: MetaPoolToken", () => {
 
       erc20AllocationMock = await deployMockContract(
         deployer,
-        artifacts.require("IErc20AllocationRegistry").abi
+        artifacts.require("IErc20Allocation").abi
       );
-      await erc20AllocationMock.mock.isErc20TokenRegistered.returns(true);
+      await erc20AllocationMock.mock["isErc20TokenRegistered(address)"].returns(
+        true
+      );
 
       tvlManagerMock = await deployMockContract(
         deployer,
-        artifacts.readArtifactSync("ITvlManager").abi
+        artifacts.readArtifactSync("IAssetAllocationRegistry").abi
       );
-      await tvlManagerMock.mock.erc20Allocation.returns(
-        erc20AllocationMock.address
-      );
+      await tvlManagerMock.mock.getAssetAllocation
+        .withArgs("erc20Allocation")
+        .returns(erc20AllocationMock.address);
       await addressRegistryMock.mock.getAddress
         .withArgs(bytes32("tvlManager"))
         .returns(tvlManagerMock.address);
@@ -748,7 +750,7 @@ describe("Contract: MetaPoolToken", () => {
 
     it("Unregistered underlyers get registered", async () => {
       // set DAI as unregistered in ERC20 registry
-      await erc20AllocationMock.mock.isErc20TokenRegistered
+      await erc20AllocationMock.mock["isErc20TokenRegistered(address)"]
         .withArgs(daiToken.address)
         .returns(false);
 
@@ -766,10 +768,10 @@ describe("Contract: MetaPoolToken", () => {
 
     it("Registered underlyers are skipped", async () => {
       // set DAI as registered while USDC is not
-      await erc20AllocationMock.mock.isErc20TokenRegistered
+      await erc20AllocationMock.mock["isErc20TokenRegistered(address)"]
         .withArgs(daiToken.address)
         .returns(true);
-      await erc20AllocationMock.mock.isErc20TokenRegistered
+      await erc20AllocationMock.mock["isErc20TokenRegistered(address)"]
         .withArgs(usdcToken.address)
         .returns(false);
 
