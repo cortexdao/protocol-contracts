@@ -48,12 +48,13 @@ library NamedAddressSet {
 
     function _contains(Set storage set, INameIdentifier namedAddress)
         private
+        view
         returns (bool)
     {
         return set._namedAddresses.contains(address(namedAddress));
     }
 
-    function _length(Set storage set) private returns (uint256) {
+    function _length(Set storage set) private view returns (uint256) {
         return set._namedAddresses.length();
     }
 
@@ -102,11 +103,15 @@ library NamedAddressSet {
     function contains(
         AssetAllocationSet storage set,
         IAssetAllocation assetAllocation
-    ) internal returns (bool) {
+    ) internal view returns (bool) {
         _contains(set._inner, assetAllocation);
     }
 
-    function length(AssetAllocationSet storage set) internal returns (uint256) {
+    function length(AssetAllocationSet storage set)
+        internal
+        view
+        returns (uint256)
+    {
         return _length(set._inner);
     }
 
@@ -142,11 +147,15 @@ library NamedAddressSet {
         _remove(set._inner, name);
     }
 
-    function contains(ZapSet storage set, IZap zap) internal returns (bool) {
+    function contains(ZapSet storage set, IZap zap)
+        internal
+        view
+        returns (bool)
+    {
         _contains(set._inner, zap);
     }
 
-    function length(ZapSet storage set) internal returns (uint256) {
+    function length(ZapSet storage set) internal view returns (uint256) {
         return _length(set._inner);
     }
 
