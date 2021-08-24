@@ -143,30 +143,20 @@ contract TvlManager is
         return _getAssetAllocationsIds(allocations);
     }
 
-    function _getAssetAllocationsIds(IAssetAllocation[] memory allocations)
-        internal
+    function isAssetAllocationRegistered(address[] calldata assetAllocations)
+        external
         view
-        returns (bytes32[] memory)
+        override
+        returns (bool)
     {
-        uint256 idsLength = _getAssetAllocationIdCount(allocations);
-        bytes32[] memory assetAllocationIds = new bytes32[](idsLength);
-
-        uint256 k = 0;
-        for (uint256 i = 0; i < allocations.length; i++) {
-            uint256 tokensLength = allocations[i].numberOfTokens();
-
-            require(tokensLength < type(uint8).max, "TOO_MANY_TOKENS");
-
-            for (uint256 j = 0; j < tokensLength; j++) {
-                assetAllocationIds[k] = _encodeAssetAllocationId(
-                    address(allocations[i]),
-                    uint8(j)
-                );
-                k++;
+        uint256 length = assetAllocations.length;
+        for (uint256 i = 0; i < length; i++) {
+            if (!_assetAllocations.contains(assetAllocations[i])) {
+                return false;
             }
         }
 
-        return assetAllocationIds;
+        return true;
     }
 
     /**
@@ -240,6 +230,32 @@ contract TvlManager is
         IOracleAdapter oracleAdapter =
             IOracleAdapter(addressRegistry.oracleAdapterAddress());
         oracleAdapter.lock();
+    }
+
+    function _getAssetAllocationsIds(IAssetAllocation[] memory allocations)
+        internal
+        view
+        returns (bytes32[] memory)
+    {
+        uint256 idsLength = _getAssetAllocationIdCount(allocations);
+        bytes32[] memory assetAllocationIds = new bytes32[](idsLength);
+
+        uint256 k = 0;
+        for (uint256 i = 0; i < allocations.length; i++) {
+            uint256 tokensLength = allocations[i].numberOfTokens();
+
+            require(tokensLength < type(uint8).max, "TOO_MANY_TOKENS");
+
+            for (uint256 j = 0; j < tokensLength; j++) {
+                assetAllocationIds[k] = _encodeAssetAllocationId(
+                    address(allocations[i]),
+                    uint8(j)
+                );
+                k++;
+            }
+        }
+
+        return assetAllocationIds;
     }
 
     function _getAssetAllocation(bytes32 id)
