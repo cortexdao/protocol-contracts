@@ -30,11 +30,14 @@ import {
 import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
-import {ILpFunder} from "./interfaces/ILpFunder.sol";
-import {ITvlManager} from "./interfaces/ITvlManager.sol";
+import {ILpSafeFunder} from "./interfaces/ILpSafeFunder.sol";
+import {
+    IAssetAllocationRegistry
+} from "./interfaces/IAssetAllocationRegistry.sol";
 import {
     IErc20AllocationRegistry
 } from "./interfaces/IErc20AllocationRegistry.sol";
+import {Erc20AllocationConstants} from "./Erc20Allocation.sol";
 import {PoolTokenV2} from "./PoolTokenV2.sol";
 
 /**
@@ -74,7 +77,12 @@ contract MetaPoolToken is
     ReentrancyGuardUpgradeSafe,
     PausableUpgradeSafe,
     ERC20UpgradeSafe,
+<<<<<<< HEAD
     ILpFunder
+=======
+    ILpSafeFunder,
+    Erc20AllocationConstants
+>>>>>>> New interfaces to support ERC20 allocations
 {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
@@ -399,10 +407,12 @@ contract MetaPoolToken is
      * @param pools list of pool amounts whose pool underlyers will be registered
      */
     function _registerPoolUnderlyers(PoolTokenV2[] memory pools) internal {
-        ITvlManager tvlManager =
-            ITvlManager(addressRegistry.getAddress("tvlManager"));
+        IAssetAllocationRegistry tvlManager =
+            IAssetAllocationRegistry(addressRegistry.getAddress("tvlManager"));
         IErc20AllocationRegistry erc20Registry =
-            IErc20AllocationRegistry(tvlManager.erc20Allocation());
+            IErc20AllocationRegistry(
+                tvlManager.getAssetAllocation(Erc20AllocationConstants.NAME)
+            );
 
         for (uint256 i = 0; i < pools.length; i++) {
             address underlyer = address(pools[i].underlyer());

@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {INameIdentifier} from "contracts/interfaces/INameIdentifier.sol";
 import {ImmutableAssetAllocation} from "contracts/ImmutableAssetAllocation.sol";
 import {
     IStableSwap
@@ -19,7 +20,12 @@ import {
 } from "contracts/protocols/curve/interfaces/CTokenInterface.sol";
 import {Curve3PoolUnderlyerConstants} from "./3pool.sol";
 
-abstract contract CurveIronBankConstants is Curve3PoolUnderlyerConstants {
+abstract contract CurveIronBankConstants is
+    Curve3PoolUnderlyerConstants,
+    INameIdentifier
+{
+    string public constant override NAME = "curve-ironbank";
+
     address public constant STABLE_SWAP_ADDRESS =
         0x2dded6Da1BF5DBdF597C45fcFaa3194e53EcfeAF;
     address public constant LP_TOKEN_ADDRESS =

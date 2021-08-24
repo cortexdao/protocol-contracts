@@ -8,6 +8,9 @@ pragma solidity 0.6.11;
  * in order to compute the TVL across the entire APY.Finance system.
  */
 interface IErc20AllocationRegistry {
+    event Erc20TokenRegistered(address token, string symbol, uint8 decimals);
+    event Erc20TokenRemoved(address token);
+
     function registerErc20Token(address token) external;
 
     function registerErc20Token(address token, string calldata symbol) external;
@@ -21,4 +24,9 @@ interface IErc20AllocationRegistry {
     function removeErc20Token(address token) external;
 
     function isErc20TokenRegistered(address token) external view returns (bool);
+
+    function isErc20TokenRegistered(address[] calldata tokens)
+        external
+        view
+        returns (bool);
 }

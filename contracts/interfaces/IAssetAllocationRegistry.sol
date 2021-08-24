@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 
-import {IErc20AllocationRegistry} from "./IErc20AllocationRegistry.sol";
-
 /**
  * @title Interface to Access APY.Finance's Asset Allocations
  * @author APY.Finance
@@ -15,12 +13,15 @@ interface IAssetAllocationRegistry {
 
     function registerAssetAllocation(address assetAllocation) external;
 
-    function removeAssetAllocation(address assetAllocation) external;
-
-    function erc20Allocation() external returns (IErc20AllocationRegistry);
+    function removeAssetAllocation(string memory name) external;
 
     function isAssetAllocationRegistered(address[] calldata assetAllocations)
         external
         view
         returns (bool);
+
+    function getAssetAllocation(string calldata name)
+        external
+        view
+        returns (address);
 }

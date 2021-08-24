@@ -19,9 +19,9 @@ import {
 contract Curve3PoolZap is IZap, Curve3PoolConstants {
     using SafeMath for uint256;
 
-    string public constant override NAME = "Curve_3Pool";
-
     address public constant ALLOCATION_ADDRESS = address(0);
+    address public constant CRV_ADDRESS =
+        0xD533a949740bb3306d119CC777fa900bA034cd52;
 
     uint256 private constant _DENOMINATOR = 10000;
     uint256 private constant _SLIPPAGE = 100;
@@ -85,5 +85,27 @@ contract Curve3PoolZap is IZap, Curve3PoolConstants {
             symbols[i] = IDetailedERC20(underlyerAddress).symbol();
         }
         return symbols;
+    }
+
+    function assetAllocations()
+        public
+        view
+        override
+        returns (address[] memory)
+    {
+        address[] memory allocations = new address[](1);
+        allocations[0] = ALLOCATION_ADDRESS;
+        return allocations;
+    }
+
+    function erc20Allocations()
+        public
+        view
+        override
+        returns (address[] memory)
+    {
+        address[] memory allocations = new address[](1);
+        allocations[0] = CRV_ADDRESS;
+        return allocations;
     }
 }

@@ -5,6 +5,7 @@ pragma experimental ABIEncoderV2;
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import {AssetAllocationBase} from "./AssetAllocationBase.sol";
+import {INameIdentifier} from "./interfaces/INameIdentifier.sol";
 import {
     IErc20AllocationRegistry
 } from "./interfaces/IErc20AllocationRegistry.sol";
@@ -12,9 +13,14 @@ import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 import {IDetailedERC20} from "./interfaces/IDetailedERC20.sol";
 import {AccessControl} from "./utils/AccessControl.sol";
 
+abstract contract Erc20AllocationConstants is INameIdentifier {
+    string public constant override NAME = "erc20Allocation";
+}
+
 contract Erc20Allocation is
     IErc20AllocationRegistry,
     AssetAllocationBase,
+    Erc20AllocationConstants,
     AccessControl
 {
     using Address for address;
@@ -92,6 +98,22 @@ contract Erc20Allocation is
         returns (bool)
     {
         return _tokenAddresses.contains(token);
+    }
+
+    function isErc20TokenRegistered(address[] calldata tokens)
+        external
+        view
+        override
+        returns (bool)
+    {
+        uint256 length = tokens.length;
+        for (uint256 i = 0; i < length; i++) {
+            if (!_tokenAddresses.contains(tokens[i])) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     function balanceOf(address account, uint8 tokenIndex)

@@ -6,10 +6,7 @@ import {TvlManager} from "../TvlManager.sol";
 import {IAssetAllocation} from "../interfaces/IAssetAllocation.sol";
 
 contract TestTvlManager is TvlManager {
-    constructor(address addressRegistry_, address erc20Allocation_)
-        public
-        TvlManager(addressRegistry_, erc20Allocation_)
-    {} // solhint-disable-line no-empty-blocks
+    constructor(address addressRegistry_) public TvlManager(addressRegistry_) {} // solhint-disable-line no-empty-blocks
 
     function testEncodeAssetAllocationId(
         address assetAllocation,

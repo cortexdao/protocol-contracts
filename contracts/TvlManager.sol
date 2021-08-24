@@ -14,6 +14,7 @@ import {
 import {
     IErc20AllocationRegistry
 } from "./interfaces/IErc20AllocationRegistry.sol";
+import {Erc20AllocationConstants} from "./Erc20Allocation.sol";
 import {IChainlinkRegistry} from "./interfaces/IChainlinkRegistry.sol";
 import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
@@ -34,27 +35,24 @@ contract TvlManager is
     AccessControl,
     ReentrancyGuard,
     IChainlinkRegistry,
-    IAssetAllocationRegistry
+    IAssetAllocationRegistry,
+    Erc20AllocationConstants
 {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     IAddressRegistryV2 public addressRegistry;
-    IErc20AllocationRegistry public override erc20Allocation;
 
     EnumerableSet.AddressSet private _assetAllocations;
+    mapping(string => address) private _nameLookup;
 
     event AddressRegistryChanged(address);
     event Erc20AllocationChanged(address);
 
     /**
-     * @dev The ERC20 allocation is required in order to ensure that
-     *      funds in the LP Safe will properly reflect in the TVL.
-     * @param addressRegistry_ the Address Registry
-     * @param erc20Allocation_ the ERC20 allocation
+     * @notice Constructor
      */
-    constructor(address addressRegistry_, address erc20Allocation_) public {
+    constructor(address addressRegistry_) public {
         _setAddressRegistry(addressRegistry_);
-        _setErc20Allocation(erc20Allocation_);
         _setupRole(
             DEFAULT_ADMIN_ROLE,
             addressRegistry.getAddress("emergencySafe")
@@ -76,6 +74,7 @@ contract TvlManager is
     }
 
     /**
+<<<<<<< HEAD
      * @notice Sets the new ERC20 allocation contract
      * @dev Only callable by Emergency Safe
      * @param erc20Allocation_ new address of the ERC20 allocation
@@ -88,6 +87,8 @@ contract TvlManager is
     }
 
     /**
+=======
+>>>>>>> New interfaces to support ERC20 allocations
      * @notice Register a new asset allocation
      * @dev Only permissioned accounts can call.
      */
@@ -98,7 +99,13 @@ contract TvlManager is
         onlyLpOrContractRole
     {
         require(assetAllocation.isContract(), "INVALID_ADDRESS");
+
+        string memory name = IAssetAllocation(assetAllocation).NAME();
+        require(_nameLookup[name] == address(0), "DUPLICATE_NAME");
+
         _assetAllocations.add(assetAllocation);
+        _nameLookup[name] = assetAllocation;
+
         _lockOracleAdapter();
         emit AssetAllocationRegistered(assetAllocation);
     }
@@ -107,24 +114,29 @@ contract TvlManager is
      * @notice Remove a new asset allocation
      * @dev Only permissioned accounts can call.
      */
-    function removeAssetAllocation(address assetAllocation)
+    function removeAssetAllocation(string memory name)
         external
         override
         nonReentrant
         onlyLpOrContractRole
     {
+        address assetAllocation = _nameLookup[name];
+        require(assetAllocation != address(0), "INVALID_NAME");
         require(
-            assetAllocation != address(erc20Allocation),
+            keccak256(abi.encodePacked(name)) !=
+                keccak256(abi.encodePacked(Erc20AllocationConstants.NAME)),
             "CANNOT_REMOVE_ALLOCATION"
         );
 
         _assetAllocations.remove(assetAllocation);
+        delete _nameLookup[name];
 
         _lockOracleAdapter();
 
         emit AssetAllocationRemoved(assetAllocation);
     }
 
+<<<<<<< HEAD
     /**
      * @notice Returns a list of all identifiers coming from registered
      *         asset allocations.
@@ -133,6 +145,20 @@ contract TvlManager is
      *      from updates to asset allocation contracts.
      * @return list of all the registered identifiers
      */
+=======
+    function getAssetAllocation(string calldata name)
+        external
+        view
+        override
+        returns (address)
+    {
+        address assetAllocation = _nameLookup[name];
+        require(assetAllocation != address(0), "INVALID_NAME");
+
+        return assetAllocation;
+    }
+
+>>>>>>> New interfaces to support ERC20 allocations
     function getAssetAllocationIds()
         external
         view
@@ -218,6 +244,7 @@ contract TvlManager is
         emit AddressRegistryChanged(addressRegistry_);
     }
 
+<<<<<<< HEAD
     function _setErc20Allocation(address erc20Allocation_) internal {
         require(erc20Allocation_.isContract(), "INVALID_ADDRESS");
         _assetAllocations.remove(address(erc20Allocation));
@@ -226,6 +253,8 @@ contract TvlManager is
         emit Erc20AllocationChanged(erc20Allocation_);
     }
 
+=======
+>>>>>>> New interfaces to support ERC20 allocations
     function _lockOracleAdapter() internal {
         IOracleAdapter oracleAdapter =
             IOracleAdapter(addressRegistry.oracleAdapterAddress());
@@ -298,12 +327,21 @@ contract TvlManager is
         view
         returns (IAssetAllocation[] memory)
     {
+        IAssetAllocation erc20Allocation =
+            IAssetAllocation(addressRegistry.getAddress("erc20Allocation"));
+
         uint256 numAllocations = _assetAllocations.length();
+
+        // Add 1 to the length for the ERC20 allocation
         IAssetAllocation[] memory allocations =
-            new IAssetAllocation[](numAllocations);
-        for (uint256 i = 0; i < numAllocations; i++) {
+            new IAssetAllocation[](numAllocations + 1);
+
+        allocations[0] = erc20Allocation;
+
+        for (uint256 i = 1; i < numAllocations; i++) {
             allocations[i] = IAssetAllocation(_assetAllocations.at(i));
         }
+
         return allocations;
     }
 

@@ -12,6 +12,13 @@ import {
 } from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
+import {
+    IErc20AllocationRegistry
+} from "./interfaces/IErc20AllocationRegistry.sol";
+import {
+    IAssetAllocationRegistry
+} from "./interfaces/IAssetAllocationRegistry.sol";
+import {Erc20AllocationConstants} from "./Erc20Allocation.sol";
 import {IZap} from "./interfaces/IZap.sol";
 import {ILpAccount} from "./interfaces/ILpAccount.sol";
 import {IZapRegistry} from "./interfaces/IZapRegistry.sol";
@@ -21,7 +28,8 @@ contract LpAccount is
     AccessControlUpgradeSafe,
     ReentrancyGuardUpgradeSafe,
     ILpAccount,
-    IZapRegistry
+    IZapRegistry,
+    Erc20AllocationConstants
 {
     using Address for address;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -114,8 +122,28 @@ contract LpAccount is
         nonReentrant
         onlyLpRole
     {
-        address zap = _zapNameLookup[name];
-        zap.functionDelegateCall(
+        IZap zap = IZap(_zapNameLookup[name]);
+
+        IAssetAllocationRegistry tvlManager =
+            IAssetAllocationRegistry(addressRegistry.getAddress("tvlManager"));
+
+        require(
+            tvlManager.isAssetAllocationRegistered(zap.assetAllocations()),
+            "MISSING_ASSET_ALLOCATIONS"
+        );
+
+        IErc20AllocationRegistry erc20Registry =
+            IErc20AllocationRegistry(
+                tvlManager.getAssetAllocation(Erc20AllocationConstants.NAME)
+            );
+        require(
+            erc20Registry.isErc20TokenRegistered(zap.erc20Allocations()),
+            "MISSING_ERC20_ALLOCATIONS"
+        );
+
+        // TODO: If an ERC20 allocation is missing, add it
+
+        address(zap).functionDelegateCall(
             abi.encodeWithSelector(IZap.deployLiquidity.selector, amounts)
         );
     }
@@ -134,7 +162,7 @@ contract LpAccount is
 
     function registerZap(IZap zap) external override onlyAdminRole {
         require(Address.isContract(address(zap)), "INVALID_ADDRESS");
-        require(!_zaps.contains(zap), "DUPLICATE_ZAP");
+        require(!_zaps.contains(address(zap)), "DUPLICATE_ZAP");
 
         string memory name = zap.NAME();
         require(bytes(name).length != 0, "INVALID_ZAP_NAME");
