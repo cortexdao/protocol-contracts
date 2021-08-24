@@ -1,13 +1,7 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 
-/**
- * @title Interface to Access APY.Finance's Asset Allocations
- * @author APY.Finance
- * @notice Enables 3rd Parties (ie. Chainlink) to pull relevant asset allocations
- * in order to compute the TVL across the entire APY.Finance system.
- */
-interface IErc20AllocationRegistry {
+interface IErc20Allocation {
     event Erc20TokenRegistered(address token, string symbol, uint8 decimals);
     event Erc20TokenRemoved(address token);
 

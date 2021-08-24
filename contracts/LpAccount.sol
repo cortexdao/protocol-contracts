@@ -12,9 +12,7 @@ import {
 } from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
-import {
-    IErc20AllocationRegistry
-} from "./interfaces/IErc20AllocationRegistry.sol";
+import {IErc20Allocation} from "./interfaces/IErc20Allocation.sol";
 import {
     IAssetAllocationRegistry
 } from "./interfaces/IAssetAllocationRegistry.sol";
@@ -132,8 +130,8 @@ contract LpAccount is
             "MISSING_ASSET_ALLOCATIONS"
         );
 
-        IErc20AllocationRegistry erc20Registry =
-            IErc20AllocationRegistry(
+        IErc20Allocation erc20Registry =
+            IErc20Allocation(
                 tvlManager.getAssetAllocation(Erc20AllocationConstants.NAME)
             );
         require(

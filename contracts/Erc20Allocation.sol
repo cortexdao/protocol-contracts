@@ -6,9 +6,7 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import {AssetAllocationBase} from "./AssetAllocationBase.sol";
 import {INameIdentifier} from "./interfaces/INameIdentifier.sol";
-import {
-    IErc20AllocationRegistry
-} from "./interfaces/IErc20AllocationRegistry.sol";
+import {IErc20Allocation} from "./interfaces/IErc20Allocation.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 import {IDetailedERC20} from "./interfaces/IDetailedERC20.sol";
 import {AccessControl} from "./utils/AccessControl.sol";
@@ -18,7 +16,7 @@ abstract contract Erc20AllocationConstants is INameIdentifier {
 }
 
 contract Erc20Allocation is
-    IErc20AllocationRegistry,
+    IErc20Allocation,
     AssetAllocationBase,
     Erc20AllocationConstants,
     AccessControl
@@ -28,9 +26,6 @@ contract Erc20Allocation is
 
     EnumerableSet.AddressSet private _tokenAddresses;
     mapping(address => TokenData) private _tokenToData;
-
-    event Erc20TokenRegistered(address token, string symbol, uint8 decimals);
-    event Erc20TokenRemoved(address token);
 
     constructor(address addressRegistry_) public {
         require(addressRegistry_.isContract(), "INVALID_ADDRESS_REGISTRY");

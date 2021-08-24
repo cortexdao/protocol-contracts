@@ -11,9 +11,6 @@ import {IAssetAllocation} from "./interfaces/IAssetAllocation.sol";
 import {
     IAssetAllocationRegistry
 } from "./interfaces/IAssetAllocationRegistry.sol";
-import {
-    IErc20AllocationRegistry
-} from "./interfaces/IErc20AllocationRegistry.sol";
 import {Erc20AllocationConstants} from "./Erc20Allocation.sol";
 import {IChainlinkRegistry} from "./interfaces/IChainlinkRegistry.sol";
 import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
