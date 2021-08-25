@@ -9,6 +9,8 @@ import {
 } from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import {AccessControl} from "./utils/AccessControl.sol";
 import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
+import {IOverrideOracle} from "./interfaces/IOverrideOracle.sol";
+import {ILockingOracle} from "./interfaces/ILockingOracle.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 
 /**
@@ -51,12 +53,12 @@ import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
  * were to accept it, funds up to the amount available in the reserve pools
  * could be lost.
  */
-contract OracleAdapter is AccessControl, IOracleAdapter {
-    struct Value {
-        uint256 value;
-        uint256 periodEnd;
-    }
-
+contract OracleAdapter is
+    AccessControl,
+    IOracleAdapter,
+    IOverrideOracle,
+    ILockingOracle
+{
     using SafeMath for uint256;
     using Address for address;
 
@@ -75,21 +77,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
     mapping(address => Value) public submittedAssetValues;
     Value public submittedTvlValue;
 
-    event AssetSourceUpdated(address indexed asset, address indexed source);
-    event TvlSourceUpdated(address indexed source);
-    event ChainlinkStalePeriodUpdated(uint256 period);
     event AddressRegistryChanged(address);
-    event DefaultLockPeriodChanged(uint256 newPeriod);
-    event Unlocked();
-    event AssetValueSet(
-        address asset,
-        uint256 value,
-        uint256 period,
-        uint256 periodEnd
-    );
-    event AssetValueUnset(address asset);
-    event TvlSet(uint256 value, uint256 period, uint256 periodEnd);
-    event TvlUnset();
 
     modifier unlocked() {
         require(!isLocked(), "ORACLE_LOCKED");
@@ -128,7 +116,11 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
     }
 
-    function setDefaultLockPeriod(uint256 newPeriod) external onlyAdminRole {
+    function setDefaultLockPeriod(uint256 newPeriod)
+        external
+        override
+        onlyAdminRole
+    {
         _setDefaultLockPeriod(newPeriod);
         emit DefaultLockPeriodChanged(newPeriod);
     }
@@ -138,7 +130,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         emit DefaultLocked(msg.sender, defaultLockPeriod, lockEnd);
     }
 
-    function emergencyUnlock() external onlyEmergencyRole {
+    function emergencyUnlock() external override onlyEmergencyRole {
         _lockFor(0);
         emit Unlocked();
     }
@@ -170,7 +162,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         address asset,
         uint256 value,
         uint256 period
-    ) external onlyEmergencyRole {
+    ) external override onlyEmergencyRole {
         // We do allow 0 values for submitted values
         uint256 periodEnd = block.number.add(period);
         submittedAssetValues[asset] = Value(value, periodEnd);
@@ -179,6 +171,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
 
     function emergencyUnsetAssetValue(address asset)
         external
+        override
         onlyEmergencyRole
     {
         require(
@@ -191,6 +184,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
 
     function emergencySetTvl(uint256 value, uint256 period)
         external
+        override
         onlyEmergencyRole
     {
         // We do allow 0 values for submitted values
@@ -199,7 +193,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         emit TvlSet(value, period, periodEnd);
     }
 
-    function emergencyUnsetTvl() external onlyEmergencyRole {
+    function emergencyUnsetTvl() external override onlyEmergencyRole {
         require(submittedTvlValue.periodEnd != 0, "NO_TVL_SET");
         submittedTvlValue.periodEnd = block.number;
         emit TvlUnset();
@@ -213,7 +207,11 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
      * @notice Set or replace the TVL source
      * @param source the TVL source address
      */
-    function emergencySetTvlSource(address source) external onlyEmergencyRole {
+    function emergencySetTvlSource(address source)
+        external
+        override
+        onlyEmergencyRole
+    {
         _setTvlSource(source);
     }
 
@@ -225,7 +223,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
     function emergencySetAssetSources(
         address[] memory assets,
         address[] memory sources
-    ) external onlyEmergencyRole {
+    ) external override onlyEmergencyRole {
         _setAssetSources(assets, sources);
     }
 
@@ -236,6 +234,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
      */
     function emergencySetAssetSource(address asset, address source)
         external
+        override
         onlyEmergencyRole
     {
         _setAssetSource(asset, source);
@@ -247,6 +246,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
      */
     function setChainlinkStalePeriod(uint256 chainlinkStalePeriod_)
         external
+        override
         onlyAdminRole
     {
         _setChainlinkStalePeriod(chainlinkStalePeriod_);
@@ -282,7 +282,7 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         return price;
     }
 
-    function hasTvlOverride() public view returns (bool) {
+    function hasTvlOverride() public view override returns (bool) {
         return block.number < submittedTvlValue.periodEnd;
     }
 
@@ -311,7 +311,12 @@ contract OracleAdapter is AccessControl, IOracleAdapter {
         return price;
     }
 
-    function hasAssetOverride(address asset) public view returns (bool) {
+    function hasAssetOverride(address asset)
+        public
+        view
+        override
+        returns (bool)
+    {
         return block.number < submittedAssetValues[asset].periodEnd;
     }
 

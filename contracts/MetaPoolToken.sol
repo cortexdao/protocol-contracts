@@ -25,7 +25,7 @@ import {
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
-import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
+import {ILockingOracle} from "./interfaces/ILockingOracle.sol";
 import {ILpFunder} from "./interfaces/ILpFunder.sol";
 import {
     IAssetAllocationRegistry
@@ -303,7 +303,7 @@ contract MetaPoolToken is
             _mintAndTransfer(pool, mintAmount, transferAmount);
         }
 
-        IOracleAdapter oracleAdapter = _getOracleAdapter();
+        ILockingOracle oracleAdapter = _getOracleAdapter();
         oracleAdapter.lock();
     }
 
@@ -350,7 +350,7 @@ contract MetaPoolToken is
             _burnAndTransfer(pool, lpSafe, burnAmount, transferAmount);
         }
 
-        IOracleAdapter oracleAdapter = _getOracleAdapter();
+        ILockingOracle oracleAdapter = _getOracleAdapter();
         oracleAdapter.lock();
     }
 
@@ -409,13 +409,13 @@ contract MetaPoolToken is
      * @return "Total Value Locked", the USD value of all APY Finance assets.
      */
     function _getTvl() internal view returns (uint256) {
-        IOracleAdapter oracleAdapter = _getOracleAdapter();
+        ILockingOracle oracleAdapter = _getOracleAdapter();
         return oracleAdapter.getTvl();
     }
 
-    function _getOracleAdapter() internal view returns (IOracleAdapter) {
+    function _getOracleAdapter() internal view returns (ILockingOracle) {
         address oracleAdapterAddress = addressRegistry.oracleAdapterAddress();
-        return IOracleAdapter(oracleAdapterAddress);
+        return ILockingOracle(oracleAdapterAddress);
     }
 
     function _calculateDeltas(

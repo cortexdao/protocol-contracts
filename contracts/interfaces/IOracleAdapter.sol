@@ -2,18 +2,24 @@
 pragma solidity 0.6.11;
 
 interface IOracleAdapter {
-    event DefaultLocked(address locker, uint256 defaultPeriod, uint256 lockEnd);
-    event Locked(address locker, uint256 activePeriod, uint256 lockEnd);
+    struct Value {
+        uint256 value;
+        uint256 periodEnd;
+    }
 
-    function lock() external;
+    event AssetSourceUpdated(address indexed asset, address indexed source);
+    event TvlSourceUpdated(address indexed source);
 
-    function defaultLockPeriod() external returns (uint256 period);
+    function emergencySetTvlSource(address source) external;
 
-    function lockFor(uint256 period) external;
+    function emergencySetAssetSource(address asset, address source) external;
+
+    function emergencySetAssetSources(
+        address[] memory assets,
+        address[] memory sources
+    ) external;
 
     function getAssetPrice(address asset) external view returns (uint256);
 
     function getTvl() external view returns (uint256);
-
-    function isLocked() external view returns (bool);
 }

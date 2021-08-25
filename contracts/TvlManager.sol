@@ -14,6 +14,7 @@ import {
 import {Erc20AllocationConstants} from "./Erc20Allocation.sol";
 import {IChainlinkRegistry} from "./interfaces/IChainlinkRegistry.sol";
 import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
+import {ILockingOracle} from "./interfaces/ILockingOracle.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 
 /**
@@ -209,8 +210,8 @@ contract TvlManager is
     }
 
     function _lockOracleAdapter() internal {
-        IOracleAdapter oracleAdapter =
-            IOracleAdapter(addressRegistry.oracleAdapterAddress());
+        ILockingOracle oracleAdapter =
+            ILockingOracle(addressRegistry.oracleAdapterAddress());
         oracleAdapter.lock();
     }
 
@@ -262,6 +263,7 @@ contract TvlManager is
 
         return (assetAllocation, tokenIndex);
     }
+
 
     function _getAssetAllocationIdCount(IAssetAllocation[] memory allocations)
         internal
