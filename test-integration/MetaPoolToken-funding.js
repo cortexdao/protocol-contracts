@@ -10,9 +10,7 @@ const {
 } = require("../utils/helpers");
 const { STABLECOIN_POOLS } = require("../utils/constants");
 
-const IDetailedERC20UpgradeSafe = artifacts.require(
-  "IDetailedERC20UpgradeSafe"
-);
+const IDetailedERC20 = artifacts.require("IDetailedERC20");
 
 /****************************/
 /* set DEBUG log level here */
@@ -239,11 +237,8 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
     const erc20Allocation = await Erc20Allocation.deploy(
       addressRegistry.address
     );
-    const TvlManager = await ethers.getContractFactory("TvlManager");
-    tvlManager = await TvlManager.deploy(
-      addressRegistry.address,
-      erc20Allocation.address
-    );
+    const TvlManager = await ethers.getContractFactory("TestTvlManager");
+    tvlManager = await TvlManager.deploy(addressRegistry.address);
 
     await addressRegistry.registerAddress(
       bytes32("tvlManager"),
@@ -277,22 +272,20 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
     // set default TVL for tests to zero
     await oracleAdapter.connect(emergencySafe).emergencySetTvl(0, 100);
 
+    // registering ERC20 allocation must happen now, since the
+    // TVL Manager will attempt to lock the Oracle Adapter.
+    await tvlManager
+      .connect(lpSafe)
+      .registerAssetAllocation(erc20Allocation.address);
+    await oracleAdapter.connect(emergencySafe).emergencyUnlock();
+
     /*********************************************/
     /* main deployments and upgrades finished 
     /*********************************************/
 
-    daiToken = await ethers.getContractAt(
-      "IDetailedERC20UpgradeSafe",
-      DAI_TOKEN
-    );
-    usdcToken = await ethers.getContractAt(
-      "IDetailedERC20UpgradeSafe",
-      USDC_TOKEN
-    );
-    usdtToken = await ethers.getContractAt(
-      "IDetailedERC20UpgradeSafe",
-      USDT_TOKEN
-    );
+    daiToken = await ethers.getContractAt("IDetailedERC20", DAI_TOKEN);
+    usdcToken = await ethers.getContractAt("IDetailedERC20", USDC_TOKEN);
+    usdtToken = await ethers.getContractAt("IDetailedERC20", USDT_TOKEN);
     // fund deployer with stablecoins
     await acquireToken(
       STABLECOIN_POOLS["DAI"],
@@ -347,10 +340,7 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
   async function getMintAmount(pool, underlyerAmount) {
     const tokenPrice = await pool.getUnderlyerPrice();
     const underlyer = await pool.underlyer();
-    const erc20 = await ethers.getContractAt(
-      IDetailedERC20UpgradeSafe.abi,
-      underlyer
-    );
+    const erc20 = await ethers.getContractAt(IDetailedERC20.abi, underlyer);
     const decimals = await erc20.decimals();
     const mintAmount = await mApt.testCalculateDelta(
       underlyerAmount,
@@ -475,8 +465,10 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
       /* Check pool manager registered asset allocations correctly */
       /*************************************************************/
 
-      const erc20AllocationAddress = await tvlManager.erc20Allocation();
-      const expectedDaiId = await tvlManager.encodeAssetAllocationId(
+      const erc20AllocationAddress = await tvlManager.getAssetAllocation(
+        "erc20Allocation"
+      );
+      const expectedDaiId = await tvlManager.testEncodeAssetAllocationId(
         erc20AllocationAddress,
         0
       );
@@ -553,16 +545,18 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
       /* Check pool manager registered asset allocations correctly */
       /*************************************************************/
 
-      const erc20AllocationAddress = await tvlManager.erc20Allocation();
-      const expectedDaiId = await tvlManager.encodeAssetAllocationId(
+      const erc20AllocationAddress = await tvlManager.getAssetAllocation(
+        "erc20Allocation"
+      );
+      const expectedDaiId = await tvlManager.testEncodeAssetAllocationId(
         erc20AllocationAddress,
         0
       );
-      const expectedUsdcId = await tvlManager.encodeAssetAllocationId(
+      const expectedUsdcId = await tvlManager.testEncodeAssetAllocationId(
         erc20AllocationAddress,
         1
       );
-      const expectedUsdtId = await tvlManager.encodeAssetAllocationId(
+      const expectedUsdtId = await tvlManager.testEncodeAssetAllocationId(
         erc20AllocationAddress,
         2
       );
@@ -758,7 +752,7 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
 
       await expect(
         mApt.testWithdrawLp([daiPool.address], [amount])
-      ).to.be.revertedWith("SafeERC20: low-level call failed");
+      ).to.be.revertedWith("Dai/insufficient-allowance");
     });
 
     it("Withdrawal updates balances correctly (single pool)", async () => {

@@ -14,9 +14,7 @@ import {
 import {
     Initializable
 } from "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import {
-    SafeERC20
-} from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {
     ERC20UpgradeSafe
 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
@@ -27,9 +25,7 @@ import {
     AggregatorV3Interface
 } from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import {ILiquidityPool} from "./interfaces/ILiquidityPool.sol";
-import {
-    IDetailedERC20UpgradeSafe
-} from "./interfaces/IDetailedERC20UpgradeSafe.sol";
+import {IDetailedERC20} from "./interfaces/IDetailedERC20.sol";
 
 contract PoolToken is
     ILiquidityPool,
@@ -40,7 +36,7 @@ contract PoolToken is
     ERC20UpgradeSafe
 {
     using SafeMath for uint256;
-    using SafeERC20 for IDetailedERC20UpgradeSafe;
+    using SafeERC20 for IDetailedERC20;
 
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
 
@@ -50,7 +46,7 @@ contract PoolToken is
     address public proxyAdmin;
     bool public addLiquidityLock;
     bool public redeemLock;
-    IDetailedERC20UpgradeSafe public underlyer;
+    IDetailedERC20 public underlyer;
     AggregatorV3Interface public priceAgg;
 
     /* ------------------------------- */
@@ -66,7 +62,7 @@ contract PoolToken is
 
     function initialize(
         address adminAddress,
-        IDetailedERC20UpgradeSafe _underlyer,
+        IDetailedERC20 _underlyer,
         AggregatorV3Interface _priceAgg
     ) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");

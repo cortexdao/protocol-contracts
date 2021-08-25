@@ -306,7 +306,9 @@ describe("Contract: MetaPoolToken", () => {
       await mApt.testMint(pool.address, burnAmount);
 
       // check pool's transfer function gets called
-      await underlyer.mock.transferFrom.reverts();
+      await underlyer.mock.transferFrom.revertsWithReason(
+        "TRANSFERFROM_FAILED"
+      );
       await expect(
         mApt.testBurnAndTransfer(
           pool.address,
@@ -314,7 +316,7 @@ describe("Contract: MetaPoolToken", () => {
           burnAmount,
           transferAmount
         )
-      ).to.be.revertedWith("SafeERC20: low-level call failed");
+      ).to.be.revertedWith("TRANSFERFROM_FAILED");
 
       const expectedSupply = (await mApt.totalSupply()).sub(burnAmount);
       // reset underlyer mock to check if supply changes as expected
@@ -332,7 +334,9 @@ describe("Contract: MetaPoolToken", () => {
       const pool = await deployMockContract(deployer, PoolTokenV2.abi);
       const underlyer = await deployMockContract(deployer, IDetailedERC20.abi);
       await pool.mock.underlyer.returns(underlyer.address);
-      await underlyer.mock.transferFrom.reverts();
+      await underlyer.mock.transferFrom.revertsWithReason(
+        "TRANSFERFROM_FAILED"
+      );
 
       const burnAmount = tokenAmountToBigNumber(10, await mApt.decimals());
       const transferAmount = 100;
@@ -347,7 +351,7 @@ describe("Contract: MetaPoolToken", () => {
           burnAmount,
           transferAmount
         )
-      ).to.be.revertedWith("SafeERC20: low-level call failed");
+      ).to.be.revertedWith("TRANSFERFROM_FAILED");
       expect(await mApt.totalSupply()).to.equal(prevTotalSupply);
     });
   });
@@ -730,17 +734,19 @@ describe("Contract: MetaPoolToken", () => {
 
       erc20AllocationMock = await deployMockContract(
         deployer,
-        artifacts.require("IErc20AllocationRegistry").abi
+        artifacts.require("IErc20Allocation").abi
       );
-      await erc20AllocationMock.mock.isErc20TokenRegistered.returns(true);
+      await erc20AllocationMock.mock["isErc20TokenRegistered(address)"].returns(
+        true
+      );
 
       tvlManagerMock = await deployMockContract(
         deployer,
-        artifacts.readArtifactSync("ITvlManager").abi
+        artifacts.readArtifactSync("IAssetAllocationRegistry").abi
       );
-      await tvlManagerMock.mock.erc20Allocation.returns(
-        erc20AllocationMock.address
-      );
+      await tvlManagerMock.mock.getAssetAllocation
+        .withArgs("erc20Allocation")
+        .returns(erc20AllocationMock.address);
       await addressRegistryMock.mock.getAddress
         .withArgs(bytes32("tvlManager"))
         .returns(tvlManagerMock.address);
@@ -748,7 +754,7 @@ describe("Contract: MetaPoolToken", () => {
 
     it("Unregistered underlyers get registered", async () => {
       // set DAI as unregistered in ERC20 registry
-      await erc20AllocationMock.mock.isErc20TokenRegistered
+      await erc20AllocationMock.mock["isErc20TokenRegistered(address)"]
         .withArgs(daiToken.address)
         .returns(false);
 
@@ -766,10 +772,10 @@ describe("Contract: MetaPoolToken", () => {
 
     it("Registered underlyers are skipped", async () => {
       // set DAI as registered while USDC is not
-      await erc20AllocationMock.mock.isErc20TokenRegistered
+      await erc20AllocationMock.mock["isErc20TokenRegistered(address)"]
         .withArgs(daiToken.address)
         .returns(true);
-      await erc20AllocationMock.mock.isErc20TokenRegistered
+      await erc20AllocationMock.mock["isErc20TokenRegistered(address)"]
         .withArgs(usdcToken.address)
         .returns(false);
 

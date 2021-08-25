@@ -9,10 +9,8 @@ const transferERC20Tokens = async (
   ownerAddress,
   amount
 ) => {
-  const IDetailedERC20UpgradeSafe = artifacts.require(
-    "IDetailedERC20UpgradeSafe"
-  );
-  const token = await IDetailedERC20UpgradeSafe.at(tokenAddress);
+  const IDetailedERC20 = artifacts.require("IDetailedERC20");
+  const token = await IDetailedERC20.at(tokenAddress);
   await token.transfer(receiverAddress, amount, {
     from: ownerAddress,
     gasPrice: 0,
@@ -20,10 +18,8 @@ const transferERC20Tokens = async (
 };
 
 const getERC20Balance = async (contractAddress, accountAddress) => {
-  const IDetailedERC20UpgradeSafe = artifacts.require(
-    "IDetailedERC20UpgradeSafe"
-  );
-  const token = await IDetailedERC20UpgradeSafe.at(contractAddress);
+  const IDetailedERC20 = artifacts.require("IDetailedERC20");
+  const token = await IDetailedERC20.at(contractAddress);
   const balance = await token.balanceOf(accountAddress);
   const symbol = await token.symbol();
   const decimals = await token.decimals();

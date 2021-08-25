@@ -7,6 +7,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ImmutableAssetAllocation} from "contracts/ImmutableAssetAllocation.sol";
 import {DataTypes} from "../DataTypes.sol";
 import {ILendingPool} from "../interfaces/ILendingPool.sol";
+import {INameIdentifier} from "contracts/interfaces/INameIdentifier.sol";
 import {ApyUnderlyerConstants} from "contracts/protocols/apy.sol";
 
 /**
@@ -47,7 +48,9 @@ contract AaveAllocationBase {
     }
 }
 
-abstract contract AaveConstants {
+abstract contract AaveConstants is INameIdentifier {
+    string public constant override NAME = "aave";
+
     address public constant LENDING_POOL_ADDRESS =
         0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9;
 }

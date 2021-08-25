@@ -5,17 +5,14 @@ pragma experimental ABIEncoderV2;
 import {
     ReentrancyGuard
 } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {EnumerableSet} from "./utils/EnumerableSet.sol";
 import {AccessControl} from "./utils/AccessControl.sol";
 import {IAssetAllocation} from "./interfaces/IAssetAllocation.sol";
+import {NamedAddressSet} from "./libraries/NamedAddressSet.sol";
 import {
     IAssetAllocationRegistry
 } from "./interfaces/IAssetAllocationRegistry.sol";
-import {
-    IErc20AllocationRegistry
-} from "./interfaces/IErc20AllocationRegistry.sol";
-import {ITvlManager} from "./interfaces/ITvlManager.sol";
+import {Erc20AllocationConstants} from "./Erc20Allocation.sol";
+import {IChainlinkRegistry} from "./interfaces/IChainlinkRegistry.sol";
 import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 
@@ -34,29 +31,24 @@ import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 contract TvlManager is
     AccessControl,
     ReentrancyGuard,
-    ITvlManager,
-    IAssetAllocationRegistry
+    IChainlinkRegistry,
+    IAssetAllocationRegistry,
+    Erc20AllocationConstants
 {
-    using EnumerableSet for EnumerableSet.AddressSet;
-    using Address for address;
+    using NamedAddressSet for NamedAddressSet.AssetAllocationSet;
 
     IAddressRegistryV2 public addressRegistry;
-    IErc20AllocationRegistry public override erc20Allocation;
 
-    EnumerableSet.AddressSet private _assetAllocations;
+    NamedAddressSet.AssetAllocationSet private _assetAllocations;
 
     event AddressRegistryChanged(address);
     event Erc20AllocationChanged(address);
 
     /**
-     * @dev The ERC20 allocation is required in order to ensure that
-     *      funds in the LP Safe will properly reflect in the TVL.
-     * @param addressRegistry_ the Address Registry
-     * @param erc20Allocation_ the ERC20 allocation
+     * @notice Constructor
      */
-    constructor(address addressRegistry_, address erc20Allocation_) public {
+    constructor(address addressRegistry_) public {
         _setAddressRegistry(addressRegistry_);
-        _setErc20Allocation(erc20Allocation_);
         _setupRole(
             DEFAULT_ADMIN_ROLE,
             addressRegistry.getAddress("emergencySafe")
@@ -78,30 +70,19 @@ contract TvlManager is
     }
 
     /**
-     * @notice Sets the new ERC20 allocation contract
-     * @dev Only callable by Emergency Safe
-     * @param erc20Allocation_ new address of the ERC20 allocation
-     */
-    function emergencySetErc20Allocation(address erc20Allocation_)
-        external
-        onlyEmergencyRole
-    {
-        _setErc20Allocation(erc20Allocation_);
-    }
-
-    /**
      * @notice Register a new asset allocation
      * @dev Only permissioned accounts can call.
      */
-    function registerAssetAllocation(address assetAllocation)
+    function registerAssetAllocation(IAssetAllocation assetAllocation)
         external
         override
         nonReentrant
         onlyLpOrContractRole
     {
-        require(assetAllocation.isContract(), "INVALID_ADDRESS");
         _assetAllocations.add(assetAllocation);
+
         _lockOracleAdapter();
+
         emit AssetAllocationRegistered(assetAllocation);
     }
 
@@ -109,22 +90,32 @@ contract TvlManager is
      * @notice Remove a new asset allocation
      * @dev Only permissioned accounts can call.
      */
-    function removeAssetAllocation(address assetAllocation)
+    function removeAssetAllocation(string memory name)
         external
         override
         nonReentrant
         onlyLpOrContractRole
     {
         require(
-            assetAllocation != address(erc20Allocation),
+            keccak256(abi.encodePacked(name)) !=
+                keccak256(abi.encodePacked(Erc20AllocationConstants.NAME)),
             "CANNOT_REMOVE_ALLOCATION"
         );
 
-        _assetAllocations.remove(assetAllocation);
+        _assetAllocations.remove(name);
 
         _lockOracleAdapter();
 
-        emit AssetAllocationRemoved(assetAllocation);
+        emit AssetAllocationRemoved(name);
+    }
+
+    function getAssetAllocation(string calldata name)
+        external
+        view
+        override
+        returns (IAssetAllocation)
+    {
+        return _assetAllocations.get(name);
     }
 
     /**
@@ -143,6 +134,84 @@ contract TvlManager is
     {
         IAssetAllocation[] memory allocations = _getAssetAllocations();
         return _getAssetAllocationsIds(allocations);
+    }
+
+    function isAssetAllocationRegistered(
+        IAssetAllocation[] calldata assetAllocations
+    ) external view override returns (bool) {
+        uint256 length = assetAllocations.length;
+        for (uint256 i = 0; i < length; i++) {
+            if (!_assetAllocations.contains(assetAllocations[i])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @notice Executes the bytes lookup data registered under an id
+     * @dev The balance of an id may be aggregated from multiple contracts
+     * @param allocationId the id to fetch the balance for
+     * @return returns the result of the executed lookup data registered for the provided id
+     */
+    function balanceOf(bytes32 allocationId)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        (IAssetAllocation assetAllocation, uint8 tokenIndex) =
+            _getAssetAllocation(allocationId);
+        return
+            assetAllocation.balanceOf(
+                addressRegistry.lpSafeAddress(),
+                tokenIndex
+            );
+    }
+
+    /**
+     * @notice Returns the token symbol registered under an id
+     * @param allocationId the id to fetch the token for
+     * @return returns the result of the token symbol registered for the provided id
+     */
+    function symbolOf(bytes32 allocationId)
+        external
+        view
+        override
+        returns (string memory)
+    {
+        (IAssetAllocation assetAllocation, uint8 tokenIndex) =
+            _getAssetAllocation(allocationId);
+        return assetAllocation.symbolOf(tokenIndex);
+    }
+
+    /**
+     * @notice Returns the decimals registered under an id
+     * @param allocationId the id to fetch the decimals for
+     * @return returns the result of the decimal value registered for the provided id
+     */
+    function decimalsOf(bytes32 allocationId)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        (IAssetAllocation assetAllocation, uint8 tokenIndex) =
+            _getAssetAllocation(allocationId);
+        return assetAllocation.decimalsOf(tokenIndex);
+    }
+
+    function _setAddressRegistry(address addressRegistry_) internal {
+        require(addressRegistry_.isContract(), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(addressRegistry_);
+        emit AddressRegistryChanged(addressRegistry_);
+    }
+
+    function _lockOracleAdapter() internal {
+        IOracleAdapter oracleAdapter =
+            IOracleAdapter(addressRegistry.oracleAdapterAddress());
+        oracleAdapter.lock();
     }
 
     function _getAssetAllocationsIds(IAssetAllocation[] memory allocations)
@@ -171,121 +240,29 @@ contract TvlManager is
         return assetAllocationIds;
     }
 
-    /// @dev Validates and encodes the given args into an allocation ID.
-    function encodeAssetAllocationId(address assetAllocation, uint8 tokenIndex)
-        external
+    function _getAssetAllocation(bytes32 id)
+        internal
         view
-        override
-        returns (bytes32)
+        returns (IAssetAllocation, uint8)
     {
-        require(
-            _assetAllocations.contains(assetAllocation),
-            "INVALID_ASSET_ALLOCATION"
-        );
-        require(
-            IAssetAllocation(assetAllocation).numberOfTokens() > tokenIndex,
-            "INVALID_TOKEN_INDEX"
-        );
-
-        return _encodeAssetAllocationId(assetAllocation, tokenIndex);
-    }
-
-    /**
-     * @notice Executes the bytes lookup data registered under an id
-     * @dev The balance of an id may be aggregated from multiple contracts
-     * @param allocationId the id to fetch the balance for
-     * @return returns the result of the executed lookup data registered for the provided id
-     */
-    function balanceOf(bytes32 allocationId)
-        external
-        view
-        override
-        returns (uint256)
-    {
-        (address assetAllocation, uint8 tokenIndex) =
-            decodeAssetAllocationId(allocationId);
-        return
-            IAssetAllocation(assetAllocation).balanceOf(
-                addressRegistry.lpSafeAddress(),
-                tokenIndex
-            );
-    }
-
-    /**
-     * @notice Returns the token symbol registered under an id
-     * @param allocationId the id to fetch the token for
-     * @return returns the result of the token symbol registered for the provided id
-     */
-    function symbolOf(bytes32 allocationId)
-        external
-        view
-        override
-        returns (string memory)
-    {
-        (address assetAllocation, uint8 tokenIndex) =
-            decodeAssetAllocationId(allocationId);
-        return IAssetAllocation(assetAllocation).symbolOf(tokenIndex);
-    }
-
-    /**
-     * @notice Returns the decimals registered under an id
-     * @param allocationId the id to fetch the decimals for
-     * @return returns the result of the decimal value registered for the provided id
-     */
-    function decimalsOf(bytes32 allocationId)
-        external
-        view
-        override
-        returns (uint256)
-    {
-        (address assetAllocation, uint8 tokenIndex) =
-            decodeAssetAllocationId(allocationId);
-        return IAssetAllocation(assetAllocation).decimalsOf(tokenIndex);
-    }
-
-    /// @dev decodes the given allocation ID and validates
-    function decodeAssetAllocationId(bytes32 id)
-        public
-        view
-        override
-        returns (address, uint8)
-    {
-        (address assetAllocation, uint8 tokenIndex) =
+        (address assetAllocationAddress, uint8 tokenIndex) =
             _decodeAssetAllocationId(id);
 
+        IAssetAllocation assetAllocation =
+            IAssetAllocation(assetAllocationAddress);
+
         require(
             _assetAllocations.contains(assetAllocation),
             "INVALID_ASSET_ALLOCATION"
         );
         require(
-            IAssetAllocation(assetAllocation).numberOfTokens() > tokenIndex,
+            assetAllocation.numberOfTokens() > tokenIndex,
             "INVALID_TOKEN_INDEX"
         );
 
         return (assetAllocation, tokenIndex);
     }
 
-    function _setAddressRegistry(address addressRegistry_) internal {
-        require(addressRegistry_.isContract(), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistryV2(addressRegistry_);
-        emit AddressRegistryChanged(addressRegistry_);
-    }
-
-    function _setErc20Allocation(address erc20Allocation_) internal {
-        require(erc20Allocation_.isContract(), "INVALID_ADDRESS");
-        _assetAllocations.remove(address(erc20Allocation));
-        _assetAllocations.add(erc20Allocation_);
-        erc20Allocation = IErc20AllocationRegistry(erc20Allocation_);
-        emit Erc20AllocationChanged(erc20Allocation_);
-    }
-
-    function _lockOracleAdapter() internal {
-        IOracleAdapter oracleAdapter =
-            IOracleAdapter(addressRegistry.oracleAdapterAddress());
-        oracleAdapter.lock();
-    }
-
-    /// @dev Returns the total number of asset allocation IDs.
     function _getAssetAllocationIdCount(IAssetAllocation[] memory allocations)
         internal
         view
@@ -293,8 +270,7 @@ contract TvlManager is
     {
         uint256 idsLength = 0;
         for (uint256 i = 0; i < allocations.length; i++) {
-            IAssetAllocation allocation = IAssetAllocation(allocations[i]);
-            idsLength += allocation.numberOfTokens();
+            idsLength += allocations[i].numberOfTokens();
         }
 
         return idsLength;
@@ -309,9 +285,11 @@ contract TvlManager is
         uint256 numAllocations = _assetAllocations.length();
         IAssetAllocation[] memory allocations =
             new IAssetAllocation[](numAllocations);
+
         for (uint256 i = 0; i < numAllocations; i++) {
-            allocations[i] = IAssetAllocation(_assetAllocations.at(i));
+            allocations[i] = _assetAllocations.at(i);
         }
+
         return allocations;
     }
 

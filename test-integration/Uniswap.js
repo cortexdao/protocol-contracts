@@ -66,16 +66,10 @@ describe("Contract: UniswapPeriphery", () => {
 
       // USDC
       const tokenAddress_0 = await lpToken.token0();
-      token_0 = await ethers.getContractAt(
-        "IDetailedERC20UpgradeSafe",
-        tokenAddress_0
-      );
+      token_0 = await ethers.getContractAt("IDetailedERC20", tokenAddress_0);
       // USDT (Tether)
       const tokenAddress_1 = await lpToken.token1();
-      token_1 = await ethers.getContractAt(
-        "IDetailedERC20UpgradeSafe",
-        tokenAddress_1
-      );
+      token_1 = await ethers.getContractAt("IDetailedERC20", tokenAddress_1);
 
       for (const token of [token_0, token_1]) {
         const decimals = await token.decimals();

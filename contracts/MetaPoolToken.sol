@@ -18,23 +18,20 @@ import {
 import {
     ReentrancyGuardUpgradeSafe
 } from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
-import {
-    IDetailedERC20UpgradeSafe
-} from "./interfaces/IDetailedERC20UpgradeSafe.sol";
+import {IDetailedERC20} from "./interfaces/IDetailedERC20.sol";
 import {
     ERC20UpgradeSafe
 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
-import {
-    SafeERC20 as SafeERC20UpgradeSafe
-} from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
 import {ILpFunder} from "./interfaces/ILpFunder.sol";
-import {ITvlManager} from "./interfaces/ITvlManager.sol";
 import {
-    IErc20AllocationRegistry
-} from "./interfaces/IErc20AllocationRegistry.sol";
+    IAssetAllocationRegistry
+} from "./interfaces/IAssetAllocationRegistry.sol";
+import {IErc20Allocation} from "./interfaces/IErc20Allocation.sol";
+import {Erc20AllocationConstants} from "./Erc20Allocation.sol";
 import {PoolTokenV2} from "./PoolTokenV2.sol";
 
 /**
@@ -74,11 +71,12 @@ contract MetaPoolToken is
     ReentrancyGuardUpgradeSafe,
     PausableUpgradeSafe,
     ERC20UpgradeSafe,
-    ILpFunder
+    ILpFunder,
+    Erc20AllocationConstants
 {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
-    using SafeERC20UpgradeSafe for IDetailedERC20UpgradeSafe;
+    using SafeERC20 for IDetailedERC20;
 
     uint256 public constant DEFAULT_MAPT_TO_UNDERLYER_FACTOR = 1000;
 
@@ -389,7 +387,7 @@ contract MetaPoolToken is
             return;
         }
         _burn(address(pool), burnAmount);
-        IDetailedERC20UpgradeSafe underlyer = pool.underlyer();
+        IDetailedERC20 underlyer = pool.underlyer();
         underlyer.safeTransferFrom(lpSafe, address(pool), transferAmount);
         emit Burn(address(pool), burnAmount);
     }
@@ -399,16 +397,21 @@ contract MetaPoolToken is
      * @param pools list of pool amounts whose pool underlyers will be registered
      */
     function _registerPoolUnderlyers(PoolTokenV2[] memory pools) internal {
-        ITvlManager tvlManager =
-            ITvlManager(addressRegistry.getAddress("tvlManager"));
-        IErc20AllocationRegistry erc20Registry =
-            IErc20AllocationRegistry(tvlManager.erc20Allocation());
+        IAssetAllocationRegistry tvlManager =
+            IAssetAllocationRegistry(addressRegistry.getAddress("tvlManager"));
+        IErc20Allocation erc20Allocation =
+            IErc20Allocation(
+                address(
+                    tvlManager.getAssetAllocation(Erc20AllocationConstants.NAME)
+                )
+            );
 
         for (uint256 i = 0; i < pools.length; i++) {
-            address underlyer = address(pools[i].underlyer());
+            IDetailedERC20 underlyer =
+                IDetailedERC20(address(pools[i].underlyer()));
 
-            if (!erc20Registry.isErc20TokenRegistered(underlyer)) {
-                erc20Registry.registerErc20Token(underlyer);
+            if (!erc20Allocation.isErc20TokenRegistered(underlyer)) {
+                erc20Allocation.registerErc20Token(underlyer);
             }
         }
     }
@@ -449,7 +452,7 @@ contract MetaPoolToken is
             PoolTokenV2 pool = pools[i];
             uint256 amount = amounts[i];
 
-            IDetailedERC20UpgradeSafe underlyer = pool.underlyer();
+            IDetailedERC20 underlyer = pool.underlyer();
             uint256 tokenPrice = pool.getUnderlyerPrice();
             uint8 decimals = underlyer.decimals();
 

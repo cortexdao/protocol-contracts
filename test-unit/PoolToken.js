@@ -15,9 +15,7 @@ const {
   forciblySendEth,
 } = require("../utils/helpers");
 
-const IDetailedERC20UpgradeSafe = artifacts.require(
-  "IDetailedERC20UpgradeSafe"
-);
+const IDetailedERC20 = artifacts.require("IDetailedERC20");
 const AddressRegistry = artifacts.require("IAddressRegistryV2");
 const MetaPoolToken = artifacts.require("MetaPoolToken");
 const OracleAdapter = artifacts.require("OracleAdapter");
@@ -75,10 +73,7 @@ describe("Contract: PoolTokenV2", () => {
     PoolToken = await ethers.getContractFactory("TestPoolToken");
     PoolTokenV2 = await ethers.getContractFactory("TestPoolTokenV2");
 
-    underlyerMock = await deployMockContract(
-      deployer,
-      IDetailedERC20UpgradeSafe.abi
-    );
+    underlyerMock = await deployMockContract(deployer, IDetailedERC20.abi);
     proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
     const logic = await PoolToken.deploy();

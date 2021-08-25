@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {INameIdentifier} from "contracts/interfaces/INameIdentifier.sol";
 import {ImmutableAssetAllocation} from "contracts/ImmutableAssetAllocation.sol";
 import {IMetaPool} from "contracts/protocols/curve/interfaces/IMetaPool.sol";
 import {
@@ -14,7 +15,12 @@ import {
 } from "contracts/protocols/curve/allocations/metapool.sol";
 import {Curve3PoolUnderlyerConstants} from "./3pool.sol";
 
-abstract contract CurveBusdV2Constants is Curve3PoolUnderlyerConstants {
+abstract contract CurveBusdV2Constants is
+    Curve3PoolUnderlyerConstants,
+    INameIdentifier
+{
+    string public constant override NAME = "curve-busdv2";
+
     address public constant META_POOL_ADDRESS =
         0x4807862AA8b2bF68830e4C8dc86D0e9A998e085a;
     // sometimes a metapool is its own LP token; otherwise,

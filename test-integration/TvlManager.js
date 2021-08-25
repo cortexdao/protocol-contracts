@@ -227,21 +227,13 @@ describe("Contract: TvlManager", () => {
       .returns(emergencySafe.address);
     await addressRegistry.mock.mAptAddress.returns(mApt.address);
 
-    const Erc20Allocation = await ethers.getContractFactory("Erc20Allocation");
-    const erc20Allocation = await Erc20Allocation.deploy(
-      addressRegistry.address
-    );
-
     /* These registered addresses are setup for roles in the
      * constructor for TvlManager
      * - lpSafe (LP role)
      * - emergencySafe (emergency role, default admin role)
      */
-    TvlManager = await ethers.getContractFactory("TvlManager");
-    tvlManager = await TvlManager.deploy(
-      addressRegistry.address,
-      erc20Allocation.address
-    );
+    TvlManager = await ethers.getContractFactory("TestTvlManager");
+    tvlManager = await TvlManager.deploy(addressRegistry.address);
   });
 
   describe("Aave stablecoin allocation", () => {
@@ -290,7 +282,7 @@ describe("Contract: TvlManager", () => {
       await tvlManager
         .connect(lpSafe)
         .registerAssetAllocation(allocation.address);
-      lookupId = await tvlManager.encodeAssetAllocationId(
+      lookupId = await tvlManager.testEncodeAssetAllocationId(
         allocation.address,
         underlyerIndex
       );
@@ -392,7 +384,7 @@ describe("Contract: TvlManager", () => {
         await tvlManager
           .connect(lpSafe)
           .registerAssetAllocation(allocation.address);
-        lookupId = await tvlManager.encodeAssetAllocationId(
+        lookupId = await tvlManager.testEncodeAssetAllocationId(
           allocation.address,
           underlyerIndex
         );
@@ -634,11 +626,11 @@ describe("Contract: TvlManager", () => {
         await tvlManager
           .connect(lpSafe)
           .registerAssetAllocation(allocation.address);
-        primaryAllocationId = await tvlManager.encodeAssetAllocationId(
+        primaryAllocationId = await tvlManager.testEncodeAssetAllocationId(
           allocation.address,
           primaryIndex
         );
-        daiAllocationId = await tvlManager.encodeAssetAllocationId(
+        daiAllocationId = await tvlManager.testEncodeAssetAllocationId(
           allocation.address,
           daiIndex
         );
