@@ -64,7 +64,16 @@ describe("Contract: Erc20Allocation", () => {
 
     const addressRegistry = await deployMockContract(
       deployer,
-      artifacts.require("IAddressRegistryV2").abi
+      artifacts.readArtifactSync("IAddressRegistryV2").abi
+    );
+
+    const oracleAdapter = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("IOracleAdapter").abi
+    );
+    await oracleAdapter.mock.lock.returns();
+    await addressRegistry.mock.oracleAdapterAddress.returns(
+      oracleAdapter.address
     );
 
     /* These registered addresses are setup for roles in the
@@ -90,11 +99,11 @@ describe("Contract: Erc20Allocation", () => {
      * - lpSafe (LP role)
      * - emergencySafe (emergency role, default admin role)
      */
-    const TvlManager = await ethers.getContractFactory("TvlManager");
-    tvlManager = await TvlManager.deploy(
-      addressRegistry.address,
-      erc20Allocation.address
-    );
+    const TvlManager = await ethers.getContractFactory("TestTvlManager");
+    tvlManager = await TvlManager.deploy(addressRegistry.address);
+    await tvlManager
+      .connect(lpSafe)
+      .registerAssetAllocation(erc20Allocation.address);
   });
 
   it("registerErc20Token(address)", async () => {
@@ -104,7 +113,7 @@ describe("Contract: Erc20Allocation", () => {
       [usdcAddress, "USDC", 6],
     ]);
 
-    const allocationId = tvlManager.encodeAssetAllocationId(
+    const allocationId = tvlManager.testEncodeAssetAllocationId(
       erc20Allocation.address,
       0
     );
@@ -127,7 +136,7 @@ describe("Contract: Erc20Allocation", () => {
       [usdcAddress, "USDC", 6],
     ]);
 
-    const allocationId = tvlManager.encodeAssetAllocationId(
+    const allocationId = tvlManager.testEncodeAssetAllocationId(
       erc20Allocation.address,
       0
     );
@@ -151,7 +160,7 @@ describe("Contract: Erc20Allocation", () => {
       [usdcAddress, "USDC", 6],
     ]);
 
-    const allocationId = tvlManager.encodeAssetAllocationId(
+    const allocationId = tvlManager.testEncodeAssetAllocationId(
       erc20Allocation.address,
       0
     );
@@ -172,12 +181,12 @@ describe("Contract: Erc20Allocation", () => {
     await erc20Allocation["registerErc20Token(address)"](daiAddress);
     expect(await erc20Allocation.tokens()).to.have.lengthOf(2);
 
-    const usdcId = tvlManager.encodeAssetAllocationId(
+    const usdcId = tvlManager.testEncodeAssetAllocationId(
       erc20Allocation.address,
       0
     );
     expect(await tvlManager.symbolOf(usdcId)).to.equal("USDC");
-    const daiId = tvlManager.encodeAssetAllocationId(
+    const daiId = tvlManager.testEncodeAssetAllocationId(
       erc20Allocation.address,
       1
     );
@@ -188,7 +197,7 @@ describe("Contract: Erc20Allocation", () => {
       [daiAddress, "DAI", 18],
     ]);
 
-    const allocationId = tvlManager.encodeAssetAllocationId(
+    const allocationId = tvlManager.testEncodeAssetAllocationId(
       erc20Allocation.address,
       0
     );
