@@ -87,8 +87,8 @@ describe("Zaps", () => {
     TvlManager = await ethers.getContractFactory("TvlManager");
     tvlManager = await TvlManager.deploy(
       addressRegistry.address,
-      erc20Allocation.address
     );
+    await tvlManager.connect(lpSafe).registerAssetAllocation(erc20Allocation.address)
   });
 
   describe("Curve 3Pool", () => {
