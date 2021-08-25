@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IDetailedERC20} from "./IDetailedERC20.sol";
 
 interface IPoolToken {
     event DepositedAPT(
         address indexed sender,
-        IERC20 token,
+        IDetailedERC20 token,
         uint256 tokenAmount,
         uint256 aptMintAmount,
         uint256 tokenEthValue,
@@ -14,7 +14,7 @@ interface IPoolToken {
     );
     event RedeemedAPT(
         address indexed sender,
-        IERC20 token,
+        IDetailedERC20 token,
         uint256 redeemedTokenAmount,
         uint256 aptRedeemAmount,
         uint256 tokenEthValue,
