@@ -173,7 +173,7 @@ async function getContractAt(
   return contract;
 }
 
-describe.only("Contract: TvlManager", () => {
+describe("Contract: TvlManager", () => {
   /* signers */
   let deployer;
   let emergencySafe;
