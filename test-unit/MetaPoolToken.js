@@ -306,7 +306,9 @@ describe("Contract: MetaPoolToken", () => {
       await mApt.testMint(pool.address, burnAmount);
 
       // check pool's transfer function gets called
-      await underlyer.mock.transferFrom.reverts();
+      await underlyer.mock.transferFrom.revertsWithReason(
+        "TRANSFERFROM_FAILED"
+      );
       await expect(
         mApt.testBurnAndTransfer(
           pool.address,
@@ -314,7 +316,7 @@ describe("Contract: MetaPoolToken", () => {
           burnAmount,
           transferAmount
         )
-      ).to.be.revertedWith("SafeERC20: low-level call failed");
+      ).to.be.revertedWith("TRANSFERFROM_FAILED");
 
       const expectedSupply = (await mApt.totalSupply()).sub(burnAmount);
       // reset underlyer mock to check if supply changes as expected
@@ -332,7 +334,9 @@ describe("Contract: MetaPoolToken", () => {
       const pool = await deployMockContract(deployer, PoolTokenV2.abi);
       const underlyer = await deployMockContract(deployer, IDetailedERC20.abi);
       await pool.mock.underlyer.returns(underlyer.address);
-      await underlyer.mock.transferFrom.reverts();
+      await underlyer.mock.transferFrom.revertsWithReason(
+        "TRANSFERFROM_FAILED"
+      );
 
       const burnAmount = tokenAmountToBigNumber(10, await mApt.decimals());
       const transferAmount = 100;
@@ -347,7 +351,7 @@ describe("Contract: MetaPoolToken", () => {
           burnAmount,
           transferAmount
         )
-      ).to.be.revertedWith("SafeERC20: low-level call failed");
+      ).to.be.revertedWith("TRANSFERFROM_FAILED");
       expect(await mApt.totalSupply()).to.equal(prevTotalSupply);
     });
   });
