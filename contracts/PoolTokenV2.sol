@@ -27,6 +27,7 @@ import {
     AggregatorV3Interface
 } from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
+import {IPoolToken} from "./interfaces/IPoolToken.sol";
 import {ILiquidityPoolV2} from "./interfaces/ILiquidityPoolV2.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {IDetailedERC20} from "./interfaces/IDetailedERC20.sol";
@@ -72,6 +73,7 @@ import {MetaPoolToken} from "./MetaPoolToken.sol";
  */
 contract PoolTokenV2 is
     ILiquidityPoolV2,
+    IPoolToken,
     IReservePool,
     IWithdrawFeePool,
     Initializable,
@@ -100,7 +102,7 @@ contract PoolTokenV2 is
     /** @notice true if withdrawing is locked */
     bool public redeemLock;
     /** @notice underlying stablecoin */
-    IDetailedERC20 public underlyer;
+    IDetailedERC20 public override underlyer;
     /** @notice USD price feed for the stablecoin */
     // AggregatorV3Interface public priceAgg; <-- removed in V2
 
@@ -320,6 +322,7 @@ contract PoolTokenV2 is
      */
     function transferToLpSafe(uint256 amount)
         external
+        override
         nonReentrant
         whenNotPaused
         onlyContractRole
@@ -372,6 +375,7 @@ contract PoolTokenV2 is
     function calculateMintAmount(uint256 depositAmount)
         external
         view
+        override
         returns (uint256)
     {
         uint256 depositValue = getValueFromUnderlyerAmount(depositAmount);
@@ -389,6 +393,7 @@ contract PoolTokenV2 is
     function getUnderlyerAmountWithFee(uint256 aptAmount)
         public
         view
+        override
         returns (uint256)
     {
         uint256 redeemUnderlyerAmt = getUnderlyerAmount(aptAmount);
@@ -407,6 +412,7 @@ contract PoolTokenV2 is
     function getUnderlyerAmount(uint256 aptAmount)
         public
         view
+        override
         returns (uint256)
     {
         if (aptAmount == 0) {
@@ -447,7 +453,7 @@ contract PoolTokenV2 is
      * capital that is owed to it.
      * @return USD value
      */
-    function getPoolTotalValue() public view returns (uint256) {
+    function getPoolTotalValue() public view override returns (uint256) {
         uint256 underlyerValue = _getPoolUnderlyerValue();
         uint256 mAptValue = _getDeployedValue();
         return underlyerValue.add(mAptValue);
@@ -458,7 +464,12 @@ contract PoolTokenV2 is
      * @param aptAmount APT amount
      * @return USD value
      */
-    function getAPTValue(uint256 aptAmount) external view returns (uint256) {
+    function getAPTValue(uint256 aptAmount)
+        external
+        view
+        override
+        returns (uint256)
+    {
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
         return aptAmount.mul(getPoolTotalValue()).div(totalSupply());
     }
@@ -471,6 +482,7 @@ contract PoolTokenV2 is
     function getValueFromUnderlyerAmount(uint256 underlyerAmount)
         public
         view
+        override
         returns (uint256)
     {
         if (underlyerAmount == 0) {
@@ -484,7 +496,7 @@ contract PoolTokenV2 is
      * @notice Get the underlyer stablecoin's USD price (in bits).
      * @return USD price
      */
-    function getUnderlyerPrice() public view returns (uint256) {
+    function getUnderlyerPrice() public view override returns (uint256) {
         IOracleAdapter oracleAdapter =
             IOracleAdapter(addressRegistry.oracleAdapterAddress());
         return oracleAdapter.getAssetPrice(address(underlyer));

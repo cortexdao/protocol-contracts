@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
+
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IDetailedERC20} from "./IDetailedERC20.sol";
 
 /**
  * @title Interface for APY.Finance liquidity pools
@@ -43,4 +45,15 @@ interface ILiquidityPoolV2 {
      * @param tokenAmount The amount of APT tokens to redeem
      */
     function redeem(uint256 tokenAmount) external;
+
+    function underlyer() external view returns (IDetailedERC20);
+
+    function getPoolTotalValue() external view returns (uint256);
+
+    function getValueFromUnderlyerAmount(uint256 underlyerAmount)
+        external
+        view
+        returns (uint256);
+
+    function getUnderlyerPrice() external view returns (uint256);
 }

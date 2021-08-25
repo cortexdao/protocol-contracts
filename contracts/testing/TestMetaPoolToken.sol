@@ -2,7 +2,7 @@
 pragma solidity 0.6.11;
 
 import {MetaPoolToken} from "../MetaPoolToken.sol";
-import {PoolTokenV2} from "../PoolTokenV2.sol";
+import {IReservePool} from "../interfaces/IReservePool.sol";
 
 /**
  * @dev Proxy contract to test internal variables and functions
@@ -19,28 +19,28 @@ contract TestMetaPoolToken is MetaPoolToken {
         _burn(account, amount);
     }
 
-    function testFundLp(PoolTokenV2[] memory pools, uint256[] memory amounts)
+    function testFundLp(IReservePool[] memory pools, uint256[] memory amounts)
         public
     {
         _fundLp(pools, amounts);
     }
 
     function testWithdrawLp(
-        PoolTokenV2[] memory pools,
+        IReservePool[] memory pools,
         uint256[] memory amounts
     ) public {
         _withdrawLp(pools, amounts);
     }
 
     function testMultipleMintAndTransfer(
-        PoolTokenV2[] memory pools,
+        IReservePool[] memory pools,
         uint256[] memory amounts
     ) public {
         _multipleMintAndTransfer(pools, amounts);
     }
 
     function testMintAndTransfer(
-        PoolTokenV2 pool,
+        IReservePool pool,
         uint256 mintAmount,
         uint256 transferAmount
     ) public {
@@ -48,14 +48,14 @@ contract TestMetaPoolToken is MetaPoolToken {
     }
 
     function testMultipleBurnAndTransfer(
-        PoolTokenV2[] memory pools,
+        IReservePool[] memory pools,
         uint256[] memory amounts
     ) public {
         _multipleBurnAndTransfer(pools, amounts);
     }
 
     function testBurnAndTransfer(
-        PoolTokenV2 pool,
+        IReservePool pool,
         address lpSafe,
         uint256 burnAmount,
         uint256 transferAmount
@@ -63,7 +63,7 @@ contract TestMetaPoolToken is MetaPoolToken {
         _burnAndTransfer(pool, lpSafe, burnAmount, transferAmount);
     }
 
-    function testRegisterPoolUnderlyers(PoolTokenV2[] memory pools) public {
+    function testRegisterPoolUnderlyers(IReservePool[] memory pools) public {
         _registerPoolUnderlyers(pools);
     }
 
@@ -72,7 +72,7 @@ contract TestMetaPoolToken is MetaPoolToken {
     }
 
     function testCalculateDeltas(
-        PoolTokenV2[] memory pools,
+        IReservePool[] memory pools,
         uint256[] memory amounts
     ) public view returns (uint256[] memory) {
         return _calculateDeltas(pools, amounts);
