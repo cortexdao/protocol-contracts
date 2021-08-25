@@ -14,10 +14,24 @@ const IAssetAllocation = artifacts.readArtifactSync("IAssetAllocation");
 const Erc20Allocation = artifacts.readArtifactSync("Erc20Allocation");
 const IAddressRegistryV2 = artifacts.readArtifactSync("IAddressRegistryV2");
 const IOracleAdapter = artifacts.readArtifactSync("IOracleAdapter");
+const INameIdentifier = artifacts.readArtifactSync("INameIdentifier");
 
-async function generateContractAddress(signer) {
-  const mockContract = await deployMockContract(signer, []);
+async function generateContractAddress(signer, name) {
+  const mockContract = await deployMockContract(signer, INameIdentifier.abi);
+  await mockContract.mock.NAME.returns(name || "mockAllocation");
   return mockContract.address;
+}
+
+async function generateAllocationAddress(signer, name) {
+  const mockContract = await deployMockContract(signer, IAssetAllocation.abi);
+  await mockContract.mock.NAME.returns(name || "mockAllocation");
+  return mockContract.address;
+}
+
+async function deployMockAllocation(signer, name) {
+  const mockAllocation = await deployMockContract(signer, IAssetAllocation.abi);
+  await mockAllocation.mock.NAME.returns(name || "mockAllocation");
+  return mockAllocation;
 }
 
 describe("Contract: TvlManager", () => {
@@ -72,12 +86,14 @@ describe("Contract: TvlManager", () => {
       .withArgs(bytes32("emergencySafe"))
       .returns(emergencySafe.address);
 
-    erc20Allocation = await deployMockContract(deployer, Erc20Allocation.abi);
-    await erc20Allocation.mock.numberOfTokens.returns(1);
-    await erc20Allocation.mock.symbolOf.withArgs(0).returns(mockSymbol);
-
     TvlManager = await ethers.getContractFactory("TestTvlManager");
     tvlManager = await TvlManager.deploy(addressRegistry.address);
+
+    erc20Allocation = await deployMockContract(deployer, Erc20Allocation.abi);
+    const erc20AllocationName = await tvlManager.NAME();
+    await erc20Allocation.mock.NAME.returns(erc20AllocationName);
+    await erc20Allocation.mock.numberOfTokens.returns(1);
+    await erc20Allocation.mock.symbolOf.withArgs(0).returns(mockSymbol);
   });
 
   describe("Constructor", () => {
@@ -161,18 +177,18 @@ describe("Contract: TvlManager", () => {
   describe("Adding and removing asset allocations", () => {
     describe("registerAssetAllocation", () => {
       it("LP Safe can call", async () => {
-        const contractAddress = await generateContractAddress(deployer);
+        const allocationAddress = await generateAllocationAddress(deployer);
         await expect(
-          tvlManager.connect(lpSafe).registerAssetAllocation(contractAddress)
+          tvlManager.connect(lpSafe).registerAssetAllocation(allocationAddress)
         ).to.not.be.reverted;
       });
 
       it("Unpermissioned cannot call", async () => {
-        const contractAddress = await generateContractAddress(deployer);
+        const allocationAddress = await generateAllocationAddress(deployer);
         await expect(
           tvlManager
             .connect(randomUser)
-            .registerAssetAllocation(contractAddress)
+            .registerAssetAllocation(allocationAddress)
         ).to.be.revertedWith("NOT_LP_OR_CONTRACT_ROLE");
       });
 
@@ -183,12 +199,19 @@ describe("Contract: TvlManager", () => {
       });
 
       it("Correctly populates array of allocations", async () => {
-        // always starts with 1 allocation, the ERC20 allocation
         let allocations = await tvlManager.testGetAssetAllocations();
         expect(allocations).to.have.lengthOf(0);
 
-        const contractAddress_0 = await generateContractAddress(deployer);
-        const contractAddress_1 = await generateContractAddress(deployer);
+        const allocation_0 = await deployMockAllocation(
+          deployer,
+          "allocation 0"
+        );
+        const contractAddress_0 = allocation_0.address;
+        const allocation_1 = await deployMockAllocation(
+          deployer,
+          "allocation 1"
+        );
+        const contractAddress_1 = allocation_1.address;
 
         await tvlManager
           .connect(lpSafe)
@@ -206,51 +229,50 @@ describe("Contract: TvlManager", () => {
         expect(allocations).to.include(contractAddress_1);
 
         // check no duplicates can be registered
-        await tvlManager
-          .connect(lpSafe)
-          .registerAssetAllocation(contractAddress_0);
-        allocations = await tvlManager.testGetAssetAllocations();
-        expect(allocations).to.have.lengthOf(2);
-        expect(allocations).to.include(contractAddress_0);
-        expect(allocations).to.include(contractAddress_1);
+        await expect(
+          tvlManager.connect(lpSafe).registerAssetAllocation(contractAddress_0)
+        ).to.be.revertedWith("DUPLICATE_ADDRESS");
       });
     });
 
     describe("removeAssetAllocation", () => {
-      it("Pool manager can call", async () => {
-        const contractAddress = await generateContractAddress(deployer);
-        await expect(
-          tvlManager.connect(lpSafe).removeAssetAllocation(contractAddress)
-        ).to.not.be.reverted;
-      });
-
       it("LP Safe can call", async () => {
-        const contractAddress = await generateContractAddress(deployer);
-        await expect(
-          tvlManager.connect(lpSafe).removeAssetAllocation(contractAddress)
-        ).to.not.be.reverted;
+        const allocation = await deployMockAllocation(deployer);
+        const name = await allocation.NAME();
+        await tvlManager
+          .connect(lpSafe)
+          .registerAssetAllocation(allocation.address);
+        await expect(tvlManager.connect(lpSafe).removeAssetAllocation(name)).to
+          .not.be.reverted;
       });
 
       it("Unpermissioned cannot call", async () => {
-        const contractAddress = await generateContractAddress(deployer);
+        const allocation = await deployMockAllocation(deployer);
+        const name = await allocation.NAME();
         await expect(
-          tvlManager
-            .connect(randomUser)
-            .registerAssetAllocation(contractAddress)
+          tvlManager.connect(randomUser).removeAssetAllocation(name)
         ).to.be.revertedWith("NOT_LP_OR_CONTRACT_ROLE");
       });
 
-      it.skip("Cannot remove ERC20 allocation", async () => {
+      it("Cannot remove ERC20 allocation", async () => {
+        const erc20AllocationName = await tvlManager.NAME();
         await expect(
-          tvlManager
-            .connect(lpSafe)
-            .removeAssetAllocation(erc20Allocation.address)
+          tvlManager.connect(lpSafe).removeAssetAllocation(erc20AllocationName)
         ).to.be.revertedWith("CANNOT_REMOVE_ALLOCATION");
       });
 
       it("Correctly removes allocation", async () => {
-        const contractAddress_0 = await generateContractAddress(deployer);
-        const contractAddress_1 = await generateContractAddress(deployer);
+        const allocation_0 = await deployMockAllocation(
+          deployer,
+          "allocation 0"
+        );
+        const name_0 = await allocation_0.NAME();
+        const contractAddress_0 = allocation_0.address;
+        const allocation_1 = await deployMockAllocation(
+          deployer,
+          "allocation 1"
+        );
+        const contractAddress_1 = allocation_1.address;
 
         // setup and assert preconditions
         await tvlManager
@@ -266,9 +288,7 @@ describe("Contract: TvlManager", () => {
         expect(allocations).to.include(contractAddress_1);
 
         // start test
-        await tvlManager
-          .connect(lpSafe)
-          .removeAssetAllocation(contractAddress_0);
+        await tvlManager.connect(lpSafe).removeAssetAllocation(name_0);
 
         allocations = await tvlManager.testGetAssetAllocations();
         expect(allocations).to.have.lengthOf(1);
@@ -277,10 +297,24 @@ describe("Contract: TvlManager", () => {
     });
 
     it("Mixing registrations and removals", async () => {
-      const contractAddress_0 = await generateContractAddress(deployer);
-      const contractAddress_1 = await generateContractAddress(deployer);
-      const contractAddress_2 = await generateContractAddress(deployer);
-      const contractAddress_3 = await generateContractAddress(deployer);
+      const name_0 = "allocation 0";
+      const contractAddress_0 = await generateAllocationAddress(
+        deployer,
+        name_0
+      );
+      const contractAddress_1 = await generateAllocationAddress(
+        deployer,
+        "allocation 1"
+      );
+      const name_2 = "allocation 2";
+      const contractAddress_2 = await generateAllocationAddress(
+        deployer,
+        name_2
+      );
+      const contractAddress_3 = await generateAllocationAddress(
+        deployer,
+        "allocation 3"
+      );
 
       // always starts with one allocation, the ERC20 allocation
       let allocations = await tvlManager.testGetAssetAllocations();
@@ -295,7 +329,7 @@ describe("Contract: TvlManager", () => {
       expect(allocations).to.have.lengthOf(1);
       expect(allocations).to.include(contractAddress_0);
 
-      await tvlManager.connect(lpSafe).removeAssetAllocation(contractAddress_0);
+      await tvlManager.connect(lpSafe).removeAssetAllocation(name_0);
 
       allocations = await tvlManager.testGetAssetAllocations();
       expect(allocations).to.have.lengthOf(0);
@@ -318,8 +352,8 @@ describe("Contract: TvlManager", () => {
       expect(allocations).to.include(contractAddress_2);
 
       // remove multiple and register one
-      await tvlManager.connect(lpSafe).removeAssetAllocation(contractAddress_0);
-      await tvlManager.connect(lpSafe).removeAssetAllocation(contractAddress_2);
+      await tvlManager.connect(lpSafe).removeAssetAllocation(name_0);
+      await tvlManager.connect(lpSafe).removeAssetAllocation(name_2);
       await tvlManager
         .connect(lpSafe)
         .registerAssetAllocation(contractAddress_3);
@@ -386,50 +420,15 @@ describe("Contract: TvlManager", () => {
       });
     });
 
-    describe("encodeAssetAllocationId", async () => {
-      let allocation;
-      let numTokens = 4;
-
-      beforeEach("register asset allocations", async () => {
-        allocation = await deployMockContract(deployer, Erc20Allocation.abi);
-        await allocation.mock.numberOfTokens.returns(numTokens);
-
-        await tvlManager
-          .connect(lpSafe)
-          .registerAssetAllocation(allocation.address);
-      });
-
-      it("should fail on unregistered address", async () => {
-        const unregisteredAddress = await generateContractAddress(deployer);
-        await expect(
-          tvlManager.encodeAssetAllocationId(unregisteredAddress, 0)
-        ).to.be.revertedWith("INVALID_ASSET_ALLOCATION");
-      });
-
-      it("should fail with invalid token index", async () => {
-        await expect(
-          tvlManager.encodeAssetAllocationId(allocation.address, numTokens)
-        ).to.be.revertedWith("INVALID_TOKEN_INDEX");
-      });
-
-      it("Successfully get ID for registered allocation and valid index", async () => {
-        for (let i = 0; i < numTokens; i++) {
-          await expect(
-            tvlManager.encodeAssetAllocationId(allocation.address, i)
-          ).to.not.be.reverted;
-        }
-      });
-    });
-
     describe("_getAssetAllocationIds", () => {
       let allocation_0;
       let allocation_1;
 
       it("Gets correct list of IDs", async () => {
-        allocation_0 = await deployMockContract(deployer, IAssetAllocation.abi);
+        allocation_0 = await deployMockAllocation(deployer, "allocation 0");
         await allocation_0.mock.numberOfTokens.returns(1);
 
-        allocation_1 = await deployMockContract(deployer, IAssetAllocation.abi);
+        allocation_1 = await deployMockAllocation(deployer, "allocation 1");
         await allocation_1.mock.numberOfTokens.returns(2);
 
         const allocations = [allocation_0.address, allocation_1.address];
@@ -457,18 +456,12 @@ describe("Contract: TvlManager", () => {
       const numTokens = [4, 2, 2];
 
       it("Gets correct list of IDs", async () => {
-        const erc20Id = await tvlManager.testEncodeAssetAllocationId(
-          erc20Allocation.address,
-          0
-        );
-        expect(await tvlManager.getAssetAllocationIds()).to.deep.equal([
-          erc20Id,
-        ]);
+        expect(await tvlManager.getAssetAllocationIds()).to.be.empty;
 
         for (let i = 0; i < numTokens.length; i++) {
-          const allocation = await deployMockContract(
+          const allocation = await deployMockAllocation(
             deployer,
-            IAssetAllocation.abi
+            `allocation ${i}`
           );
           allocation.mock.numberOfTokens.returns(numTokens[i]);
           await tvlManager
@@ -477,7 +470,7 @@ describe("Contract: TvlManager", () => {
           allocations.push(allocation);
         }
 
-        const expectedResult = [erc20Id];
+        const expectedResult = [];
         for (let i = 0; i < allocations.length; i++) {
           const allocationAddress = allocations[i].address;
           for (let j = 0; j < numTokens[i]; j++) {
@@ -493,37 +486,24 @@ describe("Contract: TvlManager", () => {
       });
     });
 
-    describe("decodeAssetAllocationId", async () => {
-      it("should revert when an address is not registered", async () => {
-        const randomAddress = await generateContractAddress(deployer);
-        const id = await tvlManager.testEncodeAssetAllocationId(
-          randomAddress,
-          0
-        );
-        await expect(tvlManager.decodeAssetAllocationId(id)).to.be.revertedWith(
-          "INVALID_ASSET_ALLOCATION"
-        );
+    describe("getAssetAllocation", async () => {
+      it("Returns zero address for unregistered name", async () => {
+        const allocation = await deployMockAllocation(deployer);
+        const name = await allocation.NAME();
+
+        const result = await tvlManager.getAssetAllocation(name);
+        expect(result).to.deep.equal(ZERO_ADDRESS);
       });
 
-      it("should revert when a token index does not exist for an asset allocation", async () => {
-        const id = await tvlManager.testEncodeAssetAllocationId(
-          erc20Allocation.address,
-          99
-        );
-        await expect(tvlManager.decodeAssetAllocationId(id)).to.be.revertedWith(
-          "INVALID_TOKEN_INDEX"
-        );
-      });
+      it("Returns registered address for registered name", async () => {
+        const allocation = await deployMockAllocation(deployer);
+        const name = await allocation.NAME();
+        await tvlManager
+          .connect(lpSafe)
+          .registerAssetAllocation(allocation.address);
 
-      it("should return the decoded ID if the asset allocation is valid", async () => {
-        const id = await tvlManager.testEncodeAssetAllocationId(
-          erc20Allocation.address,
-          0
-        );
-
-        const result = await tvlManager.decodeAssetAllocationId(id);
-
-        expect(result).to.deep.equal([erc20Allocation.address, 0]);
+        const result = await tvlManager.getAssetAllocation(name);
+        expect(result).to.deep.equal(allocation.address);
       });
     });
 
@@ -600,7 +580,7 @@ describe("Contract: TvlManager", () => {
     let allocationId_1;
 
     beforeEach("Setup allocation and IDs", async () => {
-      allocation = await deployMockContract(deployer, IAssetAllocation.abi);
+      allocation = await deployMockAllocation(deployer);
       await allocation.mock.numberOfTokens.returns(2);
 
       await tvlManager
@@ -619,10 +599,11 @@ describe("Contract: TvlManager", () => {
 
     it("symbolOf", async () => {
       await allocation.mock.symbolOf.withArgs(0).returns(token_0.symbol);
-      await allocation.mock.symbolOf.withArgs(1).returns(token_1.symbol);
       expect(await tvlManager.symbolOf(allocationId_0)).to.equal(
         token_0.symbol
       );
+
+      await allocation.mock.symbolOf.withArgs(1).returns(token_1.symbol);
       expect(await tvlManager.symbolOf(allocationId_1)).to.equal(
         token_1.symbol
       );
@@ -630,10 +611,11 @@ describe("Contract: TvlManager", () => {
 
     it("decimalsOf", async () => {
       await allocation.mock.decimalsOf.withArgs(0).returns(token_0.decimals);
-      await allocation.mock.decimalsOf.withArgs(1).returns(token_1.decimals);
       expect(await tvlManager.decimalsOf(allocationId_0)).to.equal(
         token_0.decimals
       );
+
+      await allocation.mock.decimalsOf.withArgs(1).returns(token_1.decimals);
       expect(await tvlManager.decimalsOf(allocationId_1)).to.equal(
         token_1.decimals
       );
@@ -641,14 +623,15 @@ describe("Contract: TvlManager", () => {
 
     it("balanceOf", async () => {
       const balance_0 = tokenAmountToBigNumber("100");
-      const balance_1 = tokenAmountToBigNumber("250");
       await allocation.mock.balanceOf
         .withArgs(lpSafe.address, 0)
         .returns(balance_0);
+      expect(await tvlManager.balanceOf(allocationId_0)).to.equal(balance_0);
+
+      const balance_1 = tokenAmountToBigNumber("250");
       await allocation.mock.balanceOf
         .withArgs(lpSafe.address, 1)
         .returns(balance_1);
-      expect(await tvlManager.balanceOf(allocationId_0)).to.equal(balance_0);
       expect(await tvlManager.balanceOf(allocationId_1)).to.equal(balance_1);
     });
   });
