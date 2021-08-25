@@ -33,6 +33,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {IDetailedERC20} from "./interfaces/IDetailedERC20.sol";
 import {IReservePool} from "./interfaces/IReservePool.sol";
 import {IWithdrawFeePool} from "./interfaces/IWithdrawFeePool.sol";
+import {ILockingPool} from "./interfaces/ILockingPool.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
 import {MetaPoolToken} from "./MetaPoolToken.sol";
@@ -76,6 +77,7 @@ contract PoolTokenV2 is
     IPoolToken,
     IReservePool,
     IWithdrawFeePool,
+    ILockingPool,
     Initializable,
     AccessControlUpgradeSafe,
     ReentrancyGuardUpgradeSafe,
