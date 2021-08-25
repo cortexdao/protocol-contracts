@@ -752,7 +752,7 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
 
       await expect(
         mApt.testWithdrawLp([daiPool.address], [amount])
-      ).to.be.revertedWith("SafeERC20: low-level call failed");
+      ).to.be.revertedWith("Dai/insufficient-allowance");
     });
 
     it("Withdrawal updates balances correctly (single pool)", async () => {
