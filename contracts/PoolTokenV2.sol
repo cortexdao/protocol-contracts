@@ -208,7 +208,7 @@ contract PoolTokenV2 is
      * @notice Disable both depositing and withdrawals.
      * Note that `addLiquidity` and `redeem` also have individual locks.
      */
-    function emergencyLock() external onlyEmergencyRole {
+    function emergencyLock() external override onlyEmergencyRole {
         _pause();
     }
 
@@ -216,7 +216,7 @@ contract PoolTokenV2 is
      * @notice Re-enable both depositing and withdrawals.
      * Note that `addLiquidity` and `redeem` also have individual locks.
      */
-    function emergencyUnlock() external onlyEmergencyRole {
+    function emergencyUnlock() external override onlyEmergencyRole {
         _unpause();
     }
 
@@ -260,13 +260,13 @@ contract PoolTokenV2 is
     }
 
     /** @notice Disable deposits. */
-    function emergencyLockAddLiquidity() external onlyEmergencyRole {
+    function emergencyLockAddLiquidity() external override onlyEmergencyRole {
         addLiquidityLock = true;
         emit AddLiquidityLocked();
     }
 
     /** @notice Enable deposits. */
-    function emergencyUnlockAddLiquidity() external onlyEmergencyRole {
+    function emergencyUnlockAddLiquidity() external override onlyEmergencyRole {
         addLiquidityLock = false;
         emit AddLiquidityUnlocked();
     }
@@ -306,13 +306,13 @@ contract PoolTokenV2 is
     }
 
     /** @notice Disable APT redeeming. */
-    function emergencyLockRedeem() external onlyEmergencyRole {
+    function emergencyLockRedeem() external override onlyEmergencyRole {
         redeemLock = true;
         emit RedeemLocked();
     }
 
     /** @notice Enable APT redeeming. */
-    function emergencyUnlockRedeem() external onlyEmergencyRole {
+    function emergencyUnlockRedeem() external override onlyEmergencyRole {
         redeemLock = false;
         emit RedeemUnlocked();
     }
