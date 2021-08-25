@@ -32,7 +32,7 @@ library NamedAddressSet {
 
         string memory name = namedAddress.NAME();
         require(bytes(name).length != 0, "INVALID_NAME");
-        require(address(set._nameLookup[name]) != address(0), "DUPLICATE_NAME");
+        require(address(set._nameLookup[name]) == address(0), "DUPLICATE_NAME");
 
         set._namedAddresses.add(address(namedAddress));
         set._nameLookup[name] = namedAddress;
@@ -104,7 +104,7 @@ library NamedAddressSet {
         AssetAllocationSet storage set,
         IAssetAllocation assetAllocation
     ) internal view returns (bool) {
-        _contains(set._inner, assetAllocation);
+        return _contains(set._inner, assetAllocation);
     }
 
     function length(AssetAllocationSet storage set)
@@ -152,7 +152,7 @@ library NamedAddressSet {
         view
         returns (bool)
     {
-        _contains(set._inner, zap);
+        return _contains(set._inner, zap);
     }
 
     function length(ZapSet storage set) internal view returns (uint256) {
