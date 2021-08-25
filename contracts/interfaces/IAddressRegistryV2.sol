@@ -23,6 +23,15 @@ interface IAddressRegistryV2 {
     event AddressRegistered(bytes32 id, address _address);
     event AddressDeleted(bytes32 id, address _address);
 
+    function registerAddress(bytes32 id, address address_) external;
+
+    function registerMultipleAddresses(
+        bytes32[] calldata ids,
+        address[] calldata addresses
+    ) external;
+
+    function deleteAddress(bytes32 id) external;
+
     /**
      * @notice Returns the list of identifiers for core components of
      * the APY.Finance system.
