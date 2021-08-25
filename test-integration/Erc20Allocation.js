@@ -69,7 +69,7 @@ describe("Contract: Erc20Allocation", () => {
 
     const oracleAdapter = await deployMockContract(
       deployer,
-      artifacts.readArtifactSync("IOracleAdapter").abi
+      artifacts.readArtifactSync("ILockingOracle").abi
     );
     await oracleAdapter.mock.lock.returns();
     await addressRegistry.mock.oracleAdapterAddress.returns(
