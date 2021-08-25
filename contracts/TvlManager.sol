@@ -70,21 +70,6 @@ contract TvlManager is
     }
 
     /**
-<<<<<<< HEAD
-     * @notice Sets the new ERC20 allocation contract
-     * @dev Only callable by Emergency Safe
-     * @param erc20Allocation_ new address of the ERC20 allocation
-     */
-    function emergencySetErc20Allocation(address erc20Allocation_)
-        external
-        onlyEmergencyRole
-    {
-        _setErc20Allocation(erc20Allocation_);
-    }
-
-    /**
-=======
->>>>>>> New interfaces to support ERC20 allocations
      * @notice Register a new asset allocation
      * @dev Only permissioned accounts can call.
      */
@@ -124,16 +109,6 @@ contract TvlManager is
         emit AssetAllocationRemoved(name);
     }
 
-<<<<<<< HEAD
-    /**
-     * @notice Returns a list of all identifiers coming from registered
-     *         asset allocations.
-     * @dev The list contains no duplicate identifiers. Note that IDs
-     *      are not static, e.g. a particular position's ID may change
-     *      from updates to asset allocation contracts.
-     * @return list of all the registered identifiers
-     */
-=======
     function getAssetAllocation(string calldata name)
         external
         view
@@ -143,7 +118,14 @@ contract TvlManager is
         return _assetAllocations.get(name);
     }
 
->>>>>>> New interfaces to support ERC20 allocations
+    /**
+     * @notice Returns a list of all identifiers coming from registered
+     *         asset allocations.
+     * @dev The list contains no duplicate identifiers. Note that IDs
+     *      are not static, e.g. a particular position's ID may change
+     *      from updates to asset allocation contracts.
+     * @return list of all the registered identifiers
+     */
     function getAssetAllocationIds()
         external
         view
@@ -226,17 +208,6 @@ contract TvlManager is
         emit AddressRegistryChanged(addressRegistry_);
     }
 
-<<<<<<< HEAD
-    function _setErc20Allocation(address erc20Allocation_) internal {
-        require(erc20Allocation_.isContract(), "INVALID_ADDRESS");
-        _assetAllocations.remove(address(erc20Allocation));
-        _assetAllocations.add(erc20Allocation_);
-        erc20Allocation = IErc20AllocationRegistry(erc20Allocation_);
-        emit Erc20AllocationChanged(erc20Allocation_);
-    }
-
-=======
->>>>>>> New interfaces to support ERC20 allocations
     function _lockOracleAdapter() internal {
         IOracleAdapter oracleAdapter =
             IOracleAdapter(addressRegistry.oracleAdapterAddress());

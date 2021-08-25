@@ -31,7 +31,7 @@ import {
 import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
-import {ILpSafeFunder} from "./interfaces/ILpSafeFunder.sol";
+import {ILpFunder} from "./interfaces/ILpFunder.sol";
 import {
     IAssetAllocationRegistry
 } from "./interfaces/IAssetAllocationRegistry.sol";
@@ -76,12 +76,8 @@ contract MetaPoolToken is
     ReentrancyGuardUpgradeSafe,
     PausableUpgradeSafe,
     ERC20UpgradeSafe,
-<<<<<<< HEAD
-    ILpFunder
-=======
-    ILpSafeFunder,
+    ILpFunder,
     Erc20AllocationConstants
->>>>>>> New interfaces to support ERC20 allocations
 {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
