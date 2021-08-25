@@ -60,7 +60,7 @@ APY.Finance APT V1
   301 address proxyAdmin;
   301 bool addLiquidityLock;
   301 bool redeemLock;
-  302 IDetailedERC20UpgradeSafe underlyer;
+  302 IDetailedERC20 underlyer;
   // 303 AggregatorV3Interface priceAgg; <-- replaced in V2
 
 APY.Finance APT V2
@@ -195,7 +195,7 @@ describe("APT V2 uses V1 storage slot positions", () => {
     // 301 bool redeemLock;
     expect(parseAddress(slots[301])).to.equal(proxyAdmin.address);
     expect(slots[301].slice(0, 24).slice(-4)).to.equal("0101");
-    // 302 IDetailedERC20UpgradeSafe underlyer;
+    // 302 IDetailedERC20 underlyer;
     expect(parseAddress(slots[302])).to.equal(underlyer.address);
   });
 

@@ -15,9 +15,6 @@ import {
     Initializable
 } from "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import {
-    SafeERC20 as SafeERC20UpgradeSafe
-} from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
-import {
     ERC20UpgradeSafe
 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 import {
@@ -31,9 +28,8 @@ import {
 } from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
 import {ILiquidityPoolV2} from "./interfaces/ILiquidityPoolV2.sol";
-import {
-    IDetailedERC20UpgradeSafe
-} from "./interfaces/IDetailedERC20UpgradeSafe.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import {IDetailedERC20} from "./interfaces/IDetailedERC20.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
 import {MetaPoolToken} from "./MetaPoolToken.sol";
@@ -83,7 +79,7 @@ contract PoolTokenV2 is
     using Address for address;
     using SafeMath for uint256;
     using SignedSafeMath for int256;
-    using SafeERC20UpgradeSafe for IDetailedERC20UpgradeSafe;
+    using SafeERC20 for IDetailedERC20;
 
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
     uint256 internal constant _MAX_INT256 = 2**255 - 1;
@@ -100,7 +96,7 @@ contract PoolTokenV2 is
     /** @notice true if withdrawing is locked */
     bool public redeemLock;
     /** @notice underlying stablecoin */
-    IDetailedERC20UpgradeSafe public underlyer;
+    IDetailedERC20 public underlyer;
     /** @notice USD price feed for the stablecoin */
     // AggregatorV3Interface public priceAgg; <-- removed in V2
 
@@ -149,7 +145,7 @@ contract PoolTokenV2 is
      */
     function initialize(
         address adminAddress,
-        IDetailedERC20UpgradeSafe underlyer_,
+        IDetailedERC20 underlyer_,
         AggregatorV3Interface priceAgg
     ) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");

@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
-import {
-    IERC20
-} from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title Interface for APY.Finance liquidity pools

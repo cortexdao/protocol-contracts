@@ -20,14 +20,9 @@ import {
 } from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import {IDetailedERC20} from "./interfaces/IDetailedERC20.sol";
 import {
-    IDetailedERC20UpgradeSafe
-} from "./interfaces/IDetailedERC20UpgradeSafe.sol";
-import {
     ERC20UpgradeSafe
 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
-import {
-    SafeERC20 as SafeERC20UpgradeSafe
-} from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
@@ -81,7 +76,7 @@ contract MetaPoolToken is
 {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
-    using SafeERC20UpgradeSafe for IDetailedERC20UpgradeSafe;
+    using SafeERC20 for IDetailedERC20;
 
     uint256 public constant DEFAULT_MAPT_TO_UNDERLYER_FACTOR = 1000;
 
@@ -392,7 +387,7 @@ contract MetaPoolToken is
             return;
         }
         _burn(address(pool), burnAmount);
-        IDetailedERC20UpgradeSafe underlyer = pool.underlyer();
+        IDetailedERC20 underlyer = pool.underlyer();
         underlyer.safeTransferFrom(lpSafe, address(pool), transferAmount);
         emit Burn(address(pool), burnAmount);
     }
@@ -457,7 +452,7 @@ contract MetaPoolToken is
             PoolTokenV2 pool = pools[i];
             uint256 amount = amounts[i];
 
-            IDetailedERC20UpgradeSafe underlyer = pool.underlyer();
+            IDetailedERC20 underlyer = pool.underlyer();
             uint256 tokenPrice = pool.getUnderlyerPrice();
             uint8 decimals = underlyer.decimals();
 

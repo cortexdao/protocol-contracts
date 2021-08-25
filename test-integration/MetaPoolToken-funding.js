@@ -10,9 +10,7 @@ const {
 } = require("../utils/helpers");
 const { STABLECOIN_POOLS } = require("../utils/constants");
 
-const IDetailedERC20UpgradeSafe = artifacts.require(
-  "IDetailedERC20UpgradeSafe"
-);
+const IDetailedERC20 = artifacts.require("IDetailedERC20");
 
 /****************************/
 /* set DEBUG log level here */
@@ -285,18 +283,9 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
     /* main deployments and upgrades finished 
     /*********************************************/
 
-    daiToken = await ethers.getContractAt(
-      "IDetailedERC20UpgradeSafe",
-      DAI_TOKEN
-    );
-    usdcToken = await ethers.getContractAt(
-      "IDetailedERC20UpgradeSafe",
-      USDC_TOKEN
-    );
-    usdtToken = await ethers.getContractAt(
-      "IDetailedERC20UpgradeSafe",
-      USDT_TOKEN
-    );
+    daiToken = await ethers.getContractAt("IDetailedERC20", DAI_TOKEN);
+    usdcToken = await ethers.getContractAt("IDetailedERC20", USDC_TOKEN);
+    usdtToken = await ethers.getContractAt("IDetailedERC20", USDT_TOKEN);
     // fund deployer with stablecoins
     await acquireToken(
       STABLECOIN_POOLS["DAI"],
@@ -351,10 +340,7 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
   async function getMintAmount(pool, underlyerAmount) {
     const tokenPrice = await pool.getUnderlyerPrice();
     const underlyer = await pool.underlyer();
-    const erc20 = await ethers.getContractAt(
-      IDetailedERC20UpgradeSafe.abi,
-      underlyer
-    );
+    const erc20 = await ethers.getContractAt(IDetailedERC20.abi, underlyer);
     const decimals = await erc20.decimals();
     const mintAmount = await mApt.testCalculateDelta(
       underlyerAmount,

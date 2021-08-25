@@ -41,10 +41,7 @@ async function deployAggregator(
   // fund agg with LINK
   // aggregator must hold enough LINK for two rounds of submissions, i.e.
   // LINK reserve >= 2 * number of oracles * payment amount
-  const linkToken = await ethers.getContractAt(
-    "IDetailedERC20UpgradeSafe",
-    LINK_ADDRESS
-  );
+  const linkToken = await ethers.getContractAt("IDetailedERC20", LINK_ADDRESS);
   const linkAmount = "100000";
   await acquireToken(
     WHALE_ADDRESS,
