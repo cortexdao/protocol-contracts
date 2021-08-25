@@ -239,11 +239,8 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
     const erc20Allocation = await Erc20Allocation.deploy(
       addressRegistry.address
     );
-    const TvlManager = await ethers.getContractFactory("TvlManager");
-    tvlManager = await TvlManager.deploy(
-      addressRegistry.address,
-      erc20Allocation.address
-    );
+    const TvlManager = await ethers.getContractFactory("TestTvlManager");
+    tvlManager = await TvlManager.deploy(addressRegistry.address);
 
     await addressRegistry.registerAddress(
       bytes32("tvlManager"),
@@ -276,6 +273,13 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
 
     // set default TVL for tests to zero
     await oracleAdapter.connect(emergencySafe).emergencySetTvl(0, 100);
+
+    // registering ERC20 allocation must happen now, since the
+    // TVL Manager will attempt to lock the Oracle Adapter.
+    await tvlManager
+      .connect(lpSafe)
+      .registerAssetAllocation(erc20Allocation.address);
+    await oracleAdapter.connect(emergencySafe).emergencyUnlock();
 
     /*********************************************/
     /* main deployments and upgrades finished 
@@ -475,8 +479,10 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
       /* Check pool manager registered asset allocations correctly */
       /*************************************************************/
 
-      const erc20AllocationAddress = await tvlManager.erc20Allocation();
-      const expectedDaiId = await tvlManager.encodeAssetAllocationId(
+      const erc20AllocationAddress = await tvlManager.getAssetAllocation(
+        "erc20Allocation"
+      );
+      const expectedDaiId = await tvlManager.testEncodeAssetAllocationId(
         erc20AllocationAddress,
         0
       );
@@ -553,16 +559,18 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
       /* Check pool manager registered asset allocations correctly */
       /*************************************************************/
 
-      const erc20AllocationAddress = await tvlManager.erc20Allocation();
-      const expectedDaiId = await tvlManager.encodeAssetAllocationId(
+      const erc20AllocationAddress = await tvlManager.getAssetAllocation(
+        "erc20Allocation"
+      );
+      const expectedDaiId = await tvlManager.testEncodeAssetAllocationId(
         erc20AllocationAddress,
         0
       );
-      const expectedUsdcId = await tvlManager.encodeAssetAllocationId(
+      const expectedUsdcId = await tvlManager.testEncodeAssetAllocationId(
         erc20AllocationAddress,
         1
       );
-      const expectedUsdtId = await tvlManager.encodeAssetAllocationId(
+      const expectedUsdtId = await tvlManager.testEncodeAssetAllocationId(
         erc20AllocationAddress,
         2
       );
