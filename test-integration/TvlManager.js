@@ -208,7 +208,7 @@ describe("Contract: TvlManager", () => {
 
     const oracleAdapter = await deployMockContract(
       deployer,
-      artifacts.require("IOracleAdapter").abi
+      artifacts.require("ILockingOracle").abi
     );
     await oracleAdapter.mock.lock.returns();
     await addressRegistry.mock.oracleAdapterAddress.returns(
