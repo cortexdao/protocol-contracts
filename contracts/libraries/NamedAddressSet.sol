@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 
-import {
-    Address,
-    EnumerableSet,
-    INameIdentifier
-} from "contracts/imports/CommonImports.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
-import {IAssetAllocation} from "contracts/imports/TvlManagerImports.sol";
-import {IZap} from "contracts/imports/LpAccountImports.sol";
+import {INameIdentifier} from "./INameIdentifier.sol";
+import {IAssetAllocation} from "contracts/tvl/Imports.sol";
+import {IZap} from "contracts/lpaccount/Imports.sol";
 
 library NamedAddressSet {
     using EnumerableSet for EnumerableSet.AddressSet;

@@ -1,0 +1,57 @@
+// SPDX-License-Identifier: BUSDL-1.1
+pragma solidity 0.6.11;
+pragma experimental ABIEncoderV2;
+
+import {PoolTokenV2} from "../PoolTokenV2.sol";
+import {MetaPoolToken} from "../MetaPoolToken.sol";
+import {PoolManager} from "../PoolManager.sol";
+
+contract TestPoolManager is PoolManager {
+    function rebalance(
+        address account,
+        PoolTokenV2[] memory pools,
+        int256[] memory amounts
+    ) public {
+        _rebalance(account, pools, amounts);
+    }
+
+    function transferBetweenAccountAndPools(
+        address account,
+        PoolTokenV2[] memory pools,
+        int256[] memory amounts
+    ) public {
+        _transferBetweenAccountAndPools(account, pools, amounts);
+    }
+
+    function rebalanceMapt(
+        MetaPoolToken mApt,
+        PoolTokenV2[] memory pools,
+        int256[] memory mAptDeltas
+    ) public {
+        _rebalanceMapt(mApt, pools, mAptDeltas);
+    }
+
+    function getRebalanceAmounts(bytes32[] memory poolIds)
+        public
+        view
+        returns (PoolAmount[] memory)
+    {
+        return _getRebalanceAmounts(poolIds);
+    }
+
+    function calculateMaptDeltas(
+        MetaPoolToken mApt,
+        PoolTokenV2[] memory pools,
+        int256[] memory amounts
+    ) public view returns (int256[] memory) {
+        return _calculateMaptDeltas(mApt, pools, amounts);
+    }
+
+    function getPoolsAndAmounts(PoolAmount[] memory poolAmounts)
+        public
+        view
+        returns (PoolTokenV2[] memory, int256[] memory)
+    {
+        return _getPoolsAndAmounts(poolAmounts);
+    }
+}
