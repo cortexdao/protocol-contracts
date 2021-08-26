@@ -11,7 +11,6 @@ const {
 } = require("../utils/helpers");
 
 const IAssetAllocation = artifacts.readArtifactSync("IAssetAllocation");
-const IZap = artifacts.readArtifactSync("IZap");
 const IAddressRegistryV2 = artifacts.readArtifactSync("IAddressRegistryV2");
 const TvlManager = artifacts.readArtifactSync("TvlManager");
 const Erc20Allocation = artifacts.readArtifactSync("Erc20Allocation");
@@ -30,12 +29,8 @@ async function deployMockAllocation(name) {
 }
 
 async function deployMockZap(name) {
-  const [deployer] = await ethers.getSigners();
-  const zap = await deployMockContract(deployer, IZap.abi);
-  await zap.mock.NAME.returns(name || "mockZap");
-  await zap.mock.assetAllocations.returns([]);
-  await zap.mock.erc20Allocations.returns([]);
-  await zap.mock.deployLiquidity.returns();
+  const TestZap = await ethers.getContractFactory("TestZap");
+  const zap = await TestZap.deploy(name || "mockZap");
   return zap;
 }
 
@@ -92,7 +87,7 @@ describe("Contract: LpAccount", () => {
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     proxyAdmin = await ProxyAdmin.deploy();
 
-    const LpAccount = await ethers.getContractFactory("LpAccount");
+    const LpAccount = await ethers.getContractFactory("TestLpAccount");
     const logic = await LpAccount.deploy();
 
     const initData = LpAccount.interface.encodeFunctionData(
@@ -285,7 +280,7 @@ describe("Contract: LpAccount", () => {
     });
   });
 
-  describe.only("deployStrategy", () => {
+  describe("Deploying and unwinding", () => {
     before("Setup TvlManager", async () => {
       const [deployer] = await ethers.getSigners();
       const tvlManager = await deployMockContract(deployer, TvlManager.abi);
@@ -310,48 +305,102 @@ describe("Contract: LpAccount", () => {
       );
     });
 
-    it("Revert on unregistered name", async () => {
-      const zap = await deployMockZap();
+    describe("deployStrategy", () => {
+      it("Revert on unregistered name", async () => {
+        const zap = await deployMockZap();
 
-      const name = await zap.NAME();
-      const amounts = [];
+        const name = await zap.NAME();
+        const amounts = [];
 
-      await expect(
-        lpAccount.connect(lpSafe).deployStrategy(name, amounts)
-      ).to.be.revertedWith("INVALID_NAME");
+        await expect(
+          lpAccount.connect(lpSafe).deployStrategy(name, amounts)
+        ).to.be.revertedWith("INVALID_NAME");
+      });
+
+      it("LP Safe can call", async () => {
+        const zap = await deployMockZap();
+        await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+        const name = await zap.NAME();
+        const amounts = [];
+
+        await expect(lpAccount.connect(lpSafe).deployStrategy(name, amounts)).to
+          .not.be.reverted;
+      });
+
+      it("Unpermissioned cannot call", async () => {
+        const zap = await deployMockZap();
+        await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+        const name = await zap.NAME();
+        const amounts = [];
+
+        await expect(
+          lpAccount.connect(randomUser).deployStrategy(name, amounts)
+        ).to.be.revertedWith("NOT_LP_ROLE");
+      });
+
+      it("can deploy", async () => {
+        const zap = await deployMockZap();
+        await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+        const name = await zap.NAME();
+        const amounts = [
+          tokenAmountToBigNumber(1),
+          tokenAmountToBigNumber(2),
+          tokenAmountToBigNumber(3),
+        ];
+
+        await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
+        expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
+      });
     });
 
-    it("LP Safe can call", async () => {
-      const zap = await deployMockZap();
-      await lpAccount.connect(adminSafe).registerZap(zap.address);
+    describe("unwindStrategy", () => {
+      it("Revert on unregistered name", async () => {
+        const zap = await deployMockZap();
 
-      const name = await zap.NAME();
-      const amounts = [];
+        const name = await zap.NAME();
+        const amount = tokenAmountToBigNumber(100);
 
-      await expect(lpAccount.connect(lpSafe).deployStrategy(name, amounts)).to
-        .not.be.reverted;
-    });
+        await expect(
+          lpAccount.connect(lpSafe).unwindStrategy(name, amount)
+        ).to.be.revertedWith("INVALID_NAME");
+      });
 
-    it("Unpermissioned cannot call", async () => {
-      const zap = await deployMockZap();
-      await lpAccount.connect(adminSafe).registerZap(zap.address);
+      it("LP Safe can call", async () => {
+        const zap = await deployMockZap();
+        await lpAccount.connect(adminSafe).registerZap(zap.address);
 
-      const name = await zap.NAME();
-      const amounts = [];
+        const name = await zap.NAME();
+        const amount = tokenAmountToBigNumber(100);
 
-      await expect(
-        lpAccount.connect(randomUser).deployStrategy(name, amounts)
-      ).to.be.revertedWith("NOT_LP_ROLE");
-    });
+        await expect(lpAccount.connect(lpSafe).unwindStrategy(name, amount)).to
+          .not.be.reverted;
+      });
 
-    it("can deploy", async () => {
-      const zap = await deployMockZap();
-      await lpAccount.connect(adminSafe).registerZap(zap.address);
+      it("Unpermissioned cannot call", async () => {
+        const zap = await deployMockZap();
+        await lpAccount.connect(adminSafe).registerZap(zap.address);
 
-      const name = await zap.NAME();
-      const amounts = [];
+        const name = await zap.NAME();
+        const amount = tokenAmountToBigNumber(100);
 
-      await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
+        await expect(
+          lpAccount.connect(randomUser).unwindStrategy(name, amount)
+        ).to.be.revertedWith("NOT_LP_ROLE");
+      });
+
+      it("can unwind", async () => {
+        const zap = await deployMockZap();
+        await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+        const name = await zap.NAME();
+        const amount = tokenAmountToBigNumber(100);
+
+        await lpAccount.connect(lpSafe).unwindStrategy(name, amount);
+        expect(await lpAccount._unwindCalls()).to.deep.equal([amount]);
+      });
     });
   });
 });
