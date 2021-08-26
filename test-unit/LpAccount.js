@@ -11,26 +11,30 @@ const {
 } = require("../utils/helpers");
 
 const IAssetAllocation = artifacts.readArtifactSync("IAssetAllocation");
+const IZap = artifacts.readArtifactSync("IZap");
 const IAddressRegistryV2 = artifacts.readArtifactSync("IAddressRegistryV2");
 
-async function generateContractAddress(signer) {
-  const contract = await deployMockAllocation(signer, []);
+async function generateContractAddress() {
+  const [deployer] = await ethers.getSigners();
+  const contract = await deployMockContract(deployer, []);
   return contract.address;
 }
 
-async function deployMockAllocation(signer, name) {
-  const allocation = await deployMockContract(signer, IAssetAllocation.abi);
+async function deployMockAllocation(name) {
+  const [deployer] = await ethers.getSigners();
+  const allocation = await deployMockContract(deployer, IAssetAllocation.abi);
   await allocation.mock.NAME.returns(name || "mockAllocation");
   return allocation;
 }
 
-async function deployMockZap(signer, name) {
-  const zap = await deployMockContract(signer, IZap.abi);
+async function deployMockZap(name) {
+  const [deployer] = await ethers.getSigners();
+  const zap = await deployMockContract(deployer, IZap.abi);
   await zap.mock.NAME.returns(name || "mockZap");
   return zap;
 }
 
-describe.only("Contract: LpAccount", () => {
+describe("Contract: LpAccount", () => {
   // signers
   let deployer;
   let lpSafe;
@@ -223,6 +227,30 @@ describe.only("Contract: LpAccount", () => {
       await expect(
         lpAccount.connect(emergencySafe).emergencySetAdminAddress(ZERO_ADDRESS)
       ).to.be.revertedWith("INVALID_ADMIN");
+    });
+  });
+
+  describe("registerZap", () => {
+    it("can register", async () => {
+      expect(await lpAccount.names()).to.be.empty;
+
+      const zap = await deployMockZap();
+      const name = await zap.NAME();
+      await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+      expect(await lpAccount.names()).to.deep.equal([name]);
+    });
+  });
+
+  describe("removeZap", () => {
+    it("can remove", async () => {
+      const zap = await deployMockZap();
+      const name = await zap.NAME();
+      await lpAccount.connect(adminSafe).registerZap(zap.address);
+      expect(await lpAccount.names()).to.deep.equal([name]);
+
+      await lpAccount.connect(adminSafe).removeZap(name);
+      expect(await lpAccount.names()).to.deep.equal([]);
     });
   });
 });
