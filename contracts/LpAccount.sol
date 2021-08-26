@@ -157,6 +157,8 @@ contract LpAccount is
         onlyLpRole
     {
         address zap = address(_zaps.get(name));
+        require(zap != address(0), "INVALID_NAME");
+
         zap.functionDelegateCall(
             abi.encodeWithSelector(IZap.unwindLiquidity.selector, amount)
         );
