@@ -2,41 +2,40 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
+import {MetaPoolToken} from "contracts/MetaPoolToken.sol";
+
 import {
-    ReentrancyGuardUpgradeSafe
-} from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
-import {
-    PausableUpgradeSafe
-} from "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
-import {
-    Address
-} from "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
-import {
-    Initializable
-} from "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import {
-    ERC20UpgradeSafe
-} from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
-import {
-    SafeMath
-} from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import {
+    Address,
+    SafeMath,
     SignedSafeMath
-} from "@openzeppelin/contracts-ethereum-package/contracts/math/SignedSafeMath.sol";
+} from "contracts/imports/LibraryImports.sol";
+
 import {
-    AggregatorV3Interface
-} from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
-import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
-import {IPoolToken} from "./interfaces/IPoolToken.sol";
-import {ILiquidityPoolV2} from "./interfaces/ILiquidityPoolV2.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import {IDetailedERC20} from "./interfaces/IDetailedERC20.sol";
-import {IReservePool} from "./interfaces/IReservePool.sol";
-import {IWithdrawFeePool} from "./interfaces/IWithdrawFeePool.sol";
-import {ILockingPool} from "./interfaces/ILockingPool.sol";
-import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
-import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
-import {MetaPoolToken} from "./MetaPoolToken.sol";
+    SafeERC20,
+    IDetailedERC20,
+    IAddressRegistryV2
+} from "contracts/imports/CommonImports.sol";
+
+import {
+    AggregatorV3Interface,
+    IOracleAdapter
+} from "contracts/imports/OracleImports.sol";
+
+import {
+    Initializable,
+    ERC20UpgradeSafe,
+    ReentrancyGuardUpgradeSafe,
+    PausableUpgradeSafe,
+    AccessControlUpgradeSafe
+} from "contracts/imports/UpgradeImports.sol";
+
+import {
+    IReservePool,
+    IWithdrawFeePool,
+    ILockingPool,
+    IPoolToken,
+    ILiquidityPoolV2
+} from "contracts/imports/PoolTokenV2Imports.sol";
 
 /**
  * @title APY.Finance Pool Token

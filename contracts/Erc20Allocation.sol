@@ -2,15 +2,18 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
-import {AssetAllocationBase} from "./AssetAllocationBase.sol";
-import {INameIdentifier} from "./interfaces/INameIdentifier.sol";
-import {IErc20Allocation} from "./interfaces/IErc20Allocation.sol";
-import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IDetailedERC20} from "./interfaces/IDetailedERC20.sol";
-import {AccessControl} from "./utils/AccessControl.sol";
+import {Address, EnumerableSet} from "contracts/imports/LibraryImports.sol";
+
+import {
+    IERC20,
+    IDetailedERC20,
+    INameIdentifier,
+    IAddressRegistryV2,
+    AccessControl
+} from "contracts/imports/CommonImports.sol";
+
+import {IErc20Allocation} from "contracts/interfaces/IErc20Allocation.sol";
+import {AssetAllocationBase} from "contracts/common/AssetAllocationBase.sol";
 
 abstract contract Erc20AllocationConstants is INameIdentifier {
     string public constant override NAME = "erc20Allocation";

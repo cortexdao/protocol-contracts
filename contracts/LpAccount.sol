@@ -2,26 +2,27 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {Address, NamedAddressSet} from "contracts/imports/LibraryImports.sol";
+
+import {IAddressRegistryV2} from "contracts/imports/CommonImports.sol";
+
 import {
-    Initializable
-} from "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
+    IErc20Allocation,
+    IAssetAllocationRegistry,
+    Erc20AllocationConstants
+} from "contracts/imports/TvlManagerImports.sol";
+
 import {
-    ReentrancyGuardUpgradeSafe
-} from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
-import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
-import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IAssetAllocation} from "./interfaces/IAssetAllocation.sol";
-import {IErc20Allocation} from "./interfaces/IErc20Allocation.sol";
+    Initializable,
+    ReentrancyGuardUpgradeSafe,
+    AccessControlUpgradeSafe
+} from "contracts/imports/UpgradeImports.sol";
+
 import {
-    IAssetAllocationRegistry
-} from "./interfaces/IAssetAllocationRegistry.sol";
-import {Erc20AllocationConstants} from "./Erc20Allocation.sol";
-import {NamedAddressSet} from "./libraries/NamedAddressSet.sol";
-import {IZap} from "./interfaces/IZap.sol";
-import {ILpAccount} from "./interfaces/ILpAccount.sol";
-import {IZapRegistry} from "./interfaces/IZapRegistry.sol";
+    IZap,
+    ILpAccount,
+    IZapRegistry
+} from "contracts/imports/LpAccountImports.sol";
 
 contract LpAccount is
     Initializable,
@@ -200,7 +201,7 @@ contract LpAccount is
      * @param addressRegistry_ the address of the registry
      */
     function _setAddressRegistry(address addressRegistry_) internal {
-        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
+        require(addressRegistry_.isContract(), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
         emit AddressRegistryChanged(addressRegistry_);
     }

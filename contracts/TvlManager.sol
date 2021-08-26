@@ -2,20 +2,22 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
+import {NamedAddressSet} from "contracts/imports/LibraryImports.sol";
+
 import {
-    ReentrancyGuard
-} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {AccessControl} from "./utils/AccessControl.sol";
-import {IAssetAllocation} from "./interfaces/IAssetAllocation.sol";
-import {NamedAddressSet} from "./libraries/NamedAddressSet.sol";
+    IAddressRegistryV2,
+    ReentrancyGuard,
+    AccessControl
+} from "contracts/imports/CommonImports.sol";
+
+import {ILockingOracle} from "contracts/imports/OracleImports.sol";
+
 import {
-    IAssetAllocationRegistry
-} from "./interfaces/IAssetAllocationRegistry.sol";
-import {Erc20AllocationConstants} from "./Erc20Allocation.sol";
-import {IChainlinkRegistry} from "./interfaces/IChainlinkRegistry.sol";
-import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
-import {ILockingOracle} from "./interfaces/ILockingOracle.sol";
-import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
+    IAssetAllocation,
+    IChainlinkRegistry,
+    IAssetAllocationRegistry,
+    Erc20AllocationConstants
+} from "contracts/imports/TvlManagerImports.sol";
 
 /**
  r @title TVL Manager
@@ -263,7 +265,6 @@ contract TvlManager is
 
         return (assetAllocation, tokenIndex);
     }
-
 
     function _getAssetAllocationIdCount(IAssetAllocation[] memory allocations)
         internal

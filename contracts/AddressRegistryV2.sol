@@ -8,7 +8,7 @@ import {
 import {
     Initializable
 } from "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
+import {IAddressRegistryV2} from "contracts/interfaces/IAddressRegistryV2.sol";
 
 /**
  * @title APY.Finance's address registry

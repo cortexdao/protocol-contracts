@@ -3,36 +3,36 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import {
-    Address
-} from "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
+    Address,
+    SafeMath,
+    SignedSafeMath
+} from "contracts/imports/LibraryImports.sol";
+
 import {
-    SafeMath
-} from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import {SignedSafeMath} from "@openzeppelin/contracts/math/SignedSafeMath.sol";
+    SafeERC20,
+    IDetailedERC20,
+    IAddressRegistryV2
+} from "contracts/imports/CommonImports.sol";
+
+import {ILockingOracle} from "contracts/imports/OracleImports.sol";
+
+import {IReservePool} from "contracts/imports/PoolTokenV2Imports.sol";
+
 import {
-    Initializable
-} from "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
+    IErc20Allocation,
+    IAssetAllocationRegistry,
+    Erc20AllocationConstants
+} from "contracts/imports/TvlManagerImports.sol";
+
 import {
-    PausableUpgradeSafe
-} from "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
-import {
-    ReentrancyGuardUpgradeSafe
-} from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
-import {IDetailedERC20} from "./interfaces/IDetailedERC20.sol";
-import {
-    ERC20UpgradeSafe
-} from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
-import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
-import {ILockingOracle} from "./interfaces/ILockingOracle.sol";
-import {ILpFunder} from "./interfaces/ILpFunder.sol";
-import {
-    IAssetAllocationRegistry
-} from "./interfaces/IAssetAllocationRegistry.sol";
-import {IErc20Allocation} from "./interfaces/IErc20Allocation.sol";
-import {Erc20AllocationConstants} from "./Erc20Allocation.sol";
-import {IReservePool} from "./interfaces/IReservePool.sol";
+    Initializable,
+    ERC20UpgradeSafe,
+    ReentrancyGuardUpgradeSafe,
+    PausableUpgradeSafe,
+    AccessControlUpgradeSafe
+} from "contracts/imports/UpgradeImports.sol";
+
+import {ILpFunder} from "contracts/interfaces/ILpFunder.sol";
 
 /**
  * @title Meta Pool Token
