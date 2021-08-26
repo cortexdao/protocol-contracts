@@ -52,7 +52,7 @@ describe("Contract: LpAccount", () => {
   let snapshotId;
 
   beforeEach(async () => {
-    let snapshot = await timeMachine.takeSnapshot();
+    const snapshot = await timeMachine.takeSnapshot();
     snapshotId = snapshot["result"];
   });
 
@@ -256,7 +256,7 @@ describe("Contract: LpAccount", () => {
     let zap;
     let name;
 
-    before("Register a zap", async () => {
+    beforeEach("Register a zap", async () => {
       zap = await deployMockZap();
       name = await zap.NAME();
       await lpAccount.connect(adminSafe).registerZap(zap.address);
