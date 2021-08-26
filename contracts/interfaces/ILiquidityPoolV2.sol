@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import {IDetailedERC20} from "./IDetailedERC20.sol";
 
 /**
  * @title Interface for APY.Finance liquidity pools
@@ -11,40 +12,14 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * pool can be computed.
  */
 interface ILiquidityPoolV2 {
-    event DepositedAPT(
-        address indexed sender,
-        IERC20 token,
-        uint256 tokenAmount,
-        uint256 aptMintAmount,
-        uint256 tokenEthValue,
-        uint256 totalEthValueLocked
-    );
-    event RedeemedAPT(
-        address indexed sender,
-        IERC20 token,
-        uint256 redeemedTokenAmount,
-        uint256 aptRedeemAmount,
-        uint256 tokenEthValue,
-        uint256 totalEthValueLocked
-    );
-    event AddLiquidityLocked();
-    event AddLiquidityUnlocked();
-    event RedeemLocked();
-    event RedeemUnlocked();
+    function underlyer() external view returns (IDetailedERC20);
 
-    event FeePeriodChanged(uint256);
-    event FeePercentageChanged(uint256);
-    event ReservePercentageChanged(uint256);
+    function getPoolTotalValue() external view returns (uint256);
 
-    /**
-     * @notice Mint corresponding amount of APT tokens for deposited stablecoin.
-     * @param amount Amount to deposit of the underlying stablecoin
-     */
-    function addLiquidity(uint256 amount) external;
+    function getValueFromUnderlyerAmount(uint256 underlyerAmount)
+        external
+        view
+        returns (uint256);
 
-    /**
-     * @notice Redeems APT amount for its underlying stablecoin amount.
-     * @param tokenAmount The amount of APT tokens to redeem
-     */
-    function redeem(uint256 tokenAmount) external;
+    function getUnderlyerPrice() external view returns (uint256);
 }

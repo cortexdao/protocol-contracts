@@ -13,8 +13,8 @@ const {
 const IAssetAllocation = artifacts.readArtifactSync("IAssetAllocation");
 const Erc20Allocation = artifacts.readArtifactSync("Erc20Allocation");
 const IAddressRegistryV2 = artifacts.readArtifactSync("IAddressRegistryV2");
-const IOracleAdapter = artifacts.readArtifactSync("IOracleAdapter");
 const INameIdentifier = artifacts.readArtifactSync("INameIdentifier");
+const ILockingOracle = artifacts.readArtifactSync("ILockingOracle");
 
 async function generateContractAddress(signer, name) {
   const mockContract = await deployMockContract(signer, INameIdentifier.abi);
@@ -73,7 +73,7 @@ describe("Contract: TvlManager", () => {
       IAddressRegistryV2.abi
     );
 
-    oracleAdapter = await deployMockContract(deployer, IOracleAdapter.abi);
+    oracleAdapter = await deployMockContract(deployer, ILockingOracle.abi);
     await addressRegistry.mock.oracleAdapterAddress.returns(
       oracleAdapter.address
     );

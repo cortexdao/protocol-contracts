@@ -97,7 +97,7 @@ contract AddressRegistryV2 is
     function registerMultipleAddresses(
         bytes32[] calldata ids,
         address[] calldata addresses
-    ) external onlyOwner {
+    ) external override onlyOwner {
         require(ids.length == addresses.length, "Inputs have differing length");
         for (uint256 i = 0; i < ids.length; i++) {
             bytes32 id = ids[i];
@@ -107,26 +107,10 @@ contract AddressRegistryV2 is
     }
 
     /**
-     * @notice Register address with identifier.
-     * @dev Using an existing ID will replace the old address with new.
-     * Currently there is no way to remove an ID, as attempting to
-     * register the zero address will revert.
-     */
-    function registerAddress(bytes32 id, address address_) public onlyOwner {
-        require(address_ != address(0), "Invalid address");
-        if (_idToAddress[id] == address(0)) {
-            // id wasn't registered before, so add it to the list
-            _idList.push(id);
-        }
-        _idToAddress[id] = address_;
-        emit AddressRegistered(id, address_);
-    }
-
-    /**
      * @dev Delete the address corresponding to the identifier.
      * Time-complexity is O(n) where n is the length of `_idList`.
      */
-    function deleteAddress(bytes32 id) external onlyOwner {
+    function deleteAddress(bytes32 id) external override onlyOwner {
         for (uint256 i = 0; i < _idList.length; i++) {
             if (_idList[i] == id) {
                 // copy last element to slot i and shorten array
@@ -234,6 +218,26 @@ contract AddressRegistryV2 is
 
     function oracleAdapterAddress() external view override returns (address) {
         return getAddress("oracleAdapter");
+    }
+
+    /**
+     * @notice Register address with identifier.
+     * @dev Using an existing ID will replace the old address with new.
+     * Currently there is no way to remove an ID, as attempting to
+     * register the zero address will revert.
+     */
+    function registerAddress(bytes32 id, address address_)
+        public
+        override
+        onlyOwner
+    {
+        require(address_ != address(0), "Invalid address");
+        if (_idToAddress[id] == address(0)) {
+            // id wasn't registered before, so add it to the list
+            _idList.push(id);
+        }
+        _idToAddress[id] = address_;
+        emit AddressRegistered(id, address_);
     }
 
     function _setAdminAddress(address adminAddress) internal {

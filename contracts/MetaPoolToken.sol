@@ -25,14 +25,14 @@ import {
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
-import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
+import {ILockingOracle} from "./interfaces/ILockingOracle.sol";
 import {ILpFunder} from "./interfaces/ILpFunder.sol";
 import {
     IAssetAllocationRegistry
 } from "./interfaces/IAssetAllocationRegistry.sol";
 import {IErc20Allocation} from "./interfaces/IErc20Allocation.sol";
 import {Erc20AllocationConstants} from "./Erc20Allocation.sol";
-import {PoolTokenV2} from "./PoolTokenV2.sol";
+import {IReservePool} from "./interfaces/IReservePool.sol";
 
 /**
  * @title Meta Pool Token
@@ -192,7 +192,7 @@ contract MetaPoolToken is
         nonReentrant
         onlyLpRole
     {
-        (PoolTokenV2[] memory pools, int256[] memory amounts) =
+        (IReservePool[] memory pools, int256[] memory amounts) =
             getRebalanceAmounts(poolIds);
 
         uint256[] memory fundAmounts = _getFundAmounts(amounts);
@@ -203,7 +203,7 @@ contract MetaPoolToken is
     }
 
     function emergencyFundLp(
-        PoolTokenV2[] calldata pools,
+        IReservePool[] calldata pools,
         uint256[] calldata amounts
     ) external override nonReentrant onlyEmergencyRole {
         _fundLp(pools, amounts);
@@ -216,7 +216,7 @@ contract MetaPoolToken is
         nonReentrant
         onlyLpRole
     {
-        (PoolTokenV2[] memory pools, int256[] memory amounts) =
+        (IReservePool[] memory pools, int256[] memory amounts) =
             getRebalanceAmounts(poolIds);
 
         uint256[] memory withdrawAmounts = _getWithdrawAmounts(amounts);
@@ -226,34 +226,11 @@ contract MetaPoolToken is
     }
 
     function emergencyWithdrawLp(
-        PoolTokenV2[] calldata pools,
+        IReservePool[] calldata pools,
         uint256[] calldata amounts
     ) external override nonReentrant onlyEmergencyRole {
         _withdrawLp(pools, amounts);
         emit EmergencyWithdrawLp(pools, amounts);
-    }
-
-    /**
-     * @notice Calculate amount in pool's underlyer token from given mAPT amount.
-     * @param mAptAmount mAPT amount to be converted
-     * @param tokenPrice Pool underlyer's USD price (in wei) per underlyer token
-     * @param decimals Pool underlyer's number of decimals
-     * @dev Price parameter is in units of wei per token ("big" unit), since
-     * attempting to express wei per token bit ("small" unit) will be
-     * fractional, requiring fixed-point representation.  This means we need
-     * to also pass in the underlyer's number of decimals to do the appropriate
-     * multiplication in the calculation.
-     */
-    function calculatePoolAmount(
-        uint256 mAptAmount,
-        uint256 tokenPrice,
-        uint256 decimals
-    ) external view returns (uint256) {
-        if (mAptAmount == 0) return 0;
-        require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        uint256 poolValue = mAptAmount.mul(_getTvl()).div(totalSupply());
-        uint256 poolAmount = poolValue.mul(10**decimals).div(tokenPrice);
-        return poolAmount;
     }
 
     /**
@@ -280,14 +257,14 @@ contract MetaPoolToken is
     function getRebalanceAmounts(bytes32[] memory poolIds)
         public
         view
-        returns (PoolTokenV2[] memory, int256[] memory)
+        returns (IReservePool[] memory, int256[] memory)
     {
-        PoolTokenV2[] memory pools = new PoolTokenV2[](poolIds.length);
+        IReservePool[] memory pools = new IReservePool[](poolIds.length);
         int256[] memory rebalanceAmounts = new int256[](poolIds.length);
 
         for (uint256 i = 0; i < poolIds.length; i++) {
-            PoolTokenV2 pool =
-                PoolTokenV2(addressRegistry.getAddress(poolIds[i]));
+            IReservePool pool =
+                IReservePool(addressRegistry.getAddress(poolIds[i]));
             int256 rebalanceAmount = pool.getReserveTopUpValue();
 
             pools[i] = pool;
@@ -297,7 +274,7 @@ contract MetaPoolToken is
         return (pools, rebalanceAmounts);
     }
 
-    function _fundLp(PoolTokenV2[] memory pools, uint256[] memory amounts)
+    function _fundLp(IReservePool[] memory pools, uint256[] memory amounts)
         internal
     {
         address lpSafeAddress = addressRegistry.lpSafeAddress();
@@ -308,7 +285,7 @@ contract MetaPoolToken is
     }
 
     function _multipleMintAndTransfer(
-        PoolTokenV2[] memory pools,
+        IReservePool[] memory pools,
         uint256[] memory amounts
     ) internal {
         uint256[] memory deltas = _calculateDeltas(pools, amounts);
@@ -320,18 +297,18 @@ contract MetaPoolToken is
         // Using the pre-mint TVL and totalSupply gives the same answer
         // as using post-mint values.
         for (uint256 i = 0; i < pools.length; i++) {
-            PoolTokenV2 pool = pools[i];
+            IReservePool pool = pools[i];
             uint256 mintAmount = deltas[i];
             uint256 transferAmount = amounts[i];
             _mintAndTransfer(pool, mintAmount, transferAmount);
         }
 
-        IOracleAdapter oracleAdapter = _getOracleAdapter();
+        ILockingOracle oracleAdapter = _getOracleAdapter();
         oracleAdapter.lock();
     }
 
     function _mintAndTransfer(
-        PoolTokenV2 pool,
+        IReservePool pool,
         uint256 mintAmount,
         uint256 transferAmount
     ) internal {
@@ -343,7 +320,7 @@ contract MetaPoolToken is
         emit Mint(address(pool), mintAmount);
     }
 
-    function _withdrawLp(PoolTokenV2[] memory pools, uint256[] memory amounts)
+    function _withdrawLp(IReservePool[] memory pools, uint256[] memory amounts)
         internal
     {
         address lpSafeAddress = addressRegistry.lpSafeAddress();
@@ -354,7 +331,7 @@ contract MetaPoolToken is
     }
 
     function _multipleBurnAndTransfer(
-        PoolTokenV2[] memory pools,
+        IReservePool[] memory pools,
         uint256[] memory amounts
     ) internal {
         uint256[] memory deltas = _calculateDeltas(pools, amounts);
@@ -367,18 +344,18 @@ contract MetaPoolToken is
         // as using post-burn values.
         address lpSafe = addressRegistry.lpSafeAddress();
         for (uint256 i = 0; i < pools.length; i++) {
-            PoolTokenV2 pool = pools[i];
+            IReservePool pool = pools[i];
             uint256 burnAmount = deltas[i];
             uint256 transferAmount = amounts[i];
             _burnAndTransfer(pool, lpSafe, burnAmount, transferAmount);
         }
 
-        IOracleAdapter oracleAdapter = _getOracleAdapter();
+        ILockingOracle oracleAdapter = _getOracleAdapter();
         oracleAdapter.lock();
     }
 
     function _burnAndTransfer(
-        PoolTokenV2 pool,
+        IReservePool pool,
         address lpSafe,
         uint256 burnAmount,
         uint256 transferAmount
@@ -396,7 +373,7 @@ contract MetaPoolToken is
      * @notice Register an asset allocation for the account with each pool underlyer
      * @param pools list of pool amounts whose pool underlyers will be registered
      */
-    function _registerPoolUnderlyers(PoolTokenV2[] memory pools) internal {
+    function _registerPoolUnderlyers(IReservePool[] memory pools) internal {
         IAssetAllocationRegistry tvlManager =
             IAssetAllocationRegistry(addressRegistry.getAddress("tvlManager"));
         IErc20Allocation erc20Allocation =
@@ -432,24 +409,24 @@ contract MetaPoolToken is
      * @return "Total Value Locked", the USD value of all APY Finance assets.
      */
     function _getTvl() internal view returns (uint256) {
-        IOracleAdapter oracleAdapter = _getOracleAdapter();
+        ILockingOracle oracleAdapter = _getOracleAdapter();
         return oracleAdapter.getTvl();
     }
 
-    function _getOracleAdapter() internal view returns (IOracleAdapter) {
+    function _getOracleAdapter() internal view returns (ILockingOracle) {
         address oracleAdapterAddress = addressRegistry.oracleAdapterAddress();
-        return IOracleAdapter(oracleAdapterAddress);
+        return ILockingOracle(oracleAdapterAddress);
     }
 
     function _calculateDeltas(
-        PoolTokenV2[] memory pools,
+        IReservePool[] memory pools,
         uint256[] memory amounts
     ) internal view returns (uint256[] memory) {
         require(pools.length == amounts.length, "LENGTHS_MUST_MATCH");
         uint256[] memory deltas = new uint256[](pools.length);
 
         for (uint256 i = 0; i < pools.length; i++) {
-            PoolTokenV2 pool = pools[i];
+            IReservePool pool = pools[i];
             uint256 amount = amounts[i];
 
             IDetailedERC20 underlyer = pool.underlyer();

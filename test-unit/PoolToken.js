@@ -2,7 +2,6 @@ const { assert, expect } = require("chai");
 const hre = require("hardhat");
 const { artifacts, ethers, waffle } = hre;
 const { deployMockContract } = waffle;
-const { BigNumber } = ethers;
 
 const timeMachine = require("ganache-time-traveler");
 
@@ -410,23 +409,6 @@ describe("Contract: PoolTokenV2", () => {
     });
   });
 
-  describe("getUnderlyerAmountFromValue", () => {
-    it("Returns correct value", async () => {
-      const decimals = 0;
-      await underlyerMock.mock.decimals.returns(decimals);
-      const price = 25;
-      await oracleAdapterMock.mock.getAssetPrice.returns(price);
-      const ethValue = 100;
-      // ((10 ^ 0) * 100) / 25
-      const expectedUnderlyerAmount = BigNumber.from(10 ** decimals)
-        .mul(ethValue)
-        .div(price);
-      expect(await poolToken.getUnderlyerAmountFromValue(ethValue)).to.equal(
-        expectedUnderlyerAmount
-      );
-    });
-  });
-
   describe("getValueFromUnderlyerAmount", () => {
     it("Return 0 for zero amount", async () => {
       expect(await poolToken.getValueFromUnderlyerAmount(0)).to.equal(0);
@@ -447,7 +429,7 @@ describe("Contract: PoolTokenV2", () => {
     });
   });
 
-  describe("getPoolUnderlyerValue", () => {
+  describe("_getPoolUnderlyerValue", () => {
     it("Returns correct value regardless of deployed value", async () => {
       const decimals = 1;
       await underlyerMock.mock.decimals.returns(decimals);
@@ -462,24 +444,41 @@ describe("Contract: PoolTokenV2", () => {
 
       // force zero deployed value
       await mAptMock.mock.getDeployedValue.returns(0);
-      expect(await poolToken.getDeployedValue()).to.equal(0);
-      expect(await poolToken.getPoolUnderlyerValue()).to.equal(expectedValue);
+      expect(await poolToken.testGetDeployedValue()).to.equal(0);
+      expect(await poolToken.testGetPoolUnderlyerValue()).to.equal(
+        expectedValue
+      );
 
       // force non-zero deployed value
       await mAptMock.mock.getDeployedValue.returns(1234);
-      expect(await poolToken.getDeployedValue()).to.be.gt(0);
-      expect(await poolToken.getPoolUnderlyerValue()).to.equal(expectedValue);
+      expect(await poolToken.testGetDeployedValue()).to.be.gt(0);
+      expect(await poolToken.testGetPoolUnderlyerValue()).to.equal(
+        expectedValue
+      );
     });
   });
 
-  describe("getDeployedValue", () => {
+  describe("_getDeployedValue", () => {
     it("Delegates properly to mAPT contract", async () => {
-      await mAptMock.mock.getDeployedValue.returns(0);
-      expect(await poolToken.getDeployedValue()).to.equal(0);
+      await mAptMock.mock.getDeployedValue
+        .withArgs(poolToken.address)
+        .returns(0);
+      expect(await poolToken.testGetDeployedValue()).to.equal(0);
 
       const deployedValue = tokenAmountToBigNumber(12345);
-      await mAptMock.mock.getDeployedValue.returns(deployedValue);
-      expect(await poolToken.getDeployedValue()).to.equal(deployedValue);
+      await mAptMock.mock.getDeployedValue
+        .withArgs(poolToken.address)
+        .returns(deployedValue);
+      expect(await poolToken.testGetDeployedValue()).to.equal(deployedValue);
+    });
+
+    it("Reverts with same reason when mAPT reverts", async () => {
+      await mAptMock.mock.getDeployedValue
+        .withArgs(poolToken.address)
+        .revertsWithReason("SOMETHING_WRONG");
+      await expect(poolToken.testGetDeployedValue()).to.be.revertedWith(
+        "SOMETHING_WRONG"
+      );
     });
   });
 
@@ -561,7 +560,7 @@ describe("Contract: PoolTokenV2", () => {
       const aptSupply = tokenAmountToBigNumber(10000);
       await poolToken.testMint(deployer.address, aptSupply);
 
-      const poolUnderlyerValue = await poolToken.getPoolUnderlyerValue();
+      const poolUnderlyerValue = await poolToken.testGetPoolUnderlyerValue();
       const topUpValue = await poolToken.getReserveTopUpValue();
       expect(topUpValue).to.be.lt(0);
 
@@ -611,7 +610,7 @@ describe("Contract: PoolTokenV2", () => {
       const deployedValue = tokenAmountToBigNumber(500);
       await mAptMock.mock.getDeployedValue.returns(deployedValue);
 
-      const poolUnderlyerValue = await poolToken.getPoolUnderlyerValue();
+      const poolUnderlyerValue = await poolToken.testGetPoolUnderlyerValue();
       const topUpValue = await poolToken.getReserveTopUpValue();
       expect(topUpValue).to.be.gt(0);
 
@@ -639,7 +638,7 @@ describe("Contract: PoolTokenV2", () => {
       const deployedValue = tokenAmountToBigNumber(20);
       await mAptMock.mock.getDeployedValue.returns(deployedValue);
 
-      const poolUnderlyerValue = await poolToken.getPoolUnderlyerValue();
+      const poolUnderlyerValue = await poolToken.testGetPoolUnderlyerValue();
       const topUpValue = await poolToken.getReserveTopUpValue();
       expect(topUpValue).to.be.lt(0);
 

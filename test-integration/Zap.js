@@ -55,7 +55,7 @@ describe("Zaps", () => {
 
     const oracleAdapter = await deployMockContract(
       deployer,
-      artifacts.require("IOracleAdapter").abi
+      artifacts.require("ILockingOracle").abi
     );
     await oracleAdapter.mock.lock.returns();
     await addressRegistry.mock.oracleAdapterAddress.returns(
@@ -85,10 +85,10 @@ describe("Zaps", () => {
      * - emergencySafe (emergency role, default admin role)
      */
     TvlManager = await ethers.getContractFactory("TvlManager");
-    tvlManager = await TvlManager.deploy(
-      addressRegistry.address,
-    );
-    await tvlManager.connect(lpSafe).registerAssetAllocation(erc20Allocation.address)
+    tvlManager = await TvlManager.deploy(addressRegistry.address);
+    await tvlManager
+      .connect(lpSafe)
+      .registerAssetAllocation(erc20Allocation.address);
   });
 
   describe("Curve 3Pool", () => {

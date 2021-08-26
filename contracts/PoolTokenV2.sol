@@ -27,9 +27,13 @@ import {
     AggregatorV3Interface
 } from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
+import {IPoolToken} from "./interfaces/IPoolToken.sol";
 import {ILiquidityPoolV2} from "./interfaces/ILiquidityPoolV2.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {IDetailedERC20} from "./interfaces/IDetailedERC20.sol";
+import {IReservePool} from "./interfaces/IReservePool.sol";
+import {IWithdrawFeePool} from "./interfaces/IWithdrawFeePool.sol";
+import {ILockingPool} from "./interfaces/ILockingPool.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
 import {IOracleAdapter} from "./interfaces/IOracleAdapter.sol";
 import {MetaPoolToken} from "./MetaPoolToken.sol";
@@ -70,6 +74,10 @@ import {MetaPoolToken} from "./MetaPoolToken.sol";
  */
 contract PoolTokenV2 is
     ILiquidityPoolV2,
+    IPoolToken,
+    IReservePool,
+    IWithdrawFeePool,
+    ILockingPool,
     Initializable,
     AccessControlUpgradeSafe,
     ReentrancyGuardUpgradeSafe,
@@ -96,7 +104,7 @@ contract PoolTokenV2 is
     /** @notice true if withdrawing is locked */
     bool public redeemLock;
     /** @notice underlying stablecoin */
-    IDetailedERC20 public underlyer;
+    IDetailedERC20 public override underlyer;
     /** @notice USD price feed for the stablecoin */
     // AggregatorV3Interface public priceAgg; <-- removed in V2
 
@@ -107,13 +115,13 @@ contract PoolTokenV2 is
      */
     IAddressRegistryV2 public addressRegistry;
     /** @notice seconds since last deposit during which withdrawal fee is charged */
-    uint256 public feePeriod;
+    uint256 public override feePeriod;
     /** @notice percentage charged for withdrawal fee */
-    uint256 public feePercentage;
+    uint256 public override feePercentage;
     /** @notice time of last deposit */
     mapping(address => uint256) public lastDepositTime;
     /** @notice percentage of pool total value available for immediate withdrawal */
-    uint256 public reservePercentage;
+    uint256 public override reservePercentage;
 
     /* ------------------------------- */
 
@@ -176,11 +184,7 @@ contract PoolTokenV2 is
      * this function can only be called as part of a delegate call
      * during upgrades, i.e. in ProxyAdmin's `upgradeAndCall`.
      */
-    function initializeUpgrade(address addressRegistry_)
-        external
-        virtual
-        onlyAdmin
-    {
+    function initializeUpgrade(address addressRegistry_) external onlyAdmin {
         _setAddressRegistry(addressRegistry_);
 
         // Sadly, the AccessControl init is protected by `initializer` so can't
@@ -204,7 +208,7 @@ contract PoolTokenV2 is
      * @notice Disable both depositing and withdrawals.
      * Note that `addLiquidity` and `redeem` also have individual locks.
      */
-    function emergencyLock() external onlyEmergencyRole {
+    function emergencyLock() external override onlyEmergencyRole {
         _pause();
     }
 
@@ -212,7 +216,7 @@ contract PoolTokenV2 is
      * @notice Re-enable both depositing and withdrawals.
      * Note that `addLiquidity` and `redeem` also have individual locks.
      */
-    function emergencyUnlock() external onlyEmergencyRole {
+    function emergencyUnlock() external override onlyEmergencyRole {
         _unpause();
     }
 
@@ -223,7 +227,6 @@ contract PoolTokenV2 is
      */
     function addLiquidity(uint256 depositAmount)
         external
-        virtual
         override
         nonReentrant
         whenNotPaused
@@ -257,13 +260,13 @@ contract PoolTokenV2 is
     }
 
     /** @notice Disable deposits. */
-    function emergencyLockAddLiquidity() external onlyEmergencyRole {
+    function emergencyLockAddLiquidity() external override onlyEmergencyRole {
         addLiquidityLock = true;
         emit AddLiquidityLocked();
     }
 
     /** @notice Enable deposits. */
-    function emergencyUnlockAddLiquidity() external onlyEmergencyRole {
+    function emergencyUnlockAddLiquidity() external override onlyEmergencyRole {
         addLiquidityLock = false;
         emit AddLiquidityUnlocked();
     }
@@ -275,7 +278,6 @@ contract PoolTokenV2 is
      */
     function redeem(uint256 aptAmount)
         external
-        virtual
         override
         nonReentrant
         whenNotPaused
@@ -304,13 +306,13 @@ contract PoolTokenV2 is
     }
 
     /** @notice Disable APT redeeming. */
-    function emergencyLockRedeem() external onlyEmergencyRole {
+    function emergencyLockRedeem() external override onlyEmergencyRole {
         redeemLock = true;
         emit RedeemLocked();
     }
 
     /** @notice Enable APT redeeming. */
-    function emergencyUnlockRedeem() external onlyEmergencyRole {
+    function emergencyUnlockRedeem() external override onlyEmergencyRole {
         redeemLock = false;
         emit RedeemUnlocked();
     }
@@ -322,6 +324,7 @@ contract PoolTokenV2 is
      */
     function transferToLpSafe(uint256 amount)
         external
+        override
         nonReentrant
         whenNotPaused
         onlyContractRole
@@ -343,18 +346,23 @@ contract PoolTokenV2 is
         _setAddressRegistry(addressRegistry_);
     }
 
-    function setFeePeriod(uint256 feePeriod_) external onlyAdminRole {
+    function setFeePeriod(uint256 feePeriod_) external override onlyAdminRole {
         feePeriod = feePeriod_;
         emit FeePeriodChanged(feePeriod_);
     }
 
-    function setFeePercentage(uint256 feePercentage_) external onlyAdminRole {
+    function setFeePercentage(uint256 feePercentage_)
+        external
+        override
+        onlyAdminRole
+    {
         feePercentage = feePercentage_;
         emit FeePercentageChanged(feePercentage_);
     }
 
     function setReservePercentage(uint256 reservePercentage_)
         external
+        override
         onlyAdminRole
     {
         reservePercentage = reservePercentage_;
@@ -369,6 +377,7 @@ contract PoolTokenV2 is
     function calculateMintAmount(uint256 depositAmount)
         external
         view
+        override
         returns (uint256)
     {
         uint256 depositValue = getValueFromUnderlyerAmount(depositAmount);
@@ -386,6 +395,7 @@ contract PoolTokenV2 is
     function getUnderlyerAmountWithFee(uint256 aptAmount)
         public
         view
+        override
         returns (uint256)
     {
         uint256 redeemUnderlyerAmt = getUnderlyerAmount(aptAmount);
@@ -404,6 +414,7 @@ contract PoolTokenV2 is
     function getUnderlyerAmount(uint256 aptAmount)
         public
         view
+        override
         returns (uint256)
     {
         if (aptAmount == 0) {
@@ -433,7 +444,7 @@ contract PoolTokenV2 is
      * the waiting period is restarted on each deposit.
      * @return "true" when fee will apply, "false" when it won't.
      */
-    function isEarlyRedeem() public view returns (bool) {
+    function isEarlyRedeem() public view override returns (bool) {
         // solhint-disable-next-line not-rely-on-time
         return block.timestamp.sub(lastDepositTime[msg.sender]) < feePeriod;
     }
@@ -444,29 +455,10 @@ contract PoolTokenV2 is
      * capital that is owed to it.
      * @return USD value
      */
-    function getPoolTotalValue() public view virtual returns (uint256) {
-        uint256 underlyerValue = getPoolUnderlyerValue();
-        uint256 mAptValue = getDeployedValue();
+    function getPoolTotalValue() public view override returns (uint256) {
+        uint256 underlyerValue = _getPoolUnderlyerValue();
+        uint256 mAptValue = _getDeployedValue();
         return underlyerValue.add(mAptValue);
-    }
-
-    /**
-     * @notice Get the USD-denominated value (in bits) of the pool's
-     * underlyer balance.
-     * @return USD value
-     */
-    function getPoolUnderlyerValue() public view virtual returns (uint256) {
-        return getValueFromUnderlyerAmount(underlyer.balanceOf(address(this)));
-    }
-
-    /**
-     * @notice Get the USD-denominated value (in bits) of the pool's share
-     * of the deployed capital, as tracked by the mAPT token.
-     * @return USD value
-     */
-    function getDeployedValue() public view virtual returns (uint256) {
-        MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAptAddress());
-        return mApt.getDeployedValue(address(this));
     }
 
     /**
@@ -474,7 +466,12 @@ contract PoolTokenV2 is
      * @param aptAmount APT amount
      * @return USD value
      */
-    function getAPTValue(uint256 aptAmount) external view returns (uint256) {
+    function getAPTValue(uint256 aptAmount)
+        external
+        view
+        override
+        returns (uint256)
+    {
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
         return aptAmount.mul(getPoolTotalValue()).div(totalSupply());
     }
@@ -487,6 +484,7 @@ contract PoolTokenV2 is
     function getValueFromUnderlyerAmount(uint256 underlyerAmount)
         public
         view
+        override
         returns (uint256)
     {
         if (underlyerAmount == 0) {
@@ -497,25 +495,10 @@ contract PoolTokenV2 is
     }
 
     /**
-     * @notice Get the underlyer amount equivalent to given USD-denominated value (in bits).
-     * @param value USD value
-     * @return amount of underlying stablecoin
-     */
-    function getUnderlyerAmountFromValue(uint256 value)
-        external
-        view
-        returns (uint256)
-    {
-        uint256 underlyerPrice = getUnderlyerPrice();
-        uint256 decimals = underlyer.decimals();
-        return (10**decimals).mul(value).div(underlyerPrice);
-    }
-
-    /**
      * @notice Get the underlyer stablecoin's USD price (in bits).
      * @return USD price
      */
-    function getUnderlyerPrice() public view returns (uint256) {
+    function getUnderlyerPrice() public view override returns (uint256) {
         IOracleAdapter oracleAdapter =
             IOracleAdapter(addressRegistry.oracleAdapterAddress());
         return oracleAdapter.getAssetPrice(address(underlyer));
@@ -558,10 +541,10 @@ contract PoolTokenV2 is
      *
      * @return int256 The underlyer value to top-up the pool's reserve
      */
-    function getReserveTopUpValue() external view returns (int256) {
+    function getReserveTopUpValue() external view override returns (int256) {
         uint256 unnormalizedTargetValue =
-            getDeployedValue().mul(reservePercentage);
-        uint256 unnormalizedUnderlyerValue = getPoolUnderlyerValue().mul(100);
+            _getDeployedValue().mul(reservePercentage);
+        uint256 unnormalizedUnderlyerValue = _getPoolUnderlyerValue().mul(100);
 
         require(unnormalizedTargetValue <= _MAX_INT256, "SIGNED_INT_OVERFLOW");
         require(
@@ -596,7 +579,7 @@ contract PoolTokenV2 is
         address from,
         address to,
         uint256 amount
-    ) internal virtual override {
+    ) internal override {
         super._beforeTokenTransfer(from, to, amount);
         // allow minting and burning
         if (from == address(0) || to == address(0)) return;
@@ -627,5 +610,24 @@ contract PoolTokenV2 is
         }
 
         return (depositValue.mul(totalSupply)).div(poolTotalValue);
+    }
+
+    /**
+     * @notice Get the USD-denominated value (in bits) of the pool's
+     * underlyer balance.
+     * @return USD value
+     */
+    function _getPoolUnderlyerValue() internal view returns (uint256) {
+        return getValueFromUnderlyerAmount(underlyer.balanceOf(address(this)));
+    }
+
+    /**
+     * @notice Get the USD-denominated value (in bits) of the pool's share
+     * of the deployed capital, as tracked by the mAPT token.
+     * @return USD value
+     */
+    function _getDeployedValue() internal view returns (uint256) {
+        MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAptAddress());
+        return mApt.getDeployedValue(address(this));
     }
 }
