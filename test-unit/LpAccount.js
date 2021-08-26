@@ -231,6 +231,19 @@ describe("Contract: LpAccount", () => {
   });
 
   describe("registerZap", () => {
+    it("Admin Safe can call", async () => {
+      const zap = await deployMockZap();
+      await expect(lpAccount.connect(adminSafe).registerZap(zap.address)).to.not
+        .be.reverted;
+    });
+
+    it("Unpermissioned cannot call", async () => {
+      const zap = await deployMockZap();
+      await expect(
+        lpAccount.connect(randomUser).registerZap(zap.address)
+      ).to.be.revertedWith("NOT_ADMIN_ROLE");
+    });
+
     it("can register", async () => {
       expect(await lpAccount.names()).to.be.empty;
 
@@ -243,10 +256,26 @@ describe("Contract: LpAccount", () => {
   });
 
   describe("removeZap", () => {
-    it("can remove", async () => {
-      const zap = await deployMockZap();
-      const name = await zap.NAME();
+    let zap;
+    let name;
+
+    before("Register a zap", async () => {
+      zap = await deployMockZap();
+      name = await zap.NAME();
       await lpAccount.connect(adminSafe).registerZap(zap.address);
+    });
+
+    it("Admin Safe can call", async () => {
+      await expect(lpAccount.connect(adminSafe).removeZap(name)).to.not.be
+        .reverted;
+    });
+
+    it("Unpermissioned cannot call", async () => {
+      await expect(lpAccount.connect(adminSafe).removeZap(name)).to.not.be
+        .reverted;
+    });
+
+    it("can remove", async () => {
       expect(await lpAccount.names()).to.deep.equal([name]);
 
       await lpAccount.connect(adminSafe).removeZap(name);
