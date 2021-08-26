@@ -120,6 +120,7 @@ contract LpAccount is
         onlyLpRole
     {
         IZap zap = _zaps.get(name);
+        require(address(zap) != address(0), "INVALID_NAME");
 
         IAssetAllocationRegistry tvlManager =
             IAssetAllocationRegistry(addressRegistry.getAddress("tvlManager"));

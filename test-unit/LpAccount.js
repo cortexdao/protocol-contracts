@@ -13,6 +13,8 @@ const {
 const IAssetAllocation = artifacts.readArtifactSync("IAssetAllocation");
 const IZap = artifacts.readArtifactSync("IZap");
 const IAddressRegistryV2 = artifacts.readArtifactSync("IAddressRegistryV2");
+const TvlManager = artifacts.readArtifactSync("TvlManager");
+const Erc20Allocation = artifacts.readArtifactSync("Erc20Allocation");
 
 async function generateContractAddress() {
   const [deployer] = await ethers.getSigners();
@@ -31,6 +33,9 @@ async function deployMockZap(name) {
   const [deployer] = await ethers.getSigners();
   const zap = await deployMockContract(deployer, IZap.abi);
   await zap.mock.NAME.returns(name || "mockZap");
+  await zap.mock.assetAllocations.returns([]);
+  await zap.mock.erc20Allocations.returns([]);
+  await zap.mock.deployLiquidity.returns();
   return zap;
 }
 
@@ -47,9 +52,6 @@ describe("Contract: LpAccount", () => {
   let proxyAdmin;
   // mocks
   let addressRegistry;
-  let erc20Allocation;
-
-  const mockSymbol = "MOCK";
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -280,6 +282,76 @@ describe("Contract: LpAccount", () => {
 
       await lpAccount.connect(adminSafe).removeZap(name);
       expect(await lpAccount.names()).to.deep.equal([]);
+    });
+  });
+
+  describe.only("deployStrategy", () => {
+    before("Setup TvlManager", async () => {
+      const [deployer] = await ethers.getSigners();
+      const tvlManager = await deployMockContract(deployer, TvlManager.abi);
+      const erc20Allocation = await deployMockContract(
+        deployer,
+        Erc20Allocation.abi
+      );
+
+      addressRegistry.mock.getAddress
+        .withArgs(bytes32("tvlManager"))
+        .returns(tvlManager.address);
+
+      await tvlManager.mock.getAssetAllocation
+        .withArgs("erc20Allocation")
+        .returns(erc20Allocation.address);
+
+      await tvlManager.mock["isAssetAllocationRegistered(address[])"].returns(
+        true
+      );
+      await erc20Allocation.mock["isErc20TokenRegistered(address[])"].returns(
+        true
+      );
+    });
+
+    it("Revert on unregistered name", async () => {
+      const zap = await deployMockZap();
+
+      const name = await zap.NAME();
+      const amounts = [];
+
+      await expect(
+        lpAccount.connect(lpSafe).deployStrategy(name, amounts)
+      ).to.be.revertedWith("INVALID_NAME");
+    });
+
+    it("LP Safe can call", async () => {
+      const zap = await deployMockZap();
+      await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+      const name = await zap.NAME();
+      const amounts = [];
+
+      await expect(lpAccount.connect(lpSafe).deployStrategy(name, amounts)).to
+        .not.be.reverted;
+    });
+
+    it("Unpermissioned cannot call", async () => {
+      const zap = await deployMockZap();
+      await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+      const name = await zap.NAME();
+      const amounts = [];
+
+      await expect(
+        lpAccount.connect(randomUser).deployStrategy(name, amounts)
+      ).to.be.revertedWith("NOT_LP_ROLE");
+    });
+
+    it("can deploy", async () => {
+      const zap = await deployMockZap();
+      await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+      const name = await zap.NAME();
+      const amounts = [];
+
+      await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
     });
   });
 });
