@@ -3,7 +3,7 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {AssetAllocationBase} from "./AssetAllocationBase.sol";
+import {AssetAllocationBase} from "contracts/common/AssetAllocationBase.sol";
 
 abstract contract ImmutableAssetAllocation is AssetAllocationBase {
     using Address for address;

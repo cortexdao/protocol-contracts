@@ -2,7 +2,7 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {IAssetAllocation} from "./interfaces/IAssetAllocation.sol";
+import {IAssetAllocation} from "contracts/interfaces/IAssetAllocation.sol";
 
 abstract contract AssetAllocationBase is IAssetAllocation {
     function numberOfTokens() external view override returns (uint256) {
