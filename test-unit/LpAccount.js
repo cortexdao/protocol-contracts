@@ -281,7 +281,7 @@ describe("Contract: LpAccount", () => {
       tvlManager = await deployMockContract(deployer, TvlManager.abi);
       erc20Allocation = await deployMockContract(deployer, Erc20Allocation.abi);
 
-      addressRegistry.mock.getAddress
+      await addressRegistry.mock.getAddress
         .withArgs(bytes32("tvlManager"))
         .returns(tvlManager.address);
 
