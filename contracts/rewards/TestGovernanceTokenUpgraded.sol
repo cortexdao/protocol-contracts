@@ -2,9 +2,9 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {PoolToken} from "../PoolToken.sol";
+import {GovernanceToken} from "./GovernanceToken.sol";
 
-contract PoolTokenUpgraded is PoolToken {
+contract GovernanceTokenUpgraded is GovernanceToken {
     bool public newlyAddedVariable;
 
     function initializeUpgrade() public override onlyAdmin {

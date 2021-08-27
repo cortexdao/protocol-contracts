@@ -2,8 +2,9 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {TvlManager} from "../TvlManager.sol";
-import {IAssetAllocation} from "../interfaces/IAssetAllocation.sol";
+import {IAssetAllocation} from "./Imports.sol";
+
+import {TvlManager} from "./TvlManager.sol";
 
 contract TestTvlManager is TvlManager {
     constructor(address addressRegistry_) public TvlManager(addressRegistry_) {} // solhint-disable-line no-empty-blocks

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 
-import {MetaPoolToken} from "../MetaPoolToken.sol";
-import {IReservePool} from "../interfaces/IReservePool.sol";
+import {IReservePool} from "contracts/pool/Imports.sol";
+
+import {MetaPoolToken} from "./MetaPoolToken.sol";
 
 /**
  * @dev Proxy contract to test internal variables and functions

@@ -2,9 +2,9 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {AddressRegistry} from "../AddressRegistry.sol";
+import {MetaPoolToken} from "./MetaPoolToken.sol";
 
-contract AddressRegistryUpgraded is AddressRegistry {
+contract MetaPoolTokenUpgraded is MetaPoolToken {
     bool public newlyAddedVariable;
 
     function initializeUpgrade() public override onlyAdmin {

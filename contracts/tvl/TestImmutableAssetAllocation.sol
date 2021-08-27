@@ -2,7 +2,7 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {ImmutableAssetAllocation} from "../ImmutableAssetAllocation.sol";
+import {ImmutableAssetAllocation} from "./Imports.sol";
 
 contract TestImmutableAssetAllocation is ImmutableAssetAllocation {
     string public constant override NAME = "testAllocation";
