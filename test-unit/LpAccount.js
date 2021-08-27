@@ -10,7 +10,6 @@ const {
   tokenAmountToBigNumber,
 } = require("../utils/helpers");
 
-const IAssetAllocation = artifacts.readArtifactSync("IAssetAllocation");
 const IAddressRegistryV2 = artifacts.readArtifactSync("IAddressRegistryV2");
 const TvlManager = artifacts.readArtifactSync("TvlManager");
 const Erc20Allocation = artifacts.readArtifactSync("Erc20Allocation");
@@ -19,13 +18,6 @@ async function generateContractAddress() {
   const [deployer] = await ethers.getSigners();
   const contract = await deployMockContract(deployer, []);
   return contract.address;
-}
-
-async function deployMockAllocation(name) {
-  const [deployer] = await ethers.getSigners();
-  const allocation = await deployMockContract(deployer, IAssetAllocation.abi);
-  await allocation.mock.NAME.returns(name || "mockAllocation");
-  return allocation;
 }
 
 async function deployMockZap(name) {
@@ -281,13 +273,13 @@ describe("Contract: LpAccount", () => {
   });
 
   describe("Deploying and unwinding", () => {
+    let tvlManager;
+    let erc20Allocation;
+
     before("Setup TvlManager", async () => {
       const [deployer] = await ethers.getSigners();
-      const tvlManager = await deployMockContract(deployer, TvlManager.abi);
-      const erc20Allocation = await deployMockContract(
-        deployer,
-        Erc20Allocation.abi
-      );
+      tvlManager = await deployMockContract(deployer, TvlManager.abi);
+      erc20Allocation = await deployMockContract(deployer, Erc20Allocation.abi);
 
       addressRegistry.mock.getAddress
         .withArgs(bytes32("tvlManager"))
@@ -353,6 +345,46 @@ describe("Contract: LpAccount", () => {
 
         await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
         expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
+      });
+
+      it("cannot deploy with unregistered allocation", async () => {
+        const zap = await deployMockZap();
+        await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+        const name = await zap.NAME();
+        const amounts = [
+          tokenAmountToBigNumber(1),
+          tokenAmountToBigNumber(2),
+          tokenAmountToBigNumber(3),
+        ];
+
+        await tvlManager.mock["isAssetAllocationRegistered(address[])"].returns(
+          false
+        );
+
+        await expect(
+          lpAccount.connect(lpSafe).deployStrategy(name, amounts)
+        ).to.be.revertedWith("MISSING_ASSET_ALLOCATIONS");
+      });
+
+      it("cannot deploy with unregistered ERC20", async () => {
+        const zap = await deployMockZap();
+        await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+        const name = await zap.NAME();
+        const amounts = [
+          tokenAmountToBigNumber(1),
+          tokenAmountToBigNumber(2),
+          tokenAmountToBigNumber(3),
+        ];
+
+        await erc20Allocation.mock["isErc20TokenRegistered(address[])"].returns(
+          false
+        );
+
+        await expect(
+          lpAccount.connect(lpSafe).deployStrategy(name, amounts)
+        ).to.be.revertedWith("MISSING_ERC20_ALLOCATIONS");
       });
     });
 
