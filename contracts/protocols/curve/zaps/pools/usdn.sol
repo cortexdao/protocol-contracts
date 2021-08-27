@@ -17,7 +17,7 @@ import {
     CurveAlUsdConstants
 } from "contracts/protocols/curve/allocations/pools/alusd.sol";
 
-contract AlUsdPoolZap is IZap, CurveAlUsdConstants {
+contract UsdnPoolZap is IZap, CurveAlUsdConstants {
     using SafeMath for uint256;
 
     address public constant ALLOCATION_ADDRESS = address(0);
