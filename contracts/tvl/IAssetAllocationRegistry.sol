@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 
-import {IAssetAllocation} from "./IAssetAllocation.sol";
+import {IAssetAllocation} from "contracts/common/Imports.sol";
 
 /**
  * @title Interface to Access APY.Finance's Asset Allocations

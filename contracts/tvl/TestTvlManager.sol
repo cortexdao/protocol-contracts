@@ -2,8 +2,7 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {IAssetAllocation} from "./Imports.sol";
-
+import {IAssetAllocation} from "contracts/common/Imports.sol";
 import {TvlManager} from "./TvlManager.sol";
 
 contract TestTvlManager is TvlManager {

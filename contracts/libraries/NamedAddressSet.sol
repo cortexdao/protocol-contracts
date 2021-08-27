@@ -4,8 +4,7 @@ pragma solidity 0.6.11;
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
-import {INameIdentifier} from "./INameIdentifier.sol";
-import {IAssetAllocation} from "contracts/tvl/Imports.sol";
+import {IAssetAllocation, INameIdentifier} from "contracts/common/Imports.sol";
 import {IZap} from "contracts/lpaccount/Imports.sol";
 
 library NamedAddressSet {

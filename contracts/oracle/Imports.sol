@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 
-import {
-    AggregatorV3Interface
-} from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
+import {AggregatorV3Interface, FluxAggregator} from "./FluxAggregator.sol";
 import {IOracleAdapter} from "./IOracleAdapter.sol";
 import {IOverrideOracle} from "./IOverrideOracle.sol";
 import {ILockingOracle} from "./ILockingOracle.sol";

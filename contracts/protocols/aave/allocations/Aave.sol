@@ -2,13 +2,13 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {SafeMath} from "contracts/imports/LibraryImports.sol";
-
-import {IERC20, INameIdentifier} from "contracts/imports/CommonImports.sol";
-
 import {
-    ImmutableAssetAllocation
-} from "contracts/imports/TvlManagerImports.sol";
+    IAssetAllocation,
+    INameIdentifier,
+    IERC20
+} from "contracts/common/Imports.sol";
+import {SafeMath} from "contracts/libraries/Imports.sol";
+import {ImmutableAssetAllocation} from "contracts/tvl/Imports.sol";
 
 import {DataTypes} from "../DataTypes.sol";
 import {ILendingPool} from "../interfaces/ILendingPool.sol";

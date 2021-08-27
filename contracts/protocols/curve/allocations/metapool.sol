@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.11;
 
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeMath} from "contracts/libraries/Imports.sol";
+import {IERC20} from "contracts/common/Imports.sol";
 import {Curve3PoolAllocation} from "./pools/3pool.sol";
 import {IMetaPool} from "../interfaces/IMetaPool.sol";
 import {IStableSwap} from "../interfaces/IStableSwap.sol";

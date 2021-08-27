@@ -3,19 +3,14 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import {NamedAddressSet} from "contracts/libraries/Imports.sol";
-
 import {ReentrancyGuard, AccessControl} from "contracts/common/Imports.sol";
-
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
-
 import {ILockingOracle} from "contracts/oracle/Imports.sol";
 
-import {
-    IAssetAllocation,
-    IChainlinkRegistry,
-    IAssetAllocationRegistry,
-    Erc20AllocationConstants
-} from "contracts/tvl/Imports.sol";
+import {IAssetAllocation} from "contracts/common/Imports.sol";
+import {IChainlinkRegistry} from "./IChainlinkRegistry.sol";
+import {IAssetAllocationRegistry} from "./IAssetAllocationRegistry.sol";
+import {Erc20AllocationConstants} from "./Erc20Allocation.sol";
 
 /**
  r @title TVL Manager

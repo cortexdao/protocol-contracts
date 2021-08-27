@@ -3,9 +3,7 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import {IERC20} from "contracts/common/Imports.sol";
-import {INameIdentifier} from "contracts/libraries/Imports.sol";
-
-import {IAssetAllocation} from "./IAssetAllocation.sol";
+import {IAssetAllocation, INameIdentifier} from "contracts/common/Imports.sol";
 
 interface IZap is INameIdentifier {
     // array of underlyer amounts

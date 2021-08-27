@@ -2,9 +2,9 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ImmutableAssetAllocation} from "contracts/ImmutableAssetAllocation.sol";
+import {SafeMath} from "contracts/libraries/Imports.sol";
+import {IERC20} from "contracts/common/Imports.sol";
+import {ImmutableAssetAllocation} from "contracts/tvl/Imports.sol";
 import {IStableSwap2} from "../interfaces/IStableSwap2.sol";
 import {ILiquidityGauge} from "../interfaces/ILiquidityGauge.sol";
 

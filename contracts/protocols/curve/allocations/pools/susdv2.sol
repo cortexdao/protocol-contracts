@@ -2,10 +2,9 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {INameIdentifier} from "contracts/interfaces/INameIdentifier.sol";
-import {ImmutableAssetAllocation} from "contracts/ImmutableAssetAllocation.sol";
+import {INameIdentifier, IERC20} from "contracts/common/Imports.sol";
+import {SafeMath} from "contracts/libraries/Imports.sol";
+import {ImmutableAssetAllocation} from "contracts/tvl/Imports.sol";
 import {
     IOldStableSwap4
 } from "contracts/protocols/curve/interfaces/IOldStableSwap4.sol";

@@ -2,7 +2,7 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {INameIdentifier} from "contracts/libraries/Imports.sol";
+import {INameIdentifier} from "./INameIdentifier.sol";
 
 interface IAssetAllocation is INameIdentifier {
     struct TokenData {

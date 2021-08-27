@@ -2,11 +2,9 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {
-    Address,
-    INameIdentifier,
-    EnumerableSet
-} from "contracts/libraries/Imports.sol";
+import {Address, EnumerableSet} from "contracts/libraries/Imports.sol";
+
+import {INameIdentifier} from "contracts/common/Imports.sol";
 
 import {
     IERC20,

@@ -2,10 +2,10 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {IAssetAllocation} from "contracts/tvl/Imports.sol";
+import {IAssetAllocation} from "contracts/common/Imports.sol";
 import {IZap} from "contracts/lpaccount/Imports.sol";
 
-import {NamedAddressSet} from "./Imports";
+import {NamedAddressSet} from "./NamedAddressSet.sol";
 
 contract TestNamedAssetAllocationSet {
     using NamedAddressSet for NamedAddressSet.AssetAllocationSet;
