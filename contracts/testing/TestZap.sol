@@ -61,4 +61,18 @@ contract TestZap is IZap, TestZapStorage {
     {
         return _tokens;
     }
+
+    /**
+     * Testing functions
+     */
+
+    function _setAssetAllocation(IAssetAllocation[] memory allocations)
+        external
+    {
+        _assetAllocations = allocations;
+    }
+
+    function _setErc20Allocations(IERC20[] memory tokens) external {
+        _tokens = tokens;
+    }
 }
