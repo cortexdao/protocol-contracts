@@ -3,10 +3,14 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import {
-    Address,
-    SafeMath,
-    SignedSafeMath
-} from "contracts/libraries/Imports.sol";
+    Address as AddressUpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
+import {
+    SafeMath as SafeMathUpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import {
+    SignedSafeMath as SignedSafeMathUpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/math/SignedSafeMath.sol";
 
 import {SafeERC20, IDetailedERC20} from "contracts/common/Imports.sol";
 
@@ -72,8 +76,9 @@ contract MetaPoolToken is
     ILpFunder,
     Erc20AllocationConstants
 {
-    using SafeMath for uint256;
-    using SignedSafeMath for int256;
+    using AddressUpgradeSafe for address;
+    using SafeMathUpgradeSafe for uint256;
+    using SignedSafeMathUpgradeSafe for int256;
     using SafeERC20 for IDetailedERC20;
 
     uint256 public constant DEFAULT_MAPT_TO_UNDERLYER_FACTOR = 1000;
@@ -179,7 +184,7 @@ contract MetaPoolToken is
      * @param addressRegistry_ the address of the registry
      */
     function _setAddressRegistry(address addressRegistry_) internal {
-        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
+        require(addressRegistry_.isContract(), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
         emit AddressRegistryChanged(addressRegistry_);
     }

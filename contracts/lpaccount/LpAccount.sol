@@ -18,7 +18,9 @@ import {
     AccessControlUpgradeSafe
 } from "contracts/proxy/Imports.sol";
 
-import {IZap, ILpAccount, IZapRegistry} from "./Imports.sol";
+import {IZap} from "./IZap.sol";
+import {ILpAccount} from "./ILpAccount.sol";
+import {IZapRegistry} from "./IZapRegistry.sol";
 
 contract LpAccount is
     Initializable,

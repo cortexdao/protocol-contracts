@@ -5,6 +5,9 @@ import {
     Initializable
 } from "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import {
+    OwnableUpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
+import {
     ERC20UpgradeSafe
 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 import {

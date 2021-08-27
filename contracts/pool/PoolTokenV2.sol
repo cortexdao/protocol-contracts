@@ -5,10 +5,14 @@ pragma experimental ABIEncoderV2;
 import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
 
 import {
-    Address,
-    SafeMath,
-    SignedSafeMath
-} from "contracts/libraries/Imports.sol";
+    Address as AddressUpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
+import {
+    SafeMath as SafeMathUpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import {
+    SignedSafeMath as SignedSafeMathUpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/math/SignedSafeMath.sol";
 
 import {SafeERC20, IDetailedERC20} from "contracts/common/Imports.sol";
 
@@ -27,13 +31,11 @@ import {
     AccessControlUpgradeSafe
 } from "contracts/proxy/Imports.sol";
 
-import {
-    IReservePool,
-    IWithdrawFeePool,
-    ILockingPool,
-    IPoolToken,
-    ILiquidityPoolV2
-} from "./Imports.sol";
+import {IReservePool} from "./IReservePool.sol";
+import {IWithdrawFeePool} from "./IWithdrawFeePool.sol";
+import {ILockingPool} from "./ILockingPool.sol";
+import {IPoolToken} from "./IPoolToken.sol";
+import {ILiquidityPoolV2} from "./ILiquidityPoolV2.sol";
 
 /**
  * @title APY.Finance Pool Token
@@ -81,9 +83,9 @@ contract PoolTokenV2 is
     PausableUpgradeSafe,
     ERC20UpgradeSafe
 {
-    using Address for address;
-    using SafeMath for uint256;
-    using SignedSafeMath for int256;
+    using AddressUpgradeSafe for address;
+    using SafeMathUpgradeSafe for uint256;
+    using SignedSafeMathUpgradeSafe for int256;
     using SafeERC20 for IDetailedERC20;
 
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
@@ -562,7 +564,7 @@ contract PoolTokenV2 is
     }
 
     function _setAddressRegistry(address addressRegistry_) internal {
-        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
+        require(addressRegistry_.isContract(), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
         emit AddressRegistryChanged(addressRegistry_);
     }
