@@ -160,6 +160,7 @@ describe("Contract: LpAccount", () => {
         tokenAmountToBigNumber(3),
       ];
 
+      // configure zap with unregistered allocation
       const allocation = await deployMockAllocation();
       await zap._setAssetAllocations([allocation.address]);
 
@@ -168,7 +169,7 @@ describe("Contract: LpAccount", () => {
       ).to.be.revertedWith("MISSING_ASSET_ALLOCATIONS");
     });
 
-    it("can deploy with registered allocation", async () => {
+    it("cannot deploy with registered and unregistered allocations", async () => {
       const zap = await deployMockZap();
       await lpAccount.connect(adminSafe).registerZap(zap.address);
 
@@ -179,10 +180,40 @@ describe("Contract: LpAccount", () => {
         tokenAmountToBigNumber(3),
       ];
 
-      const allocation = await deployMockAllocation();
-      await zap._setAssetAllocations([allocation.address]);
+      // configure zap with a registered and an unregistered allocation
+      const allocation_0 = await deployMockAllocation("allocation 0");
+      const allocation_1 = await deployMockAllocation("allocation 1");
+      await tvlManager.registerAssetAllocation(allocation_1.address);
+      await zap._setAssetAllocations([
+        allocation_0.address,
+        allocation_1.address,
+      ]);
 
-      await tvlManager.registerAssetAllocation(allocation.address);
+      await expect(
+        lpAccount.connect(lpSafe).deployStrategy(name, amounts)
+      ).to.be.revertedWith("MISSING_ASSET_ALLOCATIONS");
+    });
+
+    it("can deploy with registered allocations", async () => {
+      const zap = await deployMockZap();
+      await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+      const name = await zap.NAME();
+      const amounts = [
+        tokenAmountToBigNumber(1),
+        tokenAmountToBigNumber(2),
+        tokenAmountToBigNumber(3),
+      ];
+
+      // configure zap with registered allocations
+      const allocation_0 = await deployMockAllocation("allocation 0");
+      const allocation_1 = await deployMockAllocation("allocation 1");
+      await tvlManager.registerAssetAllocation(allocation_0.address);
+      await tvlManager.registerAssetAllocation(allocation_1.address);
+      await zap._setAssetAllocations([
+        allocation_0.address,
+        allocation_1.address,
+      ]);
 
       await expect(lpAccount.connect(lpSafe).deployStrategy(name, amounts)).to
         .not.be.reverted;
@@ -199,6 +230,7 @@ describe("Contract: LpAccount", () => {
         tokenAmountToBigNumber(3),
       ];
 
+      // configure zap with unregistered ERC20
       const token = await deployMockErc20();
       await zap._setErc20Allocations([token.address]);
 
@@ -218,15 +250,94 @@ describe("Contract: LpAccount", () => {
         tokenAmountToBigNumber(3),
       ];
 
+      // configure zap with registered ERC20
       const token = await deployMockErc20();
-      await zap._setErc20Allocations([token.address]);
-
       await erc20Allocation
         .connect(lpSafe)
         ["registerErc20Token(address)"](token.address);
+      await zap._setErc20Allocations([token.address]);
 
       await expect(lpAccount.connect(lpSafe).deployStrategy(name, amounts)).to
         .not.be.reverted;
+    });
+
+    it("can deploy with registered allocation and ERC20", async () => {
+      const zap = await deployMockZap();
+      await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+      const name = await zap.NAME();
+      const amounts = [
+        tokenAmountToBigNumber(1),
+        tokenAmountToBigNumber(2),
+        tokenAmountToBigNumber(3),
+      ];
+
+      // configure zap with registered allocation
+      const allocation = await deployMockAllocation();
+      await tvlManager.registerAssetAllocation(allocation.address);
+      await zap._setAssetAllocations([allocation.address]);
+
+      // configure zap with registered ERC20
+      const token = await deployMockErc20();
+      await erc20Allocation
+        .connect(lpSafe)
+        ["registerErc20Token(address)"](token.address);
+      await zap._setErc20Allocations([token.address]);
+
+      await expect(lpAccount.connect(lpSafe).deployStrategy(name, amounts)).to
+        .not.be.reverted;
+    });
+
+    it("cannot deploy with registered allocation but unregistered ERC20", async () => {
+      const zap = await deployMockZap();
+      await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+      const name = await zap.NAME();
+      const amounts = [
+        tokenAmountToBigNumber(1),
+        tokenAmountToBigNumber(2),
+        tokenAmountToBigNumber(3),
+      ];
+
+      // configure zap with registered allocation
+      const allocation = await deployMockAllocation();
+      await tvlManager.registerAssetAllocation(allocation.address);
+      await zap._setAssetAllocations([allocation.address]);
+
+      // configure zap with unregistered ERC20
+      const token = await deployMockErc20();
+      await zap._setErc20Allocations([token.address]);
+
+      await expect(
+        lpAccount.connect(lpSafe).deployStrategy(name, amounts)
+      ).to.be.revertedWith("MISSING_ERC20_ALLOCATIONS");
+    });
+
+    it("cannot deploy with unregistered allocation but registered ERC20", async () => {
+      const zap = await deployMockZap();
+      await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+      const name = await zap.NAME();
+      const amounts = [
+        tokenAmountToBigNumber(1),
+        tokenAmountToBigNumber(2),
+        tokenAmountToBigNumber(3),
+      ];
+
+      // configure zap with unregistered allocation
+      const allocation = await deployMockAllocation();
+      await zap._setAssetAllocations([allocation.address]);
+
+      // configure zap with registered ERC20
+      const token = await deployMockErc20();
+      await erc20Allocation
+        .connect(lpSafe)
+        ["registerErc20Token(address)"](token.address);
+      await zap._setErc20Allocations([token.address]);
+
+      await expect(
+        lpAccount.connect(lpSafe).deployStrategy(name, amounts)
+      ).to.be.revertedWith("MISSING_ASSET_ALLOCATIONS");
     });
   });
 
