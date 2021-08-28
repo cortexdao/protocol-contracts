@@ -2,6 +2,7 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
+import {IAssetAllocation, IERC20} from "contracts/common/Imports.sol";
 import {Address, NamedAddressSet} from "contracts/libraries/Imports.sol";
 import {
     Initializable,
@@ -10,8 +11,8 @@ import {
 } from "contracts/proxy/Imports.sol";
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
 import {
-    IErc20Allocation,
     IAssetAllocationRegistry,
+    IErc20Allocation,
     Erc20AllocationConstants
 } from "contracts/tvl/Imports.sol";
 
@@ -132,28 +133,6 @@ contract LpAccount is
         );
     }
 
-    function _checkRegistrations(
-        IAssetAllocation[] memory allocations,
-        IERC20[] memory tokens
-    )
-        internal
-        returns (bool isAssetAllocationRegistered, bool isErc20TokenRegistered)
-    {
-        IAssetAllocationRegistry tvlManager =
-            IAssetAllocationRegistry(addressRegistry.getAddress("tvlManager"));
-        isAssetAllocationRegistered = tvlManager.isAssetAllocationRegistered(
-            allocations
-        );
-
-        IErc20Allocation erc20Allocation =
-            IErc20Allocation(
-                address(
-                    tvlManager.getAssetAllocation(Erc20AllocationConstants.NAME)
-                )
-            );
-        isErc20TokenRegistered = erc20Allocation.isErc20TokenRegistered(tokens);
-    }
-
     function unwindStrategy(string calldata name, uint256 amount)
         external
         override
@@ -199,5 +178,27 @@ contract LpAccount is
         require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
         emit AddressRegistryChanged(addressRegistry_);
+    }
+
+    function _checkRegistrations(
+        IAssetAllocation[] memory allocations,
+        IERC20[] memory tokens
+    )
+        internal
+        returns (bool isAssetAllocationRegistered, bool isErc20TokenRegistered)
+    {
+        IAssetAllocationRegistry tvlManager =
+            IAssetAllocationRegistry(addressRegistry.getAddress("tvlManager"));
+        isAssetAllocationRegistered = tvlManager.isAssetAllocationRegistered(
+            allocations
+        );
+
+        IErc20Allocation erc20Allocation =
+            IErc20Allocation(
+                address(
+                    tvlManager.getAssetAllocation(Erc20AllocationConstants.NAME)
+                )
+            );
+        isErc20TokenRegistered = erc20Allocation.isErc20TokenRegistered(tokens);
     }
 }

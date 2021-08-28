@@ -2,11 +2,10 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {LpAccount} from "contracts/LpAccount.sol";
+import {LpAccount} from "./LpAccount.sol";
 import {TestZapStorage} from "./TestZap.sol";
 
 contract TestLpAccount is TestZapStorage, LpAccount {
-
     /**
      * Testing functions
      */
