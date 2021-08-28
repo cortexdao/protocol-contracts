@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.11;
 
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeMath} from "contracts/libraries/Imports.sol";
+import {IERC20} from "contracts/common/Imports.sol";
+
+import {IMetaPool, ILiquidityGauge} from "contracts/protocols/curve/Imports.sol";
+
 import {Curve3PoolAllocation} from "./pools/3pool.sol";
-import {IMetaPool} from "../interfaces/IMetaPool.sol";
-import {IStableSwap} from "../interfaces/IStableSwap.sol";
-import {ILiquidityGauge} from "../interfaces/ILiquidityGauge.sol";
 
 /**
  * @title Periphery Contract for a Curve metapool
@@ -47,8 +47,12 @@ contract MetaPoolAllocationBase {
         require(address(lpToken) != address(0), "INVALID_LP_TOKEN");
 
         uint256 poolBalance = getPoolBalance(metaPool, coin);
-        (uint256 lpTokenBalance, uint256 lpTokenSupply) =
-            getLpTokenShare(account, metaPool, gauge, lpToken);
+        (uint256 lpTokenBalance, uint256 lpTokenSupply) = getLpTokenShare(
+            account,
+            metaPool,
+            gauge,
+            lpToken
+        );
 
         balance = lpTokenBalance.mul(poolBalance).div(lpTokenSupply);
     }
@@ -64,14 +68,15 @@ contract MetaPoolAllocationBase {
             return metaPool.balances(0);
         }
         coin -= 1;
-        uint256 balance =
-            curve3PoolAllocation.balanceOf(address(metaPool), uint8(coin));
+        uint256 balance = curve3PoolAllocation.balanceOf(
+            address(metaPool),
+            uint8(coin)
+        );
         // renormalize using the pool's tracked 3Crv balance
         IERC20 baseLpToken = IERC20(metaPool.coins(1));
-        uint256 adjustedBalance =
-            balance.mul(metaPool.balances(1)).div(
-                baseLpToken.balanceOf(address(metaPool))
-            );
+        uint256 adjustedBalance = balance.mul(metaPool.balances(1)).div(
+            baseLpToken.balanceOf(address(metaPool))
+        );
         return adjustedBalance;
     }
 

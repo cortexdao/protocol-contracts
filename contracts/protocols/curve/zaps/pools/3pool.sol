@@ -2,20 +2,13 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {IZap} from "contracts/interfaces/IZap.sol";
-import {IAssetAllocation} from "contracts/interfaces/IAssetAllocation.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IDetailedERC20} from "contracts/interfaces/IDetailedERC20.sol";
-import {
-    IStableSwap
-} from "contracts/protocols/curve/interfaces/IStableSwap.sol";
-import {
-    ILiquidityGauge
-} from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
-import {
-    Curve3PoolConstants
-} from "contracts/protocols/curve/allocations/pools/3pool.sol";
+import {IERC20, IDetailedERC20, IAssetAllocation} from "contracts/common/Imports.sol";
+import {SafeMath} from "contracts/libraries/Imports.sol";
+import {IZap} from "contracts/lpaccount/Imports.sol";
+
+import {IStableSwap, ILiquidityGauge} from "contracts/protocols/curve/Imports.sol";
+
+import {Curve3PoolConstants} from "contracts/protocols/curve/allocations/pools/3pool.sol";
 
 contract Curve3PoolZap is IZap, Curve3PoolConstants {
     using SafeMath for uint256;
@@ -40,21 +33,24 @@ contract Curve3PoolZap is IZap, Curve3PoolConstants {
         }
 
         uint256 v = totalAmount.mul(1e18).div(stableSwap.get_virtual_price());
-        uint256 minAmount =
-            v.mul(_DENOMINATOR.sub(_SLIPPAGE)).div(_DENOMINATOR);
+        uint256 minAmount = v.mul(_DENOMINATOR.sub(_SLIPPAGE)).div(
+            _DENOMINATOR
+        );
 
         for (uint256 i = 0; i < N_COINS; i++) {
             if (amounts_[i] == 0) continue;
 
-            address underlyerAddress =
-                IStableSwap(STABLE_SWAP_ADDRESS).coins(i);
+            address underlyerAddress = IStableSwap(STABLE_SWAP_ADDRESS).coins(
+                i
+            );
             IERC20(underlyerAddress).approve(STABLE_SWAP_ADDRESS, 0);
             IERC20(underlyerAddress).approve(STABLE_SWAP_ADDRESS, amounts_[i]);
         }
         stableSwap.add_liquidity(amounts_, minAmount);
 
-        ILiquidityGauge liquidityGauge =
-            ILiquidityGauge(LIQUIDITY_GAUGE_ADDRESS);
+        ILiquidityGauge liquidityGauge = ILiquidityGauge(
+            LIQUIDITY_GAUGE_ADDRESS
+        );
 
         uint256 lpBalance = IERC20(LP_TOKEN_ADDRESS).balanceOf(address(this));
         IERC20(LP_TOKEN_ADDRESS).approve(LIQUIDITY_GAUGE_ADDRESS, lpBalance);
@@ -63,8 +59,9 @@ contract Curve3PoolZap is IZap, Curve3PoolConstants {
 
     /// @param amount LP token amount
     function unwindLiquidity(uint256 amount) external override {
-        ILiquidityGauge liquidityGauge =
-            ILiquidityGauge(LIQUIDITY_GAUGE_ADDRESS);
+        ILiquidityGauge liquidityGauge = ILiquidityGauge(
+            LIQUIDITY_GAUGE_ADDRESS
+        );
         liquidityGauge.withdraw(amount);
 
         uint256 lpBalance = IERC20(LP_TOKEN_ADDRESS).balanceOf(address(this));
@@ -81,8 +78,9 @@ contract Curve3PoolZap is IZap, Curve3PoolConstants {
         // so we have to hardcode the number here
         string[] memory symbols = new string[](N_COINS);
         for (uint256 i = 0; i < symbols.length; i++) {
-            address underlyerAddress =
-                IStableSwap(STABLE_SWAP_ADDRESS).coins(i);
+            address underlyerAddress = IStableSwap(STABLE_SWAP_ADDRESS).coins(
+                i
+            );
             symbols[i] = IDetailedERC20(underlyerAddress).symbol();
         }
         return symbols;
