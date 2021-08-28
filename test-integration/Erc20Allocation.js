@@ -23,7 +23,7 @@ async function sendErc20Tokens(symbol, amount, recipient, ethFunder) {
     throw Error("Unsupported ERC20 token.");
   }
   const tokenAddress = getStablecoinAddress(symbol, "MAINNET");
-  const token = await ethers.getContractAt("ERC20", tokenAddress);
+  const token = await ethers.getContractAt("IDetailedERC20", tokenAddress);
   await acquireToken(
     STABLECOIN_POOLS[symbol],
     recipient,
