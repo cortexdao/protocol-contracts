@@ -5,15 +5,10 @@ pragma experimental ABIEncoderV2;
 import {INameIdentifier, IERC20} from "contracts/common/Imports.sol";
 import {SafeMath} from "contracts/libraries/Imports.sol";
 import {ImmutableAssetAllocation} from "contracts/tvl/Imports.sol";
-import {
-    IStableSwap
-} from "contracts/protocols/curve/interfaces/IStableSwap.sol";
-import {
-    ILiquidityGauge
-} from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
-import {
-    CurveAllocationBase
-} from "contracts/protocols/curve/allocations/Curve.sol";
+
+import {IStableSwap, ILiquidityGauge} from "contracts/protocols/curve/Imports.sol";
+
+import {CurveAllocationBase} from "contracts/protocols/curve/allocations/Curve.sol";
 
 abstract contract Curve3PoolUnderlyerConstants {
     // underlyer addresses

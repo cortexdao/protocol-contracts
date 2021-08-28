@@ -5,13 +5,11 @@ pragma experimental ABIEncoderV2;
 import {INameIdentifier, IERC20} from "contracts/common/Imports.sol";
 import {SafeMath} from "contracts/libraries/Imports.sol";
 import {ImmutableAssetAllocation} from "contracts/tvl/Imports.sol";
-import {IMetaPool} from "contracts/protocols/curve/interfaces/IMetaPool.sol";
-import {
-    ILiquidityGauge
-} from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
-import {
-    MetaPoolAllocationBase
-} from "contracts/protocols/curve/allocations/metapool.sol";
+
+import {IMetaPool, ILiquidityGauge} from "contracts/protocols/curve/Imports.sol";
+
+import {MetaPoolAllocationBase} from "contracts/protocols/curve/allocations/Imports.sol";
+
 import {Curve3PoolUnderlyerConstants} from "./3pool.sol";
 
 abstract contract CurveMusdConstants is

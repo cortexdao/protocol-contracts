@@ -5,19 +5,12 @@ pragma experimental ABIEncoderV2;
 import {INameIdentifier, IERC20} from "contracts/common/Imports.sol";
 import {SafeMath} from "contracts/libraries/Imports.sol";
 import {ImmutableAssetAllocation} from "contracts/tvl/Imports.sol";
-import {
-    IOldStableSwap2
-} from "contracts/protocols/curve/interfaces/IOldStableSwap2.sol";
-import {
-    ILiquidityGauge
-} from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
-import {
-    OldCurveAllocationBase2
-} from "contracts/protocols/curve/allocations/OldCurve2.sol";
+
+import {CTokenInterface, IOldStableSwap2, ILiquidityGauge} from "contracts/protocols/curve/Imports.sol";
+
+import {OldCurveAllocationBase2} from "contracts/protocols/curve/allocations/Imports.sol";
+
 import {Curve3PoolUnderlyerConstants} from "./3pool.sol";
-import {
-    CTokenInterface
-} from "contracts/protocols/curve/interfaces/CTokenInterface.sol";
 
 abstract contract CurveCompoundConstants is
     Curve3PoolUnderlyerConstants,
@@ -44,14 +37,13 @@ contract CurveCompoundAllocation is
         override
         returns (uint256)
     {
-        uint256 cyBalance =
-            super.getUnderlyerBalance(
-                account,
-                IOldStableSwap2(STABLE_SWAP_ADDRESS),
-                ILiquidityGauge(LIQUIDITY_GAUGE_ADDRESS),
-                IERC20(LP_TOKEN_ADDRESS),
-                tokenIndex
-            );
+        uint256 cyBalance = super.getUnderlyerBalance(
+            account,
+            IOldStableSwap2(STABLE_SWAP_ADDRESS),
+            ILiquidityGauge(LIQUIDITY_GAUGE_ADDRESS),
+            IERC20(LP_TOKEN_ADDRESS),
+            tokenIndex
+        );
         return unwrapBalance(cyBalance, tokenIndex);
     }
 

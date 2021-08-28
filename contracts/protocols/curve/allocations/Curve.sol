@@ -5,8 +5,8 @@ pragma experimental ABIEncoderV2;
 import {SafeMath} from "contracts/libraries/Imports.sol";
 import {IERC20} from "contracts/common/Imports.sol";
 import {ImmutableAssetAllocation} from "contracts/tvl/Imports.sol";
-import {IStableSwap} from "../interfaces/IStableSwap.sol";
-import {ILiquidityGauge} from "../interfaces/ILiquidityGauge.sol";
+
+import {IStableSwap, ILiquidityGauge} from "contracts/protocols/curve/Imports.sol";
 
 /**
  * @title Periphery Contract for the Curve 3pool
@@ -41,8 +41,12 @@ contract CurveAllocationBase {
         require(address(lpToken) != address(0), "INVALID_LP_TOKEN");
 
         uint256 poolBalance = getPoolBalance(stableSwap, coin);
-        (uint256 lpTokenBalance, uint256 lpTokenSupply) =
-            getLpTokenShare(account, stableSwap, gauge, lpToken);
+        (uint256 lpTokenBalance, uint256 lpTokenSupply) = getLpTokenShare(
+            account,
+            stableSwap,
+            gauge,
+            lpToken
+        );
 
         balance = lpTokenBalance.mul(poolBalance).div(lpTokenSupply);
     }
