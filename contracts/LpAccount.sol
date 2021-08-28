@@ -11,6 +11,8 @@ import {
 } from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import {AccessControlUpgradeSafe} from "./utils/AccessControlUpgradeSafe.sol";
 import {IAddressRegistryV2} from "./interfaces/IAddressRegistryV2.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IAssetAllocation} from "./interfaces/IAssetAllocation.sol";
 import {IErc20Allocation} from "./interfaces/IErc20Allocation.sol";
 import {
     IAssetAllocationRegistry
@@ -120,16 +122,32 @@ contract LpAccount is
         onlyLpRole
     {
         IZap zap = _zaps.get(name);
+        require(address(zap) != address(0), "INVALID_NAME");
 
+        (bool isAssetAllocationRegistered, bool isErc20TokenRegistered) =
+            _checkRegistrations(zap.assetAllocations(), zap.erc20Allocations());
+        // TODO: If the asset allocation is deployed, but not registered, register it
+        // TODO: If an ERC20 allocation is missing, add it
+        require(isAssetAllocationRegistered, "MISSING_ASSET_ALLOCATIONS");
+        require(isErc20TokenRegistered, "MISSING_ERC20_ALLOCATIONS");
+
+        address(zap).functionDelegateCall(
+            abi.encodeWithSelector(IZap.deployLiquidity.selector, amounts)
+        );
+    }
+
+    function _checkRegistrations(
+        IAssetAllocation[] memory allocations,
+        IERC20[] memory tokens
+    )
+        internal
+        returns (bool isAssetAllocationRegistered, bool isErc20TokenRegistered)
+    {
         IAssetAllocationRegistry tvlManager =
             IAssetAllocationRegistry(addressRegistry.getAddress("tvlManager"));
-
-        require(
-            tvlManager.isAssetAllocationRegistered(zap.assetAllocations()),
-            "MISSING_ASSET_ALLOCATIONS"
+        isAssetAllocationRegistered = tvlManager.isAssetAllocationRegistered(
+            allocations
         );
-
-        // TODO: If the asset allocation is deployed, but not registered, register it
 
         IErc20Allocation erc20Allocation =
             IErc20Allocation(
@@ -137,16 +155,7 @@ contract LpAccount is
                     tvlManager.getAssetAllocation(Erc20AllocationConstants.NAME)
                 )
             );
-        require(
-            erc20Allocation.isErc20TokenRegistered(zap.erc20Allocations()),
-            "MISSING_ERC20_ALLOCATIONS"
-        );
-
-        // TODO: If an ERC20 allocation is missing, add it
-
-        address(zap).functionDelegateCall(
-            abi.encodeWithSelector(IZap.deployLiquidity.selector, amounts)
-        );
+        isErc20TokenRegistered = erc20Allocation.isErc20TokenRegistered(tokens);
     }
 
     function unwindStrategy(string calldata name, uint256 amount)
@@ -156,6 +165,8 @@ contract LpAccount is
         onlyLpRole
     {
         address zap = address(_zaps.get(name));
+        require(zap != address(0), "INVALID_NAME");
+
         zap.functionDelegateCall(
             abi.encodeWithSelector(IZap.unwindLiquidity.selector, amount)
         );
