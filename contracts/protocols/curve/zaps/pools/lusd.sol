@@ -14,10 +14,10 @@ import {
     ILiquidityGauge
 } from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
 import {
-    CurveAlUsdConstants
-} from "contracts/protocols/curve/allocations/pools/alusd.sol";
+    CurveLusdConstants
+} from "contracts/protocols/curve/allocations/pools/lusd.sol";
 
-contract LusdPoolZap is IZap, CurveAlUsdConstants {
+contract LusdPoolZap is IZap, CurveLusdConstants {
     using SafeMath for uint256;
 
     address public constant ALLOCATION_ADDRESS = address(0);
