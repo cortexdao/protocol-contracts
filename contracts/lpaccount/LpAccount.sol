@@ -3,20 +3,17 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import {Address, NamedAddressSet} from "contracts/libraries/Imports.sol";
-
-import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
-
-import {
-    IErc20Allocation,
-    IAssetAllocationRegistry,
-    Erc20AllocationConstants
-} from "contracts/tvl/Imports.sol";
-
 import {
     Initializable,
     ReentrancyGuardUpgradeSafe,
     AccessControlUpgradeSafe
 } from "contracts/proxy/Imports.sol";
+import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
+import {
+    IErc20Allocation,
+    IAssetAllocationRegistry,
+    Erc20AllocationConstants
+} from "contracts/tvl/Imports.sol";
 
 import {IZap} from "./IZap.sol";
 import {ILpAccount} from "./ILpAccount.sol";

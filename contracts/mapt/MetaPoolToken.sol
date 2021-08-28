@@ -2,37 +2,26 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {
-    Address as AddressUpgradeSafe
-} from "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
-import {
-    SafeMath as SafeMathUpgradeSafe
-} from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import {
-    SignedSafeMath as SignedSafeMathUpgradeSafe
-} from "@openzeppelin/contracts-ethereum-package/contracts/math/SignedSafeMath.sol";
-
-import {SafeERC20, IDetailedERC20} from "contracts/common/Imports.sol";
-
-import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
-
-import {ILockingOracle} from "contracts/oracle/Imports.sol";
-
-import {IReservePool} from "contracts/pool/Imports.sol";
-
-import {
-    IErc20Allocation,
-    IAssetAllocationRegistry,
-    Erc20AllocationConstants
-} from "contracts/tvl/Imports.sol";
-
+import {IDetailedERC20} from "contracts/common/Imports.sol";
+import {SafeERC20} from "contracts/libraries/Imports.sol";
 import {
     Initializable,
     ERC20UpgradeSafe,
     ReentrancyGuardUpgradeSafe,
     PausableUpgradeSafe,
-    AccessControlUpgradeSafe
+    AccessControlUpgradeSafe,
+    Address as AddressUpgradeSafe,
+    SafeMath as SafeMathUpgradeSafe,
+    SignedSafeMath as SignedSafeMathUpgradeSafe
 } from "contracts/proxy/Imports.sol";
+import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
+import {ILockingOracle} from "contracts/oracle/Imports.sol";
+import {IReservePool} from "contracts/pool/Imports.sol";
+import {
+    IErc20Allocation,
+    IAssetAllocationRegistry,
+    Erc20AllocationConstants
+} from "contracts/tvl/Imports.sol";
 
 import {ILpFunder} from "./ILpFunder.sol";
 

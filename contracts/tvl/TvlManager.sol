@@ -2,12 +2,15 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
+import {
+    IAssetAllocation,
+    ReentrancyGuard,
+    AccessControl
+} from "contracts/common/Imports.sol";
 import {NamedAddressSet} from "contracts/libraries/Imports.sol";
-import {ReentrancyGuard, AccessControl} from "contracts/common/Imports.sol";
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
 import {ILockingOracle} from "contracts/oracle/Imports.sol";
 
-import {IAssetAllocation} from "contracts/common/Imports.sol";
 import {IChainlinkRegistry} from "./IChainlinkRegistry.sol";
 import {IAssetAllocationRegistry} from "./IAssetAllocationRegistry.sol";
 import {Erc20AllocationConstants} from "./Erc20Allocation.sol";

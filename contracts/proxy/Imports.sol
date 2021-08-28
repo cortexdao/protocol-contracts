@@ -17,3 +17,21 @@ import {
     PausableUpgradeSafe
 } from "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
 import {AccessControlUpgradeSafe} from "./AccessControlUpgradeSafe.sol";
+
+import {
+    TransparentUpgradeableProxy
+} from "@openzeppelin/contracts/proxy/TransparentUpgradeableProxy.sol";
+
+/* Aliases don't persist so we can't rename them here, but you should
+ * rename them at point of import with the "UpgradeSafe" prefix, e.g.
+ * import {Address as AddressUpgradeSafe} etc.
+ */
+import {
+    Address
+} from "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
+import {
+    SafeMath
+} from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import {
+    SignedSafeMath
+} from "@openzeppelin/contracts-ethereum-package/contracts/math/SignedSafeMath.sol";

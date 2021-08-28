@@ -2,34 +2,24 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
-
-import {
-    Address as AddressUpgradeSafe
-} from "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
-import {
-    SafeMath as SafeMathUpgradeSafe
-} from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import {
-    SignedSafeMath as SignedSafeMathUpgradeSafe
-} from "@openzeppelin/contracts-ethereum-package/contracts/math/SignedSafeMath.sol";
-
-import {SafeERC20, IDetailedERC20} from "contracts/common/Imports.sol";
-
-import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
-
-import {
-    AggregatorV3Interface,
-    IOracleAdapter
-} from "contracts/oracle/Imports.sol";
-
+import {IDetailedERC20} from "contracts/common/Imports.sol";
+import {SafeERC20} from "contracts/libraries/Imports.sol";
 import {
     Initializable,
     ERC20UpgradeSafe,
     ReentrancyGuardUpgradeSafe,
     PausableUpgradeSafe,
-    AccessControlUpgradeSafe
+    AccessControlUpgradeSafe,
+    Address as AddressUpgradeSafe,
+    SafeMath as SafeMathUpgradeSafe,
+    SignedSafeMath as SignedSafeMathUpgradeSafe
 } from "contracts/proxy/Imports.sol";
+import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
+import {
+    AggregatorV3Interface,
+    IOracleAdapter
+} from "contracts/oracle/Imports.sol";
+import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
 
 import {IReservePool} from "./IReservePool.sol";
 import {IWithdrawFeePool} from "./IWithdrawFeePool.sol";
