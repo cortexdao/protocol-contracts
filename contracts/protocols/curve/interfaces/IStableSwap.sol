@@ -34,7 +34,7 @@ interface IStableSwap {
     ) external;
 
     // solhint-disable-next-line
-    function get_virtual_price() external returns (uint256);
+    function get_virtual_price() external view returns (uint256);
 
     /**
      * @dev For newest curve pools like aave; older pools refer to a private `token` variable.

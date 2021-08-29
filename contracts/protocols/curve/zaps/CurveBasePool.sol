@@ -7,7 +7,9 @@ import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {IZap} from "contracts/interfaces/IZap.sol";
 import {IAssetAllocation} from "contracts/interfaces/IAssetAllocation.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ILiquidityGauge} from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
+import {
+    ILiquidityGauge
+} from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
 import {IDetailedERC20} from "contracts/interfaces/IDetailedERC20.sol";
 
 abstract contract CurveBasePool is IZap {
@@ -22,25 +24,15 @@ abstract contract CurveBasePool is IZap {
 
     function LP_ADDRESS() external pure virtual returns (address);
 
-    function ALLOCATION_ADDRESSES()
-        external
-        pure
-        virtual
-        returns (address[] memory);
-
     function _DENOMINATOR() external pure virtual returns (uint256);
 
     function _SLIPPAGE() external pure virtual returns (uint256);
 
     function N_COINS() external pure virtual returns (uint256);
 
-    function NUM_ALLOCATIONS() external pure virtual returns (uint256);
+    function _getVirtualPrice() internal view virtual returns (uint256);
 
-    function NUM_ERC20_ALLOCATIONS() external pure virtual returns (uint256);
-
-    function _getVirtualPrice() internal virtual returns (uint256);
-
-    function _getCoinAtIndex(uint256 i) internal virtual returns (address);
+    function _getCoinAtIndex(uint256 i) internal view virtual returns (address);
 
     function _addLiquidity(uint256[] calldata amounts_, uint256 minAmount)
         internal
@@ -58,9 +50,10 @@ abstract contract CurveBasePool is IZap {
         }
 
         uint256 v = totalAmount.mul(1e18).div(_getVirtualPrice());
-        uint256 minAmount = v
-            .mul(this._DENOMINATOR().sub(this._SLIPPAGE()))
-            .div(this._DENOMINATOR());
+        uint256 minAmount =
+            v.mul(this._DENOMINATOR().sub(this._SLIPPAGE())).div(
+                this._DENOMINATOR()
+            );
 
         for (uint256 i = 0; i < this.N_COINS(); i++) {
             if (amounts_[i] == 0) continue;
