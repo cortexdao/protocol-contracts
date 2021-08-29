@@ -4,8 +4,12 @@ pragma experimental ABIEncoderV2;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAssetAllocation} from "contracts/common/Imports.sol";
-import {IStableSwap} from "contracts/protocols/curve/interfaces/IStableSwap.sol";
-import {Curve3PoolConstants} from "contracts/protocols/curve/allocations/pools/3pool.sol";
+import {
+    IStableSwap
+} from "contracts/protocols/curve/interfaces/IStableSwap.sol";
+import {
+    Curve3PoolConstants
+} from "contracts/protocols/curve/allocations/pools/3pool.sol";
 import {CurveBasePool} from "contracts/protocols/curve/zaps/CurveBasePool.sol";
 
 contract Curve3PoolZap is CurveBasePool, Curve3PoolConstants {
@@ -34,7 +38,7 @@ contract Curve3PoolZap is CurveBasePool, Curve3PoolConstants {
     }
 
     function _getVirtualPrice() internal view override returns (uint256) {
-        return IStableSwap(STABLE_SWAP_ADDRESS).get_virtual_price();
+        return IStableSwap(SWAP_ADDRESS).get_virtual_price();
     }
 
     function _getCoinAtIndex(uint256 i)
@@ -43,7 +47,7 @@ contract Curve3PoolZap is CurveBasePool, Curve3PoolConstants {
         override
         returns (address)
     {
-        return IStableSwap(STABLE_SWAP_ADDRESS).coins(i);
+        return IStableSwap(SWAP_ADDRESS).coins(i);
     }
 
     function _addLiquidity(uint256[] calldata amounts, uint256 minAmount)
@@ -51,11 +55,11 @@ contract Curve3PoolZap is CurveBasePool, Curve3PoolConstants {
         override
     {
         uint256[3] memory amounts_ = [amounts[0], amounts[1], amounts[2]];
-        IStableSwap(STABLE_SWAP_ADDRESS).add_liquidity(amounts_, minAmount);
+        IStableSwap(SWAP_ADDRESS).add_liquidity(amounts_, minAmount);
     }
 
     function _removeLiquidity(uint256 lpBalance) internal override {
-        IStableSwap(STABLE_SWAP_ADDRESS).remove_liquidity(
+        IStableSwap(SWAP_ADDRESS).remove_liquidity(
             lpBalance,
             [uint256(0), uint256(0), uint256(0)]
         );
