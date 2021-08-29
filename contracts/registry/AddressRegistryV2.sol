@@ -196,7 +196,7 @@ contract AddressRegistryV2 is
         return getAddress("mApt");
     }
 
-    function lpAccountAddress() external view returns (address) {
+    function lpAccountAddress() external view override returns (address) {
         return getAddress("lpAccount");
     }
 

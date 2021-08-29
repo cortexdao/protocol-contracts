@@ -308,14 +308,14 @@ contract PoolTokenV2 is
      * @dev permissioned with CONTRACT_ROLE
      * @param amount amount to transfer to the lp safe
      */
-    function transferToLpSafe(uint256 amount)
+    function transferToLpAccount(uint256 amount)
         external
         override
         nonReentrant
         whenNotPaused
         onlyContractRole
     {
-        underlyer.safeTransfer(addressRegistry.lpSafeAddress(), amount);
+        underlyer.safeTransfer(addressRegistry.lpAccountAddress(), amount);
     }
 
     function emergencySetAdminAddress(address adminAddress)
