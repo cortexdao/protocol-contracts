@@ -253,10 +253,6 @@ contract OracleAdapter is
         _setChainlinkStalePeriod(chainlinkStalePeriod_);
     }
 
-    function isLocked() public view override returns (bool) {
-        return block.number < lockEnd;
-    }
-
     //------------------------------------------------------------
     // ORACLE VALUE GETTERS
     //------------------------------------------------------------
@@ -319,6 +315,10 @@ contract OracleAdapter is
         returns (bool)
     {
         return block.number < submittedAssetValues[asset].periodEnd;
+    }
+
+    function isLocked() public view override returns (bool) {
+        return block.number < lockEnd;
     }
 
     function _setDefaultLockPeriod(uint256 newPeriod) internal {
