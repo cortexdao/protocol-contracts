@@ -18,6 +18,7 @@ import {
 } from "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
 import {AccessControlUpgradeSafe} from "./AccessControlUpgradeSafe.sol";
 
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/ProxyAdmin.sol";
 import {
     TransparentUpgradeableProxy
 } from "@openzeppelin/contracts/proxy/TransparentUpgradeableProxy.sol";
