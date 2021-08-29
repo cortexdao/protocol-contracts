@@ -4,13 +4,10 @@ pragma experimental ABIEncoderV2;
 // solhint-disable func-name-mixedcase
 
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {IZap} from "contracts/interfaces/IZap.sol";
-import {IAssetAllocation} from "contracts/interfaces/IAssetAllocation.sol";
+import {IZap} from "contracts/lpaccount/Imports.sol";
+import {IAssetAllocation, IDetailedERC20} from "contracts/common/Imports.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    ILiquidityGauge
-} from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
-import {IDetailedERC20} from "contracts/interfaces/IDetailedERC20.sol";
+import {ILiquidityGauge} from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
 
 abstract contract CurveBasePool is IZap {
     using SafeMath for uint256;
@@ -50,10 +47,9 @@ abstract contract CurveBasePool is IZap {
         }
 
         uint256 v = totalAmount.mul(1e18).div(_getVirtualPrice());
-        uint256 minAmount =
-            v.mul(this._DENOMINATOR().sub(this._SLIPPAGE())).div(
-                this._DENOMINATOR()
-            );
+        uint256 minAmount = v
+            .mul(this._DENOMINATOR().sub(this._SLIPPAGE()))
+            .div(this._DENOMINATOR());
 
         for (uint256 i = 0; i < this.N_COINS(); i++) {
             if (amounts_[i] == 0) continue;
