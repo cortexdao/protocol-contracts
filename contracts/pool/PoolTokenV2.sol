@@ -180,12 +180,9 @@ contract PoolTokenV2 is
         // be called ever again (see above natspec).  Fortunately, the init body
         // is empty, so we don't actually need to call it.
         // __AccessControl_init_unchained();
-        _setupRole(
-            DEFAULT_ADMIN_ROLE,
-            addressRegistry.getAddress("emergencySafe")
-        );
-        _setupRole(ADMIN_ROLE, addressRegistry.getAddress("adminSafe"));
-        _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
+        _setupRole(DEFAULT_ADMIN_ROLE, addressRegistry.emergencySafeAddress());
+        _setupRole(ADMIN_ROLE, addressRegistry.adminSafeAddress());
+        _setupRole(EMERGENCY_ROLE, addressRegistry.emergencySafeAddress());
         _setupRole(CONTRACT_ROLE, addressRegistry.mAptAddress());
 
         feePeriod = 1 days;

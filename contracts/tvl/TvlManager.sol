@@ -48,12 +48,9 @@ contract TvlManager is
      */
     constructor(address addressRegistry_) public {
         _setAddressRegistry(addressRegistry_);
-        _setupRole(
-            DEFAULT_ADMIN_ROLE,
-            addressRegistry.getAddress("emergencySafe")
-        );
+        _setupRole(DEFAULT_ADMIN_ROLE, addressRegistry.emergencySafeAddress());
         _setupRole(LP_ROLE, addressRegistry.lpSafeAddress());
-        _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
+        _setupRole(EMERGENCY_ROLE, addressRegistry.emergencySafeAddress());
     }
 
     /**

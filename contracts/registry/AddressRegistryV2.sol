@@ -212,6 +212,14 @@ contract AddressRegistryV2 is
         return getAddress("lpSafe");
     }
 
+    function adminSafeAddress() external view override returns (address) {
+        return getAddress("adminSafe");
+    }
+
+    function emergencySafeAddress() external view override returns (address) {
+        return getAddress("emergencySafe");
+    }
+
     function oracleAdapterAddress() external view override returns (address) {
         return getAddress("oracleAdapter");
     }

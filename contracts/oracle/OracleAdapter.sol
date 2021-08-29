@@ -107,14 +107,11 @@ contract OracleAdapter is
         _setChainlinkStalePeriod(chainlinkStalePeriod_);
         _setDefaultLockPeriod(defaultLockPeriod_);
 
-        _setupRole(
-            DEFAULT_ADMIN_ROLE,
-            addressRegistry.getAddress("emergencySafe")
-        );
+        _setupRole(DEFAULT_ADMIN_ROLE, addressRegistry.emergencySafeAddress());
         _setupRole(CONTRACT_ROLE, addressRegistry.mAptAddress());
         _setupRole(CONTRACT_ROLE, addressRegistry.tvlManagerAddress());
-        _setupRole(ADMIN_ROLE, addressRegistry.getAddress("adminSafe"));
-        _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
+        _setupRole(ADMIN_ROLE, addressRegistry.adminSafeAddress());
+        _setupRole(EMERGENCY_ROLE, addressRegistry.emergencySafeAddress());
     }
 
     function setDefaultLockPeriod(uint256 newPeriod)
