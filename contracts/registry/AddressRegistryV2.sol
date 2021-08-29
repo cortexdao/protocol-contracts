@@ -196,6 +196,10 @@ contract AddressRegistryV2 is
         return getAddress("mApt");
     }
 
+    function lpAccountAddress() external view returns (address) {
+        return getAddress("lpAccount");
+    }
+
     /**
      * @notice Get the address for the APY.Finance LP Safe.
      */
