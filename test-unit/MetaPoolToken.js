@@ -25,6 +25,7 @@ describe("Contract: MetaPoolToken", () => {
   let deployer;
   let emergencySafe;
   let lpSafe;
+  let lpAccount;
   let randomUser;
   let anotherUser;
 
@@ -62,6 +63,7 @@ describe("Contract: MetaPoolToken", () => {
       deployer,
       emergencySafe,
       lpSafe,
+      lpAccount,
       randomUser,
       anotherUser,
     ] = await ethers.getSigners();
@@ -74,10 +76,11 @@ describe("Contract: MetaPoolToken", () => {
       deployer,
       artifacts.require("IAddressRegistryV2").abi
     );
-    await addressRegistryMock.mock.getAddress
-      .withArgs(bytes32("emergencySafe"))
-      .returns(emergencySafe.address);
+    await addressRegistryMock.mock.emergencySafeAddress.returns(
+      emergencySafe.address
+    );
     await addressRegistryMock.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistryMock.mock.lpAccountAddress.returns(lpAccount.address);
 
     oracleAdapterMock = await deployMockContract(deployer, OracleAdapter.abi);
     await addressRegistryMock.mock.oracleAdapterAddress.returns(
@@ -228,7 +231,7 @@ describe("Contract: MetaPoolToken", () => {
   describe("_mintAndTransfer", () => {
     it("No minting or transfers for zero mint amount", async () => {
       const pool = await deployMockContract(deployer, PoolTokenV2.abi);
-      await pool.mock.transferToLpSafe.reverts();
+      await pool.mock.transferToLpAccount.reverts();
 
       const mintAmount = 0;
       const transferAmount = 100;
@@ -247,21 +250,23 @@ describe("Contract: MetaPoolToken", () => {
       const transferAmount = 100;
 
       // check pool's transfer funciton gets called
-      await pool.mock.transferToLpSafe.revertsWithReason("TRANSFER_TO_LP_SAFE");
+      await pool.mock.transferToLpAccount.revertsWithReason(
+        "TRANSFER_TO_LP_SAFE"
+      );
       await expect(
         mApt.testMintAndTransfer(pool.address, mintAmount, transferAmount)
       ).to.be.revertedWith("TRANSFER_TO_LP_SAFE");
 
       const expectedSupply = (await mApt.totalSupply()).add(mintAmount);
       // reset pool mock to check if supply changes as expected
-      await pool.mock.transferToLpSafe.returns();
+      await pool.mock.transferToLpAccount.returns();
       await mApt.testMintAndTransfer(pool.address, mintAmount, transferAmount);
       expect(await mApt.totalSupply()).to.equal(expectedSupply);
     });
 
     it("No minting if transfer reverts", async () => {
       const pool = await deployMockContract(deployer, PoolTokenV2.abi);
-      await pool.mock.transferToLpSafe.revertsWithReason("TRANSFER_FAILED");
+      await pool.mock.transferToLpAccount.revertsWithReason("TRANSFER_FAILED");
 
       const mintAmount = tokenAmountToBigNumber(10, await mApt.decimals());
       const transferAmount = 100;
@@ -361,7 +366,7 @@ describe("Contract: MetaPoolToken", () => {
 
     before("Setup mocks", async () => {
       pool = await deployMockContract(deployer, PoolTokenV2.abi);
-      await pool.mock.transferToLpSafe.returns();
+      await pool.mock.transferToLpAccount.returns();
       await pool.mock.getUnderlyerPrice.returns(
         tokenAmountToBigNumber("0.998", 8)
       );
@@ -732,81 +737,83 @@ describe("Contract: MetaPoolToken", () => {
     });
   });
 
-  describe("fundLp", () => {
+  describe("fundLpAccount", () => {
     it("LP Safe can call", async () => {
-      await expect(mApt.connect(lpSafe).fundLp([])).to.not.be.reverted;
-    });
-
-    it("Unpermissioned cannot call", async () => {
-      await expect(mApt.connect(randomUser).fundLp([])).to.be.revertedWith(
-        "NOT_LP_ROLE"
-      );
-    });
-
-    it("Revert on unregistered LP Safe address", async () => {
-      await addressRegistryMock.mock.lpSafeAddress.returns(ZERO_ADDRESS);
-      await expect(mApt.connect(lpSafe).fundLp([])).to.be.revertedWith(
-        "INVALID_LP_SAFE"
-      );
-    });
-  });
-
-  describe("withdrawLp", () => {
-    it("LP Safe can call", async () => {
-      await expect(mApt.connect(lpSafe).withdrawLp([])).to.not.be.reverted;
-    });
-
-    it("Unpermissioned cannot call", async () => {
-      await expect(mApt.connect(randomUser).withdrawLp([])).to.be.revertedWith(
-        "NOT_LP_ROLE"
-      );
-    });
-
-    it("Revert on unregistered LP Safe address", async () => {
-      await addressRegistryMock.mock.lpSafeAddress.returns(ZERO_ADDRESS);
-      await expect(mApt.connect(lpSafe).withdrawLp([])).to.be.revertedWith(
-        "INVALID_LP_SAFE"
-      );
-    });
-  });
-
-  describe("emergencyFundLp", () => {
-    it("Emergency Safe can call", async () => {
-      await expect(mApt.connect(emergencySafe).emergencyFundLp([], [])).to.not
-        .be.reverted;
+      await expect(mApt.connect(lpSafe).fundLpAccount([])).to.not.be.reverted;
     });
 
     it("Unpermissioned cannot call", async () => {
       await expect(
-        mApt.connect(randomUser).emergencyFundLp([], [])
+        mApt.connect(randomUser).fundLpAccount([])
+      ).to.be.revertedWith("NOT_LP_ROLE");
+    });
+
+    it("Revert on unregistered LP Account address", async () => {
+      await addressRegistryMock.mock.lpAccountAddress.returns(ZERO_ADDRESS);
+      await expect(mApt.connect(lpSafe).fundLpAccount([])).to.be.revertedWith(
+        "INVALID_LP_ACCOUNT"
+      );
+    });
+  });
+
+  describe("withdrawFromLpAccount", () => {
+    it("LP Safe can call", async () => {
+      await expect(mApt.connect(lpSafe).withdrawFromLpAccount([])).to.not.be
+        .reverted;
+    });
+
+    it("Unpermissioned cannot call", async () => {
+      await expect(
+        mApt.connect(randomUser).withdrawFromLpAccount([])
+      ).to.be.revertedWith("NOT_LP_ROLE");
+    });
+
+    it("Revert on unregistered LP Account address", async () => {
+      await addressRegistryMock.mock.lpAccountAddress.returns(ZERO_ADDRESS);
+      await expect(
+        mApt.connect(lpSafe).withdrawFromLpAccount([])
+      ).to.be.revertedWith("INVALID_LP_ACCOUNT");
+    });
+  });
+
+  describe("emergencyFundLpAccount", () => {
+    it("Emergency Safe can call", async () => {
+      await expect(mApt.connect(emergencySafe).emergencyFundLpAccount([], []))
+        .to.not.be.reverted;
+    });
+
+    it("Unpermissioned cannot call", async () => {
+      await expect(
+        mApt.connect(randomUser).emergencyFundLpAccount([], [])
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
 
-    it("Revert on unregistered LP Safe address", async () => {
-      await addressRegistryMock.mock.lpSafeAddress.returns(ZERO_ADDRESS);
+    it("Revert on unregistered LP Account address", async () => {
+      await addressRegistryMock.mock.lpAccountAddress.returns(ZERO_ADDRESS);
       await expect(
-        mApt.connect(emergencySafe).emergencyFundLp([], [])
-      ).to.be.revertedWith("INVALID_LP_SAFE");
+        mApt.connect(emergencySafe).emergencyFundLpAccount([], [])
+      ).to.be.revertedWith("INVALID_LP_ACCOUNT");
     });
   });
 
-  describe("emergencyWithdrawLp", () => {
+  describe("emergencyWithdrawFromLpAccount", () => {
     it("Emergency Safe can call", async () => {
-      await expect(mApt.connect(emergencySafe).emergencyWithdrawLp([], [])).to
-        .not.be.reverted;
+      await expect(
+        mApt.connect(emergencySafe).emergencyWithdrawFromLpAccount([], [])
+      ).to.not.be.reverted;
     });
 
     it("Unpermissioned cannot call", async () => {
       await expect(
-        mApt.connect(randomUser).emergencyWithdrawLp([], [])
+        mApt.connect(randomUser).emergencyWithdrawFromLpAccount([], [])
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
 
-    it("Revert on unregistered LP Safe address", async () => {
-      await addressRegistryMock.mock.lpSafeAddress.returns(ZERO_ADDRESS);
+    it("Revert on unregistered LP Account address", async () => {
+      await addressRegistryMock.mock.lpAccountAddress.returns(ZERO_ADDRESS);
       await expect(
-        mApt.connect(emergencySafe).emergencyWithdrawLp([], [])
-      ).to.be.revertedWith("INVALID_LP_SAFE");
+        mApt.connect(emergencySafe).emergencyWithdrawFromLpAccount([], [])
+      ).to.be.revertedWith("INVALID_LP_ACCOUNT");
     });
   });
 
