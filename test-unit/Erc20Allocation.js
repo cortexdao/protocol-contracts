@@ -2,7 +2,6 @@ const { expect } = require("chai");
 const hre = require("hardhat");
 const { artifacts, ethers, waffle } = hre;
 const timeMachine = require("ganache-time-traveler");
-const { bytes32 } = require("../utils/helpers");
 const { deployMockContract } = waffle;
 
 const IDetailedERC20 = artifacts.readArtifactSync("IDetailedERC20");
@@ -13,6 +12,7 @@ describe("Contract: Erc20Allocation", () => {
   let deployer;
   let emergencySafe;
   let lpSafe;
+  let lpAccount;
   let mApt;
   let user;
   let anotherUser;
@@ -54,6 +54,7 @@ describe("Contract: Erc20Allocation", () => {
       deployer,
       emergencySafe,
       lpSafe,
+      lpAccount,
       mApt,
       user,
       anotherUser,
@@ -66,10 +67,11 @@ describe("Contract: Erc20Allocation", () => {
       deployer,
       AddressRegistryV2.abi
     );
-    await addressRegistryMock.mock.getAddress
-      .withArgs(bytes32("emergencySafe"))
-      .returns(emergencySafe.address);
+    await addressRegistryMock.mock.emergencySafeAddress.returns(
+      emergencySafe.address
+    );
     await addressRegistryMock.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistryMock.mock.lpAccountAddress.returns(lpAccount.address);
     await addressRegistryMock.mock.mAptAddress.returns(mApt.address);
     erc20Allocation = await Erc20Allocation.deploy(addressRegistryMock.address);
 

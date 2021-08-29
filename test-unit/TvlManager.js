@@ -6,7 +6,6 @@ const timeMachine = require("ganache-time-traveler");
 const {
   ZERO_ADDRESS,
   FAKE_ADDRESS,
-  bytes32,
   tokenAmountToBigNumber,
 } = require("../utils/helpers");
 
@@ -39,6 +38,7 @@ describe("Contract: TvlManager", () => {
   let deployer;
   let lpSafe;
   let emergencySafe;
+  let lpAccount;
   let randomUser;
 
   // contract factories
@@ -66,7 +66,13 @@ describe("Contract: TvlManager", () => {
   });
 
   before(async () => {
-    [deployer, lpSafe, emergencySafe, randomUser] = await ethers.getSigners();
+    [
+      deployer,
+      lpSafe,
+      emergencySafe,
+      lpAccount,
+      randomUser,
+    ] = await ethers.getSigners();
 
     addressRegistry = await deployMockContract(
       deployer,
@@ -79,12 +85,14 @@ describe("Contract: TvlManager", () => {
     );
     await oracleAdapter.mock.lock.returns();
 
+    await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
+
     // These registered addresses are setup for roles in the
     // constructor for TvlManager
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("emergencySafe"))
-      .returns(emergencySafe.address);
+    await addressRegistry.mock.emergencySafeAddress.returns(
+      emergencySafe.address
+    );
 
     TvlManager = await ethers.getContractFactory("TestTvlManager");
     tvlManager = await TvlManager.deploy(addressRegistry.address);
@@ -624,13 +632,13 @@ describe("Contract: TvlManager", () => {
     it("balanceOf", async () => {
       const balance_0 = tokenAmountToBigNumber("100");
       await allocation.mock.balanceOf
-        .withArgs(lpSafe.address, 0)
+        .withArgs(lpAccount.address, 0)
         .returns(balance_0);
       expect(await tvlManager.balanceOf(allocationId_0)).to.equal(balance_0);
 
       const balance_1 = tokenAmountToBigNumber("250");
       await allocation.mock.balanceOf
-        .withArgs(lpSafe.address, 1)
+        .withArgs(lpAccount.address, 1)
         .returns(balance_1);
       expect(await tvlManager.balanceOf(allocationId_1)).to.equal(balance_1);
     });
