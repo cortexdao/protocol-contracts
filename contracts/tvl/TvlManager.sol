@@ -161,7 +161,7 @@ contract TvlManager is
             _getAssetAllocation(allocationId);
         return
             assetAllocation.balanceOf(
-                addressRegistry.lpSafeAddress(),
+                addressRegistry.lpAccountAddress(),
                 tokenIndex
             );
     }
