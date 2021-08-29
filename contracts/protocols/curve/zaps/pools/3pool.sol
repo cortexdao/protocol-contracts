@@ -54,7 +54,7 @@ contract Curve3PoolZap is CurveBasePool, Curve3PoolConstants {
         internal
         override
     {
-        uint256[3] memory amounts_ = [amounts[0], amounts[1], amounts[2]];
+        uint256[N_COINS] memory amounts_ = [amounts[0], amounts[1], amounts[2]];
         IStableSwap(SWAP_ADDRESS).add_liquidity(amounts_, minAmount);
     }
 
