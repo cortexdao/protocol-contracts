@@ -7,10 +7,12 @@ import {IERC20, AccessControl} from "contracts/common/Imports.sol";
 
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
 
-import {AggregatorV3Interface} from "./FluxAggregator.sol";
-import {IOracleAdapter} from "./IOracleAdapter.sol";
-import {IOverrideOracle} from "./IOverrideOracle.sol";
-import {ILockingOracle} from "./ILockingOracle.sol";
+import {
+    AggregatorV3Interface,
+    IOracleAdapter,
+    IOverrideOracle,
+    ILockingOracle
+} from "./Imports.sol";
 
 /**
  * @title Oracle Adapter
