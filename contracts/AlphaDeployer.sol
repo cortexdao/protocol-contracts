@@ -96,12 +96,13 @@ contract AlphaDeployer is Ownable {
             );
 
         proxyAdmin.transferOwnership(msg.sender);
+        Ownable(address(proxy)).transferOwnership(msg.sender);
 
         addressRegistry.functionDelegateCall(
             abi.encodeWithSignature(
                 "registerAddress(bytes32,address)",
                 "mApt",
-                proxy
+                address(proxy)
             )
         );
     }
@@ -147,6 +148,33 @@ contract AlphaDeployer is Ownable {
         proxyAdmin.upgradeAndCall(usdtProxy, address(logicV2), initData);
 
         proxyAdmin.transferOwnership(msg.sender);
+
+        Ownable(address(daiProxy)).transferOwnership(msg.sender);
+        addressRegistry.functionDelegateCall(
+            abi.encodeWithSignature(
+                "registerAddress(bytes32,address)",
+                "daiDemoPool",
+                address(daiProxy)
+            )
+        );
+
+        Ownable(address(usdcProxy)).transferOwnership(msg.sender);
+        addressRegistry.functionDelegateCall(
+            abi.encodeWithSignature(
+                "registerAddress(bytes32,address)",
+                "usdcDemoPool",
+                address(usdcProxy)
+            )
+        );
+
+        Ownable(address(usdtProxy)).transferOwnership(msg.sender);
+        addressRegistry.functionDelegateCall(
+            abi.encodeWithSignature(
+                "registerAddress(bytes32,address)",
+                "usdtDemoPool",
+                address(usdtProxy)
+            )
+        );
     }
 
     function deploy_3_Erc20Allocation() external onlyOwner {}
