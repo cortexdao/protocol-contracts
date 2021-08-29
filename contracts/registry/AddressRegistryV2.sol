@@ -141,15 +141,6 @@ contract AddressRegistryV2 is
     }
 
     /**
-     * @notice Get the address for the Pool Manager.
-     * @dev Not just a helper function, this makes explicit a key ID
-     * for the system.
-     */
-    function poolManagerAddress() external view override returns (address) {
-        return getAddress("poolManager");
-    }
-
-    /**
      * @notice Get the address for the TVL Manager.
      * @dev Not just a helper function, this makes explicit a key ID
      * for the system.
