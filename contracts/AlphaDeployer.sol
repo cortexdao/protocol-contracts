@@ -236,8 +236,13 @@ contract AlphaDeployer is Ownable {
         );
     }
 
-    function deploy_6_cleanup() external onlyOwner updateStep(6) {
-        Ownable(addressRegistry).transferOwnership(msg.sender);
+    function cleanup() external onlyOwner {
+        handoffOwnership(address(addressRegistry));
+        handoffOwnership(_poolProxyAdmin());
+    }
+
+    function handoffOwnership(address ownedContract) public onlyOwner {
+        Ownable(ownedContract).transferOwnership(msg.sender);
     }
 
     function _daiPoolAddress() internal view returns (address payable) {
