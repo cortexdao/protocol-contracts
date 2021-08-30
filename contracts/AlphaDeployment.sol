@@ -90,7 +90,7 @@ abstract contract DeploymentConstants {
 }
 
 /* solhint-disable func-name-mixedcase, no-empty-blocks */
-contract AlphaDeployer is Ownable, DeploymentConstants {
+contract AlphaDeployment is Ownable, DeploymentConstants {
     using Address for address;
 
     IAddressRegistryV2 public addressRegistry;
