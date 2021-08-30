@@ -106,11 +106,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         addressRegistry = IAddressRegistryV2(addressRegistry_);
     }
 
-    function deploy_0_verifyAddressRegistrations()
-        external
-        onlyOwner
-        updateStep(0)
-    {
+    function deploy_0_verifyPreConditions() external onlyOwner updateStep(0) {
         // 1. check Safe addresses registered: Emergency, Admin, LP
         addressRegistry.getAddress("emergencySafe");
         addressRegistry.getAddress("adminSafe");
