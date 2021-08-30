@@ -78,6 +78,15 @@ abstract contract DeploymentConstants {
         0xe18b0365D5D09F394f84eE56ed29DD2d8D6Fba5f;
     address public constant USDT_POOL_PROXY =
         0xeA9c5a2717D5Ab75afaAC340151e73a7e37d99A7;
+
+    address public constant TVL_AGG_ADDRESS =
+        0xDb299D394817D8e7bBe297E84AFfF7106CF92F5f;
+    address public constant DAI_USD_AGG_ADDRESS =
+        0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9;
+    address public constant USDC_USD_AGG_ADDRESS =
+        0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
+    address public constant USDT_USD_AGG_ADDRESS =
+        0x3E7d1eAB13ad0104d2750B8863b489D65364e32D;
 }
 
 /* solhint-disable func-name-mixedcase, no-empty-blocks */
@@ -293,10 +302,24 @@ contract AlphaDeployer is Ownable, DeploymentConstants {
         return POOL_PROXY_ADMIN;
     }
 
-    function _oracleAssets() internal virtual returns (address[] memory) {}
+    function _tvlSource() internal virtual returns (address) {
+        return TVL_AGG_ADDRESS;
+    }
 
-    function _tvlSource() internal virtual returns (address) {}
+    function _oracleAssets() internal virtual returns (address[] memory) {
+        address[] memory assets = new address[](3);
+        assets[0] = DAI_ADDRESS;
+        assets[1] = USDC_ADDRESS;
+        assets[2] = USDT_ADDRESS;
+        return assets;
+    }
 
-    function _oracleSources() internal virtual returns (address[] memory) {}
+    function _oracleSources() internal virtual returns (address[] memory) {
+        address[] memory sources = new address[](3);
+        sources[0] = DAI_USD_AGG_ADDRESS;
+        sources[1] = USDC_USD_AGG_ADDRESS;
+        sources[2] = USDT_USD_AGG_ADDRESS;
+        return sources;
+    }
 }
 /* solhint-enable func-name-mixedcase */
