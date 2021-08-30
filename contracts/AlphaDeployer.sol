@@ -62,8 +62,26 @@ to deploy in the order given, starting with the Safes.
 Other steps:
 - LP Safe must approve mAPT for each pool underlyer
 */
+abstract contract DeploymentConstants {
+    address public constant DAI_ADDRESS =
+        0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address public constant USDC_ADDRESS =
+        0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address public constant USDT_ADDRESS =
+        0xdAC17F958D2ee523a2206206994597C13D831ec7;
+
+    address public constant POOL_PROXY_ADMIN =
+        0x7965283631253DfCb71Db63a60C656DEDF76234f;
+    address public constant DAI_POOL_PROXY =
+        0x75CE0E501e2E6776FcAAa514f394a88a772A8970;
+    address public constant USDC_POOL_PROXY =
+        0xe18b0365D5D09F394f84eE56ed29DD2d8D6Fba5f;
+    address public constant USDT_POOL_PROXY =
+        0xeA9c5a2717D5Ab75afaAC340151e73a7e37d99A7;
+}
+
 /* solhint-disable func-name-mixedcase, no-empty-blocks */
-contract AlphaDeployer is Ownable {
+contract AlphaDeployer is Ownable, DeploymentConstants {
     using Address for address;
 
     IAddressRegistryV2 public addressRegistry;
@@ -237,46 +255,48 @@ contract AlphaDeployer is Ownable {
         Ownable(ownedContract).transferOwnership(msg.sender);
     }
 
-    function _daiPoolAddress() internal view returns (address payable) {
-        // TODO: consider just hardcoding the address here; we can still dynamically
-        // set the address for unit testing by overriding in a child, test contract
-        return payable(addressRegistry.getAddress("daiPool"));
+    function _daiPoolAddress() internal view virtual returns (address payable) {
+        return payable(DAI_POOL_PROXY);
     }
 
-    function _daiTokenAddress() internal view returns (address) {
-        // TODO: consider just hardcoding the address here; we can still dynamically
-        // set the address for unit testing by overriding in a child, test contract
-        address daiPool = _daiPoolAddress();
-        return address(PoolTokenV2(daiPool).underlyer());
+    function _daiTokenAddress() internal view virtual returns (address) {
+        return DAI_ADDRESS;
     }
 
-    function _usdcPoolAddress() internal view returns (address payable) {
-        return payable(addressRegistry.getAddress("usdcPool"));
+    function _usdcPoolAddress()
+        internal
+        view
+        virtual
+        returns (address payable)
+    {
+        return payable(USDC_POOL_PROXY);
     }
 
-    function _usdcTokenAddress() internal view returns (address) {
-        PoolTokenV2 usdcPool = PoolTokenV2(_usdcPoolAddress());
-        return address(usdcPool.underlyer());
+    function _usdcTokenAddress() internal view virtual returns (address) {
+        return USDC_ADDRESS;
     }
 
-    function _usdtPoolAddress() internal view returns (address payable) {
-        return payable(addressRegistry.getAddress("usdtPool"));
+    function _usdtPoolAddress()
+        internal
+        view
+        virtual
+        returns (address payable)
+    {
+        return payable(USDT_POOL_PROXY);
     }
 
-    function _usdtTokenAddress() internal view returns (address) {
-        PoolTokenV2 usdtPool = PoolTokenV2(_usdtPoolAddress());
-        return address(usdtPool.underlyer());
+    function _usdtTokenAddress() internal view virtual returns (address) {
+        return USDT_ADDRESS;
     }
 
-    function _poolProxyAdmin() internal view returns (address) {
-        PoolTokenV2 daiPool = PoolTokenV2(_daiPoolAddress());
-        return daiPool.proxyAdmin();
+    function _poolProxyAdmin() internal view virtual returns (address) {
+        return POOL_PROXY_ADMIN;
     }
 
-    function _oracleAssets() internal returns (address[] memory) {}
+    function _oracleAssets() internal virtual returns (address[] memory) {}
 
-    function _tvlSource() internal returns (address) {}
+    function _tvlSource() internal virtual returns (address) {}
 
-    function _oracleSources() internal returns (address[] memory) {}
+    function _oracleSources() internal virtual returns (address[] memory) {}
 }
 /* solhint-enable func-name-mixedcase */
