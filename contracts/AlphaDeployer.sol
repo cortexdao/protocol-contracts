@@ -11,6 +11,7 @@ import {MetaPoolTokenProxy} from "contracts/mapt/MetaPoolTokenProxy.sol";
 import {PoolToken} from "contracts/pool/PoolToken.sol";
 import {PoolTokenProxy} from "contracts/pool/PoolTokenProxy.sol";
 import {PoolTokenV2} from "contracts/pool/PoolTokenV2.sol";
+import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
 
 /** @dev
 # Alpha Deployment
@@ -61,22 +62,6 @@ Other steps:
 contract AlphaDeployer is Ownable {
     using Address for address;
 
-    address public constant DAI_ADDRESS =
-        0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    address public constant USDC_ADDRESS =
-        0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    address public constant USDT_ADDRESS =
-        0xdAC17F958D2ee523a2206206994597C13D831ec7;
-
-    address public constant POOL_PROXY_ADMIN =
-        0x7965283631253DfCb71Db63a60C656DEDF76234f;
-    address public constant DAI_POOL_PROXY =
-        0x75CE0E501e2E6776FcAAa514f394a88a772A8970;
-    address public constant USDC_POOL_PROXY =
-        0xe18b0365D5D09F394f84eE56ed29DD2d8D6Fba5f;
-    address public constant USDT_POOL_PROXY =
-        0xeA9c5a2717D5Ab75afaAC340151e73a7e37d99A7;
-
     address public addressRegistry;
 
     constructor(address addressRegistry_) public {
@@ -124,7 +109,7 @@ contract AlphaDeployer is Ownable {
             new PoolTokenProxy(
                 address(logicV1),
                 address(proxyAdmin),
-                DAI_ADDRESS,
+                _daiTokenAddress(),
                 0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe
             );
         proxyAdmin.upgradeAndCall(daiProxy, address(logicV2), initData);
@@ -133,7 +118,7 @@ contract AlphaDeployer is Ownable {
             new PoolTokenProxy(
                 address(logicV1),
                 address(proxyAdmin),
-                USDC_ADDRESS,
+                _usdcTokenAddress(),
                 0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe
             );
         proxyAdmin.upgradeAndCall(usdcProxy, address(logicV2), initData);
@@ -142,7 +127,7 @@ contract AlphaDeployer is Ownable {
             new PoolTokenProxy(
                 address(logicV1),
                 address(proxyAdmin),
-                USDT_ADDRESS,
+                _usdtTokenAddress(),
                 0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe
             );
         proxyAdmin.upgradeAndCall(usdtProxy, address(logicV2), initData);
@@ -196,29 +181,61 @@ contract AlphaDeployer is Ownable {
         bytes memory daiUpgradeData =
             abi.encodeWithSignature(
                 "upgradeAndCall(address,address,bytes)",
-                DAI_POOL_PROXY,
+                _daiPoolAddress(),
                 address(logicV2),
                 initData
             );
-        POOL_PROXY_ADMIN.functionDelegateCall(daiUpgradeData);
+        _poolProxyAdmin().functionDelegateCall(daiUpgradeData);
 
         bytes memory usdcUpgradeData =
             abi.encodeWithSignature(
                 "upgradeAndCall(address,address,bytes)",
-                USDC_POOL_PROXY,
+                _usdcPoolAddress(),
                 address(logicV2),
                 initData
             );
-        POOL_PROXY_ADMIN.functionDelegateCall(usdcUpgradeData);
+        _poolProxyAdmin().functionDelegateCall(usdcUpgradeData);
 
         bytes memory usdtUpgradeData =
             abi.encodeWithSignature(
                 "upgradeAndCall(address,address,bytes)",
-                USDT_POOL_PROXY,
+                _usdtPoolAddress(),
                 address(logicV2),
                 initData
             );
-        POOL_PROXY_ADMIN.functionDelegateCall(usdtUpgradeData);
+        _poolProxyAdmin().functionDelegateCall(usdtUpgradeData);
+    }
+
+    function _daiPoolAddress() internal view returns (address) {
+        return IAddressRegistryV2(addressRegistry).getAddress("daiPool");
+    }
+
+    function _daiTokenAddress() internal view returns (address) {
+        address daiPool = _daiPoolAddress();
+        return address(PoolTokenV2(daiPool).underlyer());
+    }
+
+    function _usdcPoolAddress() internal view returns (address) {
+        return IAddressRegistryV2(addressRegistry).getAddress("usdcPool");
+    }
+
+    function _usdcTokenAddress() internal view returns (address) {
+        PoolTokenV2 usdcPool = PoolTokenV2(_usdcPoolAddress());
+        return address(usdcPool.underlyer());
+    }
+
+    function _usdtPoolAddress() internal view returns (address) {
+        return IAddressRegistryV2(addressRegistry).getAddress("usdtPool");
+    }
+
+    function _usdtTokenAddress() internal view returns (address) {
+        PoolTokenV2 usdtPool = PoolTokenV2(_usdtPoolAddress());
+        return address(usdtPool.underlyer());
+    }
+
+    function _poolProxyAdmin() internal view returns (address) {
+        PoolTokenV2 daiPool = PoolTokenV2(_daiPoolAddress());
+        return daiPool.proxyAdmin();
     }
 }
 /* solhint-enable func-name-mixedcase */
