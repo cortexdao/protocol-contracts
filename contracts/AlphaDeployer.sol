@@ -14,6 +14,8 @@ import {PoolTokenV2} from "contracts/pool/PoolTokenV2.sol";
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
 import {Erc20Allocation} from "contracts/tvl/Erc20Allocation.sol";
 import {TvlManager} from "contracts/tvl/TvlManager.sol";
+import {OracleAdapter} from "contracts/oracle/OracleAdapter.sol";
+import {TransparentUpgradeableProxy} from "contracts/proxy/Imports.sol";
 
 /** @dev
 # Alpha Deployment
@@ -84,6 +86,16 @@ contract AlphaDeployer is Ownable {
         IAddressRegistryV2(addressRegistry).daiPoolAddress();
         IAddressRegistryV2(addressRegistry).usdcPoolAddress();
         IAddressRegistryV2(addressRegistry).usdtPoolAddress();
+        // 3. check this contract can register addresses
+        require(
+            Ownable(addressRegistry).owner() == address(this),
+            "INVALID_ADDRESS_REGISTRY_OWNER"
+        );
+        // 4. check this contract can upgrade pools
+        require(
+            Ownable(_poolProxyAdmin()).owner() == address(this),
+            "INVALID_POOL_PROXY_ADMIN_OWNER"
+        );
     }
 
     function deploy_1_MetaPoolToken() external onlyOwner updateStep(1) {
@@ -99,12 +111,9 @@ contract AlphaDeployer is Ownable {
         proxyAdmin.transferOwnership(msg.sender);
         Ownable(address(proxy)).transferOwnership(msg.sender);
 
-        addressRegistry.functionDelegateCall(
-            abi.encodeWithSignature(
-                "registerAddress(bytes32,address)",
-                "mApt",
-                address(proxy)
-            )
+        IAddressRegistryV2(addressRegistry).registerAddress(
+            "mApt",
+            address(proxy)
         );
     }
 
@@ -133,12 +142,9 @@ contract AlphaDeployer is Ownable {
         proxyAdmin.upgradeAndCall(daiProxy, address(logicV2), initData);
 
         Ownable(address(daiProxy)).transferOwnership(msg.sender);
-        addressRegistry.functionDelegateCall(
-            abi.encodeWithSignature(
-                "registerAddress(bytes32,address)",
-                "daiDemoPool",
-                address(daiProxy)
-            )
+        IAddressRegistryV2(addressRegistry).registerAddress(
+            "daiDemoPool",
+            address(daiProxy)
         );
 
         PoolTokenProxy usdcProxy =
@@ -151,12 +157,9 @@ contract AlphaDeployer is Ownable {
         proxyAdmin.upgradeAndCall(usdcProxy, address(logicV2), initData);
 
         Ownable(address(usdcProxy)).transferOwnership(msg.sender);
-        addressRegistry.functionDelegateCall(
-            abi.encodeWithSignature(
-                "registerAddress(bytes32,address)",
-                "usdcDemoPool",
-                address(usdcProxy)
-            )
+        IAddressRegistryV2(addressRegistry).registerAddress(
+            "usdcDemoPool",
+            address(usdcProxy)
         );
 
         PoolTokenProxy usdtProxy =
@@ -169,12 +172,9 @@ contract AlphaDeployer is Ownable {
         proxyAdmin.upgradeAndCall(usdtProxy, address(logicV2), initData);
 
         Ownable(address(usdtProxy)).transferOwnership(msg.sender);
-        addressRegistry.functionDelegateCall(
-            abi.encodeWithSignature(
-                "registerAddress(bytes32,address)",
-                "usdtDemoPool",
-                address(usdtProxy)
-            )
+        IAddressRegistryV2(addressRegistry).registerAddress(
+            "usdtDemoPool",
+            address(usdtProxy)
         );
 
         proxyAdmin.transferOwnership(msg.sender);
@@ -185,12 +185,9 @@ contract AlphaDeployer is Ownable {
         TvlManager tvlManager = new TvlManager(addressRegistry);
         tvlManager.registerAssetAllocation(erc20Allocation);
 
-        addressRegistry.functionDelegateCall(
-            abi.encodeWithSignature(
-                "registerAddress(bytes32,address)",
-                "tvlManager",
-                address(tvlManager)
-            )
+        IAddressRegistryV2(addressRegistry).registerAddress(
+            "tvlManager",
+            address(tvlManager)
         );
     }
 
@@ -207,12 +204,9 @@ contract AlphaDeployer is Ownable {
                 defaultLockPeriod
             );
 
-        addressRegistry.functionDelegateCall(
-            abi.encodeWithSignature(
-                "registerAddress(bytes32,address)",
-                "oracleAdapter",
-                address(oracleAdapter)
-            )
+        IAddressRegistryV2(addressRegistry).registerAddress(
+            "oracleAdapter",
+            address(oracleAdapter)
         );
     }
 
@@ -225,39 +219,32 @@ contract AlphaDeployer is Ownable {
                 "initializeUpgrade(address)",
                 addressRegistry
             );
-
-        bytes memory daiUpgradeData =
-            abi.encodeWithSignature(
-                "upgradeAndCall(address,address,bytes)",
-                _daiPoolAddress(),
-                address(logicV2),
-                initData
-            );
-        _poolProxyAdmin().functionDelegateCall(daiUpgradeData);
-
-        bytes memory usdcUpgradeData =
-            abi.encodeWithSignature(
-                "upgradeAndCall(address,address,bytes)",
-                _usdcPoolAddress(),
-                address(logicV2),
-                initData
-            );
-        _poolProxyAdmin().functionDelegateCall(usdcUpgradeData);
-
-        bytes memory usdtUpgradeData =
-            abi.encodeWithSignature(
-                "upgradeAndCall(address,address,bytes)",
-                _usdtPoolAddress(),
-                address(logicV2),
-                initData
-            );
-        _poolProxyAdmin().functionDelegateCall(usdtUpgradeData);
+        ProxyAdmin(_poolProxyAdmin()).upgradeAndCall(
+            TransparentUpgradeableProxy(_daiPoolAddress()),
+            address(logicV2),
+            initData
+        );
+        ProxyAdmin(_poolProxyAdmin()).upgradeAndCall(
+            TransparentUpgradeableProxy(_usdcPoolAddress()),
+            address(logicV2),
+            initData
+        );
+        ProxyAdmin(_poolProxyAdmin()).upgradeAndCall(
+            TransparentUpgradeableProxy(_usdtPoolAddress()),
+            address(logicV2),
+            initData
+        );
     }
 
-    function _daiPoolAddress() internal view returns (address) {
+    function deploy_6_cleanup() external onlyOwner updateStep(6) {
+        Ownable(addressRegistry).transferOwnership(msg.sender);
+    }
+
+    function _daiPoolAddress() internal view returns (address payable) {
         // TODO: consider just hardcoding the address here; we can still dynamically
         // set the address for unit testing by overriding in a child, test contract
-        return IAddressRegistryV2(addressRegistry).getAddress("daiPool");
+        return
+            payable(IAddressRegistryV2(addressRegistry).getAddress("daiPool"));
     }
 
     function _daiTokenAddress() internal view returns (address) {
@@ -267,8 +254,9 @@ contract AlphaDeployer is Ownable {
         return address(PoolTokenV2(daiPool).underlyer());
     }
 
-    function _usdcPoolAddress() internal view returns (address) {
-        return IAddressRegistryV2(addressRegistry).getAddress("usdcPool");
+    function _usdcPoolAddress() internal view returns (address payable) {
+        return
+            payable(IAddressRegistryV2(addressRegistry).getAddress("usdcPool"));
     }
 
     function _usdcTokenAddress() internal view returns (address) {
@@ -276,8 +264,9 @@ contract AlphaDeployer is Ownable {
         return address(usdcPool.underlyer());
     }
 
-    function _usdtPoolAddress() internal view returns (address) {
-        return IAddressRegistryV2(addressRegistry).getAddress("usdtPool");
+    function _usdtPoolAddress() internal view returns (address payable) {
+        return
+            payable(IAddressRegistryV2(addressRegistry).getAddress("usdtPool"));
     }
 
     function _usdtTokenAddress() internal view returns (address) {
@@ -296,10 +285,10 @@ contract AlphaDeployer is Ownable {
         step += 1;
     }
 
-    function _oracleAssets() internal {}
+    function _oracleAssets() internal returns (address[] memory) {}
 
-    function _tvlSource() internal {}
+    function _tvlSource() internal returns (address) {}
 
-    function _oracleSources() internal {}
+    function _oracleSources() internal returns (address[] memory) {}
 }
 /* solhint-enable func-name-mixedcase */
