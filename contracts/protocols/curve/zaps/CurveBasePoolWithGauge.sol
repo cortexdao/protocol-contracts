@@ -7,17 +7,18 @@ import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {IZap} from "contracts/lpaccount/Imports.sol";
 import {IAssetAllocation, IDetailedERC20} from "contracts/common/Imports.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ILiquidityGauge} from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
 
-abstract contract CurveBasePool is IZap {
+import {
+    CurveBaseGauge
+} from "contracts/protocols/curve/zaps/CurveBaseGauge.sol";
+
+abstract contract CurveBasePoolWithGauge is IZap, CurveBaseGauge {
     using SafeMath for uint256;
 
     address public constant CRV_ADDRESS =
         0xD533a949740bb3306d119CC777fa900bA034cd52;
 
     function SWAP_ADDRESS() external pure virtual returns (address);
-
-    function GAUGE_ADDRESS() external pure virtual returns (address);
 
     function LP_ADDRESS() external pure virtual returns (address);
 
@@ -47,9 +48,10 @@ abstract contract CurveBasePool is IZap {
         }
 
         uint256 v = totalAmount.mul(1e18).div(_getVirtualPrice());
-        uint256 minAmount = v
-            .mul(this._DENOMINATOR().sub(this._SLIPPAGE()))
-            .div(this._DENOMINATOR());
+        uint256 minAmount =
+            v.mul(this._DENOMINATOR().sub(this._SLIPPAGE())).div(
+                this._DENOMINATOR()
+            );
 
         for (uint256 i = 0; i < this.N_COINS(); i++) {
             if (amounts_[i] == 0) continue;
@@ -59,19 +61,12 @@ abstract contract CurveBasePool is IZap {
             IERC20(underlyerAddress).approve(this.SWAP_ADDRESS(), amounts_[i]);
         }
         _addLiquidity(amounts, minAmount);
-
-        ILiquidityGauge liquidityGauge = ILiquidityGauge(this.GAUGE_ADDRESS());
-
-        uint256 lpBalance = IERC20(this.LP_ADDRESS()).balanceOf(address(this));
-        IERC20(this.LP_ADDRESS()).approve(this.GAUGE_ADDRESS(), lpBalance);
-        liquidityGauge.deposit(lpBalance);
+        _depositToGauge();
     }
 
     /// @param amount LP token amount
     function unwindLiquidity(uint256 amount) external override {
-        ILiquidityGauge liquidityGauge = ILiquidityGauge(this.GAUGE_ADDRESS());
-        liquidityGauge.withdraw(amount);
-        uint256 lpBalance = IERC20(this.LP_ADDRESS()).balanceOf(address(this));
+        uint256 lpBalance = _withdrawFromGauge(amount);
         _removeLiquidity(lpBalance);
     }
 

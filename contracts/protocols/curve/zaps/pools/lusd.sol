@@ -10,9 +10,14 @@ import {
 import {
     CurveLusdConstants
 } from "contracts/protocols/curve/allocations/pools/lusd.sol";
-import {CurveBasePool} from "contracts/protocols/curve/zaps/CurveBasePool.sol";
+import {
+    ILiquidityGauge
+} from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
+import {
+    CurveBasePoolWithGauge
+} from "contracts/protocols/curve/zaps/CurveBasePoolWithGauge.sol";
 
-contract LusdPoolZap is CurveBasePool, CurveLusdConstants {
+contract LusdPoolZap is CurveBasePoolWithGauge, CurveLusdConstants {
     address public constant override SWAP_ADDRESS = META_POOL_ADDRESS;
     address public constant override GAUGE_ADDRESS = LIQUIDITY_GAUGE_ADDRESS;
     address public constant override LP_ADDRESS = LP_TOKEN_ADDRESS;
@@ -63,5 +68,23 @@ contract LusdPoolZap is CurveBasePool, CurveLusdConstants {
             lpBalance,
             [uint256(0), uint256(0)]
         );
+    }
+
+    function _depositToGauge() internal override {
+        ILiquidityGauge liquidityGauge = ILiquidityGauge(this.GAUGE_ADDRESS());
+        uint256 lpBalance = IERC20(this.LP_ADDRESS()).balanceOf(address(this));
+        IERC20(this.LP_ADDRESS()).approve(this.GAUGE_ADDRESS(), lpBalance);
+        liquidityGauge.deposit(lpBalance);
+    }
+
+    function _withdrawFromGauge(uint256 amount)
+        internal
+        override
+        returns (uint256)
+    {
+        ILiquidityGauge liquidityGauge = ILiquidityGauge(this.GAUGE_ADDRESS());
+        liquidityGauge.withdraw(amount);
+        //lpBalance
+        return IERC20(this.LP_ADDRESS()).balanceOf(address(this));
     }
 }
