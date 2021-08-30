@@ -63,14 +63,22 @@ contract AlphaDeployer is Ownable {
     using Address for address;
 
     address public addressRegistry;
+    uint256 public step;
 
     constructor(address addressRegistry_) public {
         addressRegistry = addressRegistry_;
     }
 
-    function deploy_0_Safes() external onlyOwner {}
+    function deploy_0_verifyAddressRegistrations()
+        external
+        onlyOwner
+        updateStep(0)
+    {
+        // 1. check Safe addresses registered: Emergency, Admin, LP
+        // 2. check pool addresses: DAI, USDC, USDT
+    }
 
-    function deploy_1_MetaPoolToken() external onlyOwner {
+    function deploy_1_MetaPoolToken() external onlyOwner updateStep(1) {
         ProxyAdmin proxyAdmin = new ProxyAdmin();
         MetaPoolToken logic = new MetaPoolToken();
         MetaPoolTokenProxy proxy =
@@ -92,7 +100,7 @@ contract AlphaDeployer is Ownable {
         );
     }
 
-    function deploy_2_DemoPools() external onlyOwner {
+    function deploy_2_DemoPools() external onlyOwner updateStep(2) {
         /* complete proxy deploy for the demo pools */
 
         ProxyAdmin proxyAdmin = new ProxyAdmin();
@@ -162,13 +170,13 @@ contract AlphaDeployer is Ownable {
         );
     }
 
-    function deploy_3_Erc20Allocation() external onlyOwner {}
+    function deploy_3_Erc20Allocation() external onlyOwner updateStep(3) {}
 
-    function deploy_4_TvlManager() external onlyOwner {}
+    function deploy_4_TvlManager() external onlyOwner updateStep(4) {}
 
-    function deploy_5_OracleAdapter() external onlyOwner {}
+    function deploy_5_OracleAdapter() external onlyOwner updateStep(5) {}
 
-    function deploy_6_PoolTokenV2_upgrade() external onlyOwner {
+    function deploy_6_PoolTokenV2_upgrade() external onlyOwner updateStep(6) {
         /* upgrade from v1 to v2 */
 
         PoolTokenV2 logicV2 = new PoolTokenV2();
@@ -236,6 +244,12 @@ contract AlphaDeployer is Ownable {
     function _poolProxyAdmin() internal view returns (address) {
         PoolTokenV2 daiPool = PoolTokenV2(_daiPoolAddress());
         return daiPool.proxyAdmin();
+    }
+
+    modifier updateStep(uint256 step_) {
+        require(step == step_, "INVALID_STEP");
+        _;
+        step += 1;
     }
 }
 /* solhint-enable func-name-mixedcase */
