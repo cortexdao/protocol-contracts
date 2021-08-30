@@ -12,6 +12,8 @@ import {PoolToken} from "contracts/pool/PoolToken.sol";
 import {PoolTokenProxy} from "contracts/pool/PoolTokenProxy.sol";
 import {PoolTokenV2} from "contracts/pool/PoolTokenV2.sol";
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
+import {Erc20Allocation} from "contracts/tvl/Erc20Allocation.sol";
+import {TvlManager} from "contracts/tvl/TvlManager.sol";
 
 /** @dev
 # Alpha Deployment
@@ -75,7 +77,13 @@ contract AlphaDeployer is Ownable {
         updateStep(0)
     {
         // 1. check Safe addresses registered: Emergency, Admin, LP
+        IAddressRegistryV2(addressRegistry).getAddress("emergencySafe");
+        IAddressRegistryV2(addressRegistry).getAddress("adminSafe");
+        IAddressRegistryV2(addressRegistry).lpSafeAddress();
         // 2. check pool addresses: DAI, USDC, USDT
+        IAddressRegistryV2(addressRegistry).daiPoolAddress();
+        IAddressRegistryV2(addressRegistry).usdcPoolAddress();
+        IAddressRegistryV2(addressRegistry).usdtPoolAddress();
     }
 
     function deploy_1_MetaPoolToken() external onlyOwner updateStep(1) {
@@ -113,34 +121,16 @@ contract AlphaDeployer is Ownable {
                 addressRegistry
             );
 
+        address fakeAggAddress = 0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe;
+
         PoolTokenProxy daiProxy =
             new PoolTokenProxy(
                 address(logicV1),
                 address(proxyAdmin),
                 _daiTokenAddress(),
-                0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe
+                fakeAggAddress
             );
         proxyAdmin.upgradeAndCall(daiProxy, address(logicV2), initData);
-
-        PoolTokenProxy usdcProxy =
-            new PoolTokenProxy(
-                address(logicV1),
-                address(proxyAdmin),
-                _usdcTokenAddress(),
-                0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe
-            );
-        proxyAdmin.upgradeAndCall(usdcProxy, address(logicV2), initData);
-
-        PoolTokenProxy usdtProxy =
-            new PoolTokenProxy(
-                address(logicV1),
-                address(proxyAdmin),
-                _usdtTokenAddress(),
-                0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe
-            );
-        proxyAdmin.upgradeAndCall(usdtProxy, address(logicV2), initData);
-
-        proxyAdmin.transferOwnership(msg.sender);
 
         Ownable(address(daiProxy)).transferOwnership(msg.sender);
         addressRegistry.functionDelegateCall(
@@ -151,6 +141,15 @@ contract AlphaDeployer is Ownable {
             )
         );
 
+        PoolTokenProxy usdcProxy =
+            new PoolTokenProxy(
+                address(logicV1),
+                address(proxyAdmin),
+                _usdcTokenAddress(),
+                fakeAggAddress
+            );
+        proxyAdmin.upgradeAndCall(usdcProxy, address(logicV2), initData);
+
         Ownable(address(usdcProxy)).transferOwnership(msg.sender);
         addressRegistry.functionDelegateCall(
             abi.encodeWithSignature(
@@ -160,6 +159,15 @@ contract AlphaDeployer is Ownable {
             )
         );
 
+        PoolTokenProxy usdtProxy =
+            new PoolTokenProxy(
+                address(logicV1),
+                address(proxyAdmin),
+                _usdtTokenAddress(),
+                fakeAggAddress
+            );
+        proxyAdmin.upgradeAndCall(usdtProxy, address(logicV2), initData);
+
         Ownable(address(usdtProxy)).transferOwnership(msg.sender);
         addressRegistry.functionDelegateCall(
             abi.encodeWithSignature(
@@ -168,15 +176,47 @@ contract AlphaDeployer is Ownable {
                 address(usdtProxy)
             )
         );
+
+        proxyAdmin.transferOwnership(msg.sender);
     }
 
-    function deploy_3_Erc20Allocation() external onlyOwner updateStep(3) {}
+    function deploy_3_TvlManager() external onlyOwner updateStep(3) {
+        Erc20Allocation erc20Allocation = new Erc20Allocation(addressRegistry);
+        TvlManager tvlManager = new TvlManager(addressRegistry);
+        tvlManager.registerAssetAllocation(erc20Allocation);
 
-    function deploy_4_TvlManager() external onlyOwner updateStep(4) {}
+        addressRegistry.functionDelegateCall(
+            abi.encodeWithSignature(
+                "registerAddress(bytes32,address)",
+                "tvlManager",
+                address(tvlManager)
+            )
+        );
+    }
 
-    function deploy_5_OracleAdapter() external onlyOwner updateStep(5) {}
+    function deploy_4_OracleAdapter() external onlyOwner updateStep(4) {
+        uint256 stalePeriod = 86400;
+        uint256 defaultLockPeriod = 270;
+        OracleAdapter oracleAdapter =
+            new OracleAdapter(
+                addressRegistry,
+                _tvlSource(),
+                _oracleAssets(),
+                _oracleSources(),
+                stalePeriod,
+                defaultLockPeriod
+            );
 
-    function deploy_6_PoolTokenV2_upgrade() external onlyOwner updateStep(6) {
+        addressRegistry.functionDelegateCall(
+            abi.encodeWithSignature(
+                "registerAddress(bytes32,address)",
+                "oracleAdapter",
+                address(oracleAdapter)
+            )
+        );
+    }
+
+    function deploy_5_PoolTokenV2_upgrade() external onlyOwner updateStep(5) {
         /* upgrade from v1 to v2 */
 
         PoolTokenV2 logicV2 = new PoolTokenV2();
@@ -215,10 +255,14 @@ contract AlphaDeployer is Ownable {
     }
 
     function _daiPoolAddress() internal view returns (address) {
+        // TODO: consider just hardcoding the address here; we can still dynamically
+        // set the address for unit testing by overriding in a child, test contract
         return IAddressRegistryV2(addressRegistry).getAddress("daiPool");
     }
 
     function _daiTokenAddress() internal view returns (address) {
+        // TODO: consider just hardcoding the address here; we can still dynamically
+        // set the address for unit testing by overriding in a child, test contract
         address daiPool = _daiPoolAddress();
         return address(PoolTokenV2(daiPool).underlyer());
     }
@@ -251,5 +295,11 @@ contract AlphaDeployer is Ownable {
         _;
         step += 1;
     }
+
+    function _oracleAssets() internal {}
+
+    function _tvlSource() internal {}
+
+    function _oracleSources() internal {}
 }
 /* solhint-enable func-name-mixedcase */
