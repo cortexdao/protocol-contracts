@@ -3,9 +3,6 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import {Ownable} from "contracts/common/Imports.sol";
-import {Address} from "contracts/libraries/Imports.sol";
-
-import {ProxyAdmin} from "contracts/proxy/Imports.sol";
 import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
 import {MetaPoolTokenProxy} from "contracts/mapt/MetaPoolTokenProxy.sol";
 import {PoolToken} from "contracts/pool/PoolToken.sol";
@@ -15,7 +12,10 @@ import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
 import {Erc20Allocation} from "contracts/tvl/Erc20Allocation.sol";
 import {TvlManager} from "contracts/tvl/TvlManager.sol";
 import {OracleAdapter} from "contracts/oracle/OracleAdapter.sol";
-import {TransparentUpgradeableProxy} from "contracts/proxy/Imports.sol";
+import {
+    ProxyAdmin,
+    TransparentUpgradeableProxy
+} from "contracts/proxy/Imports.sol";
 
 /** @dev
 # Alpha Deployment
@@ -91,8 +91,6 @@ abstract contract DeploymentConstants {
 
 /* solhint-disable func-name-mixedcase, no-empty-blocks */
 contract AlphaDeployment is Ownable, DeploymentConstants {
-    using Address for address;
-
     IAddressRegistryV2 public addressRegistry;
     uint256 public step;
 
