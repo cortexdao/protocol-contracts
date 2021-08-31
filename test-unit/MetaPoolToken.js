@@ -20,7 +20,7 @@ const DUMMY_ADDRESS = web3.utils.toChecksumAddress(
 const usdc = (amount) => tokenAmountToBigNumber(amount, "6");
 const ether = (amount) => tokenAmountToBigNumber(amount, "18");
 
-describe("Contract: MetaPoolToken", () => {
+describe.only("Contract: MetaPoolToken", () => {
   // signers
   let deployer;
   let emergencySafe;
@@ -31,14 +31,12 @@ describe("Contract: MetaPoolToken", () => {
 
   // contract factories
   // have to be set async in "before"
-  let ProxyAdmin;
   let MetaPoolTokenProxy;
   let MetaPoolToken;
 
   // deployed contracts
   let proxyAdmin;
   let logic;
-  let proxy;
   let mApt;
 
   // default settings
@@ -67,10 +65,6 @@ describe("Contract: MetaPoolToken", () => {
       anotherUser,
     ] = await ethers.getSigners();
 
-    ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    MetaPoolTokenProxy = await ethers.getContractFactory("MetaPoolTokenProxy");
-    MetaPoolToken = await ethers.getContractFactory("TestMetaPoolToken");
-
     addressRegistryMock = await deployMockContract(
       deployer,
       artifacts.require("IAddressRegistryV2").abi
@@ -79,23 +73,37 @@ describe("Contract: MetaPoolToken", () => {
       emergencySafe.address
     );
     await addressRegistryMock.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistryMock.mock.registerAddress.returns();
 
     oracleAdapterMock = await deployMockContract(deployer, OracleAdapter.abi);
     await addressRegistryMock.mock.oracleAdapterAddress.returns(
       oracleAdapterMock.address
     );
 
-    proxyAdmin = await ProxyAdmin.deploy();
-    await proxyAdmin.deployed();
-    logic = await MetaPoolToken.deploy();
-    await logic.deployed();
-    proxy = await MetaPoolTokenProxy.deploy(
-      logic.address,
-      proxyAdmin.address,
-      addressRegistryMock.address
+    const ProxyAdminFactory = await ethers.getContractFactory(
+      "ProxyAdminFactory"
     );
-    await proxy.deployed();
-    mApt = await MetaPoolToken.attach(proxy.address);
+    const proxyAdminFactory = await ProxyAdminFactory.deploy();
+    const MetaPoolTokenFactory = await ethers.getContractFactory(
+      "MetaPoolTokenFactory"
+    );
+    const mAptFactory = await MetaPoolTokenFactory.deploy(
+      addressRegistryMock.address,
+      proxyAdminFactory.address
+    );
+    const AlphaDeployment = await ethers.getContractFactory("AlphaDeployment");
+    const alphaDeployment = await AlphaDeployment.deploy(
+      addressRegistryMock.address,
+      mAptFactory.address,
+      FAKE_ADDRESS,
+      FAKE_ADDRESS,
+      FAKE_ADDRESS,
+      FAKE_ADDRESS,
+      FAKE_ADDRESS
+    );
+    await alphaDeployment.deploy_1_MetaPoolToken();
+    const proxyAddress = await alphaDeployment.mApt();
+    mApt = await MetaPoolToken.attach(proxyAddress);
 
     // allows mAPT to mint and burn
     await oracleAdapterMock.mock.lock.returns();
