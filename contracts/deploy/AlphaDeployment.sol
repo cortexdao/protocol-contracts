@@ -172,7 +172,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 proxyFactory,
                 proxyAdminFactory,
                 initData,
-                msg.sender
+                address(0)  // no owner for mAPT
             );
         addressRegistry.registerAddress("mApt", mApt_);
 
