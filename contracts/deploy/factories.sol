@@ -122,11 +122,11 @@ contract OracleAdapterFactory is DeploymentConstants {
         return address(oracleAdapter);
     }
 
-    function _tvlSource() internal virtual returns (address) {
+    function _tvlSource() internal pure returns (address) {
         return TVL_AGG_ADDRESS;
     }
 
-    function _oracleAssets() internal virtual returns (address[] memory) {
+    function _oracleAssets() internal pure returns (address[] memory) {
         address[] memory assets = new address[](3);
         assets[0] = DAI_ADDRESS;
         assets[1] = USDC_ADDRESS;
@@ -134,7 +134,7 @@ contract OracleAdapterFactory is DeploymentConstants {
         return assets;
     }
 
-    function _oracleSources() internal virtual returns (address[] memory) {
+    function _oracleSources() internal pure returns (address[] memory) {
         address[] memory sources = new address[](3);
         sources[0] = DAI_USD_AGG_ADDRESS;
         sources[1] = USDC_USD_AGG_ADDRESS;

@@ -81,6 +81,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     IAddressRegistryV2 public addressRegistry;
 
     address public mAptFactory;
+    address public poolTokenV1Factory;
     address public poolTokenV2Factory;
     address public erc20AllocationFactory;
     address public tvlManagerFactory;
@@ -98,6 +99,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     constructor(
         address addressRegistry_,
         address mAptFactory_,
+        address poolTokenV1Factory_,
         address poolTokenV2Factory_,
         address erc20AllocationFactory_,
         address tvlManagerFactory_,
@@ -106,6 +108,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     ) public {
         addressRegistry = IAddressRegistryV2(addressRegistry_);
         mAptFactory = mAptFactory_;
+        poolTokenV1Factory = poolTokenV1Factory_;
         poolTokenV2Factory = poolTokenV2Factory_;
         erc20AllocationFactory = erc20AllocationFactory_;
         tvlManagerFactory = tvlManagerFactory_;
@@ -157,7 +160,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         address logicV2 = PoolTokenV2Factory(poolTokenV2Factory).create();
 
         address daiProxy =
-            PoolTokenV1Factory(poolTokenV2Factory).createWithProxyAdmin(
+            PoolTokenV1Factory(poolTokenV1Factory).createWithProxyAdmin(
                 DAI_ADDRESS,
                 msg.sender
             );
@@ -170,7 +173,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         addressRegistry.registerAddress("daiDemoPool", daiProxy);
 
         address usdcProxy =
-            PoolTokenV1Factory(poolTokenV2Factory).create(
+            PoolTokenV1Factory(poolTokenV1Factory).create(
                 proxyAdmin,
                 USDC_ADDRESS,
                 msg.sender
@@ -183,7 +186,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         addressRegistry.registerAddress("usdcDemoPool", usdcProxy);
 
         address usdtProxy =
-            PoolTokenV1Factory(poolTokenV2Factory).create(
+            PoolTokenV1Factory(poolTokenV1Factory).create(
                 proxyAdmin,
                 USDT_ADDRESS,
                 msg.sender
