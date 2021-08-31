@@ -80,20 +80,23 @@ describe.only("Contract: MetaPoolToken", () => {
       oracleAdapterMock.address
     );
 
+    MetaPoolTokenProxy = await ethers.getContractFactory("MetaPoolTokenProxy");
+
     const ProxyAdminFactory = await ethers.getContractFactory(
       "ProxyAdminFactory"
     );
     const proxyAdminFactory = await ProxyAdminFactory.deploy();
+    const ProxyFactory = await ethers.getContractFactory("ProxyFactory");
+    const proxyFactory = await ProxyFactory.deploy();
     const MetaPoolTokenFactory = await ethers.getContractFactory(
-      "MetaPoolTokenFactory"
+      "TestMetaPoolTokenFactory"
     );
-    const mAptFactory = await MetaPoolTokenFactory.deploy(
-      addressRegistryMock.address,
-      proxyAdminFactory.address
-    );
+    const mAptFactory = await MetaPoolTokenFactory.deploy();
     const AlphaDeployment = await ethers.getContractFactory("AlphaDeployment");
     const alphaDeployment = await AlphaDeployment.deploy(
       addressRegistryMock.address,
+      proxyAdminFactory.address,
+      proxyFactory.address,
       mAptFactory.address,
       FAKE_ADDRESS,
       FAKE_ADDRESS,
@@ -103,7 +106,7 @@ describe.only("Contract: MetaPoolToken", () => {
     );
     await alphaDeployment.deploy_1_MetaPoolToken();
     const proxyAddress = await alphaDeployment.mApt();
-    mApt = await MetaPoolToken.attach(proxyAddress);
+    mApt = await ethers.getContractAt("TestMetaPoolToken", proxyAddress);
 
     // allows mAPT to mint and burn
     await oracleAdapterMock.mock.lock.returns();
@@ -117,11 +120,12 @@ describe.only("Contract: MetaPoolToken", () => {
 
   describe("Constructor", () => {
     it("Revert when logic is not a contract address", async () => {
+      const contractAddress = (await deployMockContract(deployer, [])).address;
       await expect(
         MetaPoolTokenProxy.connect(deployer).deploy(
           DUMMY_ADDRESS,
-          proxyAdmin.address,
-          DUMMY_ADDRESS
+          contractAddress,
+          contractAddress
         )
       ).to.be.revertedWith(
         "UpgradeableProxy: new implementation is not a contract"
@@ -129,20 +133,22 @@ describe.only("Contract: MetaPoolToken", () => {
     });
 
     it("Revert when proxy admin is zero address", async () => {
+      const contractAddress = (await deployMockContract(deployer, [])).address;
       await expect(
         MetaPoolTokenProxy.connect(deployer).deploy(
-          logic.address,
+          contractAddress,
           ZERO_ADDRESS,
-          addressRegistryMock.address
+          contractAddress
         )
       ).to.be.revertedWith("INVALID_ADMIN");
     });
 
     it("Revert when address registry is not a contract address", async () => {
+      const contractAddress = (await deployMockContract(deployer, [])).address;
       await expect(
         MetaPoolTokenProxy.connect(deployer).deploy(
-          logic.address,
-          proxyAdmin.address,
+          contractAddress,
+          contractAddress,
           DUMMY_ADDRESS
         )
       ).to.be.revertedWith("INVALID_ADDRESS");
