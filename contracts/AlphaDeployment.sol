@@ -17,21 +17,182 @@ import {
     TransparentUpgradeableProxy
 } from "contracts/proxy/Imports.sol";
 
-interface IFactory {
-    function create() external returns (address);
+abstract contract DeploymentConstants {
+    address public constant DAI_ADDRESS =
+        0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address public constant USDC_ADDRESS =
+        0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address public constant USDT_ADDRESS =
+        0xdAC17F958D2ee523a2206206994597C13D831ec7;
+
+    address public constant POOL_PROXY_ADMIN =
+        0x7965283631253DfCb71Db63a60C656DEDF76234f;
+    address public constant DAI_POOL_PROXY =
+        0x75CE0E501e2E6776FcAAa514f394a88a772A8970;
+    address public constant USDC_POOL_PROXY =
+        0xe18b0365D5D09F394f84eE56ed29DD2d8D6Fba5f;
+    address public constant USDT_POOL_PROXY =
+        0xeA9c5a2717D5Ab75afaAC340151e73a7e37d99A7;
+
+    address public constant TVL_AGG_ADDRESS =
+        0xDb299D394817D8e7bBe297E84AFfF7106CF92F5f;
+    address public constant DAI_USD_AGG_ADDRESS =
+        0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9;
+    address public constant USDC_USD_AGG_ADDRESS =
+        0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
+    address public constant USDT_USD_AGG_ADDRESS =
+        0x3E7d1eAB13ad0104d2750B8863b489D65364e32D;
 }
 
-contract MetaPoolTokenFactory is IFactory {
-    function create() external override returns (address) {
-        MetaPoolToken mApt = new MetaPoolToken();
-        return address(mApt);
+// interface IFactory {
+//     function create() external returns (address);
+// }
+//
+// interface IOwnableFactory {
+//     function create(address newOwner) external returns (address);
+// }
+
+contract MetaPoolTokenFactory {
+    address public addressRegistry;
+    address public proxyAdminFactory;
+
+    constructor(address addressRegistry_, address proxyAdminFactory_) public {
+        addressRegistry = addressRegistry_;
+        proxyAdminFactory = proxyAdminFactory_;
+    }
+
+    function create(address newOwner) external returns (address) {
+        MetaPoolToken logic = new MetaPoolToken();
+        address proxyAdmin = ProxyAdminFactory(proxyAdminFactory).create();
+        MetaPoolTokenProxy proxy =
+            new MetaPoolTokenProxy(address(logic), proxyAdmin, addressRegistry);
+
+        Ownable(address(logic)).transferOwnership(newOwner);
+        Ownable(proxyAdmin).transferOwnership(newOwner);
+        Ownable(address(proxy)).transferOwnership(newOwner);
+
+        return address(proxy);
     }
 }
 
-contract PoolTokenV2Factory is IFactory {
-    function create() external override returns (address) {
-        PoolTokenV2 apt = new PoolTokenV2();
-        return address(apt);
+contract PoolTokenV1Factory is DeploymentConstants {
+    address public addressRegistry;
+    address public proxyAdminFactory;
+
+    constructor(address addressRegistry_, address proxyAdminFactory_) public {
+        addressRegistry = addressRegistry_;
+        proxyAdminFactory = proxyAdminFactory_;
+    }
+
+    function createWithProxyAdmin(address tokenAddress)
+        external
+        returns (address)
+    {
+        address proxyAdmin = ProxyAdminFactory(proxyAdminFactory).create();
+        return create(proxyAdmin, tokenAddress);
+    }
+
+    function create(address proxyAdmin, address tokenAddress)
+        public
+        returns (address)
+    {
+        PoolToken logicV1 = new PoolToken();
+        address fakeAggAddress = 0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe;
+        PoolTokenProxy proxy =
+            new PoolTokenProxy(
+                address(logicV1),
+                proxyAdmin,
+                tokenAddress,
+                fakeAggAddress
+            );
+        return address(proxy);
+    }
+}
+
+contract PoolTokenV2Factory {
+    address public addressRegistry;
+
+    constructor(address addressRegistry_) public {
+        addressRegistry = addressRegistry_;
+    }
+
+    function create() external returns (address) {
+        PoolTokenV2 logicV2 = new PoolTokenV2();
+        return address(logicV2);
+    }
+}
+
+contract OracleAdapterFactory is DeploymentConstants {
+    address public addressRegistry;
+
+    constructor(address addressRegistry_) public {
+        addressRegistry = addressRegistry_;
+    }
+
+    function create() external returns (address) {
+        OracleAdapter oracleAdapter =
+            new OracleAdapter(
+                addressRegistry,
+                _tvlSource(),
+                _oracleAssets(),
+                _oracleSources(),
+                86400,
+                270
+            );
+        return address(oracleAdapter);
+    }
+
+    function _tvlSource() internal virtual returns (address) {
+        return TVL_AGG_ADDRESS;
+    }
+
+    function _oracleAssets() internal virtual returns (address[] memory) {
+        address[] memory assets = new address[](3);
+        assets[0] = DAI_ADDRESS;
+        assets[1] = USDC_ADDRESS;
+        assets[2] = USDT_ADDRESS;
+        return assets;
+    }
+
+    function _oracleSources() internal virtual returns (address[] memory) {
+        address[] memory sources = new address[](3);
+        sources[0] = DAI_USD_AGG_ADDRESS;
+        sources[1] = USDC_USD_AGG_ADDRESS;
+        sources[2] = USDT_USD_AGG_ADDRESS;
+        return sources;
+    }
+}
+
+contract Erc20AllocationFactory {
+    address public addressRegistry;
+
+    constructor(address addressRegistry_) public {
+        addressRegistry = addressRegistry_;
+    }
+
+    function create() external returns (address) {
+        Erc20Allocation erc20Allocation = new Erc20Allocation(addressRegistry);
+        return address(erc20Allocation);
+    }
+}
+
+contract TvlManagerFactory {
+    address public addressRegistry;
+
+    constructor(address addressRegistry_) public {
+        addressRegistry = addressRegistry_;
+    }
+
+    function create() external returns (address) {
+        TvlManager tvlManager = new TvlManager(addressRegistry);
+        return address(tvlManager);
+    }
+}
+
+contract ProxyAdminFactory {
+    function create() external returns (address) {
+        ProxyAdmin proxyAdmin = new ProxyAdmin();
+        return address(proxyAdmin);
     }
 }
 
@@ -80,32 +241,6 @@ to deploy in the order given, starting with the Safes.
 Other steps:
 - LP Safe must approve mAPT for each pool underlyer
 */
-abstract contract DeploymentConstants {
-    address public constant DAI_ADDRESS =
-        0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    address public constant USDC_ADDRESS =
-        0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    address public constant USDT_ADDRESS =
-        0xdAC17F958D2ee523a2206206994597C13D831ec7;
-
-    address public constant POOL_PROXY_ADMIN =
-        0x7965283631253DfCb71Db63a60C656DEDF76234f;
-    address public constant DAI_POOL_PROXY =
-        0x75CE0E501e2E6776FcAAa514f394a88a772A8970;
-    address public constant USDC_POOL_PROXY =
-        0xe18b0365D5D09F394f84eE56ed29DD2d8D6Fba5f;
-    address public constant USDT_POOL_PROXY =
-        0xeA9c5a2717D5Ab75afaAC340151e73a7e37d99A7;
-
-    address public constant TVL_AGG_ADDRESS =
-        0xDb299D394817D8e7bBe297E84AFfF7106CF92F5f;
-    address public constant DAI_USD_AGG_ADDRESS =
-        0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9;
-    address public constant USDC_USD_AGG_ADDRESS =
-        0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
-    address public constant USDT_USD_AGG_ADDRESS =
-        0x3E7d1eAB13ad0104d2750B8863b489D65364e32D;
-}
 
 /* solhint-disable func-name-mixedcase, no-empty-blocks */
 contract AlphaDeployment is Ownable, DeploymentConstants {
@@ -113,8 +248,14 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     uint256 public constant VERSION = 1;
 
     IAddressRegistryV2 public addressRegistry;
+
     address public mAptFactory;
     address public poolTokenV2Factory;
+    address public erc20AllocationFactory;
+    address public tvlManagerFactory;
+    address public oracleAdapterFactory;
+    address public proxyAdminFactory;
+
     uint256 public step;
 
     modifier updateStep(uint256 step_) {
@@ -126,11 +267,19 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     constructor(
         address addressRegistry_,
         address mAptFactory_,
-        address poolTokenV2Factory_
+        address poolTokenV2Factory_,
+        address erc20AllocationFactory_,
+        address tvlManagerFactory_,
+        address oracleAdapterFactory_,
+        address proxyAdminFactory_
     ) public {
         addressRegistry = IAddressRegistryV2(addressRegistry_);
         mAptFactory = mAptFactory_;
         poolTokenV2Factory = poolTokenV2Factory_;
+        erc20AllocationFactory = erc20AllocationFactory_;
+        tvlManagerFactory = tvlManagerFactory_;
+        oracleAdapterFactory = oracleAdapterFactory_;
+        proxyAdminFactory = proxyAdminFactory_;
     }
 
     function deploy_0_verifyPreConditions() external onlyOwner updateStep(0) {
@@ -160,114 +309,80 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         updateStep(1)
         returns (address)
     {
-        ProxyAdmin proxyAdmin = new ProxyAdmin();
-        // MetaPoolToken logic = new MetaPoolToken();
-        address logic = IFactory(mAptFactory).create();
-        MetaPoolTokenProxy proxy =
-            new MetaPoolTokenProxy(
-                logic,
-                address(proxyAdmin),
-                address(addressRegistry)
-            );
-
-        proxyAdmin.transferOwnership(msg.sender);
-        Ownable(address(proxy)).transferOwnership(msg.sender);
-
-        // transfer ownership of registry to this contract
-        addressRegistry.registerAddress("mApt", address(proxy));
-        // transfer ownership back to msg.sender (Admin Safe)
-
-        return address(proxy);
+        address mApt = MetaPoolTokenFactory(mAptFactory).create(msg.sender);
+        addressRegistry.registerAddress("mApt", mApt);
+        return mApt;
     }
 
     function deploy_2_DemoPools() external onlyOwner updateStep(2) {
         /* complete proxy deploy for the demo pools */
-
-        ProxyAdmin proxyAdmin = new ProxyAdmin();
-        PoolToken logicV1 = new PoolToken();
-        // PoolTokenV2 logicV2 = new PoolTokenV2();
-        address logicV2 = IFactory(poolTokenV2Factory).create();
 
         bytes memory initData =
             abi.encodeWithSignature(
                 "initializeUpgrade(address)",
                 address(addressRegistry)
             );
+        address logicV2 = PoolTokenV2Factory(poolTokenV2Factory).create();
 
-        address fakeAggAddress = 0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe;
-
-        PoolTokenProxy daiProxy =
-            new PoolTokenProxy(
-                address(logicV1),
-                address(proxyAdmin),
-                _daiTokenAddress(),
-                fakeAggAddress
+        address daiProxy =
+            PoolTokenV1Factory(poolTokenV2Factory).createWithProxyAdmin(
+                _daiTokenAddress()
             );
-        proxyAdmin.upgradeAndCall(daiProxy, logicV2, initData);
+        address proxyAdmin = PoolToken(payable(daiProxy)).proxyAdmin();
+        ProxyAdmin(proxyAdmin).upgradeAndCall(
+            PoolTokenProxy(payable(daiProxy)),
+            logicV2,
+            initData
+        );
+        addressRegistry.registerAddress("daiDemoPool", daiProxy);
 
-        Ownable(address(daiProxy)).transferOwnership(msg.sender);
-        addressRegistry.registerAddress("daiDemoPool", address(daiProxy));
-
-        PoolTokenProxy usdcProxy =
-            new PoolTokenProxy(
-                address(logicV1),
-                address(proxyAdmin),
-                _usdcTokenAddress(),
-                fakeAggAddress
+        address usdcProxy =
+            PoolTokenV1Factory(poolTokenV2Factory).create(
+                proxyAdmin,
+                _usdcTokenAddress()
             );
-        proxyAdmin.upgradeAndCall(usdcProxy, logicV2, initData);
+        ProxyAdmin(proxyAdmin).upgradeAndCall(
+            PoolTokenProxy(payable(usdcProxy)),
+            logicV2,
+            initData
+        );
+        addressRegistry.registerAddress("usdcDemoPool", usdcProxy);
 
-        Ownable(address(usdcProxy)).transferOwnership(msg.sender);
-        addressRegistry.registerAddress("usdcDemoPool", address(usdcProxy));
-
-        PoolTokenProxy usdtProxy =
-            new PoolTokenProxy(
-                address(logicV1),
-                address(proxyAdmin),
-                _usdtTokenAddress(),
-                fakeAggAddress
+        address usdtProxy =
+            PoolTokenV1Factory(poolTokenV2Factory).create(
+                proxyAdmin,
+                _usdtTokenAddress()
             );
-        proxyAdmin.upgradeAndCall(usdtProxy, logicV2, initData);
-
-        Ownable(address(usdtProxy)).transferOwnership(msg.sender);
-        addressRegistry.registerAddress("usdtDemoPool", address(usdtProxy));
-
-        proxyAdmin.transferOwnership(msg.sender);
+        ProxyAdmin(proxyAdmin).upgradeAndCall(
+            PoolTokenProxy(payable(usdtProxy)),
+            logicV2,
+            initData
+        );
+        addressRegistry.registerAddress("usdtDemoPool", usdtProxy);
     }
 
     function deploy_3_TvlManager() external onlyOwner updateStep(3) {
-        Erc20Allocation erc20Allocation =
-            new Erc20Allocation(address(addressRegistry));
-        TvlManager tvlManager = new TvlManager(address(addressRegistry));
-        tvlManager.registerAssetAllocation(erc20Allocation);
+        address erc20Allocation =
+            Erc20AllocationFactory(erc20AllocationFactory).create();
+        address tvlManager = TvlManagerFactory(tvlManagerFactory).create();
+        TvlManager(tvlManager).registerAssetAllocation(
+            Erc20Allocation(erc20Allocation)
+        );
 
         addressRegistry.registerAddress("tvlManager", address(tvlManager));
     }
 
     function deploy_4_OracleAdapter() external onlyOwner updateStep(4) {
-        uint256 stalePeriod = 86400;
-        uint256 defaultLockPeriod = 270;
-        OracleAdapter oracleAdapter =
-            new OracleAdapter(
-                address(addressRegistry),
-                _tvlSource(),
-                _oracleAssets(),
-                _oracleSources(),
-                stalePeriod,
-                defaultLockPeriod
-            );
-
-        addressRegistry.registerAddress(
-            "oracleAdapter",
-            address(oracleAdapter)
-        );
+        address oracleAdapter =
+            OracleAdapterFactory(oracleAdapterFactory).create();
+        addressRegistry.registerAddress("oracleAdapter", oracleAdapter);
     }
 
     function deploy_5_PoolTokenV2_upgrade() external onlyOwner updateStep(5) {
         /* upgrade from v1 to v2 */
 
         // PoolTokenV2 logicV2 = new PoolTokenV2();
-        address logicV2 = IFactory(poolTokenV2Factory).create();
+        address logicV2 = PoolTokenV2Factory(poolTokenV2Factory).create();
         bytes memory initData =
             abi.encodeWithSignature(
                 "initializeUpgrade(address)",
@@ -335,26 +450,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
     function _poolProxyAdmin() internal view virtual returns (address) {
         return POOL_PROXY_ADMIN;
-    }
-
-    function _tvlSource() internal virtual returns (address) {
-        return TVL_AGG_ADDRESS;
-    }
-
-    function _oracleAssets() internal virtual returns (address[] memory) {
-        address[] memory assets = new address[](3);
-        assets[0] = DAI_ADDRESS;
-        assets[1] = USDC_ADDRESS;
-        assets[2] = USDT_ADDRESS;
-        return assets;
-    }
-
-    function _oracleSources() internal virtual returns (address[] memory) {
-        address[] memory sources = new address[](3);
-        sources[0] = DAI_USD_AGG_ADDRESS;
-        sources[1] = USDC_USD_AGG_ADDRESS;
-        sources[2] = USDT_USD_AGG_ADDRESS;
-        return sources;
     }
 }
 /* solhint-enable func-name-mixedcase */
