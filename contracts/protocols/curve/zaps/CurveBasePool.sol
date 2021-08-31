@@ -8,11 +8,7 @@ import {IZap} from "contracts/lpaccount/Imports.sol";
 import {IAssetAllocation, IDetailedERC20} from "contracts/common/Imports.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {
-    CurveBaseGauge
-} from "contracts/protocols/curve/zaps/CurveBaseGauge.sol";
-
-abstract contract CurveBasePool is IZap, CurveBaseGauge {
+abstract contract CurveBasePool is IZap {
     using SafeMath for uint256;
 
     address public constant CRV_ADDRESS =
@@ -21,6 +17,8 @@ abstract contract CurveBasePool is IZap, CurveBaseGauge {
     function SWAP_ADDRESS() external pure virtual returns (address);
 
     function LP_ADDRESS() external pure virtual returns (address);
+
+    function GAUGE_ADDRESS() external pure virtual returns (address);
 
     function _DENOMINATOR() external pure virtual returns (uint256);
 
@@ -37,6 +35,13 @@ abstract contract CurveBasePool is IZap, CurveBaseGauge {
         virtual;
 
     function _removeLiquidity(uint256 lpBalance) internal virtual;
+
+    function _depositToGauge() internal virtual;
+
+    function _withdrawFromGauge(uint256 amount)
+        internal
+        virtual
+        returns (uint256);
 
     /// @param amounts array of underlyer amounts
     function deployLiquidity(uint256[] calldata amounts) external override {
