@@ -17,6 +17,24 @@ import {
     TransparentUpgradeableProxy
 } from "contracts/proxy/Imports.sol";
 
+interface IFactory {
+    function create() external returns (address);
+}
+
+contract MetaPoolTokenFactory is IFactory {
+    function create() external override returns (address) {
+        MetaPoolToken mApt = new MetaPoolToken();
+        return address(mApt);
+    }
+}
+
+contract PoolTokenV2Factory is IFactory {
+    function create() external override returns (address) {
+        PoolTokenV2 apt = new PoolTokenV2();
+        return address(apt);
+    }
+}
+
 /** @dev
 # Alpha Deployment
 
@@ -92,6 +110,8 @@ abstract contract DeploymentConstants {
 /* solhint-disable func-name-mixedcase, no-empty-blocks */
 contract AlphaDeployment is Ownable, DeploymentConstants {
     IAddressRegistryV2 public addressRegistry;
+    address public mAptFactory;
+    address public poolTokenV2Factory;
     uint256 public step;
 
     modifier updateStep(uint256 step_) {
@@ -100,8 +120,14 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         step += 1;
     }
 
-    constructor(address addressRegistry_) public {
+    constructor(
+        address addressRegistry_,
+        address mAptFactory_,
+        address poolTokenV2Factory_
+    ) public {
         addressRegistry = IAddressRegistryV2(addressRegistry_);
+        mAptFactory = mAptFactory_;
+        poolTokenV2Factory = poolTokenV2Factory_;
     }
 
     function deploy_0_verifyPreConditions() external onlyOwner updateStep(0) {
@@ -125,12 +151,18 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         );
     }
 
-    function deploy_1_MetaPoolToken() external onlyOwner updateStep(1) {
+    function deploy_1_MetaPoolToken()
+        external
+        onlyOwner
+        updateStep(1)
+        returns (address)
+    {
         ProxyAdmin proxyAdmin = new ProxyAdmin();
-        MetaPoolToken logic = new MetaPoolToken();
+        // MetaPoolToken logic = new MetaPoolToken();
+        address logic = IFactory(mAptFactory).create();
         MetaPoolTokenProxy proxy =
             new MetaPoolTokenProxy(
-                address(logic),
+                logic,
                 address(proxyAdmin),
                 address(addressRegistry)
             );
@@ -138,7 +170,11 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         proxyAdmin.transferOwnership(msg.sender);
         Ownable(address(proxy)).transferOwnership(msg.sender);
 
+        // transfer ownership of registry to this contract
         addressRegistry.registerAddress("mApt", address(proxy));
+        // transfer ownership back to msg.sender (Admin Safe)
+
+        return address(proxy);
     }
 
     function deploy_2_DemoPools() external onlyOwner updateStep(2) {
@@ -146,7 +182,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
         ProxyAdmin proxyAdmin = new ProxyAdmin();
         PoolToken logicV1 = new PoolToken();
-        PoolTokenV2 logicV2 = new PoolTokenV2();
+        // PoolTokenV2 logicV2 = new PoolTokenV2();
+        address logicV2 = IFactory(poolTokenV2Factory).create();
 
         bytes memory initData =
             abi.encodeWithSignature(
@@ -163,7 +200,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 _daiTokenAddress(),
                 fakeAggAddress
             );
-        proxyAdmin.upgradeAndCall(daiProxy, address(logicV2), initData);
+        proxyAdmin.upgradeAndCall(daiProxy, logicV2, initData);
 
         Ownable(address(daiProxy)).transferOwnership(msg.sender);
         addressRegistry.registerAddress("daiDemoPool", address(daiProxy));
@@ -175,7 +212,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 _usdcTokenAddress(),
                 fakeAggAddress
             );
-        proxyAdmin.upgradeAndCall(usdcProxy, address(logicV2), initData);
+        proxyAdmin.upgradeAndCall(usdcProxy, logicV2, initData);
 
         Ownable(address(usdcProxy)).transferOwnership(msg.sender);
         addressRegistry.registerAddress("usdcDemoPool", address(usdcProxy));
@@ -187,7 +224,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 _usdtTokenAddress(),
                 fakeAggAddress
             );
-        proxyAdmin.upgradeAndCall(usdtProxy, address(logicV2), initData);
+        proxyAdmin.upgradeAndCall(usdtProxy, logicV2, initData);
 
         Ownable(address(usdtProxy)).transferOwnership(msg.sender);
         addressRegistry.registerAddress("usdtDemoPool", address(usdtProxy));
@@ -226,7 +263,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     function deploy_5_PoolTokenV2_upgrade() external onlyOwner updateStep(5) {
         /* upgrade from v1 to v2 */
 
-        PoolTokenV2 logicV2 = new PoolTokenV2();
+        // PoolTokenV2 logicV2 = new PoolTokenV2();
+        address logicV2 = IFactory(poolTokenV2Factory).create();
         bytes memory initData =
             abi.encodeWithSignature(
                 "initializeUpgrade(address)",
@@ -234,17 +272,17 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             );
         ProxyAdmin(_poolProxyAdmin()).upgradeAndCall(
             TransparentUpgradeableProxy(_daiPoolAddress()),
-            address(logicV2),
+            logicV2,
             initData
         );
         ProxyAdmin(_poolProxyAdmin()).upgradeAndCall(
             TransparentUpgradeableProxy(_usdcPoolAddress()),
-            address(logicV2),
+            logicV2,
             initData
         );
         ProxyAdmin(_poolProxyAdmin()).upgradeAndCall(
             TransparentUpgradeableProxy(_usdtPoolAddress()),
-            address(logicV2),
+            logicV2,
             initData
         );
     }
