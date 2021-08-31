@@ -86,9 +86,28 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     address public erc20AllocationFactory;
     address public tvlManagerFactory;
     address public oracleAdapterFactory;
-    address public proxyAdminFactory;
 
     uint256 public step;
+
+    // step 1
+    address public mApt;
+
+    // step 2
+    address public demoProxyAdmin;
+    address public daiDemoPool;
+    address public usdcDemoPool;
+    address public usdtDemoPool;
+
+    // step 3
+    address public erc20Allocation;
+    address public tvlManager;
+
+    // step 4
+    address public oracleAdapter;
+
+    // step 5
+    // pool v2 upgrades
+    address public poolTokenV2;
 
     modifier updateStep(uint256 step_) {
         require(step == step_, "INVALID_STEP");
@@ -103,8 +122,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         address poolTokenV2Factory_,
         address erc20AllocationFactory_,
         address tvlManagerFactory_,
-        address oracleAdapterFactory_,
-        address proxyAdminFactory_
+        address oracleAdapterFactory_
     ) public {
         addressRegistry = IAddressRegistryV2(addressRegistry_);
         mAptFactory = mAptFactory_;
@@ -113,7 +131,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         erc20AllocationFactory = erc20AllocationFactory_;
         tvlManagerFactory = tvlManagerFactory_;
         oracleAdapterFactory = oracleAdapterFactory_;
-        proxyAdminFactory = proxyAdminFactory_;
     }
 
     function deploy_0_verifyPreConditions() external onlyOwner updateStep(0) {
@@ -121,11 +138,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         addressRegistry.getAddress("emergencySafe");
         addressRegistry.getAddress("adminSafe");
         addressRegistry.lpSafeAddress();
-        // 2. check pool addresses: DAI, USDC, USDT
-        addressRegistry.daiPoolAddress();
-        addressRegistry.usdcPoolAddress();
-        addressRegistry.usdtPoolAddress();
-        // 3. check this contract can register addresses
+        // 2. check this contract can register addresses
         require(
             Ownable(address(addressRegistry)).owner() == address(this),
             "INVALID_ADDRESS_REGISTRY_OWNER"
@@ -143,10 +156,12 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         updateStep(1)
         returns (address)
     {
-        address mApt =
+        address mApt_ =
             MetaPoolTokenFactory(mAptFactory).createWithProxyAdmin(msg.sender);
-        addressRegistry.registerAddress("mApt", mApt);
-        return mApt;
+        addressRegistry.registerAddress("mApt", mApt_);
+
+        mApt = mApt_;
+        return mApt_;
     }
 
     function deploy_2_DemoPools() external onlyOwner updateStep(2) {
