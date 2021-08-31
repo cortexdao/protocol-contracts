@@ -13,11 +13,9 @@ import {
 import {
     ILiquidityGauge
 } from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
-import {
-    CurveBasePoolWithGauge
-} from "contracts/protocols/curve/zaps/CurveBasePoolWithGauge.sol";
+import {CurveBasePool} from "contracts/protocols/curve/zaps/CurveBasePool.sol";
 
-contract AlUsdPoolZap is CurveBasePoolWithGauge, CurveAlUsdConstants {
+contract AlUsdPoolZap is CurveBasePool, CurveAlUsdConstants {
     address public constant override SWAP_ADDRESS = META_POOL_ADDRESS;
     address public constant override GAUGE_ADDRESS = LIQUIDITY_GAUGE_ADDRESS;
     address public constant override LP_ADDRESS = LP_TOKEN_ADDRESS;
