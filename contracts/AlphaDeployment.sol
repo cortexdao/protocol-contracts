@@ -109,6 +109,9 @@ abstract contract DeploymentConstants {
 
 /* solhint-disable func-name-mixedcase, no-empty-blocks */
 contract AlphaDeployment is Ownable, DeploymentConstants {
+    // TODO: figure out a versioning scheme
+    uint256 public constant VERSION = 1;
+
     IAddressRegistryV2 public addressRegistry;
     address public mAptFactory;
     address public poolTokenV2Factory;
