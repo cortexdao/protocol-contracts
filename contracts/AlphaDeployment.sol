@@ -61,14 +61,21 @@ contract MetaPoolTokenFactory {
         proxyAdminFactory = proxyAdminFactory_;
     }
 
-    function create(address newOwner) external returns (address) {
+    function createWithProxyAdmin(address newOwner) external returns (address) {
+        address proxyAdmin =
+            ProxyAdminFactory(proxyAdminFactory).create(newOwner);
+        return create(proxyAdmin, newOwner);
+    }
+
+    function create(address proxyAdmin, address newOwner)
+        public
+        returns (address)
+    {
         MetaPoolToken logic = new MetaPoolToken();
-        address proxyAdmin = ProxyAdminFactory(proxyAdminFactory).create();
         MetaPoolTokenProxy proxy =
             new MetaPoolTokenProxy(address(logic), proxyAdmin, addressRegistry);
 
         Ownable(address(logic)).transferOwnership(newOwner);
-        Ownable(proxyAdmin).transferOwnership(newOwner);
         Ownable(address(proxy)).transferOwnership(newOwner);
 
         return address(proxy);
@@ -84,18 +91,20 @@ contract PoolTokenV1Factory is DeploymentConstants {
         proxyAdminFactory = proxyAdminFactory_;
     }
 
-    function createWithProxyAdmin(address tokenAddress)
+    function createWithProxyAdmin(address tokenAddress, address newOwner)
         external
         returns (address)
     {
-        address proxyAdmin = ProxyAdminFactory(proxyAdminFactory).create();
-        return create(proxyAdmin, tokenAddress);
+        address proxyAdmin =
+            ProxyAdminFactory(proxyAdminFactory).create(newOwner);
+        return create(proxyAdmin, tokenAddress, newOwner);
     }
 
-    function create(address proxyAdmin, address tokenAddress)
-        public
-        returns (address)
-    {
+    function create(
+        address proxyAdmin,
+        address tokenAddress,
+        address newOwner
+    ) public returns (address) {
         PoolToken logicV1 = new PoolToken();
         address fakeAggAddress = 0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe;
         PoolTokenProxy proxy =
@@ -105,6 +114,10 @@ contract PoolTokenV1Factory is DeploymentConstants {
                 tokenAddress,
                 fakeAggAddress
             );
+
+        Ownable(address(logicV1)).transferOwnership(newOwner);
+        Ownable(address(proxy)).transferOwnership(newOwner);
+
         return address(proxy);
     }
 }
@@ -190,8 +203,9 @@ contract TvlManagerFactory {
 }
 
 contract ProxyAdminFactory {
-    function create() external returns (address) {
+    function create(address newOwner) external returns (address) {
         ProxyAdmin proxyAdmin = new ProxyAdmin();
+        proxyAdmin.transferOwnership(newOwner);
         return address(proxyAdmin);
     }
 }
@@ -309,7 +323,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         updateStep(1)
         returns (address)
     {
-        address mApt = MetaPoolTokenFactory(mAptFactory).create(msg.sender);
+        address mApt =
+            MetaPoolTokenFactory(mAptFactory).createWithProxyAdmin(msg.sender);
         addressRegistry.registerAddress("mApt", mApt);
         return mApt;
     }
@@ -326,7 +341,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
         address daiProxy =
             PoolTokenV1Factory(poolTokenV2Factory).createWithProxyAdmin(
-                _daiTokenAddress()
+                _daiTokenAddress(),
+                msg.sender
             );
         address proxyAdmin = PoolToken(payable(daiProxy)).proxyAdmin();
         ProxyAdmin(proxyAdmin).upgradeAndCall(
@@ -339,7 +355,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         address usdcProxy =
             PoolTokenV1Factory(poolTokenV2Factory).create(
                 proxyAdmin,
-                _usdcTokenAddress()
+                _usdcTokenAddress(),
+                msg.sender
             );
         ProxyAdmin(proxyAdmin).upgradeAndCall(
             PoolTokenProxy(payable(usdcProxy)),
@@ -351,7 +368,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         address usdtProxy =
             PoolTokenV1Factory(poolTokenV2Factory).create(
                 proxyAdmin,
-                _usdtTokenAddress()
+                _usdtTokenAddress(),
+                msg.sender
             );
         ProxyAdmin(proxyAdmin).upgradeAndCall(
             PoolTokenProxy(payable(usdtProxy)),
