@@ -19,6 +19,8 @@ import {
 
 import {DeploymentConstants} from "./constants.sol";
 import {
+    ProxyAdminFactory,
+    ProxyFactory,
     Erc20AllocationFactory,
     MetaPoolTokenFactory,
     OracleAdapterFactory,
@@ -80,6 +82,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
     IAddressRegistryV2 public addressRegistry;
 
+    address public proxyAdminFactory;
+    address public proxyFactory;
     address public mAptFactory;
     address public poolTokenV1Factory;
     address public poolTokenV2Factory;
@@ -117,6 +121,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
     constructor(
         address addressRegistry_,
+        address proxyAdminFactory_,
+        address proxyFactory_,
         address mAptFactory_,
         address poolTokenV1Factory_,
         address poolTokenV2Factory_,
@@ -125,6 +131,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         address oracleAdapterFactory_
     ) public {
         addressRegistry = IAddressRegistryV2(addressRegistry_);
+        proxyAdminFactory = proxyAdminFactory_;
+        proxyFactory = proxyFactory_;
         mAptFactory = mAptFactory_;
         poolTokenV1Factory = poolTokenV1Factory_;
         poolTokenV2Factory = poolTokenV2Factory_;
@@ -150,14 +158,22 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         );
     }
 
-    function deploy_1_MetaPoolToken()
-        external
-        onlyOwner
-        updateStep(1)
-        returns (address)
-    {
+    function deploy_1_MetaPoolToken() external onlyOwner returns (address) {
+        address proxyAdmin =
+            ProxyAdminFactory(proxyAdminFactory).create(msg.sender);
+        bytes memory initData =
+            abi.encodeWithSignature(
+                "initialize(address,address)",
+                proxyAdmin,
+                addressRegistry
+            );
         address mApt_ =
-            MetaPoolTokenFactory(mAptFactory).createWithProxyAdmin(msg.sender);
+            MetaPoolTokenFactory(mAptFactory).create(
+                proxyFactory,
+                proxyAdminFactory,
+                initData,
+                msg.sender
+            );
         addressRegistry.registerAddress("mApt", mApt_);
 
         mApt = mApt_;
@@ -167,57 +183,89 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     function deploy_2_DemoPools() external onlyOwner updateStep(2) {
         /* complete proxy deploy for the demo pools */
 
-        bytes memory initData =
+        address proxyAdmin =
+            ProxyAdminFactory(proxyAdminFactory).create(msg.sender);
+
+        address fakeAggAddress = 0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe;
+        bytes memory daiInitData =
+            abi.encodeWithSignature(
+                "initialize(address,address,address)",
+                proxyAdmin,
+                DAI_ADDRESS,
+                fakeAggAddress
+            );
+
+        address logicV2 = PoolTokenV2Factory(poolTokenV2Factory).create();
+        bytes memory initDataV2 =
             abi.encodeWithSignature(
                 "initializeUpgrade(address)",
                 address(addressRegistry)
             );
-        address logicV2 = PoolTokenV2Factory(poolTokenV2Factory).create();
 
         address daiProxy =
-            PoolTokenV1Factory(poolTokenV1Factory).createWithProxyAdmin(
-                DAI_ADDRESS,
+            PoolTokenV1Factory(poolTokenV1Factory).create(
+                proxyFactory,
+                proxyAdmin,
+                daiInitData,
                 msg.sender
             );
-        address proxyAdmin = PoolToken(payable(daiProxy)).proxyAdmin();
         ProxyAdmin(proxyAdmin).upgradeAndCall(
             PoolTokenProxy(payable(daiProxy)),
             logicV2,
-            initData
+            initDataV2
         );
         addressRegistry.registerAddress("daiDemoPool", daiProxy);
 
-        address usdcProxy =
-            PoolTokenV1Factory(poolTokenV1Factory).create(
+        bytes memory usdcInitData =
+            abi.encodeWithSignature(
+                "initialize(address,address,address)",
                 proxyAdmin,
                 USDC_ADDRESS,
+                fakeAggAddress
+            );
+        address usdcProxy =
+            PoolTokenV1Factory(poolTokenV1Factory).create(
+                proxyFactory,
+                proxyAdmin,
+                usdcInitData,
                 msg.sender
             );
         ProxyAdmin(proxyAdmin).upgradeAndCall(
             PoolTokenProxy(payable(usdcProxy)),
             logicV2,
-            initData
+            initDataV2
         );
         addressRegistry.registerAddress("usdcDemoPool", usdcProxy);
 
-        address usdtProxy =
-            PoolTokenV1Factory(poolTokenV1Factory).create(
+        bytes memory usdtInitData =
+            abi.encodeWithSignature(
+                "initialize(address,address,address)",
                 proxyAdmin,
                 USDT_ADDRESS,
+                fakeAggAddress
+            );
+        address usdtProxy =
+            PoolTokenV1Factory(poolTokenV1Factory).create(
+                proxyFactory,
+                proxyAdmin,
+                usdtInitData,
                 msg.sender
             );
         ProxyAdmin(proxyAdmin).upgradeAndCall(
             PoolTokenProxy(payable(usdtProxy)),
             logicV2,
-            initData
+            initDataV2
         );
         addressRegistry.registerAddress("usdtDemoPool", usdtProxy);
     }
 
     function deploy_3_TvlManager() external onlyOwner updateStep(3) {
         address erc20Allocation =
-            Erc20AllocationFactory(erc20AllocationFactory).create();
-        address tvlManager = TvlManagerFactory(tvlManagerFactory).create();
+            Erc20AllocationFactory(erc20AllocationFactory).create(
+                address(addressRegistry)
+            );
+        address tvlManager =
+            TvlManagerFactory(tvlManagerFactory).create(address(addressRegistry));
         TvlManager(tvlManager).registerAssetAllocation(
             Erc20Allocation(erc20Allocation)
         );
@@ -227,7 +275,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
     function deploy_4_OracleAdapter() external onlyOwner updateStep(4) {
         address oracleAdapter =
-            OracleAdapterFactory(oracleAdapterFactory).create();
+            OracleAdapterFactory(oracleAdapterFactory).create(address(addressRegistry));
         addressRegistry.registerAddress("oracleAdapter", oracleAdapter);
     }
 

@@ -19,83 +19,61 @@ import {
 
 import {DeploymentConstants} from "./constants.sol";
 
-contract MetaPoolTokenFactory {
-    address public addressRegistry;
-    address public proxyAdminFactory;
+abstract contract UpgradeableContractFactory {
 
-    constructor(address addressRegistry_, address proxyAdminFactory_) public {
-        addressRegistry = addressRegistry_;
-        proxyAdminFactory = proxyAdminFactory_;
+    function create(
+        address proxyFactory,
+        address proxyAdmin,
+        bytes memory initData,
+        address newOwner
+    ) public returns (address) {
+        address logic = _deployLogic();
+        address proxy =
+            ProxyFactory(proxyFactory).create(
+                logic,
+                proxyAdmin,
+                initData,
+                newOwner
+            );
+        return address(proxy);
     }
 
-    function createWithProxyAdmin(address newOwner) external returns (address) {
-        address proxyAdmin =
-            ProxyAdminFactory(proxyAdminFactory).create(newOwner);
-        return create(proxyAdmin, newOwner);
-    }
+    function _deployLogic() internal virtual returns (address);
+}
 
-    function create(address proxyAdmin, address newOwner)
-        public
-        returns (address)
-    {
+contract MetaPoolTokenFactory is UpgradeableContractFactory {
+    function _deployLogic() internal virtual override returns (address) {
         MetaPoolToken logic = new MetaPoolToken();
-        MetaPoolTokenProxy proxy =
-            new MetaPoolTokenProxy(address(logic), proxyAdmin, addressRegistry);
+        return address(logic);
+    }
+}
 
-        Ownable(address(logic)).transferOwnership(newOwner);
-        Ownable(address(proxy)).transferOwnership(newOwner);
-
+contract ProxyFactory {
+    function create(
+        address logic,
+        address proxyAdmin,
+        bytes memory initData,
+        address newOwner
+    ) public returns (address) {
+        TransparentUpgradeableProxy proxy =
+            new TransparentUpgradeableProxy(logic, proxyAdmin, initData);
+        if (newOwner != address(0)) {
+            Ownable(address(proxy)).transferOwnership(newOwner);
+        }
         return address(proxy);
     }
 }
 
-contract PoolTokenV1Factory {
-    address public addressRegistry;
-    address public proxyAdminFactory;
+// address fakeAggAddress = 0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe;
 
-    constructor(address addressRegistry_, address proxyAdminFactory_) public {
-        addressRegistry = addressRegistry_;
-        proxyAdminFactory = proxyAdminFactory_;
-    }
-
-    function createWithProxyAdmin(address tokenAddress, address newOwner)
-        external
-        returns (address)
-    {
-        address proxyAdmin =
-            ProxyAdminFactory(proxyAdminFactory).create(newOwner);
-        return create(proxyAdmin, tokenAddress, newOwner);
-    }
-
-    function create(
-        address proxyAdmin,
-        address tokenAddress,
-        address newOwner
-    ) public returns (address) {
-        PoolToken logicV1 = new PoolToken();
-        address fakeAggAddress = 0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe;
-        PoolTokenProxy proxy =
-            new PoolTokenProxy(
-                address(logicV1),
-                proxyAdmin,
-                tokenAddress,
-                fakeAggAddress
-            );
-
-        Ownable(address(logicV1)).transferOwnership(newOwner);
-        Ownable(address(proxy)).transferOwnership(newOwner);
-
-        return address(proxy);
+contract PoolTokenV1Factory is UpgradeableContractFactory {
+    function _deployLogic() internal virtual override returns (address) {
+        PoolToken logic = new PoolToken();
+        return address(logic);
     }
 }
 
 contract PoolTokenV2Factory {
-    address public addressRegistry;
-
-    constructor(address addressRegistry_) public {
-        addressRegistry = addressRegistry_;
-    }
-
     function create() external returns (address) {
         PoolTokenV2 logicV2 = new PoolTokenV2();
         return address(logicV2);
@@ -103,13 +81,7 @@ contract PoolTokenV2Factory {
 }
 
 contract OracleAdapterFactory is DeploymentConstants {
-    address public addressRegistry;
-
-    constructor(address addressRegistry_) public {
-        addressRegistry = addressRegistry_;
-    }
-
-    function create() external returns (address) {
+    function create(address addressRegistry) external returns (address) {
         OracleAdapter oracleAdapter =
             new OracleAdapter(
                 addressRegistry,
@@ -144,26 +116,15 @@ contract OracleAdapterFactory is DeploymentConstants {
 }
 
 contract Erc20AllocationFactory {
-    address public addressRegistry;
-
-    constructor(address addressRegistry_) public {
-        addressRegistry = addressRegistry_;
-    }
-
-    function create() external returns (address) {
+    function create(address addressRegistry) external returns (address) {
         Erc20Allocation erc20Allocation = new Erc20Allocation(addressRegistry);
         return address(erc20Allocation);
     }
 }
 
 contract TvlManagerFactory {
-    address public addressRegistry;
 
-    constructor(address addressRegistry_) public {
-        addressRegistry = addressRegistry_;
-    }
-
-    function create() external returns (address) {
+    function create(address addressRegistry) external returns (address) {
         TvlManager tvlManager = new TvlManager(addressRegistry);
         return address(tvlManager);
     }
