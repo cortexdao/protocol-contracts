@@ -170,7 +170,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         address mApt_ =
             MetaPoolTokenFactory(mAptFactory).create(
                 proxyFactory,
-                proxyAdminFactory,
+                proxyAdmin,
                 initData,
                 address(0)  // no owner for mAPT
             );

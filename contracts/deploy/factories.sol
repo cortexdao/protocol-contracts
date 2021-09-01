@@ -20,7 +20,6 @@ import {
 import {DeploymentConstants} from "./constants.sol";
 
 abstract contract UpgradeableContractFactory {
-
     function create(
         address proxyFactory,
         address proxyAdmin,
@@ -63,8 +62,6 @@ contract ProxyFactory {
         return address(proxy);
     }
 }
-
-// address fakeAggAddress = 0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe;
 
 contract PoolTokenV1Factory is UpgradeableContractFactory {
     function _deployLogic() internal virtual override returns (address) {
@@ -123,7 +120,6 @@ contract Erc20AllocationFactory {
 }
 
 contract TvlManagerFactory {
-
     function create(address addressRegistry) external returns (address) {
         TvlManager tvlManager = new TvlManager(addressRegistry);
         return address(tvlManager);

@@ -1,5 +1,7 @@
 const { expect } = require("chai");
-const { ethers, web3, artifacts, waffle } = require("hardhat");
+const hre = require("hardhat");
+const { ethers, web3, artifacts, waffle } = hre;
+const { BigNumber } = ethers;
 const timeMachine = require("ganache-time-traveler");
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
 const {
@@ -32,11 +34,8 @@ describe.only("Contract: MetaPoolToken", () => {
   // contract factories
   // have to be set async in "before"
   let MetaPoolTokenProxy;
-  let MetaPoolToken;
 
   // deployed contracts
-  let proxyAdmin;
-  let logic;
   let mApt;
 
   // default settings
@@ -119,6 +118,13 @@ describe.only("Contract: MetaPoolToken", () => {
   });
 
   describe("Constructor", () => {
+    let logic;
+
+    before(async () => {
+      const MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
+      logic = await MetaPoolToken.deploy();
+    });
+
     it("Revert when logic is not a contract address", async () => {
       const contractAddress = (await deployMockContract(deployer, [])).address;
       await expect(
@@ -136,7 +142,7 @@ describe.only("Contract: MetaPoolToken", () => {
       const contractAddress = (await deployMockContract(deployer, [])).address;
       await expect(
         MetaPoolTokenProxy.connect(deployer).deploy(
-          contractAddress,
+          logic.address,
           ZERO_ADDRESS,
           contractAddress
         )
@@ -147,7 +153,7 @@ describe.only("Contract: MetaPoolToken", () => {
       const contractAddress = (await deployMockContract(deployer, [])).address;
       await expect(
         MetaPoolTokenProxy.connect(deployer).deploy(
-          contractAddress,
+          logic.address,
           contractAddress,
           DUMMY_ADDRESS
         )
@@ -192,7 +198,14 @@ describe.only("Contract: MetaPoolToken", () => {
     });
 
     it("Admin set correctly", async () => {
-      expect(await mApt.proxyAdmin()).to.equal(proxyAdmin.address);
+      // get admin address from slot specified by EIP-1967
+      let proxyAdminAddress = await ethers.provider.getStorageAt(
+        mApt.address,
+        "0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103"
+      );
+      proxyAdminAddress = ethers.utils.getAddress(proxyAdminAddress.slice(-40));
+      console.log(proxyAdminAddress);
+      expect(await mApt.proxyAdmin()).to.equal(proxyAdminAddress);
     });
 
     it("Address registry set correctly", async () => {
