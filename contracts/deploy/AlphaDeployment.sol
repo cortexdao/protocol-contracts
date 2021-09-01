@@ -159,6 +159,10 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     }
 
     function deploy_1_MetaPoolToken() external onlyOwner returns (address) {
+        // preconditions:
+        // check registered:
+        // - Emergency Safe
+        // - LP Safe 
         address proxyAdmin =
             ProxyAdminFactory(proxyAdminFactory).create(msg.sender);
         bytes memory initData =
@@ -182,6 +186,11 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
     function deploy_2_DemoPools() external onlyOwner updateStep(2) {
         /* complete proxy deploy for the demo pools */
+        // preconditions:
+        // check registered:
+        // - Emergency Safe
+        // - Admin Safe
+        // - mAPT
 
         address proxyAdmin =
             ProxyAdminFactory(proxyAdminFactory).create(msg.sender);
