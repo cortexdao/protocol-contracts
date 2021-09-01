@@ -22,7 +22,7 @@ const DUMMY_ADDRESS = web3.utils.toChecksumAddress(
 const usdc = (amount) => tokenAmountToBigNumber(amount, "6");
 const ether = (amount) => tokenAmountToBigNumber(amount, "18");
 
-describe.only("Contract: MetaPoolToken", () => {
+describe("Contract: MetaPoolToken", () => {
   // signers
   let deployer;
   let emergencySafe;
@@ -81,31 +81,7 @@ describe.only("Contract: MetaPoolToken", () => {
 
     MetaPoolTokenProxy = await ethers.getContractFactory("MetaPoolTokenProxy");
 
-    const ProxyAdminFactory = await ethers.getContractFactory(
-      "ProxyAdminFactory"
-    );
-    const proxyAdminFactory = await ProxyAdminFactory.deploy();
-    const ProxyFactory = await ethers.getContractFactory("ProxyFactory");
-    const proxyFactory = await ProxyFactory.deploy();
-    const MetaPoolTokenFactory = await ethers.getContractFactory(
-      "TestMetaPoolTokenFactory"
-    );
-    const mAptFactory = await MetaPoolTokenFactory.deploy();
-    const AlphaDeployment = await ethers.getContractFactory("AlphaDeployment");
-    const alphaDeployment = await AlphaDeployment.deploy(
-      addressRegistryMock.address,
-      proxyAdminFactory.address,
-      proxyFactory.address,
-      mAptFactory.address,
-      FAKE_ADDRESS,
-      FAKE_ADDRESS,
-      FAKE_ADDRESS,
-      FAKE_ADDRESS,
-      FAKE_ADDRESS
-    );
-    await alphaDeployment.deploy_1_MetaPoolToken();
-    const proxyAddress = await alphaDeployment.mApt();
-    mApt = await ethers.getContractAt("TestMetaPoolToken", proxyAddress);
+    mApt = await deployMetaPoolToken(addressRegistryMock);
 
     // allows mAPT to mint and burn
     await oracleAdapterMock.mock.lock.returns();
@@ -116,6 +92,41 @@ describe.only("Contract: MetaPoolToken", () => {
     );
     await addressRegistryMock.mock.lpAccountAddress.returns(lpAccount.address);
   });
+
+  async function deployMetaPoolToken(addressRegistry) {
+    const ProxyAdminFactory = await ethers.getContractFactory(
+      "ProxyAdminFactory"
+    );
+    const proxyAdminFactory = await ProxyAdminFactory.deploy();
+
+    const ProxyFactory = await ethers.getContractFactory("ProxyFactory");
+    const proxyFactory = await ProxyFactory.deploy();
+
+    const MetaPoolTokenFactory = await ethers.getContractFactory(
+      "TestMetaPoolTokenFactory"
+    );
+    const mAptFactory = await MetaPoolTokenFactory.deploy();
+
+    const AlphaDeployment = await ethers.getContractFactory("AlphaDeployment");
+    const alphaDeployment = await AlphaDeployment.deploy(
+      addressRegistry.address,
+      proxyAdminFactory.address,
+      proxyFactory.address,
+      mAptFactory.address,
+      FAKE_ADDRESS,
+      FAKE_ADDRESS,
+      FAKE_ADDRESS,
+      FAKE_ADDRESS,
+      FAKE_ADDRESS
+    );
+    await alphaDeployment.deploy_0_verifyPreConditions();
+    await alphaDeployment.deploy_1_MetaPoolToken();
+
+    const proxyAddress = await alphaDeployment.mApt();
+    mApt = await ethers.getContractAt("TestMetaPoolToken", proxyAddress);
+
+    return mApt;
+  }
 
   describe("Constructor", () => {
     let logic;
