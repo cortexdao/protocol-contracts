@@ -93,6 +93,10 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
     uint256 public step;
 
+    address public emergencySafe;
+    address public adminSafe;
+    address public lpSafe;
+
     // step 1
     address public mApt;
 
@@ -130,7 +134,16 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         address tvlManagerFactory_,
         address oracleAdapterFactory_
     ) public {
+        step = 1;
+
         addressRegistry = IAddressRegistryV2(addressRegistry_);
+
+        // simplest to check Safes are deployed to avoid repeated
+        // preconditions checks later
+        emergencySafe = addressRegistry.getAddress("emergencySafe");
+        adminSafe = addressRegistry.getAddress("adminSafe");
+        lpSafe = addressRegistry.lpSafeAddress();
+
         proxyAdminFactory = proxyAdminFactory_;
         proxyFactory = proxyFactory_;
         mAptFactory = mAptFactory_;
@@ -141,28 +154,31 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         oracleAdapterFactory = oracleAdapterFactory_;
     }
 
-    function deploy_0_verifyPreConditions() external onlyOwner updateStep(0) {
-        // 1. check Safe addresses registered: Emergency, Admin, LP
-        addressRegistry.getAddress("emergencySafe");
-        addressRegistry.getAddress("adminSafe");
-        addressRegistry.lpSafeAddress();
-        // 2. check this contract can register addresses
-        require(
-            Ownable(address(addressRegistry)).owner() == address(this),
-            "INVALID_ADDRESS_REGISTRY_OWNER"
-        );
-        // 4. check this contract can upgrade pools
-        require(
-            Ownable(POOL_PROXY_ADMIN).owner() == address(this),
-            "INVALID_POOL_PROXY_ADMIN_OWNER"
-        );
+    function verifyPreConditions(
+        bytes32[] memory registeredIds,
+        address[] memory deployedAddresses,
+        address[] memory ownedContracts
+    ) public view {
+        for (uint256 i = 0; i < registeredIds.length; i++) {
+            require(
+                addressRegistry.getAddress(registeredIds[i]) ==
+                    deployedAddresses[i],
+                "MISSING_DEPLOYED_ADDRESS"
+            );
+        }
+        for (uint256 i = 0; i < ownedContracts.length; i++) {
+            require(
+                Ownable(ownedContracts[i]).owner() == address(this),
+                "MISSING_OWNERSHIP"
+            );
+        }
     }
 
     function deploy_1_MetaPoolToken() external onlyOwner returns (address) {
-        // preconditions:
-        // check registered:
-        // - Emergency Safe
-        // - LP Safe 
+        address[] memory ownedContracts = new address[](1);
+        ownedContracts[0] = address(addressRegistry);
+        verifyPreConditions(new bytes32[](0), new address[](0), ownedContracts);
+
         address proxyAdmin =
             ProxyAdminFactory(proxyAdminFactory).create(msg.sender);
         bytes memory initData =
@@ -176,7 +192,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 proxyFactory,
                 proxyAdmin,
                 initData,
-                address(0)  // no owner for mAPT
+                address(0) // no owner for mAPT
             );
         addressRegistry.registerAddress("mApt", mApt_);
 
@@ -186,11 +202,13 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
     function deploy_2_DemoPools() external onlyOwner updateStep(2) {
         /* complete proxy deploy for the demo pools */
-        // preconditions:
-        // check registered:
-        // - Emergency Safe
-        // - Admin Safe
-        // - mAPT
+        bytes32[] memory registeredIds = new bytes32[](1);
+        address[] memory deployedAddresses = new address[](1);
+        address[] memory ownedContracts = new address[](1);
+        registeredIds[0] = "mApt";
+        deployedAddresses[0] = mApt;
+        ownedContracts[0] = address(addressRegistry);
+        verifyPreConditions(registeredIds, deployedAddresses, ownedContracts);
 
         address proxyAdmin =
             ProxyAdminFactory(proxyAdminFactory).create(msg.sender);
@@ -274,7 +292,9 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 address(addressRegistry)
             );
         address tvlManager =
-            TvlManagerFactory(tvlManagerFactory).create(address(addressRegistry));
+            TvlManagerFactory(tvlManagerFactory).create(
+                address(addressRegistry)
+            );
         TvlManager(tvlManager).registerAssetAllocation(
             Erc20Allocation(erc20Allocation)
         );
@@ -283,13 +303,33 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     }
 
     function deploy_4_OracleAdapter() external onlyOwner updateStep(4) {
+        bytes32[] memory registeredIds = new bytes32[](2);
+        address[] memory deployedAddresses = new address[](2);
+        address[] memory ownedContracts = new address[](1);
+        registeredIds[0] = "mApt";
+        deployedAddresses[0] = mApt;
+        registeredIds[1] = "tvlManager";
+        deployedAddresses[1] = tvlManager;
+        ownedContracts[0] = address(addressRegistry);
+        verifyPreConditions(registeredIds, deployedAddresses, ownedContracts);
+
         address oracleAdapter =
-            OracleAdapterFactory(oracleAdapterFactory).create(address(addressRegistry));
+            OracleAdapterFactory(oracleAdapterFactory).create(
+                address(addressRegistry)
+            );
         addressRegistry.registerAddress("oracleAdapter", oracleAdapter);
     }
 
     function deploy_5_PoolTokenV2_upgrade() external onlyOwner updateStep(5) {
         /* upgrade from v1 to v2 */
+        bytes32[] memory registeredIds = new bytes32[](1);
+        address[] memory deployedAddresses = new address[](1);
+        address[] memory ownedContracts = new address[](2);
+        registeredIds[0] = "mApt";
+        deployedAddresses[0] = mApt;
+        ownedContracts[0] = address(addressRegistry);
+        ownedContracts[1] = POOL_PROXY_ADMIN;
+        verifyPreConditions(registeredIds, deployedAddresses, ownedContracts);
 
         // PoolTokenV2 logicV2 = new PoolTokenV2();
         address logicV2 = PoolTokenV2Factory(poolTokenV2Factory).create();
