@@ -1,7 +1,6 @@
 const { expect } = require("chai");
 const hre = require("hardhat");
 const { ethers, web3, artifacts, waffle } = hre;
-const { BigNumber } = ethers;
 const timeMachine = require("ganache-time-traveler");
 const { AddressZero: ZERO_ADDRESS } = ethers.constants;
 const {
@@ -33,15 +32,13 @@ describe("Contract: MetaPoolToken", () => {
 
   // contract factories
   // have to be set async in "before"
-  let MetaPoolTokenProxy;
 
   // deployed contracts
   let mApt;
 
-  // default settings
-  // mocks have to be done async in "before"
-  let oracleAdapterMock;
-  let addressRegistryMock;
+  // mocks
+  let oracleAdapter;
+  let addressRegistry;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -64,33 +61,38 @@ describe("Contract: MetaPoolToken", () => {
       anotherUser,
     ] = await ethers.getSigners();
 
-    addressRegistryMock = await deployMockContract(
+    addressRegistry = await deployMockContract(
       deployer,
-      artifacts.require("IAddressRegistryV2").abi
+      artifacts.require("AddressRegistryV2").abi
     );
-    await addressRegistryMock.mock.emergencySafeAddress.returns(
+    await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
-    await addressRegistryMock.mock.lpSafeAddress.returns(lpSafe.address);
-    await addressRegistryMock.mock.registerAddress.returns();
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("emergencySafe"))
+      .returns(emergencySafe.address);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("adminSafe"))
+      .returns(FAKE_ADDRESS);
+    await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
+    await addressRegistry.mock.registerAddress.returns();
 
-    oracleAdapterMock = await deployMockContract(deployer, OracleAdapter.abi);
-    await addressRegistryMock.mock.oracleAdapterAddress.returns(
-      oracleAdapterMock.address
+    mApt = await deployMetaPoolToken(addressRegistry);
+
+    oracleAdapter = await deployMockContract(deployer, OracleAdapter.abi);
+    await addressRegistry.mock.oracleAdapterAddress.returns(
+      oracleAdapter.address
     );
 
-    MetaPoolTokenProxy = await ethers.getContractFactory("MetaPoolTokenProxy");
-
-    mApt = await deployMetaPoolToken(addressRegistryMock);
-
     // allows mAPT to mint and burn
-    await oracleAdapterMock.mock.lock.returns();
+    await oracleAdapter.mock.lock.returns();
 
     lpAccount = await deployMockContract(
       deployer,
       artifacts.readArtifactSync("ILpAccount").abi
     );
-    await addressRegistryMock.mock.lpAccountAddress.returns(lpAccount.address);
+    await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
   });
 
   async function deployMetaPoolToken(addressRegistry) {
@@ -107,19 +109,24 @@ describe("Contract: MetaPoolToken", () => {
     );
     const mAptFactory = await MetaPoolTokenFactory.deploy();
 
-    const AlphaDeployment = await ethers.getContractFactory("AlphaDeployment");
+    const AlphaDeployment = await ethers.getContractFactory(
+      "TestAlphaDeployment"
+    );
     const alphaDeployment = await AlphaDeployment.deploy(
       addressRegistry.address,
       proxyAdminFactory.address,
       proxyFactory.address,
-      mAptFactory.address,
-      FAKE_ADDRESS,
-      FAKE_ADDRESS,
-      FAKE_ADDRESS,
-      FAKE_ADDRESS,
-      FAKE_ADDRESS
+      mAptFactory.address, // mAPT factory
+      FAKE_ADDRESS, // pool token v1 factory
+      FAKE_ADDRESS, // pool token v2 factory
+      FAKE_ADDRESS, // erc20 allocation factory
+      FAKE_ADDRESS, // tvl manager factory
+      FAKE_ADDRESS // oracle adapter factory
     );
-    await alphaDeployment.deploy_0_verifyPreConditions();
+
+    // need some test setup to pass the pre-step checks
+    await addressRegistry.mock.owner.returns(alphaDeployment.address);
+
     await alphaDeployment.deploy_1_MetaPoolToken();
 
     const proxyAddress = await alphaDeployment.mApt();
@@ -129,9 +136,13 @@ describe("Contract: MetaPoolToken", () => {
   }
 
   describe("Constructor", () => {
+    let MetaPoolTokenProxy;
     let logic;
 
     before(async () => {
+      MetaPoolTokenProxy = await ethers.getContractFactory(
+        "MetaPoolTokenProxy"
+      );
       const MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
       logic = await MetaPoolToken.deploy();
     });
@@ -220,9 +231,7 @@ describe("Contract: MetaPoolToken", () => {
     });
 
     it("Address registry set correctly", async () => {
-      expect(await mApt.addressRegistry()).to.equal(
-        addressRegistryMock.address
-      );
+      expect(await mApt.addressRegistry()).to.equal(addressRegistry.address);
     });
   });
 
@@ -416,7 +425,7 @@ describe("Contract: MetaPoolToken", () => {
 
       await lpAccount.mock.transferToPool.returns();
 
-      await oracleAdapterMock.mock.getTvl.returns(
+      await oracleAdapter.mock.getTvl.returns(
         tokenAmountToBigNumber("12345678", 8)
       );
     });
@@ -444,7 +453,7 @@ describe("Contract: MetaPoolToken", () => {
       it("Locks after minting", async () => {
         const transferAmount = 100;
 
-        await oracleAdapterMock.mock.lock.revertsWithReason("ORACLE_LOCKED");
+        await oracleAdapter.mock.lock.revertsWithReason("ORACLE_LOCKED");
         await expect(
           mApt.testMultipleMintAndTransfer([pool.address], [transferAmount])
         ).to.be.revertedWith("ORACLE_LOCKED");
@@ -484,7 +493,7 @@ describe("Contract: MetaPoolToken", () => {
         const decimals = await underlyer.decimals();
         const transferAmount = tokenAmountToBigNumber("100", decimals);
 
-        await oracleAdapterMock.mock.lock.revertsWithReason("ORACLE_LOCKED");
+        await oracleAdapter.mock.lock.revertsWithReason("ORACLE_LOCKED");
         await expect(
           mApt.testMultipleBurnAndTransfer([pool.address], [transferAmount])
         ).to.be.revertedWith("ORACLE_LOCKED");
@@ -510,7 +519,7 @@ describe("Contract: MetaPoolToken", () => {
         const anotherBalance = tokenAmountToBigNumber("12345");
         const totalSupply = balance.add(anotherBalance);
 
-        await oracleAdapterMock.mock.getTvl.returns(tvl);
+        await oracleAdapter.mock.getTvl.returns(tvl);
         await mApt.testMint(FAKE_ADDRESS, balance);
         await mApt.testMint(ANOTHER_FAKE_ADDRESS, anotherBalance);
 
@@ -526,7 +535,7 @@ describe("Contract: MetaPoolToken", () => {
         const usdcEthPrice = tokenAmountToBigNumber("1602950450000000");
         let usdcAmount = usdc(107);
         let usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
-        await oracleAdapterMock.mock.getTvl.returns(0);
+        await oracleAdapter.mock.getTvl.returns(0);
 
         await mApt.testMint(anotherUser.address, tokenAmountToBigNumber(100));
 
@@ -545,7 +554,7 @@ describe("Contract: MetaPoolToken", () => {
         const usdcEthPrice = tokenAmountToBigNumber("1602950450000000");
         let usdcAmount = usdc(107);
         let usdcValue = usdcEthPrice.mul(usdcAmount).div(usdc(1));
-        await oracleAdapterMock.mock.getTvl.returns(1);
+        await oracleAdapter.mock.getTvl.returns(1);
 
         const mintAmount = await mApt.testCalculateDelta(
           usdcAmount,
@@ -562,7 +571,7 @@ describe("Contract: MetaPoolToken", () => {
         const usdcEthPrice = tokenAmountToBigNumber("1602950450000000");
         let usdcAmount = usdc(107);
         let tvl = usdcEthPrice.mul(usdcAmount).div(usdc(1));
-        await oracleAdapterMock.mock.getTvl.returns(tvl);
+        await oracleAdapter.mock.getTvl.returns(tvl);
 
         const totalSupply = tokenAmountToBigNumber(21);
         await mApt.testMint(anotherUser.address, totalSupply);
@@ -575,7 +584,7 @@ describe("Contract: MetaPoolToken", () => {
         expect(mintAmount).to.be.equal(totalSupply);
 
         tvl = usdcEthPrice.mul(usdcAmount.mul(2)).div(usdc(1));
-        await oracleAdapterMock.mock.getTvl.returns(tvl);
+        await oracleAdapter.mock.getTvl.returns(tvl);
         const expectedMintAmount = totalSupply.div(2);
         mintAmount = await mApt.testCalculateDelta(
           usdcAmount,
@@ -620,7 +629,7 @@ describe("Contract: MetaPoolToken", () => {
 
       before("Set TVL", async () => {
         const tvl = tokenAmountToBigNumber("502300", 8);
-        await oracleAdapterMock.mock.getTvl.returns(tvl);
+        await oracleAdapter.mock.getTvl.returns(tvl);
       });
 
       it("Revert if array lengths do not match", async () => {
@@ -677,12 +686,12 @@ describe("Contract: MetaPoolToken", () => {
   describe("getTvl", () => {
     it("Call delegates to oracle adapter's getTvl", async () => {
       const usdTvl = tokenAmountToBigNumber("25100123.87654321", "8");
-      await oracleAdapterMock.mock.getTvl.returns(usdTvl);
+      await oracleAdapter.mock.getTvl.returns(usdTvl);
       expect(await mApt.testGetTvl()).to.equal(usdTvl);
     });
 
     it("getTvl reverts with same reason as oracle adapter", async () => {
-      await oracleAdapterMock.mock.getTvl.revertsWithReason("SOMETHING_WRONG");
+      await oracleAdapter.mock.getTvl.revertsWithReason("SOMETHING_WRONG");
       await expect(mApt.testGetTvl()).to.be.revertedWith("SOMETHING_WRONG");
     });
   });
@@ -724,7 +733,7 @@ describe("Contract: MetaPoolToken", () => {
       await tvlManagerMock.mock.getAssetAllocation
         .withArgs("erc20Allocation")
         .returns(erc20AllocationMock.address);
-      await addressRegistryMock.mock.getAddress
+      await addressRegistry.mock.getAddress
         .withArgs(bytes32("tvlManager"))
         .returns(tvlManagerMock.address);
     });
@@ -788,7 +797,7 @@ describe("Contract: MetaPoolToken", () => {
     });
 
     it("Revert on unregistered LP Account address", async () => {
-      await addressRegistryMock.mock.lpAccountAddress.returns(ZERO_ADDRESS);
+      await addressRegistry.mock.lpAccountAddress.returns(ZERO_ADDRESS);
       await expect(mApt.connect(lpSafe).fundLpAccount([])).to.be.revertedWith(
         "INVALID_LP_ACCOUNT"
       );
@@ -808,7 +817,7 @@ describe("Contract: MetaPoolToken", () => {
     });
 
     it("Revert on unregistered LP Account address", async () => {
-      await addressRegistryMock.mock.lpAccountAddress.returns(ZERO_ADDRESS);
+      await addressRegistry.mock.lpAccountAddress.returns(ZERO_ADDRESS);
       await expect(
         mApt.connect(lpSafe).withdrawFromLpAccount([])
       ).to.be.revertedWith("INVALID_LP_ACCOUNT");
@@ -828,7 +837,7 @@ describe("Contract: MetaPoolToken", () => {
     });
 
     it("Revert on unregistered LP Account address", async () => {
-      await addressRegistryMock.mock.lpAccountAddress.returns(ZERO_ADDRESS);
+      await addressRegistry.mock.lpAccountAddress.returns(ZERO_ADDRESS);
       await expect(
         mApt.connect(emergencySafe).emergencyFundLpAccount([], [])
       ).to.be.revertedWith("INVALID_LP_ACCOUNT");
@@ -849,7 +858,7 @@ describe("Contract: MetaPoolToken", () => {
     });
 
     it("Revert on unregistered LP Account address", async () => {
-      await addressRegistryMock.mock.lpAccountAddress.returns(ZERO_ADDRESS);
+      await addressRegistry.mock.lpAccountAddress.returns(ZERO_ADDRESS);
       await expect(
         mApt.connect(emergencySafe).emergencyWithdrawFromLpAccount([], [])
       ).to.be.revertedWith("INVALID_LP_ACCOUNT");
@@ -866,14 +875,14 @@ describe("Contract: MetaPoolToken", () => {
       const daiPool = await deployMockContract(deployer, PoolTokenV2.abi);
       const daiRebalanceAmount = tokenAmountToBigNumber("1234888", "18");
       await daiPool.mock.getReserveTopUpValue.returns(daiRebalanceAmount);
-      await addressRegistryMock.mock.getAddress
+      await addressRegistry.mock.getAddress
         .withArgs(bytes32("daiPool"))
         .returns(daiPool.address);
 
       const usdcPool = await deployMockContract(deployer, PoolTokenV2.abi);
       const usdcRebalanceAmount = tokenAmountToBigNumber("459999", "6");
       await usdcPool.mock.getReserveTopUpValue.returns(usdcRebalanceAmount);
-      await addressRegistryMock.mock.getAddress
+      await addressRegistry.mock.getAddress
         .withArgs(bytes32("usdcPool"))
         .returns(usdcPool.address);
 

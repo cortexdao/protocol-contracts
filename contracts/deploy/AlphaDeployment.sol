@@ -138,8 +138,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
         addressRegistry = IAddressRegistryV2(addressRegistry_);
 
-        // simplest to check Safes are deployed to avoid repeated
-        // preconditions checks later
+        // Simplest to check now that Safes are deployed in order to
+        // avoid repeated preconditions checks later.
         emergencySafe = addressRegistry.getAddress("emergencySafe");
         adminSafe = addressRegistry.getAddress("adminSafe");
         lpSafe = addressRegistry.lpSafeAddress();
@@ -154,11 +154,23 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         oracleAdapterFactory = oracleAdapterFactory_;
     }
 
+    /**
+     * @dev There are two types of checks:
+     *   1. check a contract address from a previous step's deployment
+     *      is registered with expected ID.
+     *   2. check the deployment contract has ownership of necessary
+     *      contracts to perform actions, e.g. register an address or upgrade
+     *      a proxy.
+     *
+     * @param registeredIds identifiers for the Address Registry
+     * @param deployedAddresses addresses from previous steps' deploys
+     * @param ownedContracts addresses that should be owned by this contract
+     */
     function verifyPreConditions(
         bytes32[] memory registeredIds,
         address[] memory deployedAddresses,
         address[] memory ownedContracts
-    ) public view {
+    ) public view virtual {
         for (uint256 i = 0; i < registeredIds.length; i++) {
             require(
                 addressRegistry.getAddress(registeredIds[i]) ==
@@ -174,6 +186,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         }
     }
 
+    /// @dev Deploy the mAPT proxy and its proxy admin.
+    ///      Does not register any roles for contracts.
     function deploy_1_MetaPoolToken()
         external
         onlyOwner
@@ -184,8 +198,9 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         ownedContracts[0] = address(addressRegistry);
         verifyPreConditions(new bytes32[](0), new address[](0), ownedContracts);
 
+        address newOwner = msg.sender; // will own the proxy admin
         address proxyAdmin =
-            ProxyAdminFactory(proxyAdminFactory).create(msg.sender);
+            ProxyAdminFactory(proxyAdminFactory).create(newOwner);
         bytes memory initData =
             abi.encodeWithSignature(
                 "initialize(address,address)",
@@ -202,8 +217,9 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         return mApt;
     }
 
+    /// @dev complete proxy deploy for the demo pools
+    ///      Registers mAPT for a contract role.
     function deploy_2_DemoPools() external onlyOwner updateStep(2) {
-        /* complete proxy deploy for the demo pools */
         bytes32[] memory registeredIds = new bytes32[](1);
         address[] memory deployedAddresses = new address[](1);
         address[] memory ownedContracts = new address[](1);
@@ -288,12 +304,20 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         addressRegistry.registerAddress("usdtDemoPool", usdtProxy);
     }
 
+    /// @dev Deploy ERC20 allocation and TVL Manager.
+    ///      Does not register any roles for contracts.
     function deploy_3_TvlManager()
         external
         onlyOwner
         updateStep(3)
         returns (address)
     {
+        bytes32[] memory registeredIds = new bytes32[](0);
+        address[] memory deployedAddresses = new address[](0);
+        address[] memory ownedContracts = new address[](1);
+        ownedContracts[0] = address(addressRegistry);
+        verifyPreConditions(registeredIds, deployedAddresses, ownedContracts);
+
         erc20Allocation = Erc20AllocationFactory(erc20AllocationFactory).create(
             address(addressRegistry)
         );
@@ -308,6 +332,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         return tvlManager;
     }
 
+    /// @dev registers mAPT and TvlManager for contract roles
     function deploy_4_OracleAdapter()
         external
         onlyOwner
@@ -349,8 +374,9 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         return oracleAdapter;
     }
 
+    /// @notice upgrade from v1 to v2
+    /// @dev register mAPT for a contract role
     function deploy_5_PoolTokenV2_upgrade() external onlyOwner updateStep(5) {
-        /* upgrade from v1 to v2 */
         bytes32[] memory registeredIds = new bytes32[](1);
         address[] memory deployedAddresses = new address[](1);
         address[] memory ownedContracts = new address[](2);

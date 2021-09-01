@@ -20,7 +20,6 @@ describe("Contract: OracleAdapter", () => {
   let deployer;
   let emergencySafe;
   let adminSafe;
-  let lpSafe;
   let mApt;
   let tvlManager;
   let randomUser;
@@ -55,7 +54,6 @@ describe("Contract: OracleAdapter", () => {
       deployer,
       emergencySafe,
       adminSafe,
-      lpSafe,
       mApt,
       tvlManager,
       randomUser,
@@ -83,13 +81,13 @@ describe("Contract: OracleAdapter", () => {
     await addressRegistryMock.mock.getAddress
       .withArgs(bytes32("adminSafe"))
       .returns(adminSafe.address);
-    await addressRegistryMock.mock.lpSafeAddress.returns(lpSafe.address);
     await addressRegistryMock.mock.tvlManagerAddress.returns(
       tvlManager.address
     );
     await addressRegistryMock.mock.getAddress
       .withArgs(bytes32("tvlManager"))
       .returns(tvlManager.address);
+    await addressRegistryMock.mock.lpSafeAddress.returns(FAKE_ADDRESS);
     await addressRegistryMock.mock.registerAddress.returns();
 
     tvlAggMock = await deployMockContract(deployer, AggregatorV3Interface.abi);
