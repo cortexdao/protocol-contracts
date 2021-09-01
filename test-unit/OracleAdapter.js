@@ -7,9 +7,10 @@ const {
   tokenAmountToBigNumber,
   FAKE_ADDRESS,
   ANOTHER_FAKE_ADDRESS,
+  bytes32,
 } = require("../utils/helpers");
 const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
-const IAddressRegistryV2 = artifacts.require("IAddressRegistryV2");
+const AddressRegistryV2 = artifacts.require("AddressRegistryV2");
 const IERC20 = artifacts.require(
   "@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20"
 );
@@ -19,12 +20,10 @@ describe("Contract: OracleAdapter", () => {
   let deployer;
   let emergencySafe;
   let adminSafe;
+  let lpSafe;
   let mApt;
   let tvlManager;
   let randomUser;
-
-  // contract factories
-  let OracleAdapter;
 
   // deployed contracts
   let oracleAdapter;
@@ -56,6 +55,7 @@ describe("Contract: OracleAdapter", () => {
       deployer,
       emergencySafe,
       adminSafe,
+      lpSafe,
       mApt,
       tvlManager,
       randomUser,
@@ -63,20 +63,34 @@ describe("Contract: OracleAdapter", () => {
 
     addressRegistryMock = await deployMockContract(
       deployer,
-      IAddressRegistryV2.abi
+      AddressRegistryV2.abi
     );
 
     await addressRegistryMock.mock.mAptAddress.returns(mApt.address);
+    await addressRegistryMock.mock.getAddress
+      .withArgs(bytes32("mApt"))
+      .returns(mApt.address);
 
     // These registered addresses are setup for roles in the
     // constructor for OracleAdapter
-    await addressRegistryMock.mock.tvlManagerAddress.returns(
-      tvlManager.address
-    );
-    await addressRegistryMock.mock.adminSafeAddress.returns(adminSafe.address);
     await addressRegistryMock.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
+    await addressRegistryMock.mock.getAddress
+      .withArgs(bytes32("emergencySafe"))
+      .returns(emergencySafe.address);
+    await addressRegistryMock.mock.adminSafeAddress.returns(adminSafe.address);
+    await addressRegistryMock.mock.getAddress
+      .withArgs(bytes32("adminSafe"))
+      .returns(adminSafe.address);
+    await addressRegistryMock.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistryMock.mock.tvlManagerAddress.returns(
+      tvlManager.address
+    );
+    await addressRegistryMock.mock.getAddress
+      .withArgs(bytes32("tvlManager"))
+      .returns(tvlManager.address);
+    await addressRegistryMock.mock.registerAddress.returns();
 
     tvlAggMock = await deployMockContract(deployer, AggregatorV3Interface.abi);
     assetAggMock_1 = await deployMockContract(
@@ -90,8 +104,11 @@ describe("Contract: OracleAdapter", () => {
     const assets = [assetAddress_1, assetAddress_2];
     const sources = [assetAggMock_1.address, assetAggMock_2.address];
 
-    OracleAdapter = await ethers.getContractFactory("OracleAdapter");
-    oracleAdapter = await OracleAdapter.deploy(
+    const OracleAdapterFactory = await ethers.getContractFactory(
+      "TestOracleAdapterFactory"
+    );
+    const oracleAdapterFactory = await OracleAdapterFactory.deploy();
+    await oracleAdapterFactory.preCreate(
       addressRegistryMock.address,
       tvlAggMock.address,
       assets,
@@ -99,10 +116,60 @@ describe("Contract: OracleAdapter", () => {
       stalePeriod,
       defaultLockPeriod
     );
-    await oracleAdapter.deployed();
+    oracleAdapter = await deployOracleAdapter(
+      addressRegistryMock,
+      oracleAdapterFactory
+    );
   });
 
+  async function deployOracleAdapter(addressRegistry, oracleAdapterFactory) {
+    const ProxyAdminFactory = await ethers.getContractFactory(
+      "ProxyAdminFactory"
+    );
+    const proxyAdminFactory = await ProxyAdminFactory.deploy();
+
+    const ProxyFactory = await ethers.getContractFactory("ProxyFactory");
+    const proxyFactory = await ProxyFactory.deploy();
+
+    const AlphaDeployment = await ethers.getContractFactory(
+      "TestAlphaDeployment"
+    );
+    const alphaDeployment = await AlphaDeployment.deploy(
+      addressRegistry.address,
+      proxyAdminFactory.address,
+      proxyFactory.address,
+      FAKE_ADDRESS, // mAPT factory
+      FAKE_ADDRESS, // pool token v1 factory
+      FAKE_ADDRESS, // pool token v2 factory
+      FAKE_ADDRESS, // erc20 allocation factory
+      FAKE_ADDRESS, // tvl manager factory
+      oracleAdapterFactory.address // oracle adapter factory
+    );
+
+    // need some test setup to pass the pre-step checks
+    await alphaDeployment.testSetStep(4);
+    await alphaDeployment.testSetMapt(mApt.address);
+    await alphaDeployment.testSetTvlManager(tvlManager.address);
+    await addressRegistry.mock.owner.returns(alphaDeployment.address);
+
+    await alphaDeployment.deploy_4_OracleAdapter();
+
+    const oracleAdapterAddress = await alphaDeployment.oracleAdapter();
+    const oracleAdapter = await ethers.getContractAt(
+      "OracleAdapter",
+      oracleAdapterAddress
+    );
+
+    return oracleAdapter;
+  }
+
   describe("Constructor", () => {
+    let OracleAdapter;
+
+    before(async () => {
+      OracleAdapter = await ethers.getContractFactory("OracleAdapter");
+    });
+
     it("Revert on invalid address registry", async () => {
       const assets = [];
       const sources = [];

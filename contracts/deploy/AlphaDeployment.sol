@@ -75,7 +75,7 @@ Other steps:
 - LP Safe must approve mAPT for each pool underlyer
 */
 
-/* solhint-disable func-name-mixedcase, no-empty-blocks */
+/* solhint-disable max-states-count, func-name-mixedcase, no-empty-blocks */
 contract AlphaDeployment is Ownable, DeploymentConstants {
     // TODO: figure out a versioning scheme
     uint256 public constant VERSION = 1;
@@ -174,7 +174,12 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         }
     }
 
-    function deploy_1_MetaPoolToken() external onlyOwner returns (address) {
+    function deploy_1_MetaPoolToken()
+        external
+        onlyOwner
+        updateStep(1)
+        returns (address)
+    {
         address[] memory ownedContracts = new address[](1);
         ownedContracts[0] = address(addressRegistry);
         verifyPreConditions(new bytes32[](0), new address[](0), ownedContracts);
@@ -187,17 +192,14 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 proxyAdmin,
                 addressRegistry
             );
-        address mApt_ =
-            MetaPoolTokenFactory(mAptFactory).create(
-                proxyFactory,
-                proxyAdmin,
-                initData,
-                address(0) // no owner for mAPT
-            );
-        addressRegistry.registerAddress("mApt", mApt_);
-
-        mApt = mApt_;
-        return mApt_;
+        mApt = MetaPoolTokenFactory(mAptFactory).create(
+            proxyFactory,
+            proxyAdmin,
+            initData,
+            address(0) // no owner for mAPT
+        );
+        addressRegistry.registerAddress("mApt", mApt);
+        return mApt;
     }
 
     function deploy_2_DemoPools() external onlyOwner updateStep(2) {
@@ -286,23 +288,32 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         addressRegistry.registerAddress("usdtDemoPool", usdtProxy);
     }
 
-    function deploy_3_TvlManager() external onlyOwner updateStep(3) {
-        address erc20Allocation =
-            Erc20AllocationFactory(erc20AllocationFactory).create(
-                address(addressRegistry)
-            );
-        address tvlManager =
-            TvlManagerFactory(tvlManagerFactory).create(
-                address(addressRegistry)
-            );
+    function deploy_3_TvlManager()
+        external
+        onlyOwner
+        updateStep(3)
+        returns (address)
+    {
+        erc20Allocation = Erc20AllocationFactory(erc20AllocationFactory).create(
+            address(addressRegistry)
+        );
+        tvlManager = TvlManagerFactory(tvlManagerFactory).create(
+            address(addressRegistry)
+        );
         TvlManager(tvlManager).registerAssetAllocation(
             Erc20Allocation(erc20Allocation)
         );
 
         addressRegistry.registerAddress("tvlManager", address(tvlManager));
+        return tvlManager;
     }
 
-    function deploy_4_OracleAdapter() external onlyOwner updateStep(4) {
+    function deploy_4_OracleAdapter()
+        external
+        onlyOwner
+        updateStep(4)
+        returns (address)
+    {
         bytes32[] memory registeredIds = new bytes32[](2);
         address[] memory deployedAddresses = new address[](2);
         address[] memory ownedContracts = new address[](1);
@@ -313,11 +324,29 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         ownedContracts[0] = address(addressRegistry);
         verifyPreConditions(registeredIds, deployedAddresses, ownedContracts);
 
-        address oracleAdapter =
-            OracleAdapterFactory(oracleAdapterFactory).create(
-                address(addressRegistry)
-            );
+        address[] memory assets = new address[](3);
+        assets[0] = DAI_ADDRESS;
+        assets[1] = USDC_ADDRESS;
+        assets[2] = USDT_ADDRESS;
+
+        address[] memory sources = new address[](3);
+        sources[0] = DAI_USD_AGG_ADDRESS;
+        sources[1] = USDC_USD_AGG_ADDRESS;
+        sources[2] = USDT_USD_AGG_ADDRESS;
+
+        uint256 aggStalePeriod = 86400;
+        uint256 defaultLockPeriod = 270;
+
+        oracleAdapter = OracleAdapterFactory(oracleAdapterFactory).create(
+            address(addressRegistry),
+            TVL_AGG_ADDRESS,
+            assets,
+            sources,
+            aggStalePeriod,
+            defaultLockPeriod
+        );
         addressRegistry.registerAddress("oracleAdapter", oracleAdapter);
+        return oracleAdapter;
     }
 
     function deploy_5_PoolTokenV2_upgrade() external onlyOwner updateStep(5) {
@@ -331,7 +360,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         ownedContracts[1] = POOL_PROXY_ADMIN;
         verifyPreConditions(registeredIds, deployedAddresses, ownedContracts);
 
-        // PoolTokenV2 logicV2 = new PoolTokenV2();
         address logicV2 = PoolTokenV2Factory(poolTokenV2Factory).create();
         bytes memory initData =
             abi.encodeWithSignature(

@@ -5,10 +5,11 @@ const timeMachine = require("ganache-time-traveler");
 const { FAKE_ADDRESS, bytes32 } = require("../utils/helpers");
 const { deployMockContract } = waffle;
 
-describe.only("Contract: MetaPoolToken", () => {
+describe("Contract: AlphaDeployment", () => {
   // signers
   let deployer;
   let emergencySafe;
+  let adminSafe;
   let lpSafe;
 
   // deployed contracts
@@ -30,7 +31,7 @@ describe.only("Contract: MetaPoolToken", () => {
   });
 
   before(async () => {
-    [deployer, emergencySafe, lpSafe] = await ethers.getSigners();
+    [deployer, emergencySafe, adminSafe, lpSafe] = await ethers.getSigners();
 
     addressRegistry = await deployMockContract(
       deployer,
@@ -39,12 +40,15 @@ describe.only("Contract: MetaPoolToken", () => {
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("emergencySafe"))
       .returns(emergencySafe.address);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("adminSafe"))
+      .returns(adminSafe.address);
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
     await addressRegistry.mock.registerAddress.returns();
 
     const AlphaDeployment = await ethers.getContractFactory("AlphaDeployment");
     alphaDeployment = await AlphaDeployment.deploy(
-      FAKE_ADDRESS,
+      addressRegistry.address,
       FAKE_ADDRESS,
       FAKE_ADDRESS,
       FAKE_ADDRESS,

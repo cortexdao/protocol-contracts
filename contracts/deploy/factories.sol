@@ -77,38 +77,25 @@ contract PoolTokenV2Factory {
     }
 }
 
-contract OracleAdapterFactory is DeploymentConstants {
-    function create(address addressRegistry) external returns (address) {
+contract OracleAdapterFactory {
+    function create(
+        address addressRegistry,
+        address tvlSource,
+        address[] memory assets,
+        address[] memory sources,
+        uint256 aggStalePeriod,
+        uint256 defaultLockPeriod
+    ) public virtual returns (address) {
         OracleAdapter oracleAdapter =
             new OracleAdapter(
                 addressRegistry,
-                _tvlSource(),
-                _oracleAssets(),
-                _oracleSources(),
-                86400,
-                270
+                tvlSource,
+                assets,
+                sources,
+                aggStalePeriod,
+                defaultLockPeriod
             );
         return address(oracleAdapter);
-    }
-
-    function _tvlSource() internal pure returns (address) {
-        return TVL_AGG_ADDRESS;
-    }
-
-    function _oracleAssets() internal pure returns (address[] memory) {
-        address[] memory assets = new address[](3);
-        assets[0] = DAI_ADDRESS;
-        assets[1] = USDC_ADDRESS;
-        assets[2] = USDT_ADDRESS;
-        return assets;
-    }
-
-    function _oracleSources() internal pure returns (address[] memory) {
-        address[] memory sources = new address[](3);
-        sources[0] = DAI_USD_AGG_ADDRESS;
-        sources[1] = USDC_USD_AGG_ADDRESS;
-        sources[2] = USDT_USD_AGG_ADDRESS;
-        return sources;
     }
 }
 
