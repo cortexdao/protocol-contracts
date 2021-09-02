@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const hre = require("hardhat");
 const { ethers, artifacts, waffle } = hre;
 const timeMachine = require("ganache-time-traveler");
-const { FAKE_ADDRESS } = require("../utils/helpers");
+const { FAKE_ADDRESS, ZERO_ADDRESS, bytes32 } = require("../utils/helpers");
 const { deployMockContract } = waffle;
 
 describe.only("Contract: AlphaDeployment", () => {
@@ -43,9 +43,6 @@ describe.only("Contract: AlphaDeployment", () => {
     await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
 
-    // deployed contracts get registered at the end of each step
-    await addressRegistry.mock.registerAddress.returns();
-
     AlphaDeployment = await ethers.getContractFactory("AlphaDeployment");
   });
 
@@ -73,11 +70,12 @@ describe.only("Contract: AlphaDeployment", () => {
     );
     proxyAdminFactory.mock.create.returns(FAKE_ADDRESS);
 
+    const mAptAddress = (await deployMockContract(deployer, [])).address;
     const metaPoolTokenFactory = await deployMockContract(
       deployer,
       artifacts.readArtifactSync("MetaPoolTokenFactory").abi
     );
-    metaPoolTokenFactory.mock.create.returns(FAKE_ADDRESS);
+    metaPoolTokenFactory.mock.create.returns(mAptAddress);
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
@@ -96,7 +94,21 @@ describe.only("Contract: AlphaDeployment", () => {
     // for ownership check
     await addressRegistry.mock.owner.returns(alphaDeployment.address);
 
-    await alphaDeployment.deploy_1_MetaPoolToken();
+    // check for address registration
+    await addressRegistry.mock.registerAddress
+      .withArgs(bytes32("mApt"), mAptAddress)
+      .revertsWithReason("ADDRESS_REGISTERED");
+    await expect(alphaDeployment.deploy_1_MetaPoolToken()).to.be.revertedWith(
+      "ADDRESS_REGISTERED"
+    );
+    await addressRegistry.mock.registerAddress
+      .withArgs(bytes32("mApt"), mAptAddress)
+      .returns();
+
+    // check mAPT address set properly
+    expect(await alphaDeployment.mApt()).to.equal(ZERO_ADDRESS);
+    await expect(alphaDeployment.deploy_1_MetaPoolToken()).to.not.be.reverted;
+    expect(await alphaDeployment.mApt()).to.equal(mAptAddress);
   });
 
   it("handoffOwnership", async () => {
