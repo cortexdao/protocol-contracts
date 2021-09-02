@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const hre = require("hardhat");
 const { ethers, artifacts, waffle } = hre;
 const timeMachine = require("ganache-time-traveler");
-const { FAKE_ADDRESS, bytes32 } = require("../utils/helpers");
+const { FAKE_ADDRESS } = require("../utils/helpers");
 const { deployMockContract } = waffle;
 
 describe("Contract: AlphaDeployment", () => {
@@ -37,12 +37,10 @@ describe("Contract: AlphaDeployment", () => {
       deployer,
       artifacts.require("IAddressRegistryV2").abi
     );
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("emergencySafe"))
-      .returns(emergencySafe.address);
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("adminSafe"))
-      .returns(adminSafe.address);
+    await addressRegistry.mock.emergencySafeAddress.returns(
+      emergencySafe.address
+    );
+    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
     await addressRegistry.mock.registerAddress.returns();
 
