@@ -9,29 +9,13 @@ import {
     IERC20
 } from "contracts/common/Imports.sol";
 
-abstract contract CurveBasePool is IZap {
+import {ICurvePool} from "contracts/protocols/curve/interfaces/ICurvePool.sol";
+
+abstract contract CurveBasePool is IZap, ICurvePool {
     using SafeMath for uint256;
 
-    address public constant CRV_ADDRESS =
+    address public constant override CRV_ADDRESS =
         0xD533a949740bb3306d119CC777fa900bA034cd52;
-
-    // solhint-disable-next-line func-name-mixedcase
-    function SWAP_ADDRESS() external pure virtual returns (address);
-
-    // solhint-disable-next-line func-name-mixedcase
-    function LP_ADDRESS() external pure virtual returns (address);
-
-    // solhint-disable-next-line func-name-mixedcase
-    function GAUGE_ADDRESS() external pure virtual returns (address);
-
-    // solhint-disable-next-line func-name-mixedcase
-    function DENOMINATOR() external pure virtual returns (uint256);
-
-    // solhint-disable-next-line func-name-mixedcase
-    function SLIPPAGE() external pure virtual returns (uint256);
-
-    // solhint-disable-next-line func-name-mixedcase
-    function N_COINS() external pure virtual returns (uint256);
 
     function _getVirtualPrice() internal view virtual returns (uint256);
 
