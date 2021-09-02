@@ -5,15 +5,15 @@ const timeMachine = require("ganache-time-traveler");
 const { FAKE_ADDRESS } = require("../utils/helpers");
 const { deployMockContract } = waffle;
 
-describe("Contract: AlphaDeployment", () => {
+describe.only("Contract: AlphaDeployment", () => {
   // signers
   let deployer;
   let emergencySafe;
   let adminSafe;
   let lpSafe;
 
-  // deployed contracts
-  let alphaDeployment;
+  // contract factories
+  let AlphaDeployment;
 
   // mocked contracts
   let addressRegistry;
@@ -30,35 +30,88 @@ describe("Contract: AlphaDeployment", () => {
     await timeMachine.revertToSnapshot(snapshotId);
   });
 
-  before(async () => {
+  before("Register Safes", async () => {
     [deployer, emergencySafe, adminSafe, lpSafe] = await ethers.getSigners();
 
     addressRegistry = await deployMockContract(
       deployer,
-      artifacts.require("IAddressRegistryV2").abi
+      artifacts.readArtifactSync("AddressRegistryV2").abi
     );
     await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
     await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
+
+    // deployed contracts get registered at the end of each step
     await addressRegistry.mock.registerAddress.returns();
 
-    const AlphaDeployment = await ethers.getContractFactory("AlphaDeployment");
-    alphaDeployment = await AlphaDeployment.deploy(
-      addressRegistry.address,
-      FAKE_ADDRESS,
-      FAKE_ADDRESS,
-      FAKE_ADDRESS,
-      FAKE_ADDRESS,
-      FAKE_ADDRESS,
-      FAKE_ADDRESS,
-      FAKE_ADDRESS,
-      FAKE_ADDRESS
+    AlphaDeployment = await ethers.getContractFactory("AlphaDeployment");
+  });
+
+  it("constructor", async () => {
+    const alphaDeployment = await expect(
+      AlphaDeployment.deploy(
+        addressRegistry.address,
+        FAKE_ADDRESS, // proxy admin factory
+        FAKE_ADDRESS, // proxy factory
+        FAKE_ADDRESS, // mAPT factory
+        FAKE_ADDRESS, // pool token v1 factory
+        FAKE_ADDRESS, // pool token v2 factory
+        FAKE_ADDRESS, // erc20 allocation factory
+        FAKE_ADDRESS, // tvl manager factory
+        FAKE_ADDRESS // oracle adapter factory
+      )
+    ).to.not.be.reverted;
+    expect(await alphaDeployment.step()).to.equal(1);
+  });
+
+  it("deploy_1_MetaPoolToken", async () => {
+    const proxyAdminFactory = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("ProxyAdminFactory").abi
     );
+    proxyAdminFactory.mock.create.returns(FAKE_ADDRESS);
+
+    const metaPoolTokenFactory = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("MetaPoolTokenFactory").abi
+    );
+    metaPoolTokenFactory.mock.create.returns(FAKE_ADDRESS);
+
+    const alphaDeployment = await expect(
+      AlphaDeployment.deploy(
+        addressRegistry.address,
+        proxyAdminFactory.address, // proxy admin factory
+        FAKE_ADDRESS, // proxy factory
+        metaPoolTokenFactory.address, // mAPT factory
+        FAKE_ADDRESS, // pool token v1 factory
+        FAKE_ADDRESS, // pool token v2 factory
+        FAKE_ADDRESS, // erc20 allocation factory
+        FAKE_ADDRESS, // tvl manager factory
+        FAKE_ADDRESS // oracle adapter factory
+      )
+    ).to.not.be.reverted;
+
+    // for ownership check
+    await addressRegistry.mock.owner.returns(alphaDeployment.address);
+
+    await alphaDeployment.deploy_1_MetaPoolToken();
   });
 
   it("handoffOwnership", async () => {
+    const alphaDeployment = await AlphaDeployment.deploy(
+      addressRegistry.address,
+      FAKE_ADDRESS, // proxy admin factory
+      FAKE_ADDRESS, // proxy factory
+      FAKE_ADDRESS, // mAPT factory
+      FAKE_ADDRESS, // pool token v1 factory
+      FAKE_ADDRESS, // pool token v2 factory
+      FAKE_ADDRESS, // erc20 allocation factory
+      FAKE_ADDRESS, // tvl manager factory
+      FAKE_ADDRESS // oracle adapter factory
+    );
+
     // any ownable contract here will do; ProxyAdmin is a simple one
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     const proxyAdmin = await ProxyAdmin.deploy();
