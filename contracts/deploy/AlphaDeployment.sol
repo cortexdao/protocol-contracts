@@ -155,21 +155,16 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     }
 
     /**
-     * @dev There are two types of checks:
-     *   1. check a contract address from a previous step's deployment
-     *      is registered with expected ID.
-     *   2. check the deployment contract has ownership of necessary
-     *      contracts to perform actions, e.g. register an address or upgrade
-     *      a proxy.
+     * @dev
+     *   Check a contract address from a previous step's deployment
+     *   is registered with expected ID.
      *
      * @param registeredIds identifiers for the Address Registry
      * @param deployedAddresses addresses from previous steps' deploys
-     * @param ownedContracts addresses that should be owned by this contract
      */
-    function verifyPreConditions(
+    function checkRegisteredDependencies(
         bytes32[] memory registeredIds,
-        address[] memory deployedAddresses,
-        address[] memory ownedContracts
+        address[] memory deployedAddresses
     ) public view virtual {
         for (uint256 i = 0; i < registeredIds.length; i++) {
             require(
@@ -178,6 +173,21 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 "MISSING_DEPLOYED_ADDRESS"
             );
         }
+    }
+
+    /**
+     * @dev
+     *   Check the deployment contract has ownership of necessary
+     *   contracts to perform actions, e.g. register an address or upgrade
+     *   a proxy.
+     *
+     * @param ownedContracts addresses that should be owned by this contract
+     */
+    function checkOwnerships(address[] memory ownedContracts)
+        public
+        view
+        virtual
+    {
         for (uint256 i = 0; i < ownedContracts.length; i++) {
             require(
                 Ownable(ownedContracts[i]).owner() == address(this),
@@ -196,7 +206,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     {
         address[] memory ownedContracts = new address[](1);
         ownedContracts[0] = address(addressRegistry);
-        verifyPreConditions(new bytes32[](0), new address[](0), ownedContracts);
+        checkOwnerships(ownedContracts);
 
         address newOwner = msg.sender; // will own the proxy admin
         address proxyAdmin =
@@ -222,11 +232,12 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     function deploy_2_DemoPools() external onlyOwner updateStep(2) {
         bytes32[] memory registeredIds = new bytes32[](1);
         address[] memory deployedAddresses = new address[](1);
+        (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
+        checkRegisteredDependencies(registeredIds, deployedAddresses);
+
         address[] memory ownedContracts = new address[](1);
-        registeredIds[0] = "mApt";
-        deployedAddresses[0] = mApt;
         ownedContracts[0] = address(addressRegistry);
-        verifyPreConditions(registeredIds, deployedAddresses, ownedContracts);
+        checkOwnerships(ownedContracts);
 
         address proxyAdmin =
             ProxyAdminFactory(proxyAdminFactory).create(msg.sender);
@@ -312,11 +323,11 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         updateStep(3)
         returns (address)
     {
-        bytes32[] memory registeredIds = new bytes32[](0);
-        address[] memory deployedAddresses = new address[](0);
+        checkRegisteredDependencies(new bytes32[](0), new address[](0));
+
         address[] memory ownedContracts = new address[](1);
         ownedContracts[0] = address(addressRegistry);
-        verifyPreConditions(registeredIds, deployedAddresses, ownedContracts);
+        checkOwnerships(ownedContracts);
 
         erc20Allocation = Erc20AllocationFactory(erc20AllocationFactory).create(
             address(addressRegistry)
@@ -341,13 +352,13 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     {
         bytes32[] memory registeredIds = new bytes32[](2);
         address[] memory deployedAddresses = new address[](2);
+        (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
+        (registeredIds[1], deployedAddresses[1]) = ("tvlManager", tvlManager);
+        checkRegisteredDependencies(registeredIds, deployedAddresses);
+
         address[] memory ownedContracts = new address[](1);
-        registeredIds[0] = "mApt";
-        deployedAddresses[0] = mApt;
-        registeredIds[1] = "tvlManager";
-        deployedAddresses[1] = tvlManager;
         ownedContracts[0] = address(addressRegistry);
-        verifyPreConditions(registeredIds, deployedAddresses, ownedContracts);
+        checkOwnerships(ownedContracts);
 
         address[] memory assets = new address[](3);
         assets[0] = DAI_ADDRESS;
@@ -379,12 +390,13 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     function deploy_5_PoolTokenV2_upgrade() external onlyOwner updateStep(5) {
         bytes32[] memory registeredIds = new bytes32[](1);
         address[] memory deployedAddresses = new address[](1);
+        (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
+        checkRegisteredDependencies(registeredIds, deployedAddresses);
+
         address[] memory ownedContracts = new address[](2);
-        registeredIds[0] = "mApt";
-        deployedAddresses[0] = mApt;
         ownedContracts[0] = address(addressRegistry);
         ownedContracts[1] = POOL_PROXY_ADMIN;
-        verifyPreConditions(registeredIds, deployedAddresses, ownedContracts);
+        checkOwnerships(ownedContracts);
 
         address logicV2 = PoolTokenV2Factory(poolTokenV2Factory).create();
         bytes memory initData =
