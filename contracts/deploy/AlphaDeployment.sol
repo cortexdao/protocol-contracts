@@ -140,8 +140,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
         // Simplest to check now that Safes are deployed in order to
         // avoid repeated preconditions checks later.
-        emergencySafe = addressRegistry.getAddress("emergencySafe");
-        adminSafe = addressRegistry.getAddress("adminSafe");
+        emergencySafe = addressRegistry.emergencySafeAddress();
+        adminSafe = addressRegistry.adminSafeAddress();
         lpSafe = addressRegistry.lpSafeAddress();
 
         proxyAdminFactory = proxyAdminFactory_;

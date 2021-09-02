@@ -68,12 +68,7 @@ describe("Contract: MetaPoolToken", () => {
     await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("emergencySafe"))
-      .returns(emergencySafe.address);
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("adminSafe"))
-      .returns(FAKE_ADDRESS);
+    await addressRegistry.mock.adminSafeAddress.returns(FAKE_ADDRESS);
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
     await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
     await addressRegistry.mock.registerAddress.returns();

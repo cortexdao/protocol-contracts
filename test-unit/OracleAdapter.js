@@ -74,13 +74,7 @@ describe("Contract: OracleAdapter", () => {
     await addressRegistryMock.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
-    await addressRegistryMock.mock.getAddress
-      .withArgs(bytes32("emergencySafe"))
-      .returns(emergencySafe.address);
     await addressRegistryMock.mock.adminSafeAddress.returns(adminSafe.address);
-    await addressRegistryMock.mock.getAddress
-      .withArgs(bytes32("adminSafe"))
-      .returns(adminSafe.address);
     await addressRegistryMock.mock.tvlManagerAddress.returns(
       tvlManager.address
     );
