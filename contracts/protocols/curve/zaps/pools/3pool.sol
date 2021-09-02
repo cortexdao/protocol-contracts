@@ -21,8 +21,8 @@ contract Curve3PoolZap is CurveBasePoolGauge, Curve3PoolConstants {
     address public constant override SWAP_ADDRESS = STABLE_SWAP_ADDRESS;
     address public constant override GAUGE_ADDRESS = LIQUIDITY_GAUGE_ADDRESS;
     address public constant override LP_ADDRESS = LP_TOKEN_ADDRESS;
-    uint256 public constant override _DENOMINATOR = 10000;
-    uint256 public constant override _SLIPPAGE = 100;
+    uint256 public constant override DENOMINATOR = 10000;
+    uint256 public constant override SLIPPAGE = 100;
     uint256 public constant override N_COINS = 3;
 
     function assetAllocations()

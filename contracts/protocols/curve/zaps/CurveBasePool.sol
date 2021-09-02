@@ -1,12 +1,13 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-// solhint-disable func-name-mixedcase
-
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import {SafeMath} from "contracts/libraries/Imports.sol";
 import {IZap} from "contracts/lpaccount/Imports.sol";
-import {IAssetAllocation, IDetailedERC20} from "contracts/common/Imports.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {
+    IAssetAllocation,
+    IDetailedERC20,
+    IERC20
+} from "contracts/common/Imports.sol";
 
 abstract contract CurveBasePool is IZap {
     using SafeMath for uint256;
@@ -14,16 +15,22 @@ abstract contract CurveBasePool is IZap {
     address public constant CRV_ADDRESS =
         0xD533a949740bb3306d119CC777fa900bA034cd52;
 
+    // solhint-disable-next-line func-name-mixedcase
     function SWAP_ADDRESS() external pure virtual returns (address);
 
+    // solhint-disable-next-line func-name-mixedcase
     function LP_ADDRESS() external pure virtual returns (address);
 
+    // solhint-disable-next-line func-name-mixedcase
     function GAUGE_ADDRESS() external pure virtual returns (address);
 
-    function _DENOMINATOR() external pure virtual returns (uint256);
+    // solhint-disable-next-line func-name-mixedcase
+    function DENOMINATOR() external pure virtual returns (uint256);
 
-    function _SLIPPAGE() external pure virtual returns (uint256);
+    // solhint-disable-next-line func-name-mixedcase
+    function SLIPPAGE() external pure virtual returns (uint256);
 
+    // solhint-disable-next-line func-name-mixedcase
     function N_COINS() external pure virtual returns (uint256);
 
     function _getVirtualPrice() internal view virtual returns (uint256);
@@ -54,8 +61,8 @@ abstract contract CurveBasePool is IZap {
 
         uint256 v = totalAmount.mul(1e18).div(_getVirtualPrice());
         uint256 minAmount =
-            v.mul(this._DENOMINATOR().sub(this._SLIPPAGE())).div(
-                this._DENOMINATOR()
+            v.mul(this.DENOMINATOR().sub(this.SLIPPAGE())).div(
+                this.DENOMINATOR()
             );
 
         for (uint256 i = 0; i < this.N_COINS(); i++) {

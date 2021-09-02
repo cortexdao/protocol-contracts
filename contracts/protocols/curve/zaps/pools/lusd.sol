@@ -19,8 +19,8 @@ contract LusdPoolZap is CurveBasePool, CurveLusdConstants {
     address public constant override SWAP_ADDRESS = META_POOL_ADDRESS;
     address public constant override GAUGE_ADDRESS = LIQUIDITY_GAUGE_ADDRESS;
     address public constant override LP_ADDRESS = LP_TOKEN_ADDRESS;
-    uint256 public constant override _DENOMINATOR = 10000;
-    uint256 public constant override _SLIPPAGE = 100;
+    uint256 public constant override DENOMINATOR = 10000;
+    uint256 public constant override SLIPPAGE = 100;
     uint256 public constant override N_COINS = 2;
 
     function assetAllocations()
