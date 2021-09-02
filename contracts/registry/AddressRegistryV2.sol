@@ -141,15 +141,6 @@ contract AddressRegistryV2 is
     }
 
     /**
-     * @notice Get the address for the Pool Manager.
-     * @dev Not just a helper function, this makes explicit a key ID
-     * for the system.
-     */
-    function poolManagerAddress() external view override returns (address) {
-        return getAddress("poolManager");
-    }
-
-    /**
      * @notice Get the address for the TVL Manager.
      * @dev Not just a helper function, this makes explicit a key ID
      * for the system.
@@ -205,11 +196,23 @@ contract AddressRegistryV2 is
         return getAddress("mApt");
     }
 
+    function lpAccountAddress() external view override returns (address) {
+        return getAddress("lpAccount");
+    }
+
     /**
      * @notice Get the address for the APY.Finance LP Safe.
      */
     function lpSafeAddress() external view override returns (address) {
         return getAddress("lpSafe");
+    }
+
+    function adminSafeAddress() external view override returns (address) {
+        return getAddress("adminSafe");
+    }
+
+    function emergencySafeAddress() external view override returns (address) {
+        return getAddress("emergencySafe");
     }
 
     function oracleAdapterAddress() external view override returns (address) {

@@ -8,7 +8,6 @@ const {
   tokenAmountToBigNumber,
   getStablecoinAddress,
   acquireToken,
-  bytes32,
 } = require("../utils/helpers");
 const { STABLECOIN_POOLS } = require("../utils/constants");
 
@@ -39,6 +38,7 @@ describe("Contract: Erc20Allocation", () => {
   let emergencySafe;
   let lpSafe;
   let mApt;
+  let lpAccount;
 
   /* contract factories */
   let Erc20Allocation;
@@ -60,7 +60,13 @@ describe("Contract: Erc20Allocation", () => {
   });
 
   before(async () => {
-    [deployer, emergencySafe, lpSafe, mApt] = await ethers.getSigners();
+    [
+      deployer,
+      emergencySafe,
+      lpSafe,
+      mApt,
+      lpAccount,
+    ] = await ethers.getSigners();
 
     const addressRegistry = await deployMockContract(
       deployer,
@@ -83,10 +89,11 @@ describe("Contract: Erc20Allocation", () => {
      * - mApt (contract role)
      */
     await addressRegistry.mock.mAptAddress.returns(mApt.address);
+    await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("emergencySafe"))
-      .returns(emergencySafe.address);
+    await addressRegistry.mock.emergencySafeAddress.returns(
+      emergencySafe.address
+    );
 
     Erc20Allocation = await ethers.getContractFactory(
       "Erc20Allocation",
@@ -122,7 +129,7 @@ describe("Contract: Erc20Allocation", () => {
 
     expect(await tvlManager.balanceOf(allocationId)).to.equal(0);
     const amount = tokenAmountToBigNumber(100, 6);
-    await sendErc20Tokens("USDC", amount, lpSafe, deployer);
+    await sendErc20Tokens("USDC", amount, lpAccount, deployer);
     expect(await tvlManager.balanceOf(allocationId)).to.equal(amount);
   });
 
@@ -145,7 +152,7 @@ describe("Contract: Erc20Allocation", () => {
 
     expect(await tvlManager.balanceOf(allocationId)).to.equal(0);
     const amount = tokenAmountToBigNumber(100, 6);
-    await sendErc20Tokens("USDC", amount, lpSafe, deployer);
+    await sendErc20Tokens("USDC", amount, lpAccount, deployer);
     expect(await tvlManager.balanceOf(allocationId)).to.equal(amount);
   });
 
@@ -169,7 +176,7 @@ describe("Contract: Erc20Allocation", () => {
 
     expect(await tvlManager.balanceOf(allocationId)).to.equal(0);
     const amount = tokenAmountToBigNumber(100, 6);
-    await sendErc20Tokens("USDC", amount, lpSafe, deployer);
+    await sendErc20Tokens("USDC", amount, lpAccount, deployer);
     expect(await tvlManager.balanceOf(allocationId)).to.equal(amount);
   });
 

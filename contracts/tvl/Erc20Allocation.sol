@@ -34,10 +34,7 @@ contract Erc20Allocation is
         require(addressRegistry_.isContract(), "INVALID_ADDRESS_REGISTRY");
         IAddressRegistryV2 addressRegistry =
             IAddressRegistryV2(addressRegistry_);
-        _setupRole(
-            DEFAULT_ADMIN_ROLE,
-            addressRegistry.getAddress("emergencySafe")
-        );
+        _setupRole(DEFAULT_ADMIN_ROLE, addressRegistry.emergencySafeAddress());
         _setupRole(CONTRACT_ROLE, addressRegistry.mAptAddress());
         _setupRole(LP_ROLE, addressRegistry.lpSafeAddress());
     }

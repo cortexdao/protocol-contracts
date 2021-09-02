@@ -9,7 +9,6 @@ const {
   ZERO_ADDRESS,
   FAKE_ADDRESS,
   tokenAmountToBigNumber,
-  bytes32,
   impersonateAccount,
   forciblySendEth,
 } = require("../utils/helpers");
@@ -25,6 +24,7 @@ describe("Contract: PoolTokenV2", () => {
   let adminSafe;
   let emergencySafe;
   let mApt;
+  let lpAccount;
   let lpSafe;
   let randomUser;
   let anotherUser;
@@ -60,6 +60,7 @@ describe("Contract: PoolTokenV2", () => {
   before(async () => {
     [
       deployer,
+      lpAccount,
       adminSafe,
       emergencySafe,
       lpSafe,
@@ -101,13 +102,12 @@ describe("Contract: PoolTokenV2", () => {
       oracleAdapterMock.address
     );
 
-    await addressRegistryMock.mock.getAddress
-      .withArgs(bytes32("adminSafe"))
-      .returns(adminSafe.address);
-    await addressRegistryMock.mock.getAddress
-      .withArgs(bytes32("emergencySafe"))
-      .returns(emergencySafe.address);
+    await addressRegistryMock.mock.lpAccountAddress.returns(lpAccount.address);
     await addressRegistryMock.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistryMock.mock.adminSafeAddress.returns(adminSafe.address);
+    await addressRegistryMock.mock.emergencySafeAddress.returns(
+      emergencySafe.address
+    );
 
     mApt = await impersonateAccount(mAptMock.address);
     await forciblySendEth(
@@ -341,11 +341,11 @@ describe("Contract: PoolTokenV2", () => {
       );
     });
 
-    it("Revert when calling transferToLpSafe on locked pool from mAPT", async () => {
+    it("Revert when calling transferToLpAccount on locked pool from mAPT", async () => {
       await poolToken.connect(emergencySafe).emergencyLock();
 
       await expect(
-        poolToken.connect(mApt).transferToLpSafe(100)
+        poolToken.connect(mApt).transferToLpAccount(100)
       ).to.revertedWith("Pausable: paused");
     });
   });
@@ -355,13 +355,13 @@ describe("Contract: PoolTokenV2", () => {
       await underlyerMock.mock.transfer.returns(true);
     });
 
-    it("mAPT can call transferToLpSafe", async () => {
-      await expect(poolToken.connect(mApt).transferToLpSafe(100)).to.not.be
+    it("mAPT can call transferToLpAccount", async () => {
+      await expect(poolToken.connect(mApt).transferToLpAccount(100)).to.not.be
         .reverted;
     });
 
-    it("Revert when unpermissioned account calls transferToLpSafe", async () => {
-      await expect(poolToken.connect(randomUser).transferToLpSafe(100)).to.be
+    it("Revert when unpermissioned account calls transferToLpAccount", async () => {
+      await expect(poolToken.connect(randomUser).transferToLpAccount(100)).to.be
         .reverted;
     });
   });

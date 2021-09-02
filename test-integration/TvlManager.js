@@ -9,7 +9,6 @@ const {
   getStablecoinAddress,
   acquireToken,
   MAX_UINT256,
-  bytes32,
 } = require("../utils/helpers");
 const { STABLECOIN_POOLS } = require("../utils/constants");
 
@@ -178,6 +177,7 @@ describe("Contract: TvlManager", () => {
   let deployer;
   let emergencySafe;
   let lpSafe;
+  let lpAccount;
   let mApt;
 
   /* contract factories */
@@ -199,7 +199,13 @@ describe("Contract: TvlManager", () => {
   });
 
   before(async () => {
-    [deployer, emergencySafe, lpSafe, mApt] = await ethers.getSigners();
+    [
+      deployer,
+      emergencySafe,
+      lpSafe,
+      mApt,
+      lpAccount,
+    ] = await ethers.getSigners();
 
     const addressRegistry = await deployMockContract(
       deployer,
@@ -222,10 +228,11 @@ describe("Contract: TvlManager", () => {
      * - mApt (contract role)
      */
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("emergencySafe"))
-      .returns(emergencySafe.address);
+    await addressRegistry.mock.emergencySafeAddress.returns(
+      emergencySafe.address
+    );
     await addressRegistry.mock.mAptAddress.returns(mApt.address);
+    await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
 
     /* These registered addresses are setup for roles in the
      * constructor for TvlManager
@@ -258,7 +265,7 @@ describe("Contract: TvlManager", () => {
       lendingPool = await ethers.getContractAt(
         "ILendingPool",
         LENDING_POOL_ADDRESS,
-        lpSafe
+        lpAccount
       );
     });
 
@@ -275,7 +282,7 @@ describe("Contract: TvlManager", () => {
         await underlyerToken.decimals()
       );
       const sender = STABLECOIN_POOLS["DAI"];
-      await acquireToken(sender, lpSafe, underlyerToken, amount, deployer);
+      await acquireToken(sender, lpAccount, underlyerToken, amount, deployer);
     });
 
     before("Register asset allocation", async () => {
@@ -295,12 +302,12 @@ describe("Contract: TvlManager", () => {
       );
 
       await underlyerToken
-        .connect(lpSafe)
+        .connect(lpAccount)
         .approve(lendingPool.address, MAX_UINT256);
       await lendingPool.deposit(
         underlyerToken.address,
         underlyerAmount,
-        lpSafe.address,
+        lpAccount.address,
         0
       );
 
@@ -345,7 +352,7 @@ describe("Contract: TvlManager", () => {
           "IStableSwap",
           STABLE_SWAP_ADDRESS,
           interfaceOverride,
-          lpSafe
+          lpAccount
         );
 
         const LP_TOKEN_ADDRESS = await allocation.LP_TOKEN_ADDRESS();
@@ -353,7 +360,7 @@ describe("Contract: TvlManager", () => {
           "IDetailedERC20",
           LP_TOKEN_ADDRESS,
           interfaceOverride,
-          lpSafe
+          lpAccount
         );
 
         const LIQUIDITY_GAUGE_ADDRESS = await allocation.LIQUIDITY_GAUGE_ADDRESS();
@@ -361,7 +368,7 @@ describe("Contract: TvlManager", () => {
           "ILiquidityGauge",
           LIQUIDITY_GAUGE_ADDRESS,
           interfaceOverride,
-          lpSafe
+          lpAccount
         );
       });
 
@@ -377,7 +384,7 @@ describe("Contract: TvlManager", () => {
           await underlyerToken.decimals()
         );
         const sender = whaleAddress;
-        await acquireToken(sender, lpSafe, underlyerToken, amount, deployer);
+        await acquireToken(sender, lpAccount, underlyerToken, amount, deployer);
       });
 
       before("Register asset allocation", async () => {
@@ -400,11 +407,11 @@ describe("Contract: TvlManager", () => {
         amounts[underlyerIndex] = underlyerAmount;
 
         await underlyerToken
-          .connect(lpSafe)
+          .connect(lpAccount)
           .approve(stableSwap.address, MAX_UINT256);
         await stableSwap.add_liquidity(amounts, minAmount);
 
-        const strategyLpBalance = await lpToken.balanceOf(lpSafe.address);
+        const strategyLpBalance = await lpToken.balanceOf(lpAccount.address);
         const poolBalance = await stableSwap.balances(underlyerIndex);
         const lpTotalSupply = await lpToken.totalSupply();
 
@@ -434,15 +441,15 @@ describe("Contract: TvlManager", () => {
         amounts[underlyerIndex] = underlyerAmount;
 
         await underlyerToken
-          .connect(lpSafe)
+          .connect(lpAccount)
           .approve(stableSwap.address, MAX_UINT256);
         await stableSwap.add_liquidity(amounts, minAmount);
 
-        await lpToken.connect(lpSafe).approve(gauge.address, MAX_UINT256);
-        const strategyLpBalance = await lpToken.balanceOf(lpSafe.address);
+        await lpToken.connect(lpAccount).approve(gauge.address, MAX_UINT256);
+        const strategyLpBalance = await lpToken.balanceOf(lpAccount.address);
         await gauge["deposit(uint256)"](strategyLpBalance);
-        expect(await lpToken.balanceOf(lpSafe.address)).to.equal(0);
-        const gaugeLpBalance = await gauge.balanceOf(lpSafe.address);
+        expect(await lpToken.balanceOf(lpAccount.address)).to.equal(0);
+        const gaugeLpBalance = await gauge.balanceOf(lpAccount.address);
         expect(gaugeLpBalance).to.be.gt(0);
 
         const poolBalance = await stableSwap.balances(underlyerIndex);
@@ -474,24 +481,26 @@ describe("Contract: TvlManager", () => {
         amounts[underlyerIndex] = underlyerAmount;
 
         await underlyerToken
-          .connect(lpSafe)
+          .connect(lpAccount)
           .approve(stableSwap.address, MAX_UINT256);
         await stableSwap.add_liquidity(amounts, minAmount);
 
         // split LP tokens between strategy and gauge
-        const totalLpBalance = await lpToken.balanceOf(lpSafe.address);
+        const totalLpBalance = await lpToken.balanceOf(lpAccount.address);
         const strategyLpBalance = totalLpBalance.div(3);
         const gaugeLpBalance = totalLpBalance.sub(strategyLpBalance);
         expect(gaugeLpBalance).to.be.gt(0);
         expect(strategyLpBalance).to.be.gt(0);
 
-        await lpToken.connect(lpSafe).approve(gauge.address, MAX_UINT256);
+        await lpToken.connect(lpAccount).approve(gauge.address, MAX_UINT256);
         await gauge["deposit(uint256)"](gaugeLpBalance);
 
-        expect(await lpToken.balanceOf(lpSafe.address)).to.equal(
+        expect(await lpToken.balanceOf(lpAccount.address)).to.equal(
           strategyLpBalance
         );
-        expect(await gauge.balanceOf(lpSafe.address)).to.equal(gaugeLpBalance);
+        expect(await gauge.balanceOf(lpAccount.address)).to.equal(
+          gaugeLpBalance
+        );
 
         const poolBalance = await stableSwap.balances(underlyerIndex);
         const lpTotalSupply = await lpToken.totalSupply();
@@ -559,7 +568,7 @@ describe("Contract: TvlManager", () => {
           "IMetaPool",
           META_POOL_ADDRESS,
           interfaceOverride,
-          lpSafe
+          lpAccount
         );
 
         const LP_TOKEN_ADDRESS = await allocation.LP_TOKEN_ADDRESS();
@@ -567,7 +576,7 @@ describe("Contract: TvlManager", () => {
           "IDetailedERC20",
           LP_TOKEN_ADDRESS,
           interfaceOverride,
-          lpSafe
+          lpAccount
         );
 
         const LIQUIDITY_GAUGE_ADDRESS = await allocation.LIQUIDITY_GAUGE_ADDRESS();
@@ -575,7 +584,7 @@ describe("Contract: TvlManager", () => {
           "ILiquidityGauge",
           LIQUIDITY_GAUGE_ADDRESS,
           interfaceOverride,
-          lpSafe
+          lpAccount
         );
 
         // 3Pool
@@ -584,7 +593,7 @@ describe("Contract: TvlManager", () => {
           "IStableSwap",
           BASE_POOL_ADDRESS,
           interfaceOverride,
-          lpSafe
+          lpAccount
         );
 
         const BASE_LP_TOKEN_ADDRESS = await curve3PoolAllocation.LP_TOKEN_ADDRESS();
@@ -592,7 +601,7 @@ describe("Contract: TvlManager", () => {
           "IDetailedERC20",
           BASE_LP_TOKEN_ADDRESS,
           interfaceOverride,
-          lpSafe
+          lpAccount
         );
       });
 
@@ -606,7 +615,7 @@ describe("Contract: TvlManager", () => {
             await daiToken.decimals()
           );
           let sender = STABLECOIN_POOLS["DAI"];
-          await acquireToken(sender, lpSafe, daiToken, amount, deployer);
+          await acquireToken(sender, lpAccount, daiToken, amount, deployer);
 
           const PRIMARY_UNDERLYER_ADDRESS = await allocation.PRIMARY_UNDERLYER_ADDRESS();
           primaryToken = await ethers.getContractAt(
@@ -618,7 +627,7 @@ describe("Contract: TvlManager", () => {
             await primaryToken.decimals()
           );
           sender = whaleAddress;
-          await acquireToken(sender, lpSafe, primaryToken, amount, deployer);
+          await acquireToken(sender, lpAccount, primaryToken, amount, deployer);
         }
       );
 
@@ -641,13 +650,15 @@ describe("Contract: TvlManager", () => {
         const minAmount = 0;
 
         // deposit into 3Pool
-        await daiToken.connect(lpSafe).approve(basePool.address, MAX_UINT256);
+        await daiToken
+          .connect(lpAccount)
+          .approve(basePool.address, MAX_UINT256);
         await basePool.add_liquidity([daiAmount, "0", "0"], minAmount);
 
         // deposit 3Crv into metapool
-        let baseLpBalance = await baseLpToken.balanceOf(lpSafe.address);
+        let baseLpBalance = await baseLpToken.balanceOf(lpAccount.address);
         await baseLpToken
-          .connect(lpSafe)
+          .connect(lpAccount)
           .approve(metaPool.address, MAX_UINT256);
         await metaPool.add_liquidity(["0", baseLpBalance], minAmount);
 
@@ -657,7 +668,7 @@ describe("Contract: TvlManager", () => {
         // update LP Safe's base pool LP balance after depositing
         // into the metapool, which will swap for some primary underlyer
         const metaPoolBaseLpBalance = await metaPool.balances(1);
-        const lpBalance = await lpToken.balanceOf(lpSafe.address);
+        const lpBalance = await lpToken.balanceOf(lpAccount.address);
         const lpTotalSupply = await lpToken.totalSupply();
         baseLpBalance = lpBalance.mul(metaPoolBaseLpBalance).div(lpTotalSupply);
 
@@ -676,21 +687,23 @@ describe("Contract: TvlManager", () => {
         const minAmount = 0;
 
         // deposit into 3Pool
-        await daiToken.connect(lpSafe).approve(basePool.address, MAX_UINT256);
+        await daiToken
+          .connect(lpAccount)
+          .approve(basePool.address, MAX_UINT256);
         await basePool.add_liquidity([daiAmount, "0", "0"], minAmount);
 
         // deposit 3Crv into metapool
-        let baseLpBalance = await baseLpToken.balanceOf(lpSafe.address);
+        let baseLpBalance = await baseLpToken.balanceOf(lpAccount.address);
         await baseLpToken
-          .connect(lpSafe)
+          .connect(lpAccount)
           .approve(metaPool.address, MAX_UINT256);
         await metaPool.add_liquidity(["0", baseLpBalance], minAmount);
 
-        await lpToken.connect(lpSafe).approve(gauge.address, MAX_UINT256);
-        const lpBalance = await lpToken.balanceOf(lpSafe.address);
+        await lpToken.connect(lpAccount).approve(gauge.address, MAX_UINT256);
+        const lpBalance = await lpToken.balanceOf(lpAccount.address);
         await gauge["deposit(uint256)"](lpBalance);
-        expect(await lpToken.balanceOf(lpSafe.address)).to.equal(0);
-        const gaugeLpBalance = await gauge.balanceOf(lpSafe.address);
+        expect(await lpToken.balanceOf(lpAccount.address)).to.equal(0);
+        const gaugeLpBalance = await gauge.balanceOf(lpAccount.address);
         expect(gaugeLpBalance).to.equal(lpBalance);
 
         const basePoolDaiBalance = await basePool.balances(daiIndex - 1);
@@ -719,18 +732,20 @@ describe("Contract: TvlManager", () => {
         const minAmount = 0;
 
         // deposit into 3Pool
-        await daiToken.connect(lpSafe).approve(basePool.address, MAX_UINT256);
+        await daiToken
+          .connect(lpAccount)
+          .approve(basePool.address, MAX_UINT256);
         await basePool.add_liquidity([daiAmount, "0", "0"], minAmount);
 
         // deposit 3Crv into metapool
-        let baseLpBalance = await baseLpToken.balanceOf(lpSafe.address);
+        let baseLpBalance = await baseLpToken.balanceOf(lpAccount.address);
         await baseLpToken
-          .connect(lpSafe)
+          .connect(lpAccount)
           .approve(metaPool.address, MAX_UINT256);
         await metaPool.add_liquidity(["0", baseLpBalance], minAmount);
 
         // split LP tokens between strategy and gauge
-        const totalLpBalance = await lpToken.balanceOf(lpSafe.address);
+        const totalLpBalance = await lpToken.balanceOf(lpAccount.address);
         const strategyLpBalance = totalLpBalance.div(3);
         const gaugeLpBalance = totalLpBalance.sub(strategyLpBalance);
         expect(gaugeLpBalance).to.be.gt(0);
@@ -744,13 +759,15 @@ describe("Contract: TvlManager", () => {
           .mul(metaPoolBaseLpBalance)
           .div(lpTotalSupply);
 
-        await lpToken.connect(lpSafe).approve(gauge.address, MAX_UINT256);
+        await lpToken.connect(lpAccount).approve(gauge.address, MAX_UINT256);
         await gauge["deposit(uint256)"](gaugeLpBalance);
 
-        expect(await lpToken.balanceOf(lpSafe.address)).to.equal(
+        expect(await lpToken.balanceOf(lpAccount.address)).to.equal(
           strategyLpBalance
         );
-        expect(await gauge.balanceOf(lpSafe.address)).to.equal(gaugeLpBalance);
+        expect(await gauge.balanceOf(lpAccount.address)).to.equal(
+          gaugeLpBalance
+        );
 
         const basePoolDaiBalance = await basePool.balances(daiIndex - 1);
         const basePoolLpTotalSupply = await baseLpToken.totalSupply();
@@ -772,12 +789,12 @@ describe("Contract: TvlManager", () => {
 
         // deposit primary underlyer into metapool
         await primaryToken
-          .connect(lpSafe)
+          .connect(lpAccount)
           .approve(metaPool.address, MAX_UINT256);
         await metaPool.add_liquidity([ustAmount, "0"], minAmount);
 
         const metaPoolUstBalance = await metaPool.balances(ustIndex);
-        const lpBalance = await lpToken.balanceOf(lpSafe.address);
+        const lpBalance = await lpToken.balanceOf(lpAccount.address);
         const lpTotalSupply = await lpToken.totalSupply();
         const expectedBalance = lpBalance
           .mul(metaPoolUstBalance)
@@ -795,17 +812,17 @@ describe("Contract: TvlManager", () => {
 
         // deposit primary underlyer into metapool
         await primaryToken
-          .connect(lpSafe)
+          .connect(lpAccount)
           .approve(metaPool.address, MAX_UINT256);
         await metaPool.add_liquidity([ustAmount, "0"], minAmount);
 
         const metaPoolUstBalance = await metaPool.balances(ustIndex);
 
-        await lpToken.connect(lpSafe).approve(gauge.address, MAX_UINT256);
-        const lpBalance = await lpToken.balanceOf(lpSafe.address);
+        await lpToken.connect(lpAccount).approve(gauge.address, MAX_UINT256);
+        const lpBalance = await lpToken.balanceOf(lpAccount.address);
         await gauge["deposit(uint256)"](lpBalance);
-        expect(await lpToken.balanceOf(lpSafe.address)).to.equal(0);
-        const gaugeLpBalance = await gauge.balanceOf(lpSafe.address);
+        expect(await lpToken.balanceOf(lpAccount.address)).to.equal(0);
+        const gaugeLpBalance = await gauge.balanceOf(lpAccount.address);
         expect(gaugeLpBalance).to.equal(lpBalance);
 
         const lpTotalSupply = await lpToken.totalSupply();
@@ -825,24 +842,26 @@ describe("Contract: TvlManager", () => {
 
         // deposit primary underlyer into metapool
         await primaryToken
-          .connect(lpSafe)
+          .connect(lpAccount)
           .approve(metaPool.address, MAX_UINT256);
         await metaPool.add_liquidity([ustAmount, "0"], minAmount);
 
         // split LP tokens between strategy and gauge
-        const totalLpBalance = await lpToken.balanceOf(lpSafe.address);
+        const totalLpBalance = await lpToken.balanceOf(lpAccount.address);
         const strategyLpBalance = totalLpBalance.div(3);
         const gaugeLpBalance = totalLpBalance.sub(strategyLpBalance);
         expect(gaugeLpBalance).to.be.gt(0);
         expect(strategyLpBalance).to.be.gt(0);
 
-        await lpToken.connect(lpSafe).approve(gauge.address, MAX_UINT256);
+        await lpToken.connect(lpAccount).approve(gauge.address, MAX_UINT256);
         await gauge["deposit(uint256)"](gaugeLpBalance);
 
-        expect(await lpToken.balanceOf(lpSafe.address)).to.equal(
+        expect(await lpToken.balanceOf(lpAccount.address)).to.equal(
           strategyLpBalance
         );
-        expect(await gauge.balanceOf(lpSafe.address)).to.equal(gaugeLpBalance);
+        expect(await gauge.balanceOf(lpAccount.address)).to.equal(
+          gaugeLpBalance
+        );
 
         const metaPoolUstBalance = await metaPool.balances(ustIndex);
         const lpTotalSupply = await lpToken.totalSupply();

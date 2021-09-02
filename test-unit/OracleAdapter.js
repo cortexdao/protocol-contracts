@@ -7,7 +7,6 @@ const {
   tokenAmountToBigNumber,
   FAKE_ADDRESS,
   ANOTHER_FAKE_ADDRESS,
-  bytes32,
 } = require("../utils/helpers");
 const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
 const IAddressRegistryV2 = artifacts.require("IAddressRegistryV2");
@@ -74,12 +73,10 @@ describe("Contract: OracleAdapter", () => {
     await addressRegistryMock.mock.tvlManagerAddress.returns(
       tvlManager.address
     );
-    await addressRegistryMock.mock.getAddress
-      .withArgs(bytes32("adminSafe"))
-      .returns(adminSafe.address);
-    await addressRegistryMock.mock.getAddress
-      .withArgs(bytes32("emergencySafe"))
-      .returns(emergencySafe.address);
+    await addressRegistryMock.mock.adminSafeAddress.returns(adminSafe.address);
+    await addressRegistryMock.mock.emergencySafeAddress.returns(
+      emergencySafe.address
+    );
 
     tvlAggMock = await deployMockContract(deployer, AggregatorV3Interface.abi);
     assetAggMock_1 = await deployMockContract(

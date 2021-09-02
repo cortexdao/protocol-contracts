@@ -3,7 +3,7 @@ const { artifacts, ethers, waffle, web3 } = hre;
 const { BigNumber } = ethers;
 const { expect } = require("chai");
 const { deployMockContract } = waffle;
-const { console, bytes32 } = require("../utils/helpers");
+const { console } = require("../utils/helpers");
 const AddressRegistryV2 = artifacts.require("AddressRegistryV2");
 
 const ZERO_DATA =
@@ -84,6 +84,7 @@ describe("APT V2 uses V1 storage slot positions", () => {
   let deployer;
   let emergencySafe;
   let adminSafe;
+  let lpAccount;
   let mApt;
   let user;
   let otherUser;
@@ -99,6 +100,7 @@ describe("APT V2 uses V1 storage slot positions", () => {
       deployer,
       emergencySafe,
       adminSafe,
+      lpAccount,
       mApt,
       user,
       otherUser,
@@ -116,12 +118,11 @@ describe("APT V2 uses V1 storage slot positions", () => {
     addressRegistry = await deployMockContract(deployer, AddressRegistryV2.abi);
 
     // these addresses are assigned roles in PoolTokenV2 init
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("emergencySafe"))
-      .returns(emergencySafe.address);
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("adminSafe"))
-      .returns(adminSafe.address);
+    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
+    await addressRegistry.mock.emergencySafeAddress.returns(
+      emergencySafe.address
+    );
+    await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
     await addressRegistry.mock.mAptAddress.returns(mApt.address);
 
     const logicV1 = await PoolToken.deploy();

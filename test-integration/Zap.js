@@ -1,16 +1,11 @@
 const hre = require("hardhat");
 const { ethers, waffle, artifacts } = hre;
 const { deployMockContract } = waffle;
-const { expect } = require("chai");
 const timeMachine = require("ganache-time-traveler");
 const {
   console,
   tokenAmountToBigNumber,
   acquireToken,
-  MAX_UINT256,
-  bytes32,
-  forciblySendEth,
-  impersonateAccount,
 } = require("../utils/helpers");
 const { STABLECOIN_POOLS } = require("../utils/constants");
 
@@ -69,9 +64,9 @@ describe("Zaps", () => {
      * - mApt (contract role)
      */
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("emergencySafe"))
-      .returns(emergencySafe.address);
+    await addressRegistry.mock.emergencySafeAddress.returns(
+      emergencySafe.address
+    );
     await addressRegistry.mock.mAptAddress.returns(mApt.address);
 
     const Erc20Allocation = await ethers.getContractFactory("Erc20Allocation");
@@ -100,7 +95,6 @@ describe("Zaps", () => {
 
     let underlyerToken;
     const underlyerIndex = 0;
-    let lookupId;
 
     let numberOfCoins = 3;
     // Curve sUSDv2 pool, holds DAI

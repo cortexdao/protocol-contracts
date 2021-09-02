@@ -9,7 +9,6 @@ const {
   ANOTHER_FAKE_ADDRESS,
   acquireToken,
   console,
-  bytes32,
 } = require("../utils/helpers");
 const { BigNumber } = require("ethers");
 
@@ -31,6 +30,7 @@ describe("Contract: MetaPoolToken - TVL aggregator integration", () => {
   // accounts
   let deployer;
   let tvlManager;
+  let lpAccount;
   let emergencySafe;
   let lpSafe;
   let adminSafe;
@@ -63,6 +63,7 @@ describe("Contract: MetaPoolToken - TVL aggregator integration", () => {
     [
       deployer,
       tvlManager,
+      lpAccount,
       emergencySafe,
       lpSafe,
       adminSafe,
@@ -107,13 +108,12 @@ describe("Contract: MetaPoolToken - TVL aggregator integration", () => {
      * mApt is added below after deployment.
      */
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("emergencySafe"))
-      .returns(emergencySafe.address);
+    await addressRegistry.mock.emergencySafeAddress.returns(
+      emergencySafe.address
+    );
+    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
     await addressRegistry.mock.tvlManagerAddress.returns(tvlManager.address);
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("adminSafe"))
-      .returns(adminSafe.address);
+    await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     const MetaPoolTokenProxy = await ethers.getContractFactory(

@@ -23,7 +23,7 @@ import {
     Erc20AllocationConstants
 } from "contracts/tvl/Imports.sol";
 
-import {ILpFunder} from "./ILpFunder.sol";
+import {ILpAccountFunder} from "./ILpAccountFunder.sol";
 
 /**
  * @title Meta Pool Token
@@ -62,7 +62,7 @@ contract MetaPoolToken is
     ReentrancyGuardUpgradeSafe,
     PausableUpgradeSafe,
     ERC20UpgradeSafe,
-    ILpFunder,
+    ILpAccountFunder,
     Erc20AllocationConstants
 {
     using AddressUpgradeSafe for address;
@@ -123,12 +123,9 @@ contract MetaPoolToken is
         // initialize impl-specific storage
         _setAdminAddress(adminAddress);
         _setAddressRegistry(addressRegistry_);
-        _setupRole(
-            DEFAULT_ADMIN_ROLE,
-            addressRegistry.getAddress("emergencySafe")
-        );
+        _setupRole(DEFAULT_ADMIN_ROLE, addressRegistry.emergencySafeAddress());
         _setupRole(LP_ROLE, addressRegistry.lpSafeAddress());
-        _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
+        _setupRole(EMERGENCY_ROLE, addressRegistry.emergencySafeAddress());
     }
 
     /**
@@ -178,7 +175,7 @@ contract MetaPoolToken is
         emit AddressRegistryChanged(addressRegistry_);
     }
 
-    function fundLp(bytes32[] calldata poolIds)
+    function fundLpAccount(bytes32[] calldata poolIds)
         external
         override
         nonReentrant
@@ -189,20 +186,20 @@ contract MetaPoolToken is
 
         uint256[] memory fundAmounts = _getFundAmounts(amounts);
 
-        _fundLp(pools, fundAmounts);
+        _fundLpAccount(pools, fundAmounts);
 
-        emit FundLp(poolIds, fundAmounts);
+        emit FundLpAccount(poolIds, fundAmounts);
     }
 
-    function emergencyFundLp(
+    function emergencyFundLpAccount(
         IReservePool[] calldata pools,
         uint256[] calldata amounts
     ) external override nonReentrant onlyEmergencyRole {
-        _fundLp(pools, amounts);
-        emit EmergencyFundLp(pools, amounts);
+        _fundLpAccount(pools, amounts);
+        emit EmergencyFundLpAccount(pools, amounts);
     }
 
-    function withdrawLp(bytes32[] calldata poolIds)
+    function withdrawFromLpAccount(bytes32[] calldata poolIds)
         external
         override
         nonReentrant
@@ -213,16 +210,16 @@ contract MetaPoolToken is
 
         uint256[] memory withdrawAmounts = _getWithdrawAmounts(amounts);
 
-        _withdrawLp(pools, withdrawAmounts);
-        emit WithdrawLp(poolIds, withdrawAmounts);
+        _withdrawFromLpAccount(pools, withdrawAmounts);
+        emit WithdrawFromLpAccount(poolIds, withdrawAmounts);
     }
 
-    function emergencyWithdrawLp(
+    function emergencyWithdrawFromLpAccount(
         IReservePool[] calldata pools,
         uint256[] calldata amounts
     ) external override nonReentrant onlyEmergencyRole {
-        _withdrawLp(pools, amounts);
-        emit EmergencyWithdrawLp(pools, amounts);
+        _withdrawFromLpAccount(pools, amounts);
+        emit EmergencyWithdrawFromLpAccount(pools, amounts);
     }
 
     /**
@@ -266,11 +263,12 @@ contract MetaPoolToken is
         return (pools, rebalanceAmounts);
     }
 
-    function _fundLp(IReservePool[] memory pools, uint256[] memory amounts)
-        internal
-    {
-        address lpSafeAddress = addressRegistry.lpSafeAddress();
-        require(lpSafeAddress != address(0), "INVALID_LP_SAFE"); // defensive check -- should never happen
+    function _fundLpAccount(
+        IReservePool[] memory pools,
+        uint256[] memory amounts
+    ) internal {
+        address lpAccountAddress = addressRegistry.lpAccountAddress();
+        require(lpAccountAddress != address(0), "INVALID_LP_ACCOUNT"); // defensive check -- should never happen
 
         _multipleMintAndTransfer(pools, amounts);
         _registerPoolUnderlyers(pools);
@@ -308,15 +306,16 @@ contract MetaPoolToken is
             return;
         }
         _mint(address(pool), mintAmount);
-        pool.transferToLpSafe(transferAmount);
+        pool.transferToLpAccount(transferAmount);
         emit Mint(address(pool), mintAmount);
     }
 
-    function _withdrawLp(IReservePool[] memory pools, uint256[] memory amounts)
-        internal
-    {
-        address lpSafeAddress = addressRegistry.lpSafeAddress();
-        require(lpSafeAddress != address(0), "INVALID_LP_SAFE"); // defensive check -- should never happen
+    function _withdrawFromLpAccount(
+        IReservePool[] memory pools,
+        uint256[] memory amounts
+    ) internal {
+        address lpAccountAddress = addressRegistry.lpAccountAddress();
+        require(lpAccountAddress != address(0), "INVALID_LP_ACCOUNT"); // defensive check -- should never happen
 
         _multipleBurnAndTransfer(pools, amounts);
         _registerPoolUnderlyers(pools);
@@ -326,6 +325,9 @@ contract MetaPoolToken is
         IReservePool[] memory pools,
         uint256[] memory amounts
     ) internal {
+        address lpAccount = addressRegistry.lpAccountAddress();
+        require(lpAccount != address(0), "INVALID_LP_ACCOUNT"); // defensive check -- should never happen
+
         uint256[] memory deltas = _calculateDeltas(pools, amounts);
 
         // MUST do the actual burning after calculating *all* burn amounts,
@@ -334,12 +336,11 @@ contract MetaPoolToken is
         //
         // Using the pre-burn TVL and totalSupply gives the same answer
         // as using post-burn values.
-        address lpSafe = addressRegistry.lpSafeAddress();
         for (uint256 i = 0; i < pools.length; i++) {
             IReservePool pool = pools[i];
             uint256 burnAmount = deltas[i];
             uint256 transferAmount = amounts[i];
-            _burnAndTransfer(pool, lpSafe, burnAmount, transferAmount);
+            _burnAndTransfer(pool, lpAccount, burnAmount, transferAmount);
         }
 
         ILockingOracle oracleAdapter = _getOracleAdapter();
@@ -348,7 +349,7 @@ contract MetaPoolToken is
 
     function _burnAndTransfer(
         IReservePool pool,
-        address lpSafe,
+        address lpAccount,
         uint256 burnAmount,
         uint256 transferAmount
     ) internal {
@@ -357,7 +358,7 @@ contract MetaPoolToken is
         }
         _burn(address(pool), burnAmount);
         IDetailedERC20 underlyer = pool.underlyer();
-        underlyer.safeTransferFrom(lpSafe, address(pool), transferAmount);
+        underlyer.safeTransferFrom(lpAccount, address(pool), transferAmount);
         emit Burn(address(pool), burnAmount);
     }
 

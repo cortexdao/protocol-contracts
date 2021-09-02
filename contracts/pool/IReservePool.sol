@@ -12,7 +12,7 @@ interface IReservePool is ILiquidityPoolV2 {
 
     function setReservePercentage(uint256 reservePercentage_) external;
 
-    function transferToLpSafe(uint256 amount) external;
+    function transferToLpAccount(uint256 amount) external;
 
     function getReserveTopUpValue() external view returns (int256);
 

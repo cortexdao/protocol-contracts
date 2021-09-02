@@ -30,6 +30,7 @@ console.debugging = false;
 describe("Contract: PoolToken", () => {
   let deployer;
   let oracle;
+  let lpAccount;
   let tvlManager;
   let lpSafe;
   let adminSafe;
@@ -41,6 +42,7 @@ describe("Contract: PoolToken", () => {
     [
       deployer,
       oracle,
+      lpAccount,
       tvlManager,
       lpSafe,
       adminSafe,
@@ -137,6 +139,11 @@ describe("Contract: PoolToken", () => {
         await addressRegistry.registerAddress(
           bytes32("tvlManager"),
           tvlManager.address
+        );
+
+        await addressRegistry.registerAddress(
+          bytes32("lpAccount"),
+          lpAccount.address
         );
 
         await addressRegistry.registerAddress(
@@ -325,11 +332,11 @@ describe("Contract: PoolToken", () => {
           ).to.revertedWith("Pausable: paused");
         });
 
-        it("Revert when calling transferToLpSafe on locked pool", async () => {
+        it("Revert when calling transferToLpAccount on locked pool", async () => {
           await poolToken.connect(emergencySafe).emergencyLock();
 
           await expect(
-            poolToken.connect(emergencySafe).transferToLpSafe(FAKE_ADDRESS)
+            poolToken.connect(emergencySafe).transferToLpAccount(FAKE_ADDRESS)
           ).to.revertedWith("Pausable: paused");
         });
       });
@@ -376,8 +383,8 @@ describe("Contract: PoolToken", () => {
         });
       });
 
-      describe("Transfer to LP Safe", () => {
-        it("mAPT can call transferToLpSafe", async () => {
+      describe("Transfer to LP Account", () => {
+        it("mAPT can call transferToLpAccount", async () => {
           // need to impersonate the mAPT contract and fund it, since its
           // address was set as CONTRACT_ROLE upon PoolTokenV2 deployment
           const mAptSigner = await impersonateAccount(mApt.address);
@@ -388,13 +395,13 @@ describe("Contract: PoolToken", () => {
           );
 
           await poolToken.connect(randomUser).addLiquidity(100);
-          await expect(poolToken.connect(mAptSigner).transferToLpSafe(100)).to
-            .not.be.reverted;
+          await expect(poolToken.connect(mAptSigner).transferToLpAccount(100))
+            .to.not.be.reverted;
         });
 
-        it("Revert when unpermissioned account calls transferToLpSafe", async () => {
-          await expect(poolToken.connect(randomUser).transferToLpSafe(100)).to
-            .be.reverted;
+        it("Revert when unpermissioned account calls transferToLpAccount", async () => {
+          await expect(poolToken.connect(randomUser).transferToLpAccount(100))
+            .to.be.reverted;
         });
       });
 

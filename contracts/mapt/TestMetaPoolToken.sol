@@ -20,17 +20,18 @@ contract TestMetaPoolToken is MetaPoolToken {
         _burn(account, amount);
     }
 
-    function testFundLp(IReservePool[] memory pools, uint256[] memory amounts)
-        public
-    {
-        _fundLp(pools, amounts);
-    }
-
-    function testWithdrawLp(
+    function testFundLpAccount(
         IReservePool[] memory pools,
         uint256[] memory amounts
     ) public {
-        _withdrawLp(pools, amounts);
+        _fundLpAccount(pools, amounts);
+    }
+
+    function testWithdrawFromLpAccount(
+        IReservePool[] memory pools,
+        uint256[] memory amounts
+    ) public {
+        _withdrawFromLpAccount(pools, amounts);
     }
 
     function testMultipleMintAndTransfer(

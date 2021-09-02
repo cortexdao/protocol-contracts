@@ -47,8 +47,6 @@ interface IAddressRegistryV2 {
      */
     function getAddress(bytes32 id) external view returns (address);
 
-    function poolManagerAddress() external view returns (address);
-
     function tvlManagerAddress() external view returns (address);
 
     function chainlinkRegistryAddress() external view returns (address);
@@ -61,7 +59,13 @@ interface IAddressRegistryV2 {
 
     function mAptAddress() external view returns (address);
 
+    function lpAccountAddress() external view returns (address);
+
     function lpSafeAddress() external view returns (address);
+
+    function adminSafeAddress() external view returns (address);
+
+    function emergencySafeAddress() external view returns (address);
 
     function oracleAdapterAddress() external view returns (address);
 }

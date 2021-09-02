@@ -7,10 +7,12 @@ import {IERC20, AccessControl} from "contracts/common/Imports.sol";
 
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
 
-import {AggregatorV3Interface} from "./FluxAggregator.sol";
-import {IOracleAdapter} from "./IOracleAdapter.sol";
-import {IOverrideOracle} from "./IOverrideOracle.sol";
-import {ILockingOracle} from "./ILockingOracle.sol";
+import {
+    AggregatorV3Interface,
+    IOracleAdapter,
+    IOverrideOracle,
+    ILockingOracle
+} from "./Imports.sol";
 
 /**
  * @title Oracle Adapter
@@ -105,14 +107,11 @@ contract OracleAdapter is
         _setChainlinkStalePeriod(chainlinkStalePeriod_);
         _setDefaultLockPeriod(defaultLockPeriod_);
 
-        _setupRole(
-            DEFAULT_ADMIN_ROLE,
-            addressRegistry.getAddress("emergencySafe")
-        );
+        _setupRole(DEFAULT_ADMIN_ROLE, addressRegistry.emergencySafeAddress());
         _setupRole(CONTRACT_ROLE, addressRegistry.mAptAddress());
         _setupRole(CONTRACT_ROLE, addressRegistry.tvlManagerAddress());
-        _setupRole(ADMIN_ROLE, addressRegistry.getAddress("adminSafe"));
-        _setupRole(EMERGENCY_ROLE, addressRegistry.getAddress("emergencySafe"));
+        _setupRole(ADMIN_ROLE, addressRegistry.adminSafeAddress());
+        _setupRole(EMERGENCY_ROLE, addressRegistry.emergencySafeAddress());
     }
 
     function setDefaultLockPeriod(uint256 newPeriod)
@@ -251,10 +250,6 @@ contract OracleAdapter is
         _setChainlinkStalePeriod(chainlinkStalePeriod_);
     }
 
-    function isLocked() public view override returns (bool) {
-        return block.number < lockEnd;
-    }
-
     //------------------------------------------------------------
     // ORACLE VALUE GETTERS
     //------------------------------------------------------------
@@ -317,6 +312,10 @@ contract OracleAdapter is
         returns (bool)
     {
         return block.number < submittedAssetValues[asset].periodEnd;
+    }
+
+    function isLocked() public view override returns (bool) {
+        return block.number < lockEnd;
     }
 
     function _setDefaultLockPeriod(uint256 newPeriod) internal {

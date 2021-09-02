@@ -218,30 +218,38 @@ contract("AddressRegistry", async (accounts) => {
     const tvlManagerAddress = web3.utils.toChecksumAddress(
       "0x1AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
-    const poolManagerAddress = web3.utils.toChecksumAddress(
+    const lpAccountAddress = web3.utils.toChecksumAddress(
       "0x2AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
     const lpSafeAddress = web3.utils.toChecksumAddress(
       "0x3AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
-    const daiPoolAddress = web3.utils.toChecksumAddress(
+    const adminSafeAddress = web3.utils.toChecksumAddress(
       "0x4AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
-    const usdcPoolAddress = web3.utils.toChecksumAddress(
+    const emergencySafeAddress = web3.utils.toChecksumAddress(
       "0x5AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
-    const usdtPoolAddress = web3.utils.toChecksumAddress(
+    const daiPoolAddress = web3.utils.toChecksumAddress(
       "0x6AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
-    const oracleAdapterAddress = web3.utils.toChecksumAddress(
+    const usdcPoolAddress = web3.utils.toChecksumAddress(
       "0x7AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+    );
+    const usdtPoolAddress = web3.utils.toChecksumAddress(
+      "0x8AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+    );
+    const oracleAdapterAddress = web3.utils.toChecksumAddress(
+      "0x9AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
     beforeEach("Prep addresses", async () => {
       const names = [
         DUMMY_NAME,
         bytes32("tvlManager"),
-        bytes32("poolManager"),
+        bytes32("lpAccount"),
         bytes32("lpSafe"),
+        bytes32("adminSafe"),
+        bytes32("emergencySafe"),
         bytes32("daiPool"),
         bytes32("usdcPool"),
         bytes32("usdtPool"),
@@ -250,8 +258,10 @@ contract("AddressRegistry", async (accounts) => {
       const addresses = [
         DUMMY_ADDRESS,
         tvlManagerAddress,
-        poolManagerAddress,
+        lpAccountAddress,
         lpSafeAddress,
+        adminSafeAddress,
+        emergencySafeAddress,
         daiPoolAddress,
         usdcPoolAddress,
         usdtPoolAddress,
@@ -264,8 +274,10 @@ contract("AddressRegistry", async (accounts) => {
       assert.deepEqual(await registry.getIds({ from: randomUser }), [
         DUMMY_NAME,
         bytes32("tvlManager"),
-        bytes32("poolManager"),
+        bytes32("lpAccount"),
         bytes32("lpSafe"),
+        bytes32("adminSafe"),
+        bytes32("emergencySafe"),
         bytes32("daiPool"),
         bytes32("usdcPool"),
         bytes32("usdtPool"),
@@ -296,10 +308,10 @@ contract("AddressRegistry", async (accounts) => {
       );
     });
 
-    it("User can retrieve pool manager", async () => {
+    it("User can retrieve LP account", async () => {
       assert.equal(
-        await registry.poolManagerAddress({ from: randomUser }),
-        poolManagerAddress
+        await registry.lpAccountAddress({ from: randomUser }),
+        lpAccountAddress
       );
     });
 
@@ -307,6 +319,20 @@ contract("AddressRegistry", async (accounts) => {
       assert.equal(
         await registry.lpSafeAddress({ from: randomUser }),
         lpSafeAddress
+      );
+    });
+
+    it("User can retrieve Admin Safe", async () => {
+      assert.equal(
+        await registry.adminSafeAddress({ from: randomUser }),
+        adminSafeAddress
+      );
+    });
+
+    it("User can retrieve Emergency Safe", async () => {
+      assert.equal(
+        await registry.emergencySafeAddress({ from: randomUser }),
+        emergencySafeAddress
       );
     });
 
