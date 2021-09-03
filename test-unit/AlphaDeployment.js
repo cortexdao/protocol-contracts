@@ -57,7 +57,8 @@ describe("Contract: AlphaDeployment", () => {
         FAKE_ADDRESS, // pool token v2 factory
         FAKE_ADDRESS, // erc20 allocation factory
         FAKE_ADDRESS, // tvl manager factory
-        FAKE_ADDRESS // oracle adapter factory
+        FAKE_ADDRESS, // oracle adapter factory
+        FAKE_ADDRESS // lp account factory
       )
     ).to.not.be.reverted;
     expect(await alphaDeployment.step()).to.equal(1);
@@ -87,7 +88,8 @@ describe("Contract: AlphaDeployment", () => {
         FAKE_ADDRESS, // pool token v2 factory
         FAKE_ADDRESS, // erc20 allocation factory
         FAKE_ADDRESS, // tvl manager factory
-        FAKE_ADDRESS // oracle adapter factory
+        FAKE_ADDRESS, // oracle adapter factory
+        FAKE_ADDRESS // lp account factory
       )
     ).to.not.be.reverted;
 
@@ -121,7 +123,8 @@ describe("Contract: AlphaDeployment", () => {
       FAKE_ADDRESS, // pool token v2 factory
       FAKE_ADDRESS, // erc20 allocation factory
       FAKE_ADDRESS, // tvl manager factory
-      FAKE_ADDRESS // oracle adapter factory
+      FAKE_ADDRESS, // oracle adapter factory
+      FAKE_ADDRESS // lp account factory
     );
 
     // any ownable contract here will do; ProxyAdmin is a simple one

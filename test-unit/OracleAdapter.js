@@ -135,7 +135,8 @@ describe("Contract: OracleAdapter", () => {
       FAKE_ADDRESS, // pool token v2 factory
       FAKE_ADDRESS, // erc20 allocation factory
       FAKE_ADDRESS, // tvl manager factory
-      oracleAdapterFactory.address // oracle adapter factory
+      oracleAdapterFactory.address, // oracle adapter factory
+      FAKE_ADDRESS // lp account factory
     );
 
     // need some test setup to pass the pre-step checks
