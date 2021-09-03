@@ -63,7 +63,6 @@ describe("Contract: MetaPoolToken", () => {
       deployer,
       emergencySafe,
       lpSafe,
-      lpAccount,
       randomUser,
       anotherUser,
     ] = await ethers.getSigners();
@@ -80,7 +79,6 @@ describe("Contract: MetaPoolToken", () => {
       emergencySafe.address
     );
     await addressRegistryMock.mock.lpSafeAddress.returns(lpSafe.address);
-    await addressRegistryMock.mock.lpAccountAddress.returns(lpAccount.address);
 
     oracleAdapterMock = await deployMockContract(deployer, OracleAdapter.abi);
     await addressRegistryMock.mock.oracleAdapterAddress.returns(
@@ -101,6 +99,12 @@ describe("Contract: MetaPoolToken", () => {
 
     // allows mAPT to mint and burn
     await oracleAdapterMock.mock.lock.returns();
+
+    lpAccount = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("ILpAccount").abi
+    );
+    await addressRegistryMock.mock.lpAccountAddress.returns(lpAccount.address);
   });
 
   describe("Constructor", () => {
@@ -301,33 +305,31 @@ describe("Contract: MetaPoolToken", () => {
 
     it("Transfer if there is burning", async () => {
       const pool = await deployMockContract(deployer, PoolTokenV2.abi);
-      const underlyer = await deployMockContract(deployer, IDetailedERC20.abi);
-      await pool.mock.underlyer.returns(underlyer.address);
 
       const burnAmount = tokenAmountToBigNumber(10, await mApt.decimals());
       const transferAmount = 100;
 
       await mApt.testMint(pool.address, burnAmount);
 
-      // check pool's transfer function gets called
-      await underlyer.mock.transferFrom.revertsWithReason(
-        "TRANSFERFROM_FAILED"
+      // check lpAccount's transfer function gets called
+      await lpAccount.mock.transferToPool.revertsWithReason(
+        "CALLED_LPACCOUNT_TRANSFER"
       );
       await expect(
         mApt.testBurnAndTransfer(
           pool.address,
-          lpSafe.address,
+          lpAccount.address,
           burnAmount,
           transferAmount
         )
-      ).to.be.revertedWith("TRANSFERFROM_FAILED");
+      ).to.be.revertedWith("CALLED_LPACCOUNT_TRANSFER");
 
       const expectedSupply = (await mApt.totalSupply()).sub(burnAmount);
-      // reset underlyer mock to check if supply changes as expected
-      await underlyer.mock.transferFrom.returns(true);
+      // reset lpAccount mock to check if supply changes as expected
+      await lpAccount.mock.transferToPool.returns();
       await mApt.testBurnAndTransfer(
         pool.address,
-        lpSafe.address,
+        lpAccount.address,
         burnAmount,
         transferAmount
       );
@@ -336,10 +338,8 @@ describe("Contract: MetaPoolToken", () => {
 
     it("No burning if transfer reverts", async () => {
       const pool = await deployMockContract(deployer, PoolTokenV2.abi);
-      const underlyer = await deployMockContract(deployer, IDetailedERC20.abi);
-      await pool.mock.underlyer.returns(underlyer.address);
-      await underlyer.mock.transferFrom.revertsWithReason(
-        "TRANSFERFROM_FAILED"
+      await lpAccount.mock.transferToPool.revertsWithReason(
+        "LPACCOUNT_TRANSFER_FAILED"
       );
 
       const burnAmount = tokenAmountToBigNumber(10, await mApt.decimals());
@@ -351,11 +351,11 @@ describe("Contract: MetaPoolToken", () => {
       await expect(
         mApt.testBurnAndTransfer(
           pool.address,
-          lpSafe.address,
+          lpAccount.address,
           burnAmount,
           transferAmount
         )
-      ).to.be.revertedWith("TRANSFERFROM_FAILED");
+      ).to.be.revertedWith("LPACCOUNT_TRANSFER_FAILED");
       expect(await mApt.totalSupply()).to.equal(prevTotalSupply);
     });
   });
@@ -374,8 +374,9 @@ describe("Contract: MetaPoolToken", () => {
       underlyer = await deployMockContract(deployer, IDetailedERC20.abi);
       await pool.mock.underlyer.returns(underlyer.address);
 
-      await underlyer.mock.transferFrom.returns(true);
       await underlyer.mock.decimals.returns(6);
+
+      await lpAccount.mock.transferToPool.returns();
 
       await oracleAdapterMock.mock.getTvl.returns(
         tokenAmountToBigNumber("12345678", 8)
