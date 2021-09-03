@@ -169,6 +169,7 @@ contract LpAccount is
 
     function transferToPool(address pool, uint256 amount)
         external
+        override
         onlyContractRole
     {
         IDetailedERC20 underlyer = ILiquidityPoolV2(pool).underlyer();
@@ -201,6 +202,7 @@ contract LpAccount is
         IERC20[] memory tokens
     )
         internal
+        view
         returns (bool isAssetAllocationRegistered, bool isErc20TokenRegistered)
     {
         IAssetAllocationRegistry tvlManager =
