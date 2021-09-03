@@ -26,7 +26,7 @@ async function deployMockZap(name) {
   return zap;
 }
 
-describe.only("Contract: LpAccount", () => {
+describe("Contract: LpAccount", () => {
   // signers
   let deployer;
   let lpSafe;
@@ -447,7 +447,7 @@ describe.only("Contract: LpAccount", () => {
     });
   });
 
-  describe.only("transferToPool", () => {
+  describe("transferToPool", () => {
     let pool;
     let underlyer;
 
@@ -466,15 +466,32 @@ describe.only("Contract: LpAccount", () => {
     });
 
     it("mApt can call", async () => {
-      await lpAccount.connect(mApt).transferToPool(pool.address, 0);
+      await expect(lpAccount.connect(mApt).transferToPool(pool.address, 0)).to
+        .not.be.reverted;
     });
 
     it("Unpermissioned cannot call", async () => {
       await expect(
-        lpAccount.connect(randomUser).transferToPool(FAKE_ADDRESS, 0)
+        lpAccount.connect(randomUser).transferToPool(pool.address, 0)
       ).to.be.revertedWith("NOT_CONTRACT_ROLE");
     });
 
-    it("Can transfer", async () => {});
+    it("Calls transfer on underlyer with the right args", async () => {
+      const amount = tokenAmountToBigNumber("100");
+
+      // check underlyer's transfer function is called
+      await underlyer.mock.transfer.revertsWithReason("CALLED_TRANSFER");
+      await expect(
+        lpAccount.connect(mApt).transferToPool(pool.address, amount)
+      ).to.be.revertedWith("CALLED_TRANSFER");
+
+      // check transfer is called with the right args
+      await underlyer.mock.transfer
+        .withArgs(pool.address, amount)
+        .returns(true);
+
+      await expect(lpAccount.connect(mApt).transferToPool(pool.address, amount))
+        .to.not.be.reverted;
+    });
   });
 });
