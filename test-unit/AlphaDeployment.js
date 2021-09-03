@@ -5,7 +5,7 @@ const timeMachine = require("ganache-time-traveler");
 const { FAKE_ADDRESS, ZERO_ADDRESS, bytes32 } = require("../utils/helpers");
 const { deployMockContract } = waffle;
 
-describe.only("Contract: AlphaDeployment", () => {
+describe("Contract: AlphaDeployment", () => {
   // signers
   let deployer;
   let emergencySafe;
