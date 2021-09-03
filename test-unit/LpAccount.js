@@ -447,10 +447,26 @@ describe.only("Contract: LpAccount", () => {
     });
   });
 
-  describe("transferToPool", () => {
+  describe.only("transferToPool", () => {
+    let pool;
+    let underlyer;
+
+    before("Setup mock pool with underlyer", async () => {
+      pool = await deployMockContract(
+        deployer,
+        artifacts.readArtifactSync("ILiquidityPoolV2").abi
+      );
+      underlyer = await deployMockContract(
+        deployer,
+        artifacts.readArtifactSync("IDetailedERC20").abi
+      );
+
+      await pool.mock.underlyer.returns(underlyer.address);
+      await underlyer.mock.transfer.returns(true);
+    });
+
     it("mApt can call", async () => {
-      await expect(lpAccount.connect(mApt).transferToPool(FAKE_ADDRESS, 0)).to
-        .not.be.reverted;
+      await lpAccount.connect(mApt).transferToPool(pool.address, 0);
     });
 
     it("Unpermissioned cannot call", async () => {
@@ -458,5 +474,7 @@ describe.only("Contract: LpAccount", () => {
         lpAccount.connect(randomUser).transferToPool(FAKE_ADDRESS, 0)
       ).to.be.revertedWith("NOT_CONTRACT_ROLE");
     });
+
+    it("Can transfer", async () => {});
   });
 });
