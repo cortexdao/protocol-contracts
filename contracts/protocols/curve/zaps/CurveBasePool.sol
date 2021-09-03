@@ -9,9 +9,7 @@ import {
     IERC20
 } from "contracts/common/Imports.sol";
 
-import {ICurvePool} from "contracts/protocols/curve/interfaces/ICurvePool.sol";
-
-abstract contract CurveBasePool is IZap, ICurvePool {
+abstract contract CurveBasePool is IZap {
     using SafeMath for uint256;
 
     address internal constant CRV_ADDRESS =
