@@ -43,7 +43,7 @@ describe("Contract: AlphaDeployment", () => {
     await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
 
-    AlphaDeployment = await ethers.getContractFactory("AlphaDeployment");
+    AlphaDeployment = await ethers.getContractFactory("TestAlphaDeployment");
   });
 
   it("constructor", async () => {
@@ -111,6 +111,101 @@ describe("Contract: AlphaDeployment", () => {
     expect(await alphaDeployment.mApt()).to.equal(ZERO_ADDRESS);
     await expect(alphaDeployment.deploy_1_MetaPoolToken()).to.not.be.reverted;
     expect(await alphaDeployment.mApt()).to.equal(mAptAddress);
+  });
+
+  it("deploy_2_DemoPools", async () => {
+    const proxyAdmin = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("ProxyAdmin").abi
+    );
+    await proxyAdmin.mock.upgradeAndCall.returns();
+    const proxyAdminFactory = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("ProxyAdminFactory").abi
+    );
+    proxyAdminFactory.mock.create.returns(proxyAdmin.address);
+
+    const demoPoolAddress = (await deployMockContract(deployer, [])).address;
+    const poolTokenV1Factory = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("PoolTokenV1Factory").abi
+    );
+    poolTokenV1Factory.mock.create.returns(demoPoolAddress);
+
+    const poolTokenV2Factory = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("PoolTokenV2Factory").abi
+    );
+    poolTokenV2Factory.mock.create.returns(FAKE_ADDRESS);
+
+    const alphaDeployment = await expect(
+      AlphaDeployment.deploy(
+        addressRegistry.address,
+        proxyAdminFactory.address, // proxy admin factory
+        FAKE_ADDRESS, // proxy factory
+        FAKE_ADDRESS, // mAPT factory
+        poolTokenV1Factory.address, // pool token v1 factory
+        poolTokenV2Factory.address, // pool token v2 factory
+        FAKE_ADDRESS, // erc20 allocation factory
+        FAKE_ADDRESS, // tvl manager factory
+        FAKE_ADDRESS, // oracle adapter factory
+        FAKE_ADDRESS // lp account factory
+      )
+    ).to.not.be.reverted;
+
+    // for step check
+    await alphaDeployment.testSetStep(2);
+
+    // for deployed address check
+    const mAptAddress = (await deployMockContract(deployer, [])).address;
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("mApt"))
+      .returns(mAptAddress);
+    await alphaDeployment.testSetMapt(mAptAddress);
+
+    // for ownership check
+    await addressRegistry.mock.owner.returns(alphaDeployment.address);
+
+    // check for address registrations
+    // DAI
+    await addressRegistry.mock.registerAddress
+      .withArgs(bytes32("daiDemoPool"), demoPoolAddress)
+      .revertsWithReason("ADDRESS_REGISTERED");
+    await expect(alphaDeployment.deploy_2_DemoPools()).to.be.revertedWith(
+      "ADDRESS_REGISTERED"
+    );
+    await addressRegistry.mock.registerAddress
+      .withArgs(bytes32("daiDemoPool"), demoPoolAddress)
+      .returns();
+    // USDC
+    await addressRegistry.mock.registerAddress
+      .withArgs(bytes32("usdcDemoPool"), demoPoolAddress)
+      .revertsWithReason("ADDRESS_REGISTERED");
+    await expect(alphaDeployment.deploy_2_DemoPools()).to.be.revertedWith(
+      "ADDRESS_REGISTERED"
+    );
+    await addressRegistry.mock.registerAddress
+      .withArgs(bytes32("usdcDemoPool"), demoPoolAddress)
+      .returns();
+    // USDT
+    await addressRegistry.mock.registerAddress
+      .withArgs(bytes32("usdtDemoPool"), demoPoolAddress)
+      .revertsWithReason("ADDRESS_REGISTERED");
+    await expect(alphaDeployment.deploy_2_DemoPools()).to.be.revertedWith(
+      "ADDRESS_REGISTERED"
+    );
+    await addressRegistry.mock.registerAddress
+      .withArgs(bytes32("usdtDemoPool"), demoPoolAddress)
+      .returns();
+
+    // check mAPT address set properly
+    expect(await alphaDeployment.daiDemoPool()).to.equal(ZERO_ADDRESS);
+    expect(await alphaDeployment.usdcDemoPool()).to.equal(ZERO_ADDRESS);
+    expect(await alphaDeployment.usdtDemoPool()).to.equal(ZERO_ADDRESS);
+    await expect(alphaDeployment.deploy_2_DemoPools()).to.not.be.reverted;
+    expect(await alphaDeployment.daiDemoPool()).to.equal(demoPoolAddress);
+    expect(await alphaDeployment.usdcDemoPool()).to.equal(demoPoolAddress);
+    expect(await alphaDeployment.usdtDemoPool()).to.equal(demoPoolAddress);
   });
 
   it("handoffOwnership", async () => {

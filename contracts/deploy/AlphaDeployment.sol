@@ -282,6 +282,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             initDataV2
         );
         addressRegistry.registerAddress("daiDemoPool", daiProxy);
+        daiDemoPool = daiProxy;
 
         bytes memory usdcInitData =
             abi.encodeWithSignature(
@@ -303,6 +304,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             initDataV2
         );
         addressRegistry.registerAddress("usdcDemoPool", usdcProxy);
+        usdcDemoPool = usdcProxy;
 
         bytes memory usdtInitData =
             abi.encodeWithSignature(
@@ -324,6 +326,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             initDataV2
         );
         addressRegistry.registerAddress("usdtDemoPool", usdtProxy);
+        usdtDemoPool = usdtProxy;
     }
 
     /// @dev Deploy ERC20 allocation and TVL Manager.
