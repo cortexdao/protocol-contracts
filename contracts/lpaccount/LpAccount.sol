@@ -2,13 +2,22 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {IAssetAllocation, IERC20} from "contracts/common/Imports.sol";
-import {Address, NamedAddressSet} from "contracts/libraries/Imports.sol";
+import {
+    IAssetAllocation,
+    IDetailedERC20,
+    IERC20
+} from "contracts/common/Imports.sol";
+import {
+    Address,
+    NamedAddressSet,
+    SafeERC20
+} from "contracts/libraries/Imports.sol";
 import {
     Initializable,
     ReentrancyGuardUpgradeSafe,
     AccessControlUpgradeSafe
 } from "contracts/proxy/Imports.sol";
+import {ILiquidityPoolV2} from "contracts/pool/Imports.sol";
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
 import {
     IAssetAllocationRegistry,
@@ -29,6 +38,7 @@ contract LpAccount is
     Erc20AllocationConstants
 {
     using Address for address;
+    using SafeERC20 for IDetailedERC20;
     using NamedAddressSet for NamedAddressSet.ZapSet;
 
     address public proxyAdmin;
@@ -157,8 +167,12 @@ contract LpAccount is
         emit ZapRemoved(name);
     }
 
-    function transferToPool(address pool, uint256 amount) external onlyContractRole {
-        // 
+    function transferToPool(address pool, uint256 amount)
+        external
+        onlyContractRole
+    {
+        IDetailedERC20 underlyer = ILiquidityPoolV2(pool).underlyer();
+        underlyer.safeTransfer(pool, amount);
     }
 
     function names() external view override returns (string[] memory) {
