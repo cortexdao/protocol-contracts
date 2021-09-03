@@ -26,7 +26,7 @@ async function deployMockZap(name) {
   return zap;
 }
 
-describe("Contract: LpAccount", () => {
+describe.only("Contract: LpAccount", () => {
   // signers
   let deployer;
   let lpSafe;
@@ -444,6 +444,19 @@ describe("Contract: LpAccount", () => {
         await lpAccount.connect(lpSafe).unwindStrategy(name, amount);
         expect(await lpAccount._unwindCalls()).to.deep.equal([amount]);
       });
+    });
+  });
+
+  describe("transferToPool", () => {
+    it("mApt can call", async () => {
+      await expect(lpAccount.connect(mApt).transferToPool(FAKE_ADDRESS, 0)).to
+        .not.be.reverted;
+    });
+
+    it("Unpermissioned cannot call", async () => {
+      await expect(
+        lpAccount.connect(randomUser).transferToPool(FAKE_ADDRESS, 0)
+      ).to.be.revertedWith("NOT_CONTRACT_ROLE");
     });
   });
 });

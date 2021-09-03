@@ -359,6 +359,7 @@ contract MetaPoolToken is
         _burn(address(pool), burnAmount);
         IDetailedERC20 underlyer = pool.underlyer();
         underlyer.safeTransferFrom(lpAccount, address(pool), transferAmount);
+        // ILpAccount(lpAccount).transferToPool(address(pool), transferAmount);
         emit Burn(address(pool), burnAmount);
     }
 

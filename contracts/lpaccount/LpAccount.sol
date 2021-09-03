@@ -157,6 +157,10 @@ contract LpAccount is
         emit ZapRemoved(name);
     }
 
+    function transferToPool(address pool, uint256 amount) external onlyContractRole {
+        // 
+    }
+
     function names() external view override returns (string[] memory) {
         return _zaps.names();
     }
