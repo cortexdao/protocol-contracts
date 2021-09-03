@@ -60,6 +60,7 @@ describe("Contract: LpAccount", () => {
       lpSafe,
       emergencySafe,
       adminSafe,
+      mApt,
       randomUser,
     ] = await ethers.getSigners();
 
