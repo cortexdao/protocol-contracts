@@ -16,12 +16,17 @@ import {
 import {CurveBasePool} from "contracts/protocols/curve/zaps/CurveBasePool.sol";
 
 contract LusdPoolZap is CurveBasePool, CurveLusdConstants {
-    address public constant override SWAP_ADDRESS = META_POOL_ADDRESS;
-    address public constant override GAUGE_ADDRESS = LIQUIDITY_GAUGE_ADDRESS;
-    address public constant override LP_ADDRESS = LP_TOKEN_ADDRESS;
-    uint256 public constant override DENOMINATOR = 10000;
-    uint256 public constant override SLIPPAGE = 100;
-    uint256 public constant override N_COINS = 2;
+    constructor()
+        public
+        CurveBasePool(
+            META_POOL_ADDRESS,
+            LIQUIDITY_GAUGE_ADDRESS,
+            LP_TOKEN_ADDRESS,
+            10000,
+            100,
+            2
+        ) // solhint-disable-next-line no-empty-blocks
+    {}
 
     function assetAllocations()
         public
@@ -57,8 +62,10 @@ contract LusdPoolZap is CurveBasePool, CurveLusdConstants {
         internal
         override
     {
-        uint256[N_COINS] memory amounts_ = [amounts[0], amounts[1]];
-        IStableSwap(SWAP_ADDRESS).add_liquidity(amounts_, minAmount);
+        IStableSwap(SWAP_ADDRESS).add_liquidity(
+            [amounts[0], amounts[1]],
+            minAmount
+        );
     }
 
     function _removeLiquidity(uint256 lpBalance) internal override {
@@ -69,9 +76,9 @@ contract LusdPoolZap is CurveBasePool, CurveLusdConstants {
     }
 
     function _depositToGauge() internal override {
-        IStakingRewards rewards = IStakingRewards(this.GAUGE_ADDRESS());
-        uint256 lpBalance = IERC20(this.LP_ADDRESS()).balanceOf(address(this));
-        IERC20(this.LP_ADDRESS()).approve(this.GAUGE_ADDRESS(), lpBalance);
+        IStakingRewards rewards = IStakingRewards(GAUGE_ADDRESS);
+        uint256 lpBalance = IERC20(LP_ADDRESS).balanceOf(address(this));
+        IERC20(LP_ADDRESS).approve(GAUGE_ADDRESS, lpBalance);
         rewards.stake(lpBalance);
     }
 
@@ -80,9 +87,9 @@ contract LusdPoolZap is CurveBasePool, CurveLusdConstants {
         override
         returns (uint256)
     {
-        IStakingRewards rewards = IStakingRewards(this.GAUGE_ADDRESS());
+        IStakingRewards rewards = IStakingRewards(GAUGE_ADDRESS);
         rewards.withdraw(amount);
         //lpBalance
-        return IERC20(this.LP_ADDRESS()).balanceOf(address(this));
+        return IERC20(LP_ADDRESS).balanceOf(address(this));
     }
 }

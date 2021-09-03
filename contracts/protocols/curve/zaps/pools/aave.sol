@@ -18,12 +18,17 @@ import {
 } from "contracts/protocols/curve/zaps/CurveBasePoolGauge.sol";
 
 contract AavePoolZap is CurveBasePoolGauge, CurveAaveConstants {
-    address public constant override SWAP_ADDRESS = STABLE_SWAP_ADDRESS;
-    address public constant override GAUGE_ADDRESS = LIQUIDITY_GAUGE_ADDRESS;
-    address public constant override LP_ADDRESS = LP_TOKEN_ADDRESS;
-    uint256 public constant override DENOMINATOR = 10000;
-    uint256 public constant override SLIPPAGE = 100;
-    uint256 public constant override N_COINS = 3;
+    constructor()
+        public
+        CurveBasePoolGauge(
+            STABLE_SWAP_ADDRESS,
+            LIQUIDITY_GAUGE_ADDRESS,
+            LP_TOKEN_ADDRESS,
+            10000,
+            100,
+            3
+        ) // solhint-disable-next-line no-empty-blocks
+    {}
 
     function assetAllocations()
         public
@@ -59,8 +64,10 @@ contract AavePoolZap is CurveBasePoolGauge, CurveAaveConstants {
         internal
         override
     {
-        uint256[N_COINS] memory amounts_ = [amounts[0], amounts[1], amounts[2]];
-        IStableSwap(SWAP_ADDRESS).add_liquidity(amounts_, minAmount);
+        IStableSwap(SWAP_ADDRESS).add_liquidity(
+            [amounts[0], amounts[1], amounts[2]],
+            minAmount
+        );
     }
 
     function _removeLiquidity(uint256 lpBalance) internal override {

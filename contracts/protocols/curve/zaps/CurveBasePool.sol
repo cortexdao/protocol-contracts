@@ -14,8 +14,31 @@ import {ICurvePool} from "contracts/protocols/curve/interfaces/ICurvePool.sol";
 abstract contract CurveBasePool is IZap, ICurvePool {
     using SafeMath for uint256;
 
-    address public constant override CRV_ADDRESS =
+    address internal constant CRV_ADDRESS =
         0xD533a949740bb3306d119CC777fa900bA034cd52;
+
+    address internal immutable SWAP_ADDRESS;
+    address internal immutable LP_ADDRESS;
+    address internal immutable GAUGE_ADDRESS;
+    uint256 internal immutable DENOMINATOR;
+    uint256 internal immutable SLIPPAGE;
+    uint256 internal immutable N_COINS;
+
+    constructor(
+        address swapAddress,
+        address lpAddress,
+        address gaugeAddress,
+        uint256 denominator,
+        uint256 slippage,
+        uint256 nCoins
+    ) public {
+        SWAP_ADDRESS = swapAddress;
+        LP_ADDRESS = lpAddress;
+        GAUGE_ADDRESS = gaugeAddress;
+        DENOMINATOR = denominator;
+        SLIPPAGE = slippage;
+        N_COINS = nCoins;
+    }
 
     function _getVirtualPrice() internal view virtual returns (uint256);
 
@@ -44,17 +67,14 @@ abstract contract CurveBasePool is IZap, ICurvePool {
         }
 
         uint256 v = totalAmount.mul(1e18).div(_getVirtualPrice());
-        uint256 minAmount =
-            v.mul(this.DENOMINATOR().sub(this.SLIPPAGE())).div(
-                this.DENOMINATOR()
-            );
+        uint256 minAmount = v.mul(DENOMINATOR.sub(SLIPPAGE)).div(DENOMINATOR);
 
-        for (uint256 i = 0; i < this.N_COINS(); i++) {
+        for (uint256 i = 0; i < N_COINS; i++) {
             if (amounts_[i] == 0) continue;
 
             address underlyerAddress = _getCoinAtIndex(i);
-            IERC20(underlyerAddress).approve(this.SWAP_ADDRESS(), 0);
-            IERC20(underlyerAddress).approve(this.SWAP_ADDRESS(), amounts_[i]);
+            IERC20(underlyerAddress).approve(SWAP_ADDRESS, 0);
+            IERC20(underlyerAddress).approve(SWAP_ADDRESS, amounts_[i]);
         }
         _addLiquidity(amounts, minAmount);
         _depositToGauge();
@@ -69,7 +89,7 @@ abstract contract CurveBasePool is IZap, ICurvePool {
     function sortedSymbols() public view override returns (string[] memory) {
         // N_COINS is not available as a public function
         // so we have to hardcode the number here
-        string[] memory symbols = new string[](this.N_COINS());
+        string[] memory symbols = new string[](N_COINS);
         for (uint256 i = 0; i < symbols.length; i++) {
             address underlyerAddress = _getCoinAtIndex(i);
             symbols[i] = IDetailedERC20(underlyerAddress).symbol();

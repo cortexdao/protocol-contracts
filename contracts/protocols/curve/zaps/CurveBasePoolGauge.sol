@@ -13,10 +13,29 @@ import {
 import {CurveBasePool} from "contracts/protocols/curve/zaps/CurveBasePool.sol";
 
 abstract contract CurveBasePoolGauge is IZap, CurveBasePool {
+    constructor(
+        address swapAddress,
+        address lpAddress,
+        address gaugeAddress,
+        uint256 denominator,
+        uint256 slippage,
+        uint256 nCoins
+    )
+        public
+        CurveBasePool(
+            swapAddress,
+            lpAddress,
+            gaugeAddress,
+            denominator,
+            slippage,
+            nCoins
+        ) // solhint-disable-next-line no-empty-blocks
+    {}
+
     function _depositToGauge() internal override {
-        ILiquidityGauge liquidityGauge = ILiquidityGauge(this.GAUGE_ADDRESS());
-        uint256 lpBalance = IERC20(this.LP_ADDRESS()).balanceOf(address(this));
-        IERC20(this.LP_ADDRESS()).approve(this.GAUGE_ADDRESS(), lpBalance);
+        ILiquidityGauge liquidityGauge = ILiquidityGauge(GAUGE_ADDRESS);
+        uint256 lpBalance = IERC20(LP_ADDRESS).balanceOf(address(this));
+        IERC20(LP_ADDRESS).approve(GAUGE_ADDRESS, lpBalance);
         liquidityGauge.deposit(lpBalance);
     }
 
@@ -25,9 +44,9 @@ abstract contract CurveBasePoolGauge is IZap, CurveBasePool {
         override
         returns (uint256)
     {
-        ILiquidityGauge liquidityGauge = ILiquidityGauge(this.GAUGE_ADDRESS());
+        ILiquidityGauge liquidityGauge = ILiquidityGauge(GAUGE_ADDRESS);
         liquidityGauge.withdraw(amount);
         //lpBalance
-        return IERC20(this.LP_ADDRESS()).balanceOf(address(this));
+        return IERC20(LP_ADDRESS).balanceOf(address(this));
     }
 }
