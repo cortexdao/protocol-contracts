@@ -12,6 +12,7 @@ import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
 import {Erc20Allocation} from "contracts/tvl/Erc20Allocation.sol";
 import {TvlManager} from "contracts/tvl/TvlManager.sol";
 import {OracleAdapter} from "contracts/oracle/OracleAdapter.sol";
+import {LpAccount} from "contracts/lpaccount/LpAccount.sol";
 import {
     ProxyAdmin,
     TransparentUpgradeableProxy
@@ -43,6 +44,13 @@ abstract contract UpgradeableContractFactory {
 contract MetaPoolTokenFactory is UpgradeableContractFactory {
     function _deployLogic() internal virtual override returns (address) {
         MetaPoolToken logic = new MetaPoolToken();
+        return address(logic);
+    }
+}
+
+contract LpAccountFactory is UpgradeableContractFactory {
+    function _deployLogic() internal virtual override returns (address) {
+        LpAccount logic = new LpAccount();
         return address(logic);
     }
 }

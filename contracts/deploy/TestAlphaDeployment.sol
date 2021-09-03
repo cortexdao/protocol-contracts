@@ -14,7 +14,8 @@ contract TestAlphaDeployment is AlphaDeployment {
         address poolTokenV2Factory_,
         address erc20AllocationFactory_,
         address tvlManagerFactory_,
-        address oracleAdapterFactory_
+        address oracleAdapterFactory_,
+        address lpAccountFactory_
     )
         public
         AlphaDeployment(
@@ -26,7 +27,8 @@ contract TestAlphaDeployment is AlphaDeployment {
             poolTokenV2Factory_,
             erc20AllocationFactory_,
             tvlManagerFactory_,
-            oracleAdapterFactory_
+            oracleAdapterFactory_,
+            lpAccountFactory_
         )
     {} // solhint-disable no-empty-blocks
 

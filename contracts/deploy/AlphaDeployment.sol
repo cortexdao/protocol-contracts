@@ -19,13 +19,14 @@ import {
 
 import {DeploymentConstants} from "./constants.sol";
 import {
-    ProxyAdminFactory,
-    ProxyFactory,
     Erc20AllocationFactory,
+    LpAccountFactory,
     MetaPoolTokenFactory,
     OracleAdapterFactory,
+    ProxyAdminFactory,
     PoolTokenV1Factory,
     PoolTokenV2Factory,
+    ProxyFactory,
     TvlManagerFactory
 } from "./factories.sol";
 
@@ -67,6 +68,12 @@ OracleAdapter
 - tvlManager (contract role)
 - mApt (contract role)
 
+LpAccount
+
+- emergencySafe (emergency role, default admin role)
+- adminSafe (admin role)
+- lpSafe (LP role)
+
 Note the order of dependencies: a contract requires contracts
 above it in the list to be deployed first. Thus we need
 to deploy in the order given, starting with the Safes.
@@ -82,20 +89,21 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
     IAddressRegistryV2 public addressRegistry;
 
-    address public proxyAdminFactory;
-    address public proxyFactory;
-    address public mAptFactory;
-    address public poolTokenV1Factory;
-    address public poolTokenV2Factory;
-    address public erc20AllocationFactory;
-    address public tvlManagerFactory;
-    address public oracleAdapterFactory;
+    address public immutable proxyAdminFactory;
+    address public immutable proxyFactory;
+    address public immutable mAptFactory;
+    address public immutable poolTokenV1Factory;
+    address public immutable poolTokenV2Factory;
+    address public immutable erc20AllocationFactory;
+    address public immutable tvlManagerFactory;
+    address public immutable oracleAdapterFactory;
+    address public immutable lpAccountFactory;
 
     uint256 public step;
 
-    address public emergencySafe;
-    address public adminSafe;
-    address public lpSafe;
+    address public immutable emergencySafe;
+    address public immutable adminSafe;
+    address public immutable lpSafe;
 
     // step 1
     address public mApt;
@@ -132,7 +140,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         address poolTokenV2Factory_,
         address erc20AllocationFactory_,
         address tvlManagerFactory_,
-        address oracleAdapterFactory_
+        address oracleAdapterFactory_,
+        address lpAccountFactory_
     ) public {
         step = 1;
 
@@ -152,6 +161,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         erc20AllocationFactory = erc20AllocationFactory_;
         tvlManagerFactory = tvlManagerFactory_;
         oracleAdapterFactory = oracleAdapterFactory_;
+        lpAccountFactory = lpAccountFactory_;
     }
 
     /**
@@ -239,8 +249,9 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         ownedContracts[0] = address(addressRegistry);
         checkOwnerships(ownedContracts);
 
+        address newOwner = msg.sender; // will own the proxy admin
         address proxyAdmin =
-            ProxyAdminFactory(proxyAdminFactory).create(msg.sender);
+            ProxyAdminFactory(proxyAdminFactory).create(newOwner);
 
         address fakeAggAddress = 0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe;
         bytes memory daiInitData =
@@ -263,7 +274,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 proxyFactory,
                 proxyAdmin,
                 daiInitData,
-                msg.sender
+                newOwner
             );
         ProxyAdmin(proxyAdmin).upgradeAndCall(
             PoolTokenProxy(payable(daiProxy)),
@@ -284,7 +295,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 proxyFactory,
                 proxyAdmin,
                 usdcInitData,
-                msg.sender
+                newOwner
             );
         ProxyAdmin(proxyAdmin).upgradeAndCall(
             PoolTokenProxy(payable(usdcProxy)),
@@ -305,7 +316,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 proxyFactory,
                 proxyAdmin,
                 usdtInitData,
-                msg.sender
+                newOwner
             );
         ProxyAdmin(proxyAdmin).upgradeAndCall(
             PoolTokenProxy(payable(usdtProxy)),
@@ -385,9 +396,37 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         return oracleAdapter;
     }
 
+    function deploy_5_LpAccount() external onlyOwner updateStep(5) {
+        checkRegisteredDependencies(new bytes32[](0), new address[](0));
+
+        address[] memory ownedContracts = new address[](1);
+        ownedContracts[0] = address(addressRegistry);
+        checkOwnerships(ownedContracts);
+
+        address newOwner = msg.sender; // will own the proxy admin
+        address proxyAdmin =
+            ProxyAdminFactory(proxyAdminFactory).create(newOwner);
+
+        bytes memory initData =
+            abi.encodeWithSignature(
+                "initialize(address,address)",
+                proxyAdmin,
+                address(addressRegistry)
+            );
+
+        address lpAccount =
+            LpAccountFactory(lpAccountFactory).create(
+                proxyFactory,
+                proxyAdmin,
+                initData,
+                address(0) // no owner for LpAccount
+            );
+        addressRegistry.registerAddress("lpAccount", lpAccount);
+    }
+
     /// @notice upgrade from v1 to v2
     /// @dev register mAPT for a contract role
-    function deploy_5_PoolTokenV2_upgrade() external onlyOwner updateStep(5) {
+    function deploy_6_PoolTokenV2_upgrade() external onlyOwner updateStep(6) {
         bytes32[] memory registeredIds = new bytes32[](1);
         address[] memory deployedAddresses = new address[](1);
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
