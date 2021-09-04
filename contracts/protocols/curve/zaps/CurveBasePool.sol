@@ -3,11 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import {SafeMath} from "contracts/libraries/Imports.sol";
 import {IZap} from "contracts/lpaccount/Imports.sol";
-import {
-    IAssetAllocation,
-    IDetailedERC20,
-    IERC20
-} from "contracts/common/Imports.sol";
+import {IAssetAllocation, IDetailedERC20, IERC20} from "contracts/common/Imports.sol";
 
 abstract contract CurveBasePool is IZap {
     using SafeMath for uint256;

@@ -7,10 +7,7 @@ const {
   console,
   tokenAmountToBigNumber,
   acquireToken,
-  MAX_UINT256,
   bytes32,
-  forciblySendEth,
-  impersonateAccount,
 } = require("../utils/helpers");
 const { STABLECOIN_POOLS } = require("../utils/constants");
 
@@ -39,13 +36,15 @@ describe("Zaps", () => {
   const CurveConstants = [
     {
       contractName: 'Curve3PoolZap',
-      crvAddress: '0xD533a949740bb3306d119CC777fa900bA034cd52',
-      stableSwapAddress: '0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7',
-      liquidityGaugeAddress: '',
-      lpTokenAddress: '',
-      denominator: 10000,
-      slippage: 100,
-      coins: 3
+
+      swapAddress: '0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7',
+      swapInterface: 'IStableSwap',
+      lpTokenAddress: '0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490',
+      lpTokenInterface: 'IDetailedERC20',
+      gaugeAddress: '0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A',
+      gaugeInterface: 'ILiquidityGauge',
+      numberOfCoins: 3,
+      whaleAddress: STABLECOIN_POOLS["DAI"]
     },
   ];
 
@@ -107,110 +106,70 @@ describe("Zaps", () => {
   CurveConstants.forEach((curveConstant) => {
     const {
       contractName,
-      crvAddress,
-      stableSwapAddress,
-      liquidityGaugeAddress,
+      swapAddress,
+      swapInterface,
       lpTokenAddress,
-      denominator,
-      slippage,
-      numberOfCoins
+      lpTokenInterface,
+      gaugeAddress,
+      gaugeInterface,
+      numberOfCoins,
+      whaleAddress,
     } = curveConstant
 
-    describe(`Curve ${contractName} zap`, () => {
+    describe.only(`Curve ${contractName} zap`, () => {
+
+      let zap
+      let swap
+      let lpToken
+      let gauge
+      let underlyerToken
+      const underlyerIndex = 0;
 
       before("Deploy Zap", async () => {
+        const zapFactory = await ethers.getContractFactory(contractName, lpSafe)
+        zap = await zapFactory.deploy()
       })
 
       it("Attach to Mainnet Curve contracts", async () => {
+        swap = await ethers.getContractAt(swapInterface, swapAddress, lpSafe)
+        lpToken = await ethers.getContractAt(lpTokenInterface, lpTokenAddress, lpSafe)
+        gauge = await ethers.getContractAt(gaugeInterface, gaugeAddress, lpSafe)
       })
 
       it("Fund Zap with Pool Underlyer", async () => {
+        const underlyerAddress = await swap.coins(underlyerIndex);
+        underlyerToken = await ethers.getContractAt(
+          "IDetailedERC20",
+          underlyerAddress
+        );
+        const amount = tokenAmountToBigNumber(
+          100000,
+          await underlyerToken.decimals()
+        );
+
+        await acquireToken(whaleAddress, zap.address, underlyerToken, amount, deployer)
       })
 
       it("Deposit into pool and stake", async () => {
+        const amounts = new Array(numberOfCoins).fill("0");
+        const underlyerAmount = tokenAmountToBigNumber(
+          1000,
+          await underlyerToken.decimals()
+        );
+        amounts[underlyerIndex] = underlyerAmount;
+
+        await zap.deployLiquidity(amounts);
+
+        const zapLpBalance = await lpToken.balanceOf(zap.address);
+        console.log("zap LP token balance:", zapLpBalance.toString());
+        const gaugeLpBalance = await gauge.balanceOf(zap.address);
+        console.log("gauge LP token balance:", gaugeLpBalance.toString());
+
+        await zap.unwindLiquidity(gaugeLpBalance);
+        // TODO: check all balances
+        const zapUnderlyerBalance = await underlyerToken.balanceOf(zap.address);
+        console.log("zap underlyer balance:", zapUnderlyerBalance.toString());
       })
     })
   })
-
-  // describe("Curve 3Pool", () => {
-  //   let zap;
-
-  //   let lpToken;
-  //   let stableSwap;
-  //   let gauge;
-
-  //   let underlyerToken;
-  //   const underlyerIndex = 0;
-
-  //   let numberOfCoins = 3;
-  //   // Curve sUSDv2 pool, holds DAI
-  //   let whaleAddress = STABLECOIN_POOLS["DAI"];
-
-  //   before("Deploy zap contract", async () => {
-  //     const Curve3PoolZap = await ethers.getContractFactory(
-  //       "Curve3PoolZap",
-  //       lpSafe
-  //     );
-  //     zap = await Curve3PoolZap.deploy();
-  //   });
-
-  //   before("Attach to Mainnet Curve contracts", async () => {
-  //     const STABLE_SWAP_ADDRESS = await zap.STABLE_SWAP_ADDRESS();
-  //     stableSwap = await ethers.getContractAt(
-  //       "IStableSwap",
-  //       STABLE_SWAP_ADDRESS,
-  //       lpSafe
-  //     );
-
-  //     const LP_TOKEN_ADDRESS = await zap.LP_TOKEN_ADDRESS();
-  //     lpToken = await ethers.getContractAt(
-  //       "IDetailedERC20",
-  //       LP_TOKEN_ADDRESS,
-  //       lpSafe
-  //     );
-
-  //     const LIQUIDITY_GAUGE_ADDRESS = await zap.LIQUIDITY_GAUGE_ADDRESS();
-  //     gauge = await ethers.getContractAt(
-  //       "ILiquidityGauge",
-  //       LIQUIDITY_GAUGE_ADDRESS,
-  //       lpSafe
-  //     );
-  //   });
-
-  //   before("Fund zap with pool underlyer", async () => {
-  //     const underlyerAddress = await stableSwap.coins(underlyerIndex);
-  //     underlyerToken = await ethers.getContractAt(
-  //       "IDetailedERC20",
-  //       underlyerAddress
-  //     );
-
-  //     const amount = tokenAmountToBigNumber(
-  //       100000,
-  //       await underlyerToken.decimals()
-  //     );
-  //     const sender = whaleAddress;
-  //     await acquireToken(sender, zap.address, underlyerToken, amount, deployer);
-  //   });
-
-  //   it("Deposit into pool and stake in gauge", async () => {
-  //     const amounts = new Array(numberOfCoins).fill("0");
-  //     const underlyerAmount = tokenAmountToBigNumber(
-  //       1000,
-  //       await underlyerToken.decimals()
-  //     );
-  //     amounts[underlyerIndex] = underlyerAmount;
-
-  //     await zap.deployLiquidity(amounts);
-
-  //     const zapLpBalance = await lpToken.balanceOf(zap.address);
-  //     console.log("zap LP token balance:", zapLpBalance.toString());
-  //     const gaugeLpBalance = await gauge.balanceOf(zap.address);
-  //     console.log("gauge LP token balance:", gaugeLpBalance.toString());
-
-  //     await zap.unwindLiquidity(gaugeLpBalance);
-  //     // TODO: check all balances
-  //     const zapUnderlyerBalance = await underlyerToken.balanceOf(zap.address);
-  //     console.log("zap underlyer balance:", zapUnderlyerBalance.toString());
-  //   });
-  // });
 });
