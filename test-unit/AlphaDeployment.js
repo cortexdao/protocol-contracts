@@ -5,7 +5,7 @@ const timeMachine = require("ganache-time-traveler");
 const { FAKE_ADDRESS, ZERO_ADDRESS, bytes32 } = require("../utils/helpers");
 const { deployMockContract } = waffle;
 
-describe("Contract: AlphaDeployment", () => {
+describe.only("Contract: AlphaDeployment", () => {
   // signers
   let deployer;
   let emergencySafe;
@@ -206,6 +206,64 @@ describe("Contract: AlphaDeployment", () => {
     expect(await alphaDeployment.daiDemoPool()).to.equal(demoPoolAddress);
     expect(await alphaDeployment.usdcDemoPool()).to.equal(demoPoolAddress);
     expect(await alphaDeployment.usdtDemoPool()).to.equal(demoPoolAddress);
+  });
+
+  it("deploy_3_TvlManager", async () => {
+    const erc20AllocationFactory = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("Erc20AllocationFactory").abi
+    );
+    const erc20AllocationAddress = (await deployMockContract(deployer, []))
+      .address;
+    await erc20AllocationFactory.mock.create.returns(erc20AllocationAddress);
+
+    const tvlManagerFactory = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("TvlManagerFactory").abi
+    );
+    const tvlManager = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("TvlManager").abi
+    );
+    await tvlManagerFactory.mock.create.returns(tvlManager.address);
+    await tvlManager.mock.registerAssetAllocation.returns();
+
+    const alphaDeployment = await expect(
+      AlphaDeployment.deploy(
+        addressRegistry.address,
+        FAKE_ADDRESS, // proxy admin factory
+        FAKE_ADDRESS, // proxy factory
+        FAKE_ADDRESS, // mAPT factory
+        FAKE_ADDRESS, // pool token v1 factory
+        FAKE_ADDRESS, // pool token v2 factory
+        erc20AllocationFactory.address, // erc20 allocation factory
+        tvlManagerFactory.address, // tvl manager factory
+        FAKE_ADDRESS, // oracle adapter factory
+        FAKE_ADDRESS // lp account factory
+      )
+    ).to.not.be.reverted;
+
+    // for step check
+    await alphaDeployment.testSetStep(3);
+
+    // for ownership check
+    await addressRegistry.mock.owner.returns(alphaDeployment.address);
+
+    // check for address registrations
+    await addressRegistry.mock.registerAddress
+      .withArgs(bytes32("tvlManager"), tvlManager.address)
+      .revertsWithReason("ADDRESS_REGISTERED");
+    await expect(alphaDeployment.deploy_3_TvlManager()).to.be.revertedWith(
+      "ADDRESS_REGISTERED"
+    );
+    await addressRegistry.mock.registerAddress
+      .withArgs(bytes32("tvlManager"), tvlManager.address)
+      .returns();
+
+    // check TVL Manager address set properly
+    expect(await alphaDeployment.tvlManager()).to.equal(ZERO_ADDRESS);
+    await expect(alphaDeployment.deploy_3_TvlManager()).to.not.be.reverted;
+    expect(await alphaDeployment.tvlManager()).to.equal(tvlManager.address);
   });
 
   it("handoffOwnership", async () => {
