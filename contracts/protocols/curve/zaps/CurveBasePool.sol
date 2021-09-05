@@ -3,7 +3,11 @@ pragma experimental ABIEncoderV2;
 
 import {SafeMath} from "contracts/libraries/Imports.sol";
 import {IZap} from "contracts/lpaccount/Imports.sol";
-import {IAssetAllocation, IDetailedERC20, IERC20} from "contracts/common/Imports.sol";
+import {
+    IAssetAllocation,
+    IDetailedERC20,
+    IERC20
+} from "contracts/common/Imports.sol";
 
 abstract contract CurveBasePool is IZap {
     using SafeMath for uint256;
@@ -54,7 +58,7 @@ abstract contract CurveBasePool is IZap {
     /// @param amounts array of underlyer amounts
     function deployLiquidity(uint256[] calldata amounts) external override {
         uint256 totalAmount = 0;
-        uint256[3] memory amounts_;
+        uint256[] memory amounts_ = new uint256[](N_COINS);
         for (uint256 i = 0; i < amounts_.length; i++) {
             totalAmount += amounts[i];
             amounts_[i] = amounts[i];
