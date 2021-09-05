@@ -4,8 +4,9 @@ pragma experimental ABIEncoderV2;
 
 import {LpAccount} from "./LpAccount.sol";
 import {TestZapStorage} from "./TestZap.sol";
+import {TestSwapStorage} from "./TestSwap.sol";
 
-contract TestLpAccount is TestZapStorage, LpAccount {
+contract TestLpAccount is TestZapStorage, TestSwapStorage, LpAccount {
     /**
      * Testing functions
      */
@@ -24,6 +25,15 @@ contract TestLpAccount is TestZapStorage, LpAccount {
         uint256[] memory calls = new uint256[](length);
         for (uint256 i = 0; i < length; i++) {
             calls[i] = _unwindsArray[i];
+        }
+        return calls;
+    }
+
+    function _swapCalls() external view returns (uint256[] memory) {
+        uint256 length = _swapsArray.length;
+        uint256[] memory calls = new uint256[](length);
+        for (uint256 i = 0; i < length; i++) {
+            calls[i] = _swapsArray[i];
         }
         return calls;
     }

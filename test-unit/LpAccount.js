@@ -26,6 +26,12 @@ async function deployMockZap(name) {
   return zap;
 }
 
+async function deployMockSwap(name) {
+  const TestSwap = await ethers.getContractFactory("TestSwap");
+  const swap = await TestSwap.deploy(name || "mockSwap");
+  return swap;
+}
+
 describe("Contract: LpAccount", () => {
   // signers
   let deployer;
@@ -229,220 +235,386 @@ describe("Contract: LpAccount", () => {
     });
   });
 
-  describe("registerZap", () => {
-    it("Admin Safe can call", async () => {
-      const zap = await deployMockZap();
-      await expect(lpAccount.connect(adminSafe).registerZap(zap.address)).to.not
-        .be.reverted;
-    });
-
-    it("Unpermissioned cannot call", async () => {
-      const zap = await deployMockZap();
-      await expect(
-        lpAccount.connect(randomUser).registerZap(zap.address)
-      ).to.be.revertedWith("NOT_ADMIN_ROLE");
-    });
-
-    it("can register", async () => {
-      expect(await lpAccount.names()).to.be.empty;
-
-      const zap = await deployMockZap();
-      const name = await zap.NAME();
-      await lpAccount.connect(adminSafe).registerZap(zap.address);
-
-      expect(await lpAccount.names()).to.deep.equal([name]);
-    });
-  });
-
-  describe("removeZap", () => {
-    let zap;
-    let name;
-
-    beforeEach("Register a zap", async () => {
-      zap = await deployMockZap();
-      name = await zap.NAME();
-      await lpAccount.connect(adminSafe).registerZap(zap.address);
-    });
-
-    it("Admin Safe can call", async () => {
-      await expect(lpAccount.connect(adminSafe).removeZap(name)).to.not.be
-        .reverted;
-    });
-
-    it("Unpermissioned cannot call", async () => {
-      await expect(
-        lpAccount.connect(randomUser).removeZap(name)
-      ).to.be.revertedWith("NOT_ADMIN_ROLE");
-    });
-
-    it("can remove", async () => {
-      expect(await lpAccount.names()).to.deep.equal([name]);
-
-      await lpAccount.connect(adminSafe).removeZap(name);
-      expect(await lpAccount.names()).to.deep.equal([]);
-    });
-  });
-
-  describe("Deploying and unwinding", () => {
-    let tvlManager;
-    let erc20Allocation;
-
-    before("Setup TvlManager", async () => {
-      const [deployer] = await ethers.getSigners();
-      tvlManager = await deployMockContract(deployer, TvlManager.abi);
-      erc20Allocation = await deployMockContract(deployer, Erc20Allocation.abi);
-
-      await addressRegistry.mock.getAddress
-        .withArgs(bytes32("tvlManager"))
-        .returns(tvlManager.address);
-
-      await tvlManager.mock.getAssetAllocation
-        .withArgs("erc20Allocation")
-        .returns(erc20Allocation.address);
-
-      await tvlManager.mock["isAssetAllocationRegistered(address[])"].returns(
-        true
-      );
-      await erc20Allocation.mock["isErc20TokenRegistered(address[])"].returns(
-        true
-      );
-    });
-
-    describe("deployStrategy", () => {
-      it("Revert on unregistered name", async () => {
+  describe("Zaps", () => {
+    describe("registerZap", () => {
+      it("Admin Safe can call", async () => {
         const zap = await deployMockZap();
-
-        const name = await zap.NAME();
-        const amounts = [];
-
-        await expect(
-          lpAccount.connect(lpSafe).deployStrategy(name, amounts)
-        ).to.be.revertedWith("INVALID_NAME");
-      });
-
-      it("LP Safe can call", async () => {
-        const zap = await deployMockZap();
-        await lpAccount.connect(adminSafe).registerZap(zap.address);
-
-        const name = await zap.NAME();
-        const amounts = [];
-
-        await expect(lpAccount.connect(lpSafe).deployStrategy(name, amounts)).to
+        await expect(lpAccount.connect(adminSafe).registerZap(zap.address)).to
           .not.be.reverted;
       });
 
       it("Unpermissioned cannot call", async () => {
         const zap = await deployMockZap();
+        await expect(
+          lpAccount.connect(randomUser).registerZap(zap.address)
+        ).to.be.revertedWith("NOT_ADMIN_ROLE");
+      });
+
+      it("can register", async () => {
+        expect(await lpAccount.zapNames()).to.be.empty;
+
+        const zap = await deployMockZap();
+        const name = await zap.NAME();
         await lpAccount.connect(adminSafe).registerZap(zap.address);
 
-        const name = await zap.NAME();
-        const amounts = [];
+        expect(await lpAccount.zapNames()).to.deep.equal([name]);
+      });
+    });
+
+    describe("removeZap", () => {
+      let zap;
+      let name;
+
+      beforeEach("Register a zap", async () => {
+        zap = await deployMockZap();
+        name = await zap.NAME();
+        await lpAccount.connect(adminSafe).registerZap(zap.address);
+      });
+
+      it("Admin Safe can call", async () => {
+        await expect(lpAccount.connect(adminSafe).removeZap(name)).to.not.be
+          .reverted;
+      });
+
+      it("Unpermissioned cannot call", async () => {
+        await expect(
+          lpAccount.connect(randomUser).removeZap(name)
+        ).to.be.revertedWith("NOT_ADMIN_ROLE");
+      });
+
+      it("can remove", async () => {
+        expect(await lpAccount.zapNames()).to.deep.equal([name]);
+
+        await lpAccount.connect(adminSafe).removeZap(name);
+        expect(await lpAccount.zapNames()).to.deep.equal([]);
+      });
+    });
+
+    describe("Deploying and unwinding", () => {
+      let tvlManager;
+      let erc20Allocation;
+
+      before("Setup TvlManager", async () => {
+        const [deployer] = await ethers.getSigners();
+        tvlManager = await deployMockContract(deployer, TvlManager.abi);
+        erc20Allocation = await deployMockContract(
+          deployer,
+          Erc20Allocation.abi
+        );
+
+        await addressRegistry.mock.getAddress
+          .withArgs(bytes32("tvlManager"))
+          .returns(tvlManager.address);
+
+        await tvlManager.mock.getAssetAllocation
+          .withArgs("erc20Allocation")
+          .returns(erc20Allocation.address);
+
+        await tvlManager.mock["isAssetAllocationRegistered(address[])"].returns(
+          true
+        );
+        await erc20Allocation.mock["isErc20TokenRegistered(address[])"].returns(
+          true
+        );
+      });
+
+      describe("deployStrategy", () => {
+        it("Revert on unregistered name", async () => {
+          const zap = await deployMockZap();
+
+          const name = await zap.NAME();
+          const amounts = [];
+
+          await expect(
+            lpAccount.connect(lpSafe).deployStrategy(name, amounts)
+          ).to.be.revertedWith("INVALID_NAME");
+        });
+
+        it("LP Safe can call", async () => {
+          const zap = await deployMockZap();
+          await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+          const name = await zap.NAME();
+          const amounts = [];
+
+          await expect(lpAccount.connect(lpSafe).deployStrategy(name, amounts))
+            .to.not.be.reverted;
+        });
+
+        it("Unpermissioned cannot call", async () => {
+          const zap = await deployMockZap();
+          await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+          const name = await zap.NAME();
+          const amounts = [];
+
+          await expect(
+            lpAccount.connect(randomUser).deployStrategy(name, amounts)
+          ).to.be.revertedWith("NOT_LP_ROLE");
+        });
+
+        it("can deploy", async () => {
+          const zap = await deployMockZap();
+          await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+          const name = await zap.NAME();
+          const amounts = [
+            tokenAmountToBigNumber(1),
+            tokenAmountToBigNumber(2),
+            tokenAmountToBigNumber(3),
+          ];
+
+          await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
+          expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
+        });
+
+        it("cannot deploy with unregistered allocation", async () => {
+          const zap = await deployMockZap();
+          await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+          const name = await zap.NAME();
+          const amounts = [
+            tokenAmountToBigNumber(1),
+            tokenAmountToBigNumber(2),
+            tokenAmountToBigNumber(3),
+          ];
+
+          await tvlManager.mock[
+            "isAssetAllocationRegistered(address[])"
+          ].returns(false);
+
+          await expect(
+            lpAccount.connect(lpSafe).deployStrategy(name, amounts)
+          ).to.be.revertedWith("MISSING_ASSET_ALLOCATIONS");
+        });
+
+        it("cannot deploy with unregistered ERC20", async () => {
+          const zap = await deployMockZap();
+          await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+          const name = await zap.NAME();
+          const amounts = [
+            tokenAmountToBigNumber(1),
+            tokenAmountToBigNumber(2),
+            tokenAmountToBigNumber(3),
+          ];
+
+          await erc20Allocation.mock[
+            "isErc20TokenRegistered(address[])"
+          ].returns(false);
+
+          await expect(
+            lpAccount.connect(lpSafe).deployStrategy(name, amounts)
+          ).to.be.revertedWith("MISSING_ERC20_ALLOCATIONS");
+        });
+      });
+
+      describe("unwindStrategy", () => {
+        it("Revert on unregistered name", async () => {
+          const zap = await deployMockZap();
+
+          const name = await zap.NAME();
+          const amount = tokenAmountToBigNumber(100);
+
+          await expect(
+            lpAccount.connect(lpSafe).unwindStrategy(name, amount)
+          ).to.be.revertedWith("INVALID_NAME");
+        });
+
+        it("LP Safe can call", async () => {
+          const zap = await deployMockZap();
+          await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+          const name = await zap.NAME();
+          const amount = tokenAmountToBigNumber(100);
+
+          await expect(lpAccount.connect(lpSafe).unwindStrategy(name, amount))
+            .to.not.be.reverted;
+        });
+
+        it("Unpermissioned cannot call", async () => {
+          const zap = await deployMockZap();
+          await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+          const name = await zap.NAME();
+          const amount = tokenAmountToBigNumber(100);
+
+          await expect(
+            lpAccount.connect(randomUser).unwindStrategy(name, amount)
+          ).to.be.revertedWith("NOT_LP_ROLE");
+        });
+
+        it("can unwind", async () => {
+          const zap = await deployMockZap();
+          await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+          const name = await zap.NAME();
+          const amount = tokenAmountToBigNumber(100);
+
+          await lpAccount.connect(lpSafe).unwindStrategy(name, amount);
+          expect(await lpAccount._unwindCalls()).to.deep.equal([amount]);
+        });
+      });
+    });
+  });
+
+  describe.only("Swaps", () => {
+    describe("registerSwap", () => {
+      it("Admin Safe can call", async () => {
+        const swap = await deployMockSwap();
+        await expect(lpAccount.connect(adminSafe).registerSwap(swap.address)).to
+          .not.be.reverted;
+      });
+
+      it("Unpermissioned cannot call", async () => {
+        const swap = await deployMockSwap();
+        await expect(
+          lpAccount.connect(randomUser).registerSwap(swap.address)
+        ).to.be.revertedWith("NOT_ADMIN_ROLE");
+      });
+
+      it("can register", async () => {
+        expect(await lpAccount.swapNames()).to.be.empty;
+
+        const swap = await deployMockSwap();
+        const name = await swap.NAME();
+        await lpAccount.connect(adminSafe).registerSwap(swap.address);
+
+        expect(await lpAccount.swapNames()).to.deep.equal([name]);
+      });
+    });
+
+    describe("removeSwap", () => {
+      let swap;
+      let name;
+
+      beforeEach("Register a swap", async () => {
+        swap = await deployMockSwap();
+        name = await swap.NAME();
+        await lpAccount.connect(adminSafe).registerSwap(swap.address);
+      });
+
+      it("Admin Safe can call", async () => {
+        await expect(lpAccount.connect(adminSafe).removeSwap(name)).to.not.be
+          .reverted;
+      });
+
+      it("Unpermissioned cannot call", async () => {
+        await expect(lpAccount.connect(adminSafe).removeSwap(name)).to.not.be
+          .reverted;
+      });
+
+      it("can remove", async () => {
+        expect(await lpAccount.swapNames()).to.deep.equal([name]);
+
+        await lpAccount.connect(adminSafe).removeSwap(name);
+        expect(await lpAccount.swapNames()).to.deep.equal([]);
+      });
+    });
+
+    describe("swap", () => {
+      let tvlManager;
+      let erc20Allocation;
+
+      before("Setup TvlManager", async () => {
+        const [deployer] = await ethers.getSigners();
+        tvlManager = await deployMockContract(deployer, TvlManager.abi);
+        erc20Allocation = await deployMockContract(
+          deployer,
+          Erc20Allocation.abi
+        );
+
+        await addressRegistry.mock.getAddress
+          .withArgs(bytes32("tvlManager"))
+          .returns(tvlManager.address);
+
+        await tvlManager.mock.getAssetAllocation
+          .withArgs("erc20Allocation")
+          .returns(erc20Allocation.address);
+
+        await tvlManager.mock["isAssetAllocationRegistered(address[])"].returns(
+          true
+        );
+        await erc20Allocation.mock["isErc20TokenRegistered(address[])"].returns(
+          true
+        );
+      });
+
+      it("Revert on unregistered name", async () => {
+        const swap = await deployMockSwap();
+
+        const name = await swap.NAME();
+        const amount = tokenAmountToBigNumber(100);
 
         await expect(
-          lpAccount.connect(randomUser).deployStrategy(name, amounts)
+          lpAccount.connect(lpSafe).swap(name, amount)
+        ).to.be.revertedWith("INVALID_NAME");
+      });
+
+      it("LP Safe can call", async () => {
+        const swap = await deployMockSwap();
+        await lpAccount.connect(adminSafe).registerSwap(swap.address);
+
+        const name = await swap.NAME();
+        const amount = tokenAmountToBigNumber(100);
+
+        await expect(lpAccount.connect(lpSafe).swap(name, amount)).to.not.be
+          .reverted;
+      });
+
+      it("Unpermissioned cannot call", async () => {
+        const swap = await deployMockSwap();
+        await lpAccount.connect(adminSafe).registerSwap(swap.address);
+
+        const name = await swap.NAME();
+        const amount = tokenAmountToBigNumber(100);
+
+        await expect(
+          lpAccount.connect(randomUser).swap(name, amount)
         ).to.be.revertedWith("NOT_LP_ROLE");
       });
 
-      it("can deploy", async () => {
-        const zap = await deployMockZap();
-        await lpAccount.connect(adminSafe).registerZap(zap.address);
+      it("can swap", async () => {
+        const swap = await deployMockSwap();
+        await lpAccount.connect(adminSafe).registerSwap(swap.address);
 
-        const name = await zap.NAME();
-        const amounts = [
-          tokenAmountToBigNumber(1),
-          tokenAmountToBigNumber(2),
-          tokenAmountToBigNumber(3),
-        ];
+        const name = await swap.NAME();
+        const amount = tokenAmountToBigNumber(100);
 
-        await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
-        expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
+        await lpAccount.connect(lpSafe).swap(name, amount);
+        expect(await lpAccount._swapCalls()).to.deep.equal([amount]);
       });
 
       it("cannot deploy with unregistered allocation", async () => {
-        const zap = await deployMockZap();
-        await lpAccount.connect(adminSafe).registerZap(zap.address);
+        const swap = await deployMockSwap();
+        await lpAccount.connect(adminSafe).registerSwap(swap.address);
 
-        const name = await zap.NAME();
-        const amounts = [
-          tokenAmountToBigNumber(1),
-          tokenAmountToBigNumber(2),
-          tokenAmountToBigNumber(3),
-        ];
+        const name = await swap.NAME();
+        const amount = tokenAmountToBigNumber(1);
 
         await tvlManager.mock["isAssetAllocationRegistered(address[])"].returns(
           false
         );
 
         await expect(
-          lpAccount.connect(lpSafe).deployStrategy(name, amounts)
+          lpAccount.connect(lpSafe).swap(name, amount)
         ).to.be.revertedWith("MISSING_ASSET_ALLOCATIONS");
       });
 
       it("cannot deploy with unregistered ERC20", async () => {
-        const zap = await deployMockZap();
-        await lpAccount.connect(adminSafe).registerZap(zap.address);
+        const swap = await deployMockSwap();
+        await lpAccount.connect(adminSafe).registerSwap(swap.address);
 
-        const name = await zap.NAME();
-        const amounts = [
-          tokenAmountToBigNumber(1),
-          tokenAmountToBigNumber(2),
-          tokenAmountToBigNumber(3),
-        ];
+        const name = await swap.NAME();
+        const amount = tokenAmountToBigNumber(1);
 
         await erc20Allocation.mock["isErc20TokenRegistered(address[])"].returns(
           false
         );
 
         await expect(
-          lpAccount.connect(lpSafe).deployStrategy(name, amounts)
+          lpAccount.connect(lpSafe).swap(name, amount)
         ).to.be.revertedWith("MISSING_ERC20_ALLOCATIONS");
-      });
-    });
-
-    describe("unwindStrategy", () => {
-      it("Revert on unregistered name", async () => {
-        const zap = await deployMockZap();
-
-        const name = await zap.NAME();
-        const amount = tokenAmountToBigNumber(100);
-
-        await expect(
-          lpAccount.connect(lpSafe).unwindStrategy(name, amount)
-        ).to.be.revertedWith("INVALID_NAME");
-      });
-
-      it("LP Safe can call", async () => {
-        const zap = await deployMockZap();
-        await lpAccount.connect(adminSafe).registerZap(zap.address);
-
-        const name = await zap.NAME();
-        const amount = tokenAmountToBigNumber(100);
-
-        await expect(lpAccount.connect(lpSafe).unwindStrategy(name, amount)).to
-          .not.be.reverted;
-      });
-
-      it("Unpermissioned cannot call", async () => {
-        const zap = await deployMockZap();
-        await lpAccount.connect(adminSafe).registerZap(zap.address);
-
-        const name = await zap.NAME();
-        const amount = tokenAmountToBigNumber(100);
-
-        await expect(
-          lpAccount.connect(randomUser).unwindStrategy(name, amount)
-        ).to.be.revertedWith("NOT_LP_ROLE");
-      });
-
-      it("can unwind", async () => {
-        const zap = await deployMockZap();
-        await lpAccount.connect(adminSafe).registerZap(zap.address);
-
-        const name = await zap.NAME();
-        const amount = tokenAmountToBigNumber(100);
-
-        await lpAccount.connect(lpSafe).unwindStrategy(name, amount);
-        expect(await lpAccount._unwindCalls()).to.deep.equal([amount]);
       });
     });
   });
