@@ -22,8 +22,8 @@ contract IronBankPoolZap is CurveBasePoolGauge, CurveSusdV2Constants {
         public
         CurveBasePoolGauge(
             STABLE_SWAP_ADDRESS,
-            LIQUIDITY_GAUGE_ADDRESS,
             LP_TOKEN_ADDRESS,
+            LIQUIDITY_GAUGE_ADDRESS,
             10000,
             100,
             4

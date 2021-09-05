@@ -20,8 +20,8 @@ contract LusdPoolZap is CurveBasePool, CurveLusdConstants {
         public
         CurveBasePool(
             META_POOL_ADDRESS,
-            LIQUIDITY_GAUGE_ADDRESS,
             LP_TOKEN_ADDRESS,
+            LIQUIDITY_GAUGE_ADDRESS,
             10000,
             100,
             2

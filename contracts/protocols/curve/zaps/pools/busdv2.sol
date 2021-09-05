@@ -22,8 +22,8 @@ contract BusdV2PoolZap is CurveBasePoolGauge, CurveBusdV2Constants {
         public
         CurveBasePoolGauge(
             META_POOL_ADDRESS,
-            LIQUIDITY_GAUGE_ADDRESS,
             LP_TOKEN_ADDRESS,
+            LIQUIDITY_GAUGE_ADDRESS,
             10000,
             100,
             2

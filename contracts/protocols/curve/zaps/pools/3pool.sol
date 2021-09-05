@@ -4,18 +4,26 @@ pragma experimental ABIEncoderV2;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAssetAllocation} from "contracts/common/Imports.sol";
-import {IStableSwap} from "contracts/protocols/curve/interfaces/IStableSwap.sol";
-import {Curve3PoolConstants} from "contracts/protocols/curve/allocations/pools/3pool.sol";
-import {ILiquidityGauge} from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
-import {CurveBasePoolGauge} from "contracts/protocols/curve/zaps/CurveBasePoolGauge.sol";
+import {
+    IStableSwap
+} from "contracts/protocols/curve/interfaces/IStableSwap.sol";
+import {
+    Curve3PoolConstants
+} from "contracts/protocols/curve/allocations/pools/3pool.sol";
+import {
+    ILiquidityGauge
+} from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
+import {
+    CurveBasePoolGauge
+} from "contracts/protocols/curve/zaps/CurveBasePoolGauge.sol";
 
 contract Curve3PoolZap is CurveBasePoolGauge, Curve3PoolConstants {
     constructor()
         public
         CurveBasePoolGauge(
             STABLE_SWAP_ADDRESS,
-            LIQUIDITY_GAUGE_ADDRESS,
             LP_TOKEN_ADDRESS,
+            LIQUIDITY_GAUGE_ADDRESS,
             10000,
             100,
             3

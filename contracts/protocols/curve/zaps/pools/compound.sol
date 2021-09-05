@@ -22,8 +22,8 @@ contract CompoundPoolZap is CurveBasePoolGauge, CurveCompoundConstants {
         public
         CurveBasePoolGauge(
             STABLE_SWAP_ADDRESS,
-            LIQUIDITY_GAUGE_ADDRESS,
             LP_TOKEN_ADDRESS,
+            LIQUIDITY_GAUGE_ADDRESS,
             10000,
             100,
             2
