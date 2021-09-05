@@ -189,13 +189,13 @@ contract LpAccount is
         nonReentrant
         onlyLpRole
     {
-        ISwap swap = _swaps.get(name);
-        require(address(swap) != address(0), "INVALID_NAME");
+        ISwap swap_ = _swaps.get(name);
+        require(address(swap_) != address(0), "INVALID_NAME");
 
         (bool isAssetAllocationRegistered, bool isErc20TokenRegistered) =
             _checkRegistrations(
-                swap.assetAllocations(),
-                swap.erc20Allocations()
+                swap_.assetAllocations(),
+                swap_.erc20Allocations()
             );
 
         // TODO: If the asset allocation is deployed, but not registered, register it
@@ -203,15 +203,15 @@ contract LpAccount is
         require(isAssetAllocationRegistered, "MISSING_ASSET_ALLOCATIONS");
         require(isErc20TokenRegistered, "MISSING_ERC20_ALLOCATIONS");
 
-        address(swap).functionDelegateCall(
+        address(swap_).functionDelegateCall(
             abi.encodeWithSelector(ISwap.swap.selector, amount)
         );
     }
 
-    function registerSwap(ISwap swap) external override onlyAdminRole {
-        _swaps.add(swap);
+    function registerSwap(ISwap swap_) external override onlyAdminRole {
+        _swaps.add(swap_);
 
-        emit SwapRegistered(swap);
+        emit SwapRegistered(swap_);
     }
 
     function removeSwap(string calldata name) external override onlyAdminRole {
