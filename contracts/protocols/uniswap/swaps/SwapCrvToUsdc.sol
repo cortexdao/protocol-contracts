@@ -17,7 +17,7 @@ contract SwapCrvToUsdc is ISwap {
     IERC20 private constant _CRV =
         IERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
 
-    uint24 private _CRV_WETH_FEE = 500;
+    uint24 private _CRV_WETH_FEE = 10000;
 
     IERC20 private constant _WETH =
         IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
