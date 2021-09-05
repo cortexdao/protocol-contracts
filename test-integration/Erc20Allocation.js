@@ -9,7 +9,7 @@ const {
   getStablecoinAddress,
   acquireToken,
 } = require("../utils/helpers");
-const { STABLECOIN_POOLS } = require("../utils/constants");
+const { WHALE_POOLS } = require("../utils/constants");
 
 /* ************************ */
 /* set DEBUG log level here */
@@ -23,13 +23,7 @@ async function sendErc20Tokens(symbol, amount, recipient, ethFunder) {
   }
   const tokenAddress = getStablecoinAddress(symbol, "MAINNET");
   const token = await ethers.getContractAt("IDetailedERC20", tokenAddress);
-  await acquireToken(
-    STABLECOIN_POOLS[symbol],
-    recipient,
-    token,
-    amount,
-    ethFunder
-  );
+  await acquireToken(WHALE_POOLS[symbol], recipient, token, amount, ethFunder);
 }
 
 describe("Contract: Erc20Allocation", () => {

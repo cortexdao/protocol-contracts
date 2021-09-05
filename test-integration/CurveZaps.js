@@ -8,7 +8,7 @@ const {
   acquireToken,
   bytes32,
 } = require("../utils/helpers");
-const { STABLECOIN_POOLS } = require("../utils/constants");
+const { WHALE_POOLS } = require("../utils/constants");
 
 /* ************************ */
 /* set DEBUG log level here */
@@ -35,7 +35,6 @@ describe("Zaps", () => {
   const CurveConstants = [
     {
       contractName: "Curve3PoolZap",
-
       swapAddress: "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7",
       swapInterface: "IStableSwap",
       lpTokenAddress: "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490",
@@ -43,7 +42,29 @@ describe("Zaps", () => {
       gaugeAddress: "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A",
       gaugeInterface: "ILiquidityGauge",
       numberOfCoins: 3,
-      whaleAddress: STABLECOIN_POOLS["DAI"],
+      whaleAddress: WHALE_POOLS["DAI"],
+    },
+    {
+      contractName: "AavePoolZap",
+      swapAddress: "0xDeBF20617708857ebe4F679508E7b7863a8A8EeE",
+      swapInterface: "IStableSwap",
+      lpTokenAddress: "0xFd2a8fA60Abd58Efe3EeE34dd494cD491dC14900",
+      lpTokenInterface: "IDetailedERC20",
+      gaugeAddress: "0xd662908ADA2Ea1916B3318327A97eB18aD588b5d",
+      gaugeInterface: "ILiquidityGauge",
+      numberOfCoins: 3,
+      whaleAddress: WHALE_POOLS["ADAI"],
+    },
+    {
+      contractName: "AlUsdPoolZap",
+      swapAddress: "0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c",
+      swapInterface: "IStableSwap",
+      lpTokenAddress: "0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c",
+      lpTokenInterface: "IDetailedERC20",
+      gaugeAddress: "0x9582C4ADACB3BCE56Fea3e590F05c3ca2fb9C477",
+      gaugeInterface: "ILiquidityGauge",
+      numberOfCoins: 2,
+      whaleAddress: WHALE_POOLS["ALUSD"],
     },
   ];
 

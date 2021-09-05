@@ -8,7 +8,7 @@ const {
   getStablecoinAddress,
   getAggregatorAddress,
 } = require("../utils/helpers");
-const { STABLECOIN_POOLS } = require("../utils/constants");
+const { WHALE_POOLS } = require("../utils/constants");
 
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
 
@@ -310,21 +310,21 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
     usdtToken = await ethers.getContractAt("IDetailedERC20", USDT_TOKEN);
     // fund deployer with stablecoins
     await acquireToken(
-      STABLECOIN_POOLS["DAI"],
+      WHALE_POOLS["DAI"],
       deployer,
       daiToken,
       "1000",
       deployer
     );
     await acquireToken(
-      STABLECOIN_POOLS["USDC"],
+      WHALE_POOLS["USDC"],
       deployer,
       usdcToken,
       "1000",
       deployer
     );
     await acquireToken(
-      STABLECOIN_POOLS["USDT"],
+      WHALE_POOLS["USDT"],
       deployer,
       usdtToken,
       "1000",
@@ -332,21 +332,21 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
     );
     // fund each APY pool with corresponding stablecoin
     await acquireToken(
-      STABLECOIN_POOLS["DAI"],
+      WHALE_POOLS["DAI"],
       daiPool,
       daiToken,
       "5000000",
       deployer
     );
     await acquireToken(
-      STABLECOIN_POOLS["USDC"],
+      WHALE_POOLS["USDC"],
       usdcPool,
       usdcToken,
       "5000000",
       deployer
     );
     await acquireToken(
-      STABLECOIN_POOLS["USDT"],
+      WHALE_POOLS["USDT"],
       usdtPool,
       usdtToken,
       "5000000",
