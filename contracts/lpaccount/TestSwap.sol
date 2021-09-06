@@ -8,17 +8,13 @@ import {
     INameIdentifier
 } from "contracts/common/Imports.sol";
 import {ISwap} from "./ISwap.sol";
+import {TestLpAccountStorage} from "./TestLpAccountStorage.sol";
 
 contract TestSwapStorage {
     uint256[] internal _swapsArray;
 }
 
-contract TestSwap is ISwap, TestSwapStorage {
-    string internal _name;
-
-    IAssetAllocation[] internal _assetAllocations;
-    IERC20[] internal _tokens;
-
+contract TestSwap is ISwap, TestSwapStorage, TestLpAccountStorage {
     constructor(string memory name) public {
         _name = name;
     }

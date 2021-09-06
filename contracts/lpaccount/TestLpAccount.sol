@@ -5,8 +5,14 @@ pragma experimental ABIEncoderV2;
 import {LpAccount} from "./LpAccount.sol";
 import {TestZapStorage} from "./TestZap.sol";
 import {TestSwapStorage} from "./TestSwap.sol";
+import {TestLpAccountStorage} from "./TestLpAccountStorage.sol";
 
-contract TestLpAccount is TestZapStorage, TestSwapStorage, LpAccount {
+contract TestLpAccount is
+    TestZapStorage,
+    TestSwapStorage,
+    TestLpAccountStorage,
+    LpAccount
+{
     /**
      * Testing functions
      */

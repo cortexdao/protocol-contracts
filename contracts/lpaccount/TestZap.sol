@@ -8,17 +8,14 @@ import {
     INameIdentifier
 } from "contracts/common/Imports.sol";
 import {IZap} from "./IZap.sol";
+import {TestLpAccountStorage} from "./TestLpAccountStorage.sol";
 
 contract TestZapStorage {
     uint256[][] internal _deploysArray;
     uint256[] internal _unwindsArray;
 }
 
-contract TestZap is IZap, TestZapStorage {
-    string internal _name;
-
-    IAssetAllocation[] internal _assetAllocations;
-    IERC20[] internal _tokens;
+contract TestZap is IZap, TestZapStorage, TestLpAccountStorage {
     string[] internal _sortedSymbols;
 
     constructor(string memory name) public {
