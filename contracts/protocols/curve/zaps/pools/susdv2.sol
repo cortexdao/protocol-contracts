@@ -17,7 +17,7 @@ import {
     CurveBasePoolGauge
 } from "contracts/protocols/curve/zaps/CurveBasePoolGauge.sol";
 
-contract IronBankPoolZap is CurveBasePoolGauge, CurveSusdV2Constants {
+contract SusdV2Zap is CurveBasePoolGauge, CurveSusdV2Constants {
     constructor()
         public
         CurveBasePoolGauge(
