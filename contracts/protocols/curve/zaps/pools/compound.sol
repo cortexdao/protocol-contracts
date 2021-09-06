@@ -5,14 +5,12 @@ pragma experimental ABIEncoderV2;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAssetAllocation} from "contracts/common/Imports.sol";
 import {
-    IStableSwap2 as IStableSwap
-} from "contracts/protocols/curve/interfaces/IStableSwap2.sol";
+    IOldStableSwap2 as IStableSwap,
+    ILiquidityGauge
+} from "contracts/protocols/curve/Imports.sol";
 import {
     CurveCompoundConstants
 } from "contracts/protocols/curve/allocations/pools/compound.sol";
-import {
-    ILiquidityGauge
-} from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
 import {
     CurveBasePoolGauge
 } from "contracts/protocols/curve/zaps/CurveBasePoolGauge.sol";
@@ -57,7 +55,7 @@ contract CompoundPoolZap is CurveBasePoolGauge, CurveCompoundConstants {
         override
         returns (address)
     {
-        return IStableSwap(SWAP_ADDRESS).coins(i);
+        return IStableSwap(SWAP_ADDRESS).coins(int128(i));
     }
 
     function _addLiquidity(uint256[] calldata amounts, uint256 minAmount)
