@@ -12,29 +12,14 @@ contract TestLpAccount is TestZapStorage, TestSwapStorage, LpAccount {
      */
 
     function _deployCalls() external view returns (uint256[][] memory) {
-        uint256 length = _deploysArray.length;
-        uint256[][] memory calls = new uint256[][](length);
-        for (uint256 i = 0; i < length; i++) {
-            calls[i] = _deploysArray[i];
-        }
-        return calls;
+        return _deploysArray;
     }
 
     function _unwindCalls() external view returns (uint256[] memory) {
-        uint256 length = _unwindsArray.length;
-        uint256[] memory calls = new uint256[](length);
-        for (uint256 i = 0; i < length; i++) {
-            calls[i] = _unwindsArray[i];
-        }
-        return calls;
+        return _unwindsArray;
     }
 
     function _swapCalls() external view returns (uint256[] memory) {
-        uint256 length = _swapsArray.length;
-        uint256[] memory calls = new uint256[](length);
-        for (uint256 i = 0; i < length; i++) {
-            calls[i] = _swapsArray[i];
-        }
-        return calls;
+        return _swapsArray;
     }
 }
