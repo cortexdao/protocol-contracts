@@ -399,8 +399,12 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         return oracleAdapter;
     }
 
+    /// @dev register mAPT for a contract role
     function deploy_5_LpAccount() external onlyOwner updateStep(5) {
-        checkRegisteredDependencies(new bytes32[](0), new address[](0));
+        bytes32[] memory registeredIds = new bytes32[](1);
+        address[] memory deployedAddresses = new address[](1);
+        (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
+        checkRegisteredDependencies(registeredIds, deployedAddresses);
 
         address[] memory ownedContracts = new address[](1);
         ownedContracts[0] = address(addressRegistry);
