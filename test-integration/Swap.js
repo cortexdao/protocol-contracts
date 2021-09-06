@@ -90,7 +90,7 @@ describe("Swaps", () => {
       .registerAssetAllocation(erc20Allocation.address);
   });
 
-  describe.only("SwapCrvToUsdc", () => {
+  describe("SwapCrvToUsdc", () => {
     let swap;
     let crv;
     let usdc;
