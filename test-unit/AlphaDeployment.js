@@ -266,6 +266,71 @@ describe("Contract: AlphaDeployment", () => {
     expect(await alphaDeployment.tvlManager()).to.equal(tvlManager.address);
   });
 
+  it("deploy_4_OracleAdapter", async () => {
+    const oracleAdapterFactory = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("OracleAdapterFactory").abi
+    );
+    const oracleAdapter = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("OracleAdapter").abi
+    );
+    await oracleAdapterFactory.mock.create.returns(oracleAdapter.address);
+
+    const alphaDeployment = await expect(
+      AlphaDeployment.deploy(
+        addressRegistry.address,
+        FAKE_ADDRESS, // proxy admin factory
+        FAKE_ADDRESS, // proxy factory
+        FAKE_ADDRESS, // mAPT factory
+        FAKE_ADDRESS, // pool token v1 factory
+        FAKE_ADDRESS, // pool token v2 factory
+        FAKE_ADDRESS, // erc20 allocation factory
+        FAKE_ADDRESS, // tvl manager factory
+        oracleAdapterFactory.address, // oracle adapter factory
+        FAKE_ADDRESS // lp account factory
+      )
+    ).to.not.be.reverted;
+
+    // for step check
+    await alphaDeployment.testSetStep(4);
+
+    // for deployed address check:
+    // 1. deploy and register mock mAPT
+    const mAptAddress = (await deployMockContract(deployer, [])).address;
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("mApt"))
+      .returns(mAptAddress);
+    await alphaDeployment.testSetMapt(mAptAddress);
+    // 2. deploy and register mock TvlManager
+    const tvlManagerAddress = (await deployMockContract(deployer, [])).address;
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("tvlManager"))
+      .returns(tvlManagerAddress);
+    await alphaDeployment.testSetTvlManager(tvlManagerAddress);
+
+    // for ownership check
+    await addressRegistry.mock.owner.returns(alphaDeployment.address);
+
+    // check for address registrations
+    await addressRegistry.mock.registerAddress
+      .withArgs(bytes32("oracleAdapter"), oracleAdapter.address)
+      .revertsWithReason("ADDRESS_REGISTERED");
+    await expect(alphaDeployment.deploy_4_OracleAdapter()).to.be.revertedWith(
+      "ADDRESS_REGISTERED"
+    );
+    await addressRegistry.mock.registerAddress
+      .withArgs(bytes32("oracleAdapter"), oracleAdapter.address)
+      .returns();
+
+    // check Oracle Adapter address set properly
+    expect(await alphaDeployment.oracleAdapter()).to.equal(ZERO_ADDRESS);
+    await expect(alphaDeployment.deploy_4_OracleAdapter()).to.not.be.reverted;
+    expect(await alphaDeployment.oracleAdapter()).to.equal(
+      oracleAdapter.address
+    );
+  });
+
   it("handoffOwnership", async () => {
     const alphaDeployment = await AlphaDeployment.deploy(
       addressRegistry.address,
