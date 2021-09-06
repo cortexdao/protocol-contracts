@@ -442,7 +442,12 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
     /// @notice upgrade from v1 to v2
     /// @dev register mAPT for a contract role
-    function deploy_6_PoolTokenV2_upgrade() external onlyOwner updateStep(6) {
+    function deploy_6_PoolTokenV2_upgrade()
+        external
+        onlyOwner
+        updateStep(6)
+        returns (address)
+    {
         bytes32[] memory registeredIds = new bytes32[](1);
         address[] memory deployedAddresses = new address[](1);
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
@@ -474,6 +479,9 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             logicV2,
             initData
         );
+
+        poolTokenV2 = logicV2;
+        return poolTokenV2;
     }
 
     function cleanup() external onlyOwner {

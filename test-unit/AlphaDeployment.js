@@ -2,8 +2,19 @@ const { expect } = require("chai");
 const hre = require("hardhat");
 const { ethers, artifacts, waffle } = hre;
 const timeMachine = require("ganache-time-traveler");
-const { FAKE_ADDRESS, ZERO_ADDRESS, bytes32 } = require("../utils/helpers");
+const {
+  FAKE_ADDRESS,
+  ZERO_ADDRESS,
+  bytes32,
+  impersonateAccount,
+  forciblySendEth,
+  tokenAmountToBigNumber,
+} = require("../utils/helpers");
 const { deployMockContract } = waffle;
+
+/***** MAINNET constants *****/
+const MAINNET_POOL_DEPLOYER = "0x6eaf0ab3455787ba10089800db91f11fdf6370be";
+const MAINNET_POOL_PROXY_ADMIN = "0x7965283631253DfCb71Db63a60C656DEDF76234f";
 
 describe("Contract: AlphaDeployment", () => {
   // signers
@@ -388,6 +399,86 @@ describe("Contract: AlphaDeployment", () => {
     expect(await alphaDeployment.lpAccount()).to.equal(ZERO_ADDRESS);
     await expect(alphaDeployment.deploy_5_LpAccount()).to.not.be.reverted;
     expect(await alphaDeployment.lpAccount()).to.equal(lpAccountAddress);
+  });
+
+  it("deploy_6_PoolTokenV2_upgrade", async () => {
+    const logicAddress = (await deployMockContract(deployer, [])).address;
+    const poolTokenV2Factory = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("PoolTokenV2Factory").abi
+    );
+    poolTokenV2Factory.mock.create.returns(logicAddress);
+
+    const alphaDeployment = await expect(
+      AlphaDeployment.deploy(
+        addressRegistry.address,
+        FAKE_ADDRESS, // proxy admin factory
+        FAKE_ADDRESS, // proxy factory
+        FAKE_ADDRESS, // mAPT factory
+        FAKE_ADDRESS, // pool token v1 factory
+        poolTokenV2Factory.address, // pool token v2 factory
+        FAKE_ADDRESS, // erc20 allocation factory
+        FAKE_ADDRESS, // tvl manager factory
+        FAKE_ADDRESS, // oracle adapter factory
+        FAKE_ADDRESS // lp account factory
+      )
+    ).to.not.be.reverted;
+
+    // for step check
+    await alphaDeployment.testSetStep(6);
+
+    // for deployed address check:
+    const mAptAddress = (await deployMockContract(deployer, [])).address;
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("mApt"))
+      .returns(mAptAddress);
+    await alphaDeployment.testSetMapt(mAptAddress);
+
+    // for ownership checks:
+    // 1. Make deployment contract the owner of the Address Registry
+    await addressRegistry.mock.owner.returns(alphaDeployment.address);
+    const poolDeployer = await impersonateAccount(MAINNET_POOL_DEPLOYER);
+    await forciblySendEth(
+      poolDeployer.address,
+      tokenAmountToBigNumber(1),
+      deployer.address
+    );
+    const proxyAdmin = await deployMockContract(
+      poolDeployer,
+      artifacts.readArtifactSync("ProxyAdmin").abi
+    );
+    // proxy admin was created via the first transaction on Mainnet
+    // of the pool deployer, so this mock contract should have the
+    // same address
+    expect(proxyAdmin.address).to.equal(MAINNET_POOL_PROXY_ADMIN);
+    // 2. Make deployment contract the owner of the pool proxy admin
+    await proxyAdmin.mock.owner.returns(alphaDeployment.address);
+
+    // mock the upgrade calls
+    await proxyAdmin.mock.upgradeAndCall.revertsWithReason("WRONG_ARGS");
+    const PoolTokenV2 = await ethers.getContractFactory("PoolTokenV2");
+    const initData = PoolTokenV2.interface.encodeFunctionData(
+      "initializeUpgrade(address)",
+      [addressRegistry.address]
+    );
+    const DAI_POOL_PROXY = await alphaDeployment.DAI_POOL_PROXY();
+    await proxyAdmin.mock.upgradeAndCall
+      .withArgs(DAI_POOL_PROXY, logicAddress, initData)
+      .returns();
+    const USDC_POOL_PROXY = await alphaDeployment.USDC_POOL_PROXY();
+    await proxyAdmin.mock.upgradeAndCall
+      .withArgs(USDC_POOL_PROXY, logicAddress, initData)
+      .returns();
+    const USDT_POOL_PROXY = await alphaDeployment.USDT_POOL_PROXY();
+    await proxyAdmin.mock.upgradeAndCall
+      .withArgs(USDT_POOL_PROXY, logicAddress, initData)
+      .returns();
+
+    // check mAPT address set properly
+    expect(await alphaDeployment.poolTokenV2()).to.equal(ZERO_ADDRESS);
+    await expect(alphaDeployment.deploy_6_PoolTokenV2_upgrade()).to.not.be
+      .reverted;
+    expect(await alphaDeployment.poolTokenV2()).to.equal(logicAddress);
   });
 
   it("handoffOwnership", async () => {
