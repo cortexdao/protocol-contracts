@@ -23,6 +23,12 @@ async function deployMockZap(name) {
   return zap;
 }
 
+async function deployMockSwap(name) {
+  const TestSwap = await ethers.getContractFactory("TestSwap");
+  const swap = await TestSwap.deploy(name || "mockSwap");
+  return swap;
+}
+
 async function deployMockAllocation(name) {
   const [deployer] = await ethers.getSigners();
   const allocation = await deployMockContract(deployer, IAssetAllocation.abi);
@@ -395,6 +401,178 @@ describe("Contract: LpAccount", () => {
         .to.not.be.reverted;
 
       expect(await underlyer.balanceOf(pool.address)).to.equal(amount);
+    });
+  });
+
+  describe("swap", () => {
+    it("can swap", async () => {
+      const swap = await deployMockSwap();
+      await lpAccount.connect(adminSafe).registerSwap(swap.address);
+
+      const name = await swap.NAME();
+      const amount = tokenAmountToBigNumber(1);
+
+      await lpAccount.connect(lpSafe).swap(name, amount);
+      expect(await lpAccount._swapCalls()).to.deep.equal([amount]);
+    });
+
+    it("cannot swap with unregistered allocation", async () => {
+      const swap = await deployMockSwap();
+      await lpAccount.connect(adminSafe).registerSwap(swap.address);
+
+      const name = await swap.NAME();
+      const amount = tokenAmountToBigNumber(1);
+
+      // configure swap with unregistered allocation
+      const allocation = await deployMockAllocation();
+      await swap._setAssetAllocations([allocation.address]);
+
+      await expect(
+        lpAccount.connect(lpSafe).swap(name, amount)
+      ).to.be.revertedWith("MISSING_ASSET_ALLOCATIONS");
+    });
+
+    it("cannot swap with registered and unregistered allocations", async () => {
+      const swap = await deployMockSwap();
+      await lpAccount.connect(adminSafe).registerSwap(swap.address);
+
+      const name = await swap.NAME();
+      const amount = tokenAmountToBigNumber(1);
+
+      // configure swap with a registered and an unregistered allocation
+      const allocation_0 = await deployMockAllocation("allocation 0");
+      const allocation_1 = await deployMockAllocation("allocation 1");
+      await tvlManager.registerAssetAllocation(allocation_1.address);
+      await swap._setAssetAllocations([
+        allocation_0.address,
+        allocation_1.address,
+      ]);
+
+      await expect(
+        lpAccount.connect(lpSafe).swap(name, amount)
+      ).to.be.revertedWith("MISSING_ASSET_ALLOCATIONS");
+    });
+
+    it("can swap with registered allocations", async () => {
+      const swap = await deployMockSwap();
+      await lpAccount.connect(adminSafe).registerSwap(swap.address);
+
+      const name = await swap.NAME();
+      const amount = tokenAmountToBigNumber(1);
+
+      // configure swap with registered allocations
+      const allocation_0 = await deployMockAllocation("allocation 0");
+      const allocation_1 = await deployMockAllocation("allocation 1");
+      await tvlManager.registerAssetAllocation(allocation_0.address);
+      await tvlManager.registerAssetAllocation(allocation_1.address);
+      await swap._setAssetAllocations([
+        allocation_0.address,
+        allocation_1.address,
+      ]);
+
+      await expect(lpAccount.connect(lpSafe).swap(name, amount)).to.not.be
+        .reverted;
+    });
+
+    it("cannot swap with unregistered ERC20", async () => {
+      const swap = await deployMockSwap();
+      await lpAccount.connect(adminSafe).registerSwap(swap.address);
+
+      const name = await swap.NAME();
+      const amount = tokenAmountToBigNumber(1);
+
+      // configure swap with unregistered ERC20
+      const token = await deployMockErc20();
+      await swap._setErc20Allocations([token.address]);
+
+      await expect(
+        lpAccount.connect(lpSafe).swap(name, amount)
+      ).to.be.revertedWith("MISSING_ERC20_ALLOCATIONS");
+    });
+
+    it("can swap with registered ERC20", async () => {
+      const swap = await deployMockSwap();
+      await lpAccount.connect(adminSafe).registerSwap(swap.address);
+
+      const name = await swap.NAME();
+      const amount = tokenAmountToBigNumber(1);
+
+      // configure swap with registered ERC20
+      const token = await deployMockErc20();
+      await erc20Allocation
+        .connect(lpSafe)
+        ["registerErc20Token(address)"](token.address);
+      await swap._setErc20Allocations([token.address]);
+
+      await expect(lpAccount.connect(lpSafe).swap(name, amount)).to.not.be
+        .reverted;
+    });
+
+    it("can swap with registered allocation and ERC20", async () => {
+      const swap = await deployMockSwap();
+      await lpAccount.connect(adminSafe).registerSwap(swap.address);
+
+      const name = await swap.NAME();
+      const amount = tokenAmountToBigNumber(1);
+
+      // configure swap with registered allocation
+      const allocation = await deployMockAllocation();
+      await tvlManager.registerAssetAllocation(allocation.address);
+      await swap._setAssetAllocations([allocation.address]);
+
+      // configure swap with registered ERC20
+      const token = await deployMockErc20();
+      await erc20Allocation
+        .connect(lpSafe)
+        ["registerErc20Token(address)"](token.address);
+      await swap._setErc20Allocations([token.address]);
+
+      await expect(lpAccount.connect(lpSafe).swap(name, amount)).to.not.be
+        .reverted;
+    });
+
+    it("cannot swap with registered allocation but unregistered ERC20", async () => {
+      const swap = await deployMockSwap();
+      await lpAccount.connect(adminSafe).registerSwap(swap.address);
+
+      const name = await swap.NAME();
+      const amount = tokenAmountToBigNumber(1);
+
+      // configure swap with registered allocation
+      const allocation = await deployMockAllocation();
+      await tvlManager.registerAssetAllocation(allocation.address);
+      await swap._setAssetAllocations([allocation.address]);
+
+      // configure swap with unregistered ERC20
+      const token = await deployMockErc20();
+      await swap._setErc20Allocations([token.address]);
+
+      await expect(
+        lpAccount.connect(lpSafe).swap(name, amount)
+      ).to.be.revertedWith("MISSING_ERC20_ALLOCATIONS");
+    });
+
+    it("cannot swap with unregistered allocation but registered ERC20", async () => {
+      const swap = await deployMockSwap();
+      await lpAccount.connect(adminSafe).registerSwap(swap.address);
+
+      const name = await swap.NAME();
+      const amount = tokenAmountToBigNumber(1);
+
+      // configure swap with unregistered allocation
+      const allocation = await deployMockAllocation();
+      await swap._setAssetAllocations([allocation.address]);
+
+      // configure swap with registered ERC20
+      const token = await deployMockErc20();
+      await erc20Allocation
+        .connect(lpSafe)
+        ["registerErc20Token(address)"](token.address);
+      await swap._setErc20Allocations([token.address]);
+
+      await expect(
+        lpAccount.connect(lpSafe).swap(name, amount)
+      ).to.be.revertedWith("MISSING_ASSET_ALLOCATIONS");
     });
   });
 });
