@@ -331,6 +331,65 @@ describe("Contract: AlphaDeployment", () => {
     );
   });
 
+  it("deploy_5_LpAccount", async () => {
+    const proxyAdminFactory = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("ProxyAdminFactory").abi
+    );
+    proxyAdminFactory.mock.create.returns(FAKE_ADDRESS);
+
+    const lpAccountAddress = (await deployMockContract(deployer, [])).address;
+    const lpAccountFactory = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("LpAccountFactory").abi
+    );
+    lpAccountFactory.mock.create.returns(lpAccountAddress);
+
+    const alphaDeployment = await expect(
+      AlphaDeployment.deploy(
+        addressRegistry.address,
+        proxyAdminFactory.address, // proxy admin factory
+        FAKE_ADDRESS, // proxy factory
+        FAKE_ADDRESS, // mAPT factory
+        FAKE_ADDRESS, // pool token v1 factory
+        FAKE_ADDRESS, // pool token v2 factory
+        FAKE_ADDRESS, // erc20 allocation factory
+        FAKE_ADDRESS, // tvl manager factory
+        FAKE_ADDRESS, // oracle adapter factory
+        lpAccountFactory.address // lp account factory
+      )
+    ).to.not.be.reverted;
+
+    // for step check
+    await alphaDeployment.testSetStep(5);
+
+    // for deployed address check:
+    const mAptAddress = (await deployMockContract(deployer, [])).address;
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("mApt"))
+      .returns(mAptAddress);
+    await alphaDeployment.testSetMapt(mAptAddress);
+
+    // for ownership check
+    await addressRegistry.mock.owner.returns(alphaDeployment.address);
+
+    // check for address registration
+    await addressRegistry.mock.registerAddress
+      .withArgs(bytes32("lpAccount"), lpAccountAddress)
+      .revertsWithReason("ADDRESS_REGISTERED");
+    await expect(alphaDeployment.deploy_5_LpAccount()).to.be.revertedWith(
+      "ADDRESS_REGISTERED"
+    );
+    await addressRegistry.mock.registerAddress
+      .withArgs(bytes32("lpAccount"), lpAccountAddress)
+      .returns();
+
+    // check mAPT address set properly
+    expect(await alphaDeployment.lpAccount()).to.equal(ZERO_ADDRESS);
+    await expect(alphaDeployment.deploy_5_LpAccount()).to.not.be.reverted;
+    expect(await alphaDeployment.lpAccount()).to.equal(lpAccountAddress);
+  });
+
   it("handoffOwnership", async () => {
     const alphaDeployment = await AlphaDeployment.deploy(
       addressRegistry.address,

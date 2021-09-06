@@ -122,6 +122,9 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     address public oracleAdapter;
 
     // step 5
+    address public lpAccount;
+
+    // step 6
     // pool v2 upgrades
     address public poolTokenV2;
 
@@ -400,7 +403,12 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     }
 
     /// @dev register mAPT for a contract role
-    function deploy_5_LpAccount() external onlyOwner updateStep(5) {
+    function deploy_5_LpAccount()
+        external
+        onlyOwner
+        updateStep(5)
+        returns (address)
+    {
         bytes32[] memory registeredIds = new bytes32[](1);
         address[] memory deployedAddresses = new address[](1);
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
@@ -421,14 +429,15 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 address(addressRegistry)
             );
 
-        address lpAccount =
-            LpAccountFactory(lpAccountFactory).create(
-                proxyFactory,
-                proxyAdmin,
-                initData,
-                address(0) // no owner for LpAccount
-            );
+        lpAccount = LpAccountFactory(lpAccountFactory).create(
+            proxyFactory,
+            proxyAdmin,
+            initData,
+            address(0) // no owner for LpAccount
+        );
         addressRegistry.registerAddress("lpAccount", lpAccount);
+
+        return lpAccount;
     }
 
     /// @notice upgrade from v1 to v2
