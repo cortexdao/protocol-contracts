@@ -32,6 +32,7 @@ describe("Contract: LpAccount", () => {
   let lpSafe;
   let emergencySafe;
   let adminSafe;
+  let mApt;
   let randomUser;
 
   // deployed contracts
@@ -59,6 +60,7 @@ describe("Contract: LpAccount", () => {
       lpSafe,
       emergencySafe,
       adminSafe,
+      mApt,
       randomUser,
     ] = await ethers.getSigners();
 
@@ -75,6 +77,7 @@ describe("Contract: LpAccount", () => {
     await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
+    await addressRegistry.mock.mAptAddress.returns(mApt.address);
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     proxyAdmin = await ProxyAdmin.deploy();
@@ -124,6 +127,13 @@ describe("Contract: LpAccount", () => {
         .be.true;
     });
 
+    it("Admin role given to Admin Safe", async () => {
+      const ADMIN_ROLE = await lpAccount.ADMIN_ROLE();
+      const memberCount = await lpAccount.getRoleMemberCount(ADMIN_ROLE);
+      expect(memberCount).to.equal(1);
+      expect(await lpAccount.hasRole(ADMIN_ROLE, adminSafe.address)).to.be.true;
+    });
+
     it("LP role given to LP Safe", async () => {
       const LP_ROLE = await lpAccount.LP_ROLE();
       const memberCount = await lpAccount.getRoleMemberCount(LP_ROLE);
@@ -131,11 +141,11 @@ describe("Contract: LpAccount", () => {
       expect(await lpAccount.hasRole(LP_ROLE, lpSafe.address)).to.be.true;
     });
 
-    it("Admin role given to Admin Safe", async () => {
-      const ADMIN_ROLE = await lpAccount.ADMIN_ROLE();
-      const memberCount = await lpAccount.getRoleMemberCount(ADMIN_ROLE);
+    it("Contract role given to MetaPoolToken", async () => {
+      const CONTRACT_ROLE = await lpAccount.CONTRACT_ROLE();
+      const memberCount = await lpAccount.getRoleMemberCount(CONTRACT_ROLE);
       expect(memberCount).to.equal(1);
-      expect(await lpAccount.hasRole(ADMIN_ROLE, adminSafe.address)).to.be.true;
+      expect(await lpAccount.hasRole(CONTRACT_ROLE, mApt.address)).to.be.true;
     });
 
     it("proxyAdmin was set", async () => {
@@ -260,8 +270,9 @@ describe("Contract: LpAccount", () => {
     });
 
     it("Unpermissioned cannot call", async () => {
-      await expect(lpAccount.connect(adminSafe).removeZap(name)).to.not.be
-        .reverted;
+      await expect(
+        lpAccount.connect(randomUser).removeZap(name)
+      ).to.be.revertedWith("NOT_ADMIN_ROLE");
     });
 
     it("can remove", async () => {
@@ -433,6 +444,54 @@ describe("Contract: LpAccount", () => {
         await lpAccount.connect(lpSafe).unwindStrategy(name, amount);
         expect(await lpAccount._unwindCalls()).to.deep.equal([amount]);
       });
+    });
+  });
+
+  describe("transferToPool", () => {
+    let pool;
+    let underlyer;
+
+    before("Setup mock pool with underlyer", async () => {
+      pool = await deployMockContract(
+        deployer,
+        artifacts.readArtifactSync("ILiquidityPoolV2").abi
+      );
+      underlyer = await deployMockContract(
+        deployer,
+        artifacts.readArtifactSync("IDetailedERC20").abi
+      );
+
+      await pool.mock.underlyer.returns(underlyer.address);
+      await underlyer.mock.transfer.returns(true);
+    });
+
+    it("mApt can call", async () => {
+      await expect(lpAccount.connect(mApt).transferToPool(pool.address, 0)).to
+        .not.be.reverted;
+    });
+
+    it("Unpermissioned cannot call", async () => {
+      await expect(
+        lpAccount.connect(randomUser).transferToPool(pool.address, 0)
+      ).to.be.revertedWith("NOT_CONTRACT_ROLE");
+    });
+
+    it("Calls transfer on underlyer with the right args", async () => {
+      const amount = tokenAmountToBigNumber("100");
+
+      // check underlyer's transfer function is called
+      await underlyer.mock.transfer.revertsWithReason("CALLED_TRANSFER");
+      await expect(
+        lpAccount.connect(mApt).transferToPool(pool.address, amount)
+      ).to.be.revertedWith("CALLED_TRANSFER");
+
+      // check transfer is called with the right args
+      await underlyer.mock.transfer
+        .withArgs(pool.address, amount)
+        .returns(true);
+
+      await expect(lpAccount.connect(mApt).transferToPool(pool.address, amount))
+        .to.not.be.reverted;
     });
   });
 });

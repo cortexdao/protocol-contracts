@@ -61,9 +61,6 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
   let usdcToken;
   let usdtToken;
 
-  // purely for convenience; address of lpSafe signer
-  let lpSafeAddress;
-
   // use EVM snapshots for test isolation
   let snapshotId;
 
@@ -85,13 +82,11 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
   before(async () => {
     [
       deployer,
-      lpAccount,
       emergencySafe,
       adminSafe,
       lpSafe,
       randomUser,
     ] = await ethers.getSigners();
-    lpSafeAddress = lpSafe.address;
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
 
@@ -169,12 +164,7 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
       bytes32("adminSafe"),
       adminSafe.address
     );
-    await addressRegistry.registerAddress(bytes32("lpSafe"), lpSafeAddress);
-
-    await addressRegistry.registerAddress(
-      bytes32("lpAccount"),
-      lpAccount.address
-    );
+    await addressRegistry.registerAddress(bytes32("lpSafe"), lpSafe.address);
 
     /***********************/
     /***** deploy mAPT *****/
@@ -195,6 +185,31 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
 
     mApt = await MetaPoolToken.attach(mAptProxy.address);
     await addressRegistry.registerAddress(bytes32("mApt"), mApt.address);
+
+    /*****************************/
+    /***** deploy LP Account *****/
+    /*****************************/
+    const LpAccount = await ethers.getContractFactory("LpAccount");
+    const lpAccountLogic = await LpAccount.deploy();
+
+    const lpAccountAdmin = await ProxyAdmin.deploy();
+
+    const initData = LpAccount.interface.encodeFunctionData(
+      "initialize(address,address)",
+      [lpAccountAdmin.address, addressRegistry.address]
+    );
+
+    const lpAccountProxy = await TransparentUpgradeableProxy.deploy(
+      lpAccountLogic.address,
+      lpAccountAdmin.address,
+      initData
+    );
+
+    lpAccount = await LpAccount.attach(lpAccountProxy.address);
+    await addressRegistry.registerAddress(
+      bytes32("lpAccount"),
+      lpAccount.address
+    );
 
     /***********************************/
     /* deploy pools and upgrade to V2 */
@@ -337,11 +352,6 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
       "5000000",
       deployer
     );
-
-    // manager needs to be approved to transfer tokens from funded account
-    await daiToken.connect(lpAccount).approve(mApt.address, daiAmount);
-    await usdcToken.connect(lpAccount).approve(mApt.address, usdcAmount);
-    await usdtToken.connect(lpAccount).approve(mApt.address, usdtAmount);
   });
 
   async function getMintAmount(pool, underlyerAmount) {
@@ -750,24 +760,6 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
   });
 
   describe("_withdrawFromLpAccount", () => {
-    it("Revert for insufficient allowance from LP Safe", async () => {
-      const amount = tokenAmountToBigNumber(100);
-      // await daiToken.connect(deployer).transfer(lpAccount.address, amount);
-
-      await mApt.testFundLpAccount([daiPool.address], [amount.mul(2)]);
-      await oracleAdapter.connect(emergencySafe).emergencyUnlock();
-
-      await expect(mApt.testWithdrawFromLpAccount([daiPool.address], [amount]))
-        .to.not.be.reverted;
-      await oracleAdapter.connect(emergencySafe).emergencyUnlock();
-
-      await daiToken.connect(lpAccount).approve(mApt.address, 0);
-
-      await expect(
-        mApt.testWithdrawFromLpAccount([daiPool.address], [amount])
-      ).to.be.revertedWith("Dai/insufficient-allowance");
-    });
-
     it("Withdrawal updates balances correctly (single pool)", async () => {
       const transferAmount = tokenAmountToBigNumber("10", 18);
       await mApt.testFundLpAccount([daiPool.address], [transferAmount]);

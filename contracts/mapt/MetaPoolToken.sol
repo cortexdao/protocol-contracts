@@ -14,6 +14,7 @@ import {
     SafeMath as SafeMathUpgradeSafe,
     SignedSafeMath as SignedSafeMathUpgradeSafe
 } from "contracts/proxy/Imports.sol";
+import {ILpAccount} from "contracts/lpaccount/Imports.sol";
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
 import {ILockingOracle} from "contracts/oracle/Imports.sol";
 import {IReservePool} from "contracts/pool/Imports.sol";
@@ -357,8 +358,7 @@ contract MetaPoolToken is
             return;
         }
         _burn(address(pool), burnAmount);
-        IDetailedERC20 underlyer = pool.underlyer();
-        underlyer.safeTransferFrom(lpAccount, address(pool), transferAmount);
+        ILpAccount(lpAccount).transferToPool(address(pool), transferAmount);
         emit Burn(address(pool), burnAmount);
     }
 

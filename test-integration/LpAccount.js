@@ -7,7 +7,10 @@ const {
   FAKE_ADDRESS,
   bytes32,
   tokenAmountToBigNumber,
+  getStablecoinAddress,
+  acquireToken,
 } = require("../utils/helpers");
+const { STABLECOIN_POOLS } = require("../utils/constants");
 
 const IAddressRegistryV2 = artifacts.readArtifactSync("IAddressRegistryV2");
 const IDetailedERC20 = artifacts.readArtifactSync("IDetailedERC20");
@@ -41,6 +44,7 @@ describe("Contract: LpAccount", () => {
   let lpSafe;
   let emergencySafe;
   let adminSafe;
+  let mApt;
 
   // deployed contracts
   let lpAccount;
@@ -64,7 +68,13 @@ describe("Contract: LpAccount", () => {
   });
 
   before("Setup mock address registry", async () => {
-    [deployer, lpSafe, emergencySafe, adminSafe] = await ethers.getSigners();
+    [
+      deployer,
+      lpSafe,
+      emergencySafe,
+      adminSafe,
+      mApt,
+    ] = await ethers.getSigners();
 
     addressRegistry = await deployMockContract(
       deployer,
@@ -78,6 +88,7 @@ describe("Contract: LpAccount", () => {
     await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
+    await addressRegistry.mock.mAptAddress.returns(mApt.address);
   });
 
   before("Deploy LP Account", async () => {
@@ -349,6 +360,41 @@ describe("Contract: LpAccount", () => {
 
       await lpAccount.connect(lpSafe).unwindStrategy(name, amount);
       expect(await lpAccount._unwindCalls()).to.deep.equal([amount]);
+    });
+  });
+
+  describe("transferToPool", () => {
+    let pool;
+    let underlyer;
+
+    before("Setup mock pool with underlyer", async () => {
+      pool = await deployMockContract(
+        deployer,
+        artifacts.readArtifactSync("ILiquidityPoolV2").abi
+      );
+      const daiAddress = await getStablecoinAddress("DAI", "MAINNET");
+      underlyer = await ethers.getContractAt("IDetailedERC20", daiAddress);
+
+      await pool.mock.underlyer.returns(underlyer.address);
+
+      // fund LP Account with DAI
+      await acquireToken(
+        STABLECOIN_POOLS["DAI"],
+        lpAccount.address,
+        underlyer,
+        "10000",
+        deployer.address
+      );
+    });
+
+    it("can transfer", async () => {
+      expect(await underlyer.balanceOf(pool.address)).to.equal(0);
+
+      const amount = tokenAmountToBigNumber("100", 18);
+      await expect(lpAccount.connect(mApt).transferToPool(pool.address, amount))
+        .to.not.be.reverted;
+
+      expect(await underlyer.balanceOf(pool.address)).to.equal(amount);
     });
   });
 });
