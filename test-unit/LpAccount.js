@@ -458,7 +458,7 @@ describe("Contract: LpAccount", () => {
     });
   });
 
-  describe.only("Swaps", () => {
+  describe("Swaps", () => {
     describe("registerSwap", () => {
       it("Admin Safe can call", async () => {
         const swap = await deployMockSwap();
