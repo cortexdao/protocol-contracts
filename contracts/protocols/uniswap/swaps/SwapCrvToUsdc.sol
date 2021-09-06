@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
+pragma experimental ABIEncoderV2;
 
 import {SafeERC20} from "contracts/libraries/Imports.sol";
 import {IERC20, IAssetAllocation} from "contracts/common/Imports.sol";
@@ -27,24 +28,32 @@ contract SwapCrvToUsdc is ISwap {
     IERC20 private constant _USDC =
         IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
 
+    event Swap(ISwapRouter.ExactInputParams params, uint256 amountOut);
+
+    // TODO: create function for calculating min amount
     function swap(uint256 amount) external override {
         _CRV.safeApprove(address(_ROUTER), amount);
 
         // solhint-disable not-rely-on-time
-        ISwapRouter.ExactInputParams({
-            path: abi.encodePacked(
-                address(_CRV),
-                _CRV_WETH_FEE,
-                address(_WETH),
-                _WETH_USDC_FEE,
-                address(_USDC)
-            ),
-            recipient: address(this),
-            deadline: block.timestamp,
-            amountIn: amount,
-            amountOutMinimum: 0
-        });
+        ISwapRouter.ExactInputParams memory params =
+            ISwapRouter.ExactInputParams({
+                path: abi.encodePacked(
+                    address(_CRV),
+                    _CRV_WETH_FEE,
+                    address(_WETH),
+                    _WETH_USDC_FEE,
+                    address(_USDC)
+                ),
+                recipient: address(this),
+                deadline: block.timestamp,
+                amountIn: amount,
+                amountOutMinimum: 0
+            });
         // solhint-enable not-rely-on-time
+
+        uint256 amountOut = _ROUTER.exactInput(params);
+
+        emit Swap(params, amountOut);
     }
 
     function assetAllocations()
