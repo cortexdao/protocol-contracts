@@ -9,3 +9,4 @@ import {IStableSwap4} from "./interfaces/IStableSwap4.sol";
 import {IOldStableSwap2} from "./interfaces/IOldStableSwap2.sol";
 import {IOldStableSwap4} from "./interfaces/IOldStableSwap4.sol";
 import {ILiquidityGauge} from "./interfaces/ILiquidityGauge.sol";
+import {IStakingRewards} from "./interfaces/IStakingRewards.sol";

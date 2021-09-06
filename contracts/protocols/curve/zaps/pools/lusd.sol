@@ -5,14 +5,12 @@ pragma experimental ABIEncoderV2;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAssetAllocation} from "contracts/common/Imports.sol";
 import {
-    IStableSwap2 as IStableSwap
-} from "contracts/protocols/curve/interfaces/IStableSwap2.sol";
+    IStableSwap2 as IStableSwap,
+    IStakingRewards
+} from "contracts/protocols/curve/Imports.sol";
 import {
     CurveLusdConstants
 } from "contracts/protocols/curve/allocations/pools/lusd.sol";
-import {
-    IStakingRewards
-} from "contracts/protocols/curve/interfaces/IStakingRewards.sol";
 import {CurveBasePool} from "contracts/protocols/curve/zaps/CurveBasePool.sol";
 
 contract LusdPoolZap is CurveBasePool, CurveLusdConstants {
