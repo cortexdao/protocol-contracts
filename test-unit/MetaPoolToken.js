@@ -70,7 +70,6 @@ describe("Contract: MetaPoolToken", () => {
     );
     await addressRegistry.mock.adminSafeAddress.returns(FAKE_ADDRESS);
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
-    await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
     await addressRegistry.mock.registerAddress.returns();
 
     mApt = await deployMetaPoolToken(addressRegistry);
