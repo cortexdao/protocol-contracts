@@ -10,12 +10,7 @@ import {
 import {IZap} from "./IZap.sol";
 import {TestLpAccountStorage} from "./TestLpAccountStorage.sol";
 
-contract TestZapStorage {
-    uint256[][] internal _deploysArray;
-    uint256[] internal _unwindsArray;
-}
-
-contract TestZap is IZap, TestZapStorage, TestLpAccountStorage {
+contract TestZap is IZap, TestLpAccountStorage {
     string[] internal _sortedSymbols;
 
     constructor(string memory name) public {

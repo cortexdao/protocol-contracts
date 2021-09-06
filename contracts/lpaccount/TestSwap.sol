@@ -10,11 +10,7 @@ import {
 import {ISwap} from "./ISwap.sol";
 import {TestLpAccountStorage} from "./TestLpAccountStorage.sol";
 
-contract TestSwapStorage {
-    uint256[] internal _swapsArray;
-}
-
-contract TestSwap is ISwap, TestSwapStorage, TestLpAccountStorage {
+contract TestSwap is ISwap, TestLpAccountStorage {
     constructor(string memory name) public {
         _name = name;
     }
