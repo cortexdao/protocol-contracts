@@ -6,7 +6,6 @@ const {
   console,
   tokenAmountToBigNumber,
   acquireToken,
-  bytes32,
 } = require("../utils/helpers");
 const { WHALE_POOLS } = require("../utils/constants");
 
@@ -232,11 +231,11 @@ describe("Zaps", () => {
      * - lpSafe (LP role)
      * - mApt (contract role)
      */
-    await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("emergencySafe"))
-      .returns(emergencySafe.address);
+    await addressRegistry.mock.emergencySafeAddress.returns(
+      emergencySafe.address
+    );
     await addressRegistry.mock.mAptAddress.returns(mApt.address);
+    await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
 
     const Erc20Allocation = await ethers.getContractFactory("Erc20Allocation");
     const erc20Allocation = await Erc20Allocation.deploy(
