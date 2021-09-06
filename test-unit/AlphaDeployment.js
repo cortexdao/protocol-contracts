@@ -12,9 +12,7 @@ const {
 } = require("../utils/helpers");
 const { deployMockContract } = waffle;
 
-/***** MAINNET constants *****/
 const MAINNET_POOL_DEPLOYER = "0x6eaf0ab3455787ba10089800db91f11fdf6370be";
-const MAINNET_POOL_PROXY_ADMIN = "0x7965283631253DfCb71Db63a60C656DEDF76234f";
 
 describe("Contract: AlphaDeployment", () => {
   // signers
@@ -450,7 +448,9 @@ describe("Contract: AlphaDeployment", () => {
     // proxy admin was created via the first transaction on Mainnet
     // of the pool deployer, so this mock contract should have the
     // same address
-    expect(proxyAdmin.address).to.equal(MAINNET_POOL_PROXY_ADMIN);
+    expect(await alphaDeployment.POOL_PROXY_ADMIN()).to.equal(
+      proxyAdmin.address
+    );
     // 2. Make deployment contract the owner of the pool proxy admin
     await proxyAdmin.mock.owner.returns(alphaDeployment.address);
 
