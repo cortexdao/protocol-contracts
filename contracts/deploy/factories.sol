@@ -130,9 +130,9 @@ contract TvlManagerFactory {
 }
 
 contract ProxyAdminFactory {
-    function create(address newOwner) external returns (address) {
+    function create() external returns (address) {
         ProxyAdmin proxyAdmin = new ProxyAdmin();
-        proxyAdmin.transferOwnership(newOwner);
+        proxyAdmin.transferOwnership(msg.sender);
         return address(proxyAdmin);
     }
 }

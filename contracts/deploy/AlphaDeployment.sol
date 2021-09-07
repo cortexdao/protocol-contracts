@@ -152,9 +152,9 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
         // Simplest to check now that Safes are deployed in order to
         // avoid repeated preconditions checks later.
-        emergencySafe = addressRegistry.emergencySafeAddress();
-        adminSafe = addressRegistry.adminSafeAddress();
-        lpSafe = addressRegistry.lpSafeAddress();
+        emergencySafe = addressRegistry.getAddress("emergencySafe");
+        adminSafe = addressRegistry.getAddress("adminSafe");
+        lpSafe = addressRegistry.getAddress("lpSafe");
 
         proxyAdminFactory = proxyAdminFactory_;
         proxyFactory = proxyFactory_;
@@ -210,8 +210,18 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         }
     }
 
-    function deploy_0_AddressRegistryV2_upgrade() external onlyOwner updateStep(0) returns (address) {
-        address logicV2 = AddressRegistryV2Factory(addressRegistryV2Factory).create();
+    function deploy_0_AddressRegistryV2_upgrade()
+        external
+        onlyOwner
+        updateStep(0)
+        returns (address)
+    {
+        address[] memory ownedContracts = new address[](1);
+        ownedContracts[0] = ADDRESS_REGISTRY_PROXY_ADMIN;
+        checkOwnerships(ownedContracts);
+
+        address logicV2 =
+            AddressRegistryV2Factory(addressRegistryV2Factory).create();
         ProxyAdmin(ADDRESS_REGISTRY_PROXY_ADMIN).upgrade(
             TransparentUpgradeableProxy(payable(ADDRESS_REGISTRY_PROXY)),
             logicV2
@@ -232,7 +242,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
         address newOwner = msg.sender; // will own the proxy admin
         address proxyAdmin =
-            ProxyAdminFactory(proxyAdminFactory).create(newOwner);
+            ProxyAdminFactory(proxyAdminFactory).create();
         bytes memory initData =
             abi.encodeWithSignature(
                 "initialize(address,address)",
@@ -246,6 +256,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             address(0) // no owner for mAPT
         );
         addressRegistry.registerAddress("mApt", mApt);
+
+        ProxyAdmin(proxyAdmin).transferOwnership(newOwner);
         return mApt;
     }
 
@@ -263,7 +275,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
         address newOwner = msg.sender; // will own the proxy admin
         address proxyAdmin =
-            ProxyAdminFactory(proxyAdminFactory).create(newOwner);
+            ProxyAdminFactory(proxyAdminFactory).create();
 
         address fakeAggAddress = 0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe;
         bytes memory daiInitData =
@@ -339,6 +351,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         );
         addressRegistry.registerAddress("usdtDemoPool", usdtProxy);
         usdtDemoPool = usdtProxy;
+
+        ProxyAdmin(proxyAdmin).transferOwnership(newOwner);
     }
 
     /// @dev Deploy ERC20 allocation and TVL Manager.
@@ -429,7 +443,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
         address newOwner = msg.sender; // will own the proxy admin
         address proxyAdmin =
-            ProxyAdminFactory(proxyAdminFactory).create(newOwner);
+            ProxyAdminFactory(proxyAdminFactory).create();
 
         bytes memory initData =
             abi.encodeWithSignature(
@@ -446,6 +460,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         );
         addressRegistry.registerAddress("lpAccount", lpAccount);
 
+        ProxyAdmin(proxyAdmin).transferOwnership(newOwner);
         return lpAccount;
     }
 
