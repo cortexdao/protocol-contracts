@@ -9,6 +9,7 @@ import {PoolToken} from "contracts/pool/PoolToken.sol";
 import {PoolTokenProxy} from "contracts/pool/PoolTokenProxy.sol";
 import {PoolTokenV2} from "contracts/pool/PoolTokenV2.sol";
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
+import {AddressRegistryV2} from "contracts/registry/AddressRegistryV2.sol";
 import {Erc20Allocation} from "contracts/tvl/Erc20Allocation.sol";
 import {TvlManager} from "contracts/tvl/TvlManager.sol";
 import {OracleAdapter} from "contracts/oracle/OracleAdapter.sol";
@@ -81,6 +82,13 @@ contract PoolTokenV1Factory is UpgradeableContractFactory {
 contract PoolTokenV2Factory {
     function create() external returns (address) {
         PoolTokenV2 logicV2 = new PoolTokenV2();
+        return address(logicV2);
+    }
+}
+
+contract AddressRegistryV2Factory {
+    function create() external returns (address) {
+        AddressRegistryV2 logicV2 = new AddressRegistryV2();
         return address(logicV2);
     }
 }

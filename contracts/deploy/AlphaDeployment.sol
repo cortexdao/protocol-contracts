@@ -19,6 +19,7 @@ import {
 
 import {DeploymentConstants} from "./constants.sol";
 import {
+    AddressRegistryV2Factory,
     Erc20AllocationFactory,
     LpAccountFactory,
     MetaPoolTokenFactory,
@@ -91,6 +92,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
     address public immutable proxyAdminFactory;
     address public immutable proxyFactory;
+    address public immutable addressRegistryV2Factory;
     address public immutable mAptFactory;
     address public immutable poolTokenV1Factory;
     address public immutable poolTokenV2Factory;
@@ -135,9 +137,9 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     }
 
     constructor(
-        address addressRegistry_,
         address proxyAdminFactory_,
         address proxyFactory_,
+        address addressRegistryV2Factory_,
         address mAptFactory_,
         address poolTokenV1Factory_,
         address poolTokenV2Factory_,
@@ -146,9 +148,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         address oracleAdapterFactory_,
         address lpAccountFactory_
     ) public {
-        step = 1;
-
-        addressRegistry = IAddressRegistryV2(addressRegistry_);
+        addressRegistry = IAddressRegistryV2(ADDRESS_REGISTRY_PROXY);
 
         // Simplest to check now that Safes are deployed in order to
         // avoid repeated preconditions checks later.
@@ -158,6 +158,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
         proxyAdminFactory = proxyAdminFactory_;
         proxyFactory = proxyFactory_;
+        addressRegistryV2Factory = addressRegistryV2Factory_;
         mAptFactory = mAptFactory_;
         poolTokenV1Factory = poolTokenV1Factory_;
         poolTokenV2Factory = poolTokenV2Factory_;
@@ -207,6 +208,14 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 "MISSING_OWNERSHIP"
             );
         }
+    }
+
+    function deploy_0_AddressRegistryV2_upgrade() external onlyOwner updateStep(0) returns (address) {
+        address logicV2 = AddressRegistryV2Factory(addressRegistryV2Factory).create();
+        ProxyAdmin(ADDRESS_REGISTRY_PROXY_ADMIN).upgrade(
+            TransparentUpgradeableProxy(payable(ADDRESS_REGISTRY_PROXY)),
+            logicV2
+        );
     }
 
     /// @dev Deploy the mAPT proxy and its proxy admin.

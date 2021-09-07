@@ -13,8 +13,13 @@ const {
 const { deployMockContract } = waffle;
 
 const MAINNET_POOL_DEPLOYER = "0x6eaf0ab3455787ba10089800db91f11fdf6370be";
+const MAINNET_ADDRESS_REGISTRY_DEPLOYER =
+  "0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3";
+const MAINNET_ADDRESS_REGISTRY_PROXY_ADMIN =
+  "0xFbF6c940c1811C3ebc135A9c4e39E042d02435d1";
+const MAINNET_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
 
-describe("Contract: AlphaDeployment", () => {
+describe.only("Contract: AlphaDeployment", () => {
   // signers
   let deployer;
   let emergencySafe;
@@ -42,10 +47,33 @@ describe("Contract: AlphaDeployment", () => {
   before("Register Safes", async () => {
     [deployer, emergencySafe, adminSafe, lpSafe] = await ethers.getSigners();
 
+    const owner = await impersonateAccount(MAINNET_ADDRESS_REGISTRY_DEPLOYER);
+    await forciblySendEth(
+      owner.address,
+      tokenAmountToBigNumber(10),
+      deployer.address
+    );
+    // The Mainnet registry proxy admin was created on the first transaction
+    // from the registry deployer.
+    // Step 0 of alpha deployment depends on the existence of a proxy admin
+    // at the Mainnet address.
+    const proxyAdmin = await deployMockContract(
+      owner,
+      artifacts.readArtifactSync("ProxyAdmin").abi
+    );
+    expect(proxyAdmin.address).to.equal(MAINNET_ADDRESS_REGISTRY_PROXY_ADMIN);
+    // Set the nonce to 3 before deploying the mock contract with the
+    // Mainnet registry deployer; this will ensure the mock address
+    // matches Mainnet.
+    await hre.network.provider.send("hardhat_setNonce", [
+      MAINNET_ADDRESS_REGISTRY_DEPLOYER,
+      "0x3",
+    ]);
     addressRegistry = await deployMockContract(
-      deployer,
+      owner,
       artifacts.readArtifactSync("AddressRegistryV2").abi
     );
+    expect(addressRegistry.address).to.equal(MAINNET_ADDRESS_REGISTRY);
     await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
@@ -58,9 +86,9 @@ describe("Contract: AlphaDeployment", () => {
   it("constructor", async () => {
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        addressRegistry.address,
         FAKE_ADDRESS, // proxy admin factory
         FAKE_ADDRESS, // proxy factory
+        FAKE_ADDRESS, // address registry v2 factory
         FAKE_ADDRESS, // mAPT factory
         FAKE_ADDRESS, // pool token v1 factory
         FAKE_ADDRESS, // pool token v2 factory
@@ -70,7 +98,7 @@ describe("Contract: AlphaDeployment", () => {
         FAKE_ADDRESS // lp account factory
       )
     ).to.not.be.reverted;
-    expect(await alphaDeployment.step()).to.equal(1);
+    expect(await alphaDeployment.step()).to.equal(0);
   });
 
   it("deploy_1_MetaPoolToken", async () => {
@@ -89,9 +117,9 @@ describe("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        addressRegistry.address,
         proxyAdminFactory.address, // proxy admin factory
         FAKE_ADDRESS, // proxy factory
+        FAKE_ADDRESS, // address registry v2 factory
         metaPoolTokenFactory.address, // mAPT factory
         FAKE_ADDRESS, // pool token v1 factory
         FAKE_ADDRESS, // pool token v2 factory
@@ -101,6 +129,9 @@ describe("Contract: AlphaDeployment", () => {
         FAKE_ADDRESS // lp account factory
       )
     ).to.not.be.reverted;
+
+    // for step check
+    await alphaDeployment.testSetStep(1);
 
     // for ownership check
     await addressRegistry.mock.owner.returns(alphaDeployment.address);
@@ -149,9 +180,9 @@ describe("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        addressRegistry.address,
         proxyAdminFactory.address, // proxy admin factory
         FAKE_ADDRESS, // proxy factory
+        FAKE_ADDRESS, // address registry v2 factory
         FAKE_ADDRESS, // mAPT factory
         poolTokenV1Factory.address, // pool token v1 factory
         poolTokenV2Factory.address, // pool token v2 factory
@@ -239,9 +270,9 @@ describe("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        addressRegistry.address,
         FAKE_ADDRESS, // proxy admin factory
         FAKE_ADDRESS, // proxy factory
+        FAKE_ADDRESS, // address registry v2 factory
         FAKE_ADDRESS, // mAPT factory
         FAKE_ADDRESS, // pool token v1 factory
         FAKE_ADDRESS, // pool token v2 factory
@@ -288,9 +319,9 @@ describe("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        addressRegistry.address,
         FAKE_ADDRESS, // proxy admin factory
         FAKE_ADDRESS, // proxy factory
+        FAKE_ADDRESS, // address registry v2 factory
         FAKE_ADDRESS, // mAPT factory
         FAKE_ADDRESS, // pool token v1 factory
         FAKE_ADDRESS, // pool token v2 factory
@@ -356,9 +387,9 @@ describe("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        addressRegistry.address,
         proxyAdminFactory.address, // proxy admin factory
         FAKE_ADDRESS, // proxy factory
+        FAKE_ADDRESS, // address registry v2 factory
         FAKE_ADDRESS, // mAPT factory
         FAKE_ADDRESS, // pool token v1 factory
         FAKE_ADDRESS, // pool token v2 factory
@@ -409,9 +440,9 @@ describe("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        addressRegistry.address,
         FAKE_ADDRESS, // proxy admin factory
         FAKE_ADDRESS, // proxy factory
+        FAKE_ADDRESS, // address registry v2 factory
         FAKE_ADDRESS, // mAPT factory
         FAKE_ADDRESS, // pool token v1 factory
         poolTokenV2Factory.address, // pool token v2 factory
@@ -483,9 +514,9 @@ describe("Contract: AlphaDeployment", () => {
 
   it("handoffOwnership", async () => {
     const alphaDeployment = await AlphaDeployment.deploy(
-      addressRegistry.address,
       FAKE_ADDRESS, // proxy admin factory
       FAKE_ADDRESS, // proxy factory
+      FAKE_ADDRESS, // address registry v2 factory
       FAKE_ADDRESS, // mAPT factory
       FAKE_ADDRESS, // pool token v1 factory
       FAKE_ADDRESS, // pool token v2 factory
@@ -508,3 +539,28 @@ describe("Contract: AlphaDeployment", () => {
     expect(await proxyAdmin.owner()).to.equal(deployer.address);
   });
 });
+
+/**
+ * Function for creating a mock contract via a transaction with a specified
+ * nonce, so that the contract address will match the one on Mainnet.
+ *
+ * This is useful for mocking out dependencies that are hard-coded into
+ * a contract.
+ *
+ * Note: it is assumed the owner address has never been used, which is a
+ * safe bet when not forking Mainnet.
+ */
+async function deployMockContractFromNonce(owner, abi, nonce, ethFunder) {
+  const signer = await impersonateAccount(owner);
+  if (ethFunder) {
+    await forciblySendEth(
+      signer.address,
+      tokenAmountToBigNumber(1),
+      ethFunder.address
+    );
+  }
+  // create nonce-number of transactions using the signer
+  await hre.network.provider.send("hardhat_setNonce", [signer.address, nonce]);
+  const contract = await deployMockContract(signer, abi);
+  return contract;
+}
