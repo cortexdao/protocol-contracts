@@ -25,17 +25,11 @@ abstract contract UpgradeableContractFactory {
     function create(
         address proxyFactory,
         address proxyAdmin,
-        bytes memory initData,
-        address newOwner
+        bytes memory initData
     ) public returns (address) {
         address logic = _deployLogic();
         address proxy =
-            ProxyFactory(proxyFactory).create(
-                logic,
-                proxyAdmin,
-                initData,
-                newOwner
-            );
+            ProxyFactory(proxyFactory).create(logic, proxyAdmin, initData);
         return address(proxy);
     }
 
@@ -60,14 +54,10 @@ contract ProxyFactory {
     function create(
         address logic,
         address proxyAdmin,
-        bytes memory initData,
-        address newOwner
+        bytes memory initData
     ) public returns (address) {
         TransparentUpgradeableProxy proxy =
             new TransparentUpgradeableProxy(logic, proxyAdmin, initData);
-        if (newOwner != address(0)) {
-            Ownable(address(proxy)).transferOwnership(newOwner);
-        }
         return address(proxy);
     }
 }

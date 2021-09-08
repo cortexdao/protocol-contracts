@@ -50,12 +50,6 @@ PoolTokenV2
 - adminSafe (admin role)
 - mApt (contract role)
 
-Erc20Allocation
-
-- emergencySafe (default admin role)
-- lpSafe (LP role)
-- mApt (contract role)
-
 TvlManager
 
 - emergencySafe (emergency role, default admin role)
@@ -78,11 +72,9 @@ Note the order of dependencies: a contract requires contracts
 above it in the list to be deployed first. Thus we need
 to deploy in the order given, starting with the Safes.
 
-Other steps:
-- LP Safe must approve mAPT for each pool underlyer
 */
 
-/* solhint-disable max-states-count, func-name-mixedcase, no-empty-blocks */
+/* solhint-disable max-states-count, func-name-mixedcase */
 contract AlphaDeployment is Ownable, DeploymentConstants {
     // TODO: figure out a versioning scheme
     uint256 public constant VERSION = 1;
@@ -109,7 +101,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     address public mApt;
 
     // step 2
-    address public demoProxyAdmin;
     address public daiDemoPool;
     address public usdcDemoPool;
     address public usdtDemoPool;
@@ -246,8 +237,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         mApt = MetaPoolTokenFactory(mAptFactory).create(
             proxyFactory,
             proxyAdmin,
-            initData,
-            address(0) // no owner for mAPT
+            initData
         );
         addressRegistry.registerAddress("mApt", mApt);
 
@@ -288,8 +278,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             PoolTokenV1Factory(poolTokenV1Factory).create(
                 proxyFactory,
                 POOL_PROXY_ADMIN,
-                daiInitData,
-                msg.sender
+                daiInitData
             );
         ProxyAdmin(POOL_PROXY_ADMIN).upgradeAndCall(
             PoolTokenProxy(payable(daiProxy)),
@@ -310,8 +299,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             PoolTokenV1Factory(poolTokenV1Factory).create(
                 proxyFactory,
                 POOL_PROXY_ADMIN,
-                usdcInitData,
-                msg.sender
+                usdcInitData
             );
         ProxyAdmin(POOL_PROXY_ADMIN).upgradeAndCall(
             PoolTokenProxy(payable(usdcProxy)),
@@ -332,8 +320,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             PoolTokenV1Factory(poolTokenV1Factory).create(
                 proxyFactory,
                 POOL_PROXY_ADMIN,
-                usdtInitData,
-                msg.sender
+                usdtInitData
             );
         ProxyAdmin(POOL_PROXY_ADMIN).upgradeAndCall(
             PoolTokenProxy(payable(usdtProxy)),
@@ -437,8 +424,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         lpAccount = LpAccountFactory(lpAccountFactory).create(
             proxyFactory,
             proxyAdmin,
-            initData,
-            address(0) // no owner for LpAccount
+            initData
         );
         addressRegistry.registerAddress("lpAccount", lpAccount);
 
@@ -491,7 +477,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     }
 
     function cleanup() external onlyOwner {
-        handoffOwnership(address(addressRegistry));
+        handoffOwnership(ADDRESS_REGISTRY_PROXY_ADMIN);
+        handoffOwnership(ADDRESS_REGISTRY_PROXY);
         handoffOwnership(POOL_PROXY_ADMIN);
     }
 
