@@ -16,7 +16,7 @@ const { WHALE_POOLS } = require("../utils/constants");
 console.debugging = false;
 /* ************************ */
 
-describe.only("Zaps", () => {
+describe("Zaps", () => {
   /* signers */
   let deployer;
   let emergencySafe;
