@@ -31,6 +31,7 @@ describe("Contract: AlphaDeployment", () => {
 
   // mocked contracts
   let addressRegistry;
+  let addressRegistryProxyAdmin;
 
   // use EVM snapshots for test isolation
   let testSnapshotId;
@@ -70,11 +71,13 @@ describe("Contract: AlphaDeployment", () => {
     // from the registry deployer.
     // Step 0 of alpha deployment depends on the existence of a proxy admin
     // at the Mainnet address.
-    const proxyAdmin = await deployMockContract(
+    addressRegistryProxyAdmin = await deployMockContract(
       owner,
       artifacts.readArtifactSync("ProxyAdmin").abi
     );
-    expect(proxyAdmin.address).to.equal(MAINNET_ADDRESS_REGISTRY_PROXY_ADMIN);
+    expect(addressRegistryProxyAdmin.address).to.equal(
+      MAINNET_ADDRESS_REGISTRY_PROXY_ADMIN
+    );
     // Set the nonce to 3 before deploying the mock contract with the
     // Mainnet registry deployer; this will ensure the mock address
     // matches Mainnet.
@@ -127,8 +130,34 @@ describe("Contract: AlphaDeployment", () => {
     expect(await alphaDeployment.step()).to.equal(0);
   });
 
-  it.skip("deploy_0_AddressRegistryV2_upgrade", async () => {
-    //
+  it("deploy_0_AddressRegistryV2_upgrade", async () => {
+    const addressRegistryV2Factory = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("AddressRegistryV2Factory").abi
+    );
+    await addressRegistryV2Factory.mock.create.returns(FAKE_ADDRESS);
+    // mock the upgrade call
+    await addressRegistryProxyAdmin.mock.upgrade.returns();
+
+    const alphaDeployment = await expect(
+      AlphaDeployment.deploy(
+        FAKE_ADDRESS, // proxy admin factory
+        FAKE_ADDRESS, // proxy factory
+        addressRegistryV2Factory.address, // address registry v2 factory
+        FAKE_ADDRESS, // mAPT factory
+        FAKE_ADDRESS, // pool token v1 factory
+        FAKE_ADDRESS, // pool token v2 factory
+        FAKE_ADDRESS, // tvl manager factory
+        FAKE_ADDRESS, // oracle adapter factory
+        FAKE_ADDRESS // lp account factory
+      )
+    ).to.not.be.reverted;
+
+    // for ownership check:
+    // Proxy admin was mocked at the Mainnet address in earlier setup.
+    await addressRegistryProxyAdmin.mock.owner.returns(alphaDeployment.address);
+
+    await alphaDeployment.deploy_0_AddressRegistryV2_upgrade();
   });
 
   it("deploy_1_MetaPoolToken", async () => {
