@@ -20,7 +20,6 @@ import {
 import {DeploymentConstants} from "./constants.sol";
 import {
     AddressRegistryV2Factory,
-    Erc20AllocationFactory,
     LpAccountFactory,
     MetaPoolTokenFactory,
     OracleAdapterFactory,
@@ -96,7 +95,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     address public immutable mAptFactory;
     address public immutable poolTokenV1Factory;
     address public immutable poolTokenV2Factory;
-    address public immutable erc20AllocationFactory;
     address public immutable tvlManagerFactory;
     address public immutable oracleAdapterFactory;
     address public immutable lpAccountFactory;
@@ -117,7 +115,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     address public usdtDemoPool;
 
     // step 3
-    address public erc20Allocation;
     address public tvlManager;
 
     // step 4
@@ -143,7 +140,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         address mAptFactory_,
         address poolTokenV1Factory_,
         address poolTokenV2Factory_,
-        address erc20AllocationFactory_,
         address tvlManagerFactory_,
         address oracleAdapterFactory_,
         address lpAccountFactory_
@@ -162,7 +158,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         mAptFactory = mAptFactory_;
         poolTokenV1Factory = poolTokenV1Factory_;
         poolTokenV2Factory = poolTokenV2Factory_;
-        erc20AllocationFactory = erc20AllocationFactory_;
         tvlManagerFactory = tvlManagerFactory_;
         oracleAdapterFactory = oracleAdapterFactory_;
         lpAccountFactory = lpAccountFactory_;
@@ -362,14 +357,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         ownedContracts[0] = address(addressRegistry);
         checkOwnerships(ownedContracts);
 
-        erc20Allocation = Erc20AllocationFactory(erc20AllocationFactory).create(
-            address(addressRegistry)
-        );
         tvlManager = TvlManagerFactory(tvlManagerFactory).create(
             address(addressRegistry)
-        );
-        TvlManager(tvlManager).registerAssetAllocation(
-            Erc20Allocation(erc20Allocation)
         );
 
         addressRegistry.registerAddress("tvlManager", address(tvlManager));

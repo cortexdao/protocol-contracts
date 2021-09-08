@@ -1,26 +1,17 @@
 const { expect } = require("chai");
 const hre = require("hardhat");
-const { ethers, artifacts, waffle } = hre;
+const { ethers } = hre;
 const timeMachine = require("ganache-time-traveler");
 const {
-  FAKE_ADDRESS,
-  ZERO_ADDRESS,
   bytes32,
   impersonateAccount,
   forciblySendEth,
   tokenAmountToBigNumber,
 } = require("../utils/helpers");
-const { deployMockContract } = waffle;
 
-const MAINNET_POOL_DEPLOYER = "0x6eaf0ab3455787ba10089800db91f11fdf6370be";
 const MAINNET_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
 
-async function createContractAddress(deployer) {
-  const contract = await deployMockContract(deployer, []);
-  return contract.address;
-}
-
-describe.only("Contract: AlphaDeployment", () => {
+describe("Contract: AlphaDeployment", () => {
   // signers
   let deployer;
   let emergencySafe;
@@ -37,21 +28,11 @@ describe.only("Contract: AlphaDeployment", () => {
   let metaPoolTokenFactory;
   let poolTokenV1Factory;
   let poolTokenV2Factory;
-  let erc20AllocationFactory;
   let tvlManagerFactory;
   let oracleAdapterFactory;
   let lpAccountFactory;
 
   let addressRegistry;
-
-  // deployed addresses
-  let proxyAdminAddress;
-  let mAptAddress;
-  let poolTokenV1Address;
-  let poolTokenV2Address;
-  let tvlManagerAddress;
-  let oracleAdapterAddress;
-  let lpAccountAddress;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -126,11 +107,6 @@ describe.only("Contract: AlphaDeployment", () => {
     );
     poolTokenV2Factory = await PoolTokenV2Factory.deploy();
 
-    const Erc20AllocationFactory = await ethers.getContractFactory(
-      "Erc20AllocationFactory"
-    );
-    erc20AllocationFactory = await Erc20AllocationFactory.deploy();
-
     const TvlManagerFactory = await ethers.getContractFactory(
       "TvlManagerFactory"
     );
@@ -150,19 +126,19 @@ describe.only("Contract: AlphaDeployment", () => {
   });
 
   it("constructor", async () => {
-    const alphaDeployment = await AlphaDeployment.deploy(
-      proxyAdminFactory.address, // proxy admin factory
-      proxyFactory.address, // proxy factory
-      addressRegistryV2Factory.address, // address registry v2 factory
-      metaPoolTokenFactory.address, // mAPT factory
-      poolTokenV1Factory.address, // pool token v1 factory
-      poolTokenV2Factory.address, // pool token v2 factory
-      erc20AllocationFactory.address, // erc20 allocation factory
-      tvlManagerFactory.address, // tvl manager factory
-      oracleAdapterFactory.address, // oracle adapter factory
-      lpAccountFactory.address // lp account factory
-    );
-    // ).to.not.be.reverted;
+    const alphaDeployment = await expect(
+      AlphaDeployment.deploy(
+        proxyAdminFactory.address, // proxy admin factory
+        proxyFactory.address, // proxy factory
+        addressRegistryV2Factory.address, // address registry v2 factory
+        metaPoolTokenFactory.address, // mAPT factory
+        poolTokenV1Factory.address, // pool token v1 factory
+        poolTokenV2Factory.address, // pool token v2 factory
+        tvlManagerFactory.address, // tvl manager factory
+        oracleAdapterFactory.address, // oracle adapter factory
+        lpAccountFactory.address // lp account factory
+      )
+    ).to.not.be.reverted;
     expect(await alphaDeployment.step()).to.equal(0);
   });
 
@@ -174,7 +150,6 @@ describe.only("Contract: AlphaDeployment", () => {
       metaPoolTokenFactory.address, // mAPT factory
       poolTokenV1Factory.address, // pool token v1 factory
       poolTokenV2Factory.address, // pool token v2 factory
-      erc20AllocationFactory.address, // erc20 allocation factory
       tvlManagerFactory.address, // tvl manager factory
       oracleAdapterFactory.address, // oracle adapter factory
       lpAccountFactory.address // lp account factory
@@ -225,14 +200,5 @@ describe.only("Contract: AlphaDeployment", () => {
     await alphaDeployment.deploy_4_OracleAdapter();
     await alphaDeployment.deploy_5_LpAccount();
     await alphaDeployment.deploy_6_PoolTokenV2_upgrade();
-    return;
-
-    const mAptAddress = await alphaDeployment.mApt();
-    const daiDemoPoolAddress = await alphaDeployment.daiDemoPool();
-    const usdcDemoPoolAddress = await alphaDeployment.usdcDemoPool();
-    const usdtDemoPoolAddress = await alphaDeployment.usdtDemoPool();
-    const oracleAdapterAddress = await alphaDeployment.oracleAdapter();
-    const tvlManagerAddress = await alphaDeployment.tvlManager();
-    const lpAccountAddress = await alphaDeployment.lpAccount();
   });
 });

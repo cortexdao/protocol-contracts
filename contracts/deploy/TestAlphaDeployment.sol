@@ -6,26 +6,24 @@ import {AlphaDeployment} from "./AlphaDeployment.sol";
 
 contract TestAlphaDeployment is AlphaDeployment {
     constructor(
-        address addressRegistry_,
         address proxyAdminFactory_,
         address proxyFactory_,
+        address addressRegistryV2Factory,
         address mAptFactory_,
         address poolTokenV1Factory_,
         address poolTokenV2Factory_,
-        address erc20AllocationFactory_,
         address tvlManagerFactory_,
         address oracleAdapterFactory_,
         address lpAccountFactory_
     )
         public
         AlphaDeployment(
-            addressRegistry_,
             proxyAdminFactory_,
             proxyFactory_,
+            addressRegistryV2Factory,
             mAptFactory_,
             poolTokenV1Factory_,
             poolTokenV2Factory_,
-            erc20AllocationFactory_,
             tvlManagerFactory_,
             oracleAdapterFactory_,
             lpAccountFactory_
