@@ -33,19 +33,32 @@ describe("Contract: AlphaDeployment", () => {
   let addressRegistry;
 
   // use EVM snapshots for test isolation
-  let snapshotId;
+  let testSnapshotId;
+  let suiteSnapshotId;
 
   beforeEach(async () => {
     const snapshot = await timeMachine.takeSnapshot();
-    snapshotId = snapshot["result"];
+    testSnapshotId = snapshot["result"];
   });
 
   afterEach(async () => {
-    await timeMachine.revertToSnapshot(snapshotId);
+    await timeMachine.revertToSnapshot(testSnapshotId);
   });
 
-  beforeEach("Register Safes", async () => {
-    [deployer, emergencySafe, adminSafe, lpSafe] = await ethers.getSigners();
+  before(async () => {
+    const snapshot = await timeMachine.takeSnapshot();
+    suiteSnapshotId = snapshot["result"];
+  });
+
+  after(async () => {
+    // In particular, we need to reset the Mainnet accounts, otherwise
+    // this will cause leakage into other test suites.  Doing a `beforeEach`
+    // instead is viable but makes tests noticeably slower.
+    await timeMachine.revertToSnapshot(suiteSnapshotId);
+  });
+
+  before("Setup mocks with Mainnet addresses", async () => {
+    [deployer] = await ethers.getSigners();
 
     const owner = await impersonateAccount(MAINNET_ADDRESS_REGISTRY_DEPLOYER);
     await forciblySendEth(
@@ -74,6 +87,11 @@ describe("Contract: AlphaDeployment", () => {
       artifacts.readArtifactSync("AddressRegistryV2").abi
     );
     expect(addressRegistry.address).to.equal(MAINNET_ADDRESS_REGISTRY);
+  });
+
+  before("Register Safes", async () => {
+    [, emergencySafe, adminSafe, lpSafe] = await ethers.getSigners();
+
     await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );

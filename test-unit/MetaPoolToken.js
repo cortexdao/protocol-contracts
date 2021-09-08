@@ -41,18 +41,31 @@ describe("Contract: MetaPoolToken", () => {
   let erc20Allocation;
 
   // use EVM snapshots for test isolation
-  let snapshotId;
+  let testSnapshotId;
+  let suiteSnapshotId;
 
   beforeEach(async () => {
     const snapshot = await timeMachine.takeSnapshot();
-    snapshotId = snapshot["result"];
+    testSnapshotId = snapshot["result"];
   });
 
   afterEach(async () => {
-    await timeMachine.revertToSnapshot(snapshotId);
+    await timeMachine.revertToSnapshot(testSnapshotId);
   });
 
-  beforeEach(async () => {
+  before(async () => {
+    const snapshot = await timeMachine.takeSnapshot();
+    suiteSnapshotId = snapshot["result"];
+  });
+
+  after(async () => {
+    // In particular, we need to reset the Mainnet accounts, otherwise
+    // this will cause leakage into other test suites.  Doing a `beforeEach`
+    // instead is viable but makes tests noticeably slower.
+    await timeMachine.revertToSnapshot(suiteSnapshotId);
+  });
+
+  before(async () => {
     [
       deployer,
       emergencySafe,
@@ -176,7 +189,7 @@ describe("Contract: MetaPoolToken", () => {
     let MetaPoolTokenProxy;
     let logic;
 
-    beforeEach(async () => {
+    before(async () => {
       MetaPoolTokenProxy = await ethers.getContractFactory(
         "MetaPoolTokenProxy"
       );
@@ -447,7 +460,7 @@ describe("Contract: MetaPoolToken", () => {
     let pool;
     let underlyer;
 
-    beforeEach("Setup mocks", async () => {
+    before("Setup mocks", async () => {
       pool = await deployMockContract(deployer, PoolTokenV2.abi);
       await pool.mock.transferToLpAccount.returns();
       await pool.mock.getUnderlyerPrice.returns(
@@ -635,7 +648,7 @@ describe("Contract: MetaPoolToken", () => {
       let pools;
       const underlyerPrice = tokenAmountToBigNumber("1.015", 8);
 
-      beforeEach("Mock pools and underlyers", async () => {
+      before("Mock pools and underlyers", async () => {
         const daiPool = await deployMockContract(deployer, PoolTokenV2.abi);
         await daiPool.mock.getUnderlyerPrice.returns(underlyerPrice);
         const daiToken = await deployMockContract(deployer, IDetailedERC20.abi);
@@ -663,7 +676,7 @@ describe("Contract: MetaPoolToken", () => {
         pools = [daiPool.address, usdcPool.address, usdtPool.address];
       });
 
-      beforeEach("Set TVL", async () => {
+      before("Set TVL", async () => {
         const tvl = tokenAmountToBigNumber("502300", 8);
         await oracleAdapter.mock.getTvl.returns(tvl);
       });

@@ -42,15 +42,28 @@ describe("Contract: OracleAdapter", () => {
   const defaultLockPeriod = 10000;
 
   // use EVM snapshots for test isolation
-  let snapshotId;
+  let testSnapshotId;
+  let suiteSnapshotId;
 
   beforeEach(async () => {
-    let snapshot = await timeMachine.takeSnapshot();
-    snapshotId = snapshot["result"];
+    const snapshot = await timeMachine.takeSnapshot();
+    testSnapshotId = snapshot["result"];
   });
 
   afterEach(async () => {
-    await timeMachine.revertToSnapshot(snapshotId);
+    await timeMachine.revertToSnapshot(testSnapshotId);
+  });
+
+  before(async () => {
+    const snapshot = await timeMachine.takeSnapshot();
+    suiteSnapshotId = snapshot["result"];
+  });
+
+  after(async () => {
+    // In particular, we need to reset the Mainnet accounts, otherwise
+    // this will cause leakage into other test suites.  Doing a `beforeEach`
+    // instead is viable but makes tests noticeably slower.
+    await timeMachine.revertToSnapshot(suiteSnapshotId);
   });
 
   before(async () => {
@@ -641,7 +654,7 @@ describe("Contract: OracleAdapter", () => {
     const usdTvl = tokenAmountToBigNumber("25100123.87654321", "8");
     let mAptMock;
 
-    beforeEach(async () => {
+    before(async () => {
       mAptMock = await deployMockContract(deployer, IERC20.abi);
       await addressRegistry.mock.mAptAddress.returns(mAptMock.address);
     });
