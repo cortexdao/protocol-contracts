@@ -19,7 +19,7 @@ const MAINNET_ADDRESS_REGISTRY_PROXY_ADMIN =
   "0xFbF6c940c1811C3ebc135A9c4e39E042d02435d1";
 const MAINNET_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
 
-describe.only("Contract: AlphaDeployment", () => {
+describe("Contract: AlphaDeployment", () => {
   // signers
   let deployer;
   let emergencySafe;
@@ -44,7 +44,7 @@ describe.only("Contract: AlphaDeployment", () => {
     await timeMachine.revertToSnapshot(snapshotId);
   });
 
-  before("Register Safes", async () => {
+  beforeEach("Register Safes", async () => {
     [deployer, emergencySafe, adminSafe, lpSafe] = await ethers.getSigners();
 
     const owner = await impersonateAccount(MAINNET_ADDRESS_REGISTRY_DEPLOYER);
@@ -77,8 +77,17 @@ describe.only("Contract: AlphaDeployment", () => {
     await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("emergencySafe"))
+      .returns(emergencySafe.address);
     await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("adminSafe"))
+      .returns(FAKE_ADDRESS);
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("lpSafe"))
+      .returns(lpSafe.address);
 
     AlphaDeployment = await ethers.getContractFactory("TestAlphaDeployment");
   });
@@ -92,7 +101,6 @@ describe.only("Contract: AlphaDeployment", () => {
         FAKE_ADDRESS, // mAPT factory
         FAKE_ADDRESS, // pool token v1 factory
         FAKE_ADDRESS, // pool token v2 factory
-        FAKE_ADDRESS, // erc20 allocation factory
         FAKE_ADDRESS, // tvl manager factory
         FAKE_ADDRESS, // oracle adapter factory
         FAKE_ADDRESS // lp account factory
@@ -101,12 +109,21 @@ describe.only("Contract: AlphaDeployment", () => {
     expect(await alphaDeployment.step()).to.equal(0);
   });
 
+  it.skip("deploy_0_AddressRegistryV2_upgrade", async () => {
+    //
+  });
+
   it("deploy_1_MetaPoolToken", async () => {
     const proxyAdminFactory = await deployMockContract(
       deployer,
       artifacts.readArtifactSync("ProxyAdminFactory").abi
     );
-    proxyAdminFactory.mock.create.returns(FAKE_ADDRESS);
+    const proxyAdmin = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("ProxyAdmin").abi
+    );
+    await proxyAdmin.mock.transferOwnership.returns();
+    proxyAdminFactory.mock.create.returns(proxyAdmin.address);
 
     const mAptAddress = (await deployMockContract(deployer, [])).address;
     const metaPoolTokenFactory = await deployMockContract(
@@ -123,7 +140,6 @@ describe.only("Contract: AlphaDeployment", () => {
         metaPoolTokenFactory.address, // mAPT factory
         FAKE_ADDRESS, // pool token v1 factory
         FAKE_ADDRESS, // pool token v2 factory
-        FAKE_ADDRESS, // erc20 allocation factory
         FAKE_ADDRESS, // tvl manager factory
         FAKE_ADDRESS, // oracle adapter factory
         FAKE_ADDRESS // lp account factory
@@ -154,17 +170,6 @@ describe.only("Contract: AlphaDeployment", () => {
   });
 
   it("deploy_2_DemoPools", async () => {
-    const proxyAdmin = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("ProxyAdmin").abi
-    );
-    await proxyAdmin.mock.upgradeAndCall.returns();
-    const proxyAdminFactory = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("ProxyAdminFactory").abi
-    );
-    proxyAdminFactory.mock.create.returns(proxyAdmin.address);
-
     const demoPoolAddress = (await deployMockContract(deployer, [])).address;
     const poolTokenV1Factory = await deployMockContract(
       deployer,
@@ -180,13 +185,12 @@ describe.only("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        proxyAdminFactory.address, // proxy admin factory
+        FAKE_ADDRESS, // proxy admin factory
         FAKE_ADDRESS, // proxy factory
         FAKE_ADDRESS, // address registry v2 factory
         FAKE_ADDRESS, // mAPT factory
         poolTokenV1Factory.address, // pool token v1 factory
         poolTokenV2Factory.address, // pool token v2 factory
-        FAKE_ADDRESS, // erc20 allocation factory
         FAKE_ADDRESS, // tvl manager factory
         FAKE_ADDRESS, // oracle adapter factory
         FAKE_ADDRESS // lp account factory
@@ -204,7 +208,29 @@ describe.only("Contract: AlphaDeployment", () => {
     await alphaDeployment.testSetMapt(mAptAddress);
 
     // for ownership check
+    // 1. Make deployment contract the owner of the Address Registry
     await addressRegistry.mock.owner.returns(alphaDeployment.address);
+    const poolDeployer = await impersonateAccount(MAINNET_POOL_DEPLOYER);
+    await forciblySendEth(
+      poolDeployer.address,
+      tokenAmountToBigNumber(1),
+      deployer.address
+    );
+    const proxyAdmin = await deployMockContract(
+      poolDeployer,
+      artifacts.readArtifactSync("ProxyAdmin").abi
+    );
+    // proxy admin was created via the first transaction on Mainnet
+    // of the pool deployer, so this mock contract should have the
+    // same address
+    expect(await alphaDeployment.POOL_PROXY_ADMIN()).to.equal(
+      proxyAdmin.address
+    );
+    // 2. Make deployment contract the owner of the pool proxy admin
+    await proxyAdmin.mock.owner.returns(alphaDeployment.address);
+
+    // need to mock the upgrade
+    await proxyAdmin.mock.upgradeAndCall.returns();
 
     // check for address registrations
     // DAI
@@ -249,14 +275,6 @@ describe.only("Contract: AlphaDeployment", () => {
   });
 
   it("deploy_3_TvlManager", async () => {
-    const erc20AllocationFactory = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("Erc20AllocationFactory").abi
-    );
-    const erc20AllocationAddress = (await deployMockContract(deployer, []))
-      .address;
-    await erc20AllocationFactory.mock.create.returns(erc20AllocationAddress);
-
     const tvlManagerFactory = await deployMockContract(
       deployer,
       artifacts.readArtifactSync("TvlManagerFactory").abi
@@ -276,7 +294,6 @@ describe.only("Contract: AlphaDeployment", () => {
         FAKE_ADDRESS, // mAPT factory
         FAKE_ADDRESS, // pool token v1 factory
         FAKE_ADDRESS, // pool token v2 factory
-        erc20AllocationFactory.address, // erc20 allocation factory
         tvlManagerFactory.address, // tvl manager factory
         FAKE_ADDRESS, // oracle adapter factory
         FAKE_ADDRESS // lp account factory
@@ -325,7 +342,6 @@ describe.only("Contract: AlphaDeployment", () => {
         FAKE_ADDRESS, // mAPT factory
         FAKE_ADDRESS, // pool token v1 factory
         FAKE_ADDRESS, // pool token v2 factory
-        FAKE_ADDRESS, // erc20 allocation factory
         FAKE_ADDRESS, // tvl manager factory
         oracleAdapterFactory.address, // oracle adapter factory
         FAKE_ADDRESS // lp account factory
@@ -372,11 +388,16 @@ describe.only("Contract: AlphaDeployment", () => {
   });
 
   it("deploy_5_LpAccount", async () => {
+    const proxyAdmin = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("ProxyAdmin").abi
+    );
+    await proxyAdmin.mock.transferOwnership.returns();
     const proxyAdminFactory = await deployMockContract(
       deployer,
       artifacts.readArtifactSync("ProxyAdminFactory").abi
     );
-    proxyAdminFactory.mock.create.returns(FAKE_ADDRESS);
+    proxyAdminFactory.mock.create.returns(proxyAdmin.address);
 
     const lpAccountAddress = (await deployMockContract(deployer, [])).address;
     const lpAccountFactory = await deployMockContract(
@@ -393,7 +414,6 @@ describe.only("Contract: AlphaDeployment", () => {
         FAKE_ADDRESS, // mAPT factory
         FAKE_ADDRESS, // pool token v1 factory
         FAKE_ADDRESS, // pool token v2 factory
-        FAKE_ADDRESS, // erc20 allocation factory
         FAKE_ADDRESS, // tvl manager factory
         FAKE_ADDRESS, // oracle adapter factory
         lpAccountFactory.address // lp account factory
@@ -446,7 +466,6 @@ describe.only("Contract: AlphaDeployment", () => {
         FAKE_ADDRESS, // mAPT factory
         FAKE_ADDRESS, // pool token v1 factory
         poolTokenV2Factory.address, // pool token v2 factory
-        FAKE_ADDRESS, // erc20 allocation factory
         FAKE_ADDRESS, // tvl manager factory
         FAKE_ADDRESS, // oracle adapter factory
         FAKE_ADDRESS // lp account factory
@@ -520,7 +539,6 @@ describe.only("Contract: AlphaDeployment", () => {
       FAKE_ADDRESS, // mAPT factory
       FAKE_ADDRESS, // pool token v1 factory
       FAKE_ADDRESS, // pool token v2 factory
-      FAKE_ADDRESS, // erc20 allocation factory
       FAKE_ADDRESS, // tvl manager factory
       FAKE_ADDRESS, // oracle adapter factory
       FAKE_ADDRESS // lp account factory
@@ -530,7 +548,6 @@ describe.only("Contract: AlphaDeployment", () => {
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     const proxyAdmin = await ProxyAdmin.deploy();
     expect(await proxyAdmin.owner()).to.equal(deployer.address);
-
     await proxyAdmin.transferOwnership(alphaDeployment.address);
     expect(await proxyAdmin.owner()).to.equal(alphaDeployment.address);
     await alphaDeployment
@@ -539,28 +556,3 @@ describe.only("Contract: AlphaDeployment", () => {
     expect(await proxyAdmin.owner()).to.equal(deployer.address);
   });
 });
-
-/**
- * Function for creating a mock contract via a transaction with a specified
- * nonce, so that the contract address will match the one on Mainnet.
- *
- * This is useful for mocking out dependencies that are hard-coded into
- * a contract.
- *
- * Note: it is assumed the owner address has never been used, which is a
- * safe bet when not forking Mainnet.
- */
-async function deployMockContractFromNonce(owner, abi, nonce, ethFunder) {
-  const signer = await impersonateAccount(owner);
-  if (ethFunder) {
-    await forciblySendEth(
-      signer.address,
-      tokenAmountToBigNumber(1),
-      ethFunder.address
-    );
-  }
-  // create nonce-number of transactions using the signer
-  await hre.network.provider.send("hardhat_setNonce", [signer.address, nonce]);
-  const contract = await deployMockContract(signer, abi);
-  return contract;
-}

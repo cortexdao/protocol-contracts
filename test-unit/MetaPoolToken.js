@@ -8,6 +8,8 @@ const {
   ANOTHER_FAKE_ADDRESS,
   tokenAmountToBigNumber,
   bytes32,
+  impersonateAccount,
+  forciblySendEth,
 } = require("../utils/helpers");
 const { deployMockContract } = waffle;
 const OracleAdapter = artifacts.readArtifactSync("OracleAdapter");
@@ -30,15 +32,13 @@ describe("Contract: MetaPoolToken", () => {
   let randomUser;
   let anotherUser;
 
-  // contract factories
-  // have to be set async in "before"
-
   // deployed contracts
   let mApt;
 
   // mocks
   let oracleAdapter;
   let addressRegistry;
+  let erc20Allocation;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -52,7 +52,7 @@ describe("Contract: MetaPoolToken", () => {
     await timeMachine.revertToSnapshot(snapshotId);
   });
 
-  before(async () => {
+  beforeEach(async () => {
     [
       deployer,
       emergencySafe,
@@ -61,15 +61,40 @@ describe("Contract: MetaPoolToken", () => {
       anotherUser,
     ] = await ethers.getSigners();
 
-    addressRegistry = await deployMockContract(
-      deployer,
-      artifacts.require("AddressRegistryV2").abi
+    const MAINNET_ADDRESS_REGISTRY_DEPLOYER =
+      "0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3";
+    const owner = await impersonateAccount(MAINNET_ADDRESS_REGISTRY_DEPLOYER);
+    await forciblySendEth(
+      owner.address,
+      tokenAmountToBigNumber(10),
+      deployer.address
     );
+    // Set the nonce to 3 before deploying the mock contract with the
+    // Mainnet registry deployer; this will ensure the mock address
+    // matches Mainnet.
+    await hre.network.provider.send("hardhat_setNonce", [
+      MAINNET_ADDRESS_REGISTRY_DEPLOYER,
+      "0x3",
+    ]);
+    addressRegistry = await deployMockContract(
+      owner,
+      artifacts.readArtifactSync("AddressRegistryV2").abi
+    );
+
     await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("emergencySafe"))
+      .returns(emergencySafe.address);
     await addressRegistry.mock.adminSafeAddress.returns(FAKE_ADDRESS);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("adminSafe"))
+      .returns(FAKE_ADDRESS);
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("lpSafe"))
+      .returns(lpSafe.address);
     await addressRegistry.mock.registerAddress.returns();
 
     mApt = await deployMetaPoolToken(addressRegistry);
@@ -87,6 +112,23 @@ describe("Contract: MetaPoolToken", () => {
       artifacts.readArtifactSync("ILpAccount").abi
     );
     await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
+
+    erc20Allocation = await deployMockContract(
+      deployer,
+      artifacts.require("IErc20Allocation").abi
+    );
+    await erc20Allocation.mock["isErc20TokenRegistered(address)"].returns(true);
+
+    const tvlManager = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("IAssetAllocationRegistry").abi
+    );
+    await tvlManager.mock.getAssetAllocation
+      .withArgs("erc20Allocation")
+      .returns(erc20Allocation.address);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("tvlManager"))
+      .returns(tvlManager.address);
   });
 
   async function deployMetaPoolToken(addressRegistry) {
@@ -107,13 +149,12 @@ describe("Contract: MetaPoolToken", () => {
       "TestAlphaDeployment"
     );
     const alphaDeployment = await AlphaDeployment.deploy(
-      addressRegistry.address,
       proxyAdminFactory.address,
       proxyFactory.address,
+      FAKE_ADDRESS, // address registry v2 factory
       mAptFactory.address, // mAPT factory
       FAKE_ADDRESS, // pool token v1 factory
       FAKE_ADDRESS, // pool token v2 factory
-      FAKE_ADDRESS, // erc20 allocation factory
       FAKE_ADDRESS, // tvl manager factory
       FAKE_ADDRESS, // oracle adapter factory
       FAKE_ADDRESS // lp account factory
@@ -121,6 +162,7 @@ describe("Contract: MetaPoolToken", () => {
 
     // need some test setup to pass the pre-step checks
     await addressRegistry.mock.owner.returns(alphaDeployment.address);
+    await alphaDeployment.testSetStep(1);
 
     await alphaDeployment.deploy_1_MetaPoolToken();
 
@@ -134,7 +176,7 @@ describe("Contract: MetaPoolToken", () => {
     let MetaPoolTokenProxy;
     let logic;
 
-    before(async () => {
+    beforeEach(async () => {
       MetaPoolTokenProxy = await ethers.getContractFactory(
         "MetaPoolTokenProxy"
       );
@@ -221,7 +263,6 @@ describe("Contract: MetaPoolToken", () => {
         "0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103"
       );
       proxyAdminAddress = ethers.utils.getAddress(proxyAdminAddress.slice(-40));
-      console.log(proxyAdminAddress);
       expect(await mApt.proxyAdmin()).to.equal(proxyAdminAddress);
     });
 
@@ -406,7 +447,7 @@ describe("Contract: MetaPoolToken", () => {
     let pool;
     let underlyer;
 
-    before("Setup mocks", async () => {
+    beforeEach("Setup mocks", async () => {
       pool = await deployMockContract(deployer, PoolTokenV2.abi);
       await pool.mock.transferToLpAccount.returns();
       await pool.mock.getUnderlyerPrice.returns(
@@ -594,7 +635,7 @@ describe("Contract: MetaPoolToken", () => {
       let pools;
       const underlyerPrice = tokenAmountToBigNumber("1.015", 8);
 
-      before("Mock pools and underlyers", async () => {
+      beforeEach("Mock pools and underlyers", async () => {
         const daiPool = await deployMockContract(deployer, PoolTokenV2.abi);
         await daiPool.mock.getUnderlyerPrice.returns(underlyerPrice);
         const daiToken = await deployMockContract(deployer, IDetailedERC20.abi);
@@ -622,7 +663,7 @@ describe("Contract: MetaPoolToken", () => {
         pools = [daiPool.address, usdcPool.address, usdtPool.address];
       });
 
-      before("Set TVL", async () => {
+      beforeEach("Set TVL", async () => {
         const tvl = tokenAmountToBigNumber("502300", 8);
         await oracleAdapter.mock.getTvl.returns(tvl);
       });
@@ -697,10 +738,7 @@ describe("Contract: MetaPoolToken", () => {
     let usdcPool;
     let usdcToken;
 
-    let tvlManagerMock;
-    let erc20AllocationMock;
-
-    before("Setup mocks", async () => {
+    beforeEach("Setup mocks", async () => {
       daiPool = await deployMockContract(deployer, PoolTokenV2.abi);
       daiToken = await deployMockContract(deployer, IDetailedERC20.abi);
       await daiPool.mock.underlyer.returns(daiToken.address);
@@ -712,36 +750,17 @@ describe("Contract: MetaPoolToken", () => {
       await usdcPool.mock.underlyer.returns(usdcToken.address);
       await usdcToken.mock.decimals.returns(6);
       await usdcToken.mock.symbol.returns("USDC");
-
-      erc20AllocationMock = await deployMockContract(
-        deployer,
-        artifacts.require("IErc20Allocation").abi
-      );
-      await erc20AllocationMock.mock["isErc20TokenRegistered(address)"].returns(
-        true
-      );
-
-      tvlManagerMock = await deployMockContract(
-        deployer,
-        artifacts.readArtifactSync("IAssetAllocationRegistry").abi
-      );
-      await tvlManagerMock.mock.getAssetAllocation
-        .withArgs("erc20Allocation")
-        .returns(erc20AllocationMock.address);
-      await addressRegistry.mock.getAddress
-        .withArgs(bytes32("tvlManager"))
-        .returns(tvlManagerMock.address);
     });
 
     it("Unregistered underlyers get registered", async () => {
       // set DAI as unregistered in ERC20 registry
-      await erc20AllocationMock.mock["isErc20TokenRegistered(address)"]
+      await erc20Allocation.mock["isErc20TokenRegistered(address)"]
         .withArgs(daiToken.address)
         .returns(false);
 
       // revert on registration for DAI but not others
-      await erc20AllocationMock.mock["registerErc20Token(address)"].returns();
-      await erc20AllocationMock.mock["registerErc20Token(address)"]
+      await erc20Allocation.mock["registerErc20Token(address)"].returns();
+      await erc20Allocation.mock["registerErc20Token(address)"]
         .withArgs(daiToken.address)
         .revertsWithReason("REGISTERED_DAI");
 
@@ -753,19 +772,19 @@ describe("Contract: MetaPoolToken", () => {
 
     it("Registered underlyers are skipped", async () => {
       // set DAI as registered while USDC is not
-      await erc20AllocationMock.mock["isErc20TokenRegistered(address)"]
+      await erc20Allocation.mock["isErc20TokenRegistered(address)"]
         .withArgs(daiToken.address)
         .returns(true);
-      await erc20AllocationMock.mock["isErc20TokenRegistered(address)"]
+      await erc20Allocation.mock["isErc20TokenRegistered(address)"]
         .withArgs(usdcToken.address)
         .returns(false);
 
       // revert on registration for DAI or USDC
-      await erc20AllocationMock.mock["registerErc20Token(address)"].returns();
-      await erc20AllocationMock.mock["registerErc20Token(address)"]
+      await erc20Allocation.mock["registerErc20Token(address)"].returns();
+      await erc20Allocation.mock["registerErc20Token(address)"]
         .withArgs(usdcToken.address)
         .revertsWithReason("REGISTERED_USDC");
-      await erc20AllocationMock.mock["registerErc20Token(address)"]
+      await erc20Allocation.mock["registerErc20Token(address)"]
         .withArgs(daiToken.address)
         .revertsWithReason("REGISTERED_DAI");
 
@@ -782,7 +801,8 @@ describe("Contract: MetaPoolToken", () => {
 
   describe("fundLpAccount", () => {
     it("LP Safe can call", async () => {
-      await expect(mApt.connect(lpSafe).fundLpAccount([])).to.not.be.reverted;
+      // await expect(mApt.connect(lpSafe).fundLpAccount([])).to.not.be.reverted;
+      await mApt.connect(lpSafe).fundLpAccount([]);
     });
 
     it("Unpermissioned cannot call", async () => {

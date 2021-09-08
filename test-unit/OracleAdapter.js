@@ -8,12 +8,16 @@ const {
   FAKE_ADDRESS,
   ANOTHER_FAKE_ADDRESS,
   bytes32,
+  impersonateAccount,
+  forciblySendEth,
 } = require("../utils/helpers");
 const AggregatorV3Interface = artifacts.require("AggregatorV3Interface");
-const AddressRegistryV2 = artifacts.require("AddressRegistryV2");
 const IERC20 = artifacts.require(
   "@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20"
 );
+
+const MAINNET_ADDRESS_REGISTRY_DEPLOYER =
+  "0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3";
 
 describe("Contract: OracleAdapter", () => {
   // signers
@@ -28,7 +32,7 @@ describe("Contract: OracleAdapter", () => {
   let oracleAdapter;
 
   // mocks and constants
-  let addressRegistryMock;
+  let addressRegistry;
   let tvlAggMock;
   let assetAggMock_1;
   let assetAggMock_2;
@@ -59,30 +63,49 @@ describe("Contract: OracleAdapter", () => {
       randomUser,
     ] = await ethers.getSigners();
 
-    addressRegistryMock = await deployMockContract(
-      deployer,
-      AddressRegistryV2.abi
+    const owner = await impersonateAccount(MAINNET_ADDRESS_REGISTRY_DEPLOYER);
+    await forciblySendEth(
+      owner.address,
+      tokenAmountToBigNumber(10),
+      deployer.address
     );
+    // Set the nonce to 3 before deploying the mock contract with the
+    // Mainnet registry deployer; this will ensure the mock address
+    // matches Mainnet.
+    await hre.network.provider.send("hardhat_setNonce", [
+      MAINNET_ADDRESS_REGISTRY_DEPLOYER,
+      "0x3",
+    ]);
+    addressRegistry = await deployMockContract(
+      owner,
+      artifacts.readArtifactSync("AddressRegistryV2").abi
+    );
+    await addressRegistry.mock.emergencySafeAddress.returns(
+      emergencySafe.address
+    );
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("emergencySafe"))
+      .returns(emergencySafe.address);
+    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("adminSafe"))
+      .returns(FAKE_ADDRESS);
+    await addressRegistry.mock.lpSafeAddress.returns(FAKE_ADDRESS);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("lpSafe"))
+      .returns(FAKE_ADDRESS);
 
-    await addressRegistryMock.mock.mAptAddress.returns(mApt.address);
-    await addressRegistryMock.mock.getAddress
+    await addressRegistry.mock.mAptAddress.returns(mApt.address);
+    await addressRegistry.mock.getAddress
       .withArgs(bytes32("mApt"))
       .returns(mApt.address);
 
-    // These registered addresses are setup for roles in the
-    // constructor for OracleAdapter
-    await addressRegistryMock.mock.emergencySafeAddress.returns(
-      emergencySafe.address
-    );
-    await addressRegistryMock.mock.adminSafeAddress.returns(adminSafe.address);
-    await addressRegistryMock.mock.tvlManagerAddress.returns(
-      tvlManager.address
-    );
-    await addressRegistryMock.mock.getAddress
+    await addressRegistry.mock.tvlManagerAddress.returns(tvlManager.address);
+    await addressRegistry.mock.getAddress
       .withArgs(bytes32("tvlManager"))
       .returns(tvlManager.address);
-    await addressRegistryMock.mock.lpSafeAddress.returns(FAKE_ADDRESS);
-    await addressRegistryMock.mock.registerAddress.returns();
+
+    await addressRegistry.mock.registerAddress.returns();
 
     tvlAggMock = await deployMockContract(deployer, AggregatorV3Interface.abi);
     assetAggMock_1 = await deployMockContract(
@@ -101,7 +124,7 @@ describe("Contract: OracleAdapter", () => {
     );
     const oracleAdapterFactory = await OracleAdapterFactory.deploy();
     await oracleAdapterFactory.preCreate(
-      addressRegistryMock.address,
+      addressRegistry.address,
       tvlAggMock.address,
       assets,
       sources,
@@ -109,7 +132,7 @@ describe("Contract: OracleAdapter", () => {
       defaultLockPeriod
     );
     oracleAdapter = await deployOracleAdapter(
-      addressRegistryMock,
+      addressRegistry,
       oracleAdapterFactory
     );
   });
@@ -127,13 +150,12 @@ describe("Contract: OracleAdapter", () => {
       "TestAlphaDeployment"
     );
     const alphaDeployment = await AlphaDeployment.deploy(
-      addressRegistry.address,
       proxyAdminFactory.address,
       proxyFactory.address,
+      FAKE_ADDRESS, // address registry v2 factory
       FAKE_ADDRESS, // mAPT factory
       FAKE_ADDRESS, // pool token v1 factory
       FAKE_ADDRESS, // pool token v2 factory
-      FAKE_ADDRESS, // erc20 allocation factory
       FAKE_ADDRESS, // tvl manager factory
       oracleAdapterFactory.address, // oracle adapter factory
       FAKE_ADDRESS // lp account factory
@@ -187,7 +209,7 @@ describe("Contract: OracleAdapter", () => {
       const defaultLockPeriod = 100;
       await expect(
         OracleAdapter.deploy(
-          addressRegistryMock.address,
+          addressRegistry.address,
           FAKE_ADDRESS,
           assets,
           sources,
@@ -208,7 +230,7 @@ describe("Contract: OracleAdapter", () => {
       const defaultLockPeriod = 100;
       await expect(
         OracleAdapter.deploy(
-          addressRegistryMock.address,
+          addressRegistry.address,
           tvlAggMock.address,
           assets,
           sources,
@@ -225,7 +247,7 @@ describe("Contract: OracleAdapter", () => {
       const defaultLockPeriod = 100;
       await expect(
         OracleAdapter.deploy(
-          addressRegistryMock.address,
+          addressRegistry.address,
           tvlAggMock.address,
           assets,
           sources,
@@ -270,7 +292,7 @@ describe("Contract: OracleAdapter", () => {
 
     it("Address registry is set", async () => {
       expect(await oracleAdapter.addressRegistry()).to.equal(
-        addressRegistryMock.address
+        addressRegistry.address
       );
     });
 
@@ -621,7 +643,7 @@ describe("Contract: OracleAdapter", () => {
 
     beforeEach(async () => {
       mAptMock = await deployMockContract(deployer, IERC20.abi);
-      await addressRegistryMock.mock.mAptAddress.returns(mAptMock.address);
+      await addressRegistry.mock.mAptAddress.returns(mAptMock.address);
     });
 
     it("Revert when TVL is negative", async () => {

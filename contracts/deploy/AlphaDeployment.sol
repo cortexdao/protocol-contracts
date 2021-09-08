@@ -263,8 +263,9 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
         checkRegisteredDependencies(registeredIds, deployedAddresses);
 
-        address[] memory ownedContracts = new address[](1);
+        address[] memory ownedContracts = new address[](2);
         ownedContracts[0] = address(addressRegistry);
+        ownedContracts[1] = POOL_PROXY_ADMIN;
         checkOwnerships(ownedContracts);
 
         address fakeAggAddress = 0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe;
