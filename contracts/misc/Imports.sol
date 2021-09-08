@@ -6,6 +6,5 @@ pragma solidity 0.6.11;
 import {
     MockContract
 } from "@gnosis.pm/mock-contract/contracts/MockContract.sol";
-import {ProxyAdmin} from "@openzeppelin/contracts/proxy/ProxyAdmin.sol";
 
 import {EthSender} from "./EthSender.sol";
