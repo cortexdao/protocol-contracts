@@ -66,7 +66,7 @@ contract TestCurvePool is CurveBasePoolGauge {
         view
         returns (uint256)
     {
-        return super._calcMinAmount(totalAmount, virtualPrice);
+        return _calcMinAmount(totalAmount, virtualPrice);
     }
 
     function assetAllocations()

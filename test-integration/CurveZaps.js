@@ -1,4 +1,5 @@
 const hre = require("hardhat");
+const { expect } = require("chai");
 const { ethers, waffle, artifacts } = hre;
 const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
@@ -15,7 +16,7 @@ const { WHALE_POOLS } = require("../utils/constants");
 console.debugging = false;
 /* ************************ */
 
-describe("Zaps", () => {
+describe.only("Zaps", () => {
   /* signers */
   let deployer;
   let emergencySafe;
@@ -251,7 +252,7 @@ describe("Zaps", () => {
       whaleAddress,
     } = curveConstant;
 
-    describe.only(`Curve ${contractName} zap`, () => {
+    describe(`Curve ${contractName} zap`, () => {
       let zap;
       let swap;
       let lpToken;
@@ -311,15 +312,25 @@ describe("Zaps", () => {
 
         await zap.deployLiquidity(amounts);
 
-        const zapLpBalance = await lpToken.balanceOf(zap.address);
-        console.log("zap LP token balance:", zapLpBalance.toString());
-        const gaugeLpBalance = await gauge.balanceOf(zap.address);
-        console.log("gauge LP token balance:", gaugeLpBalance.toString());
+        const deployedZapUnderlyerBalance = await underlyerToken.balanceOf(
+          zap.address
+        );
+        expect(deployedZapUnderlyerBalance).gt(0);
+        const deployedZapLpBalance = await lpToken.balanceOf(zap.address);
+        expect(deployedZapLpBalance).to.equal(0);
+        const deployedGaugeLpBalance = await gauge.balanceOf(zap.address);
+        expect(deployedGaugeLpBalance).gt(0);
 
-        await zap.unwindLiquidity(gaugeLpBalance);
-        // TODO: check all balances
-        const zapUnderlyerBalance = await underlyerToken.balanceOf(zap.address);
-        console.log("zap underlyer balance:", zapUnderlyerBalance.toString());
+        await zap.unwindLiquidity(deployedGaugeLpBalance);
+
+        const withdrawnZapUnderlyerBalance = await underlyerToken.balanceOf(
+          zap.address
+        );
+        expect(withdrawnZapUnderlyerBalance).gt(deployedZapUnderlyerBalance);
+        const withdrawnZapLpBalance = await lpToken.balanceOf(zap.address);
+        expect(withdrawnZapLpBalance).to.equal(0);
+        const withdrawnGaugeLpBalance = await gauge.balanceOf(zap.address);
+        expect(withdrawnGaugeLpBalance).to.equal(0);
       });
     });
   });
