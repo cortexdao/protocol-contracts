@@ -241,8 +241,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         checkOwnerships(ownedContracts);
 
         address newOwner = msg.sender; // will own the proxy admin
-        address proxyAdmin =
-            ProxyAdminFactory(proxyAdminFactory).create();
+        address proxyAdmin = ProxyAdminFactory(proxyAdminFactory).create();
         bytes memory initData =
             abi.encodeWithSignature(
                 "initialize(address,address)",
@@ -273,15 +272,11 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         ownedContracts[0] = address(addressRegistry);
         checkOwnerships(ownedContracts);
 
-        address newOwner = msg.sender; // will own the proxy admin
-        address proxyAdmin =
-            ProxyAdminFactory(proxyAdminFactory).create();
-
         address fakeAggAddress = 0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe;
         bytes memory daiInitData =
             abi.encodeWithSignature(
                 "initialize(address,address,address)",
-                proxyAdmin,
+                POOL_PROXY_ADMIN,
                 DAI_ADDRESS,
                 fakeAggAddress
             );
@@ -296,11 +291,11 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         address daiProxy =
             PoolTokenV1Factory(poolTokenV1Factory).create(
                 proxyFactory,
-                proxyAdmin,
+                POOL_PROXY_ADMIN,
                 daiInitData,
-                newOwner
+                msg.sender
             );
-        ProxyAdmin(proxyAdmin).upgradeAndCall(
+        ProxyAdmin(POOL_PROXY_ADMIN).upgradeAndCall(
             PoolTokenProxy(payable(daiProxy)),
             logicV2,
             initDataV2
@@ -311,18 +306,18 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         bytes memory usdcInitData =
             abi.encodeWithSignature(
                 "initialize(address,address,address)",
-                proxyAdmin,
+                POOL_PROXY_ADMIN,
                 USDC_ADDRESS,
                 fakeAggAddress
             );
         address usdcProxy =
             PoolTokenV1Factory(poolTokenV1Factory).create(
                 proxyFactory,
-                proxyAdmin,
+                POOL_PROXY_ADMIN,
                 usdcInitData,
-                newOwner
+                msg.sender
             );
-        ProxyAdmin(proxyAdmin).upgradeAndCall(
+        ProxyAdmin(POOL_PROXY_ADMIN).upgradeAndCall(
             PoolTokenProxy(payable(usdcProxy)),
             logicV2,
             initDataV2
@@ -333,26 +328,24 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         bytes memory usdtInitData =
             abi.encodeWithSignature(
                 "initialize(address,address,address)",
-                proxyAdmin,
+                POOL_PROXY_ADMIN,
                 USDT_ADDRESS,
                 fakeAggAddress
             );
         address usdtProxy =
             PoolTokenV1Factory(poolTokenV1Factory).create(
                 proxyFactory,
-                proxyAdmin,
+                POOL_PROXY_ADMIN,
                 usdtInitData,
-                newOwner
+                msg.sender
             );
-        ProxyAdmin(proxyAdmin).upgradeAndCall(
+        ProxyAdmin(POOL_PROXY_ADMIN).upgradeAndCall(
             PoolTokenProxy(payable(usdtProxy)),
             logicV2,
             initDataV2
         );
         addressRegistry.registerAddress("usdtDemoPool", usdtProxy);
         usdtDemoPool = usdtProxy;
-
-        ProxyAdmin(proxyAdmin).transferOwnership(newOwner);
     }
 
     /// @dev Deploy ERC20 allocation and TVL Manager.
@@ -442,8 +435,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         checkOwnerships(ownedContracts);
 
         address newOwner = msg.sender; // will own the proxy admin
-        address proxyAdmin =
-            ProxyAdminFactory(proxyAdminFactory).create();
+        address proxyAdmin = ProxyAdminFactory(proxyAdminFactory).create();
 
         bytes memory initData =
             abi.encodeWithSignature(

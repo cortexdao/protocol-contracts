@@ -73,9 +73,15 @@ contract ProxyFactory {
 }
 
 contract PoolTokenV1Factory is UpgradeableContractFactory {
+    address private _logic;
+
     function _deployLogic() internal virtual override returns (address) {
+        if (_logic != address(0)) {
+            return _logic;
+        }
         PoolToken logic = new PoolToken();
-        return address(logic);
+        _logic = address(logic);
+        return _logic;
     }
 }
 
