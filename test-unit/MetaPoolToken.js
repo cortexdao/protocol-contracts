@@ -65,14 +65,8 @@ describe("Contract: MetaPoolToken", () => {
     await timeMachine.revertToSnapshot(suiteSnapshotId);
   });
 
-  before(async () => {
-    [
-      deployer,
-      emergencySafe,
-      lpSafe,
-      randomUser,
-      anotherUser,
-    ] = await ethers.getSigners();
+  before("Setup mock Address Registry with Mainnet address", async () => {
+    [deployer] = await ethers.getSigners();
 
     const MAINNET_ADDRESS_REGISTRY_DEPLOYER =
       "0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3";
@@ -93,6 +87,10 @@ describe("Contract: MetaPoolToken", () => {
       owner,
       artifacts.readArtifactSync("AddressRegistryV2").abi
     );
+  });
+
+  before("Register Safes", async () => {
+    [, emergencySafe, lpSafe] = await ethers.getSigners();
 
     await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
@@ -100,17 +98,26 @@ describe("Contract: MetaPoolToken", () => {
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("emergencySafe"))
       .returns(emergencySafe.address);
+
+    // Admin Safe is not used by mAPT;
+    // must still register for AlphaDeployment.
     await addressRegistry.mock.adminSafeAddress.returns(FAKE_ADDRESS);
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("adminSafe"))
       .returns(FAKE_ADDRESS);
+
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("lpSafe"))
       .returns(lpSafe.address);
-    await addressRegistry.mock.registerAddress.returns();
+  });
 
+  before("Deploy mAPT", async () => {
     mApt = await deployMetaPoolToken(addressRegistry);
+  });
+
+  before("Mock dependencies", async () => {
+    [, , , randomUser, anotherUser] = await ethers.getSigners();
 
     oracleAdapter = await deployMockContract(deployer, OracleAdapter.abi);
     await addressRegistry.mock.oracleAdapterAddress.returns(
@@ -176,6 +183,8 @@ describe("Contract: MetaPoolToken", () => {
     // need some test setup to pass the pre-step checks
     await addressRegistry.mock.owner.returns(alphaDeployment.address);
     await alphaDeployment.testSetStep(1);
+
+    await addressRegistry.mock.registerAddress.returns();
 
     await alphaDeployment.deploy_1_MetaPoolToken();
 

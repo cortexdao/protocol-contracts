@@ -66,15 +66,8 @@ describe("Contract: OracleAdapter", () => {
     await timeMachine.revertToSnapshot(suiteSnapshotId);
   });
 
-  before(async () => {
-    [
-      deployer,
-      emergencySafe,
-      adminSafe,
-      mApt,
-      tvlManager,
-      randomUser,
-    ] = await ethers.getSigners();
+  before("Setup mock Address Registry with Mainnet address", async () => {
+    [deployer] = await ethers.getSigners();
 
     const owner = await impersonateAccount(MAINNET_ADDRESS_REGISTRY_DEPLOYER);
     await forciblySendEth(
@@ -93,20 +86,33 @@ describe("Contract: OracleAdapter", () => {
       owner,
       artifacts.readArtifactSync("AddressRegistryV2").abi
     );
+  });
+
+  before("Register Safes", async () => {
+    [, emergencySafe, adminSafe] = await ethers.getSigners();
+
     await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("emergencySafe"))
       .returns(emergencySafe.address);
+
     await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("adminSafe"))
-      .returns(FAKE_ADDRESS);
+      .returns(adminSafe.address);
+
+    // LP Safe is not used by the Oracle Adapter;
+    // must still register for AlphaDeployment.
     await addressRegistry.mock.lpSafeAddress.returns(FAKE_ADDRESS);
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("lpSafe"))
       .returns(FAKE_ADDRESS);
+  });
+
+  before("Deploy Oracle Adapter", async () => {
+    [, , , mApt, tvlManager, randomUser] = await ethers.getSigners();
 
     await addressRegistry.mock.mAptAddress.returns(mApt.address);
     await addressRegistry.mock.getAddress
@@ -117,8 +123,6 @@ describe("Contract: OracleAdapter", () => {
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("tvlManager"))
       .returns(tvlManager.address);
-
-    await addressRegistry.mock.registerAddress.returns();
 
     tvlAggMock = await deployMockContract(deployer, AggregatorV3Interface.abi);
     assetAggMock_1 = await deployMockContract(
@@ -179,6 +183,8 @@ describe("Contract: OracleAdapter", () => {
     await alphaDeployment.testSetMapt(mApt.address);
     await alphaDeployment.testSetTvlManager(tvlManager.address);
     await addressRegistry.mock.owner.returns(alphaDeployment.address);
+
+    await addressRegistry.mock.registerAddress.returns();
 
     await alphaDeployment.deploy_4_OracleAdapter();
 
