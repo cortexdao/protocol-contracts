@@ -10,7 +10,7 @@ const {
   getStablecoinAddress,
   acquireToken,
 } = require("../utils/helpers");
-const { STABLECOIN_POOLS } = require("../utils/constants");
+const { WHALE_POOLS } = require("../utils/constants");
 
 const IAddressRegistryV2 = artifacts.readArtifactSync("IAddressRegistryV2");
 const IDetailedERC20 = artifacts.readArtifactSync("IDetailedERC20");
@@ -379,7 +379,7 @@ describe("Contract: LpAccount", () => {
 
       // fund LP Account with DAI
       await acquireToken(
-        STABLECOIN_POOLS["DAI"],
+        WHALE_POOLS["DAI"],
         lpAccount.address,
         underlyer,
         "10000",
