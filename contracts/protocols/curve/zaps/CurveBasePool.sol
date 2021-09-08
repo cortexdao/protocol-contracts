@@ -56,25 +56,29 @@ abstract contract CurveBasePool is IZap {
         virtual
         returns (uint256);
 
+    function _calcMinAmount(uint256 totalAmount, uint256 virtualPrice)
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 v = totalAmount.mul(1e18).div(virtualPrice);
+        return v.mul(DENOMINATOR.sub(SLIPPAGE)).div(DENOMINATOR);
+    }
+
     /// @param amounts array of underlyer amounts
     function deployLiquidity(uint256[] calldata amounts) external override {
         uint256 totalAmount = 0;
-        uint256[] memory amounts_ = new uint256[](N_COINS);
-        for (uint256 i = 0; i < amounts_.length; i++) {
+        for (uint256 i = 0; i < amounts.length; i++) {
             totalAmount += amounts[i];
-            amounts_[i] = amounts[i];
-        }
 
-        uint256 v = totalAmount.mul(1e18).div(_getVirtualPrice());
-        uint256 minAmount = v.mul(DENOMINATOR.sub(SLIPPAGE)).div(DENOMINATOR);
-
-        for (uint256 i = 0; i < N_COINS; i++) {
-            if (amounts_[i] == 0) continue;
-
+            // if amounts is 0 skip approval
+            if (amounts[i] == 0) continue;
             address underlyerAddress = _getCoinAtIndex(i);
             IERC20(underlyerAddress).approve(SWAP_ADDRESS, 0);
-            IERC20(underlyerAddress).approve(SWAP_ADDRESS, amounts_[i]);
+            IERC20(underlyerAddress).approve(SWAP_ADDRESS, amounts[i]);
         }
+
+        uint256 minAmount = _calcMinAmount(totalAmount, _getVirtualPrice());
         _addLiquidity(amounts, minAmount);
         _depositToGauge();
     }

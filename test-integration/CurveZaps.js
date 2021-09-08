@@ -147,7 +147,6 @@ describe("Zaps", () => {
       swapAddress: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD",
       swapInterface: "IOldStableSwap4",
       lpTokenAddress: "0xC25a3A3b969415c80451098fa907EC722572917F",
-
       gaugeAddress: "0xA90996896660DEcC6E997655E065b23788857849",
       gaugeInterface: "ILiquidityGauge",
       numberOfCoins: 4,
@@ -244,6 +243,7 @@ describe("Zaps", () => {
     const {
       contractName,
       swapAddress,
+      swapInterface,
       lpTokenAddress,
       gaugeAddress,
       gaugeInterface,
@@ -268,7 +268,7 @@ describe("Zaps", () => {
       });
 
       before("Attach to Mainnet Curve contracts", async () => {
-        swap = await ethers.getContractAt("IStableSwap", swapAddress, lpSafe);
+        swap = await ethers.getContractAt(swapInterface, swapAddress, lpSafe);
         lpToken = await ethers.getContractAt(
           "IDetailedERC20",
           lpTokenAddress,
