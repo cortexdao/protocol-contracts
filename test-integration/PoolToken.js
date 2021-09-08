@@ -8,7 +8,7 @@ const {
   getStablecoinAddress,
 } = require("../utils/helpers");
 const timeMachine = require("ganache-time-traveler");
-const { STABLECOIN_POOLS } = require("../utils/constants");
+const { WHALE_POOLS } = require("../utils/constants");
 const {
   acquireToken,
   console,
@@ -228,7 +228,7 @@ describe("Contract: PoolToken", () => {
         poolToken = await PoolTokenV2.attach(proxy.address);
 
         await acquireToken(
-          STABLECOIN_POOLS[symbol],
+          WHALE_POOLS[symbol],
           randomUser.address,
           underlyer,
           "1000000",
@@ -505,7 +505,7 @@ describe("Contract: PoolToken", () => {
               await poolToken.testMint(deployer.address, aptAmount);
               const symbol = await underlyer.symbol();
               await acquireToken(
-                STABLECOIN_POOLS[symbol],
+                WHALE_POOLS[symbol],
                 poolToken.address,
                 underlyer,
                 "10000",
@@ -886,7 +886,7 @@ describe("Contract: PoolToken", () => {
               );
               // seed pool with stablecoin
               await acquireToken(
-                STABLECOIN_POOLS[symbol],
+                WHALE_POOLS[symbol],
                 poolToken.address,
                 underlyer,
                 "12000000", // 12 MM
@@ -925,7 +925,7 @@ describe("Contract: PoolToken", () => {
               );
               // seed pool with stablecoin
               await acquireToken(
-                STABLECOIN_POOLS[symbol],
+                WHALE_POOLS[symbol],
                 poolToken.address,
                 underlyer,
                 "12000000", // 12 MM

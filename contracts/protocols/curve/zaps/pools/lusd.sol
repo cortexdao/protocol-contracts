@@ -5,26 +5,24 @@ pragma experimental ABIEncoderV2;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAssetAllocation} from "contracts/common/Imports.sol";
 import {
-    IStableSwap,
-    ILiquidityGauge
+    IStableSwap2 as IStableSwap,
+    IStakingRewards
 } from "contracts/protocols/curve/Imports.sol";
 import {
-    Curve3PoolConstants
-} from "contracts/protocols/curve/allocations/pools/3pool.sol";
-import {
-    CurveBasePoolGauge
-} from "contracts/protocols/curve/zaps/CurveBasePoolGauge.sol";
+    CurveLusdConstants
+} from "contracts/protocols/curve/allocations/pools/lusd.sol";
+import {CurveBasePool} from "contracts/protocols/curve/zaps/CurveBasePool.sol";
 
-contract Curve3PoolZap is CurveBasePoolGauge, Curve3PoolConstants {
+contract LusdPoolZap is CurveBasePool, CurveLusdConstants {
     constructor()
         public
-        CurveBasePoolGauge(
-            STABLE_SWAP_ADDRESS,
+        CurveBasePool(
+            META_POOL_ADDRESS,
             LP_TOKEN_ADDRESS,
             LIQUIDITY_GAUGE_ADDRESS,
             10000,
             100,
-            3
+            2
         ) // solhint-disable-next-line no-empty-blocks
     {}
 
@@ -63,7 +61,7 @@ contract Curve3PoolZap is CurveBasePoolGauge, Curve3PoolConstants {
         override
     {
         IStableSwap(SWAP_ADDRESS).add_liquidity(
-            [amounts[0], amounts[1], amounts[2]],
+            [amounts[0], amounts[1]],
             minAmount
         );
     }
@@ -71,7 +69,25 @@ contract Curve3PoolZap is CurveBasePoolGauge, Curve3PoolConstants {
     function _removeLiquidity(uint256 lpBalance) internal override {
         IStableSwap(SWAP_ADDRESS).remove_liquidity(
             lpBalance,
-            [uint256(0), uint256(0), uint256(0)]
+            [uint256(0), uint256(0)]
         );
+    }
+
+    function _depositToGauge() internal override {
+        IStakingRewards rewards = IStakingRewards(GAUGE_ADDRESS);
+        uint256 lpBalance = IERC20(LP_ADDRESS).balanceOf(address(this));
+        IERC20(LP_ADDRESS).approve(GAUGE_ADDRESS, lpBalance);
+        rewards.stake(lpBalance);
+    }
+
+    function _withdrawFromGauge(uint256 amount)
+        internal
+        override
+        returns (uint256)
+    {
+        IStakingRewards rewards = IStakingRewards(GAUGE_ADDRESS);
+        rewards.withdraw(amount);
+        //lpBalance
+        return IERC20(LP_ADDRESS).balanceOf(address(this));
     }
 }

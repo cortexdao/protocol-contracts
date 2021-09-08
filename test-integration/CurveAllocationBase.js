@@ -8,7 +8,7 @@ const {
   getStablecoinAddress,
   MAX_UINT256,
 } = require("../utils/helpers");
-const { STABLECOIN_POOLS } = require("../utils/constants");
+const { WHALE_POOLS } = require("../utils/constants");
 
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
 const IStableSwap = artifacts.require("IStableSwap");
@@ -85,7 +85,7 @@ describe("Contract: CurveAllocationBase", () => {
         const token = stablecoins[symbol];
         const decimals = await token.decimals();
         const amount = tokenAmountToBigNumber("10000", decimals);
-        const sender = STABLECOIN_POOLS[symbol];
+        const sender = WHALE_POOLS[symbol];
         await acquireToken(sender, strategy, token, amount, deployer);
       }
     });

@@ -10,7 +10,7 @@ const {
   acquireToken,
   MAX_UINT256,
 } = require("../utils/helpers");
-const { STABLECOIN_POOLS } = require("../utils/constants");
+const { WHALE_POOLS } = require("../utils/constants");
 
 /* ************************ */
 /* set DEBUG log level here */
@@ -23,7 +23,7 @@ const CurvePoolAllocations = [
     contractName: "Curve3PoolAllocation",
     poolName: "3Pool",
     // Curve sUSDv2 pool, holds DAI
-    whaleAddress: STABLECOIN_POOLS["DAI"],
+    whaleAddress: WHALE_POOLS["DAI"],
     numberOfCoins: 3,
     interfaceOverride: {
       IStableSwap: "IStableSwap3",
@@ -281,7 +281,7 @@ describe("Contract: TvlManager", () => {
         100000,
         await underlyerToken.decimals()
       );
-      const sender = STABLECOIN_POOLS["DAI"];
+      const sender = WHALE_POOLS["DAI"];
       await acquireToken(sender, lpAccount, underlyerToken, amount, deployer);
     });
 
@@ -614,7 +614,7 @@ describe("Contract: TvlManager", () => {
             100000,
             await daiToken.decimals()
           );
-          let sender = STABLECOIN_POOLS["DAI"];
+          let sender = WHALE_POOLS["DAI"];
           await acquireToken(sender, lpAccount, daiToken, amount, deployer);
 
           const PRIMARY_UNDERLYER_ADDRESS = await allocation.PRIMARY_UNDERLYER_ADDRESS();

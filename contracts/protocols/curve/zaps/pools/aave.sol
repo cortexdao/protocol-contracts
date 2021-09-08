@@ -9,13 +9,13 @@ import {
     ILiquidityGauge
 } from "contracts/protocols/curve/Imports.sol";
 import {
-    Curve3PoolConstants
-} from "contracts/protocols/curve/allocations/pools/3pool.sol";
+    CurveAaveConstants
+} from "contracts/protocols/curve/allocations/pools/aave.sol";
 import {
     CurveBasePoolGauge
 } from "contracts/protocols/curve/zaps/CurveBasePoolGauge.sol";
 
-contract Curve3PoolZap is CurveBasePoolGauge, Curve3PoolConstants {
+contract AavePoolZap is CurveBasePoolGauge, CurveAaveConstants {
     constructor()
         public
         CurveBasePoolGauge(

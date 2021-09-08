@@ -1,9 +1,20 @@
-const STABLECOIN_POOLS = {
+const WHALE_POOLS = {
   // sUSD curve pool has plenty of these stablecoins
   // https://etherscan.io/address/0xa5407eae9ba41422680e2e00537571bcc53efbfd
   DAI: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD",
+  ADAI: "0x6231bd0147ca6d052b833183037b04cfb2090e5c",
   USDC: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD",
   USDT: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD",
+  ALUSD: "0x43b4fdfd4ff969587185cdb6f0bd875c5fc83f8c",
+  BUSD: "0x4807862aa8b2bf68830e4c8dc86d0e9a998e085a",
+  CDAI: "0x6341c289b2e0795a04223df04b53a77970958723",
+  FRAX: "0xc69ddcd4dfef25d8a793241834d4cc4b3668ead6",
+  CYDAI: "0x2dded6da1bf5dbdf597c45fcfaa3194e53ecfeaf",
+  LUSD: "0x66017d22b0f8556afdd19fc67041899eb65a21bb",
+  MUSD: "0x30647a72dc82d7fbb1123ea74716ab8a317eac19",
+  USDN: "0x0f9cb53ebe405d49a0bbdbd291a65ff571bc83e1",
+  USDP: "0x42d7025938bec20b69cbae5a77421082407f053a",
+  UST: "0xf92cd566ea4864356c5491c177a430c222d7e678",
 };
 
 const CHAIN_IDS = {
@@ -182,7 +193,7 @@ for (const contractName of CONTRACT_NAMES) {
 }
 
 module.exports = {
-  STABLECOIN_POOLS,
+  WHALE_POOLS,
   CHAIN_IDS,
   AGG_MAP,
   TOKEN_AGG_MAP,

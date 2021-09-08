@@ -5,26 +5,26 @@ pragma experimental ABIEncoderV2;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAssetAllocation} from "contracts/common/Imports.sol";
 import {
-    IStableSwap,
+    IStableSwap2 as IStableSwap,
     ILiquidityGauge
 } from "contracts/protocols/curve/Imports.sol";
 import {
-    Curve3PoolConstants
-} from "contracts/protocols/curve/allocations/pools/3pool.sol";
+    CurveMusdConstants
+} from "contracts/protocols/curve/allocations/pools/musd.sol";
 import {
     CurveBasePoolGauge
 } from "contracts/protocols/curve/zaps/CurveBasePoolGauge.sol";
 
-contract Curve3PoolZap is CurveBasePoolGauge, Curve3PoolConstants {
+contract MusdPoolZap is CurveBasePoolGauge, CurveMusdConstants {
     constructor()
         public
         CurveBasePoolGauge(
-            STABLE_SWAP_ADDRESS,
+            META_POOL_ADDRESS,
             LP_TOKEN_ADDRESS,
             LIQUIDITY_GAUGE_ADDRESS,
             10000,
             100,
-            3
+            2
         ) // solhint-disable-next-line no-empty-blocks
     {}
 
@@ -63,7 +63,7 @@ contract Curve3PoolZap is CurveBasePoolGauge, Curve3PoolConstants {
         override
     {
         IStableSwap(SWAP_ADDRESS).add_liquidity(
-            [amounts[0], amounts[1], amounts[2]],
+            [amounts[0], amounts[1]],
             minAmount
         );
     }
@@ -71,7 +71,7 @@ contract Curve3PoolZap is CurveBasePoolGauge, Curve3PoolConstants {
     function _removeLiquidity(uint256 lpBalance) internal override {
         IStableSwap(SWAP_ADDRESS).remove_liquidity(
             lpBalance,
-            [uint256(0), uint256(0), uint256(0)]
+            [uint256(0), uint256(0)]
         );
     }
 }

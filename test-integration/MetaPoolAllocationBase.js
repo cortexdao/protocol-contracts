@@ -8,7 +8,7 @@ const {
   getStablecoinAddress,
   MAX_UINT256,
 } = require("../utils/helpers");
-const { STABLECOIN_POOLS } = require("../utils/constants");
+const { WHALE_POOLS } = require("../utils/constants");
 
 const IDetailedERC20 = artifacts.readArtifactSync("IDetailedERC20");
 const IStableSwap = artifacts.readArtifactSync("IStableSwap");
@@ -106,7 +106,7 @@ describe("Contract: MetaPoolAllocationBase", () => {
         const token = coins[symbol];
         const decimals = await token.decimals();
         const amount = tokenAmountToBigNumber("10000", decimals);
-        const sender = STABLECOIN_POOLS[symbol];
+        const sender = WHALE_POOLS[symbol];
         await acquireToken(sender, lpSafe, token, amount, deployer);
       }
       coins["UST"] = await ethers.getContractAt("IDetailedERC20", UST_ADDRESS);

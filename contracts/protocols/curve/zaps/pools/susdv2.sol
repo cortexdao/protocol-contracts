@@ -5,17 +5,17 @@ pragma experimental ABIEncoderV2;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAssetAllocation} from "contracts/common/Imports.sol";
 import {
-    IStableSwap,
+    IOldStableSwap4 as IStableSwap,
     ILiquidityGauge
 } from "contracts/protocols/curve/Imports.sol";
 import {
-    Curve3PoolConstants
-} from "contracts/protocols/curve/allocations/pools/3pool.sol";
+    CurveSusdV2Constants
+} from "contracts/protocols/curve/allocations/pools/susdv2.sol";
 import {
     CurveBasePoolGauge
 } from "contracts/protocols/curve/zaps/CurveBasePoolGauge.sol";
 
-contract Curve3PoolZap is CurveBasePoolGauge, Curve3PoolConstants {
+contract SusdV2Zap is CurveBasePoolGauge, CurveSusdV2Constants {
     constructor()
         public
         CurveBasePoolGauge(
@@ -24,7 +24,7 @@ contract Curve3PoolZap is CurveBasePoolGauge, Curve3PoolConstants {
             LIQUIDITY_GAUGE_ADDRESS,
             10000,
             100,
-            3
+            4
         ) // solhint-disable-next-line no-empty-blocks
     {}
 
@@ -55,7 +55,7 @@ contract Curve3PoolZap is CurveBasePoolGauge, Curve3PoolConstants {
         override
         returns (address)
     {
-        return IStableSwap(SWAP_ADDRESS).coins(i);
+        return IStableSwap(SWAP_ADDRESS).coins(int128(i));
     }
 
     function _addLiquidity(uint256[] calldata amounts, uint256 minAmount)
@@ -63,7 +63,7 @@ contract Curve3PoolZap is CurveBasePoolGauge, Curve3PoolConstants {
         override
     {
         IStableSwap(SWAP_ADDRESS).add_liquidity(
-            [amounts[0], amounts[1], amounts[2]],
+            [amounts[0], amounts[1], amounts[2], amounts[3]],
             minAmount
         );
     }
@@ -71,7 +71,7 @@ contract Curve3PoolZap is CurveBasePoolGauge, Curve3PoolConstants {
     function _removeLiquidity(uint256 lpBalance) internal override {
         IStableSwap(SWAP_ADDRESS).remove_liquidity(
             lpBalance,
-            [uint256(0), uint256(0), uint256(0)]
+            [uint256(0), uint256(0), uint256(0), uint256(0)]
         );
     }
 }
