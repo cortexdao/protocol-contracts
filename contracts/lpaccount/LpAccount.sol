@@ -220,6 +220,10 @@ contract LpAccount is
         emit SwapRemoved(name);
     }
 
+    function claim(string calldata name) external nonReentrant onlyLpRole {
+        //
+    }
+
     function zapNames() external view override returns (string[] memory) {
         return _zaps.names();
     }

@@ -667,4 +667,15 @@ describe("Contract: LpAccount", () => {
         .to.not.be.reverted;
     });
   });
+
+  describe("Claiming", () => {
+    it.only("can claim", async () => {
+      const zap = await deployMockZap();
+      await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+      const name = await zap.NAME();
+
+      await lpAccount.connect(lpSafe).claim(name);
+    });
+  });
 });
