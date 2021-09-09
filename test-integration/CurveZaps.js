@@ -108,8 +108,8 @@ describe("Zaps", () => {
       swapAddress: "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
       swapInterface: "IStableSwap",
       lpTokenAddress: "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
-      gaugeAddress: "0xEb31DA939878d1d780fDBCc244531c0FB80A2cF3",
-      gaugeInterface: "IStakingRewards",
+      gaugeAddress: "0x9B8519A9a00100720CCdC8a120fBeD319cA47a14",
+      gaugeInterface: "ILiquidityGauge",
       numberOfCoins: 2,
       whaleAddress: WHALE_POOLS["LUSD"],
     },
@@ -333,7 +333,7 @@ describe("Zaps", () => {
         expect(withdrawnGaugeLpBalance).to.equal(0);
       });
 
-      it.only("Claim", async () => {
+      it("Claim", async () => {
         await zap.claim();
       });
     });

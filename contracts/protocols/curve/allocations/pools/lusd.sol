@@ -6,9 +6,14 @@ import {INameIdentifier, IERC20} from "contracts/common/Imports.sol";
 import {SafeMath} from "contracts/libraries/Imports.sol";
 import {ImmutableAssetAllocation} from "contracts/tvl/Imports.sol";
 
-import {IMetaPool, ILiquidityGauge} from "contracts/protocols/curve/Imports.sol";
+import {
+    IMetaPool,
+    ILiquidityGauge
+} from "contracts/protocols/curve/Imports.sol";
 
-import {MetaPoolAllocationBase} from "contracts/protocols/curve/allocations/Imports.sol";
+import {
+    MetaPoolAllocationBase
+} from "contracts/protocols/curve/allocations/Imports.sol";
 
 import {Curve3PoolUnderlyerConstants} from "./3pool.sol";
 
@@ -25,7 +30,7 @@ abstract contract CurveLusdConstants is
     address public constant LP_TOKEN_ADDRESS =
         0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA;
     address public constant LIQUIDITY_GAUGE_ADDRESS =
-        0xEb31DA939878d1d780fDBCc244531c0FB80A2cF3;
+        0x9B8519A9a00100720CCdC8a120fBeD319cA47a14;
 
     // metapool primary underlyer
     address public constant PRIMARY_UNDERLYER_ADDRESS =

@@ -133,12 +133,6 @@ const CurveMetaPoolAllocations = [
     primaryUnderlyerSymbol: "LUSD",
     // using the Curve pool itself as the "whale": see prior note
     whaleAddress: "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
-    interfaceOverride: {
-      ILiquidityGauge: {
-        name: "IStakingRewards",
-        functions: { "deposit(uint256)": "stake(uint256)" },
-      },
-    },
   },
 ];
 
