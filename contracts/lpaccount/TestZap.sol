@@ -28,7 +28,7 @@ contract TestZap is IZap, TestLpAccountStorage {
     }
 
     function claim() external override {
-        revert("NOT_IMPLEMENTED");
+        _claimsCounter += 1;
     }
 
     // solhint-disable-next-line func-name-mixedcase

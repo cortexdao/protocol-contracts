@@ -456,7 +456,7 @@ describe("Contract: LpAccount", () => {
         });
       });
 
-      describe.only("Claiming", () => {
+      describe("Claiming", () => {
         it("Revert on unregistered name", async () => {
           const zap = await deployMockZap();
           const name = await zap.NAME();
@@ -472,9 +472,8 @@ describe("Contract: LpAccount", () => {
 
           const name = await zap.NAME();
 
-          await expect(
-            lpAccount.connect(lpSafe).claim(name)
-          ).to.be.revertedWith("NOT_IMPLEMENTED");
+          await expect(lpAccount.connect(lpSafe).claim(name)).to.not.be
+            .reverted;
         });
 
         it("Unpermissioned cannot call", async () => {
@@ -494,9 +493,8 @@ describe("Contract: LpAccount", () => {
 
           const name = await zap.NAME();
 
-          await expect(
-            lpAccount.connect(lpSafe).claim(name)
-          ).to.be.revertedWith("NOT_IMPLEMENTED");
+          await lpAccount.connect(lpSafe).claim(name);
+          expect(await lpAccount._claimsCounter()).to.equal(1);
         });
 
         it("cannot deploy with unregistered ERC20", async () => {
