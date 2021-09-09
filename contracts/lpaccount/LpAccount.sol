@@ -25,9 +25,13 @@ import {
     Erc20AllocationConstants
 } from "contracts/tvl/Imports.sol";
 
-import {IZap} from "./IZap.sol";
-import {ILpAccount} from "./ILpAccount.sol";
-import {IZapRegistry} from "./IZapRegistry.sol";
+import {
+    IZap,
+    ISwap,
+    ILpAccount,
+    IZapRegistry,
+    ISwapRegistry
+} from "./Imports.sol";
 
 contract LpAccount is
     Initializable,
@@ -35,16 +39,19 @@ contract LpAccount is
     ReentrancyGuardUpgradeSafe,
     ILpAccount,
     IZapRegistry,
+    ISwapRegistry,
     Erc20AllocationConstants
 {
     using Address for address;
     using SafeERC20 for IDetailedERC20;
     using NamedAddressSet for NamedAddressSet.ZapSet;
+    using NamedAddressSet for NamedAddressSet.SwapSet;
 
     address public proxyAdmin;
     IAddressRegistryV2 public addressRegistry;
 
     NamedAddressSet.ZapSet private _zaps;
+    NamedAddressSet.SwapSet private _swaps;
 
     event AdminChanged(address);
     event AddressRegistryChanged(address);
@@ -176,8 +183,49 @@ contract LpAccount is
         underlyer.safeTransfer(pool, amount);
     }
 
-    function names() external view override returns (string[] memory) {
+    function swap(string calldata name, uint256 amount)
+        external
+        override
+        nonReentrant
+        onlyLpRole
+    {
+        ISwap swap_ = _swaps.get(name);
+        require(address(swap_) != address(0), "INVALID_NAME");
+
+        (bool isAssetAllocationRegistered, bool isErc20TokenRegistered) =
+            _checkRegistrations(
+                swap_.assetAllocations(),
+                swap_.erc20Allocations()
+            );
+
+        // TODO: If the asset allocation is deployed, but not registered, register it
+        // TODO: If an ERC20 allocation is missing, add it
+        require(isAssetAllocationRegistered, "MISSING_ASSET_ALLOCATIONS");
+        require(isErc20TokenRegistered, "MISSING_ERC20_ALLOCATIONS");
+
+        address(swap_).functionDelegateCall(
+            abi.encodeWithSelector(ISwap.swap.selector, amount)
+        );
+    }
+
+    function registerSwap(ISwap swap_) external override onlyAdminRole {
+        _swaps.add(swap_);
+
+        emit SwapRegistered(swap_);
+    }
+
+    function removeSwap(string calldata name) external override onlyAdminRole {
+        _swaps.remove(name);
+
+        emit SwapRemoved(name);
+    }
+
+    function zapNames() external view override returns (string[] memory) {
         return _zaps.names();
+    }
+
+    function swapNames() external view override returns (string[] memory) {
+        return _swaps.names();
     }
 
     function _setAdminAddress(address adminAddress) internal {

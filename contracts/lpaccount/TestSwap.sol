@@ -7,34 +7,21 @@ import {
     IERC20,
     INameIdentifier
 } from "contracts/common/Imports.sol";
-import {IZap} from "./IZap.sol";
+import {ISwap} from "./ISwap.sol";
 import {TestLpAccountStorage} from "./TestLpAccountStorage.sol";
 
-contract TestZap is IZap, TestLpAccountStorage {
-    string[] internal _sortedSymbols;
-
+contract TestSwap is ISwap, TestLpAccountStorage {
     constructor(string memory name) public {
         _name = name;
     }
 
-    // array of underlyer amounts
-    function deployLiquidity(uint256[] calldata amounts) external override {
-        _deploysArray.push(amounts);
-    }
-
-    // LP token amount
-    function unwindLiquidity(uint256 amount) external override {
-        _unwindsArray.push(amount);
+    function swap(uint256 amount) external override {
+        _swapsArray.push(amount);
     }
 
     // solhint-disable-next-line func-name-mixedcase
     function NAME() external view override returns (string memory) {
         return _name;
-    }
-
-    // Order of token amounts
-    function sortedSymbols() external view override returns (string[] memory) {
-        return _sortedSymbols;
     }
 
     // Asset allocation contracts required for the strategy
@@ -60,7 +47,6 @@ contract TestZap is IZap, TestLpAccountStorage {
     /**
      * Testing functions
      */
-
     function _setAssetAllocations(IAssetAllocation[] memory allocations)
         public
     {

@@ -17,6 +17,14 @@ const WHALE_POOLS = {
   UST: "0xf92cd566ea4864356c5491c177a430c222d7e678",
 };
 
+const FARM_TOKENS = {
+  CRV: "0xD533a949740bb3306d119CC777fa900bA034cd52",
+};
+
+const FARM_TOKEN_POOLS = {
+  CRV: "0xd2D43555134dC575BF7279F4bA18809645dB0F1D",
+};
+
 const CHAIN_IDS = {
   MAINNET: "1",
   RINKEBY: "4",
@@ -194,6 +202,8 @@ for (const contractName of CONTRACT_NAMES) {
 
 module.exports = {
   WHALE_POOLS,
+  FARM_TOKENS,
+  FARM_TOKEN_POOLS,
   CHAIN_IDS,
   AGG_MAP,
   TOKEN_AGG_MAP,

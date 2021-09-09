@@ -5,7 +5,7 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import {IAssetAllocation, INameIdentifier} from "contracts/common/Imports.sol";
-import {IZap} from "contracts/lpaccount/Imports.sol";
+import {IZap, ISwap} from "contracts/lpaccount/Imports.sol";
 
 library NamedAddressSet {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -20,6 +20,10 @@ library NamedAddressSet {
     }
 
     struct ZapSet {
+        Set _inner;
+    }
+
+    struct SwapSet {
         Set _inner;
     }
 
@@ -176,6 +180,50 @@ library NamedAddressSet {
     }
 
     function names(ZapSet storage set) internal view returns (string[] memory) {
+        return _names(set._inner);
+    }
+
+    function add(SwapSet storage set, ISwap swap) internal {
+        _add(set._inner, swap);
+    }
+
+    function remove(SwapSet storage set, string memory name) internal {
+        _remove(set._inner, name);
+    }
+
+    function contains(SwapSet storage set, ISwap swap)
+        internal
+        view
+        returns (bool)
+    {
+        return _contains(set._inner, swap);
+    }
+
+    function length(SwapSet storage set) internal view returns (uint256) {
+        return _length(set._inner);
+    }
+
+    function at(SwapSet storage set, uint256 index)
+        internal
+        view
+        returns (ISwap)
+    {
+        return ISwap(address(_at(set._inner, index)));
+    }
+
+    function get(SwapSet storage set, string memory name)
+        internal
+        view
+        returns (ISwap)
+    {
+        return ISwap(address(_get(set._inner, name)));
+    }
+
+    function names(SwapSet storage set)
+        internal
+        view
+        returns (string[] memory)
+    {
         return _names(set._inner);
     }
 }
