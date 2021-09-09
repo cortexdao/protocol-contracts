@@ -500,8 +500,9 @@ describe("Contract: LpAccount", () => {
       });
 
       it("Unpermissioned cannot call", async () => {
-        await expect(lpAccount.connect(adminSafe).removeSwap(name)).to.not.be
-          .reverted;
+        await expect(
+          lpAccount.connect(randomUser).removeSwap(name)
+        ).to.be.revertedWith("NOT_ADMIN_ROLE");
       });
 
       it("can remove", async () => {
