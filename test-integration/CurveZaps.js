@@ -334,7 +334,23 @@ describe("Zaps", () => {
       });
 
       it("Claim", async () => {
+        const crvToken = await ethers.getContractAt(
+          "IDetailedERC20",
+          "0xD533a949740bb3306d119CC777fa900bA034cd52"
+        );
+        expect(await crvToken.balanceOf(zap.address)).to.equal(0);
+
+        const amounts = new Array(numberOfCoins).fill("0");
+        const underlyerAmount = tokenAmountToBigNumber(
+          1000,
+          await underlyerToken.decimals()
+        );
+        amounts[underlyerIndex] = underlyerAmount;
+
+        await zap.deployLiquidity(amounts);
+
         await zap.claim();
+        expect(await crvToken.balanceOf(zap.address)).to.be.gt(0);
       });
     });
   });
