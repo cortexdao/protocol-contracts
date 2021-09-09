@@ -332,6 +332,10 @@ describe("Zaps", () => {
         const withdrawnGaugeLpBalance = await gauge.balanceOf(zap.address);
         expect(withdrawnGaugeLpBalance).to.equal(0);
       });
+
+      it.only("Claim", async () => {
+        await zap.claim();
+      });
     });
   });
 });

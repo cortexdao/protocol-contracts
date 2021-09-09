@@ -10,11 +10,17 @@ import {
     IERC20
 } from "contracts/common/Imports.sol";
 
+import {
+    ITokenMinter
+} from "contracts/protocols/curve/interfaces/ITokenMinter.sol";
+
 abstract contract CurveBasePool is IZap {
     using SafeMath for uint256;
 
     address internal constant CRV_ADDRESS =
         0xD533a949740bb3306d119CC777fa900bA034cd52;
+    address internal constant MINTER_ADDRESS =
+        0xd061D61a4d941c39E5453435B6345Dc261C2fcE0;
 
     address internal immutable SWAP_ADDRESS;
     address internal immutable LP_ADDRESS;
@@ -90,7 +96,7 @@ abstract contract CurveBasePool is IZap {
     }
 
     function claim() external override {
-        revert("NOT_IMPLEMENTED");
+        ITokenMinter(MINTER_ADDRESS).mint(GAUGE_ADDRESS);
     }
 
     function sortedSymbols() public view override returns (string[] memory) {
