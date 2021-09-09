@@ -290,7 +290,7 @@ describe("Contract: LpAccount", () => {
       });
     });
 
-    describe("Deploying and unwinding", () => {
+    describe("Deploying, unwinding, and claiming", () => {
       let tvlManager;
       let erc20Allocation;
 
@@ -453,6 +453,19 @@ describe("Contract: LpAccount", () => {
 
           await lpAccount.connect(lpSafe).unwindStrategy(name, amount);
           expect(await lpAccount._unwindCalls()).to.deep.equal([amount]);
+        });
+      });
+
+      describe("Claiming", () => {
+        it.only("can claim", async () => {
+          const zap = await deployMockZap();
+          await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+          const name = await zap.NAME();
+
+          await expect(
+            lpAccount.connect(lpSafe).claim(name)
+          ).to.be.revertedWith("NOT_IMPLEMENTED");
         });
       });
     });
@@ -665,17 +678,6 @@ describe("Contract: LpAccount", () => {
 
       await expect(lpAccount.connect(mApt).transferToPool(pool.address, amount))
         .to.not.be.reverted;
-    });
-  });
-
-  describe("Claiming", () => {
-    it.only("can claim", async () => {
-      const zap = await deployMockZap();
-      await lpAccount.connect(adminSafe).registerZap(zap.address);
-
-      const name = await zap.NAME();
-
-      await lpAccount.connect(lpSafe).claim(name);
     });
   });
 });

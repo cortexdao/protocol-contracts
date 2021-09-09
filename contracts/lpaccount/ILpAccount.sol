@@ -12,4 +12,5 @@ interface ILpAccount {
 
     function swap(string calldata name, uint256 amount) external;
 
+    function claim(string calldata name) external;
 }

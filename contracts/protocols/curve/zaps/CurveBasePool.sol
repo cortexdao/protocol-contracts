@@ -89,6 +89,10 @@ abstract contract CurveBasePool is IZap {
         _removeLiquidity(lpBalance);
     }
 
+    function claim() external override {
+        revert("NOT_IMPLEMENTED");
+    }
+
     function sortedSymbols() public view override returns (string[] memory) {
         // N_COINS is not available as a public function
         // so we have to hardcode the number here

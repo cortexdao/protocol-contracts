@@ -220,8 +220,25 @@ contract LpAccount is
         emit SwapRemoved(name);
     }
 
-    function claim(string calldata name) external nonReentrant onlyLpRole {
-        //
+    function claim(string calldata name)
+        external
+        override
+        nonReentrant
+        onlyLpRole
+    {
+        IZap zap = _zaps.get(name);
+        require(address(zap) != address(0), "INVALID_NAME");
+
+        (, bool isErc20TokenRegistered) =
+            _checkRegistrations(
+                new IAssetAllocation[](0),
+                zap.erc20Allocations()
+            );
+        require(isErc20TokenRegistered, "MISSING_ERC20_ALLOCATIONS");
+
+        address(zap).functionDelegateCall(
+            abi.encodeWithSelector(IZap.claim.selector)
+        );
     }
 
     function zapNames() external view override returns (string[] memory) {
