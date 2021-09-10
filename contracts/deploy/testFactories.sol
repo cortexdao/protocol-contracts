@@ -35,17 +35,15 @@ contract TestOracleAdapterFactory is OracleAdapterFactory {
         );
     }
 
-    // solhint-disable no-unused-vars
     function create(
-        address addressRegistry,
-        address tvlSource,
-        address[] memory assets,
-        address[] memory sources,
-        uint256 aggStalePeriod,
-        uint256 defaultLockPeriod
+        address,
+        address,
+        address[] memory,
+        address[] memory,
+        uint256,
+        uint256
     ) public override returns (address) {
         require(oracleAdapter != address(0), "USE_PRECREATE_FIRST");
         return oracleAdapter;
     }
-    // solhint-enable
 }
