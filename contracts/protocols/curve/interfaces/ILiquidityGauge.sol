@@ -14,5 +14,8 @@ interface ILiquidityGauge {
 
     function withdraw(uint256 _value) external;
 
+    // solhint-disable-next-line func-name-mixedcase
+    function claim_rewards() external;
+
     function balanceOf(address account) external view returns (uint256);
 }

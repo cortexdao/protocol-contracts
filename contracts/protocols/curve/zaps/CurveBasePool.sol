@@ -10,10 +10,6 @@ import {
     IERC20
 } from "contracts/common/Imports.sol";
 
-import {
-    ITokenMinter
-} from "contracts/protocols/curve/interfaces/ITokenMinter.sol";
-
 abstract contract CurveBasePool is IZap {
     using SafeMath for uint256;
 
@@ -45,32 +41,6 @@ abstract contract CurveBasePool is IZap {
         N_COINS = nCoins;
     }
 
-    function _getVirtualPrice() internal view virtual returns (uint256);
-
-    function _getCoinAtIndex(uint256 i) internal view virtual returns (address);
-
-    function _addLiquidity(uint256[] calldata amounts_, uint256 minAmount)
-        internal
-        virtual;
-
-    function _removeLiquidity(uint256 lpBalance) internal virtual;
-
-    function _depositToGauge() internal virtual;
-
-    function _withdrawFromGauge(uint256 amount)
-        internal
-        virtual
-        returns (uint256);
-
-    function _calcMinAmount(uint256 totalAmount, uint256 virtualPrice)
-        internal
-        view
-        returns (uint256)
-    {
-        uint256 v = totalAmount.mul(1e18).div(virtualPrice);
-        return v.mul(DENOMINATOR.sub(SLIPPAGE)).div(DENOMINATOR);
-    }
-
     /// @param amounts array of underlyer amounts
     function deployLiquidity(uint256[] calldata amounts) external override {
         uint256 totalAmount = 0;
@@ -96,7 +66,7 @@ abstract contract CurveBasePool is IZap {
     }
 
     function claim() external override {
-        ITokenMinter(MINTER_ADDRESS).mint(GAUGE_ADDRESS);
+        _claim();
     }
 
     function sortedSymbols() public view override returns (string[] memory) {
@@ -108,5 +78,33 @@ abstract contract CurveBasePool is IZap {
             symbols[i] = IDetailedERC20(underlyerAddress).symbol();
         }
         return symbols;
+    }
+
+    function _getVirtualPrice() internal view virtual returns (uint256);
+
+    function _getCoinAtIndex(uint256 i) internal view virtual returns (address);
+
+    function _addLiquidity(uint256[] calldata amounts_, uint256 minAmount)
+        internal
+        virtual;
+
+    function _removeLiquidity(uint256 lpBalance) internal virtual;
+
+    function _depositToGauge() internal virtual;
+
+    function _withdrawFromGauge(uint256 amount)
+        internal
+        virtual
+        returns (uint256);
+
+    function _claim() internal virtual;
+
+    function _calcMinAmount(uint256 totalAmount, uint256 virtualPrice)
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 v = totalAmount.mul(1e18).div(virtualPrice);
+        return v.mul(DENOMINATOR.sub(SLIPPAGE)).div(DENOMINATOR);
     }
 }
