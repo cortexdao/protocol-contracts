@@ -147,12 +147,6 @@ contract MetaPoolToken is
         _setAdminAddress(adminAddress);
     }
 
-    function _setAdminAddress(address adminAddress) internal {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-        proxyAdmin = adminAddress;
-        emit AdminChanged(adminAddress);
-    }
-
     /**
      * @notice Sets the address registry
      * @dev only callable by owner
@@ -163,17 +157,6 @@ contract MetaPoolToken is
         onlyEmergencyRole
     {
         _setAddressRegistry(addressRegistry_);
-    }
-
-    /**
-     * @notice Sets the address registry
-     * @dev only callable by owner
-     * @param addressRegistry_ the address of the registry
-     */
-    function _setAddressRegistry(address addressRegistry_) internal {
-        require(addressRegistry_.isContract(), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistryV2(addressRegistry_);
-        emit AddressRegistryChanged(addressRegistry_);
     }
 
     function fundLpAccount(bytes32[] calldata poolIds)
@@ -262,6 +245,23 @@ contract MetaPoolToken is
         }
 
         return (pools, rebalanceAmounts);
+    }
+
+    function _setAdminAddress(address adminAddress) internal {
+        require(adminAddress != address(0), "INVALID_ADMIN");
+        proxyAdmin = adminAddress;
+        emit AdminChanged(adminAddress);
+    }
+
+    /**
+     * @notice Sets the address registry
+     * @dev only callable by owner
+     * @param addressRegistry_ the address of the registry
+     */
+    function _setAddressRegistry(address addressRegistry_) internal {
+        require(addressRegistry_.isContract(), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(addressRegistry_);
+        emit AddressRegistryChanged(addressRegistry_);
     }
 
     function _fundLpAccount(
