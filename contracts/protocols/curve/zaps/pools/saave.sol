@@ -40,8 +40,9 @@ contract SAavePoolZap is CurveBasePoolGauge, CurveSaaveConstants {
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
-        IERC20[] memory allocations = new IERC20[](1);
+        IERC20[] memory allocations = new IERC20[](2);
         allocations[0] = IERC20(CRV_ADDRESS);
+        allocations[1] = IERC20(0x4da27a545c0c5B758a6BA100e3a049001de870f5); // staked Aave (stkAAVE)
         return allocations;
     }
 
@@ -73,5 +74,15 @@ contract SAavePoolZap is CurveBasePoolGauge, CurveSaaveConstants {
             lpBalance,
             [uint256(0), uint256(0)]
         );
+    }
+
+    /**
+     * @dev claim protocol-specific rewards; stkAAVE in this case.
+     *      CRV rewards are always claimed through the minter, in
+     *      the `CurveBasePoolGauge` implementation.
+     */
+    function _claimRewards() internal override {
+        ILiquidityGauge liquidityGauge = ILiquidityGauge(GAUGE_ADDRESS);
+        liquidityGauge.claim_rewards();
     }
 }
