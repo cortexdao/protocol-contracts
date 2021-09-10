@@ -13,10 +13,10 @@ import {AaveBasePool} from "contracts/protocols/aave/zaps/AaveBasePool.sol";
 import {AaveConstants} from "contracts/protocols/aave/allocations/aave.sol";
 import {ApyUnderlyerConstants} from "contracts/protocols/apy.sol";
 
-contract AaveDaiZap is AaveBasePool, AaveConstants, ApyUnderlyerConstants {
+contract AaveUsdcZap is AaveBasePool, AaveConstants, ApyUnderlyerConstants {
     constructor()
         public
-        AaveBasePool(USDC_ADDRESS, LENDING_POOL_ADDRESS)
+        AaveBasePool(DAI_ADDRESS, LENDING_POOL_ADDRESS)
     // solhint-disable-next-line no-empty-blocks
     {
 
