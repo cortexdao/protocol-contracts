@@ -16,7 +16,7 @@ import {ApyUnderlyerConstants} from "contracts/protocols/apy.sol";
 contract AaveUsdcZap is AaveBasePool, AaveConstants, ApyUnderlyerConstants {
     constructor()
         public
-        AaveBasePool(DAI_ADDRESS, LENDING_POOL_ADDRESS)
+        AaveBasePool(USDC_ADDRESS, LENDING_POOL_ADDRESS)
     // solhint-disable-next-line no-empty-blocks
     {
 

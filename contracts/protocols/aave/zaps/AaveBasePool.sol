@@ -5,9 +5,11 @@ pragma experimental ABIEncoderV2;
 import {SafeMath} from "contracts/libraries/Imports.sol";
 import {IZap} from "contracts/lpaccount/Imports.sol";
 import {IDetailedERC20, IERC20} from "contracts/common/Imports.sol";
+import {SafeERC20} from "contracts/libraries/Imports.sol";
 
 abstract contract AaveBasePool is IZap {
     using SafeMath for uint256;
+    using SafeERC20 for IERC20;
 
     address internal immutable UNDERLYER_ADDRESS;
     address internal immutable LENDING_ADDRESS;
@@ -26,8 +28,8 @@ abstract contract AaveBasePool is IZap {
 
     /// @param amounts array of underlyer amounts
     function deployLiquidity(uint256[] calldata amounts) external override {
-        IERC20(UNDERLYER_ADDRESS).approve(LENDING_ADDRESS, 0);
-        IERC20(UNDERLYER_ADDRESS).approve(LENDING_ADDRESS, amounts[0]);
+        IERC20(UNDERLYER_ADDRESS).safeApprove(LENDING_ADDRESS, 0);
+        IERC20(UNDERLYER_ADDRESS).safeApprove(LENDING_ADDRESS, amounts[0]);
         _deposit(amounts[0]);
     }
 
