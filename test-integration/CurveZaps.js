@@ -10,6 +10,8 @@ const {
 } = require("../utils/helpers");
 const { WHALE_POOLS } = require("../utils/constants");
 
+const CRV_ADDRESS = "0xD533a949740bb3306d119CC777fa900bA034cd52";
+
 /* ************************ */
 /* set DEBUG log level here */
 /* ************************ */
@@ -334,23 +336,39 @@ describe("Zaps", () => {
       });
 
       it("Claim", async () => {
-        const crvToken = await ethers.getContractAt(
-          "IDetailedERC20",
-          "0xD533a949740bb3306d119CC777fa900bA034cd52"
-        );
-        expect(await crvToken.balanceOf(zap.address)).to.equal(0);
+        const erc20s = await zap.erc20Allocations();
+        expect(erc20s[0]).to.equal(CRV_ADDRESS);
+        for (let i = 0; i < erc20s.length; i++) {
+          const token = await ethers.getContractAt("IDetailedERC20", erc20s[i]);
+          expect(await token.balanceOf(zap.address)).to.equal(0);
+        }
 
         const amounts = new Array(numberOfCoins).fill("0");
         const underlyerAmount = tokenAmountToBigNumber(
-          1000,
+          100000,
           await underlyerToken.decimals()
         );
         amounts[underlyerIndex] = underlyerAmount;
 
         await zap.deployLiquidity(amounts);
 
+        // allows rewards to accumulate:
+        // CRV rewards accumulate within a block, but other rewards, like
+        // staked Aave, require longer
+        if (erc20s.length > 1) {
+          const oneDayInSeconds = 60 * 60 * 24;
+          await hre.network.provider.send("evm_increaseTime", [
+            oneDayInSeconds,
+          ]);
+          await hre.network.provider.send("evm_mine");
+        }
+
         await zap.claim();
-        expect(await crvToken.balanceOf(zap.address)).to.be.gt(0);
+
+        for (let i = 0; i < erc20s.length; i++) {
+          const token = await ethers.getContractAt("IDetailedERC20", erc20s[i]);
+          expect(await token.balanceOf(zap.address)).to.be.gt(0);
+        }
       });
     });
   });
