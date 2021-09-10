@@ -7,7 +7,7 @@
   "scripts": {
     "check": "yarn lint",
     "clean": "hardhat clean",
-    "compile": "hardhat compile 2>&1 | sed '/^@/,/^$/ d' | sed '/FluxAggregator/,/^$/ d'; exit ${PIPESTATUS[0]}",
+    "compile": "hardhat compile",
     "test:unit": "hardhat test test-unit/*",
     "test:integration": "ENABLE_FORKING=true hardhat test test-integration/*",
     "lint": "solhint contracts/**/*.sol contracts/*.sol",
