@@ -15,6 +15,8 @@ abstract contract CurveBasePool is IZap {
 
     address internal constant CRV_ADDRESS =
         0xD533a949740bb3306d119CC777fa900bA034cd52;
+    address internal constant MINTER_ADDRESS =
+        0xd061D61a4d941c39E5453435B6345Dc261C2fcE0;
 
     address internal immutable SWAP_ADDRESS;
     address internal immutable LP_ADDRESS;
@@ -37,32 +39,6 @@ abstract contract CurveBasePool is IZap {
         DENOMINATOR = denominator;
         SLIPPAGE = slippage;
         N_COINS = nCoins;
-    }
-
-    function _getVirtualPrice() internal view virtual returns (uint256);
-
-    function _getCoinAtIndex(uint256 i) internal view virtual returns (address);
-
-    function _addLiquidity(uint256[] calldata amounts_, uint256 minAmount)
-        internal
-        virtual;
-
-    function _removeLiquidity(uint256 lpBalance) internal virtual;
-
-    function _depositToGauge() internal virtual;
-
-    function _withdrawFromGauge(uint256 amount)
-        internal
-        virtual
-        returns (uint256);
-
-    function _calcMinAmount(uint256 totalAmount, uint256 virtualPrice)
-        internal
-        view
-        returns (uint256)
-    {
-        uint256 v = totalAmount.mul(1e18).div(virtualPrice);
-        return v.mul(DENOMINATOR.sub(SLIPPAGE)).div(DENOMINATOR);
     }
 
     /// @param amounts array of underlyer amounts
@@ -89,6 +65,10 @@ abstract contract CurveBasePool is IZap {
         _removeLiquidity(lpBalance);
     }
 
+    function claim() external override {
+        _claim();
+    }
+
     function sortedSymbols() public view override returns (string[] memory) {
         // N_COINS is not available as a public function
         // so we have to hardcode the number here
@@ -98,5 +78,33 @@ abstract contract CurveBasePool is IZap {
             symbols[i] = IDetailedERC20(underlyerAddress).symbol();
         }
         return symbols;
+    }
+
+    function _getVirtualPrice() internal view virtual returns (uint256);
+
+    function _getCoinAtIndex(uint256 i) internal view virtual returns (address);
+
+    function _addLiquidity(uint256[] calldata amounts_, uint256 minAmount)
+        internal
+        virtual;
+
+    function _removeLiquidity(uint256 lpBalance) internal virtual;
+
+    function _depositToGauge() internal virtual;
+
+    function _withdrawFromGauge(uint256 amount)
+        internal
+        virtual
+        returns (uint256);
+
+    function _claim() internal virtual;
+
+    function _calcMinAmount(uint256 totalAmount, uint256 virtualPrice)
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 v = totalAmount.mul(1e18).div(virtualPrice);
+        return v.mul(DENOMINATOR.sub(SLIPPAGE)).div(DENOMINATOR);
     }
 }

@@ -10,6 +10,8 @@ const {
 } = require("../utils/helpers");
 const { WHALE_POOLS } = require("../utils/constants");
 
+const CRV_ADDRESS = "0xD533a949740bb3306d119CC777fa900bA034cd52";
+
 /* ************************ */
 /* set DEBUG log level here */
 /* ************************ */
@@ -108,8 +110,8 @@ describe("Zaps", () => {
       swapAddress: "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
       swapInterface: "IStableSwap",
       lpTokenAddress: "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
-      gaugeAddress: "0xEb31DA939878d1d780fDBCc244531c0FB80A2cF3",
-      gaugeInterface: "IStakingRewards",
+      gaugeAddress: "0x9B8519A9a00100720CCdC8a120fBeD319cA47a14",
+      gaugeInterface: "ILiquidityGauge",
       numberOfCoins: 2,
       whaleAddress: WHALE_POOLS["LUSD"],
     },
@@ -331,6 +333,42 @@ describe("Zaps", () => {
         expect(withdrawnZapLpBalance).to.equal(0);
         const withdrawnGaugeLpBalance = await gauge.balanceOf(zap.address);
         expect(withdrawnGaugeLpBalance).to.equal(0);
+      });
+
+      it("Claim", async () => {
+        const erc20s = await zap.erc20Allocations();
+        expect(erc20s[0]).to.equal(CRV_ADDRESS);
+        for (let i = 0; i < erc20s.length; i++) {
+          const token = await ethers.getContractAt("IDetailedERC20", erc20s[i]);
+          expect(await token.balanceOf(zap.address)).to.equal(0);
+        }
+
+        const amounts = new Array(numberOfCoins).fill("0");
+        const underlyerAmount = tokenAmountToBigNumber(
+          100000,
+          await underlyerToken.decimals()
+        );
+        amounts[underlyerIndex] = underlyerAmount;
+
+        await zap.deployLiquidity(amounts);
+
+        // allows rewards to accumulate:
+        // CRV rewards accumulate within a block, but other rewards, like
+        // staked Aave, require longer
+        if (erc20s.length > 1) {
+          const oneDayInSeconds = 60 * 60 * 24;
+          await hre.network.provider.send("evm_increaseTime", [
+            oneDayInSeconds,
+          ]);
+          await hre.network.provider.send("evm_mine");
+        }
+
+        await zap.claim();
+
+        for (let i = 0; i < erc20s.length; i++) {
+          const token = await ethers.getContractAt("IDetailedERC20", erc20s[i]);
+          expect(await token.balanceOf(zap.address)).to.be.gt(0);
+        }
       });
     });
   });

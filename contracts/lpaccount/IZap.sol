@@ -15,6 +15,8 @@ interface IZap is INameIdentifier {
     // LP token amount
     function unwindLiquidity(uint256 amount) external;
 
+    function claim() external;
+
     // Order of token amounts
     function sortedSymbols() external view returns (string[] memory);
 

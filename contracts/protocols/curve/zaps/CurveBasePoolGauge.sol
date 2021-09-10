@@ -9,6 +9,9 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
     ILiquidityGauge
 } from "contracts/protocols/curve/interfaces/ILiquidityGauge.sol";
+import {
+    ITokenMinter
+} from "contracts/protocols/curve/interfaces/ITokenMinter.sol";
 import {CurveBasePool} from "contracts/protocols/curve/zaps/CurveBasePool.sol";
 
 abstract contract CurveBasePoolGauge is IZap, CurveBasePool {
@@ -48,4 +51,15 @@ abstract contract CurveBasePoolGauge is IZap, CurveBasePool {
         //lpBalance
         return IERC20(LP_ADDRESS).balanceOf(address(this));
     }
+
+    function _claim() internal override {
+        // claim CRV
+        ITokenMinter(MINTER_ADDRESS).mint(GAUGE_ADDRESS);
+
+        // claim protocol-specific rewards
+        _claimRewards();
+    }
+
+    // solhint-disable-next-line no-empty-blocks
+    function _claimRewards() internal virtual {}
 }

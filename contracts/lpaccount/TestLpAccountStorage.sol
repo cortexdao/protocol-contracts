@@ -10,6 +10,8 @@ abstract contract TestLpAccountStorage {
     uint256[] internal _unwindsArray;
     uint256[] internal _swapsArray;
 
+    uint256 public _claimsCounter;
+
     IAssetAllocation[] internal _assetAllocations;
     IERC20[] internal _tokens;
 }

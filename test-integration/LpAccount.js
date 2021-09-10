@@ -149,7 +149,7 @@ describe("Contract: LpAccount", () => {
   });
 
   describe("deployStrategy", () => {
-    it("can deploy", async () => {
+    it("can deploy with empty allocations arrays", async () => {
       const zap = await deployMockZap();
       await lpAccount.connect(adminSafe).registerZap(zap.address);
 
@@ -230,8 +230,8 @@ describe("Contract: LpAccount", () => {
         allocation_1.address,
       ]);
 
-      await expect(lpAccount.connect(lpSafe).deployStrategy(name, amounts)).to
-        .not.be.reverted;
+      await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
+      expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
     });
 
     it("cannot deploy with unregistered ERC20", async () => {
@@ -272,8 +272,8 @@ describe("Contract: LpAccount", () => {
         ["registerErc20Token(address)"](token.address);
       await zap._setErc20Allocations([token.address]);
 
-      await expect(lpAccount.connect(lpSafe).deployStrategy(name, amounts)).to
-        .not.be.reverted;
+      await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
+      expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
     });
 
     it("can deploy with registered allocation and ERC20", async () => {
@@ -299,8 +299,8 @@ describe("Contract: LpAccount", () => {
         ["registerErc20Token(address)"](token.address);
       await zap._setErc20Allocations([token.address]);
 
-      await expect(lpAccount.connect(lpSafe).deployStrategy(name, amounts)).to
-        .not.be.reverted;
+      await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
+      expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
     });
 
     it("cannot deploy with registered allocation but unregistered ERC20", async () => {
@@ -366,6 +366,50 @@ describe("Contract: LpAccount", () => {
 
       await lpAccount.connect(lpSafe).unwindStrategy(name, amount);
       expect(await lpAccount._unwindCalls()).to.deep.equal([amount]);
+    });
+  });
+
+  describe("claim", () => {
+    it("can claim with empty ERC20 array", async () => {
+      const zap = await deployMockZap();
+      await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+      const name = await zap.NAME();
+
+      await lpAccount.connect(lpSafe).claim(name);
+      expect(await lpAccount._claimsCounter()).to.equal(1);
+    });
+
+    it("can claim with registered ERC20", async () => {
+      const zap = await deployMockZap();
+      await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+      const name = await zap.NAME();
+
+      // configure zap with registered ERC20
+      const token = await deployMockErc20();
+      await erc20Allocation
+        .connect(lpSafe)
+        ["registerErc20Token(address)"](token.address);
+      await zap._setErc20Allocations([token.address]);
+
+      await lpAccount.connect(lpSafe).claim(name);
+      expect(await lpAccount._claimsCounter()).to.equal(1);
+    });
+
+    it("cannot claim with unregistered ERC20", async () => {
+      const zap = await deployMockZap();
+      await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+      const name = await zap.NAME();
+
+      // configure zap with unregistered ERC20
+      const token = await deployMockErc20();
+      await zap._setErc20Allocations([token.address]);
+
+      await expect(lpAccount.connect(lpSafe).claim(name)).to.be.revertedWith(
+        "MISSING_ERC20_ALLOCATIONS"
+      );
     });
   });
 

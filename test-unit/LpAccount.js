@@ -290,7 +290,7 @@ describe("Contract: LpAccount", () => {
       });
     });
 
-    describe("Deploying and unwinding", () => {
+    describe("Deploying, unwinding, and claiming", () => {
       let tvlManager;
       let erc20Allocation;
 
@@ -453,6 +453,63 @@ describe("Contract: LpAccount", () => {
 
           await lpAccount.connect(lpSafe).unwindStrategy(name, amount);
           expect(await lpAccount._unwindCalls()).to.deep.equal([amount]);
+        });
+      });
+
+      describe("Claiming", () => {
+        it("Revert on unregistered name", async () => {
+          const zap = await deployMockZap();
+          const name = await zap.NAME();
+
+          await expect(
+            lpAccount.connect(lpSafe).claim(name)
+          ).to.be.revertedWith("INVALID_NAME");
+        });
+
+        it("LP Safe can call", async () => {
+          const zap = await deployMockZap();
+          await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+          const name = await zap.NAME();
+
+          await expect(lpAccount.connect(lpSafe).claim(name)).to.not.be
+            .reverted;
+        });
+
+        it("Unpermissioned cannot call", async () => {
+          const zap = await deployMockZap();
+          await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+          const name = await zap.NAME();
+
+          await expect(
+            lpAccount.connect(randomUser).claim(name)
+          ).to.be.revertedWith("NOT_LP_ROLE");
+        });
+
+        it("can claim", async () => {
+          const zap = await deployMockZap();
+          await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+          const name = await zap.NAME();
+
+          await lpAccount.connect(lpSafe).claim(name);
+          expect(await lpAccount._claimsCounter()).to.equal(1);
+        });
+
+        it("cannot deploy with unregistered ERC20", async () => {
+          const zap = await deployMockZap();
+          await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+          const name = await zap.NAME();
+
+          await erc20Allocation.mock[
+            "isErc20TokenRegistered(address[])"
+          ].returns(false);
+
+          await expect(
+            lpAccount.connect(lpSafe).claim(name)
+          ).to.be.revertedWith("MISSING_ERC20_ALLOCATIONS");
         });
       });
     });
