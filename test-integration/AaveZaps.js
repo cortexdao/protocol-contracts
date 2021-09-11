@@ -164,17 +164,11 @@ describe("Zaps", () => {
         );
         amounts[0] = underlyerAmount;
 
-        const deployedZapUnderlyerInitial = await underlyerToken.balanceOf(
-          zap.address
-        );
-        expect(deployedZapUnderlyerInitial).gt(0);
-
         await zap.deployLiquidity(amounts);
-
         const deployedZapUnderlyerBalance = await underlyerToken.balanceOf(
           zap.address
         );
-        expect(deployedZapUnderlyerBalance).gt(0);
+
         const deployedZapLpBalance = await lpToken.balanceOf(zap.address);
         expect(deployedZapLpBalance).gt(0);
 
@@ -184,8 +178,9 @@ describe("Zaps", () => {
           zap.address
         );
         expect(withdrawnZapUnderlyerBalance).gt(deployedZapUnderlyerBalance);
+
         const withdrawnZapLpBalance = await lpToken.balanceOf(zap.address);
-        expect(withdrawnZapLpBalance).to.equal(0);
+        expect(withdrawnZapLpBalance).lt(deployedZapLpBalance);
       });
     });
   });
