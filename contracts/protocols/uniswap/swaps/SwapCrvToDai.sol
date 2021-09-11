@@ -12,11 +12,11 @@ contract SwapCrvToUsdc is BaseSwapCrvToStablecoin {
 
     string public constant override NAME = "crv-to-usdc";
 
-    IERC20 private constant _USDC =
-        IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+    IERC20 private constant _DAI =
+        IERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
 
     event Swap(ISwapRouter.ExactInputParams params, uint256 amountOut);
 
     // solhint-disable-next-line no-empty-blocks
-    constructor() public BaseSwapCrvToStablecoin(_USDC) {}
+    constructor() public BaseSwapCrvToStablecoin(_DAI) {}
 }
