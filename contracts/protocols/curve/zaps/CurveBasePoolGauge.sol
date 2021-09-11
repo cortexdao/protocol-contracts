@@ -2,7 +2,6 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {IZap} from "contracts/lpaccount/Imports.sol";
 import {IAssetAllocation, IDetailedERC20} from "contracts/common/Imports.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -37,7 +36,7 @@ abstract contract CurveBasePoolGauge is IZap, CurveBasePool {
     function _depositToGauge() internal override {
         ILiquidityGauge liquidityGauge = ILiquidityGauge(GAUGE_ADDRESS);
         uint256 lpBalance = IERC20(LP_ADDRESS).balanceOf(address(this));
-        IERC20(LP_ADDRESS).approve(GAUGE_ADDRESS, lpBalance);
+        IERC20(LP_ADDRESS).safeApprove(GAUGE_ADDRESS, lpBalance);
         liquidityGauge.deposit(lpBalance);
     }
 
