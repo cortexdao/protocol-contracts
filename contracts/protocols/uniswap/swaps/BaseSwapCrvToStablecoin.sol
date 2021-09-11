@@ -57,15 +57,6 @@ abstract contract BaseSwapCrvToStablecoin is ISwap {
         emit Swap(params, amountOut);
     }
 
-    function assetAllocations()
-        external
-        view
-        override
-        returns (IAssetAllocation[] memory)
-    {
-        return new IAssetAllocation[](0);
-    }
-
     function erc20Allocations()
         external
         view

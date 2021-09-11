@@ -136,11 +136,14 @@ contract LpAccount is
         IZap zap = _zaps.get(name);
         require(address(zap) != address(0), "INVALID_NAME");
 
-        (bool isAssetAllocationRegistered, bool isErc20TokenRegistered) =
-            _checkRegistrations(zap.assetAllocations(), zap.erc20Allocations());
+        bool isAssetAllocationRegistered =
+            _checkAllocationRegistrations(zap.assetAllocations());
         // TODO: If the asset allocation is deployed, but not registered, register it
-        // TODO: If an ERC20 allocation is missing, add it
         require(isAssetAllocationRegistered, "MISSING_ASSET_ALLOCATIONS");
+
+        bool isErc20TokenRegistered =
+            _checkErc20Registrations(zap.erc20Allocations());
+        // TODO: If an ERC20 allocation is missing, add it
         require(isErc20TokenRegistered, "MISSING_ERC20_ALLOCATIONS");
 
         address(zap).functionDelegateCall(
@@ -192,15 +195,10 @@ contract LpAccount is
         ISwap swap_ = _swaps.get(name);
         require(address(swap_) != address(0), "INVALID_NAME");
 
-        (bool isAssetAllocationRegistered, bool isErc20TokenRegistered) =
-            _checkRegistrations(
-                swap_.assetAllocations(),
-                swap_.erc20Allocations()
-            );
+        bool isErc20TokenRegistered =
+            _checkErc20Registrations(swap_.erc20Allocations());
 
-        // TODO: If the asset allocation is deployed, but not registered, register it
         // TODO: If an ERC20 allocation is missing, add it
-        require(isAssetAllocationRegistered, "MISSING_ASSET_ALLOCATIONS");
         require(isErc20TokenRegistered, "MISSING_ERC20_ALLOCATIONS");
 
         address(swap_).functionDelegateCall(
@@ -229,11 +227,8 @@ contract LpAccount is
         IZap zap = _zaps.get(name);
         require(address(zap) != address(0), "INVALID_NAME");
 
-        (, bool isErc20TokenRegistered) =
-            _checkRegistrations(
-                new IAssetAllocation[](0),
-                zap.erc20Allocations()
-            );
+        bool isErc20TokenRegistered =
+            _checkErc20Registrations(zap.erc20Allocations());
         require(isErc20TokenRegistered, "MISSING_ERC20_ALLOCATIONS");
 
         address(zap).functionDelegateCall(
@@ -266,20 +261,23 @@ contract LpAccount is
         emit AddressRegistryChanged(addressRegistry_);
     }
 
-    function _checkRegistrations(
-        IAssetAllocation[] memory allocations,
-        IERC20[] memory tokens
-    )
-        internal
-        view
-        returns (bool isAssetAllocationRegistered, bool isErc20TokenRegistered)
-    {
+    function _checkAllocationRegistrations(
+        IAssetAllocation[] memory allocations
+    ) internal view returns (bool isAssetAllocationRegistered) {
         IAssetAllocationRegistry tvlManager =
             IAssetAllocationRegistry(addressRegistry.getAddress("tvlManager"));
         isAssetAllocationRegistered = tvlManager.isAssetAllocationRegistered(
             allocations
         );
+    }
 
+    function _checkErc20Registrations(IERC20[] memory tokens)
+        internal
+        view
+        returns (bool isErc20TokenRegistered)
+    {
+        IAssetAllocationRegistry tvlManager =
+            IAssetAllocationRegistry(addressRegistry.getAddress("tvlManager"));
         IErc20Allocation erc20Allocation =
             IErc20Allocation(
                 address(

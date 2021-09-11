@@ -590,9 +590,6 @@ describe("Contract: LpAccount", () => {
           .withArgs("erc20Allocation")
           .returns(erc20Allocation.address);
 
-        await tvlManager.mock["isAssetAllocationRegistered(address[])"].returns(
-          true
-        );
         await erc20Allocation.mock["isErc20TokenRegistered(address[])"].returns(
           true
         );
@@ -641,22 +638,6 @@ describe("Contract: LpAccount", () => {
 
         await lpAccount.connect(lpSafe).swap(name, amount);
         expect(await lpAccount._swapCalls()).to.deep.equal([amount]);
-      });
-
-      it("cannot deploy with unregistered allocation", async () => {
-        const swap = await deployMockSwap();
-        await lpAccount.connect(adminSafe).registerSwap(swap.address);
-
-        const name = await swap.NAME();
-        const amount = tokenAmountToBigNumber(1);
-
-        await tvlManager.mock["isAssetAllocationRegistered(address[])"].returns(
-          false
-        );
-
-        await expect(
-          lpAccount.connect(lpSafe).swap(name, amount)
-        ).to.be.revertedWith("MISSING_ASSET_ALLOCATIONS");
       });
 
       it("cannot deploy with unregistered ERC20", async () => {
