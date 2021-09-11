@@ -2,7 +2,7 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {SafeMath} from "contracts/libraries/Imports.sol";
+import {SafeMath, SafeERC20} from "contracts/libraries/Imports.sol";
 import {IZap} from "contracts/lpaccount/Imports.sol";
 import {
     IAssetAllocation,
@@ -12,6 +12,7 @@ import {
 
 abstract contract CurveBasePool is IZap {
     using SafeMath for uint256;
+    using SafeERC20 for IERC20;
 
     address internal constant CRV_ADDRESS =
         0xD533a949740bb3306d119CC777fa900bA034cd52;
@@ -50,8 +51,8 @@ abstract contract CurveBasePool is IZap {
             // if amounts is 0 skip approval
             if (amounts[i] == 0) continue;
             address underlyerAddress = _getCoinAtIndex(i);
-            IERC20(underlyerAddress).approve(SWAP_ADDRESS, 0);
-            IERC20(underlyerAddress).approve(SWAP_ADDRESS, amounts[i]);
+            IERC20(underlyerAddress).safeApprove(SWAP_ADDRESS, 0);
+            IERC20(underlyerAddress).safeApprove(SWAP_ADDRESS, amounts[i]);
         }
 
         uint256 minAmount = _calcMinAmount(totalAmount, _getVirtualPrice());
