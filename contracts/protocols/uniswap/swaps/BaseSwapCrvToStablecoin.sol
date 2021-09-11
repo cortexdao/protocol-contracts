@@ -74,7 +74,7 @@ abstract contract BaseSwapCrvToStablecoin is ISwap {
     {
         IERC20[] memory allocations = new IERC20[](2);
         allocations[0] = _CRV;
-        allocations[0] = _STABLECOIN;
+        allocations[1] = _STABLECOIN;
         return allocations;
     }
 }
