@@ -44,4 +44,7 @@ abstract contract AaveBasePool is IZap {
         symbols[0] = IDetailedERC20(UNDERLYER_ADDRESS).symbol();
         return symbols;
     }
+
+    // solhint-disable-next-line no-empty-blocks
+    function claim() external override {}
 }
