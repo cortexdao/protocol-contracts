@@ -40,8 +40,9 @@ contract AlUsdPoolZap is CurveBasePoolGauge, CurveAlUsdConstants {
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
-        IERC20[] memory allocations = new IERC20[](1);
+        IERC20[] memory allocations = new IERC20[](2);
         allocations[0] = IERC20(CRV_ADDRESS);
+        allocations[1] = IERC20(0xdBdb4d16EdA451D0503b854CF79D55697F90c8DF); // ALCX
         return allocations;
     }
 
@@ -73,5 +74,15 @@ contract AlUsdPoolZap is CurveBasePoolGauge, CurveAlUsdConstants {
             lpBalance,
             [uint256(0), uint256(0)]
         );
+    }
+
+    /**
+     * @dev claim protocol-specific rewards;
+     *      CRV rewards are always claimed through the minter, in
+     *      the `CurveBasePoolGauge` implementation.
+     */
+    function _claimRewards() internal override {
+        ILiquidityGauge liquidityGauge = ILiquidityGauge(GAUGE_ADDRESS);
+        liquidityGauge.claim_rewards();
     }
 }
