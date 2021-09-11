@@ -7,7 +7,7 @@ import {IERC20, IAssetAllocation} from "contracts/common/Imports.sol";
 import {ISwapRouter} from "./ISwapRouter.sol";
 import {BaseSwapCrvToStablecoin} from "./BaseSwapCrvToStablecoin.sol";
 
-contract SwapCrvToUsdc is BaseSwapCrvToStablecoin {
+contract SwapCrvToDai is BaseSwapCrvToStablecoin {
     using SafeERC20 for IERC20;
 
     string public constant override NAME = "crv-to-usdc";
