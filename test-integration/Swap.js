@@ -90,45 +90,64 @@ describe("Swaps", () => {
       .registerAssetAllocation(erc20Allocation.address);
   });
 
-  describe("SwapCrvToUsdc", () => {
-    let swap;
-    let crv;
-    let usdc;
+  const SwapConstants = [
+    {
+      contractName: "SwapCrvToDai",
+      tokenSymbol: "DAI",
+    },
+    {
+      contractName: "SwapCrvToUsdc",
+      tokenSymbol: "USDC",
+    },
+    {
+      contractName: "SwapCrvToUsdt",
+      tokenSymbol: "USDT",
+    },
+  ];
 
-    let whaleAddress = FARM_TOKEN_POOLS["CRV"];
+  SwapConstants.forEach((swapConstant) => {
+    const { contractName, tokenSymbol } = swapConstant;
 
-    before("Deploy swap contract", async () => {
-      const SwapCrvToUsdc = await ethers.getContractFactory(
-        "SwapCrvToUsdc",
-        lpSafe
-      );
-      swap = await SwapCrvToUsdc.deploy();
-    });
+    describe(contractName, () => {
+      let swap;
+      let crv;
+      let stablecoin;
 
-    before("Fund swap with CRV", async () => {
-      crv = await ethers.getContractAt("IDetailedERC20", FARM_TOKENS["CRV"]);
+      let whaleAddress = FARM_TOKEN_POOLS["CRV"];
 
-      const amount = tokenAmountToBigNumber(100000, await crv.decimals());
-      const sender = whaleAddress;
-      await acquireToken(sender, swap.address, crv, amount, deployer);
-    });
+      before("Deploy swap contract", async () => {
+        const Swap = await ethers.getContractFactory(contractName, lpSafe);
+        swap = await Swap.deploy();
+      });
 
-    before("Get USDC contract", async () => {
-      const usdcAddress = getStablecoinAddress("USDC", NETWORK);
-      usdc = await ethers.getContractAt("IDetailedERC20", usdcAddress);
-    });
+      before("Fund swap with CRV", async () => {
+        crv = await ethers.getContractAt("IDetailedERC20", FARM_TOKENS["CRV"]);
 
-    describe("swap", () => {
-      it("Should swap CRV for USDC", async () => {
-        const beforeCrvBalance = await crv.balanceOf(swap.address);
+        const amount = tokenAmountToBigNumber(100000, await crv.decimals());
+        const sender = whaleAddress;
+        await acquireToken(sender, swap.address, crv, amount, deployer);
+      });
 
-        await swap.swap(beforeCrvBalance);
+      before(`Get ${tokenSymbol} contract`, async () => {
+        const stablecoinAddress = getStablecoinAddress(tokenSymbol, NETWORK);
+        stablecoin = await ethers.getContractAt(
+          "IDetailedERC20",
+          stablecoinAddress
+        );
+      });
 
-        const afterCrvBalance = await crv.balanceOf(swap.address);
-        expect(afterCrvBalance).to.equal(0);
+      describe("swap", () => {
+        it(`Should swap CRV for ${tokenSymbol}`, async () => {
+          const beforeCrvBalance = await crv.balanceOf(swap.address);
 
-        const afterUsdcBalance = await usdc.balanceOf(swap.address);
-        expect(afterUsdcBalance).to.be.gt(0);
+          await swap.swap(beforeCrvBalance);
+
+          const afterCrvBalance = await crv.balanceOf(swap.address);
+          expect(afterCrvBalance).to.equal(0);
+
+          const afterTokenBalance = await stablecoin.balanceOf(swap.address);
+          expect(afterTokenBalance).to.be.gt(0);
+        });
       });
     });
   });
