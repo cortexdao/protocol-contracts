@@ -3,7 +3,7 @@ const hre = require("hardhat");
 const { ethers } = hre;
 const timeMachine = require("ganache-time-traveler");
 
-describe("Contract: TestCurvePool", () => {
+describe("Contract: TestCurveZap", () => {
   // signers
   let deployer;
 
@@ -34,7 +34,7 @@ describe("Contract: TestCurvePool", () => {
   before(async () => {
     [deployer, swap, lpToken, liquidityGauge] = await ethers.getSigners();
 
-    curvePoolFactory = await ethers.getContractFactory("TestCurvePool");
+    curvePoolFactory = await ethers.getContractFactory("TestCurveZap");
     curvePool = await curvePoolFactory.deploy(
       swap.address,
       lpToken.address,
@@ -55,7 +55,7 @@ describe("Contract: TestCurvePool", () => {
       const slip = await curvePool.connect(deployer).getSlippage();
       const coinCount = await curvePool.connect(deployer).getNumberOfCoins();
 
-      expect(name).to.equals("TestCurvePool");
+      expect(name).to.equals("TestCurveZap");
       expect(swapAddress).to.equals(swap.address);
       expect(lpAddress).to.equals(lpToken.address);
       expect(gaugeAddress).to.equals(liquidityGauge.address);

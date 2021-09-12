@@ -16,7 +16,7 @@ import {
 } from "contracts/protocols/curve/common/CurveGaugeZapBase.sol";
 
 contract TestCurveZap is CurveGaugeZapBase {
-    string public constant override NAME = "TestCurvePool";
+    string public constant override NAME = "TestCurveZap";
 
     constructor(
         address swapAddress,
