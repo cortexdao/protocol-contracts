@@ -10,7 +10,7 @@ import {
 } from "contracts/protocols/curve/common/interfaces/Imports.sol";
 import {
     Curve3PoolConstants
-} from "contracts/protocols/curve/3pool/Allocation.sol";
+} from "contracts/protocols/curve/3pool/Constants.sol";
 import {
     CurveGaugeZapBase
 } from "contracts/protocols/curve/common/CurveGaugeZapBase.sol";

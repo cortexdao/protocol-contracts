@@ -2,7 +2,7 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {INameIdentifier, IERC20} from "contracts/common/Imports.sol";
+import {IERC20} from "contracts/common/Imports.sol";
 import {SafeMath} from "contracts/libraries/Imports.sol";
 import {ImmutableAssetAllocation} from "contracts/tvl/Imports.sol";
 
@@ -16,23 +16,7 @@ import {
     OldCurveAllocationBase2
 } from "contracts/protocols/curve/common/Imports.sol";
 
-import {
-    Curve3PoolUnderlyerConstants
-} from "contracts/protocols/curve/3pool/Allocation.sol";
-
-abstract contract CurveCompoundConstants is
-    Curve3PoolUnderlyerConstants,
-    INameIdentifier
-{
-    string public constant override NAME = "curve-compound";
-
-    address public constant STABLE_SWAP_ADDRESS =
-        0xA2B47E3D5c44877cca798226B7B8118F9BFb7A56;
-    address public constant LP_TOKEN_ADDRESS =
-        0x845838DF265Dcd2c412A1Dc9e959c7d08537f8a2;
-    address public constant LIQUIDITY_GAUGE_ADDRESS =
-        0x7ca5b0a2910B33e9759DC7dDB0413949071D7575;
-}
+import {CurveCompoundConstants} from "./Constants.sol";
 
 contract CurveCompoundAllocation is
     OldCurveAllocationBase2,

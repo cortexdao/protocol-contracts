@@ -8,9 +8,7 @@ import {
     IStableSwap2 as IStableSwap,
     IStakingRewards
 } from "contracts/protocols/curve/common/interfaces/Imports.sol";
-import {
-    CurveLusdConstants
-} from "contracts/protocols/curve/lusd/Allocation.sol";
+import {CurveLusdConstants} from "./Constants.sol";
 import {CurveGaugeZapBase} from "contracts/protocols/curve/common/Imports.sol";
 
 contract LusdPoolZap is CurveGaugeZapBase, CurveLusdConstants {

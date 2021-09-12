@@ -8,9 +8,7 @@ import {
     IStableSwap,
     ILiquidityGauge
 } from "contracts/protocols/curve/common/interfaces/Imports.sol";
-import {
-    Curve3PoolConstants
-} from "contracts/protocols/curve/3pool/Allocation.sol";
+import {Curve3PoolConstants} from "./Constants.sol";
 import {CurveGaugeZapBase} from "contracts/protocols/curve/common/Imports.sol";
 
 contract Curve3PoolZap is CurveGaugeZapBase, Curve3PoolConstants {
