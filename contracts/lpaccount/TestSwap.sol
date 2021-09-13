@@ -24,16 +24,6 @@ contract TestSwap is ISwap, TestLpAccountStorage {
         return _name;
     }
 
-    // Asset allocation contracts required for the strategy
-    function assetAllocations()
-        external
-        view
-        override
-        returns (IAssetAllocation[] memory)
-    {
-        return _assetAllocations;
-    }
-
     // ERC20 asset allocation tokens required for the strategy
     function erc20Allocations()
         external
@@ -47,11 +37,6 @@ contract TestSwap is ISwap, TestLpAccountStorage {
     /**
      * Testing functions
      */
-    function _setAssetAllocations(IAssetAllocation[] memory allocations)
-        public
-    {
-        _assetAllocations = allocations;
-    }
 
     function _setErc20Allocations(IERC20[] memory tokens) public {
         _tokens = tokens;

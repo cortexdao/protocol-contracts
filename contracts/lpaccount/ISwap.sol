@@ -11,12 +11,6 @@ import {
 interface ISwap is INameIdentifier {
     function swap(uint256 amount) external;
 
-    // Asset allocation contracts required for the strategy
-    function assetAllocations()
-        external
-        view
-        returns (IAssetAllocation[] memory);
-
     // ERC20 asset allocation tokens required for the strategy
     function erc20Allocations() external view returns (IERC20[] memory);
 }
