@@ -14,7 +14,7 @@ contract TestLpAccount is TestLpAccountStorage, LpAccount {
         return _deploysArray;
     }
 
-    function _unwindCalls() external view returns (uint256[] memory) {
+    function _unwindCalls() external view returns (uint256[][] memory) {
         return _unwindsArray;
     }
 

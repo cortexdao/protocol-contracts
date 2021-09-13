@@ -13,7 +13,7 @@ interface IZap is INameIdentifier {
     function deployLiquidity(uint256[] calldata amounts) external;
 
     // LP token amount
-    function unwindLiquidity(uint256 amount) external;
+    function unwindLiquidity(uint256[] calldata amounts) external;
 
     function claim() external;
 

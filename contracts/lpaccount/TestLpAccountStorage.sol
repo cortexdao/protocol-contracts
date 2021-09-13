@@ -7,7 +7,7 @@ abstract contract TestLpAccountStorage {
     string internal _name;
 
     uint256[][] internal _deploysArray;
-    uint256[] internal _unwindsArray;
+    uint256[][] internal _unwindsArray;
     uint256[] internal _swapsArray;
 
     uint256 public _claimsCounter;

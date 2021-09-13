@@ -23,8 +23,8 @@ contract TestZap is IZap, TestLpAccountStorage {
     }
 
     // LP token amount
-    function unwindLiquidity(uint256 amount) external override {
-        _unwindsArray.push(amount);
+    function unwindLiquidity(uint256[] calldata amounts) external override {
+        _unwindsArray.push(amounts);
     }
 
     function claim() external override {

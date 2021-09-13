@@ -148,7 +148,7 @@ contract LpAccount is
         );
     }
 
-    function unwindStrategy(string calldata name, uint256 amount)
+    function unwindStrategy(string calldata name, uint256[] calldata amounts)
         external
         override
         nonReentrant
@@ -158,7 +158,7 @@ contract LpAccount is
         require(zap != address(0), "INVALID_NAME");
 
         zap.functionDelegateCall(
-            abi.encodeWithSelector(IZap.unwindLiquidity.selector, amount)
+            abi.encodeWithSelector(IZap.unwindLiquidity.selector, amounts)
         );
     }
 

@@ -6,7 +6,8 @@ interface ILpAccount {
     function deployStrategy(string calldata name, uint256[] calldata amounts)
         external;
 
-    function unwindStrategy(string calldata name, uint256 amount) external;
+    function unwindStrategy(string calldata name, uint256[] calldata amounts)
+        external;
 
     function transferToPool(address pool, uint256 amount) external;
 

@@ -20,7 +20,9 @@ abstract contract CurveBasePoolGauge is IZap, CurveBasePool {
         address gaugeAddress,
         uint256 denominator,
         uint256 slippage,
-        uint256 nCoins
+        uint256 nCoins,
+        uint256 feeDenominator,
+        uint256 precision
     )
         public
         CurveBasePool(
@@ -29,7 +31,9 @@ abstract contract CurveBasePoolGauge is IZap, CurveBasePool {
             gaugeAddress,
             denominator,
             slippage,
-            nCoins
+            nCoins,
+            feeDenominator,
+            precision
         ) // solhint-disable-next-line no-empty-blocks
     {}
 
