@@ -33,6 +33,7 @@ abstract contract BaseSwapCrvToStablecoin is ISwap {
 
     // TODO: create function for calculating min amount
     function swap(uint256 amount) external override {
+        _CRV.safeApprove(address(_ROUTER), 0);
         _CRV.safeApprove(address(_ROUTER), amount);
 
         // solhint-disable not-rely-on-time
