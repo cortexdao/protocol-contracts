@@ -36,6 +36,7 @@ abstract contract CurveBasePoolGauge is IZap, CurveBasePool {
     function _depositToGauge() internal override {
         ILiquidityGauge liquidityGauge = ILiquidityGauge(GAUGE_ADDRESS);
         uint256 lpBalance = IERC20(LP_ADDRESS).balanceOf(address(this));
+        IERC20(LP_ADDRESS).safeApprove(GAUGE_ADDRESS, 0);
         IERC20(LP_ADDRESS).safeApprove(GAUGE_ADDRESS, lpBalance);
         liquidityGauge.deposit(lpBalance);
     }
