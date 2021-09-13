@@ -15,8 +15,6 @@ contract SwapCrvToDai is BaseSwapCrvToStablecoin {
     IERC20 private constant _DAI =
         IERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
 
-    event Swap(ISwapRouter.ExactInputParams params, uint256 amountOut);
-
     // solhint-disable-next-line no-empty-blocks
     constructor() public BaseSwapCrvToStablecoin(_DAI) {}
 }

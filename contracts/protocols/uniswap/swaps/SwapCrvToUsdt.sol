@@ -15,8 +15,6 @@ contract SwapCrvToUsdt is BaseSwapCrvToStablecoin {
     IERC20 private constant _USDT =
         IERC20(0xdAC17F958D2ee523a2206206994597C13D831ec7);
 
-    event Swap(ISwapRouter.ExactInputParams params, uint256 amountOut);
-
     // solhint-disable-next-line no-empty-blocks
     constructor() public BaseSwapCrvToStablecoin(_USDT) {}
 }
