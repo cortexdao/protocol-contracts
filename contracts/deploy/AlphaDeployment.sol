@@ -2,13 +2,15 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {Ownable} from "contracts/common/Imports.sol";
+import {IDetailedERC20, Ownable} from "contracts/common/Imports.sol";
 import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
 import {MetaPoolTokenProxy} from "contracts/mapt/MetaPoolTokenProxy.sol";
+import {AggregatorV3Interface} from "contracts/oracle/Imports.sol";
 import {PoolToken} from "contracts/pool/PoolToken.sol";
 import {PoolTokenProxy} from "contracts/pool/PoolTokenProxy.sol";
 import {PoolTokenV2} from "contracts/pool/PoolTokenV2.sol";
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
+import {AddressRegistryV2} from "contracts/registry/AddressRegistryV2.sol";
 import {Erc20Allocation} from "contracts/tvl/Erc20Allocation.sol";
 import {TvlManager} from "contracts/tvl/TvlManager.sol";
 import {OracleAdapter} from "contracts/oracle/OracleAdapter.sol";
@@ -212,6 +214,11 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             TransparentUpgradeableProxy(payable(ADDRESS_REGISTRY_PROXY)),
             logicV2
         );
+
+        // initialize logic storage for security: disallows 3rd parties
+        // from manipulating logic contract later if we allow more powerful
+        // functionality, e.g. execute arbitrary calldata
+        AddressRegistryV2(logicV2).initialize(ADDRESS_REGISTRY_PROXY_ADMIN);
     }
 
     /// @dev Deploy the mAPT proxy and its proxy admin.
@@ -329,6 +336,15 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         );
         addressRegistry.registerAddress("usdtDemoPool", usdtProxy);
         usdtDemoPool = usdtProxy;
+
+        // initialize logic storage for security: disallows 3rd parties
+        // from manipulating logic contract later if we allow more powerful
+        // functionality, e.g. execute arbitrary calldata
+        PoolTokenV2(logicV2).initialize(
+            POOL_PROXY_ADMIN,
+            IDetailedERC20(DAI_ADDRESS),
+            AggregatorV3Interface(fakeAggAddress)
+        );
     }
 
     /// @dev Deploy ERC20 allocation and TVL Manager.
@@ -470,6 +486,15 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             TransparentUpgradeableProxy(payable(USDT_POOL_PROXY)),
             logicV2,
             initData
+        );
+
+        // initialize logic storage for security: disallows 3rd parties
+        // from manipulating logic contract later if we allow more powerful
+        // functionality, e.g. execute arbitrary calldata
+        PoolTokenV2(logicV2).initialize(
+            POOL_PROXY_ADMIN,
+            IDetailedERC20(DAI_ADDRESS),
+            AggregatorV3Interface(0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe)
         );
 
         poolTokenV2 = logicV2;
