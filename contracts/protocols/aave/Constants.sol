@@ -13,4 +13,7 @@ abstract contract AaveConstants is INameIdentifier {
         0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9;
     address public constant STAKED_AAVE_ADDRESS =
         0x4da27a545c0c5B758a6BA100e3a049001de870f5;
+
+    address public constant STAKED_INCENTIVES_CONTROLLER_ADDRESS =
+        0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5;
 }

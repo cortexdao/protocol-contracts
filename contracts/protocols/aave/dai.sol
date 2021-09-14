@@ -6,16 +6,22 @@ import {IAssetAllocation, IERC20} from "contracts/common/Imports.sol";
 import {ApyUnderlyerConstants} from "contracts/protocols/apy.sol";
 
 import {ILendingPool, DataTypes} from "./common/interfaces/ILendingPool.sol";
+import {
+    IAaveIncentivesController
+} from "./common/interfaces/IAaveIncentivesController.sol";
 import {AaveBasePool} from "./common/AaveBasePool.sol";
 import {AaveConstants} from "./Constants.sol";
 
 contract AaveDaiZap is AaveBasePool, AaveConstants, ApyUnderlyerConstants {
-    constructor()
-        public
-        AaveBasePool(DAI_ADDRESS, LENDING_POOL_ADDRESS)
-    // solhint-disable-next-line no-empty-blocks
-    {
+    constructor() public AaveBasePool(DAI_ADDRESS, LENDING_POOL_ADDRESS) {} // solhint-disable-line no-empty-blocks
 
+    function claim() external override {
+        IAaveIncentivesController controller =
+            IAaveIncentivesController(STAKED_INCENTIVES_CONTROLLER_ADDRESS);
+        address[] memory assets = new address[](1);
+        assets[0] = DAI_ADDRESS;
+        uint256 amount = controller.getRewardsBalance(assets, address(this));
+        controller.claimRewards(assets, amount, address(this));
     }
 
     function assetAllocations()
