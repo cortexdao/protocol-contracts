@@ -202,7 +202,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         external
         onlyOwner
         updateStep(0)
-        returns (address)
     {
         address[] memory ownedContracts = new address[](1);
         ownedContracts[0] = ADDRESS_REGISTRY_PROXY_ADMIN;
@@ -223,12 +222,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
     /// @dev Deploy the mAPT proxy and its proxy admin.
     ///      Does not register any roles for contracts.
-    function deploy_1_MetaPoolToken()
-        external
-        onlyOwner
-        updateStep(1)
-        returns (address)
-    {
+    function deploy_1_MetaPoolToken() external onlyOwner updateStep(1) {
         address[] memory ownedContracts = new address[](1);
         ownedContracts[0] = address(addressRegistry);
         checkOwnerships(ownedContracts);
@@ -249,7 +243,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         addressRegistry.registerAddress("mApt", mApt);
 
         ProxyAdmin(proxyAdmin).transferOwnership(newOwner);
-        return mApt;
     }
 
     /// @dev complete proxy deploy for the demo pools
@@ -349,12 +342,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
     /// @dev Deploy ERC20 allocation and TVL Manager.
     ///      Does not register any roles for contracts.
-    function deploy_3_TvlManager()
-        external
-        onlyOwner
-        updateStep(3)
-        returns (address)
-    {
+    function deploy_3_TvlManager() external onlyOwner updateStep(3) {
         checkRegisteredDependencies(new bytes32[](0), new address[](0));
 
         address[] memory ownedContracts = new address[](1);
@@ -366,16 +354,10 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         );
 
         addressRegistry.registerAddress("tvlManager", address(tvlManager));
-        return tvlManager;
     }
 
     /// @dev registers mAPT and TvlManager for contract roles
-    function deploy_4_OracleAdapter()
-        external
-        onlyOwner
-        updateStep(4)
-        returns (address)
-    {
+    function deploy_4_OracleAdapter() external onlyOwner updateStep(4) {
         bytes32[] memory registeredIds = new bytes32[](2);
         address[] memory deployedAddresses = new address[](2);
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
@@ -408,16 +390,10 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             defaultLockPeriod
         );
         addressRegistry.registerAddress("oracleAdapter", oracleAdapter);
-        return oracleAdapter;
     }
 
     /// @dev register mAPT for a contract role
-    function deploy_5_LpAccount()
-        external
-        onlyOwner
-        updateStep(5)
-        returns (address)
-    {
+    function deploy_5_LpAccount() external onlyOwner updateStep(5) {
         bytes32[] memory registeredIds = new bytes32[](1);
         address[] memory deployedAddresses = new address[](1);
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
@@ -445,17 +421,11 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         addressRegistry.registerAddress("lpAccount", lpAccount);
 
         ProxyAdmin(proxyAdmin).transferOwnership(newOwner);
-        return lpAccount;
     }
 
     /// @notice upgrade from v1 to v2
     /// @dev register mAPT for a contract role
-    function deploy_6_PoolTokenV2_upgrade()
-        external
-        onlyOwner
-        updateStep(6)
-        returns (address)
-    {
+    function deploy_6_PoolTokenV2_upgrade() external onlyOwner updateStep(6) {
         bytes32[] memory registeredIds = new bytes32[](1);
         address[] memory deployedAddresses = new address[](1);
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
@@ -498,7 +468,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         );
 
         poolTokenV2 = logicV2;
-        return poolTokenV2;
     }
 
     function cleanup() external onlyOwner {
