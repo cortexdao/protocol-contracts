@@ -2,15 +2,24 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
+import {Address} from "contracts/libraries/Imports.sol";
 import {TestMetaPoolToken} from "contracts/mapt/TestMetaPoolToken.sol";
 import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
 
 import {MetaPoolTokenFactory, OracleAdapterFactory} from "./factories.sol";
 
 contract TestMetaPoolTokenFactory is MetaPoolTokenFactory {
-    function _deployLogic() internal override returns (address) {
+    using Address for address;
+
+    function _deployLogic(bytes memory initData)
+        internal
+        override
+        returns (address)
+    {
         TestMetaPoolToken logic = new TestMetaPoolToken();
-        return address(logic);
+        address _logic = address(logic);
+        _logic.functionCall(initData);
+        return _logic;
     }
 }
 

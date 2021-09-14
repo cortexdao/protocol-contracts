@@ -3,6 +3,7 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import {Ownable} from "contracts/common/Imports.sol";
+import {Address} from "contracts/libraries/Imports.sol";
 import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
 import {MetaPoolTokenProxy} from "contracts/mapt/MetaPoolTokenProxy.sol";
 import {PoolToken} from "contracts/pool/PoolToken.sol";
@@ -27,26 +28,47 @@ abstract contract UpgradeableContractFactory {
         address proxyAdmin,
         bytes memory initData
     ) public returns (address) {
-        address logic = _deployLogic();
+        address logic = _deployLogic(initData);
         address proxy =
             ProxyFactory(proxyFactory).create(logic, proxyAdmin, initData);
         return address(proxy);
     }
 
-    function _deployLogic() internal virtual returns (address);
+    function _deployLogic(bytes memory initData)
+        internal
+        virtual
+        returns (address);
 }
 
 contract MetaPoolTokenFactory is UpgradeableContractFactory {
-    function _deployLogic() internal virtual override returns (address) {
+    using Address for address;
+
+    function _deployLogic(bytes memory initData)
+        internal
+        virtual
+        override
+        returns (address)
+    {
         MetaPoolToken logic = new MetaPoolToken();
-        return address(logic);
+        address _logic = address(logic);
+        _logic.functionCall(initData);
+        return _logic;
     }
 }
 
 contract LpAccountFactory is UpgradeableContractFactory {
-    function _deployLogic() internal virtual override returns (address) {
+    using Address for address;
+
+    function _deployLogic(bytes memory initData)
+        internal
+        virtual
+        override
+        returns (address)
+    {
         LpAccount logic = new LpAccount();
-        return address(logic);
+        address _logic = address(logic);
+        _logic.functionCall(initData);
+        return _logic;
     }
 }
 
@@ -63,14 +85,22 @@ contract ProxyFactory {
 }
 
 contract PoolTokenV1Factory is UpgradeableContractFactory {
+    using Address for address;
+
     address private _logic;
 
-    function _deployLogic() internal virtual override returns (address) {
+    function _deployLogic(bytes memory initData)
+        internal
+        virtual
+        override
+        returns (address)
+    {
         if (_logic != address(0)) {
             return _logic;
         }
         PoolToken logic = new PoolToken();
         _logic = address(logic);
+        _logic.functionCall(initData);
         return _logic;
     }
 }
