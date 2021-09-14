@@ -7,8 +7,10 @@ import {SafeMath} from "contracts/libraries/Imports.sol";
 
 import {ImmutableAssetAllocation} from "contracts/tvl/Imports.sol";
 
-import {DataTypes} from "../DataTypes.sol";
-import {ILendingPool} from "../interfaces/ILendingPool.sol";
+import {
+    ILendingPool,
+    DataTypes
+} from "contracts/protocols/aave/common/interfaces/ILendingPool.sol";
 import {ApyUnderlyerConstants} from "contracts/protocols/apy.sol";
 
 /**

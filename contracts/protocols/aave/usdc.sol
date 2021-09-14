@@ -7,16 +7,18 @@ import {IAssetAllocation} from "contracts/common/Imports.sol";
 import {
     ILendingPool,
     DataTypes
-} from "contracts/protocols/aave/interfaces/ILendingPool.sol";
+} from "contracts/protocols/aave/common/interfaces/ILendingPool.sol";
 
-import {AaveBasePool} from "contracts/protocols/aave/zaps/AaveBasePool.sol";
-import {AaveConstants} from "contracts/protocols/aave/allocations/aave.sol";
+import {AaveBasePool} from "contracts/protocols/aave/common/AaveBasePool.sol";
+import {
+    AaveConstants
+} from "contracts/protocols/aave/common/AaveAllocationBase.sol";
 import {ApyUnderlyerConstants} from "contracts/protocols/apy.sol";
 
-contract AaveDaiZap is AaveBasePool, AaveConstants, ApyUnderlyerConstants {
+contract AaveUsdcZap is AaveBasePool, AaveConstants, ApyUnderlyerConstants {
     constructor()
         public
-        AaveBasePool(DAI_ADDRESS, LENDING_POOL_ADDRESS)
+        AaveBasePool(USDC_ADDRESS, LENDING_POOL_ADDRESS)
     // solhint-disable-next-line no-empty-blocks
     {
 
