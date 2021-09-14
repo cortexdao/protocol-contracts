@@ -215,9 +215,9 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             logicV2
         );
 
-        // initialize logic storage for security: disallows 3rd parties
-        // from manipulating logic contract later if we allow more powerful
-        // functionality, e.g. execute arbitrary calldata
+        // Initialize logic storage to block possible attack vector:
+        // attacker may control and selfdestruct the logic contract
+        // if more powerful functionality is added later
         AddressRegistryV2(logicV2).initialize(ADDRESS_REGISTRY_PROXY_ADMIN);
     }
 
@@ -337,9 +337,9 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         addressRegistry.registerAddress("usdtDemoPool", usdtProxy);
         usdtDemoPool = usdtProxy;
 
-        // initialize logic storage for security: disallows 3rd parties
-        // from manipulating logic contract later if we allow more powerful
-        // functionality, e.g. execute arbitrary calldata
+        // Initialize logic storage to block possible attack vector:
+        // attacker may control and selfdestruct the logic contract
+        // if more powerful functionality is added later
         PoolTokenV2(logicV2).initialize(
             POOL_PROXY_ADMIN,
             IDetailedERC20(DAI_ADDRESS),
@@ -488,9 +488,9 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             initData
         );
 
-        // initialize logic storage for security: disallows 3rd parties
-        // from manipulating logic contract later if we allow more powerful
-        // functionality, e.g. execute arbitrary calldata
+        // Initialize logic storage to block possible attack vector:
+        // attacker may control and selfdestruct the logic contract
+        // if more powerful functionality is added later
         PoolTokenV2(logicV2).initialize(
             POOL_PROXY_ADMIN,
             IDetailedERC20(DAI_ADDRESS),

@@ -34,6 +34,12 @@ abstract contract UpgradeableContractFactory {
         return address(proxy);
     }
 
+    /**
+     * `initData` is passed to allow initialization of the logic
+     * contract's storage.  This is to block possible attack vectors.
+     * Future added functionality may allow those controlling the
+     * contract to selfdestruct it.
+     */
     function _deployLogic(bytes memory initData)
         internal
         virtual
