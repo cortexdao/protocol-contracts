@@ -2,10 +2,8 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {INameIdentifier, IERC20} from "contracts/common/Imports.sol";
+import {IERC20} from "contracts/common/Imports.sol";
 import {SafeMath} from "contracts/libraries/Imports.sol";
-
-import {ImmutableAssetAllocation} from "contracts/tvl/Imports.sol";
 
 import {
     ILendingPool,
@@ -48,47 +46,5 @@ contract AaveAllocationBase {
         // automagically reflects the accrued interest and
         // aTokens convert 1:1 to the underlyer.
         return IERC20(aToken).balanceOf(account);
-    }
-}
-
-abstract contract AaveConstants is INameIdentifier {
-    string public constant override NAME = "aave";
-
-    address public constant LENDING_POOL_ADDRESS =
-        0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9;
-}
-
-contract AaveStableCoinAllocation is
-    AaveAllocationBase,
-    ImmutableAssetAllocation,
-    AaveConstants,
-    ApyUnderlyerConstants
-{
-    function balanceOf(address account, uint8 tokenIndex)
-        external
-        view
-        override
-        returns (uint256)
-    {
-        address underlyer = addressOf(tokenIndex);
-        return
-            super.getUnderlyerBalance(
-                account,
-                ILendingPool(LENDING_POOL_ADDRESS),
-                underlyer
-            );
-    }
-
-    function _getTokenData()
-        internal
-        pure
-        override
-        returns (TokenData[] memory)
-    {
-        TokenData[] memory tokens = new TokenData[](3);
-        tokens[0] = TokenData(DAI_ADDRESS, DAI_SYMBOL, DAI_DECIMALS);
-        tokens[1] = TokenData(USDC_ADDRESS, USDC_SYMBOL, USDC_DECIMALS);
-        tokens[2] = TokenData(USDT_ADDRESS, USDT_SYMBOL, USDT_DECIMALS);
-        return tokens;
     }
 }

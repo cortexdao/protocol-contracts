@@ -2,18 +2,12 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IAssetAllocation} from "contracts/common/Imports.sol";
-import {
-    ILendingPool,
-    DataTypes
-} from "contracts/protocols/aave/common/interfaces/ILendingPool.sol";
-
-import {AaveBasePool} from "contracts/protocols/aave/common/AaveBasePool.sol";
-import {
-    AaveConstants
-} from "contracts/protocols/aave/common/AaveAllocationBase.sol";
+import {IAssetAllocation, IERC20} from "contracts/common/Imports.sol";
 import {ApyUnderlyerConstants} from "contracts/protocols/apy.sol";
+
+import {ILendingPool, DataTypes} from "./common/interfaces/ILendingPool.sol";
+import {AaveBasePool} from "./common/AaveBasePool.sol";
+import {AaveConstants} from "./Constants.sol";
 
 contract AaveDaiZap is AaveBasePool, AaveConstants, ApyUnderlyerConstants {
     constructor()
