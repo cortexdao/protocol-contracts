@@ -12,14 +12,14 @@ abstract contract AaveBasePool is IZap {
     using SafeERC20 for IERC20;
 
     address internal immutable UNDERLYER_ADDRESS;
-    address internal immutable LENDING_ADDRESS;
+    address internal immutable POOL_ADDRESS;
 
     // TODO: think about including the AToken address to conserve gas
     // TODO: consider using IDetailedERC20 as the type instead of address for underlyer
 
     constructor(address underlyerAddress, address lendingAddress) public {
         UNDERLYER_ADDRESS = underlyerAddress;
-        LENDING_ADDRESS = lendingAddress;
+        POOL_ADDRESS = lendingAddress;
     }
 
     function _deposit(uint256 amount) internal virtual;
@@ -28,8 +28,8 @@ abstract contract AaveBasePool is IZap {
 
     /// @param amounts array of underlyer amounts
     function deployLiquidity(uint256[] calldata amounts) external override {
-        IERC20(UNDERLYER_ADDRESS).safeApprove(LENDING_ADDRESS, 0);
-        IERC20(UNDERLYER_ADDRESS).safeApprove(LENDING_ADDRESS, amounts[0]);
+        IERC20(UNDERLYER_ADDRESS).safeApprove(POOL_ADDRESS, 0);
+        IERC20(UNDERLYER_ADDRESS).safeApprove(POOL_ADDRESS, amounts[0]);
         _deposit(amounts[0]);
     }
 
@@ -46,5 +46,5 @@ abstract contract AaveBasePool is IZap {
     }
 
     // solhint-disable-next-line no-empty-blocks
-    function claim() external override {}
+    function claim() external virtual override {}
 }

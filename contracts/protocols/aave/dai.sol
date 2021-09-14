@@ -29,7 +29,7 @@ contract AaveDaiZap is AaveBasePool, AaveConstants, ApyUnderlyerConstants {
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
         DataTypes.ReserveData memory data =
-            ILendingPool(LENDING_ADDRESS).getReserveData(UNDERLYER_ADDRESS);
+            ILendingPool(POOL_ADDRESS).getReserveData(UNDERLYER_ADDRESS);
         IERC20[] memory allocations = new IERC20[](2);
         allocations[0] = IERC20(UNDERLYER_ADDRESS);
         allocations[1] = IERC20(data.aTokenAddress);
@@ -37,7 +37,7 @@ contract AaveDaiZap is AaveBasePool, AaveConstants, ApyUnderlyerConstants {
     }
 
     function _deposit(uint256 amount) internal override {
-        ILendingPool(LENDING_ADDRESS).deposit(
+        ILendingPool(POOL_ADDRESS).deposit(
             UNDERLYER_ADDRESS,
             amount,
             address(this),
@@ -46,7 +46,7 @@ contract AaveDaiZap is AaveBasePool, AaveConstants, ApyUnderlyerConstants {
     }
 
     function _withdraw(uint256 lpBalance) internal override {
-        ILendingPool(LENDING_ADDRESS).withdraw(
+        ILendingPool(POOL_ADDRESS).withdraw(
             UNDERLYER_ADDRESS,
             lpBalance,
             address(this)
