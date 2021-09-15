@@ -2,7 +2,6 @@ const { assert, expect } = require("chai");
 const hre = require("hardhat");
 const { artifacts, ethers, waffle } = hre;
 const { deployMockContract } = waffle;
-const { BigNumber } = ethers;
 
 const timeMachine = require("ganache-time-traveler");
 
@@ -10,6 +9,8 @@ const {
   ZERO_ADDRESS,
   FAKE_ADDRESS,
   tokenAmountToBigNumber,
+  impersonateAccount,
+  forciblySendEth,
 } = require("../utils/helpers");
 
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
@@ -20,6 +21,11 @@ const OracleAdapter = artifacts.require("OracleAdapter");
 describe("Contract: PoolTokenV2", () => {
   // signers
   let deployer;
+  let adminSafe;
+  let emergencySafe;
+  let mApt;
+  let lpAccount;
+  let lpSafe;
   let randomUser;
   let anotherUser;
 
@@ -52,7 +58,15 @@ describe("Contract: PoolTokenV2", () => {
   });
 
   before(async () => {
-    [deployer, randomUser, anotherUser] = await ethers.getSigners();
+    [
+      deployer,
+      lpAccount,
+      adminSafe,
+      emergencySafe,
+      lpSafe,
+      randomUser,
+      anotherUser,
+    ] = await ethers.getSigners();
 
     ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     PoolTokenProxy = await ethers.getContractFactory("PoolTokenProxy");
@@ -75,15 +89,31 @@ describe("Contract: PoolTokenV2", () => {
     const logicV2 = await PoolTokenV2.deploy();
     await logicV2.deployed();
 
-    mAptMock = await deployMockContract(deployer, MetaPoolToken.abi);
-    oracleAdapterMock = await deployMockContract(deployer, OracleAdapter.abi);
     addressRegistryMock = await deployMockContract(
       deployer,
       AddressRegistry.abi
     );
+
+    mAptMock = await deployMockContract(deployer, MetaPoolToken.abi);
     await addressRegistryMock.mock.mAptAddress.returns(mAptMock.address);
+
+    oracleAdapterMock = await deployMockContract(deployer, OracleAdapter.abi);
     await addressRegistryMock.mock.oracleAdapterAddress.returns(
       oracleAdapterMock.address
+    );
+
+    await addressRegistryMock.mock.lpAccountAddress.returns(lpAccount.address);
+    await addressRegistryMock.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistryMock.mock.adminSafeAddress.returns(adminSafe.address);
+    await addressRegistryMock.mock.emergencySafeAddress.returns(
+      emergencySafe.address
+    );
+
+    mApt = await impersonateAccount(mAptMock.address);
+    await forciblySendEth(
+      mApt.address,
+      tokenAmountToBigNumber("10"),
+      deployer.address
     );
 
     const initData = PoolTokenV2.interface.encodeFunctionData(
@@ -135,8 +165,36 @@ describe("Contract: PoolTokenV2", () => {
   });
 
   describe("Defaults", () => {
-    it("Owner set to deployer", async () => {
-      expect(await poolToken.owner()).to.equal(deployer.address);
+    it("Default admin role given to Emergency Safe", async () => {
+      const DEFAULT_ADMIN_ROLE = await poolToken.DEFAULT_ADMIN_ROLE();
+      const memberCount = await poolToken.getRoleMemberCount(
+        DEFAULT_ADMIN_ROLE
+      );
+      expect(memberCount).to.equal(1);
+      expect(await poolToken.hasRole(DEFAULT_ADMIN_ROLE, emergencySafe.address))
+        .to.be.true;
+    });
+
+    it("Admin role given to Admin Safe", async () => {
+      const ADMIN_ROLE = await poolToken.ADMIN_ROLE();
+      const memberCount = await poolToken.getRoleMemberCount(ADMIN_ROLE);
+      expect(memberCount).to.equal(1);
+      expect(await poolToken.hasRole(ADMIN_ROLE, adminSafe.address)).to.be.true;
+    });
+
+    it("Contract role given to mAPT", async () => {
+      const CONTRACT_ROLE = await poolToken.CONTRACT_ROLE();
+      const memberCount = await poolToken.getRoleMemberCount(CONTRACT_ROLE);
+      expect(memberCount).to.equal(1);
+      expect(await poolToken.hasRole(CONTRACT_ROLE, mApt.address)).to.be.true;
+    });
+
+    it("Emergency role given to Emergency Safe", async () => {
+      const EMERGENCY_ROLE = await poolToken.EMERGENCY_ROLE();
+      const memberCount = await poolToken.getRoleMemberCount(EMERGENCY_ROLE);
+      expect(memberCount).to.equal(1);
+      expect(await poolToken.hasRole(EMERGENCY_ROLE, emergencySafe.address)).to
+        .be.true;
     });
 
     it("DEFAULT_APT_TO_UNDERLYER_FACTOR set to correct value", async () => {
@@ -183,43 +241,50 @@ describe("Contract: PoolTokenV2", () => {
   });
 
   describe("Set admin address", () => {
-    it("Owner can set admin", async () => {
-      await poolToken.connect(deployer).setAdminAddress(FAKE_ADDRESS);
+    it("Emergency Safe can set admin", async () => {
+      await poolToken
+        .connect(emergencySafe)
+        .emergencySetAdminAddress(FAKE_ADDRESS);
       assert.equal(await poolToken.proxyAdmin(), FAKE_ADDRESS);
     });
 
     it("Revert on setting to zero address", async () => {
-      await expect(poolToken.connect(deployer).setAdminAddress(ZERO_ADDRESS)).to
-        .be.reverted;
+      await expect(
+        poolToken.connect(emergencySafe).emergencySetAdminAddress(ZERO_ADDRESS)
+      ).to.be.reverted;
     });
 
-    it("Revert when non-owner attempts to set address", async () => {
+    it("Revert when unpermissioned account attempts to set address", async () => {
       await expect(
-        poolToken.connect(randomUser).setAdminAddress(FAKE_ADDRESS)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+        poolToken.connect(randomUser).emergencySetAdminAddress(FAKE_ADDRESS)
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
   });
 
   describe("Set address registry", () => {
-    it("Owner can set", async () => {
+    it("Emergency Safe can set", async () => {
       const dummyContract = await deployMockContract(deployer, []);
       await poolToken
-        .connect(deployer)
-        .setAddressRegistry(dummyContract.address);
+        .connect(emergencySafe)
+        .emergencySetAddressRegistry(dummyContract.address);
       assert.equal(await poolToken.addressRegistry(), dummyContract.address);
     });
 
     it("Revert on non-contract address", async () => {
       await expect(
-        poolToken.connect(deployer).setAddressRegistry(FAKE_ADDRESS)
+        poolToken
+          .connect(emergencySafe)
+          .emergencySetAddressRegistry(FAKE_ADDRESS)
       ).to.be.revertedWith("INVALID_ADDRESS");
     });
 
-    it("Revert when non-owner attempts to set", async () => {
+    it("Revert when unpermissioned account attempts to set", async () => {
       const dummyContract = await deployMockContract(deployer, []);
       await expect(
-        poolToken.connect(randomUser).setAddressRegistry(dummyContract.address)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+        poolToken
+          .connect(randomUser)
+          .emergencySetAddressRegistry(dummyContract.address)
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
   });
 
@@ -241,31 +306,31 @@ describe("Contract: PoolTokenV2", () => {
   });
 
   describe("Lock pool", () => {
-    it("Owner can lock and unlock pool", async () => {
-      await expect(poolToken.connect(deployer).lock()).to.emit(
+    it("Emergency Safe can lock and unlock pool", async () => {
+      await expect(poolToken.connect(emergencySafe).emergencyLock()).to.emit(
         poolToken,
         "Paused"
       );
-      await expect(poolToken.connect(deployer).unlock()).to.emit(
+      await expect(poolToken.connect(emergencySafe).emergencyUnlock()).to.emit(
         poolToken,
         "Unpaused"
       );
     });
 
-    it("Revert when non-owner attempts to lock", async () => {
-      await expect(poolToken.connect(randomUser).lock()).to.be.revertedWith(
-        "Ownable: caller is not the owner"
-      );
+    it("Revert when unpermissioned account attempts to lock", async () => {
+      await expect(
+        poolToken.connect(randomUser).emergencyLock()
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
 
-    it("Revert when non-owner attempts to unlock", async () => {
-      await expect(poolToken.connect(randomUser).unlock()).to.be.revertedWith(
-        "Ownable: caller is not the owner"
-      );
+    it("Revert when unpermissioned account attempts to unlock", async () => {
+      await expect(
+        poolToken.connect(randomUser).emergencyUnlock()
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
 
     it("Revert when calling addLiquidity/redeem on locked pool", async () => {
-      await poolToken.connect(deployer).lock();
+      await poolToken.connect(emergencySafe).emergencyLock();
 
       await expect(
         poolToken.connect(randomUser).addLiquidity(50)
@@ -276,108 +341,71 @@ describe("Contract: PoolTokenV2", () => {
       );
     });
 
-    it("Revert when calling infiniteApprove on locked pool", async () => {
-      await poolToken.connect(deployer).lock();
+    it("Revert when calling transferToLpAccount on locked pool from mAPT", async () => {
+      await poolToken.connect(emergencySafe).emergencyLock();
 
       await expect(
-        poolToken.connect(deployer).infiniteApprove(FAKE_ADDRESS)
+        poolToken.connect(mApt).transferToLpAccount(100)
       ).to.revertedWith("Pausable: paused");
-    });
-
-    it("Allow calling revokeApprove on locked pool", async () => {
-      await underlyerMock.mock.approve.returns(true);
-
-      await poolToken.connect(deployer).lock();
-
-      await expect(poolToken.connect(deployer).revokeApprove(FAKE_ADDRESS)).to
-        .not.be.reverted;
     });
   });
 
-  describe("Approvals", () => {
-    beforeEach(async () => {
-      await underlyerMock.mock.allowance.returns(0); // needed for `safeApprove`
-      await underlyerMock.mock.approve.returns(true);
+  describe("Transfer to LP Safe", () => {
+    before(async () => {
+      await underlyerMock.mock.transfer.returns(true);
     });
 
-    it("Owner can call infiniteApprove", async () => {
-      await expect(poolToken.connect(deployer).infiniteApprove(FAKE_ADDRESS)).to
-        .not.be.reverted;
+    it("mAPT can call transferToLpAccount", async () => {
+      await expect(poolToken.connect(mApt).transferToLpAccount(100)).to.not.be
+        .reverted;
     });
 
-    it("Revert when non-owner calls infiniteApprove", async () => {
-      await expect(poolToken.connect(randomUser).infiniteApprove(FAKE_ADDRESS))
-        .to.be.reverted;
-    });
-
-    it("Owner can call revokeApprove", async () => {
-      await expect(poolToken.connect(deployer).revokeApprove(FAKE_ADDRESS)).to
-        .not.be.reverted;
-    });
-
-    it("Revert when non-owner calls revokeApprove", async () => {
-      await expect(poolToken.connect(randomUser).revokeApprove(FAKE_ADDRESS)).to
-        .be.reverted;
+    it("Revert when unpermissioned account calls transferToLpAccount", async () => {
+      await expect(poolToken.connect(randomUser).transferToLpAccount(100)).to.be
+        .reverted;
     });
   });
 
   describe("Set feePeriod", () => {
-    it("Owner can set", async () => {
+    it("Admin Safe can set", async () => {
       const newFeePeriod = 12 * 60 * 60;
-      await expect(poolToken.connect(deployer).setFeePeriod(newFeePeriod)).to
+      await expect(poolToken.connect(adminSafe).setFeePeriod(newFeePeriod)).to
         .not.be.reverted;
       expect(await poolToken.feePeriod()).to.equal(newFeePeriod);
     });
-    it("Revert if non-owner attempts to set", async () => {
+    it("Revert if unpermissioned account attempts to set", async () => {
       await expect(poolToken.connect(randomUser).setFeePeriod(12 * 60 * 60)).to
         .be.reverted;
     });
   });
 
   describe("Set feePercentage", () => {
-    it("Owner can set", async () => {
+    it("Admin Safe can set", async () => {
       const newFeePercentage = 12;
       await expect(
-        poolToken.connect(deployer).setFeePercentage(newFeePercentage)
+        poolToken.connect(adminSafe).setFeePercentage(newFeePercentage)
       ).to.not.be.reverted;
       expect(await poolToken.feePercentage()).to.equal(newFeePercentage);
     });
 
-    it("Revert if non-owner attempts to set", async () => {
+    it("Revert if unpermissioned account attempts to set", async () => {
       await expect(poolToken.connect(randomUser).setFeePercentage(12)).to.be
         .reverted;
     });
   });
 
   describe("Set reservePercentage", () => {
-    it("Owner can set", async () => {
+    it("Admin Safe can set", async () => {
       const newPercentage = 10;
       await expect(
-        poolToken.connect(deployer).setReservePercentage(newPercentage)
+        poolToken.connect(adminSafe).setReservePercentage(newPercentage)
       ).to.not.be.reverted;
       expect(await poolToken.reservePercentage()).to.equal(newPercentage);
     });
 
-    it("Revert if non-owner attempts to set", async () => {
+    it("Revert if unpermissioned account attempts to set", async () => {
       await expect(poolToken.connect(randomUser).setReservePercentage(10)).to.be
         .reverted;
-    });
-  });
-
-  describe("getUnderlyerAmountFromValue", () => {
-    it("Returns correct value", async () => {
-      const decimals = 0;
-      await underlyerMock.mock.decimals.returns(decimals);
-      const price = 25;
-      await oracleAdapterMock.mock.getAssetPrice.returns(price);
-      const ethValue = 100;
-      // ((10 ^ 0) * 100) / 25
-      const expectedUnderlyerAmount = BigNumber.from(10 ** decimals)
-        .mul(ethValue)
-        .div(price);
-      expect(await poolToken.getUnderlyerAmountFromValue(ethValue)).to.equal(
-        expectedUnderlyerAmount
-      );
     });
   });
 
@@ -401,7 +429,7 @@ describe("Contract: PoolTokenV2", () => {
     });
   });
 
-  describe("getPoolUnderlyerValue", () => {
+  describe("_getPoolUnderlyerValue", () => {
     it("Returns correct value regardless of deployed value", async () => {
       const decimals = 1;
       await underlyerMock.mock.decimals.returns(decimals);
@@ -416,24 +444,41 @@ describe("Contract: PoolTokenV2", () => {
 
       // force zero deployed value
       await mAptMock.mock.getDeployedValue.returns(0);
-      expect(await poolToken.getDeployedValue()).to.equal(0);
-      expect(await poolToken.getPoolUnderlyerValue()).to.equal(expectedValue);
+      expect(await poolToken.testGetDeployedValue()).to.equal(0);
+      expect(await poolToken.testGetPoolUnderlyerValue()).to.equal(
+        expectedValue
+      );
 
       // force non-zero deployed value
       await mAptMock.mock.getDeployedValue.returns(1234);
-      expect(await poolToken.getDeployedValue()).to.be.gt(0);
-      expect(await poolToken.getPoolUnderlyerValue()).to.equal(expectedValue);
+      expect(await poolToken.testGetDeployedValue()).to.be.gt(0);
+      expect(await poolToken.testGetPoolUnderlyerValue()).to.equal(
+        expectedValue
+      );
     });
   });
 
-  describe("getDeployedValue", () => {
+  describe("_getDeployedValue", () => {
     it("Delegates properly to mAPT contract", async () => {
-      await mAptMock.mock.getDeployedValue.returns(0);
-      expect(await poolToken.getDeployedValue()).to.equal(0);
+      await mAptMock.mock.getDeployedValue
+        .withArgs(poolToken.address)
+        .returns(0);
+      expect(await poolToken.testGetDeployedValue()).to.equal(0);
 
       const deployedValue = tokenAmountToBigNumber(12345);
-      await mAptMock.mock.getDeployedValue.returns(deployedValue);
-      expect(await poolToken.getDeployedValue()).to.equal(deployedValue);
+      await mAptMock.mock.getDeployedValue
+        .withArgs(poolToken.address)
+        .returns(deployedValue);
+      expect(await poolToken.testGetDeployedValue()).to.equal(deployedValue);
+    });
+
+    it("Reverts with same reason when mAPT reverts", async () => {
+      await mAptMock.mock.getDeployedValue
+        .withArgs(poolToken.address)
+        .revertsWithReason("SOMETHING_WRONG");
+      await expect(poolToken.testGetDeployedValue()).to.be.revertedWith(
+        "SOMETHING_WRONG"
+      );
     });
   });
 
@@ -466,7 +511,7 @@ describe("Contract: PoolTokenV2", () => {
     });
 
     it("Returns correct value", async () => {
-      await poolToken.mint(randomUser.address, 100);
+      await poolToken.testMint(randomUser.address, 100);
       await underlyerMock.mock.decimals.returns(0);
       await underlyerMock.mock.balanceOf.returns(100);
 
@@ -515,7 +560,7 @@ describe("Contract: PoolTokenV2", () => {
       const aptSupply = tokenAmountToBigNumber(10000);
       await poolToken.testMint(deployer.address, aptSupply);
 
-      const poolUnderlyerValue = await poolToken.getPoolUnderlyerValue();
+      const poolUnderlyerValue = await poolToken.testGetPoolUnderlyerValue();
       const topUpValue = await poolToken.getReserveTopUpValue();
       expect(topUpValue).to.be.lt(0);
 
@@ -565,7 +610,7 @@ describe("Contract: PoolTokenV2", () => {
       const deployedValue = tokenAmountToBigNumber(500);
       await mAptMock.mock.getDeployedValue.returns(deployedValue);
 
-      const poolUnderlyerValue = await poolToken.getPoolUnderlyerValue();
+      const poolUnderlyerValue = await poolToken.testGetPoolUnderlyerValue();
       const topUpValue = await poolToken.getReserveTopUpValue();
       expect(topUpValue).to.be.gt(0);
 
@@ -593,7 +638,7 @@ describe("Contract: PoolTokenV2", () => {
       const deployedValue = tokenAmountToBigNumber(20);
       await mAptMock.mock.getDeployedValue.returns(deployedValue);
 
-      const poolUnderlyerValue = await poolToken.getPoolUnderlyerValue();
+      const poolUnderlyerValue = await poolToken.testGetPoolUnderlyerValue();
       const topUpValue = await poolToken.getReserveTopUpValue();
       expect(topUpValue).to.be.lt(0);
 
@@ -652,7 +697,7 @@ describe("Contract: PoolTokenV2", () => {
       await underlyerMock.mock.balanceOf.returns(poolBalance);
       await underlyerMock.mock.decimals.returns(decimals);
 
-      await poolToken.mint(poolToken.address, aptTotalSupply);
+      await poolToken.testMint(poolToken.address, aptTotalSupply);
       const expectedMintAmount = aptTotalSupply
         .mul(depositAmount)
         .div(poolBalance);
@@ -675,9 +720,11 @@ describe("Contract: PoolTokenV2", () => {
 
       await mAptMock.mock.balanceOf.returns(tokenAmountToBigNumber(10));
       await mAptMock.mock.totalSupply.returns(tokenAmountToBigNumber(1000));
-      await mAptMock.mock.getTvl.returns(tokenAmountToBigNumber(271828));
+      await mAptMock.mock.getDeployedValue.returns(
+        tokenAmountToBigNumber(10000000)
+      );
 
-      await poolToken.mint(poolToken.address, aptTotalSupply);
+      await poolToken.testMint(poolToken.address, aptTotalSupply);
 
       const depositValue = depositAmount.mul(price).div(10 ** decimals);
       const poolTotalValue = await poolToken.getPoolTotalValue();
@@ -717,7 +764,7 @@ describe("Contract: PoolTokenV2", () => {
       );
 
       const aptAmount = tokenAmountToBigNumber(1, 18);
-      await poolToken.mint(randomUser.address, aptAmount);
+      await poolToken.testMint(randomUser.address, aptAmount);
       const totalSupply = await poolToken.totalSupply();
       const underlyerAmount = await poolToken.getUnderlyerAmount(aptAmount);
 
@@ -939,8 +986,8 @@ describe("Contract: PoolTokenV2", () => {
         });
 
         it("Deposit should work after unlock", async () => {
-          await poolToken.connect(deployer).lockAddLiquidity();
-          await poolToken.connect(deployer).unlockAddLiquidity();
+          await poolToken.connect(emergencySafe).emergencyLockAddLiquidity();
+          await poolToken.connect(emergencySafe).emergencyUnlockAddLiquidity();
 
           await expect(
             poolToken.connect(randomUser).addLiquidity(depositAmount)
@@ -950,34 +997,32 @@ describe("Contract: PoolTokenV2", () => {
     });
 
     describe("Locking", () => {
-      it("Owner can lock", async () => {
-        await expect(poolToken.connect(deployer).lockAddLiquidity()).to.emit(
-          poolToken,
-          "AddLiquidityLocked"
-        );
-      });
-
-      it("Owner can unlock", async () => {
-        await expect(poolToken.connect(deployer).unlockAddLiquidity()).to.emit(
-          poolToken,
-          "AddLiquidityUnlocked"
-        );
-      });
-
-      it("Revert if non-owner attempts to lock", async () => {
+      it("Emergency Safe can lock", async () => {
         await expect(
-          poolToken.connect(randomUser).lockAddLiquidity()
-        ).to.be.revertedWith("Ownable: caller is not the owner");
+          poolToken.connect(emergencySafe).emergencyLockAddLiquidity()
+        ).to.emit(poolToken, "AddLiquidityLocked");
       });
 
-      it("Revert if non-owner attempts to unlock", async () => {
+      it("Emergency Safe can unlock", async () => {
         await expect(
-          poolToken.connect(randomUser).unlockAddLiquidity()
-        ).to.be.revertedWith("Ownable: caller is not the owner");
+          poolToken.connect(emergencySafe).emergencyUnlockAddLiquidity()
+        ).to.emit(poolToken, "AddLiquidityUnlocked");
+      });
+
+      it("Revert if unpermissioned account attempts to lock", async () => {
+        await expect(
+          poolToken.connect(randomUser).emergencyLockAddLiquidity()
+        ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
+      });
+
+      it("Revert if unpermissioned account attempts to unlock", async () => {
+        await expect(
+          poolToken.connect(randomUser).emergencyUnlockAddLiquidity()
+        ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
       });
 
       it("Revert deposit when pool is locked", async () => {
-        await poolToken.connect(deployer).lockAddLiquidity();
+        await poolToken.connect(emergencySafe).emergencyLockAddLiquidity();
 
         await expect(
           poolToken.connect(randomUser).addLiquidity(1)
@@ -994,7 +1039,7 @@ describe("Contract: PoolTokenV2", () => {
     });
 
     it("Revert if APT balance is less than withdraw", async () => {
-      await poolToken.mint(randomUser.address, 1);
+      await poolToken.testMint(randomUser.address, 1);
       await expect(poolToken.connect(randomUser).redeem(2)).to.be.revertedWith(
         "BALANCE_INSUFFICIENT"
       );
@@ -1039,12 +1084,12 @@ describe("Contract: PoolTokenV2", () => {
           await underlyerMock.mock.transfer.returns(true);
 
           // Mint APT supply to go along with pool's total ETH value.
-          await poolToken.mint(deployer.address, aptSupply);
+          await poolToken.testMint(deployer.address, aptSupply);
           // Transfer reserve APT amount to user; must do a burn and mint
           // since inter-user transfer is blocked.
           reserveAptAmount = await poolToken.calculateMintAmount(poolBalance);
-          await poolToken.burn(deployer.address, reserveAptAmount);
-          await poolToken.mint(randomUser.address, reserveAptAmount);
+          await poolToken.testBurn(deployer.address, reserveAptAmount);
+          await poolToken.testMint(randomUser.address, reserveAptAmount);
           aptAmount = reserveAptAmount;
         });
 
@@ -1127,8 +1172,8 @@ describe("Contract: PoolTokenV2", () => {
         });
 
         it("Redeem should work after unlock", async () => {
-          await poolToken.connect(deployer).lockRedeem();
-          await poolToken.connect(deployer).unlockRedeem();
+          await poolToken.connect(emergencySafe).emergencyLockRedeem();
+          await poolToken.connect(emergencySafe).emergencyUnlockRedeem();
 
           await expect(poolToken.connect(randomUser).redeem(aptAmount)).to.not
             .be.reverted;
@@ -1142,8 +1187,8 @@ describe("Contract: PoolTokenV2", () => {
           // this "transfer" pushes the user's corresponding underlyer amount
           // for his APT higher than the reserve balance.
           const smallAptAmount = 10;
-          await poolToken.burn(deployer.address, smallAptAmount);
-          await poolToken.mint(randomUser.address, smallAptAmount);
+          await poolToken.testBurn(deployer.address, smallAptAmount);
+          await poolToken.testMint(randomUser.address, smallAptAmount);
 
           await expect(
             poolToken
@@ -1155,34 +1200,32 @@ describe("Contract: PoolTokenV2", () => {
     });
 
     describe("Locking", () => {
-      it("Owner can lock", async () => {
-        await expect(poolToken.connect(deployer).lockRedeem()).to.emit(
-          poolToken,
-          "RedeemLocked"
-        );
-      });
-
-      it("Owner can unlock", async () => {
-        await expect(poolToken.connect(deployer).unlockRedeem()).to.emit(
-          poolToken,
-          "RedeemUnlocked"
-        );
-      });
-
-      it("Revert if non-owner attempts to lock", async () => {
+      it("Emergency Safe can lock", async () => {
         await expect(
-          poolToken.connect(randomUser).lockRedeem()
-        ).to.be.revertedWith("Ownable: caller is not the owner");
+          poolToken.connect(emergencySafe).emergencyLockRedeem()
+        ).to.emit(poolToken, "RedeemLocked");
       });
 
-      it("Revert if non-owner attempts to unlock", async () => {
+      it("Emergency Safe can unlock", async () => {
         await expect(
-          poolToken.connect(randomUser).unlockRedeem()
-        ).to.be.revertedWith("Ownable: caller is not the owner");
+          poolToken.connect(emergencySafe).emergencyUnlockRedeem()
+        ).to.emit(poolToken, "RedeemUnlocked");
+      });
+
+      it("Revert if unpermissioned account attempts to lock", async () => {
+        await expect(
+          poolToken.connect(randomUser).emergencyLockRedeem()
+        ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
+      });
+
+      it("Revert if unpermissioned account attempts to unlock", async () => {
+        await expect(
+          poolToken.connect(randomUser).emergencyUnlockRedeem()
+        ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
       });
 
       it("Revert redeem when pool is locked", async () => {
-        await poolToken.connect(deployer).lockRedeem();
+        await poolToken.connect(emergencySafe).emergencyLockRedeem();
 
         await expect(
           poolToken.connect(randomUser).redeem(1)

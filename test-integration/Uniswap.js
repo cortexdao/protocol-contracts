@@ -7,7 +7,7 @@ const {
   acquireToken,
   MAX_UINT256,
 } = require("../utils/helpers");
-const { STABLECOIN_POOLS } = require("../utils/constants");
+const { WHALE_POOLS } = require("../utils/constants");
 
 const IUniswapV2Pair = artifacts.require("IUniswapV2Pair");
 const IUniswapV2Router = artifacts.require("IUniswapV2Router");
@@ -75,7 +75,7 @@ describe("Contract: UniswapPeriphery", () => {
         const decimals = await token.decimals();
         const amount = tokenAmountToBigNumber("10000", decimals);
         const symbol = await token.symbol();
-        const sender = STABLECOIN_POOLS[symbol];
+        const sender = WHALE_POOLS[symbol];
         await acquireToken(sender, strategy, token, amount, deployer);
       }
     });

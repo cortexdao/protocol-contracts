@@ -1,7 +1,7 @@
 const hre = require("hardhat");
 const { ethers, network } = hre;
 const { argv } = require("yargs");
-const { STABLECOIN_POOLS } = require("../../utils/constants");
+const { WHALE_POOLS } = require("../../utils/constants");
 const {
   getStablecoinAddress,
   console,
@@ -24,7 +24,7 @@ async function main(argv) {
   for (const symbol of ["DAI", "USDC", "USDT"]) {
     const stablecoinAddress = getStablecoinAddress(symbol, network.name);
     stablecoins[symbol] = await ethers.getContractAt(
-      "IDetailedERC20",
+      "IDetailedERC20UpgradeSafe",
       stablecoinAddress
     );
   }
@@ -38,7 +38,7 @@ async function main(argv) {
   for (const symbol of Object.keys(stablecoins)) {
     const token = stablecoins[symbol];
     let amount = AMOUNTS[symbol].toString();
-    const sender = STABLECOIN_POOLS[symbol];
+    const sender = WHALE_POOLS[symbol];
     await acquireToken(sender, tester, token, amount, tester);
   }
 }

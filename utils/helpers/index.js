@@ -16,6 +16,7 @@ const {
   acquireToken,
   transferERC20Tokens,
   getERC20Balance,
+  forciblySendEth,
 } = require("./token");
 const {
   bytes32,
@@ -60,6 +61,7 @@ module.exports = {
   formatUnits,
   getGasPrice,
   acquireToken,
+  forciblySendEth,
   deployAggregator,
   expectEventInTransaction,
   getAssetAllocationValue,

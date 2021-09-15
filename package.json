@@ -1,29 +1,18 @@
 {
   "name": "@apy-finance/apy-core",
-  "version": "7.0.1",
+  "version": "7.0.2",
   "description": "",
-  "keywords": [
-    "ethereum",
-    "solidity",
-    "defi"
-  ],
-  "files": [
-    "contracts",
-    "artifacts",
-    "utils/constants.js",
-    "deployed_addresses"
-  ],
+  "keywords": ["ethereum", "solidity", "defi"],
+  "files": ["contracts", "artifacts", "utils", "deployed_addresses"],
   "scripts": {
     "check": "yarn lint",
     "clean": "hardhat clean",
-    "compile": "hardhat compile 2>&1 | sed '/^@/,/^$/ d' | sed '/FluxAggregator/,/^$/ d'",
+    "compile": "hardhat compile",
     "test:unit": "hardhat test test-unit/*",
     "test:integration": "ENABLE_FORKING=true hardhat test test-integration/*",
     "lint": "solhint contracts/**/*.sol contracts/*.sol",
     "coverage": "yarn clean; ENABLE_FORKING=true hardhat coverage --testfiles \"test-{unit,integration}/**/*.js\"",
-    "ganache": "ganache-cli",
-    "fork:mainnet": "./scripts/fork_mainnet.sh",
-    "emergency:withdraw": "yarn hardhat --network localhost run scripts/EmergencyAPYWithdraw.js"
+    "dot-only": "yarn dot-only-hunter test-unit && yarn dot-only-hunter test-integration"
   },
   "husky": {
     "hooks": {
@@ -57,14 +46,14 @@
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@openzeppelin/test-helpers": "^0.5.9",
+    "dot-only-hunter": "apy-finance/dot-only-hunter",
     "dotenv": "^8.2.0",
     "eslint": "^7.11.0",
     "eslint-config-prettier": "^6.14.0",
     "ethereum-waffle": "^3.0.0",
     "ethers": "^5.0.24",
-    "ganache-cli": "^6.10.2",
     "ganache-time-traveler": "^1.0.15",
-    "hardhat": "^2.2.0",
+    "hardhat": "^2.5.0",
     "husky": "4.0.10",
     "lint-staged": "^10.2.11",
     "prettier": "2.1.2",

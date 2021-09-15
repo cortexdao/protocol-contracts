@@ -9,13 +9,13 @@ const IDetailedERC20 = artifacts.require("IDetailedERC20");
 const IStableSwap = artifacts.require("IStableSwap");
 const ILiquidityGauge = artifacts.require("ILiquidityGauge");
 
-describe("Contract: CurvePeriphery", () => {
+describe("Contract: CurveAllocationBase", () => {
   // signers
   let deployer;
   let Account;
 
   // contract factories
-  let CurvePeriphery;
+  let CurveAllocationBase;
 
   // deployed contracts
   let curve;
@@ -34,8 +34,10 @@ describe("Contract: CurvePeriphery", () => {
 
   before(async () => {
     [deployer, Account] = await ethers.getSigners();
-    CurvePeriphery = await ethers.getContractFactory("CurvePeriphery");
-    curve = await CurvePeriphery.deploy();
+    CurveAllocationBase = await ethers.getContractFactory(
+      "CurveAllocationBase"
+    );
+    curve = await CurveAllocationBase.deploy();
     await curve.deployed();
   });
 

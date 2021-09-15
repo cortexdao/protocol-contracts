@@ -1,9 +1,28 @@
-const STABLECOIN_POOLS = {
+const WHALE_POOLS = {
   // sUSD curve pool has plenty of these stablecoins
   // https://etherscan.io/address/0xa5407eae9ba41422680e2e00537571bcc53efbfd
   DAI: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD",
+  ADAI: "0x6231bd0147ca6d052b833183037b04cfb2090e5c",
   USDC: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD",
   USDT: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD",
+  ALUSD: "0x43b4fdfd4ff969587185cdb6f0bd875c5fc83f8c",
+  BUSD: "0x4807862aa8b2bf68830e4c8dc86d0e9a998e085a",
+  CDAI: "0x6341c289b2e0795a04223df04b53a77970958723",
+  FRAX: "0xc69ddcd4dfef25d8a793241834d4cc4b3668ead6",
+  CYDAI: "0x2dded6da1bf5dbdf597c45fcfaa3194e53ecfeaf",
+  LUSD: "0x66017d22b0f8556afdd19fc67041899eb65a21bb",
+  MUSD: "0x30647a72dc82d7fbb1123ea74716ab8a317eac19",
+  USDN: "0x0f9cb53ebe405d49a0bbdbd291a65ff571bc83e1",
+  USDP: "0x42d7025938bec20b69cbae5a77421082407f053a",
+  UST: "0xf92cd566ea4864356c5491c177a430c222d7e678",
+};
+
+const FARM_TOKENS = {
+  CRV: "0xD533a949740bb3306d119CC777fa900bA034cd52",
+};
+
+const FARM_TOKEN_POOLS = {
+  CRV: "0xd2D43555134dC575BF7279F4bA18809645dB0F1D",
 };
 
 const CHAIN_IDS = {
@@ -12,8 +31,11 @@ const CHAIN_IDS = {
   GOERLI: "5",
   KOVAN: "42",
   LOCALHOST: "1",
+  TESTNET: "1",
 };
 
+// for Chainlink aggregator (price feed) addresses, see the Mainnet
+// section of: https://docs.chain.link/docs/ethereum-addresses
 const AGG_MAP = {
   MAINNET: {
     TVL: "0xDb299D394817D8e7bBe297E84AFfF7106CF92F5f",
@@ -36,6 +58,20 @@ const AGG_MAP = {
     "USDT-ETH": "0x0bF499444525a23E7Bb61997539725cA2e928138",
   },
   LOCALHOST: {
+    // TVL agg address is based on local deployment logic using
+    // our own ganache test mnemonic, i.e. `MNEMONIC='' yarn fork:mainnet`
+    // For this to be fully deterministic, the `deploy_agg.js`
+    // script must be run before any other contract deployments.
+    TVL: "0x344D5d70fc3c3097f82d1F26464aaDcEb30C6AC7",
+    "DAI-USD": "0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9",
+    "USDC-USD": "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6",
+    "USDT-USD": "0x3E7d1eAB13ad0104d2750B8863b489D65364e32D",
+    "ETH-USD": "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419",
+    "DAI-ETH": "0x773616E4d11A78F511299002da57A0a94577F1f4",
+    "USDC-ETH": "0x986b5E1e1755e3C2440e960477f25201B0a8bbD4",
+    "USDT-ETH": "0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46",
+  },
+  TESTNET: {
     // TVL agg address is based on local deployment logic using
     // our own ganache test mnemonic, i.e. `MNEMONIC='' yarn fork:mainnet`
     // For this to be fully deterministic, the `deploy_agg.js`
@@ -103,6 +139,23 @@ const TOKEN_AGG_MAP = {
       aggregator: "0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46",
     },
   ],
+  TESTNET: [
+    {
+      symbol: "DAI",
+      token: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+      aggregator: "0x773616E4d11A78F511299002da57A0a94577F1f4",
+    },
+    {
+      symbol: "USDC",
+      token: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      aggregator: "0x986b5E1e1755e3C2440e960477f25201B0a8bbD4",
+    },
+    {
+      symbol: "USDT",
+      token: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+      aggregator: "0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46",
+    },
+  ],
 };
 
 function _getDeploysJson(contractName) {
@@ -148,7 +201,9 @@ for (const contractName of CONTRACT_NAMES) {
 }
 
 module.exports = {
-  STABLECOIN_POOLS,
+  WHALE_POOLS,
+  FARM_TOKENS,
+  FARM_TOKEN_POOLS,
   CHAIN_IDS,
   AGG_MAP,
   TOKEN_AGG_MAP,
