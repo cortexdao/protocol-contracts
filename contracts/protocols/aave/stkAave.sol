@@ -7,9 +7,8 @@ import {ApyUnderlyerConstants} from "contracts/protocols/apy.sol";
 
 import {IStakedAave} from "./common/interfaces/IStakedAave.sol";
 import {AaveBasePool} from "./common/AaveBasePool.sol";
-import {AaveConstants} from "./Constants.sol";
 
-contract StakedAaveZap is AaveBasePool, AaveConstants {
+contract StakedAaveZap is AaveBasePool {
     constructor()
         public
         AaveBasePool(
@@ -17,6 +16,9 @@ contract StakedAaveZap is AaveBasePool, AaveConstants {
             STAKED_AAVE_ADDRESS // "pool"
         )
     {} // solhint-disable-line no-empty-blocks
+
+    // solhint-disable-next-line no-empty-blocks
+    function claim() external virtual override {}
 
     function assetAllocations()
         public
@@ -35,8 +37,7 @@ contract StakedAaveZap is AaveBasePool, AaveConstants {
     }
 
     function _deposit(uint256 amount) internal override {
-        // IStakedAave(POOL_ADDRESS).stake(address(this), amount);
-        revert("NOT_IMPLEMENTED");
+        IStakedAave(POOL_ADDRESS).stake(address(this), amount);
     }
 
     function _withdraw(uint256 amount) internal override {
@@ -54,6 +55,4 @@ contract StakedAaveZap is AaveBasePool, AaveConstants {
         // solhint-enable not-rely-on-time
         stkAave.redeem(address(this), amount);
     }
-
-    function claim() external virtual override {}
 }
