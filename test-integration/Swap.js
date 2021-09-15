@@ -17,7 +17,7 @@ const { FARM_TOKENS, FARM_TOKEN_POOLS } = require("../utils/constants");
 console.debugging = false;
 /* ************************ */
 
-describe.only("Swaps", () => {
+describe("Swaps", () => {
   const NETWORK = "MAINNET";
 
   /* signers */

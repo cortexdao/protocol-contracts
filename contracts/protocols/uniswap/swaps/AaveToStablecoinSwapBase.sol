@@ -13,7 +13,7 @@ abstract contract AaveToStablecoinSwapBase is SwapBase {
     IERC20 private constant _WETH =
         IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
-    uint24 private _AAVE_WETH_FEE = 10000;
+    uint24 private _AAVE_WETH_FEE = 3000;
     uint24 private _WETH_STABLECOIN_FEE = 500;
 
     constructor(IERC20 stablecoin) public SwapBase(_AAVE, stablecoin) {} // solhint-disable-line no-empty-blocks
