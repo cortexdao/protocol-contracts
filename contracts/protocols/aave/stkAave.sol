@@ -18,7 +18,11 @@ contract StakedAaveZap is AaveBasePool {
     {} // solhint-disable-line no-empty-blocks
 
     // solhint-disable-next-line no-empty-blocks
-    function claim() external virtual override {}
+    function claim() external virtual override {
+        IStakedAave stkAave = IStakedAave(POOL_ADDRESS);
+        uint256 amount = stkAave.getTotalRewardsBalance(address(this));
+        stkAave.claimRewards(address(this), amount);
+    }
 
     function assetAllocations()
         public
