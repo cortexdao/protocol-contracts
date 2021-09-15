@@ -147,7 +147,7 @@ describe.only("Swaps", () => {
           FARM_TOKENS[inTokenSymbol]
         );
 
-        const amount = tokenAmountToBigNumber(100000, await inToken.decimals());
+        const amount = tokenAmountToBigNumber(1000, await inToken.decimals());
         const sender = whaleAddress;
         await acquireToken(sender, swap.address, inToken, amount, deployer);
       });
