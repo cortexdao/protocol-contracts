@@ -19,7 +19,7 @@ console.debugging = false;
 const AAVE_ADDRESS = "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9";
 const STAKED_AAVE_ADDRESS = "0x4da27a545c0c5B758a6BA100e3a049001de870f5";
 
-describe("Aave Zaps", () => {
+describe.only("Aave Zaps", () => {
   /* signers */
   let deployer;
   let emergencySafe;
@@ -35,7 +35,7 @@ describe("Aave Zaps", () => {
   // use EVM snapshots for test isolation
   let snapshotId;
 
-  const AaveConstants = [
+  const aTokenZaps = [
     {
       contractName: "AaveDaiZap",
       underlyerAddress: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
@@ -111,19 +111,18 @@ describe("Aave Zaps", () => {
       .registerAssetAllocation(erc20Allocation.address);
   });
 
-  AaveConstants.forEach((curveConstant) => {
+  aTokenZaps.forEach((params) => {
     const {
       contractName,
       underlyerAddress,
       aTokenAddress,
       whaleAddress,
-    } = curveConstant;
+    } = params;
 
     describe(contractName, () => {
       let zap;
       let underlyerToken;
       let aToken;
-      let aaveToken;
       let stkAaveToken;
 
       before("Deploy Zap", async () => {
@@ -140,7 +139,6 @@ describe("Aave Zaps", () => {
           aTokenAddress,
           lpSafe
         );
-        aaveToken = await ethers.getContractAt("IDetailedERC20", AAVE_ADDRESS);
         stkAaveToken = await ethers.getContractAt(
           "IDetailedERC20",
           STAKED_AAVE_ADDRESS
@@ -205,6 +203,80 @@ describe("Aave Zaps", () => {
 
         expect(await stkAaveToken.balanceOf(zap.address)).to.be.gt(0);
       });
+    });
+  });
+
+  describe("StakedAaveZap", () => {
+    let zap;
+    let aaveToken;
+    let stkAaveToken;
+    let whaleAddress = WHALE_POOLS["AAVE"];
+
+    before("Deploy Zap", async () => {
+      const StakedAaveZap = await ethers.getContractFactory(
+        "StakedAaveZap",
+        lpSafe
+      );
+      zap = await StakedAaveZap.deploy();
+    });
+
+    before("Attach to Mainnet Curve contracts", async () => {
+      aaveToken = await ethers.getContractAt("IDetailedERC20", AAVE_ADDRESS);
+      stkAaveToken = await ethers.getContractAt(
+        "IDetailedERC20",
+        STAKED_AAVE_ADDRESS
+      );
+    });
+
+    before("Fund Zap with AAVE", async () => {
+      const amount = tokenAmountToBigNumber(100000, await aaveToken.decimals());
+
+      await acquireToken(
+        whaleAddress,
+        zap.address,
+        aaveToken,
+        amount,
+        deployer
+      );
+    });
+
+    it("Stake AAVE", async () => {
+      const underlyerAmount = tokenAmountToBigNumber(
+        1000,
+        await aaveToken.decimals()
+      );
+      const amounts = [underlyerAmount];
+
+      expect(await aaveToken.balanceOf(zap.address)).to.equal(0);
+
+      await zap.deployLiquidity(amounts);
+
+      const aTokenBalance = await aaveToken.balanceOf(zap.address);
+      expect(aTokenBalance).gt(0);
+
+      const aaveBalance = await aaveToken.balanceOf(zap.address);
+      const stakedBalance = await stkAaveToken.balanceOf(zap.address);
+
+      await zap.unwindLiquidity(stakedBalance);
+
+      expect(await underlyerToken.balanceOf(zap.address)).gt(underlyerBalance);
+      expect(await aaveToken.balanceOf(zap.address)).lt(aTokenBalance);
+    });
+
+    it("Claim rewards", async () => {
+      const underlyerAmount = tokenAmountToBigNumber(
+        1000,
+        await underlyerToken.decimals()
+      );
+      const amounts = [underlyerAmount];
+
+      await zap.deployLiquidity(amounts);
+
+      expect(await stkAaveToken.balanceOf(zap.address)).to.equal(0);
+
+      await zap.claim();
+
+      expect(await stkAaveToken.balanceOf(zap.address)).to.be.gt(0);
     });
   });
 });
