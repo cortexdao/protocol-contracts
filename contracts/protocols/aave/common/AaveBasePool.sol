@@ -4,10 +4,21 @@ pragma experimental ABIEncoderV2;
 
 import {SafeMath} from "contracts/libraries/Imports.sol";
 import {IZap} from "contracts/lpaccount/Imports.sol";
-import {IDetailedERC20, IERC20} from "contracts/common/Imports.sol";
+import {
+    IAssetAllocation,
+    IDetailedERC20,
+    IERC20
+} from "contracts/common/Imports.sol";
 import {SafeERC20} from "contracts/libraries/Imports.sol";
+import {ApyUnderlyerConstants} from "contracts/protocols/apy.sol";
 
-abstract contract AaveBasePool is IZap {
+import {ILendingPool, DataTypes} from "./interfaces/ILendingPool.sol";
+import {
+    IAaveIncentivesController
+} from "./interfaces/IAaveIncentivesController.sol";
+import {AaveConstants} from "contracts/protocols/aave/Constants.sol";
+
+abstract contract AaveBasePool is IZap, AaveConstants {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -22,10 +33,6 @@ abstract contract AaveBasePool is IZap {
         POOL_ADDRESS = lendingAddress;
     }
 
-    function _deposit(uint256 amount) internal virtual;
-
-    function _withdraw(uint256 lpBalance) internal virtual;
-
     /// @param amounts array of underlyer amounts
     function deployLiquidity(uint256[] calldata amounts) external override {
         IERC20(UNDERLYER_ADDRESS).safeApprove(POOL_ADDRESS, 0);
@@ -38,6 +45,15 @@ abstract contract AaveBasePool is IZap {
         _withdraw(amount);
     }
 
+    function claim() external virtual override {
+        IAaveIncentivesController controller =
+            IAaveIncentivesController(STAKED_INCENTIVES_CONTROLLER_ADDRESS);
+        address[] memory assets = new address[](1);
+        assets[0] = _getATokenAddress(UNDERLYER_ADDRESS);
+        uint256 amount = controller.getRewardsBalance(assets, address(this));
+        controller.claimRewards(assets, amount, address(this));
+    }
+
     function sortedSymbols() public view override returns (string[] memory) {
         // so we have to hardcode the number here
         string[] memory symbols = new string[](1);
@@ -45,6 +61,54 @@ abstract contract AaveBasePool is IZap {
         return symbols;
     }
 
-    // solhint-disable-next-line no-empty-blocks
-    function claim() external virtual override {}
+    function assetAllocations()
+        public
+        view
+        virtual
+        override
+        returns (IAssetAllocation[] memory)
+    {
+        IAssetAllocation[] memory allocations = new IAssetAllocation[](1);
+        allocations[0] = IAssetAllocation(address(0));
+        return allocations;
+    }
+
+    function erc20Allocations()
+        public
+        view
+        virtual
+        override
+        returns (IERC20[] memory)
+    {
+        IERC20[] memory allocations = new IERC20[](1);
+        allocations[0] = IERC20(UNDERLYER_ADDRESS);
+        return allocations;
+    }
+
+    function _deposit(uint256 amount) internal virtual {
+        ILendingPool(POOL_ADDRESS).deposit(
+            UNDERLYER_ADDRESS,
+            amount,
+            address(this),
+            0
+        );
+    }
+
+    function _withdraw(uint256 lpBalance) internal virtual {
+        ILendingPool(POOL_ADDRESS).withdraw(
+            UNDERLYER_ADDRESS,
+            lpBalance,
+            address(this)
+        );
+    }
+
+    function _getATokenAddress(address underlyerAddress)
+        internal
+        view
+        returns (address)
+    {
+        DataTypes.ReserveData memory reserveData =
+            ILendingPool(POOL_ADDRESS).getReserveData(underlyerAddress);
+        return reserveData.aTokenAddress;
+    }
 }
