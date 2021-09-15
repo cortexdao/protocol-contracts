@@ -1,9 +1,18 @@
 {
   "name": "@apy-finance/apy-core",
-  "version": "7.0.2",
+  "version": "8.0.0",
   "description": "",
-  "keywords": ["ethereum", "solidity", "defi"],
-  "files": ["contracts", "artifacts", "utils", "deployed_addresses"],
+  "keywords": [
+    "ethereum",
+    "solidity",
+    "defi"
+  ],
+  "files": [
+    "contracts",
+    "artifacts",
+    "utils",
+    "deployed_addresses"
+  ],
   "scripts": {
     "check": "yarn lint",
     "clean": "hardhat clean",
