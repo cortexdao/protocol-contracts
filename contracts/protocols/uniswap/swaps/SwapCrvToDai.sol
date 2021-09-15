@@ -5,9 +5,9 @@ pragma experimental ABIEncoderV2;
 import {SafeERC20} from "contracts/libraries/Imports.sol";
 import {IERC20, IAssetAllocation} from "contracts/common/Imports.sol";
 import {ISwapRouter} from "./ISwapRouter.sol";
-import {BaseSwapCrvToStablecoin} from "./BaseSwapCrvToStablecoin.sol";
+import {SwapCrvToStablecoinBase} from "./SwapCrvToStablecoinBase.sol";
 
-contract SwapCrvToDai is BaseSwapCrvToStablecoin {
+contract SwapCrvToDai is SwapCrvToStablecoinBase {
     using SafeERC20 for IERC20;
 
     string public constant override NAME = "crv-to-usdc";
@@ -16,5 +16,5 @@ contract SwapCrvToDai is BaseSwapCrvToStablecoin {
         IERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
 
     // solhint-disable-next-line no-empty-blocks
-    constructor() public BaseSwapCrvToStablecoin(_DAI) {}
+    constructor() public SwapCrvToStablecoinBase(_DAI) {}
 }
