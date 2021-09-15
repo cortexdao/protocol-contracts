@@ -17,7 +17,7 @@ const { FARM_TOKENS, FARM_TOKEN_POOLS } = require("../utils/constants");
 console.debugging = false;
 /* ************************ */
 
-describe("Swaps", () => {
+describe.only("Swaps", () => {
   const NETWORK = "MAINNET";
 
   /* signers */
@@ -92,18 +92,33 @@ describe("Swaps", () => {
 
   const swapParams = [
     {
-      swapContractName: "SwapCrvToDai",
+      swapContractName: "CrvToDaiSwap",
       inTokenSymbol: "CRV",
       outTokenSymbol: "DAI",
     },
     {
-      swapContractName: "SwapCrvToUsdc",
+      swapContractName: "CrvToUsdcSwap",
       inTokenSymbol: "CRV",
       outTokenSymbol: "USDC",
     },
     {
-      swapContractName: "SwapCrvToUsdt",
+      swapContractName: "CrvToUsdtSwap",
       inTokenSymbol: "CRV",
+      outTokenSymbol: "USDT",
+    },
+    {
+      swapContractName: "AaveToDaiSwap",
+      inTokenSymbol: "AAVE",
+      outTokenSymbol: "DAI",
+    },
+    {
+      swapContractName: "AaveToUsdcSwap",
+      inTokenSymbol: "AAVE",
+      outTokenSymbol: "USDC",
+    },
+    {
+      swapContractName: "AaveToUsdtSwap",
+      inTokenSymbol: "AAVE",
       outTokenSymbol: "USDT",
     },
   ];
@@ -111,7 +126,7 @@ describe("Swaps", () => {
   swapParams.forEach(function (params) {
     const { swapContractName, inTokenSymbol, outTokenSymbol } = params;
 
-    describe("SwapCrvToUsdc", () => {
+    describe(swapContractName, () => {
       let swap;
       let inToken;
       let outToken;
