@@ -16,7 +16,10 @@ const { WHALE_POOLS } = require("../utils/constants");
 console.debugging = false;
 /* ************************ */
 
-describe("Zaps", () => {
+const AAVE_ADDRESS = "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9";
+const STAKED_AAVE_ADDRESS = "0x4da27a545c0c5B758a6BA100e3a049001de870f5";
+
+describe("Aave Zaps", () => {
   /* signers */
   let deployer;
   let emergencySafe;
@@ -36,19 +39,19 @@ describe("Zaps", () => {
     {
       contractName: "AaveDaiZap",
       underlyerAddress: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
-      lpTokenAddress: "0x028171bCA77440897B824Ca71D1c56caC55b68A3",
+      aTokenAddress: "0x028171bCA77440897B824Ca71D1c56caC55b68A3",
       whaleAddress: WHALE_POOLS["DAI"],
     },
     {
       contractName: "AaveUsdcZap",
       underlyerAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-      lpTokenAddress: "0xBcca60bB61934080951369a648Fb03DF4F96263C",
+      aTokenAddress: "0xBcca60bB61934080951369a648Fb03DF4F96263C",
       whaleAddress: WHALE_POOLS["USDC"],
     },
     {
       contractName: "AaveUsdtZap",
       underlyerAddress: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      lpTokenAddress: "0x3Ed3B47Dd13EC9a98b44e6204A523E766B225811",
+      aTokenAddress: "0x3Ed3B47Dd13EC9a98b44e6204A523E766B225811",
       whaleAddress: WHALE_POOLS["USDT"],
     },
   ];
@@ -112,14 +115,16 @@ describe("Zaps", () => {
     const {
       contractName,
       underlyerAddress,
-      lpTokenAddress,
+      aTokenAddress,
       whaleAddress,
     } = curveConstant;
 
-    describe(`Curve ${contractName} zap`, () => {
+    describe(contractName, () => {
       let zap;
-      let lpToken;
       let underlyerToken;
+      let aToken;
+      let aaveToken;
+      let stkAaveToken;
 
       before("Deploy Zap", async () => {
         const zapFactory = await ethers.getContractFactory(
@@ -130,10 +135,15 @@ describe("Zaps", () => {
       });
 
       before("Attach to Mainnet Curve contracts", async () => {
-        lpToken = await ethers.getContractAt(
+        aToken = await ethers.getContractAt(
           "IDetailedERC20",
-          lpTokenAddress,
+          aTokenAddress,
           lpSafe
+        );
+        aaveToken = await ethers.getContractAt("IDetailedERC20", AAVE_ADDRESS);
+        stkAaveToken = await ethers.getContractAt(
+          "IDetailedERC20",
+          STAKED_AAVE_ADDRESS
         );
       });
 
@@ -157,30 +167,43 @@ describe("Zaps", () => {
       });
 
       it("Deposit into pool and stake", async () => {
-        const amounts = new Array(1).fill("0");
         const underlyerAmount = tokenAmountToBigNumber(
           1000,
           await underlyerToken.decimals()
         );
-        amounts[0] = underlyerAmount;
+        const amounts = [underlyerAmount];
+
+        expect(await aToken.balanceOf(zap.address)).to.equal(0);
 
         await zap.deployLiquidity(amounts);
-        const deployedZapUnderlyerBalance = await underlyerToken.balanceOf(
-          zap.address
+
+        const aTokenBalance = await aToken.balanceOf(zap.address);
+        expect(aTokenBalance).gt(0);
+
+        const underlyerBalance = await underlyerToken.balanceOf(zap.address);
+
+        await zap.unwindLiquidity(aTokenBalance);
+
+        expect(await underlyerToken.balanceOf(zap.address)).gt(
+          underlyerBalance
         );
+        expect(await aToken.balanceOf(zap.address)).lt(aTokenBalance);
+      });
 
-        const deployedZapLpBalance = await lpToken.balanceOf(zap.address);
-        expect(deployedZapLpBalance).gt(0);
-
-        await zap.unwindLiquidity(deployedZapLpBalance);
-
-        const withdrawnZapUnderlyerBalance = await underlyerToken.balanceOf(
-          zap.address
+      it("Claim rewards", async () => {
+        const underlyerAmount = tokenAmountToBigNumber(
+          1000,
+          await underlyerToken.decimals()
         );
-        expect(withdrawnZapUnderlyerBalance).gt(deployedZapUnderlyerBalance);
+        const amounts = [underlyerAmount];
 
-        const withdrawnZapLpBalance = await lpToken.balanceOf(zap.address);
-        expect(withdrawnZapLpBalance).lt(deployedZapLpBalance);
+        await zap.deployLiquidity(amounts);
+
+        expect(await stkAaveToken.balanceOf(zap.address)).to.equal(0);
+
+        await zap.claim();
+
+        expect(await stkAaveToken.balanceOf(zap.address)).to.be.gt(0);
       });
     });
   });
