@@ -6,6 +6,7 @@ pragma experimental ABIEncoderV2;
 interface IAaveIncentivesController {
     /**
      * @dev Claims reward for an user, on all the assets of the lending pool, accumulating the pending rewards
+     * @param assets addresses of the asset that accrue rewards, i.e. aTokens or debtTokens.
      * @param amount Amount of rewards to claim
      * @param to Address that will be receiving the rewards
      * @return Rewards claimed
@@ -19,6 +20,7 @@ interface IAaveIncentivesController {
     /**
      * @dev Claims reward for an user on behalf, on all the assets of the lending pool, accumulating the pending rewards. The caller must
      * be whitelisted via "allowClaimOnBehalf" function by the RewardsAdmin role manager
+     * @param assets addresses of the asset that accrue rewards, i.e. aTokens or debtTokens.
      * @param amount Amount of rewards to claim
      * @param user Address to check and claim rewards
      * @param to Address that will be receiving the rewards
@@ -33,6 +35,7 @@ interface IAaveIncentivesController {
 
     /**
      * @dev Returns the total of rewards of an user, already accrued + not yet accrued
+     * @param assets addresses of the asset that accrue rewards, i.e. aTokens or debtTokens.
      * @param user The address of the user
      * @return The rewards
      **/
