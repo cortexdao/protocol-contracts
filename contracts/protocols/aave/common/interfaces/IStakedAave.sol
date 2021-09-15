@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity 0.6.11;
 
-interface IStakedAave {
+import {IDetailedERC20} from "contracts/common/Imports.sol";
+
+interface IStakedAave is IDetailedERC20 {
     /**
      * Stakes `amount` of AAVE tokens, sending the stkAAVE to `to`
      * Note: the msg.sender must already have a balance of AAVE token.

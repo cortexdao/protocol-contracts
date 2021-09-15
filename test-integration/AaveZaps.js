@@ -7,6 +7,8 @@ const {
   console,
   tokenAmountToBigNumber,
   acquireToken,
+  impersonateAccount,
+  forciblySendEth,
 } = require("../utils/helpers");
 const { WHALE_POOLS } = require("../utils/constants");
 
@@ -19,7 +21,7 @@ console.debugging = false;
 const AAVE_ADDRESS = "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9";
 const STAKED_AAVE_ADDRESS = "0x4da27a545c0c5B758a6BA100e3a049001de870f5";
 
-describe.only("Aave Zaps", () => {
+describe("Aave Zaps", () => {
   /* signers */
   let deployer;
   let emergencySafe;
@@ -140,7 +142,7 @@ describe.only("Aave Zaps", () => {
           lpSafe
         );
         stkAaveToken = await ethers.getContractAt(
-          "IDetailedERC20",
+          "IStakedAave",
           STAKED_AAVE_ADDRESS
         );
       });
@@ -223,7 +225,7 @@ describe.only("Aave Zaps", () => {
     before("Attach to Mainnet Curve contracts", async () => {
       aaveToken = await ethers.getContractAt("IDetailedERC20", AAVE_ADDRESS);
       stkAaveToken = await ethers.getContractAt(
-        "IDetailedERC20",
+        "IStakedAave",
         STAKED_AAVE_ADDRESS
       );
     });
@@ -240,43 +242,95 @@ describe.only("Aave Zaps", () => {
       );
     });
 
-    it("Stake AAVE", async () => {
+    before("Can stake AAVE", async () => {
       const underlyerAmount = tokenAmountToBigNumber(
         1000,
         await aaveToken.decimals()
       );
       const amounts = [underlyerAmount];
 
-      expect(await aaveToken.balanceOf(zap.address)).to.equal(0);
+      expect(await stkAaveToken.balanceOf(zap.address)).to.equal(0);
 
-      await zap.deployLiquidity(amounts);
+      await expect(zap.deployLiquidity(amounts)).to.not.be.reverted;
 
-      const aTokenBalance = await aaveToken.balanceOf(zap.address);
-      expect(aTokenBalance).gt(0);
+      expect(await stkAaveToken.balanceOf(zap.address)).to.be.gt(0);
+    });
+
+    it("Can claim rewards", async () => {
+      const aaveBalance = await aaveToken.balanceOf(zap.address);
+
+      await zap.claim();
+      expect(await aaveToken.balanceOf(zap.address)).to.be.gt(aaveBalance);
+    });
+
+    it("Cannot redeem without cooldown", async () => {
+      const stakedBalance = await stkAaveToken.balanceOf(zap.address);
+      await expect(zap.unwindLiquidity(stakedBalance)).to.be.revertedWith(
+        "UNSTAKE_WINDOW_FINISHED"
+      );
+    });
+
+    it("Cannot redeem with active cooldown", async () => {
+      const zapSigner = await impersonateAccount(zap.address);
+      await forciblySendEth(
+        zapSigner.address,
+        tokenAmountToBigNumber(1),
+        deployer.address
+      );
+      await stkAaveToken.connect(zapSigner).cooldown();
+
+      const stakedBalance = await stkAaveToken.balanceOf(zap.address);
+      await expect(zap.unwindLiquidity(stakedBalance)).to.be.revertedWith(
+        "INSUFFICIENT_COOLDOWN"
+      );
+    });
+
+    it("cannot redeem beyond unstake window", async () => {
+      const zapSigner = await impersonateAccount(zap.address);
+      await forciblySendEth(
+        zapSigner.address,
+        tokenAmountToBigNumber(1),
+        deployer.address
+      );
+      await stkAaveToken.connect(zapSigner).cooldown();
+
+      const cooldownSeconds = 60 * 60 * 24 * 10;
+      const unstakeWindowSeconds = 60 * 60 * 24 * 2;
+      await hre.network.provider.send("evm_increaseTime", [
+        cooldownSeconds + unstakeWindowSeconds,
+      ]);
+      await hre.network.provider.send("evm_mine");
+
+      const stakedBalance = await stkAaveToken.balanceOf(zap.address);
+      await expect(zap.unwindLiquidity(stakedBalance)).to.be.revertedWith(
+        "UNSTAKE_WINDOW_FINISHED"
+      );
+    });
+
+    it("Can redeem within unstake window", async () => {
+      const zapSigner = await impersonateAccount(zap.address);
+      await forciblySendEth(
+        zapSigner.address,
+        tokenAmountToBigNumber(1),
+        deployer.address
+      );
+      await stkAaveToken.connect(zapSigner).cooldown();
+
+      const cooldownSeconds = 60 * 60 * 24 * 10;
+      const unstakeWindowSeconds = 60 * 60 * 24 * 2;
+      await hre.network.provider.send("evm_increaseTime", [
+        cooldownSeconds + unstakeWindowSeconds - 1,
+      ]);
+      await hre.network.provider.send("evm_mine");
 
       const aaveBalance = await aaveToken.balanceOf(zap.address);
       const stakedBalance = await stkAaveToken.balanceOf(zap.address);
 
-      await zap.unwindLiquidity(stakedBalance);
+      await expect(zap.unwindLiquidity(stakedBalance)).to.not.be.reverted;
 
-      expect(await underlyerToken.balanceOf(zap.address)).gt(underlyerBalance);
-      expect(await aaveToken.balanceOf(zap.address)).lt(aTokenBalance);
-    });
-
-    it("Claim rewards", async () => {
-      const underlyerAmount = tokenAmountToBigNumber(
-        1000,
-        await underlyerToken.decimals()
+      expect(await aaveToken.balanceOf(zap.address)).to.be.equal(
+        aaveBalance.add(stakedBalance)
       );
-      const amounts = [underlyerAmount];
-
-      await zap.deployLiquidity(amounts);
-
-      expect(await stkAaveToken.balanceOf(zap.address)).to.equal(0);
-
-      await zap.claim();
-
-      expect(await stkAaveToken.balanceOf(zap.address)).to.be.gt(0);
     });
   });
 });
