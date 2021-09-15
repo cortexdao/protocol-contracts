@@ -259,15 +259,20 @@ describe("Aave Zaps", () => {
     it("Can claim rewards", async () => {
       const aaveBalance = await aaveToken.balanceOf(zap.address);
 
-      await zap.claim();
+      await expect(zap.claim()).to.not.be.reverted;
       expect(await aaveToken.balanceOf(zap.address)).to.be.gt(aaveBalance);
     });
 
     it("Cannot redeem without cooldown", async () => {
       const stakedBalance = await stkAaveToken.balanceOf(zap.address);
-      await expect(zap.unwindLiquidity(stakedBalance)).to.be.revertedWith(
-        "UNSTAKE_WINDOW_FINISHED"
-      );
+      const txPromise = zap.unwindLiquidity(stakedBalance);
+
+      await expect(txPromise).to.not.be.reverted;
+
+      const currentTimestamp = (await ethers.provider.getBlock()).timestamp;
+      await expect(txPromise)
+        .to.emit(zap, "CooldownFromWithdrawFail")
+        .withArgs(currentTimestamp);
     });
 
     it("Cannot redeem with active cooldown", async () => {
@@ -302,9 +307,14 @@ describe("Aave Zaps", () => {
       await hre.network.provider.send("evm_mine");
 
       const stakedBalance = await stkAaveToken.balanceOf(zap.address);
-      await expect(zap.unwindLiquidity(stakedBalance)).to.be.revertedWith(
-        "UNSTAKE_WINDOW_FINISHED"
-      );
+      const txPromise = zap.unwindLiquidity(stakedBalance);
+
+      await expect(txPromise).to.not.be.reverted;
+
+      const currentTimestamp = (await ethers.provider.getBlock()).timestamp;
+      await expect(txPromise)
+        .to.emit(zap, "CooldownFromWithdrawFail")
+        .withArgs(currentTimestamp);
     });
 
     it("Can redeem within unstake window", async () => {

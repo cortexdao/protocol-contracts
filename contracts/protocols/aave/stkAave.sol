@@ -9,6 +9,8 @@ import {IStakedAave} from "./common/interfaces/IStakedAave.sol";
 import {AaveBasePool} from "./common/AaveBasePool.sol";
 
 contract StakedAaveZap is AaveBasePool {
+    event CooldownFromWithdrawFail(uint256 timestamp);
+
     constructor()
         public
         AaveBasePool(
@@ -46,17 +48,26 @@ contract StakedAaveZap is AaveBasePool {
 
     function _withdraw(uint256 amount) internal override {
         IStakedAave stkAave = IStakedAave(POOL_ADDRESS);
-        uint256 unstakeWindow = stkAave.UNSTAKE_WINDOW();
-        uint256 cooldownStart = stkAave.stakersCooldowns(address(this));
-        uint256 cooldownSeconds = stkAave.COOLDOWN_SECONDS();
-        uint256 cooldownEnd = cooldownStart.add(cooldownSeconds);
-        // solhint-disable not-rely-on-time
-        require(block.timestamp > cooldownEnd, "INSUFFICIENT_COOLDOWN");
-        if (block.timestamp.sub(cooldownEnd) > unstakeWindow) {
-            stkAave.cooldown();
-            revert("UNSTAKE_WINDOW_FINISHED");
+        try stkAave.redeem(address(this), amount) {
+            return;
+        } catch Error(string memory reason) {
+            if (
+                keccak256(bytes(reason)) ==
+                keccak256(bytes("INSUFFICIENT_COOLDOWN"))
+            ) {
+                revert(reason);
+            } else if (
+                keccak256(bytes(reason)) ==
+                keccak256(bytes("UNSTAKE_WINDOW_FINISHED"))
+            ) {
+                stkAave.cooldown();
+                emit CooldownFromWithdrawFail(block.timestamp); // solhint-disable-line not-rely-on-time
+                return;
+            } else {
+                revert(reason);
+            }
+        } catch (bytes memory) {
+            revert("STKAAVE_UNKNOWN_REASON");
         }
-        // solhint-enable not-rely-on-time
-        stkAave.redeem(address(this), amount);
     }
 }
