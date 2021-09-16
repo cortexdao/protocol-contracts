@@ -18,7 +18,7 @@ const CRV_ADDRESS = "0xD533a949740bb3306d119CC777fa900bA034cd52";
 console.debugging = false;
 /* ************************ */
 
-describe.only("Curve Zaps", () => {
+describe("Curve Zaps", () => {
   /* signers */
   let deployer;
   let emergencySafe;

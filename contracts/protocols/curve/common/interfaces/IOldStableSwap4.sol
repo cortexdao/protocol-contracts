@@ -26,18 +26,14 @@ interface IOldStableSwap4 {
     function remove_liquidity(uint256 _amount, uint256[4] memory min_amounts)
         external;
 
-    // solhint-disable-next-line
-    function remove_liquidity_one_coin(
-        uint256 tokenAmount,
-        int128 tokenIndex,
-        uint256 minAmount
+    /// @dev need this due to lack of `remove_liquidity_one_coin`
+    function exchange(
+        int128 i,
+        int128 j,
+        uint256 dx,
+        uint256 min_dy // solhint-disable-line func-param-name-mixedcase
     ) external;
 
     // solhint-disable-next-line
     function get_virtual_price() external view returns (uint256);
-
-    /**
-     * @dev For newest curve pools like aave; older pools refer to a private `token` variable.
-     */
-    // function lp_token() external view returns (address); // solhint-disable-line func-name-mixedcase
 }
