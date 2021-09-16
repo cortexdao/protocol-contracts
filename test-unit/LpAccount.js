@@ -415,9 +415,10 @@ describe("Contract: LpAccount", () => {
 
           const name = await zap.NAME();
           const amount = tokenAmountToBigNumber(100);
+          const index = 2;
 
           await expect(
-            lpAccount.connect(lpSafe).unwindStrategy(name, amount)
+            lpAccount.connect(lpSafe).unwindStrategy(name, amount, index)
           ).to.be.revertedWith("INVALID_NAME");
         });
 
@@ -427,9 +428,11 @@ describe("Contract: LpAccount", () => {
 
           const name = await zap.NAME();
           const amount = tokenAmountToBigNumber(100);
+          const index = 2;
 
-          await expect(lpAccount.connect(lpSafe).unwindStrategy(name, amount))
-            .to.not.be.reverted;
+          await expect(
+            lpAccount.connect(lpSafe).unwindStrategy(name, amount, index)
+          ).to.not.be.reverted;
         });
 
         it("Unpermissioned cannot call", async () => {
@@ -438,9 +441,10 @@ describe("Contract: LpAccount", () => {
 
           const name = await zap.NAME();
           const amount = tokenAmountToBigNumber(100);
+          const index = 2;
 
           await expect(
-            lpAccount.connect(randomUser).unwindStrategy(name, amount)
+            lpAccount.connect(randomUser).unwindStrategy(name, amount, index)
           ).to.be.revertedWith("NOT_LP_ROLE");
         });
 
@@ -450,8 +454,9 @@ describe("Contract: LpAccount", () => {
 
           const name = await zap.NAME();
           const amount = tokenAmountToBigNumber(100);
+          const index = 2;
 
-          await lpAccount.connect(lpSafe).unwindStrategy(name, amount);
+          await lpAccount.connect(lpSafe).unwindStrategy(name, amount, index);
           expect(await lpAccount._unwindCalls()).to.deep.equal([amount]);
         });
       });
