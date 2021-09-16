@@ -336,11 +336,15 @@ describe("Aave Zaps", () => {
       const aaveBalance = await aaveToken.balanceOf(zap.address);
       const stakedBalance = await stkAaveToken.balanceOf(zap.address);
 
-      await expect(zap.unwindLiquidity(stakedBalance)).to.not.be.reverted;
+      const txPromise = zap.unwindLiquidity(stakedBalance);
+      await expect(txPromise).to.not.be.reverted;
 
       expect(await aaveToken.balanceOf(zap.address)).to.be.equal(
         aaveBalance.add(stakedBalance)
       );
+      await expect(txPromise)
+        .to.emit(zap, "WithdrawSucceeded")
+        .withArgs(stakedBalance);
     });
   });
 });

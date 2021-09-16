@@ -9,6 +9,7 @@ import {IStakedAave} from "./common/interfaces/IStakedAave.sol";
 import {AaveBasePool} from "./common/AaveBasePool.sol";
 
 contract StakedAaveZap is AaveBasePool {
+    event WithdrawSucceeded(uint256 amount);
     event CooldownFromWithdrawFail(uint256 timestamp);
 
     constructor()
@@ -49,20 +50,24 @@ contract StakedAaveZap is AaveBasePool {
     function _withdraw(uint256 amount) internal override {
         IStakedAave stkAave = IStakedAave(POOL_ADDRESS);
         try stkAave.redeem(address(this), amount) {
-            return;
+            emit WithdrawSucceeded(amount);
         } catch Error(string memory reason) {
             if (
                 keccak256(bytes(reason)) ==
-                keccak256(bytes("INSUFFICIENT_COOLDOWN"))
-            ) {
-                revert(reason);
-            } else if (
-                keccak256(bytes(reason)) ==
                 keccak256(bytes("UNSTAKE_WINDOW_FINISHED"))
             ) {
+                // Either there's never been a cooldown or it expired
+                // and the unstake window also finished.
                 stkAave.cooldown();
                 emit CooldownFromWithdrawFail(block.timestamp); // solhint-disable-line not-rely-on-time
-                return;
+            } else if (
+                keccak256(bytes(reason)) ==
+                keccak256(bytes("INSUFFICIENT_COOLDOWN"))
+            ) {
+                // Still within the cooldown period; this is expected to
+                // happen often, so we single this case out for better
+                // understanding and possible future refactoring.
+                revert(reason);
             } else {
                 revert(reason);
             }
