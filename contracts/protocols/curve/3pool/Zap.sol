@@ -68,6 +68,7 @@ contract Curve3PoolZap is CurveGaugeZapBase, Curve3PoolConstants {
         internal
         override
     {
+        require(index < 3, "INVALID_INDEX");
         IStableSwap(SWAP_ADDRESS).remove_liquidity_one_coin(
             lpBalance,
             index,

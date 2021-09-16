@@ -69,6 +69,7 @@ contract AlUsdPoolZap is CurveGaugeZapBase, CurveAlUsdConstants {
         internal
         override
     {
+        require(index < 2, "INVALID_INDEX");
         IStableSwap(SWAP_ADDRESS).remove_liquidity_one_coin(
             lpBalance,
             index,
