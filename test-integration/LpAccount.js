@@ -363,8 +363,9 @@ describe("Contract: LpAccount", () => {
 
       const name = await zap.NAME();
       const amount = tokenAmountToBigNumber(100);
+      const index = 2;
 
-      await lpAccount.connect(lpSafe).unwindStrategy(name, amount);
+      await lpAccount.connect(lpSafe).unwindStrategy(name, amount, index);
       expect(await lpAccount._unwindCalls()).to.deep.equal([amount]);
     });
   });
