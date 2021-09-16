@@ -18,7 +18,7 @@ const CRV_ADDRESS = "0xD533a949740bb3306d119CC777fa900bA034cd52";
 console.debugging = false;
 /* ************************ */
 
-describe("Zaps", () => {
+describe.only("Curve Zaps", () => {
   /* signers */
   let deployer;
   let emergencySafe;
@@ -254,7 +254,7 @@ describe("Zaps", () => {
       whaleAddress,
     } = curveConstant;
 
-    describe(`Curve ${contractName} zap`, () => {
+    describe(contractName, () => {
       let zap;
       let swap;
       let lpToken;
@@ -323,7 +323,7 @@ describe("Zaps", () => {
         const deployedGaugeLpBalance = await gauge.balanceOf(zap.address);
         expect(deployedGaugeLpBalance).gt(0);
 
-        await zap.unwindLiquidity(deployedGaugeLpBalance);
+        await zap.unwindLiquidity(deployedGaugeLpBalance, underlyerIndex);
 
         const withdrawnZapUnderlyerBalance = await underlyerToken.balanceOf(
           zap.address

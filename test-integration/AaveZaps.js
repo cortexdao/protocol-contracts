@@ -21,7 +21,7 @@ console.debugging = false;
 const AAVE_ADDRESS = "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9";
 const STAKED_AAVE_ADDRESS = "0x4da27a545c0c5B758a6BA100e3a049001de870f5";
 
-describe("Aave Zaps", () => {
+describe.only("Aave Zaps", () => {
   /* signers */
   let deployer;
   let emergencySafe;
@@ -182,7 +182,7 @@ describe("Aave Zaps", () => {
 
         const underlyerBalance = await underlyerToken.balanceOf(zap.address);
 
-        await zap.unwindLiquidity(aTokenBalance);
+        await zap.unwindLiquidity(aTokenBalance, 0);
 
         expect(await underlyerToken.balanceOf(zap.address)).gt(
           underlyerBalance
@@ -265,7 +265,7 @@ describe("Aave Zaps", () => {
 
     it("Cannot redeem without cooldown", async () => {
       const stakedBalance = await stkAaveToken.balanceOf(zap.address);
-      const txPromise = zap.unwindLiquidity(stakedBalance);
+      const txPromise = zap.unwindLiquidity(stakedBalance, 0);
 
       await expect(txPromise).to.not.be.reverted;
 
@@ -285,7 +285,7 @@ describe("Aave Zaps", () => {
       await stkAaveToken.connect(zapSigner).cooldown();
 
       const stakedBalance = await stkAaveToken.balanceOf(zap.address);
-      await expect(zap.unwindLiquidity(stakedBalance)).to.be.revertedWith(
+      await expect(zap.unwindLiquidity(stakedBalance, 0)).to.be.revertedWith(
         "INSUFFICIENT_COOLDOWN"
       );
     });
@@ -307,7 +307,7 @@ describe("Aave Zaps", () => {
       await hre.network.provider.send("evm_mine");
 
       const stakedBalance = await stkAaveToken.balanceOf(zap.address);
-      const txPromise = zap.unwindLiquidity(stakedBalance);
+      const txPromise = zap.unwindLiquidity(stakedBalance, 0);
 
       await expect(txPromise).to.not.be.reverted;
 
@@ -336,7 +336,7 @@ describe("Aave Zaps", () => {
       const aaveBalance = await aaveToken.balanceOf(zap.address);
       const stakedBalance = await stkAaveToken.balanceOf(zap.address);
 
-      const txPromise = zap.unwindLiquidity(stakedBalance);
+      const txPromise = zap.unwindLiquidity(stakedBalance, 0);
       await expect(txPromise).to.not.be.reverted;
 
       expect(await aaveToken.balanceOf(zap.address)).to.be.equal(
