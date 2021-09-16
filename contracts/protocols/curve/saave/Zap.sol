@@ -36,9 +36,10 @@ contract SAavePoolZap is CurveGaugeZapBase, CurveSaaveConstants {
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
-        IERC20[] memory allocations = new IERC20[](2);
-        allocations[0] = IERC20(CRV_ADDRESS);
-        allocations[1] = IERC20(0x4da27a545c0c5B758a6BA100e3a049001de870f5); // staked Aave (stkAAVE)
+        IERC20[] memory allocations = _createErc20AllocationArray(3);
+        allocations[4] = IERC20(STKAAVE_ADDRESS);
+        allocations[5] = IERC20(ADAI_ADDRESS);
+        allocations[6] = IERC20(ASUSD_ADDRESS);
         return allocations;
     }
 

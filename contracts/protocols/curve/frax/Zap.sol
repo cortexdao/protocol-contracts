@@ -36,9 +36,9 @@ contract FraxPoolZap is CurveGaugeZapBase, CurveFraxConstants {
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
-        IERC20[] memory allocations = new IERC20[](2);
-        allocations[0] = IERC20(CRV_ADDRESS);
-        allocations[1] = IERC20(0x3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0); // FXS
+        IERC20[] memory allocations = _createErc20AllocationArray(2);
+        allocations[4] = IERC20(FXS_ADDRESS);
+        allocations[5] = IERC20(PRIMARY_UNDERLYER_ADDRESS);
         return allocations;
     }
 

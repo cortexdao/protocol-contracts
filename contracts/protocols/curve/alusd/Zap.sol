@@ -36,9 +36,9 @@ contract AlUsdPoolZap is CurveGaugeZapBase, CurveAlUsdConstants {
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
-        IERC20[] memory allocations = new IERC20[](2);
-        allocations[0] = IERC20(CRV_ADDRESS);
-        allocations[1] = IERC20(0xdBdb4d16EdA451D0503b854CF79D55697F90c8DF); // ALCX
+        IERC20[] memory allocations = _createErc20AllocationArray(2);
+        allocations[4] = IERC20(ALCX_ADDRESS);
+        allocations[5] = IERC20(PRIMARY_UNDERLYER_ADDRESS); // alUSD
         return allocations;
     }
 

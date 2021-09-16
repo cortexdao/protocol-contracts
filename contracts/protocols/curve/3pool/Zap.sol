@@ -36,9 +36,7 @@ contract Curve3PoolZap is CurveGaugeZapBase, Curve3PoolConstants {
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
-        IERC20[] memory allocations = new IERC20[](1);
-        allocations[0] = IERC20(CRV_ADDRESS);
-        return allocations;
+        return _createErc20AllocationArray(0);
     }
 
     function _getVirtualPrice() internal view override returns (uint256) {

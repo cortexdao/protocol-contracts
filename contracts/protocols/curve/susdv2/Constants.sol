@@ -21,4 +21,6 @@ abstract contract CurveSusdV2Constants is
 
     address public constant SUSD_ADDRESS =
         0x57Ab1ec28D129707052df4dF418D58a2D46d5f51;
+    address public constant SNX_ADDRESS =
+        0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F;
 }

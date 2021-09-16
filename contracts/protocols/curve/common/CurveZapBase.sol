@@ -9,8 +9,11 @@ import {
     IDetailedERC20,
     IERC20
 } from "contracts/common/Imports.sol";
+import {
+    Curve3PoolUnderlyerConstants
+} from "contracts/protocols/curve/3pool/Constants.sol";
 
-abstract contract CurveZapBase is IZap {
+abstract contract CurveZapBase is Curve3PoolUnderlyerConstants, IZap {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -107,5 +110,18 @@ abstract contract CurveZapBase is IZap {
     {
         uint256 v = totalAmount.mul(1e18).div(virtualPrice);
         return v.mul(DENOMINATOR.sub(SLIPPAGE)).div(DENOMINATOR);
+    }
+
+    function _createErc20AllocationArray(uint256 extraAllocations)
+        internal
+        pure
+        returns (IERC20[] memory)
+    {
+        IERC20[] memory allocations = new IERC20[](extraAllocations.add(4));
+        allocations[0] = IERC20(CRV_ADDRESS);
+        allocations[1] = IERC20(DAI_ADDRESS);
+        allocations[2] = IERC20(USDC_ADDRESS);
+        allocations[3] = IERC20(USDT_ADDRESS);
+        return allocations;
     }
 }
