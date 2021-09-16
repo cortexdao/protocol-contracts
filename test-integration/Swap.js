@@ -92,18 +92,33 @@ describe("Swaps", () => {
 
   const swapParams = [
     {
-      swapContractName: "SwapCrvToDai",
+      swapContractName: "CrvToDaiSwap",
       inTokenSymbol: "CRV",
       outTokenSymbol: "DAI",
     },
     {
-      swapContractName: "SwapCrvToUsdc",
+      swapContractName: "CrvToUsdcSwap",
       inTokenSymbol: "CRV",
       outTokenSymbol: "USDC",
     },
     {
-      swapContractName: "SwapCrvToUsdt",
+      swapContractName: "CrvToUsdtSwap",
       inTokenSymbol: "CRV",
+      outTokenSymbol: "USDT",
+    },
+    {
+      swapContractName: "AaveToDaiSwap",
+      inTokenSymbol: "AAVE",
+      outTokenSymbol: "DAI",
+    },
+    {
+      swapContractName: "AaveToUsdcSwap",
+      inTokenSymbol: "AAVE",
+      outTokenSymbol: "USDC",
+    },
+    {
+      swapContractName: "AaveToUsdtSwap",
+      inTokenSymbol: "AAVE",
       outTokenSymbol: "USDT",
     },
   ];
@@ -111,7 +126,7 @@ describe("Swaps", () => {
   swapParams.forEach(function (params) {
     const { swapContractName, inTokenSymbol, outTokenSymbol } = params;
 
-    describe("SwapCrvToUsdc", () => {
+    describe(swapContractName, () => {
       let swap;
       let inToken;
       let outToken;
@@ -132,7 +147,7 @@ describe("Swaps", () => {
           FARM_TOKENS[inTokenSymbol]
         );
 
-        const amount = tokenAmountToBigNumber(100000, await inToken.decimals());
+        const amount = tokenAmountToBigNumber(1000, await inToken.decimals());
         const sender = whaleAddress;
         await acquireToken(sender, swap.address, inToken, amount, deployer);
       });
