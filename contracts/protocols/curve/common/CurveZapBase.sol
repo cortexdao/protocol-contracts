@@ -60,10 +60,13 @@ abstract contract CurveZapBase is IZap {
         _depositToGauge();
     }
 
-    /// @param amount LP token amount
-    function unwindLiquidity(uint256 amount) external override {
+    /**
+     * @param amount LP token amount
+     * @param index underlyer index
+     */
+    function unwindLiquidity(uint256 amount, uint8 index) external override {
         uint256 lpBalance = _withdrawFromGauge(amount);
-        _removeLiquidity(lpBalance);
+        _removeLiquidity(lpBalance, index);
     }
 
     function claim() external override {
@@ -89,7 +92,7 @@ abstract contract CurveZapBase is IZap {
         internal
         virtual;
 
-    function _removeLiquidity(uint256 lpBalance) internal virtual;
+    function _removeLiquidity(uint256 lpBalance, uint8 index) internal virtual;
 
     function _depositToGauge() internal virtual;
 

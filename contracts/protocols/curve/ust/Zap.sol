@@ -64,10 +64,14 @@ contract UstPoolZap is CurveGaugeZapBase, CurveUstConstants {
         );
     }
 
-    function _removeLiquidity(uint256 lpBalance) internal override {
-        IStableSwap(SWAP_ADDRESS).remove_liquidity(
+    function _removeLiquidity(uint256 lpBalance, uint8 index)
+        internal
+        override
+    {
+        IStableSwap(SWAP_ADDRESS).remove_liquidity_one_coin(
             lpBalance,
-            [uint256(0), uint256(0)]
+            index,
+            0
         );
     }
 }
