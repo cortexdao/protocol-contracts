@@ -131,11 +131,18 @@ describe("Contract: AlphaDeployment", () => {
   });
 
   it("deploy_0_AddressRegistryV2_upgrade", async () => {
+    // mock logic storage initialize
+    const addressRegistry = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("AddressRegistryV2").abi
+    );
+    await addressRegistry.mock.initialize.returns();
+    // mock the factory create
     const addressRegistryV2Factory = await deployMockContract(
       deployer,
       artifacts.readArtifactSync("AddressRegistryV2Factory").abi
     );
-    await addressRegistryV2Factory.mock.create.returns(FAKE_ADDRESS);
+    await addressRegistryV2Factory.mock.create.returns(addressRegistry.address);
     // mock the upgrade call
     await addressRegistryProxyAdmin.mock.upgrade.returns();
 
@@ -217,6 +224,7 @@ describe("Contract: AlphaDeployment", () => {
   });
 
   it("deploy_2_DemoPools", async () => {
+    // mock the v1 proxy create
     const demoPoolAddress = (await deployMockContract(deployer, [])).address;
     const poolTokenV1Factory = await deployMockContract(
       deployer,
@@ -224,11 +232,18 @@ describe("Contract: AlphaDeployment", () => {
     );
     poolTokenV1Factory.mock.create.returns(demoPoolAddress);
 
+    // need to mock logic storage init
+    const logicV2 = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("PoolTokenV2").abi
+    );
+    await logicV2.mock.initialize.returns();
+    // mock the v2 logic create
     const poolTokenV2Factory = await deployMockContract(
       deployer,
       artifacts.readArtifactSync("PoolTokenV2Factory").abi
     );
-    poolTokenV2Factory.mock.create.returns(FAKE_ADDRESS);
+    poolTokenV2Factory.mock.create.returns(logicV2.address);
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
@@ -498,12 +513,18 @@ describe("Contract: AlphaDeployment", () => {
   });
 
   it("deploy_6_PoolTokenV2_upgrade", async () => {
-    const logicAddress = (await deployMockContract(deployer, [])).address;
+    // need to mock logic storage init
+    const logicV2 = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("PoolTokenV2").abi
+    );
+    await logicV2.mock.initialize.returns();
+    // mock the v2 logic create
     const poolTokenV2Factory = await deployMockContract(
       deployer,
       artifacts.readArtifactSync("PoolTokenV2Factory").abi
     );
-    poolTokenV2Factory.mock.create.returns(logicAddress);
+    poolTokenV2Factory.mock.create.returns(logicV2.address);
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
@@ -560,22 +581,22 @@ describe("Contract: AlphaDeployment", () => {
     );
     const DAI_POOL_PROXY = await alphaDeployment.DAI_POOL_PROXY();
     await proxyAdmin.mock.upgradeAndCall
-      .withArgs(DAI_POOL_PROXY, logicAddress, initData)
+      .withArgs(DAI_POOL_PROXY, logicV2.address, initData)
       .returns();
     const USDC_POOL_PROXY = await alphaDeployment.USDC_POOL_PROXY();
     await proxyAdmin.mock.upgradeAndCall
-      .withArgs(USDC_POOL_PROXY, logicAddress, initData)
+      .withArgs(USDC_POOL_PROXY, logicV2.address, initData)
       .returns();
     const USDT_POOL_PROXY = await alphaDeployment.USDT_POOL_PROXY();
     await proxyAdmin.mock.upgradeAndCall
-      .withArgs(USDT_POOL_PROXY, logicAddress, initData)
+      .withArgs(USDT_POOL_PROXY, logicV2.address, initData)
       .returns();
 
     // check mAPT address set properly
     expect(await alphaDeployment.poolTokenV2()).to.equal(ZERO_ADDRESS);
     await expect(alphaDeployment.deploy_6_PoolTokenV2_upgrade()).to.not.be
       .reverted;
-    expect(await alphaDeployment.poolTokenV2()).to.equal(logicAddress);
+    expect(await alphaDeployment.poolTokenV2()).to.equal(logicV2.address);
   });
 
   it("handoffOwnership", async () => {
