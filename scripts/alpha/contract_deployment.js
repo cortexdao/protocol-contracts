@@ -17,7 +17,12 @@ const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
 const { BigNumber } = ethers;
 const chalk = require("chalk");
-const { getGasPrice, updateDeployJsons } = require("../../utils/helpers");
+const {
+  getGasPrice,
+  updateDeployJsons,
+  bytes32,
+  getDeployedAddress,
+} = require("../../utils/helpers");
 const fs = require("fs");
 
 // eslint-disable-next-line no-unused-vars
@@ -28,10 +33,11 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
-  const deployer = ethers.Wallet.fromMnemonic(
-    ADDRESS_REGISTRY_MNEMONIC
-  ).connect(ethers.provider);
+  // const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
+  // const deployer = ethers.Wallet.fromMnemonic(
+  //   ADDRESS_REGISTRY_MNEMONIC
+  // ).connect(ethers.provider);
+  const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
   /* TESTING on localhost only
    * need to fund as there is no ETH on Mainnet for the deployer
@@ -60,42 +66,33 @@ async function main(argv) {
   );
 
   const deploy_data = {};
-  let gasUsed = BigNumber.from("0");
-  let gasPrice = await getGasPrice(argv.gasPrice);
+  const gasPrice = await getGasPrice(argv.gasPrice);
 
-  const factoryNames = [
-    "ProxyAdminFactory",
-    "ProxyFactory",
-    "AddressRegistryV2Factory",
-    "MetaPoolTokenFactory",
-    "PoolTokenV1Factory",
-    "PoolTokenV2Factory",
-    "TvlManagerFactory",
-    "OracleAdapterFactory",
-    "LpAccountFactory",
-  ];
-  const factoryAddresses = [];
+  const addressesFilename = "deployment-factory-addresses.json";
+  const factoryAddresses = JSON.parse(
+    fs.readFileSync(addressesFilename, "utf-8")
+  );
 
-  for (const name of factoryNames) {
-    console.log("Deploying %s ...", name);
-    const contractFactory = await ethers.getContractFactory(name, deployer);
-    const contract = await contractFactory.deploy();
-    console.log(
-      "Deploy:",
-      `https://etherscan.io/tx/${contract.deployTransaction.hash}`
-    );
-    const receipt = await contract.deployTransaction.wait();
-    gasUsed = gasUsed.add(receipt.gasUsed);
-    console.log("  ... done.");
-
-    factoryAddresses.push(contract.address);
-  }
-  const addressesJson = JSON.stringify(factoryAddresses, null, "  ");
-  fs.writeFileSync("./factoryAddresses.json", addressesJson, (err) => {
-    if (err) throw err;
-  });
-
-  console.log("Gas used so far: %s", gasUsed);
+  const addressRegistryAddress = await getDeployedAddress(
+    "AddressRegistryProxy",
+    networkName
+  );
+  const addressRegistry = await ethers.getContractAt(
+    "AddressRegistry",
+    addressRegistryAddress
+  );
+  console.log(
+    "LP Safe: %s",
+    await addressRegistry.getAddress(bytes32("lpSafe"))
+  );
+  console.log(
+    "Admin Safe: %s",
+    await addressRegistry.getAddress(bytes32("adminSafe"))
+  );
+  console.log(
+    "Emergency Safe: %s",
+    await addressRegistry.getAddress(bytes32("emergencySafe"))
+  );
 
   const alphaDeployment = await AlphaDeployment.deploy(...factoryAddresses, {
     gasPrice,
@@ -105,27 +102,22 @@ async function main(argv) {
     `https://etherscan.io/tx/${alphaDeployment.deployTransaction.hash}`
   );
   const receipt = await alphaDeployment.deployTransaction.wait();
-  gasUsed = gasUsed.add(receipt.gasUsed);
-  deploy_data["AlphaDeployment"] = AlphaDeployment.address;
-  console.log(`AlphaDeployment: ${chalk.green(alphaDeployment.address)}`);
+
+  console.log(
+    `https://etherscan.io/tx/${alphaDeployment.deployTransaction.hash}`
+  );
   console.log("");
+  console.log("Gas used so far: %s", receipt.gasUsed.toString());
 
+  deploy_data["AlphaDeployment"] = AlphaDeployment.address;
   updateDeployJsons(networkName, deploy_data);
-  console.log("Total gas used:", gasUsed.toString());
 
-  if (["KOVAN", "MAINNET"].includes(networkName)) {
-    console.log("");
-    console.log("Verifying on Etherscan ...");
-    await ethers.provider.waitForTransaction(
-      alphaDeployment.deployTransaction.hash,
-      5
-    ); // wait for Etherscan to catch up
-    await hre.run("verify:verify", {
-      address: alphaDeployment.address,
-      constructorArguments: factoryAddresses,
-    });
-    console.log("");
-  }
+  // TODO: transfer ownerships to alphaDeployment for
+  // - address registry
+  // - address registry proxy admin
+  // - pool proxy admin
+
+  // TODO: cleanup - transfer ownerships back to admin safe
 }
 
 if (!module.parent) {
