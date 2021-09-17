@@ -195,7 +195,9 @@ const CONTRACT_NAMES = [
   "RewardDistributor",
   "TvlManager",
   "AdminSafe",
+  "EmergencySafe",
   "LpSafe",
+  "AlphaDeployment",
 ];
 
 const DEPLOYS_JSON = {};
