@@ -54,7 +54,6 @@ describe("Zaps", () => {
       gaugeInterface: "ILiquidityGauge",
       numberOfCoins: 3,
       whaleAddress: WHALE_POOLS["ADAI"],
-      rewardToken: "0x4da27a545c0c5B758a6BA100e3a049001de870f5",
     },
     {
       contractName: "AlUsdPoolZap",
@@ -333,8 +332,13 @@ describe("Zaps", () => {
 
       it("Claim", async () => {
         const erc20s = await zap.erc20Allocations();
-        expect(erc20s[0]).to.equal(CRV_ADDRESS);
+
+        expect(erc20s).to.include(ethers.utils.getAddress(CRV_ADDRESS));
+        const crv = await ethers.getContractAt("IDetailedERC20", CRV_ADDRESS);
+        expect(await crv.balanceOf(zap.address)).to.equal(0);
+
         if (typeof rewardToken !== "undefined") {
+          expect(erc20s).to.include(ethers.utils.getAddress(rewardToken));
           const token = await ethers.getContractAt(
             "IDetailedERC20",
             rewardToken
@@ -364,6 +368,7 @@ describe("Zaps", () => {
 
         await zap.claim();
 
+        expect(await crv.balanceOf(zap.address)).to.be.gt(0);
         if (typeof rewardToken !== "undefined") {
           const token = await ethers.getContractAt(
             "IDetailedERC20",
