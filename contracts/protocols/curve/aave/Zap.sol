@@ -31,16 +31,13 @@ contract AavePoolZap is CurveGaugeZapBase, CurveAaveConstants {
         returns (IAssetAllocation[] memory)
     {
         IAssetAllocation[] memory allocations = new IAssetAllocation[](1);
+        // Set to the Aave asset allocation address
         allocations[0] = IAssetAllocation(address(0));
         return allocations;
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
-        IERC20[] memory allocations = _createErc20AllocationArray(4);
-        allocations[4] = IERC20(STKAAVE_ADDRESS);
-        allocations[5] = IERC20(ADAI_ADDRESS);
-        allocations[6] = IERC20(AUSDC_ADDRESS);
-        allocations[7] = IERC20(AUSDT_ADDRESS);
+        IERC20[] memory allocations = _createErc20AllocationArray(0);
         return allocations;
     }
 
