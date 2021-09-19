@@ -69,14 +69,8 @@ contract TestCurveZap is CurveGaugeZapBase {
         return _calcMinAmount(totalAmount, virtualPrice);
     }
 
-    function assetAllocations()
-        public
-        view
-        override
-        returns (IAssetAllocation[] memory)
-    {
-        IAssetAllocation[] memory allocations = new IAssetAllocation[](0);
-        return allocations;
+    function assetAllocations() public view override returns (string[] memory) {
+        return new string[](0);
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {

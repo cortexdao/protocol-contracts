@@ -310,7 +310,7 @@ describe("Contract: LpAccount", () => {
           .withArgs("erc20Allocation")
           .returns(erc20Allocation.address);
 
-        await tvlManager.mock["isAssetAllocationRegistered(address[])"].returns(
+        await tvlManager.mock["isAssetAllocationRegistered(string[])"].returns(
           true
         );
         await erc20Allocation.mock["isErc20TokenRegistered(address[])"].returns(
@@ -380,7 +380,7 @@ describe("Contract: LpAccount", () => {
           ];
 
           await tvlManager.mock[
-            "isAssetAllocationRegistered(address[])"
+            "isAssetAllocationRegistered(string[])"
           ].returns(false);
 
           await expect(

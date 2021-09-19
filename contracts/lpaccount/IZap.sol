@@ -24,10 +24,7 @@ interface IZap is INameIdentifier {
     function sortedSymbols() external view returns (string[] memory);
 
     // Asset allocation contracts required for the strategy
-    function assetAllocations()
-        external
-        view
-        returns (IAssetAllocation[] memory);
+    function assetAllocations() external view returns (string[] memory);
 
     // ERC20 asset allocation tokens required for the strategy
     function erc20Allocations() external view returns (IERC20[] memory);

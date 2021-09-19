@@ -226,8 +226,8 @@ describe("Contract: LpAccount", () => {
       await tvlManager.registerAssetAllocation(allocation_0.address);
       await tvlManager.registerAssetAllocation(allocation_1.address);
       await zap._setAssetAllocations([
-        allocation_0.address,
-        allocation_1.address,
+        await allocation_0.NAME(),
+        await allocation_1.NAME(),
       ]);
 
       await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
@@ -290,7 +290,7 @@ describe("Contract: LpAccount", () => {
       // configure zap with registered allocation
       const allocation = await deployMockAllocation();
       await tvlManager.registerAssetAllocation(allocation.address);
-      await zap._setAssetAllocations([allocation.address]);
+      await zap._setAssetAllocations([await allocation.NAME()]);
 
       // configure zap with registered ERC20
       const token = await deployMockErc20();
@@ -317,7 +317,7 @@ describe("Contract: LpAccount", () => {
       // configure zap with registered allocation
       const allocation = await deployMockAllocation();
       await tvlManager.registerAssetAllocation(allocation.address);
-      await zap._setAssetAllocations([allocation.address]);
+      await zap._setAssetAllocations([await allocation.NAME()]);
 
       // configure zap with unregistered ERC20
       const token = await deployMockErc20();

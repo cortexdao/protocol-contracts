@@ -132,12 +132,17 @@ contract TvlManager is
         return _getAssetAllocationsIds(allocations);
     }
 
-    function isAssetAllocationRegistered(
-        IAssetAllocation[] calldata assetAllocations
-    ) external view override returns (bool) {
-        uint256 length = assetAllocations.length;
+    function isAssetAllocationRegistered(string[] calldata allocationNames)
+        external
+        view
+        override
+        returns (bool)
+    {
+        uint256 length = allocationNames.length;
         for (uint256 i = 0; i < length; i++) {
-            if (!_assetAllocations.contains(assetAllocations[i])) {
+            IAssetAllocation allocation =
+                _assetAllocations.get(allocationNames[i]);
+            if (address(allocation) == address(0)) {
                 return false;
             }
         }
