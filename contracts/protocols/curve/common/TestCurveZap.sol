@@ -5,13 +5,6 @@ pragma experimental ABIEncoderV2;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAssetAllocation} from "contracts/common/Imports.sol";
 import {
-    IStableSwap,
-    ILiquidityGauge
-} from "contracts/protocols/curve/common/interfaces/Imports.sol";
-import {
-    Curve3PoolConstants
-} from "contracts/protocols/curve/3pool/Constants.sol";
-import {
     CurveGaugeZapBase
 } from "contracts/protocols/curve/common/CurveGaugeZapBase.sol";
 
