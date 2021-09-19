@@ -105,7 +105,7 @@ contract TestCurveZap is CurveGaugeZapBase {
 
     }
 
-    function _removeLiquidity(uint256 lpBalance)
+    function _removeLiquidity(uint256 lpBalance, uint8 index)
         internal
         override
     // solhint-disable-next-line no-empty-blocks

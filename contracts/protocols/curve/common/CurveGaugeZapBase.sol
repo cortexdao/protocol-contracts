@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import {IZap} from "contracts/lpaccount/Imports.sol";
 import {IAssetAllocation, IDetailedERC20} from "contracts/common/Imports.sol";
+import {SafeERC20} from "contracts/libraries/Imports.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
     ILiquidityGauge,
@@ -12,6 +13,8 @@ import {
 import {CurveZapBase} from "contracts/protocols/curve/common/CurveZapBase.sol";
 
 abstract contract CurveGaugeZapBase is IZap, CurveZapBase {
+    using SafeERC20 for IERC20;
+
     constructor(
         address swapAddress,
         address lpAddress,

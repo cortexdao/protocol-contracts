@@ -41,7 +41,8 @@ abstract contract AaveBasePool is IZap, AaveConstants {
     }
 
     /// @param amount LP token amount
-    function unwindLiquidity(uint256 amount) external override {
+    function unwindLiquidity(uint256 amount, uint8 index) external override {
+        require(index == 0, "INVALID_INDEX");
         _withdraw(amount);
     }
 

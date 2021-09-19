@@ -151,17 +151,16 @@ contract LpAccount is
         );
     }
 
-    function unwindStrategy(string calldata name, uint256 amount)
-        external
-        override
-        nonReentrant
-        onlyLpRole
-    {
+    function unwindStrategy(
+        string calldata name,
+        uint256 amount,
+        uint8 index
+    ) external override nonReentrant onlyLpRole {
         address zap = address(_zaps.get(name));
         require(zap != address(0), "INVALID_NAME");
 
         zap.functionDelegateCall(
-            abi.encodeWithSelector(IZap.unwindLiquidity.selector, amount)
+            abi.encodeWithSelector(IZap.unwindLiquidity.selector, amount, index)
         );
     }
 

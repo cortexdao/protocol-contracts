@@ -26,11 +26,12 @@ interface IOldStableSwap2 {
     function remove_liquidity(uint256 _amount, uint256[2] memory min_amounts)
         external;
 
-    // solhint-disable-next-line
-    function remove_liquidity_one_coin(
-        uint256 tokenAmount,
-        int128 tokenIndex,
-        uint256 minAmount
+    /// @dev need this due to lack of `remove_liquidity_one_coin`
+    function exchange(
+        int128 i,
+        int128 j,
+        uint256 dx,
+        uint256 min_dy // solhint-disable-line func-param-name-mixedcase
     ) external;
 
     // solhint-disable-next-line

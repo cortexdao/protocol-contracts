@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAssetAllocation} from "contracts/common/Imports.sol";
+import {SafeERC20, SafeMath} from "contracts/libraries/Imports.sol";
 import {
     IOldStableSwap4 as IStableSwap,
     ILiquidityGauge
@@ -12,6 +13,9 @@ import {CurveSusdV2Constants} from "./Constants.sol";
 import {CurveGaugeZapBase} from "contracts/protocols/curve/common/Imports.sol";
 
 contract SusdV2Zap is CurveGaugeZapBase, CurveSusdV2Constants {
+    using SafeMath for uint256;
+    using SafeERC20 for IERC20;
+
     constructor()
         public
         CurveGaugeZapBase(
@@ -65,11 +69,34 @@ contract SusdV2Zap is CurveGaugeZapBase, CurveSusdV2Constants {
         );
     }
 
-    function _removeLiquidity(uint256 lpBalance) internal override {
-        IStableSwap(SWAP_ADDRESS).remove_liquidity(
+    function _removeLiquidity(uint256 lpBalance, uint8 index)
+        internal
+        override
+    {
+        require(index < 4, "INVALID_INDEX");
+
+        uint256[] memory balances = new uint256[](4);
+        for (uint256 i = 0; i < balances.length; i++) {
+            if (i == index) continue;
+            IERC20 inToken = IERC20(_getCoinAtIndex(i));
+            balances[i] = inToken.balanceOf(address(this));
+        }
+
+        IStableSwap swap = IStableSwap(SWAP_ADDRESS);
+        swap.remove_liquidity(
             lpBalance,
             [uint256(0), uint256(0), uint256(0), uint256(0)]
         );
+
+        for (uint256 i = 0; i < balances.length; i++) {
+            if (i == index) continue;
+            IERC20 inToken = IERC20(_getCoinAtIndex(i));
+            uint256 balanceDelta =
+                inToken.balanceOf(address(this)).sub(balances[i]);
+            inToken.safeApprove(address(swap), 0);
+            inToken.safeApprove(address(swap), balanceDelta);
+            swap.exchange(int128(i), index, balanceDelta, 0);
+        }
     }
 
     /**
