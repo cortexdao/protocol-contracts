@@ -27,13 +27,8 @@ contract StakedAaveZap is AaveBasePool {
         stkAave.claimRewards(address(this), amount);
     }
 
-    function assetAllocations()
-        public
-        view
-        override
-        returns (IAssetAllocation[] memory)
-    {
-        return new IAssetAllocation[](0);
+    function assetAllocations() public view override returns (string[] memory) {
+        return new string[](0);
     }
 
     /// @dev track only unstaked AAVE

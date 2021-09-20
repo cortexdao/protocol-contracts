@@ -260,9 +260,11 @@ contract LpAccount is
         emit AddressRegistryChanged(addressRegistry_);
     }
 
-    function _checkAllocationRegistrations(
-        IAssetAllocation[] memory allocations
-    ) internal view returns (bool isAssetAllocationRegistered) {
+    function _checkAllocationRegistrations(string[] memory allocations)
+        internal
+        view
+        returns (bool isAssetAllocationRegistered)
+    {
         IAssetAllocationRegistry tvlManager =
             IAssetAllocationRegistry(addressRegistry.getAddress("tvlManager"));
         isAssetAllocationRegistered = tvlManager.isAssetAllocationRegistered(

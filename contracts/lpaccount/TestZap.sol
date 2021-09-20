@@ -47,7 +47,7 @@ contract TestZap is IZap, TestLpAccountStorage {
         external
         view
         override
-        returns (IAssetAllocation[] memory)
+        returns (string[] memory)
     {
         return _assetAllocations;
     }
@@ -66,10 +66,8 @@ contract TestZap is IZap, TestLpAccountStorage {
      * Testing functions
      */
 
-    function _setAssetAllocations(IAssetAllocation[] memory allocations)
-        public
-    {
-        _assetAllocations = allocations;
+    function _setAssetAllocations(string[] memory allocationNames) public {
+        _assetAllocations = allocationNames;
     }
 
     function _setErc20Allocations(IERC20[] memory tokens) public {

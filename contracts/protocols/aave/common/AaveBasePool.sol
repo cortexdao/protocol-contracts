@@ -67,11 +67,11 @@ abstract contract AaveBasePool is IZap, AaveConstants {
         view
         virtual
         override
-        returns (IAssetAllocation[] memory)
+        returns (string[] memory)
     {
-        IAssetAllocation[] memory allocations = new IAssetAllocation[](1);
-        allocations[0] = IAssetAllocation(address(0));
-        return allocations;
+        string[] memory allocationNames = new string[](1);
+        allocationNames[0] = NAME;
+        return allocationNames;
     }
 
     function erc20Allocations()
