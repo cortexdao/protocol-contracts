@@ -17,27 +17,16 @@ abstract contract CrvToStablecoinSwapBase is SwapBase {
 
     constructor(IERC20 stablecoin) public SwapBase(_CRV, stablecoin) {} // solhint-disable-line no-empty-blocks
 
-    function _getExactInputParams(uint256 amount)
-        internal
-        view
-        virtual
-        override
-        returns (ISwapRouter.ExactInputParams memory params)
-    {
-        // solhint-disable not-rely-on-time
-        params = ISwapRouter.ExactInputParams({
-            path: abi.encodePacked(
+    function _getPath() internal view virtual override returns (bytes memory) {
+        bytes memory path =
+            abi.encodePacked(
                 address(_IN_TOKEN),
                 _CRV_WETH_FEE,
                 address(_WETH),
                 _WETH_STABLECOIN_FEE,
                 address(_OUT_TOKEN)
-            ),
-            recipient: address(this),
-            deadline: block.timestamp,
-            amountIn: amount,
-            amountOutMinimum: 0
-        });
-        // solhint-enable not-rely-on-time
+            );
+
+        return path;
     }
 }

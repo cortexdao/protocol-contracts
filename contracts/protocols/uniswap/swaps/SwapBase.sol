@@ -24,12 +24,22 @@ abstract contract SwapBase is ISwap {
     }
 
     // TODO: create function for calculating min amount
-    function swap(uint256 amount) external override {
+    function swap(uint256 amount, uint256 minAmount) external override {
         _IN_TOKEN.safeApprove(address(_ROUTER), 0);
         _IN_TOKEN.safeApprove(address(_ROUTER), amount);
 
+        bytes memory path = _getPath();
+
+        // solhint-disable not-rely-on-time
         ISwapRouter.ExactInputParams memory params =
-            _getExactInputParams(amount);
+            ISwapRouter.ExactInputParams({
+                path: path,
+                recipient: address(this),
+                deadline: block.timestamp,
+                amountIn: amount,
+                amountOutMinimum: minAmount
+            });
+        // solhint-enable not-rely-on-time
         uint256 amountOut = _ROUTER.exactInput(params);
 
         emit Swap(params, amountOut);
@@ -47,9 +57,5 @@ abstract contract SwapBase is ISwap {
         return allocations;
     }
 
-    function _getExactInputParams(uint256 amount)
-        internal
-        view
-        virtual
-        returns (ISwapRouter.ExactInputParams memory params);
+    function _getPath() internal view virtual returns (bytes memory);
 }
