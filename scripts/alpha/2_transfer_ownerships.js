@@ -6,7 +6,7 @@
  *
  * Alternatively, to pass command-line arguments:
  *
- * $ HARDHAT_NETWORK=<network name> node run scripts/<script filename> --arg1=val1 --arg2=val2
+ * $ HARDHAT_NETWORK=<network name> node scripts/<script filename> --arg1=val1 --arg2=val2
  */
 require("dotenv").config({ path: "./alpha.env" });
 const { argv } = require("yargs").option("gasPrice", {
@@ -67,8 +67,6 @@ async function main(argv) {
   // - address registry
   // - address registry proxy admin
   // - pool proxy admin
-
-  // TODO: cleanup - transfer ownerships back to admin safe
 }
 
 if (!module.parent) {
