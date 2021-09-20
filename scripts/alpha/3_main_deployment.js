@@ -15,15 +15,7 @@ const { argv } = require("yargs").option("gasPrice", {
 });
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const { BigNumber } = ethers;
-const chalk = require("chalk");
-const {
-  getGasPrice,
-  updateDeployJsons,
-  bytes32,
-  getDeployedAddress,
-} = require("../../utils/helpers");
-const fs = require("fs");
+const { getGasPrice, getDeployedAddress } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -63,10 +55,7 @@ async function main(argv) {
     networkName
   );
 
-  // TODO: transfer ownerships to alphaDeployment for
-  // - address registry
-  // - address registry proxy admin
-  // - pool proxy admin
+  // TODO: run the deployment steps
 
   // TODO: cleanup - transfer ownerships back to admin safe
 }
