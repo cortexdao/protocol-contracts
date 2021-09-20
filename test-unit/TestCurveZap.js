@@ -1,6 +1,7 @@
 const { expect } = require("chai");
 const hre = require("hardhat");
-const { ethers } = hre;
+const { ethers, waffle, artifacts } = hre;
+const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
 
 describe("Contract: TestCurveZap", () => {
@@ -32,7 +33,21 @@ describe("Contract: TestCurveZap", () => {
   });
 
   before(async () => {
-    [deployer, swap, lpToken, liquidityGauge] = await ethers.getSigners();
+    [deployer, swap] = await ethers.getSigners();
+
+    const erc20Abi = artifacts.readArtifactSync("IDetailedERC20").abi;
+
+    lpToken = await deployMockContract(deployer, erc20Abi);
+    await lpToken.mock.allowance.returns(0);
+    await lpToken.mock.approve.returns(true);
+    await lpToken.mock.balanceOf.returns(1);
+
+    liquidityGauge = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("ILiquidityGauge").abi
+    );
+    await liquidityGauge.mock.deposit.returns();
+    await liquidityGauge.mock.withdraw.returns();
 
     curvePoolFactory = await ethers.getContractFactory("TestCurveZap");
     curvePool = await curvePoolFactory.deploy(
@@ -43,6 +58,18 @@ describe("Contract: TestCurveZap", () => {
       slippage,
       numberOfCoins
     );
+
+    const underlyers = await Promise.all(
+      Array(3)
+        .fill(null)
+        .map(async () => {
+          const underlyer = await deployMockContract(deployer, erc20Abi);
+          await underlyer.mock.allowance.returns(0);
+          await underlyer.mock.approve.returns(true);
+          return underlyer.address;
+        })
+    );
+    curvePool.setUnderlyers(underlyers);
   });
 
   describe("Constructor", () => {
@@ -74,6 +101,36 @@ describe("Contract: TestCurveZap", () => {
         virtualPrice
       );
       expect(minAmount.toString()).to.equals("792364230145867098864");
+    });
+  });
+
+  describe("deployLiquidity", () => {
+    it("does not revert with the correct number of amounts", async () => {
+      const amounts = [1, 2, 3];
+      await expect(curvePool.deployLiquidity(amounts)).to.not.be.reverted;
+    });
+
+    it("reverts with an incorrect number of amounts", async () => {
+      const amounts = [1, 2];
+      await expect(curvePool.deployLiquidity(amounts)).to.be.revertedWith(
+        "INVALID_AMOUNTS"
+      );
+    });
+  });
+
+  describe("unwindLiquidity", () => {
+    it("does not revert with a correct token index", async () => {
+      const amount = 1;
+      const index = 0;
+      await expect(curvePool.unwindLiquidity(amount, index)).to.not.be.reverted;
+    });
+
+    it("reverts with an incorrect token index", async () => {
+      const amount = 1;
+      const index = 4;
+      await expect(curvePool.unwindLiquidity(amount, index)).to.be.revertedWith(
+        "INVALID_INDEX"
+      );
     });
   });
 });
