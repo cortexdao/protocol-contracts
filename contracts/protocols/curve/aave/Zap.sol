@@ -57,7 +57,8 @@ contract AavePoolZap is CurveGaugeZapBase, CurveAaveConstants {
     {
         IStableSwap(SWAP_ADDRESS).add_liquidity(
             [amounts[0], amounts[1], amounts[2]],
-            minAmount
+            minAmount,
+            true
         );
     }
 
@@ -69,7 +70,8 @@ contract AavePoolZap is CurveGaugeZapBase, CurveAaveConstants {
         IStableSwap(SWAP_ADDRESS).remove_liquidity_one_coin(
             lpBalance,
             index,
-            0
+            0,
+            true
         );
     }
 
