@@ -107,7 +107,8 @@ describe("Curve Zaps", () => {
       gaugeAddress: "0xF5194c3325202F456c95c1Cf0cA36f8475C1949F",
       gaugeInterface: "ILiquidityGauge",
       numberOfCoins: 3,
-      whaleAddress: WHALE_POOLS["CYDAI"],
+      whaleAddress: WHALE_POOLS["DAI"],
+      useUnwrapped: true,
     },
     {
       contractName: "LusdPoolZap",
