@@ -24,4 +24,6 @@ abstract contract CurveAlUsdConstants is
     // metapool primary underlyer
     address public constant PRIMARY_UNDERLYER_ADDRESS =
         0xBC6DA0FE9aD5f3b0d58160288917AA56653660E9;
+    address public constant ALCX_ADDRESS =
+        0xdBdb4d16EdA451D0503b854CF79D55697F90c8DF;
 }

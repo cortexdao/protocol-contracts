@@ -35,9 +35,9 @@ contract SusdV2Zap is CurveGaugeZapBase, CurveSusdV2Constants {
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
-        IERC20[] memory allocations = new IERC20[](2);
-        allocations[0] = IERC20(CRV_ADDRESS);
-        allocations[1] = IERC20(0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F); // SNX
+        IERC20[] memory allocations = _createErc20AllocationArray(2);
+        allocations[4] = IERC20(SNX_ADDRESS);
+        allocations[5] = IERC20(SUSD_ADDRESS);
         return allocations;
     }
 

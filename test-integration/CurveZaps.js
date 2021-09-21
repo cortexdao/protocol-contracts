@@ -64,6 +64,7 @@ describe("Curve Zaps", () => {
       gaugeInterface: "ILiquidityGauge",
       numberOfCoins: 2,
       whaleAddress: WHALE_POOLS["ALUSD"],
+      rewardToken: "0xdBdb4d16EdA451D0503b854CF79D55697F90c8DF",
     },
     {
       contractName: "BusdV2PoolZap",
@@ -94,6 +95,7 @@ describe("Curve Zaps", () => {
       gaugeInterface: "ILiquidityGauge",
       numberOfCoins: 2,
       whaleAddress: WHALE_POOLS["FRAX"],
+      rewardToken: "0x3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0",
     },
     {
       contractName: "IronBankPoolZap",
@@ -136,16 +138,6 @@ describe("Curve Zaps", () => {
       whaleAddress: WHALE_POOLS["ADAI"],
     },
     {
-      contractName: "SAavePoolZap",
-      swapAddress: "0xEB16Ae0052ed37f479f7fe63849198Df1765a733",
-      swapInterface: "IStableSwap",
-      lpTokenAddress: "0x02d341CcB60fAaf662bC0554d13778015d1b285C",
-      gaugeAddress: "0x462253b8F74B72304c145DB0e4Eebd326B22ca39",
-      gaugeInterface: "ILiquidityGauge",
-      numberOfCoins: 2,
-      whaleAddress: WHALE_POOLS["ADAI"],
-    },
-    {
       contractName: "SusdV2Zap",
       swapAddress: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD",
       swapInterface: "IOldStableSwap4",
@@ -154,6 +146,7 @@ describe("Curve Zaps", () => {
       gaugeInterface: "ILiquidityGauge",
       numberOfCoins: 4,
       whaleAddress: WHALE_POOLS["DAI"],
+      rewardToken: "0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F",
     },
     {
       contractName: "UsdnPoolZap",
@@ -252,6 +245,7 @@ describe("Curve Zaps", () => {
       gaugeInterface,
       numberOfCoins,
       whaleAddress,
+      rewardToken,
     } = curveConstant;
 
     describe(contractName, () => {
@@ -337,9 +331,17 @@ describe("Curve Zaps", () => {
 
       it("Claim", async () => {
         const erc20s = await zap.erc20Allocations();
-        expect(erc20s[0]).to.equal(CRV_ADDRESS);
-        for (let i = 0; i < erc20s.length; i++) {
-          const token = await ethers.getContractAt("IDetailedERC20", erc20s[i]);
+
+        expect(erc20s).to.include(ethers.utils.getAddress(CRV_ADDRESS));
+        const crv = await ethers.getContractAt("IDetailedERC20", CRV_ADDRESS);
+        expect(await crv.balanceOf(zap.address)).to.equal(0);
+
+        if (typeof rewardToken !== "undefined") {
+          expect(erc20s).to.include(ethers.utils.getAddress(rewardToken));
+          const token = await ethers.getContractAt(
+            "IDetailedERC20",
+            rewardToken
+          );
           expect(await token.balanceOf(zap.address)).to.equal(0);
         }
 
@@ -365,8 +367,12 @@ describe("Curve Zaps", () => {
 
         await zap.claim();
 
-        for (let i = 0; i < erc20s.length; i++) {
-          const token = await ethers.getContractAt("IDetailedERC20", erc20s[i]);
+        expect(await crv.balanceOf(zap.address)).to.be.gt(0);
+        if (typeof rewardToken !== "undefined") {
+          const token = await ethers.getContractAt(
+            "IDetailedERC20",
+            rewardToken
+          );
           expect(await token.balanceOf(zap.address)).to.be.gt(0);
         }
       });

@@ -38,10 +38,11 @@ contract AaveStableCoinAllocation is
         override
         returns (TokenData[] memory)
     {
-        TokenData[] memory tokens = new TokenData[](3);
+        TokenData[] memory tokens = new TokenData[](4);
         tokens[0] = TokenData(DAI_ADDRESS, DAI_SYMBOL, DAI_DECIMALS);
         tokens[1] = TokenData(USDC_ADDRESS, USDC_SYMBOL, USDC_DECIMALS);
         tokens[2] = TokenData(USDT_ADDRESS, USDT_SYMBOL, USDT_DECIMALS);
+        tokens[3] = TokenData(SUSD_ADDRESS, SUSD_SYMBOL, SUSD_DECIMALS);
         return tokens;
     }
 }

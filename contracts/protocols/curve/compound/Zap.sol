@@ -35,8 +35,7 @@ contract CompoundPoolZap is CurveGaugeZapBase, CurveCompoundConstants {
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
-        IERC20[] memory allocations = new IERC20[](1);
-        allocations[0] = IERC20(CRV_ADDRESS);
+        IERC20[] memory allocations = _createErc20AllocationArray(0);
         return allocations;
     }
 

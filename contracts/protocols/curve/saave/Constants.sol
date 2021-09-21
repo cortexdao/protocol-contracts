@@ -18,4 +18,11 @@ abstract contract CurveSaaveConstants is
         0x02d341CcB60fAaf662bC0554d13778015d1b285C;
     address public constant LIQUIDITY_GAUGE_ADDRESS =
         0x462253b8F74B72304c145DB0e4Eebd326B22ca39;
+
+    address public constant STKAAVE_ADDRESS =
+        0x4da27a545c0c5B758a6BA100e3a049001de870f5;
+    address public constant ADAI_ADDRESS =
+        0x028171bCA77440897B824Ca71D1c56caC55b68A3;
+    address public constant ASUSD_ADDRESS =
+        0x6C5024Cd4F8A59110119C56f8933403A539555EB;
 }
