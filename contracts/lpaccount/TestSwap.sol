@@ -15,7 +15,8 @@ contract TestSwap is ISwap, TestLpAccountStorage {
         _name = name;
     }
 
-    function swap(uint256 amount) external override {
+    // solhint-disable-next-line no-unused-vars
+    function swap(uint256 amount, uint256 minAmount) external override {
         _swapsArray.push(amount);
     }
 

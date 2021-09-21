@@ -607,7 +607,7 @@ describe("Contract: LpAccount", () => {
         const amount = tokenAmountToBigNumber(100);
 
         await expect(
-          lpAccount.connect(lpSafe).swap(name, amount)
+          lpAccount.connect(lpSafe).swap(name, amount, 0)
         ).to.be.revertedWith("INVALID_NAME");
       });
 
@@ -618,7 +618,7 @@ describe("Contract: LpAccount", () => {
         const name = await swap.NAME();
         const amount = tokenAmountToBigNumber(100);
 
-        await expect(lpAccount.connect(lpSafe).swap(name, amount)).to.not.be
+        await expect(lpAccount.connect(lpSafe).swap(name, amount, 0)).to.not.be
           .reverted;
       });
 
@@ -630,7 +630,7 @@ describe("Contract: LpAccount", () => {
         const amount = tokenAmountToBigNumber(100);
 
         await expect(
-          lpAccount.connect(randomUser).swap(name, amount)
+          lpAccount.connect(randomUser).swap(name, amount, 0)
         ).to.be.revertedWith("NOT_LP_ROLE");
       });
 
@@ -641,7 +641,7 @@ describe("Contract: LpAccount", () => {
         const name = await swap.NAME();
         const amount = tokenAmountToBigNumber(100);
 
-        await lpAccount.connect(lpSafe).swap(name, amount);
+        await lpAccount.connect(lpSafe).swap(name, amount, 0);
         expect(await lpAccount._swapCalls()).to.deep.equal([amount]);
       });
 
@@ -657,7 +657,7 @@ describe("Contract: LpAccount", () => {
         );
 
         await expect(
-          lpAccount.connect(lpSafe).swap(name, amount)
+          lpAccount.connect(lpSafe).swap(name, amount, 0)
         ).to.be.revertedWith("MISSING_ERC20_ALLOCATIONS");
       });
     });

@@ -164,7 +164,7 @@ describe("Swaps", () => {
         it("Should swap in-token for out-token", async () => {
           const beforeInTokenBalance = await inToken.balanceOf(swap.address);
 
-          await swap.swap(beforeInTokenBalance);
+          await swap.swap(beforeInTokenBalance, 0);
 
           const afterInTokenBalance = await inToken.balanceOf(swap.address);
           expect(afterInTokenBalance).to.equal(0);
