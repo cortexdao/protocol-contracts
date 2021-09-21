@@ -22,7 +22,7 @@ describe("Curve Zaps", () => {
   /* signers */
   let deployer;
   let emergencySafe;
-  let lpSafe;
+  let adminSafe;
   let mApt;
 
   /* contract factories */
@@ -193,7 +193,7 @@ describe("Curve Zaps", () => {
   });
 
   before(async () => {
-    [deployer, emergencySafe, lpSafe, mApt] = await ethers.getSigners();
+    [deployer, emergencySafe, adminSafe, mApt] = await ethers.getSigners();
 
     const addressRegistry = await deployMockContract(
       deployer,
@@ -212,14 +212,14 @@ describe("Curve Zaps", () => {
     /* These registered addresses are setup for roles in the
      * constructor for Erc20Allocation:
      * - emergencySafe (default admin role)
-     * - lpSafe (LP role)
+     * - adminSafe (admin role)
      * - mApt (contract role)
      */
     await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
     await addressRegistry.mock.mAptAddress.returns(mApt.address);
-    await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
 
     const Erc20Allocation = await ethers.getContractFactory("Erc20Allocation");
     const erc20Allocation = await Erc20Allocation.deploy(
@@ -228,13 +228,13 @@ describe("Curve Zaps", () => {
 
     /* These registered addresses are setup for roles in the
      * constructor for TvlManager
-     * - lpSafe (LP role)
+     * - adminSafe (admin role)
      * - emergencySafe (emergency role, default admin role)
      */
     TvlManager = await ethers.getContractFactory("TvlManager");
     tvlManager = await TvlManager.deploy(addressRegistry.address);
     await tvlManager
-      .connect(lpSafe)
+      .connect(adminSafe)
       .registerAssetAllocation(erc20Allocation.address);
   });
 
@@ -263,22 +263,26 @@ describe("Curve Zaps", () => {
       before("Deploy Zap", async () => {
         const zapFactory = await ethers.getContractFactory(
           contractName,
-          lpSafe
+          adminSafe
         );
         zap = await zapFactory.deploy();
       });
 
       before("Attach to Mainnet Curve contracts", async () => {
-        swap = await ethers.getContractAt(swapInterface, swapAddress, lpSafe);
+        swap = await ethers.getContractAt(
+          swapInterface,
+          swapAddress,
+          adminSafe
+        );
         lpToken = await ethers.getContractAt(
           "IDetailedERC20",
           lpTokenAddress,
-          lpSafe
+          adminSafe
         );
         gauge = await ethers.getContractAt(
           gaugeInterface,
           gaugeAddress,
-          lpSafe
+          adminSafe
         );
       });
 

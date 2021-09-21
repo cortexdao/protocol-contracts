@@ -170,7 +170,7 @@ describe("Allocations", () => {
   /* signers */
   let deployer;
   let emergencySafe;
-  let lpSafe;
+  let adminSafe;
   let lpAccount;
   let mApt;
 
@@ -196,7 +196,7 @@ describe("Allocations", () => {
     [
       deployer,
       emergencySafe,
-      lpSafe,
+      adminSafe,
       mApt,
       lpAccount,
     ] = await ethers.getSigners();
@@ -218,10 +218,10 @@ describe("Allocations", () => {
     /* These registered addresses are setup for roles in the
      * constructor for Erc20Allocation:
      * - emergencySafe (default admin role)
-     * - lpSafe (LP role)
+     * - adminSafe (admin role)
      * - mApt (contract role)
      */
-    await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
     await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
@@ -230,8 +230,8 @@ describe("Allocations", () => {
 
     /* These registered addresses are setup for roles in the
      * constructor for TvlManager
-     * - lpSafe (LP role)
      * - emergencySafe (emergency role, default admin role)
+     * - adminSafe (admin role)
      */
     TvlManager = await ethers.getContractFactory("TestTvlManager");
     tvlManager = await TvlManager.deploy(addressRegistry.address);
@@ -281,7 +281,7 @@ describe("Allocations", () => {
 
     before("Register asset allocation", async () => {
       await tvlManager
-        .connect(lpSafe)
+        .connect(adminSafe)
         .registerAssetAllocation(allocation.address);
       lookupId = await tvlManager.testEncodeAssetAllocationId(
         allocation.address,
@@ -383,7 +383,7 @@ describe("Allocations", () => {
 
       before("Register asset allocation", async () => {
         await tvlManager
-          .connect(lpSafe)
+          .connect(adminSafe)
           .registerAssetAllocation(allocation.address);
         lookupId = await tvlManager.testEncodeAssetAllocationId(
           allocation.address,
@@ -636,7 +636,7 @@ describe("Allocations", () => {
 
       before("Register asset allocation", async () => {
         await tvlManager
-          .connect(lpSafe)
+          .connect(adminSafe)
           .registerAssetAllocation(allocation.address);
         primaryAllocationId = await tvlManager.testEncodeAssetAllocationId(
           allocation.address,

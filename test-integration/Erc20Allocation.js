@@ -30,7 +30,7 @@ describe("Contract: Erc20Allocation", () => {
   /* signers */
   let deployer;
   let emergencySafe;
-  let lpSafe;
+  let adminSafe;
   let mApt;
   let lpAccount;
 
@@ -57,7 +57,7 @@ describe("Contract: Erc20Allocation", () => {
     [
       deployer,
       emergencySafe,
-      lpSafe,
+      adminSafe,
       mApt,
       lpAccount,
     ] = await ethers.getSigners();
@@ -78,32 +78,32 @@ describe("Contract: Erc20Allocation", () => {
 
     /* These registered addresses are setup for roles in the
      * constructor for Erc20Allocation:
-     * - lpSafe (LP role)
      * - emergencySafe (default admin role)
+     * - adminSafe (admin role)
      * - mApt (contract role)
      */
     await addressRegistry.mock.mAptAddress.returns(mApt.address);
     await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
-    await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
     await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
 
     Erc20Allocation = await ethers.getContractFactory(
       "Erc20Allocation",
-      lpSafe
+      adminSafe
     );
     erc20Allocation = await Erc20Allocation.deploy(addressRegistry.address);
 
     /* These registered addresses are setup for roles in the
      * constructor for TvlManager:
-     * - lpSafe (LP role)
      * - emergencySafe (emergency role, default admin role)
+     * - adminSafe (admin role)
      */
     const TvlManager = await ethers.getContractFactory("TestTvlManager");
     tvlManager = await TvlManager.deploy(addressRegistry.address);
     await tvlManager
-      .connect(lpSafe)
+      .connect(adminSafe)
       .registerAssetAllocation(erc20Allocation.address);
   });
 
