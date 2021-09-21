@@ -59,14 +59,17 @@ describe("Contract: TestCurveZap", () => {
       numberOfCoins
     );
 
-    const underlyers = [];
-    for (let i = 0; i < 3; i++) {
-      const underlyer = await deployMockContract(deployer, erc20Abi);
-      await underlyer.mock.allowance.returns(0);
-      await underlyer.mock.approve.returns(true);
-      underlyers.push(underlyer.address);
-    }
-    curvePool.setUnderlyers(underlyers);
+    const underlyers = await Promise.all(
+      Array(3)
+        .fill(null)
+        .map(async () => {
+          const underlyer = await deployMockContract(deployer, erc20Abi);
+          await underlyer.mock.allowance.returns(0);
+          await underlyer.mock.approve.returns(true);
+          return underlyer.address;
+        })
+    );
+    await curvePool.setUnderlyers(underlyers);
   });
 
   describe("Constructor", () => {
