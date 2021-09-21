@@ -123,7 +123,7 @@ describe("Contract: LpAccount", () => {
 
   before("Prepare TVL Manager and ERC20 Allocation", async () => {
     // deploy and register TVL Manager
-    const TvlManager = await ethers.getContractFactory("TvlManager", lpSafe);
+    const TvlManager = await ethers.getContractFactory("TvlManager", adminSafe);
     tvlManager = await TvlManager.deploy(addressRegistry.address);
 
     await addressRegistry.mock.getAddress
@@ -268,7 +268,7 @@ describe("Contract: LpAccount", () => {
       // configure zap with registered ERC20
       const token = await deployMockErc20();
       await erc20Allocation
-        .connect(lpSafe)
+        .connect(adminSafe)
         ["registerErc20Token(address)"](token.address);
       await zap._setErc20Allocations([token.address]);
 
@@ -295,7 +295,7 @@ describe("Contract: LpAccount", () => {
       // configure zap with registered ERC20
       const token = await deployMockErc20();
       await erc20Allocation
-        .connect(lpSafe)
+        .connect(adminSafe)
         ["registerErc20Token(address)"](token.address);
       await zap._setErc20Allocations([token.address]);
 
@@ -346,7 +346,7 @@ describe("Contract: LpAccount", () => {
       // configure zap with registered ERC20
       const token = await deployMockErc20();
       await erc20Allocation
-        .connect(lpSafe)
+        .connect(adminSafe)
         ["registerErc20Token(address)"](token.address);
       await zap._setErc20Allocations([token.address]);
 
@@ -390,7 +390,7 @@ describe("Contract: LpAccount", () => {
       // configure zap with registered ERC20
       const token = await deployMockErc20();
       await erc20Allocation
-        .connect(lpSafe)
+        .connect(adminSafe)
         ["registerErc20Token(address)"](token.address);
       await zap._setErc20Allocations([token.address]);
 
@@ -487,7 +487,7 @@ describe("Contract: LpAccount", () => {
       // configure swap with registered ERC20
       const token = await deployMockErc20();
       await erc20Allocation
-        .connect(lpSafe)
+        .connect(adminSafe)
         ["registerErc20Token(address)"](token.address);
       await swap._setErc20Allocations([token.address]);
 

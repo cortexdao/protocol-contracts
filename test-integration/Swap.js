@@ -23,7 +23,7 @@ describe("Swaps", () => {
   /* signers */
   let deployer;
   let emergencySafe;
-  let lpSafe;
+  let adminSafe;
   let mApt;
 
   /* contract factories */
@@ -45,7 +45,7 @@ describe("Swaps", () => {
   });
 
   before(async () => {
-    [deployer, emergencySafe, lpSafe, mApt] = await ethers.getSigners();
+    [deployer, emergencySafe, adminSafe, mApt] = await ethers.getSigners();
 
     const addressRegistry = await deployMockContract(
       deployer,
@@ -64,10 +64,10 @@ describe("Swaps", () => {
     /* These registered addresses are setup for roles in the
      * constructor for Erc20Allocation:
      * - emergencySafe (default admin role)
-     * - lpSafe (LP role)
+     * - adminSafe (admin role)
      * - mApt (contract role)
      */
-    await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
     await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
@@ -80,13 +80,13 @@ describe("Swaps", () => {
 
     /* These registered addresses are setup for roles in the
      * constructor for TvlManager
-     * - lpSafe (LP role)
      * - emergencySafe (emergency role, default admin role)
+     * - adminSafe (admin role)
      */
     TvlManager = await ethers.getContractFactory("TvlManager");
     tvlManager = await TvlManager.deploy(addressRegistry.address);
     await tvlManager
-      .connect(lpSafe)
+      .connect(adminSafe)
       .registerAssetAllocation(erc20Allocation.address);
   });
 
@@ -134,10 +134,7 @@ describe("Swaps", () => {
       let whaleAddress = FARM_TOKEN_POOLS[inTokenSymbol];
 
       before("Deploy swap contract", async () => {
-        const SwapContract = await ethers.getContractFactory(
-          swapContractName,
-          lpSafe
-        );
+        const SwapContract = await ethers.getContractFactory(swapContractName);
         swap = await SwapContract.deploy();
       });
 
