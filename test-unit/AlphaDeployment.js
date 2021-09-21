@@ -224,6 +224,18 @@ describe("Contract: AlphaDeployment", () => {
   });
 
   it("deploy_2_DemoPools", async () => {
+    // mock the proxy admin create and owner transfer
+    const proxyAdmin = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("ProxyAdmin").abi
+    );
+    await proxyAdmin.mock.transferOwnership.returns();
+    const proxyAdminFactory = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("ProxyAdminFactory").abi
+    );
+    proxyAdminFactory.mock.create.returns(proxyAdmin.address);
+
     // mock the v1 proxy create
     const demoPoolAddress = (await deployMockContract(deployer, [])).address;
     const poolTokenV1Factory = await deployMockContract(
@@ -247,7 +259,7 @@ describe("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        FAKE_ADDRESS, // proxy admin factory
+        proxyAdminFactory.address, // proxy admin factory
         FAKE_ADDRESS, // proxy factory
         FAKE_ADDRESS, // address registry v2 factory
         FAKE_ADDRESS, // mAPT factory
@@ -270,26 +282,7 @@ describe("Contract: AlphaDeployment", () => {
     await alphaDeployment.testSetMapt(mAptAddress);
 
     // for ownership check
-    // 1. Make deployment contract the owner of the Address Registry
     await addressRegistry.mock.owner.returns(alphaDeployment.address);
-    const poolDeployer = await impersonateAccount(MAINNET_POOL_DEPLOYER);
-    await forciblySendEth(
-      poolDeployer.address,
-      tokenAmountToBigNumber(1),
-      deployer.address
-    );
-    const proxyAdmin = await deployMockContract(
-      poolDeployer,
-      artifacts.readArtifactSync("ProxyAdmin").abi
-    );
-    // proxy admin was created via the first transaction on Mainnet
-    // of the pool deployer, so this mock contract should have the
-    // same address
-    expect(await alphaDeployment.POOL_PROXY_ADMIN()).to.equal(
-      proxyAdmin.address
-    );
-    // 2. Make deployment contract the owner of the pool proxy admin
-    await proxyAdmin.mock.owner.returns(alphaDeployment.address);
 
     // need to mock the upgrade
     await proxyAdmin.mock.upgradeAndCall.returns();
