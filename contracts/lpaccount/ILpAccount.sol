@@ -14,7 +14,11 @@ interface ILpAccount {
 
     function transferToPool(address pool, uint256 amount) external;
 
-    function swap(string calldata name, uint256 amount) external;
+    function swap(
+        string calldata name,
+        uint256 amount,
+        uint256 minAmount
+    ) external;
 
     function claim(string calldata name) external;
 }

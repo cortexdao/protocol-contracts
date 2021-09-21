@@ -185,12 +185,11 @@ contract LpAccount is
         underlyer.safeTransfer(pool, amount);
     }
 
-    function swap(string calldata name, uint256 amount)
-        external
-        override
-        nonReentrant
-        onlyLpRole
-    {
+    function swap(
+        string calldata name,
+        uint256 amount,
+        uint256 minAmount
+    ) external override nonReentrant onlyLpRole {
         ISwap swap_ = _swaps.get(name);
         require(address(swap_) != address(0), "INVALID_NAME");
 
@@ -201,7 +200,7 @@ contract LpAccount is
         require(isErc20TokenRegistered, "MISSING_ERC20_ALLOCATIONS");
 
         address(swap_).functionDelegateCall(
-            abi.encodeWithSelector(ISwap.swap.selector, amount)
+            abi.encodeWithSelector(ISwap.swap.selector, amount, minAmount)
         );
     }
 
