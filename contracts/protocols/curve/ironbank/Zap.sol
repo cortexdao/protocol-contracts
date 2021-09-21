@@ -31,10 +31,7 @@ contract IronBankPoolZap is CurveGaugeZapBase, CurveIronBankConstants {
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
-        IERC20[] memory allocations = _createErc20AllocationArray(3);
-        allocations[4] = IERC20(CYDAI_ADDRESS);
-        allocations[5] = IERC20(CYUSDC_ADDRESS);
-        allocations[6] = IERC20(CYUSDT_ADDRESS);
+        IERC20[] memory allocations = _createErc20AllocationArray(0);
         return allocations;
     }
 
