@@ -107,7 +107,9 @@ describe("Contract: TestCurveZap", () => {
   describe("deployLiquidity", () => {
     it("does not revert with the correct number of amounts", async () => {
       const amounts = [1, 2, 3];
-      await expect(curvePool.deployLiquidity(amounts)).to.not.be.reverted;
+      // await expect(
+      await curvePool.deployLiquidity(amounts);
+      // ).to.not.be.reverted;
     });
 
     it("reverts with an incorrect number of amounts", async () => {
