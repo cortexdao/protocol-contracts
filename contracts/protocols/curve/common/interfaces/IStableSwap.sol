@@ -19,6 +19,13 @@ interface IStableSwap {
     function add_liquidity(uint256[3] memory amounts, uint256 min_mint_amount)
         external;
 
+    // solhint-disable-next-line
+    function add_liquidity(
+        uint256[3] memory amounts,
+        uint256 minMinAmount,
+        bool useUnderlyer
+    ) external;
+
     /**
      * @dev the number of coins is hard-coded in curve contracts
      */
@@ -31,6 +38,14 @@ interface IStableSwap {
         uint256 tokenAmount,
         int128 tokenIndex,
         uint256 minAmount
+    ) external;
+
+    // solhint-disable-next-line
+    function remove_liquidity_one_coin(
+        uint256 tokenAmount,
+        int128 tokenIndex,
+        uint256 minAmount,
+        bool useUnderlyer
     ) external;
 
     // solhint-disable-next-line
