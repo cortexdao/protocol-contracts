@@ -20,7 +20,7 @@ contract CompoundPoolZap is CurveGaugeZapBase, CurveCompoundConstants {
     constructor()
         public
         CurveGaugeZapBase(
-            STABLE_SWAP_ADDRESS,
+            DEPOSIT_ZAP_ADDRESS,
             LP_TOKEN_ADDRESS,
             LIQUIDITY_GAUGE_ADDRESS,
             10000,
