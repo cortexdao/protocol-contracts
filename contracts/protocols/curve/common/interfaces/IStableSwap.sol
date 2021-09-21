@@ -12,6 +12,9 @@ interface IStableSwap {
 
     function coins(uint256 coin) external view returns (address);
 
+    // solhint-disable-next-line
+    function underlying_coins(uint256 coin) external view returns (address);
+
     /**
      * @dev the number of coins is hard-coded in curve contracts
      */

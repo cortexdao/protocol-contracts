@@ -48,7 +48,7 @@ contract AavePoolZap is CurveGaugeZapBase, CurveAaveConstants {
         override
         returns (address)
     {
-        return IStableSwap(SWAP_ADDRESS).coins(i);
+        return IStableSwap(SWAP_ADDRESS).underlying_coins(i);
     }
 
     function _addLiquidity(uint256[] calldata amounts, uint256 minAmount)

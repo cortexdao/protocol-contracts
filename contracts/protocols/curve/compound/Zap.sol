@@ -7,6 +7,7 @@ import {IAssetAllocation} from "contracts/common/Imports.sol";
 import {SafeERC20, SafeMath} from "contracts/libraries/Imports.sol";
 import {
     IOldStableSwap2 as IStableSwap,
+    IDepositZap,
     ILiquidityGauge
 } from "contracts/protocols/curve/common/interfaces/Imports.sol";
 import {CurveCompoundConstants} from "./Constants.sol";
@@ -40,7 +41,8 @@ contract CompoundPoolZap is CurveGaugeZapBase, CurveCompoundConstants {
     }
 
     function _getVirtualPrice() internal view override returns (uint256) {
-        return IStableSwap(SWAP_ADDRESS).get_virtual_price();
+        address stableSwap = IDepositZap(SWAP_ADDRESS).curve();
+        return IStableSwap(stableSwap).get_virtual_price();
     }
 
     function _getCoinAtIndex(uint256 i)
@@ -49,14 +51,14 @@ contract CompoundPoolZap is CurveGaugeZapBase, CurveCompoundConstants {
         override
         returns (address)
     {
-        return IStableSwap(SWAP_ADDRESS).coins(int128(i));
+        return IDepositZap(SWAP_ADDRESS).underlying_coins(int128(i));
     }
 
     function _addLiquidity(uint256[] calldata amounts, uint256 minAmount)
         internal
         override
     {
-        IStableSwap(SWAP_ADDRESS).add_liquidity(
+        IDepositZap(SWAP_ADDRESS).add_liquidity(
             [amounts[0], amounts[1]],
             minAmount
         );
@@ -66,21 +68,12 @@ contract CompoundPoolZap is CurveGaugeZapBase, CurveCompoundConstants {
         internal
         override
     {
-        require(index < 2, "INVALID_INDEX");
-
-        uint8 outIndex = index;
-        uint8 inIndex = outIndex == 0 ? 1 : 0;
-
-        IERC20 inToken = IERC20(_getCoinAtIndex(inIndex));
-        uint256 inTokenBalance = inToken.balanceOf(address(this));
-
-        IStableSwap swap = IStableSwap(SWAP_ADDRESS);
-        swap.remove_liquidity(lpBalance, [uint256(0), uint256(0)]);
-
-        uint256 balanceDelta =
-            inToken.balanceOf(address(this)).sub(inTokenBalance);
-        inToken.safeApprove(address(swap), 0);
-        inToken.safeApprove(address(swap), balanceDelta);
-        swap.exchange(inIndex, outIndex, balanceDelta, 0);
+        IERC20(LP_TOKEN_ADDRESS).safeApprove(SWAP_ADDRESS, 0);
+        IERC20(LP_TOKEN_ADDRESS).safeApprove(SWAP_ADDRESS, lpBalance);
+        IDepositZap(SWAP_ADDRESS).remove_liquidity_one_coin(
+            lpBalance,
+            index,
+            0
+        );
     }
 }
