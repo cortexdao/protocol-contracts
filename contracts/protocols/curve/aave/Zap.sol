@@ -12,6 +12,8 @@ import {CurveAaveConstants} from "./Constants.sol";
 import {CurveGaugeZapBase} from "contracts/protocols/curve/common/Imports.sol";
 
 contract AavePoolZap is CurveGaugeZapBase, CurveAaveConstants {
+    string internal constant AAVE_ALLOCATION = "aave";
+
     constructor()
         public
         CurveGaugeZapBase(
@@ -25,8 +27,9 @@ contract AavePoolZap is CurveGaugeZapBase, CurveAaveConstants {
     {}
 
     function assetAllocations() public view override returns (string[] memory) {
-        string[] memory allocationNames = new string[](1);
+        string[] memory allocationNames = new string[](2);
         allocationNames[0] = NAME;
+        allocationNames[1] = AAVE_ALLOCATION;
         return allocationNames;
     }
 
