@@ -126,14 +126,14 @@ describe("Contract: MetaPoolAllocationBase", () => {
       await coins["DAI"].connect(lpSafe).approve(basePool.address, MAX_UINT256);
       await basePool
         .connect(lpSafe)
-        .add_liquidity([daiAmount, "0", "0"], minAmount);
+        ["add_liquidity(uint256[3],uint256)"]([daiAmount, "0", "0"], minAmount);
 
       // deposit 3Crv into metapool
       let baseLpBalance = await baseLpToken.balanceOf(lpSafe.address);
       await baseLpToken.connect(lpSafe).approve(metaPool.address, MAX_UINT256);
       await metaPool
         .connect(lpSafe)
-        .add_liquidity(["0", baseLpBalance], minAmount);
+        ["add_liquidity(uint256[2],uint256)"](["0", baseLpBalance], minAmount);
 
       const basePoolDaiBalance = await basePool.balances(daiIndex - 1);
       const basePoolLpTotalSupply = await baseLpToken.totalSupply();
@@ -170,14 +170,14 @@ describe("Contract: MetaPoolAllocationBase", () => {
       await coins["DAI"].connect(lpSafe).approve(basePool.address, MAX_UINT256);
       await basePool
         .connect(lpSafe)
-        .add_liquidity([daiAmount, "0", "0"], minAmount);
+        ["add_liquidity(uint256[3],uint256)"]([daiAmount, "0", "0"], minAmount);
 
       // deposit 3Crv into metapool
       let baseLpBalance = await baseLpToken.balanceOf(lpSafe.address);
       await baseLpToken.connect(lpSafe).approve(metaPool.address, MAX_UINT256);
       await metaPool
         .connect(lpSafe)
-        .add_liquidity(["0", baseLpBalance], minAmount);
+        ["add_liquidity(uint256[2],uint256)"](["0", baseLpBalance], minAmount);
 
       await lpToken.connect(lpSafe).approve(gauge.address, MAX_UINT256);
       const lpBalance = await lpToken.balanceOf(lpSafe.address);
@@ -222,14 +222,14 @@ describe("Contract: MetaPoolAllocationBase", () => {
       await coins["DAI"].connect(lpSafe).approve(basePool.address, MAX_UINT256);
       await basePool
         .connect(lpSafe)
-        .add_liquidity([daiAmount, "0", "0"], minAmount);
+        ["add_liquidity(uint256[3],uint256)"]([daiAmount, "0", "0"], minAmount);
 
       // deposit 3Crv into metapool
       let baseLpBalance = await baseLpToken.balanceOf(lpSafe.address);
       await baseLpToken.connect(lpSafe).approve(metaPool.address, MAX_UINT256);
       await metaPool
         .connect(lpSafe)
-        .add_liquidity(["0", baseLpBalance], minAmount);
+        ["add_liquidity(uint256[2],uint256)"](["0", baseLpBalance], minAmount);
 
       // split LP tokens between strategy and gauge
       const totalLpBalance = await lpToken.balanceOf(lpSafe.address);
@@ -280,7 +280,9 @@ describe("Contract: MetaPoolAllocationBase", () => {
 
       // deposit UST into metapool
       await coins["UST"].connect(lpSafe).approve(metaPool.address, MAX_UINT256);
-      await metaPool.connect(lpSafe).add_liquidity([ustAmount, "0"], minAmount);
+      await metaPool
+        .connect(lpSafe)
+        ["add_liquidity(uint256[2],uint256)"]([ustAmount, "0"], minAmount);
 
       const metaPoolUstBalance = await metaPool.balances(ustIndex);
       const lpBalance = await lpToken.balanceOf(lpSafe.address);
@@ -307,7 +309,9 @@ describe("Contract: MetaPoolAllocationBase", () => {
 
       // deposit UST into metapool
       await coins["UST"].connect(lpSafe).approve(metaPool.address, MAX_UINT256);
-      await metaPool.connect(lpSafe).add_liquidity([ustAmount, "0"], minAmount);
+      await metaPool
+        .connect(lpSafe)
+        ["add_liquidity(uint256[2],uint256)"]([ustAmount, "0"], minAmount);
 
       const metaPoolUstBalance = await metaPool.balances(ustIndex);
 
@@ -341,7 +345,9 @@ describe("Contract: MetaPoolAllocationBase", () => {
 
       // deposit UST into metapool
       await coins["UST"].connect(lpSafe).approve(metaPool.address, MAX_UINT256);
-      await metaPool.connect(lpSafe).add_liquidity([ustAmount, "0"], minAmount);
+      await metaPool
+        .connect(lpSafe)
+        ["add_liquidity(uint256[2],uint256)"]([ustAmount, "0"], minAmount);
 
       // split LP tokens between strategy and gauge
       const totalLpBalance = await lpToken.balanceOf(lpSafe.address);
