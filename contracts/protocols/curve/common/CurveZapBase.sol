@@ -44,6 +44,8 @@ abstract contract CurveZapBase is IZap {
 
     /// @param amounts array of underlyer amounts
     function deployLiquidity(uint256[] calldata amounts) external override {
+        require(amounts.length == N_COINS, "INVALID_AMOUNTS");
+
         uint256 totalAmount = 0;
         for (uint256 i = 0; i < amounts.length; i++) {
             totalAmount += amounts[i];
@@ -65,6 +67,7 @@ abstract contract CurveZapBase is IZap {
      * @param index underlyer index
      */
     function unwindLiquidity(uint256 amount, uint8 index) external override {
+        require(index < N_COINS, "INVALID_INDEX");
         uint256 lpBalance = _withdrawFromGauge(amount);
         _removeLiquidity(lpBalance, index);
     }
