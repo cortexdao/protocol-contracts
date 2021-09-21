@@ -166,7 +166,7 @@ async function getContractAt(
   return contract;
 }
 
-describe("Contract: TvlManager", () => {
+describe("Allocations", () => {
   /* signers */
   let deployer;
   let emergencySafe;
