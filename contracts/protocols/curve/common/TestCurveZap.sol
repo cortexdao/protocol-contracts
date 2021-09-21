@@ -69,7 +69,8 @@ contract TestCurveZap is CurveGaugeZapBase {
     }
 
     function assetAllocations() public view override returns (string[] memory) {
-        return new string[](0);
+        string[] memory allocationNames = new string[](1);
+        return allocationNames;
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
