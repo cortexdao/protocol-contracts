@@ -23,7 +23,8 @@ contract TestZap is IZap, TestLpAccountStorage {
     }
 
     // LP token amount
-    function unwindLiquidity(uint256 amount) external override {
+    // TODO: push index in addition to amount
+    function unwindLiquidity(uint256 amount, uint8) external override {
         _unwindsArray.push(amount);
     }
 
@@ -46,7 +47,7 @@ contract TestZap is IZap, TestLpAccountStorage {
         external
         view
         override
-        returns (IAssetAllocation[] memory)
+        returns (string[] memory)
     {
         return _assetAllocations;
     }
@@ -65,10 +66,8 @@ contract TestZap is IZap, TestLpAccountStorage {
      * Testing functions
      */
 
-    function _setAssetAllocations(IAssetAllocation[] memory allocations)
-        public
-    {
-        _assetAllocations = allocations;
+    function _setAssetAllocations(string[] memory allocationNames) public {
+        _assetAllocations = allocationNames;
     }
 
     function _setErc20Allocations(IERC20[] memory tokens) public {

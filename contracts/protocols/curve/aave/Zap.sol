@@ -24,16 +24,10 @@ contract AavePoolZap is CurveGaugeZapBase, CurveAaveConstants {
         ) // solhint-disable-next-line no-empty-blocks
     {}
 
-    function assetAllocations()
-        public
-        view
-        override
-        returns (IAssetAllocation[] memory)
-    {
-        IAssetAllocation[] memory allocations = new IAssetAllocation[](1);
-        // Set to the Aave asset allocation address
-        allocations[0] = IAssetAllocation(address(0));
-        return allocations;
+    function assetAllocations() public view override returns (string[] memory) {
+        string[] memory allocationNames = new string[](1);
+        allocationNames[0] = NAME;
+        return allocationNames;
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
@@ -64,10 +58,15 @@ contract AavePoolZap is CurveGaugeZapBase, CurveAaveConstants {
         );
     }
 
-    function _removeLiquidity(uint256 lpBalance) internal override {
-        IStableSwap(SWAP_ADDRESS).remove_liquidity(
+    function _removeLiquidity(uint256 lpBalance, uint8 index)
+        internal
+        override
+    {
+        require(index < 3, "INVALID_INDEX");
+        IStableSwap(SWAP_ADDRESS).remove_liquidity_one_coin(
             lpBalance,
-            [uint256(0), uint256(0), uint256(0)]
+            index,
+            0
         );
     }
 

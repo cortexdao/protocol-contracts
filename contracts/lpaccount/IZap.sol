@@ -12,8 +12,11 @@ interface IZap is INameIdentifier {
     // array of underlyer amounts
     function deployLiquidity(uint256[] calldata amounts) external;
 
-    // LP token amount
-    function unwindLiquidity(uint256 amount) external;
+    /**
+     * @param amount LP token amount
+     * @param index underlyer index
+     */
+    function unwindLiquidity(uint256 amount, uint8 index) external;
 
     function claim() external;
 
@@ -21,10 +24,7 @@ interface IZap is INameIdentifier {
     function sortedSymbols() external view returns (string[] memory);
 
     // Asset allocation contracts required for the strategy
-    function assetAllocations()
-        external
-        view
-        returns (IAssetAllocation[] memory);
+    function assetAllocations() external view returns (string[] memory);
 
     // ERC20 asset allocation tokens required for the strategy
     function erc20Allocations() external view returns (IERC20[] memory);

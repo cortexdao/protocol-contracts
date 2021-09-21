@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
+pragma experimental ABIEncoderV2;
 
 import {IAssetAllocation} from "contracts/common/Imports.sol";
 
@@ -17,9 +18,10 @@ interface IAssetAllocationRegistry {
 
     function removeAssetAllocation(string memory name) external;
 
-    function isAssetAllocationRegistered(
-        IAssetAllocation[] calldata assetAllocations
-    ) external view returns (bool);
+    function isAssetAllocationRegistered(string[] calldata allocationNames)
+        external
+        view
+        returns (bool);
 
     function getAssetAllocation(string calldata name)
         external

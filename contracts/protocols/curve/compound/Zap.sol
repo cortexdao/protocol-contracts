@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAssetAllocation} from "contracts/common/Imports.sol";
+import {SafeERC20, SafeMath} from "contracts/libraries/Imports.sol";
 import {
     IOldStableSwap2 as IStableSwap,
     ILiquidityGauge
@@ -12,6 +13,9 @@ import {CurveCompoundConstants} from "./Constants.sol";
 import {CurveGaugeZapBase} from "contracts/protocols/curve/common/Imports.sol";
 
 contract CompoundPoolZap is CurveGaugeZapBase, CurveCompoundConstants {
+    using SafeMath for uint256;
+    using SafeERC20 for IERC20;
+
     constructor()
         public
         CurveGaugeZapBase(
@@ -24,15 +28,10 @@ contract CompoundPoolZap is CurveGaugeZapBase, CurveCompoundConstants {
         ) // solhint-disable-next-line no-empty-blocks
     {}
 
-    function assetAllocations()
-        public
-        view
-        override
-        returns (IAssetAllocation[] memory)
-    {
-        IAssetAllocation[] memory allocations = new IAssetAllocation[](1);
-        allocations[0] = IAssetAllocation(address(0));
-        return allocations;
+    function assetAllocations() public view override returns (string[] memory) {
+        string[] memory allocationNames = new string[](1);
+        allocationNames[0] = NAME;
+        return allocationNames;
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
@@ -66,10 +65,25 @@ contract CompoundPoolZap is CurveGaugeZapBase, CurveCompoundConstants {
         );
     }
 
-    function _removeLiquidity(uint256 lpBalance) internal override {
-        IStableSwap(SWAP_ADDRESS).remove_liquidity(
-            lpBalance,
-            [uint256(0), uint256(0)]
-        );
+    function _removeLiquidity(uint256 lpBalance, uint8 index)
+        internal
+        override
+    {
+        require(index < 2, "INVALID_INDEX");
+
+        uint8 outIndex = index;
+        uint8 inIndex = outIndex == 0 ? 1 : 0;
+
+        IERC20 inToken = IERC20(_getCoinAtIndex(inIndex));
+        uint256 inTokenBalance = inToken.balanceOf(address(this));
+
+        IStableSwap swap = IStableSwap(SWAP_ADDRESS);
+        swap.remove_liquidity(lpBalance, [uint256(0), uint256(0)]);
+
+        uint256 balanceDelta =
+            inToken.balanceOf(address(this)).sub(inTokenBalance);
+        inToken.safeApprove(address(swap), 0);
+        inToken.safeApprove(address(swap), balanceDelta);
+        swap.exchange(inIndex, outIndex, balanceDelta, 0);
     }
 }
