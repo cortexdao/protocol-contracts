@@ -13,7 +13,7 @@ abstract contract CurveCompoundConstants is
     string public constant override NAME = "curve-compound";
 
     address public constant STABLE_SWAP_ADDRESS =
-        0xA2B47E3D5c44877cca798226B7B8118F9BFb7A56;
+        0xeb21209ae4c2c9ff2a86aca31e123764a3b6bc06;
     address public constant LP_TOKEN_ADDRESS =
         0x845838DF265Dcd2c412A1Dc9e959c7d08537f8a2;
     address public constant LIQUIDITY_GAUGE_ADDRESS =
