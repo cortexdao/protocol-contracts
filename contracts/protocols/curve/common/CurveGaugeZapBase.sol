@@ -15,6 +15,8 @@ import {CurveZapBase} from "contracts/protocols/curve/common/CurveZapBase.sol";
 abstract contract CurveGaugeZapBase is IZap, CurveZapBase {
     using SafeERC20 for IERC20;
 
+    address internal immutable GAUGE_ADDRESS;
+
     constructor(
         address swapAddress,
         address lpAddress,
@@ -24,15 +26,11 @@ abstract contract CurveGaugeZapBase is IZap, CurveZapBase {
         uint256 nCoins
     )
         public
-        CurveZapBase(
-            swapAddress,
-            lpAddress,
-            gaugeAddress,
-            denominator,
-            slippage,
-            nCoins
-        ) // solhint-disable-next-line no-empty-blocks
-    {}
+        CurveZapBase(swapAddress, lpAddress, denominator, slippage, nCoins)
+    // solhint-disable-next-line no-empty-blocks
+    {
+        GAUGE_ADDRESS = gaugeAddress;
+    }
 
     function _depositToGauge() internal override {
         ILiquidityGauge liquidityGauge = ILiquidityGauge(GAUGE_ADDRESS);

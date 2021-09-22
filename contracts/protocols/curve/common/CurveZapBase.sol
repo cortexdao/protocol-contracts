@@ -24,7 +24,6 @@ abstract contract CurveZapBase is Curve3PoolUnderlyerConstants, IZap {
 
     address internal immutable SWAP_ADDRESS;
     address internal immutable LP_ADDRESS;
-    address internal immutable GAUGE_ADDRESS;
     uint256 internal immutable DENOMINATOR;
     uint256 internal immutable SLIPPAGE;
     uint256 internal immutable N_COINS;
@@ -32,14 +31,12 @@ abstract contract CurveZapBase is Curve3PoolUnderlyerConstants, IZap {
     constructor(
         address swapAddress,
         address lpAddress,
-        address gaugeAddress,
         uint256 denominator,
         uint256 slippage,
         uint256 nCoins
     ) public {
         SWAP_ADDRESS = swapAddress;
         LP_ADDRESS = lpAddress;
-        GAUGE_ADDRESS = gaugeAddress;
         DENOMINATOR = denominator;
         SLIPPAGE = slippage;
         N_COINS = nCoins;
