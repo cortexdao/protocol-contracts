@@ -2,28 +2,48 @@
 pragma solidity 0.6.11;
 
 import {INameIdentifier} from "contracts/common/Imports.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {
+    ILiquidityGauge
+} from "contracts/protocols/curve/common/interfaces/Imports.sol";
+import {
+    IMetaPoolDepositor
+} from "contracts/protocols/curve/metapool/IMetaPoolDepositor.sol";
 import {
     Curve3PoolUnderlyerConstants
 } from "contracts/protocols/curve/3pool/Constants.sol";
+import {
+    IMetaPool,
+    MetapoolConstants
+} from "contracts/protocols/curve/metapool/Imports.sol";
 
 abstract contract CurveAlUsdConstants is
+    MetapoolConstants,
     Curve3PoolUnderlyerConstants,
     INameIdentifier
 {
     string public constant override NAME = "curve-alusd";
 
-    address public constant META_POOL_ADDRESS =
-        0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c;
     // sometimes a metapool is its own LP token; otherwise,
     // you can obtain from `token` attribute
-    address public constant LP_TOKEN_ADDRESS =
-        0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c;
-    address public constant LIQUIDITY_GAUGE_ADDRESS =
-        0x9582C4ADACB3BCE56Fea3e590F05c3ca2fb9C477;
+    IERC20 public constant LP_TOKEN =
+        IERC20(0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c);
 
     // metapool primary underlyer
-    address public constant PRIMARY_UNDERLYER_ADDRESS =
-        0xBC6DA0FE9aD5f3b0d58160288917AA56653660E9;
-    address public constant ALCX_ADDRESS =
-        0xdBdb4d16EdA451D0503b854CF79D55697F90c8DF;
+    IERC20 public constant PRIMARY_UNDERLYER =
+        IERC20(0xBC6DA0FE9aD5f3b0d58160288917AA56653660E9);
+
+    IERC20 public constant ALCX =
+        IERC20(0xdBdb4d16EdA451D0503b854CF79D55697F90c8DF);
+
+    ILiquidityGauge public constant LIQUIDITY_GAUGE =
+        ILiquidityGauge(0x9582C4ADACB3BCE56Fea3e590F05c3ca2fb9C477);
+
+    // A depositor "zap" contract for metapools
+    IMetaPoolDepositor public constant DEPOSITOR =
+        IMetaPoolDepositor(0xA79828DF1850E8a3A3064576f380D90aECDD3359);
+
+    // The metapool StableSwap contract
+    IMetaPool internal constant META_POOL =
+        IMetaPool(0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c);
 }
