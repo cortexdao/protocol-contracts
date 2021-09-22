@@ -16,6 +16,7 @@ const { argv } = require("yargs").option("gasPrice", {
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
 const { getGasPrice, getDeployedAddress } = require("../../utils/helpers");
+const { expect } = require("chai");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -25,10 +26,11 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  // const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
-  // const deployer = ethers.Wallet.fromMnemonic(
-  //   ADDRESS_REGISTRY_MNEMONIC
-  // ).connect(ethers.provider);
+  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
+  const addressRegistryDeployer = ethers.Wallet.fromMnemonic(
+    ADDRESS_REGISTRY_MNEMONIC
+  ).connect(ethers.provider);
+
   const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
   /* TESTING on localhost only
@@ -55,9 +57,54 @@ async function main(argv) {
     networkName
   );
 
-  // TODO: run the deployment steps
+  const alphaDeployment = await ethers.getContractAt(
+    "AlphaDeployment",
+    alphaDeploymentAddress
+  );
 
-  // TODO: cleanup - transfer ownerships back to admin safe
+  // transfer ownerships
+  const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
+
+  const addressRegistryAddress = getDeployedAddress(
+    "AddressRegistryProxy",
+    networkName
+  );
+  const addressRegistry = await ethers.getContractAt(
+    "AddressRegistryV2",
+    addressRegistryAddress
+  );
+  let tx = await alphaDeployment.handoffOwnership(addressRegistryAddress, {
+    gasPrice,
+  });
+  await tx.wait();
+  tx = await addressRegistry.transferOwnership(adminSafeAddress, { gasPrice });
+  await tx.wait();
+
+  expect(await addressRegistry.owner()).to.equal(adminSafeAddress);
+
+  const addressRegistryProxyAdminAddress = getDeployedAddress(
+    "AddressRegistryProxyAdmin",
+    networkName
+  );
+  const addressRegistryProxyAdmin = await ethers.getContractAt(
+    "ProxyAdmin",
+    addressRegistryProxyAdminAddress
+  );
+  tx = await alphaDeployment.handoffOwnership(
+    addressRegistryProxyAdminAddress,
+    { gasPrice }
+  );
+  await tx.wait();
+
+  tx = await addressRegistryProxyAdmin.transferOwnership(
+    addressRegistryDeployer.address,
+    { gasPrice }
+  );
+  await tx.wait();
+
+  expect(await addressRegistryProxyAdmin.owner()).to.equal(
+    addressRegistryDeployer.address
+  );
 }
 
 if (!module.parent) {
