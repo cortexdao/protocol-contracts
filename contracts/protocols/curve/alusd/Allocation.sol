@@ -2,16 +2,10 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {IERC20} from "contracts/common/Imports.sol";
 import {SafeMath} from "contracts/libraries/Imports.sol";
 import {ImmutableAssetAllocation} from "contracts/tvl/Imports.sol";
 
 import {
-    ILiquidityGauge
-} from "contracts/protocols/curve/common/interfaces/Imports.sol";
-
-import {
-    IMetaPool,
     MetaPoolAllocationBase
 } from "contracts/protocols/curve/metapool/Imports.sol";
 
