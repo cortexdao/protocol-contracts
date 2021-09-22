@@ -44,6 +44,6 @@ abstract contract CurveAlUsdConstants is
         IMetaPoolDepositor(0xA79828DF1850E8a3A3064576f380D90aECDD3359);
 
     // The metapool StableSwap contract
-    IMetaPool internal constant META_POOL =
+    IMetaPool public constant META_POOL =
         IMetaPool(0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c);
 }
