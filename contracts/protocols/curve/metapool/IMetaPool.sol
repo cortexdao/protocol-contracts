@@ -31,4 +31,7 @@ interface IMetaPool is IERC20 {
         int128 tokenIndex,
         uint256 minAmount
     ) external;
+
+    // solhint-disable-next-line
+    function get_virtual_price() external view returns (uint256);
 }

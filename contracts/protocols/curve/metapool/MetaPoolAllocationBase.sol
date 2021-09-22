@@ -5,9 +5,10 @@ import {SafeMath} from "contracts/libraries/Imports.sol";
 import {IERC20} from "contracts/common/Imports.sol";
 
 import {
-    IMetaPool,
     ILiquidityGauge
 } from "contracts/protocols/curve/common/interfaces/Imports.sol";
+
+import {IMetaPool} from "./IMetaPool.sol";
 
 import {
     Curve3PoolAllocation
