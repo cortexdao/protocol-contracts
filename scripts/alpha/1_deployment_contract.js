@@ -93,31 +93,21 @@ async function main(argv) {
     "Emergency Safe: %s",
     await addressRegistry.getAddress(bytes32("emergencySafe"))
   );
+  console.log("");
 
   const alphaDeployment = await AlphaDeployment.deploy(...factoryAddresses, {
     gasPrice,
   });
   console.log(
-    "Deploy:",
     `https://etherscan.io/tx/${alphaDeployment.deployTransaction.hash}`
   );
   const receipt = await alphaDeployment.deployTransaction.wait();
 
-  console.log(
-    `https://etherscan.io/tx/${alphaDeployment.deployTransaction.hash}`
-  );
   console.log("");
   console.log("Gas used so far: %s", receipt.gasUsed.toString());
 
-  deploy_data["AlphaDeployment"] = AlphaDeployment.address;
+  deploy_data["AlphaDeployment"] = alphaDeployment.address;
   updateDeployJsons(networkName, deploy_data);
-
-  // TODO: transfer ownerships to alphaDeployment for
-  // - address registry
-  // - address registry proxy admin
-  // - pool proxy admin  <-- only needed for pool v2 upgrades
-
-  // TODO: cleanup - transfer ownerships back to admin safe
 }
 
 if (!module.parent) {
