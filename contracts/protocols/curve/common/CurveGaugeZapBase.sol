@@ -15,6 +15,7 @@ import {CurveZapBase} from "contracts/protocols/curve/common/CurveZapBase.sol";
 abstract contract CurveGaugeZapBase is IZap, CurveZapBase {
     using SafeERC20 for IERC20;
 
+    address internal immutable LP_ADDRESS;
     address internal immutable GAUGE_ADDRESS;
 
     constructor(
@@ -26,9 +27,10 @@ abstract contract CurveGaugeZapBase is IZap, CurveZapBase {
         uint256 nCoins
     )
         public
-        CurveZapBase(swapAddress, lpAddress, denominator, slippage, nCoins)
+        CurveZapBase(swapAddress, denominator, slippage, nCoins)
     // solhint-disable-next-line no-empty-blocks
     {
+        LP_ADDRESS = lpAddress;
         GAUGE_ADDRESS = gaugeAddress;
     }
 
