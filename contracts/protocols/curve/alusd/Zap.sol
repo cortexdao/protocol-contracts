@@ -54,7 +54,11 @@ contract AlUsdPoolZap is CurveGaugeZapBase, CurveAlUsdConstants {
         internal
         override
     {
-        DEPOSITOR.add_liquidity(address(META_POOL), amounts, minAmount);
+        DEPOSITOR.add_liquidity(
+            address(META_POOL),
+            [amounts[0], amounts[1], amounts[2], amounts[3]],
+            minAmount
+        );
     }
 
     function _removeLiquidity(uint256 lpBalance, uint8 index)
