@@ -65,6 +65,8 @@ contract AlUsdPoolZap is CurveGaugeZapBase, CurveAlUsdConstants {
         internal
         override
     {
+        LP_TOKEN.safeApprove(address(DEPOSITOR), 0);
+        LP_TOKEN.safeApprove(address(DEPOSITOR), lpBalance);
         DEPOSITOR.remove_liquidity_one_coin(
             address(META_POOL),
             lpBalance,
