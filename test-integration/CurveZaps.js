@@ -58,11 +58,11 @@ describe("Curve Zaps", () => {
     {
       contractName: "AlUsdPoolZap",
       swapAddress: "0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c",
-      swapInterface: "IStableSwap",
+      swapInterface: "IMetaPool",
       lpTokenAddress: "0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c",
       gaugeAddress: "0x9582C4ADACB3BCE56Fea3e590F05c3ca2fb9C477",
       gaugeInterface: "ILiquidityGauge",
-      numberOfCoins: 2,
+      numberOfCoins: 4,
       whaleAddress: WHALE_POOLS["ALUSD"],
       rewardToken: "0xdBdb4d16EdA451D0503b854CF79D55697F90c8DF",
     },
