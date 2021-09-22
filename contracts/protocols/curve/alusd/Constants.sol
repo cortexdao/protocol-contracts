@@ -10,18 +10,11 @@ import {
     IMetaPoolDepositor
 } from "contracts/protocols/curve/metapool/IMetaPoolDepositor.sol";
 import {
-    Curve3PoolUnderlyerConstants
-} from "contracts/protocols/curve/3pool/Constants.sol";
-import {
     IMetaPool,
     MetapoolConstants
 } from "contracts/protocols/curve/metapool/Imports.sol";
 
-abstract contract CurveAlUsdConstants is
-    MetapoolConstants,
-    Curve3PoolUnderlyerConstants,
-    INameIdentifier
-{
+abstract contract CurveAlUsdConstants is MetapoolConstants, INameIdentifier {
     string public constant override NAME = "curve-alusd";
 
     // sometimes a metapool is its own LP token; otherwise,
