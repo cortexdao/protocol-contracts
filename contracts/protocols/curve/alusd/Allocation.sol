@@ -36,9 +36,9 @@ contract CurveAlUsdAllocation is
         return
             super.getUnderlyerBalance(
                 account,
-                IMetaPool(META_POOL_ADDRESS),
-                ILiquidityGauge(LIQUIDITY_GAUGE_ADDRESS),
-                IERC20(LP_TOKEN_ADDRESS),
+                META_POOL,
+                LIQUIDITY_GAUGE,
+                LP_TOKEN,
                 uint256(tokenIndex)
             );
     }
@@ -50,7 +50,7 @@ contract CurveAlUsdAllocation is
         returns (TokenData[] memory)
     {
         TokenData[] memory tokens = new TokenData[](4);
-        tokens[0] = TokenData(PRIMARY_UNDERLYER_ADDRESS, "alUSD", 18);
+        tokens[0] = TokenData(address(PRIMARY_UNDERLYER), "alUSD", 18);
         tokens[1] = TokenData(DAI_ADDRESS, "DAI", 18);
         tokens[2] = TokenData(USDC_ADDRESS, "USDC", 6);
         tokens[3] = TokenData(USDT_ADDRESS, "USDT", 6);
