@@ -28,10 +28,6 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  // const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
-  // const deployer = ethers.Wallet.fromMnemonic(
-  //   ADDRESS_REGISTRY_MNEMONIC
-  // ).connect(ethers.provider);
   const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
   /* TESTING on localhost only

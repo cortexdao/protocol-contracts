@@ -33,10 +33,6 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  // const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
-  // const deployer = ethers.Wallet.fromMnemonic(
-  //   ADDRESS_REGISTRY_MNEMONIC
-  // ).connect(ethers.provider);
   const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
   /* TESTING on localhost only
@@ -104,10 +100,24 @@ async function main(argv) {
   const receipt = await alphaDeployment.deployTransaction.wait();
 
   console.log("");
-  console.log("Gas used so far: %s", receipt.gasUsed.toString());
+  console.log("Gas used: %s", receipt.gasUsed.toString());
+  console.log("");
 
   deploy_data["AlphaDeployment"] = alphaDeployment.address;
   updateDeployJsons(networkName, deploy_data);
+
+  if (["KOVAN", "MAINNET"].includes(networkName)) {
+    console.log("Verifying on Etherscan ...");
+    await ethers.provider.waitForTransaction(
+      alphaDeployment.deployTransaction.hash,
+      5
+    ); // wait for Etherscan to catch up
+    await hre.run("verify:verify", {
+      address: alphaDeployment.address,
+      constructorArguments: factoryAddresses,
+    });
+    console.log("");
+  }
 }
 
 if (!module.parent) {
