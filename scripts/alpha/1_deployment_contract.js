@@ -115,7 +115,7 @@ async function main(argv) {
   // TODO: transfer ownerships to alphaDeployment for
   // - address registry
   // - address registry proxy admin
-  // - pool proxy admin
+  // - pool proxy admin  <-- only needed for pool v2 upgrades
 
   // TODO: cleanup - transfer ownerships back to admin safe
 }

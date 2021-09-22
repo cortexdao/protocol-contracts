@@ -15,15 +15,8 @@ const { argv } = require("yargs").option("gasPrice", {
 });
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const { BigNumber } = ethers;
-const chalk = require("chalk");
-const {
-  getGasPrice,
-  updateDeployJsons,
-  bytes32,
-  getDeployedAddress,
-} = require("../../utils/helpers");
-const fs = require("fs");
+const { getGasPrice, getDeployedAddress } = require("../../utils/helpers");
+const { expect } = require("chai");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -33,10 +26,11 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  // const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
-  // const deployer = ethers.Wallet.fromMnemonic(
-  //   ADDRESS_REGISTRY_MNEMONIC
-  // ).connect(ethers.provider);
+  const ADDRESS_REGISTRY_MNEMONIC = process.env.ADDRESS_REGISTRY_MNEMONIC;
+  const addressRegistryDeployer = ethers.Wallet.fromMnemonic(
+    ADDRESS_REGISTRY_MNEMONIC
+  ).connect(ethers.provider);
+
   const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
   /* TESTING on localhost only
@@ -63,10 +57,29 @@ async function main(argv) {
     networkName
   );
 
-  // TODO: transfer ownerships to alphaDeployment for
-  // - address registry
-  // - address registry proxy admin
-  // - pool proxy admin
+  // Skip:
+  // - address registry (owned by admin safe) <-- do manually through Gnosis UI
+  // - pool proxy admin (owned by pool deployer)  <-- HOLD OFF on this, only needed for pool v2 upgrades
+  //
+
+  const addressRegistryProxyAdminAddress = getDeployedAddress(
+    "AddressRegistryProxyAdmin",
+    networkName
+  );
+  const addressRegistryProxyAdmin = await ethers.getContractAt(
+    "ProxyAdmin",
+    addressRegistryProxyAdminAddress
+  );
+  expect(await addressRegistryProxyAdmin.owner()).to.equal(
+    addressRegistryDeployer.address
+  );
+
+  const tx = await addressRegistryProxyAdmin
+    .connect(addressRegistryDeployer)
+    .transferOwnership(alphaDeploymentAddress, { gasPrice });
+  const receipt = await tx.wait();
+
+  console.log("Gas used: %s", receipt.gasUsed.toString());
 }
 
 if (!module.parent) {
