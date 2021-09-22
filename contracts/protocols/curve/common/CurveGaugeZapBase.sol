@@ -15,6 +15,9 @@ import {CurveZapBase} from "contracts/protocols/curve/common/CurveZapBase.sol";
 abstract contract CurveGaugeZapBase is IZap, CurveZapBase {
     using SafeERC20 for IERC20;
 
+    address internal constant MINTER_ADDRESS =
+        0xd061D61a4d941c39E5453435B6345Dc261C2fcE0;
+
     address internal immutable LP_ADDRESS;
     address internal immutable GAUGE_ADDRESS;
 
