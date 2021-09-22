@@ -1,16 +1,13 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 
-import {INameIdentifier} from "contracts/common/Imports.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20, INameIdentifier} from "contracts/common/Imports.sol";
 import {
     ILiquidityGauge
 } from "contracts/protocols/curve/common/interfaces/Imports.sol";
 import {
-    IMetaPoolDepositor
-} from "contracts/protocols/curve/metapool/IMetaPoolDepositor.sol";
-import {
     IMetaPool,
+    IMetaPoolDepositor,
     MetapoolConstants
 } from "contracts/protocols/curve/metapool/Imports.sol";
 
