@@ -195,10 +195,11 @@ describe("Contract: AlphaDeployment", () => {
 
     await alphaDeployment.deploy_0_AddressRegistryV2_upgrade();
     await alphaDeployment.deploy_1_MetaPoolToken();
-    await alphaDeployment.deploy_2_DemoPools();
-    await alphaDeployment.deploy_3_TvlManager();
-    await alphaDeployment.deploy_4_OracleAdapter();
-    await alphaDeployment.deploy_5_LpAccount();
-    await alphaDeployment.deploy_6_PoolTokenV2_upgrade();
+    await alphaDeployment.deploy_2_PoolTokenV2_logic();
+    await alphaDeployment.deploy_3_DemoPools();
+    await alphaDeployment.deploy_4_TvlManager();
+    await alphaDeployment.deploy_5_OracleAdapter();
+    await alphaDeployment.deploy_6_LpAccount();
+    await alphaDeployment.deploy_7_PoolTokenV2_upgrade();
   });
 });
