@@ -8,21 +8,13 @@
  *
  * $ HARDHAT_NETWORK=<network name> node scripts/<script filename> --arg1=val1 --arg2=val2
  */
-require("dotenv").config({ path: "./alpha.env" });
 const { argv } = require("yargs").option("gasPrice", {
   type: "number",
   description: "Gas price in gwei; omitting uses GasNow value",
 });
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const { BigNumber } = ethers;
-const chalk = require("chalk");
-const {
-  getGasPrice,
-  updateDeployJsons,
-  getDeployedAddress,
-} = require("../../utils/helpers");
-const fs = require("fs");
+const { getDeployedAddress } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -34,33 +26,37 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  const alphaDeployment = await getDeployedAddress(
+  const alphaDeploymentAddress = await getDeployedAddress(
     "AlphaDeployment",
     networkName
   );
-  const addressesFilename = "deployment-factory-addresses.json";
-  const factoryAddresses = JSON.parse(
-    fs.readFileSync(addressesFilename, "utf-8")
+  const alphaDeployment = await ethers.getContractAt(
+    "AlphaDeployment",
+    alphaDeploymentAddress
   );
-  console.log("");
-  console.log("Verifying on Etherscan ...");
-  await ethers.provider.waitForTransaction(
-    alphaDeployment.deployTransaction.hash,
-    5
-  ); // wait for Etherscan to catch up
-  await hre.run("verify:verify", {
-    address: alphaDeployment.address,
-    constructorArguments: factoryAddresses,
-  });
-  console.log("");
 
   const addressRegistryV2Address = await alphaDeployment.addressRegistryV2();
   await hre.run("verify:verify", {
     address: addressRegistryV2Address,
   });
 
+  const poolTokenV2Address = await alphaDeployment.poolTokenV2();
+  await hre.run("verify:verify", {
+    address: poolTokenV2Address,
+  });
+
   const mAptAddress = await alphaDeployment.mApt();
   let [proxyAdminAddress, logicAddress] = await getEip1967Slots(mAptAddress);
+  const MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
+  const addressRegistryProxyAddress = getDeployedAddress(
+    "AddressRegistryProxy",
+    networkName
+  );
+  let initData = MetaPoolToken.interface.encodeFunctionData(
+    "initialize(address,address)",
+    proxyAdminAddress,
+    addressRegistryProxyAddress
+  );
   await hre.run("verify:verify", {
     address: mAptAddress,
     constructorArguments: [logicAddress, proxyAdminAddress, initData],
@@ -69,6 +65,24 @@ async function main(argv) {
   const tvlManagerAddress = await alphaDeployment.tvlManager();
   await hre.run("verify:verify", {
     address: tvlManagerAddress,
+  });
+
+  const oracleAdapterAddress = await alphaDeployment.oracleAdapter();
+  await hre.run("verify:verify", {
+    address: oracleAdapterAddress,
+  });
+
+  const lpAccountAddress = await alphaDeployment.lpAccount();
+  [proxyAdminAddress, logicAddress] = await getEip1967Slots(lpAccountAddress);
+  const LpAccount = await ethers.getcontractFactory("LpAccount");
+  initData = LpAccount.interface.encodeFunctionData(
+    "initialize(address,address)",
+    proxyAdminAddress,
+    addressRegistryProxyAddress
+  );
+  await hre.run("verify:verify", {
+    address: lpAccountAddress,
+    constructorArguments: [logicAddress, proxyAdminAddress, initData],
   });
 }
 
@@ -93,7 +107,7 @@ if (!module.parent) {
   main(argv)
     .then(() => {
       console.log("");
-      console.log("Deployment successful.");
+      console.log("Verification successful.");
       console.log("");
       process.exit(0);
     })
