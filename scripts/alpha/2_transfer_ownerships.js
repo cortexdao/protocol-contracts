@@ -80,13 +80,17 @@ async function main(argv) {
   const receipt = await tx.wait();
 
   console.log("Gas used: %s", receipt.gasUsed.toString());
+
+  expect(await addressRegistryProxyAdmin.owner()).to.equal(
+    alphaDeploymentAddress
+  );
 }
 
 if (!module.parent) {
   main(argv)
     .then(() => {
       console.log("");
-      console.log("Deployment successful.");
+      console.log("Ownership transferred.");
       console.log("");
       process.exit(0);
     })
