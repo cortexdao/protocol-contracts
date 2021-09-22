@@ -17,6 +17,6 @@ interface IMetaPoolDepositor {
         uint256 _burn_amount,
         int128 i,
         uint256 _min_amounts
-    ) external returns (uint256[4] memory);
+    ) external returns (uint256);
     // solhint-enable
 }
