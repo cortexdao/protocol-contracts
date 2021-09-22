@@ -297,7 +297,7 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
     // registering ERC20 allocation must happen now, since the
     // TVL Manager will attempt to lock the Oracle Adapter.
     await tvlManager
-      .connect(lpSafe)
+      .connect(adminSafe)
       .registerAssetAllocation(erc20Allocation.address);
     await oracleAdapter.connect(emergencySafe).emergencyUnlock();
 

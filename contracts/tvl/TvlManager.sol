@@ -49,8 +49,8 @@ contract TvlManager is
     constructor(address addressRegistry_) public {
         _setAddressRegistry(addressRegistry_);
         _setupRole(DEFAULT_ADMIN_ROLE, addressRegistry.emergencySafeAddress());
-        _setupRole(LP_ROLE, addressRegistry.lpSafeAddress());
         _setupRole(EMERGENCY_ROLE, addressRegistry.emergencySafeAddress());
+        _setupRole(ADMIN_ROLE, addressRegistry.adminSafeAddress());
     }
 
     /**
@@ -73,7 +73,7 @@ contract TvlManager is
         external
         override
         nonReentrant
-        onlyLpOrContractRole
+        onlyAdminRole
     {
         _assetAllocations.add(assetAllocation);
 
@@ -90,7 +90,7 @@ contract TvlManager is
         external
         override
         nonReentrant
-        onlyLpOrContractRole
+        onlyAdminRole
     {
         require(
             keccak256(abi.encodePacked(name)) !=

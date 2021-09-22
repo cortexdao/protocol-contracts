@@ -69,7 +69,7 @@ describe("Contract: TestCurveZap", () => {
           return underlyer.address;
         })
     );
-    curvePool.setUnderlyers(underlyers);
+    await curvePool.setUnderlyers(underlyers);
   });
 
   describe("Constructor", () => {

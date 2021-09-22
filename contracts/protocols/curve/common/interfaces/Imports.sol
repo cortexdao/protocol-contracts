@@ -10,3 +10,4 @@ import {IOldStableSwap2} from "./IOldStableSwap2.sol";
 import {IOldStableSwap4} from "./IOldStableSwap4.sol";
 import {ILiquidityGauge} from "./ILiquidityGauge.sol";
 import {IStakingRewards} from "./IStakingRewards.sol";
+import {IDepositZap} from "./IDepositZap.sol";

@@ -11,7 +11,7 @@ describe("Contract: Erc20Allocation", () => {
   // signers
   let deployer;
   let emergencySafe;
-  let lpSafe;
+  let adminSafe;
   let lpAccount;
   let mApt;
   let user;
@@ -53,7 +53,7 @@ describe("Contract: Erc20Allocation", () => {
     [
       deployer,
       emergencySafe,
-      lpSafe,
+      adminSafe,
       lpAccount,
       mApt,
       user,
@@ -61,7 +61,7 @@ describe("Contract: Erc20Allocation", () => {
     ] = await ethers.getSigners();
     Erc20Allocation = await ethers.getContractFactory(
       "Erc20Allocation",
-      lpSafe
+      adminSafe
     );
     const addressRegistryMock = await deployMockContract(
       deployer,
@@ -70,7 +70,7 @@ describe("Contract: Erc20Allocation", () => {
     await addressRegistryMock.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
-    await addressRegistryMock.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistryMock.mock.adminSafeAddress.returns(adminSafe.address);
     await addressRegistryMock.mock.lpAccountAddress.returns(lpAccount.address);
     await addressRegistryMock.mock.mAptAddress.returns(mApt.address);
     erc20Allocation = await Erc20Allocation.deploy(addressRegistryMock.address);
@@ -116,20 +116,21 @@ describe("Contract: Erc20Allocation", () => {
         .true;
     });
 
-    it("LP role given to LP Safe", async () => {
-      const LP_ROLE = await erc20Allocation.LP_ROLE();
-      const memberCount = await erc20Allocation.getRoleMemberCount(LP_ROLE);
+    it("Admin role given to Admin Safe", async () => {
+      const ADMIN_ROLE = await erc20Allocation.ADMIN_ROLE();
+      const memberCount = await erc20Allocation.getRoleMemberCount(ADMIN_ROLE);
       expect(memberCount).to.equal(1);
-      expect(await erc20Allocation.hasRole(LP_ROLE, lpSafe.address)).to.be.true;
+      expect(await erc20Allocation.hasRole(ADMIN_ROLE, adminSafe.address)).to.be
+        .true;
     });
   });
 
   describe("Adding and removing tokens", () => {
     describe("registerErc20Token", () => {
-      it("LP Safe can call", async () => {
+      it("Admin Safe can call", async () => {
         await expect(
           erc20Allocation
-            .connect(lpSafe)
+            .connect(adminSafe)
             ["registerErc20Token(address,string,uint8)"](
               token_0.token,
               token_0.symbol,
@@ -138,7 +139,7 @@ describe("Contract: Erc20Allocation", () => {
         ).to.not.be.reverted;
         await expect(
           erc20Allocation
-            .connect(lpSafe)
+            .connect(adminSafe)
             ["registerErc20Token(address,string)"](
               token_0.token,
               token_0.symbol
@@ -146,7 +147,7 @@ describe("Contract: Erc20Allocation", () => {
         ).to.not.be.reverted;
         await expect(
           erc20Allocation
-            .connect(lpSafe)
+            .connect(adminSafe)
             ["registerErc20Token(address)"](token_0.token)
         ).to.not.be.reverted;
       });
@@ -160,7 +161,7 @@ describe("Contract: Erc20Allocation", () => {
               token_0.symbol,
               token_0.decimals
             )
-        ).to.be.revertedWith("NOT_LP_ROLE");
+        ).to.be.revertedWith("NOT_ADMIN_ROLE");
         await expect(
           erc20Allocation
             .connect(mApt)
@@ -168,7 +169,7 @@ describe("Contract: Erc20Allocation", () => {
               token_0.token,
               token_0.symbol
             )
-        ).to.be.revertedWith("NOT_LP_ROLE");
+        ).to.be.revertedWith("NOT_ADMIN_ROLE");
         await expect(
           erc20Allocation
             .connect(mApt)
@@ -185,7 +186,7 @@ describe("Contract: Erc20Allocation", () => {
               token_0.symbol,
               token_0.decimals
             )
-        ).to.be.revertedWith("NOT_LP_ROLE");
+        ).to.be.revertedWith("NOT_ADMIN_ROLE");
         await expect(
           erc20Allocation
             .connect(user)
@@ -193,12 +194,12 @@ describe("Contract: Erc20Allocation", () => {
               token_0.token,
               token_0.symbol
             )
-        ).to.be.revertedWith("NOT_LP_ROLE");
+        ).to.be.revertedWith("NOT_ADMIN_ROLE");
         await expect(
           erc20Allocation
             .connect(user)
             ["registerErc20Token(address)"](token_0.token)
-        ).to.be.revertedWith("NOT_LP_OR_CONTRACT_ROLE");
+        ).to.be.revertedWith("NOT_ADMIN_OR_CONTRACT_ROLE");
       });
 
       it("registerErc20Token populates tokens correctly", async () => {
@@ -226,10 +227,10 @@ describe("Contract: Erc20Allocation", () => {
     });
 
     describe("removeErc20Token", () => {
-      it("LP Safe can call", async () => {
+      it("Admin Safe can call", async () => {
         await expect(
           erc20Allocation
-            .connect(lpSafe)
+            .connect(adminSafe)
             ["removeErc20Token(address)"](token_0.token)
         ).to.not.be.reverted;
       });
@@ -239,7 +240,7 @@ describe("Contract: Erc20Allocation", () => {
           erc20Allocation
             .connect(user)
             ["removeErc20Token(address)"](token_0.token)
-        ).to.be.revertedWith("NOT_LP_ROLE");
+        ).to.be.revertedWith("NOT_ADMIN_ROLE");
       });
 
       it("removeErc20Token", async () => {

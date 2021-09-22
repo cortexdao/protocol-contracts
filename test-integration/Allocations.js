@@ -170,7 +170,7 @@ describe("Allocations", () => {
   /* signers */
   let deployer;
   let emergencySafe;
-  let lpSafe;
+  let adminSafe;
   let lpAccount;
   let mApt;
 
@@ -196,7 +196,7 @@ describe("Allocations", () => {
     [
       deployer,
       emergencySafe,
-      lpSafe,
+      adminSafe,
       mApt,
       lpAccount,
     ] = await ethers.getSigners();
@@ -218,10 +218,10 @@ describe("Allocations", () => {
     /* These registered addresses are setup for roles in the
      * constructor for Erc20Allocation:
      * - emergencySafe (default admin role)
-     * - lpSafe (LP role)
+     * - adminSafe (admin role)
      * - mApt (contract role)
      */
-    await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
     await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
@@ -230,8 +230,8 @@ describe("Allocations", () => {
 
     /* These registered addresses are setup for roles in the
      * constructor for TvlManager
-     * - lpSafe (LP role)
      * - emergencySafe (emergency role, default admin role)
+     * - adminSafe (admin role)
      */
     TvlManager = await ethers.getContractFactory("TestTvlManager");
     tvlManager = await TvlManager.deploy(addressRegistry.address);
@@ -281,7 +281,7 @@ describe("Allocations", () => {
 
     before("Register asset allocation", async () => {
       await tvlManager
-        .connect(lpSafe)
+        .connect(adminSafe)
         .registerAssetAllocation(allocation.address);
       lookupId = await tvlManager.testEncodeAssetAllocationId(
         allocation.address,
@@ -383,7 +383,7 @@ describe("Allocations", () => {
 
       before("Register asset allocation", async () => {
         await tvlManager
-          .connect(lpSafe)
+          .connect(adminSafe)
           .registerAssetAllocation(allocation.address);
         lookupId = await tvlManager.testEncodeAssetAllocationId(
           allocation.address,
@@ -403,7 +403,10 @@ describe("Allocations", () => {
         await underlyerToken
           .connect(lpAccount)
           .approve(stableSwap.address, MAX_UINT256);
-        await stableSwap.add_liquidity(amounts, minAmount);
+        await stableSwap[`add_liquidity(uint256[${numberOfCoins}],uint256)`](
+          amounts,
+          minAmount
+        );
 
         const strategyLpBalance = await lpToken.balanceOf(lpAccount.address);
         const poolBalance = await stableSwap.balances(underlyerIndex);
@@ -437,7 +440,10 @@ describe("Allocations", () => {
         await underlyerToken
           .connect(lpAccount)
           .approve(stableSwap.address, MAX_UINT256);
-        await stableSwap.add_liquidity(amounts, minAmount);
+        await stableSwap[`add_liquidity(uint256[${numberOfCoins}],uint256)`](
+          amounts,
+          minAmount
+        );
 
         await lpToken.connect(lpAccount).approve(gauge.address, MAX_UINT256);
         const strategyLpBalance = await lpToken.balanceOf(lpAccount.address);
@@ -477,7 +483,10 @@ describe("Allocations", () => {
         await underlyerToken
           .connect(lpAccount)
           .approve(stableSwap.address, MAX_UINT256);
-        await stableSwap.add_liquidity(amounts, minAmount);
+        await stableSwap[`add_liquidity(uint256[${numberOfCoins}],uint256)`](
+          amounts,
+          minAmount
+        );
 
         // split LP tokens between strategy and gauge
         const totalLpBalance = await lpToken.balanceOf(lpAccount.address);
@@ -627,7 +636,7 @@ describe("Allocations", () => {
 
       before("Register asset allocation", async () => {
         await tvlManager
-          .connect(lpSafe)
+          .connect(adminSafe)
           .registerAssetAllocation(allocation.address);
         primaryAllocationId = await tvlManager.testEncodeAssetAllocationId(
           allocation.address,
@@ -647,14 +656,20 @@ describe("Allocations", () => {
         await daiToken
           .connect(lpAccount)
           .approve(basePool.address, MAX_UINT256);
-        await basePool.add_liquidity([daiAmount, "0", "0"], minAmount);
+        await basePool["add_liquidity(uint256[3],uint256)"](
+          [daiAmount, "0", "0"],
+          minAmount
+        );
 
         // deposit 3Crv into metapool
         let baseLpBalance = await baseLpToken.balanceOf(lpAccount.address);
         await baseLpToken
           .connect(lpAccount)
           .approve(metaPool.address, MAX_UINT256);
-        await metaPool.add_liquidity(["0", baseLpBalance], minAmount);
+        await metaPool["add_liquidity(uint256[2],uint256)"](
+          ["0", baseLpBalance],
+          minAmount
+        );
 
         const basePoolDaiBalance = await basePool.balances(daiIndex - 1);
         const basePoolLpTotalSupply = await baseLpToken.totalSupply();
@@ -684,14 +699,20 @@ describe("Allocations", () => {
         await daiToken
           .connect(lpAccount)
           .approve(basePool.address, MAX_UINT256);
-        await basePool.add_liquidity([daiAmount, "0", "0"], minAmount);
+        await basePool["add_liquidity(uint256[3],uint256)"](
+          [daiAmount, "0", "0"],
+          minAmount
+        );
 
         // deposit 3Crv into metapool
         let baseLpBalance = await baseLpToken.balanceOf(lpAccount.address);
         await baseLpToken
           .connect(lpAccount)
           .approve(metaPool.address, MAX_UINT256);
-        await metaPool.add_liquidity(["0", baseLpBalance], minAmount);
+        await metaPool["add_liquidity(uint256[2],uint256)"](
+          ["0", baseLpBalance],
+          minAmount
+        );
 
         await lpToken.connect(lpAccount).approve(gauge.address, MAX_UINT256);
         const lpBalance = await lpToken.balanceOf(lpAccount.address);
@@ -729,14 +750,20 @@ describe("Allocations", () => {
         await daiToken
           .connect(lpAccount)
           .approve(basePool.address, MAX_UINT256);
-        await basePool.add_liquidity([daiAmount, "0", "0"], minAmount);
+        await basePool["add_liquidity(uint256[3],uint256)"](
+          [daiAmount, "0", "0"],
+          minAmount
+        );
 
         // deposit 3Crv into metapool
         let baseLpBalance = await baseLpToken.balanceOf(lpAccount.address);
         await baseLpToken
           .connect(lpAccount)
           .approve(metaPool.address, MAX_UINT256);
-        await metaPool.add_liquidity(["0", baseLpBalance], minAmount);
+        await metaPool["add_liquidity(uint256[2],uint256)"](
+          ["0", baseLpBalance],
+          minAmount
+        );
 
         // split LP tokens between strategy and gauge
         const totalLpBalance = await lpToken.balanceOf(lpAccount.address);
@@ -785,7 +812,10 @@ describe("Allocations", () => {
         await primaryToken
           .connect(lpAccount)
           .approve(metaPool.address, MAX_UINT256);
-        await metaPool.add_liquidity([ustAmount, "0"], minAmount);
+        await metaPool["add_liquidity(uint256[2],uint256)"](
+          [ustAmount, "0"],
+          minAmount
+        );
 
         const metaPoolUstBalance = await metaPool.balances(ustIndex);
         const lpBalance = await lpToken.balanceOf(lpAccount.address);
@@ -808,7 +838,10 @@ describe("Allocations", () => {
         await primaryToken
           .connect(lpAccount)
           .approve(metaPool.address, MAX_UINT256);
-        await metaPool.add_liquidity([ustAmount, "0"], minAmount);
+        await metaPool["add_liquidity(uint256[2],uint256)"](
+          [ustAmount, "0"],
+          minAmount
+        );
 
         const metaPoolUstBalance = await metaPool.balances(ustIndex);
 
@@ -838,7 +871,10 @@ describe("Allocations", () => {
         await primaryToken
           .connect(lpAccount)
           .approve(metaPool.address, MAX_UINT256);
-        await metaPool.add_liquidity([ustAmount, "0"], minAmount);
+        await metaPool["add_liquidity(uint256[2],uint256)"](
+          [ustAmount, "0"],
+          minAmount
+        );
 
         // split LP tokens between strategy and gauge
         const totalLpBalance = await lpToken.balanceOf(lpAccount.address);

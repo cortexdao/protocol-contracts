@@ -99,7 +99,7 @@ describe("Contract: CurveAllocationBase", () => {
         .approve(stableSwap.address, MAX_UINT256);
       await stableSwap
         .connect(strategy)
-        .add_liquidity([daiAmount, "0", "0"], minAmount);
+        ["add_liquidity(uint256[3],uint256)"]([daiAmount, "0", "0"], minAmount);
 
       const strategyLpBalance = await lpToken.balanceOf(strategy.address);
       const poolBalance = await stableSwap.balances(daiIndex);
@@ -129,7 +129,7 @@ describe("Contract: CurveAllocationBase", () => {
         .approve(stableSwap.address, MAX_UINT256);
       await stableSwap
         .connect(strategy)
-        .add_liquidity([daiAmount, "0", "0"], minAmount);
+        ["add_liquidity(uint256[3],uint256)"]([daiAmount, "0", "0"], minAmount);
 
       await lpToken.connect(strategy).approve(gauge.address, MAX_UINT256);
       const strategyLpBalance = await lpToken.balanceOf(strategy.address);
@@ -165,7 +165,7 @@ describe("Contract: CurveAllocationBase", () => {
         .approve(stableSwap.address, MAX_UINT256);
       await stableSwap
         .connect(strategy)
-        .add_liquidity([daiAmount, "0", "0"], minAmount);
+        ["add_liquidity(uint256[3],uint256)"]([daiAmount, "0", "0"], minAmount);
 
       // split LP tokens between strategy and gauge
       const totalLPBalance = await lpToken.balanceOf(strategy.address);

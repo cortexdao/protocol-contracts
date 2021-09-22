@@ -22,7 +22,7 @@ describe("Curve Zaps", () => {
   /* signers */
   let deployer;
   let emergencySafe;
-  let lpSafe;
+  let adminSafe;
   let mApt;
 
   /* contract factories */
@@ -53,7 +53,8 @@ describe("Curve Zaps", () => {
       gaugeAddress: "0xd662908ADA2Ea1916B3318327A97eB18aD588b5d",
       gaugeInterface: "ILiquidityGauge",
       numberOfCoins: 3,
-      whaleAddress: WHALE_POOLS["ADAI"],
+      whaleAddress: WHALE_POOLS["DAI"],
+      useUnwrapped: true,
     },
     {
       contractName: "AlUsdPoolZap",
@@ -78,13 +79,14 @@ describe("Curve Zaps", () => {
     },
     {
       contractName: "CompoundPoolZap",
-      swapAddress: "0xA2B47E3D5c44877cca798226B7B8118F9BFb7A56",
-      swapInterface: "IOldStableSwap2",
+      swapAddress: "0xeB21209ae4C2c9FF2a86ACA31E123764A3B6Bc06",
+      swapInterface: "IDepositZap",
       lpTokenAddress: "0x845838DF265Dcd2c412A1Dc9e959c7d08537f8a2",
       gaugeAddress: "0x7ca5b0a2910B33e9759DC7dDB0413949071D7575",
       gaugeInterface: "ILiquidityGauge",
       numberOfCoins: 2,
-      whaleAddress: WHALE_POOLS["CDAI"],
+      whaleAddress: WHALE_POOLS["DAI"],
+      useUnwrapped: true,
     },
     {
       contractName: "FraxPoolZap",
@@ -105,7 +107,8 @@ describe("Curve Zaps", () => {
       gaugeAddress: "0xF5194c3325202F456c95c1Cf0cA36f8475C1949F",
       gaugeInterface: "ILiquidityGauge",
       numberOfCoins: 3,
-      whaleAddress: WHALE_POOLS["CYDAI"],
+      whaleAddress: WHALE_POOLS["DAI"],
+      useUnwrapped: true,
     },
     {
       contractName: "LusdPoolZap",
@@ -190,7 +193,7 @@ describe("Curve Zaps", () => {
   });
 
   before(async () => {
-    [deployer, emergencySafe, lpSafe, mApt] = await ethers.getSigners();
+    [deployer, emergencySafe, adminSafe, mApt] = await ethers.getSigners();
 
     const addressRegistry = await deployMockContract(
       deployer,
@@ -209,14 +212,14 @@ describe("Curve Zaps", () => {
     /* These registered addresses are setup for roles in the
      * constructor for Erc20Allocation:
      * - emergencySafe (default admin role)
-     * - lpSafe (LP role)
+     * - adminSafe (admin role)
      * - mApt (contract role)
      */
     await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
     await addressRegistry.mock.mAptAddress.returns(mApt.address);
-    await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
 
     const Erc20Allocation = await ethers.getContractFactory("Erc20Allocation");
     const erc20Allocation = await Erc20Allocation.deploy(
@@ -225,13 +228,13 @@ describe("Curve Zaps", () => {
 
     /* These registered addresses are setup for roles in the
      * constructor for TvlManager
-     * - lpSafe (LP role)
+     * - adminSafe (admin role)
      * - emergencySafe (emergency role, default admin role)
      */
     TvlManager = await ethers.getContractFactory("TvlManager");
     tvlManager = await TvlManager.deploy(addressRegistry.address);
     await tvlManager
-      .connect(lpSafe)
+      .connect(adminSafe)
       .registerAssetAllocation(erc20Allocation.address);
   });
 
@@ -246,6 +249,7 @@ describe("Curve Zaps", () => {
       numberOfCoins,
       whaleAddress,
       rewardToken,
+      useUnwrapped,
     } = curveConstant;
 
     describe(contractName, () => {
@@ -259,27 +263,37 @@ describe("Curve Zaps", () => {
       before("Deploy Zap", async () => {
         const zapFactory = await ethers.getContractFactory(
           contractName,
-          lpSafe
+          adminSafe
         );
         zap = await zapFactory.deploy();
       });
 
       before("Attach to Mainnet Curve contracts", async () => {
-        swap = await ethers.getContractAt(swapInterface, swapAddress, lpSafe);
+        swap = await ethers.getContractAt(
+          swapInterface,
+          swapAddress,
+          adminSafe
+        );
         lpToken = await ethers.getContractAt(
           "IDetailedERC20",
           lpTokenAddress,
-          lpSafe
+          adminSafe
         );
         gauge = await ethers.getContractAt(
           gaugeInterface,
           gaugeAddress,
-          lpSafe
+          adminSafe
         );
       });
 
       before("Fund Zap with Pool Underlyer", async () => {
-        const underlyerAddress = await swap.coins(underlyerIndex);
+        let underlyerAddress;
+        if (useUnwrapped) {
+          underlyerAddress = await swap.underlying_coins(underlyerIndex);
+        } else {
+          underlyerAddress = await swap.coins(underlyerIndex);
+        }
+
         underlyerToken = await ethers.getContractAt(
           "IDetailedERC20",
           underlyerAddress

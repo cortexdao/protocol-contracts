@@ -45,7 +45,7 @@ contract IronBankPoolZap is CurveGaugeZapBase, CurveIronBankConstants {
         override
         returns (address)
     {
-        return IStableSwap(SWAP_ADDRESS).coins(i);
+        return IStableSwap(SWAP_ADDRESS).underlying_coins(i);
     }
 
     function _addLiquidity(uint256[] calldata amounts, uint256 minAmount)
@@ -54,7 +54,8 @@ contract IronBankPoolZap is CurveGaugeZapBase, CurveIronBankConstants {
     {
         IStableSwap(SWAP_ADDRESS).add_liquidity(
             [amounts[0], amounts[1], amounts[2]],
-            minAmount
+            minAmount,
+            true
         );
     }
 
@@ -66,7 +67,8 @@ contract IronBankPoolZap is CurveGaugeZapBase, CurveIronBankConstants {
         IStableSwap(SWAP_ADDRESS).remove_liquidity_one_coin(
             lpBalance,
             index,
-            0
+            0,
+            true
         );
     }
 }
