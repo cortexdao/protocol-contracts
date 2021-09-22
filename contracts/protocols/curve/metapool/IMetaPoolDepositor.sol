@@ -5,7 +5,7 @@ interface IMetaPoolDepositor {
     // solhint-disable
     function add_liquidity(
         address _pool,
-        uint256[4] _deposit_amounts,
+        uint256[4] calldata _deposit_amounts,
         uint256 _min_mint_amount
     ) external returns (uint256);
 
@@ -17,6 +17,6 @@ interface IMetaPoolDepositor {
         uint256 _burn_amount,
         int128 i,
         uint256 _min_amounts
-    ) external returns (uint256[4]);
+    ) external returns (uint256[4] memory);
     // solhint-enable
 }
