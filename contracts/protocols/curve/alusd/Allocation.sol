@@ -7,13 +7,13 @@ import {SafeMath} from "contracts/libraries/Imports.sol";
 import {ImmutableAssetAllocation} from "contracts/tvl/Imports.sol";
 
 import {
-    IMetaPool,
     ILiquidityGauge
 } from "contracts/protocols/curve/common/interfaces/Imports.sol";
 
 import {
+    IMetaPool,
     MetaPoolAllocationBase
-} from "contracts/protocols/curve/common/Imports.sol";
+} from "contracts/protocols/curve/metapool/Imports.sol";
 
 import {CurveAlUsdConstants} from "./Constants.sol";
 
