@@ -76,8 +76,15 @@ async function main(argv) {
   console.log("Registering %s", zapName);
   console.log("");
 
-  const alphaDeployment = getDeployedAddress("AlphaDeployment", networkName);
-  const lpAccountAddress = await alphaDeployment.lpAccount();
+  const addressRegistryAddress = getDeployedAddress(
+    "AddressRegistryProxy",
+    networkName
+  );
+  const addressRegistry = await ethers.getContractAt(
+    "AddressRegistryV2",
+    addressRegistryAddress
+  );
+  const lpAccountAddress = await addressRegistry.lpAccountAddress();
   const lpAccount = await ethers.getContractAt("LpAccount", lpAccountAddress);
   gasPrice = await getGasPrice(argv.gasPrice);
   const proposedTx = await lpAccount
