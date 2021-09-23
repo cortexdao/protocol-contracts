@@ -2,26 +2,13 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {IERC20} from "contracts/common/Imports.sol";
-import {SafeMath} from "contracts/libraries/Imports.sol";
-import {ImmutableAssetAllocation} from "contracts/tvl/Imports.sol";
-
-import {
-    IMetaPool,
-    ILiquidityGauge
-} from "contracts/protocols/curve/common/interfaces/Imports.sol";
-
 import {
     MetaPoolAllocationBase
-} from "contracts/protocols/curve/common/Imports.sol";
+} from "contracts/protocols/curve/metapool/Imports.sol";
 
 import {CurveAlUsdConstants} from "./Constants.sol";
 
-contract CurveAlUsdAllocation is
-    MetaPoolAllocationBase,
-    ImmutableAssetAllocation,
-    CurveAlUsdConstants
-{
+contract CurveAlUsdAllocation is MetaPoolAllocationBase, CurveAlUsdConstants {
     constructor(address curve3PoolAllocation_)
         public
         MetaPoolAllocationBase(curve3PoolAllocation_)
@@ -36,9 +23,9 @@ contract CurveAlUsdAllocation is
         return
             super.getUnderlyerBalance(
                 account,
-                IMetaPool(META_POOL_ADDRESS),
-                ILiquidityGauge(LIQUIDITY_GAUGE_ADDRESS),
-                IERC20(LP_TOKEN_ADDRESS),
+                META_POOL,
+                LIQUIDITY_GAUGE,
+                LP_TOKEN,
                 uint256(tokenIndex)
             );
     }
@@ -49,11 +36,6 @@ contract CurveAlUsdAllocation is
         override
         returns (TokenData[] memory)
     {
-        TokenData[] memory tokens = new TokenData[](4);
-        tokens[0] = TokenData(PRIMARY_UNDERLYER_ADDRESS, "alUSD", 18);
-        tokens[1] = TokenData(DAI_ADDRESS, "DAI", 18);
-        tokens[2] = TokenData(USDC_ADDRESS, "USDC", 6);
-        tokens[3] = TokenData(USDT_ADDRESS, "USDT", 6);
-        return tokens;
+        return _getBasePoolTokenData(address(PRIMARY_UNDERLYER), "alUSD", 18);
     }
 }

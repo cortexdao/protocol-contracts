@@ -4,23 +4,20 @@ pragma experimental ABIEncoderV2;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAssetAllocation} from "contracts/common/Imports.sol";
-import {
-    IStableSwap2 as IStableSwap,
-    ILiquidityGauge
-} from "contracts/protocols/curve/common/interfaces/Imports.sol";
 import {CurveAlUsdConstants} from "./Constants.sol";
-import {CurveGaugeZapBase} from "contracts/protocols/curve/common/Imports.sol";
+import {
+    MetaPoolDepositorZap
+} from "contracts/protocols/curve/metapool/Imports.sol";
 
-contract AlUsdPoolZap is CurveGaugeZapBase, CurveAlUsdConstants {
+contract AlUsdPoolZap is MetaPoolDepositorZap, CurveAlUsdConstants {
     constructor()
         public
-        CurveGaugeZapBase(
-            META_POOL_ADDRESS,
-            LP_TOKEN_ADDRESS,
-            LIQUIDITY_GAUGE_ADDRESS,
+        MetaPoolDepositorZap(
+            META_POOL,
+            address(LP_TOKEN),
+            address(LIQUIDITY_GAUGE),
             10000,
-            100,
-            2
+            100
         ) // solhint-disable-next-line no-empty-blocks
     {}
 
@@ -32,44 +29,9 @@ contract AlUsdPoolZap is CurveGaugeZapBase, CurveAlUsdConstants {
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
         IERC20[] memory allocations = _createErc20AllocationArray(2);
-        allocations[4] = IERC20(ALCX_ADDRESS);
-        allocations[5] = IERC20(PRIMARY_UNDERLYER_ADDRESS); // alUSD
+        allocations[4] = ALCX;
+        allocations[5] = PRIMARY_UNDERLYER; // alUSD
         return allocations;
-    }
-
-    function _getVirtualPrice() internal view override returns (uint256) {
-        return IStableSwap(SWAP_ADDRESS).get_virtual_price();
-    }
-
-    function _getCoinAtIndex(uint256 i)
-        internal
-        view
-        override
-        returns (address)
-    {
-        return IStableSwap(SWAP_ADDRESS).coins(i);
-    }
-
-    function _addLiquidity(uint256[] calldata amounts, uint256 minAmount)
-        internal
-        override
-    {
-        IStableSwap(SWAP_ADDRESS).add_liquidity(
-            [amounts[0], amounts[1]],
-            minAmount
-        );
-    }
-
-    function _removeLiquidity(uint256 lpBalance, uint8 index)
-        internal
-        override
-    {
-        require(index < 2, "INVALID_INDEX");
-        IStableSwap(SWAP_ADDRESS).remove_liquidity_one_coin(
-            lpBalance,
-            index,
-            0
-        );
     }
 
     /**
@@ -78,7 +40,6 @@ contract AlUsdPoolZap is CurveGaugeZapBase, CurveAlUsdConstants {
      *      the `CurveGaugeZapBase` implementation.
      */
     function _claimRewards() internal override {
-        ILiquidityGauge liquidityGauge = ILiquidityGauge(GAUGE_ADDRESS);
-        liquidityGauge.claim_rewards();
+        LIQUIDITY_GAUGE.claim_rewards();
     }
 }

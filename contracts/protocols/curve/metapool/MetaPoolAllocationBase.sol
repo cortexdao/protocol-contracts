@@ -5,13 +5,19 @@ import {SafeMath} from "contracts/libraries/Imports.sol";
 import {IERC20} from "contracts/common/Imports.sol";
 
 import {
-    IMetaPool,
     ILiquidityGauge
 } from "contracts/protocols/curve/common/interfaces/Imports.sol";
+
+import {IMetaPool} from "./IMetaPool.sol";
 
 import {
     Curve3PoolAllocation
 } from "contracts/protocols/curve/3pool/Allocation.sol";
+
+import {ImmutableAssetAllocation} from "contracts/tvl/Imports.sol";
+import {
+    Curve3PoolUnderlyerConstants
+} from "contracts/protocols/curve/3pool/Constants.sol";
 
 /**
  * @title Periphery Contract for a Curve metapool
@@ -22,7 +28,10 @@ import {
  *         `getUnderlyerBalance` function is invoked indirectly when a
  *         Chainlink node calls `balanceOf` on the APYAssetAllocationRegistry.
  */
-contract MetaPoolAllocationBase {
+abstract contract MetaPoolAllocationBase is
+    ImmutableAssetAllocation,
+    Curve3PoolUnderlyerConstants
+{
     using SafeMath for uint256;
 
     /// @dev all existing Curve metapools are paired with 3Pool
@@ -93,5 +102,18 @@ contract MetaPoolAllocationBase {
         totalSupply = lpToken.totalSupply();
         balance = lpToken.balanceOf(account);
         balance = balance.add(gauge.balanceOf(account));
+    }
+
+    function _getBasePoolTokenData(
+        address primaryUnderlyer,
+        string memory symbol,
+        uint8 decimals
+    ) internal pure returns (TokenData[] memory) {
+        TokenData[] memory tokens = new TokenData[](4);
+        tokens[0] = TokenData(primaryUnderlyer, symbol, decimals);
+        tokens[1] = TokenData(DAI_ADDRESS, "DAI", 18);
+        tokens[2] = TokenData(USDC_ADDRESS, "USDC", 6);
+        tokens[3] = TokenData(USDT_ADDRESS, "USDT", 6);
+        return tokens;
     }
 }

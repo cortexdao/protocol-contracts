@@ -25,8 +25,7 @@ contract TestAaveZap is AaveBasePool {
     }
 
     function assetAllocations() public view override returns (string[] memory) {
-        string[] memory allocationNames = new string[](1);
-        return allocationNames;
+        return new string[](0);
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {

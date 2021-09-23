@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BUSDL-1.1
+// SPDX-License-Identifier: BUSDL-2.1
 pragma solidity 0.6.11;
 
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
@@ -9,6 +9,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  */
 interface IDepositZap {
     // this method only exists on the DepositCompound Contract
+    // solhint-disable-next-line
     function underlying_coins(int128 coin) external view returns (address);
 
     /**

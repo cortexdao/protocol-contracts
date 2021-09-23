@@ -3,7 +3,6 @@ pragma solidity 0.6.11;
 
 import {CTokenInterface} from "./CTokenInterface.sol";
 import {ITokenMinter} from "./ITokenMinter.sol";
-import {IMetaPool} from "./IMetaPool.sol";
 import {IStableSwap, IStableSwap3} from "./IStableSwap.sol";
 import {IStableSwap2} from "./IStableSwap2.sol";
 import {IStableSwap4} from "./IStableSwap4.sol";

@@ -1,27 +1,31 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 
-import {INameIdentifier} from "contracts/common/Imports.sol";
+import {IERC20, INameIdentifier} from "contracts/common/Imports.sol";
 import {
-    Curve3PoolUnderlyerConstants
-} from "contracts/protocols/curve/3pool/Constants.sol";
+    ILiquidityGauge
+} from "contracts/protocols/curve/common/interfaces/Imports.sol";
+import {IMetaPool} from "contracts/protocols/curve/metapool/Imports.sol";
+import {IOldDepositor} from "contracts/protocols/curve/metapool/Imports.sol";
 
-abstract contract CurveMusdConstants is
-    Curve3PoolUnderlyerConstants,
-    INameIdentifier
-{
+abstract contract CurveMusdConstants is INameIdentifier {
     string public constant override NAME = "curve-musd";
 
-    address public constant META_POOL_ADDRESS =
-        0x8474DdbE98F5aA3179B3B3F5942D724aFcdec9f6;
     // sometimes a metapool is its own LP token; otherwise,
     // you can obtain from `token` attribute
-    address public constant LP_TOKEN_ADDRESS =
-        0x1AEf73d49Dedc4b1778d0706583995958Dc862e6;
-    address public constant LIQUIDITY_GAUGE_ADDRESS =
-        0x5f626c30EC1215f4EdCc9982265E8b1F411D1352;
+    IERC20 public constant LP_TOKEN =
+        IERC20(0x1AEf73d49Dedc4b1778d0706583995958Dc862e6);
 
     // metapool primary underlyer
-    address public constant PRIMARY_UNDERLYER_ADDRESS =
-        0xe2f2a5C287993345a840Db3B0845fbC70f5935a5;
+    IERC20 public constant PRIMARY_UNDERLYER =
+        IERC20(0xe2f2a5C287993345a840Db3B0845fbC70f5935a5);
+
+    ILiquidityGauge public constant LIQUIDITY_GAUGE =
+        ILiquidityGauge(0x5f626c30EC1215f4EdCc9982265E8b1F411D1352);
+
+    IMetaPool public constant META_POOL =
+        IMetaPool(0x8474DdbE98F5aA3179B3B3F5942D724aFcdec9f6);
+
+    IOldDepositor public constant DEPOSITOR =
+        IOldDepositor(0x803A2B40c5a9BB2B86DD630B274Fa2A9202874C2);
 }
