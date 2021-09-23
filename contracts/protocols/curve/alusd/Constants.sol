@@ -5,13 +5,9 @@ import {IERC20, INameIdentifier} from "contracts/common/Imports.sol";
 import {
     ILiquidityGauge
 } from "contracts/protocols/curve/common/interfaces/Imports.sol";
-import {
-    IMetaPool,
-    IMetaPoolDepositor,
-    MetapoolConstants
-} from "contracts/protocols/curve/metapool/Imports.sol";
+import {IMetaPool} from "contracts/protocols/curve/metapool/Imports.sol";
 
-abstract contract CurveAlUsdConstants is MetapoolConstants, INameIdentifier {
+abstract contract CurveAlUsdConstants is INameIdentifier {
     string public constant override NAME = "curve-alusd";
 
     // sometimes a metapool is its own LP token; otherwise,
@@ -28,10 +24,6 @@ abstract contract CurveAlUsdConstants is MetapoolConstants, INameIdentifier {
 
     ILiquidityGauge public constant LIQUIDITY_GAUGE =
         ILiquidityGauge(0x9582C4ADACB3BCE56Fea3e590F05c3ca2fb9C477);
-
-    // A depositor "zap" contract for metapools
-    IMetaPoolDepositor public constant DEPOSITOR =
-        IMetaPoolDepositor(0xA79828DF1850E8a3A3064576f380D90aECDD3359);
 
     // The metapool StableSwap contract
     IMetaPool public constant META_POOL =

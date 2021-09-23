@@ -5,18 +5,19 @@ pragma experimental ABIEncoderV2;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAssetAllocation} from "contracts/common/Imports.sol";
 import {CurveAlUsdConstants} from "./Constants.sol";
-import {CurveGaugeZapBase} from "contracts/protocols/curve/common/Imports.sol";
+import {
+    MultiDepositorMetaPoolZap
+} from "contracts/protocols/curve/metapool/Imports.sol";
 
-contract AlUsdPoolZap is CurveGaugeZapBase, CurveAlUsdConstants {
+contract AlUsdPoolZap is MultiDepositorMetaPoolZap, CurveAlUsdConstants {
     constructor()
         public
-        CurveGaugeZapBase(
-            address(DEPOSITOR),
+        MultiDepositorMetaPoolZap(
+            META_POOL,
             address(LP_TOKEN),
             address(LIQUIDITY_GAUGE),
             10000,
-            100,
-            4
+            100
         ) // solhint-disable-next-line no-empty-blocks
     {}
 
@@ -31,48 +32,6 @@ contract AlUsdPoolZap is CurveGaugeZapBase, CurveAlUsdConstants {
         allocations[4] = ALCX;
         allocations[5] = PRIMARY_UNDERLYER; // alUSD
         return allocations;
-    }
-
-    function _getVirtualPrice() internal view override returns (uint256) {
-        return META_POOL.get_virtual_price();
-    }
-
-    function _getCoinAtIndex(uint256 i)
-        internal
-        view
-        override
-        returns (address)
-    {
-        if (i == 0) {
-            return META_POOL.coins(0);
-        } else {
-            return BASE_POOL.coins(i.sub(1));
-        }
-    }
-
-    function _addLiquidity(uint256[] calldata amounts, uint256 minAmount)
-        internal
-        override
-    {
-        DEPOSITOR.add_liquidity(
-            address(META_POOL),
-            [amounts[0], amounts[1], amounts[2], amounts[3]],
-            minAmount
-        );
-    }
-
-    function _removeLiquidity(uint256 lpBalance, uint8 index)
-        internal
-        override
-    {
-        LP_TOKEN.safeApprove(address(DEPOSITOR), 0);
-        LP_TOKEN.safeApprove(address(DEPOSITOR), lpBalance);
-        DEPOSITOR.remove_liquidity_one_coin(
-            address(META_POOL),
-            lpBalance,
-            index,
-            0
-        );
     }
 
     /**
