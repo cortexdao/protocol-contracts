@@ -3,9 +3,12 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import {IZap} from "contracts/lpaccount/Imports.sol";
-import {IAssetAllocation, IDetailedERC20} from "contracts/common/Imports.sol";
+import {
+    IAssetAllocation,
+    IERC20,
+    IDetailedERC20
+} from "contracts/common/Imports.sol";
 import {SafeERC20} from "contracts/libraries/Imports.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
     ILiquidityGauge,
     ITokenMinter

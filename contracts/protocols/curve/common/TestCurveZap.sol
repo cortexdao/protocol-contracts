@@ -41,7 +41,7 @@ contract TestCurveZap is CurveGaugeZapBase {
     }
 
     function getLpTokenAddress() external view returns (address) {
-        return LP_ADDRESS;
+        return address(LP_ADDRESS);
     }
 
     function getGaugeAddress() external view returns (address) {
