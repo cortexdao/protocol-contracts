@@ -61,7 +61,7 @@ describe("Contract: MetaPoolAllocationBase", () => {
     );
     const curve3PoolAllocation = await Curve3PoolAllocation.deploy();
     MetaPoolAllocationBase = await ethers.getContractFactory(
-      "MetaPoolAllocationBase"
+      "CurveUstAllocation"
     );
     curve = await MetaPoolAllocationBase.deploy(curve3PoolAllocation.address);
     await curve.deployed();

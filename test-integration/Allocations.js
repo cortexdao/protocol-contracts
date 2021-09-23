@@ -566,7 +566,7 @@ describe("Allocations", () => {
       // need to reset these for each pool
       before("Attach to Mainnet contracts", async () => {
         // Metapool
-        const META_POOL_ADDRESS = await allocation.META_POOL_ADDRESS();
+        const META_POOL_ADDRESS = await allocation.META_POOL();
         metaPool = await getContractAt(
           "IMetaPool",
           META_POOL_ADDRESS,
@@ -574,7 +574,7 @@ describe("Allocations", () => {
           lpAccount
         );
 
-        const LP_TOKEN_ADDRESS = await allocation.LP_TOKEN_ADDRESS();
+        const LP_TOKEN_ADDRESS = await allocation.LP_TOKEN();
         lpToken = await getContractAt(
           "IDetailedERC20",
           LP_TOKEN_ADDRESS,
@@ -582,7 +582,7 @@ describe("Allocations", () => {
           lpAccount
         );
 
-        const LIQUIDITY_GAUGE_ADDRESS = await allocation.LIQUIDITY_GAUGE_ADDRESS();
+        const LIQUIDITY_GAUGE_ADDRESS = await allocation.LIQUIDITY_GAUGE();
         gauge = await getContractAt(
           "ILiquidityGauge",
           LIQUIDITY_GAUGE_ADDRESS,
@@ -620,7 +620,7 @@ describe("Allocations", () => {
           let sender = WHALE_POOLS["DAI"];
           await acquireToken(sender, lpAccount, daiToken, amount, deployer);
 
-          const PRIMARY_UNDERLYER_ADDRESS = await allocation.PRIMARY_UNDERLYER_ADDRESS();
+          const PRIMARY_UNDERLYER_ADDRESS = await allocation.PRIMARY_UNDERLYER();
           primaryToken = await ethers.getContractAt(
             "IDetailedERC20",
             PRIMARY_UNDERLYER_ADDRESS
