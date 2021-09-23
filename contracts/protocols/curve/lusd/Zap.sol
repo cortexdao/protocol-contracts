@@ -6,13 +6,13 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAssetAllocation} from "contracts/common/Imports.sol";
 import {CurveLusdConstants} from "./Constants.sol";
 import {
-    MultiDepositorMetaPoolZap
+    MetaPoolDepositorZap
 } from "contracts/protocols/curve/metapool/Imports.sol";
 
-contract LusdPoolZap is MultiDepositorMetaPoolZap, CurveLusdConstants {
+contract LusdPoolZap is MetaPoolDepositorZap, CurveLusdConstants {
     constructor()
         public
-        MultiDepositorMetaPoolZap(
+        MetaPoolDepositorZap(
             META_POOL,
             address(LP_TOKEN),
             address(LIQUIDITY_GAUGE),

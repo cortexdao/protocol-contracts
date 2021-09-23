@@ -5,15 +5,16 @@ pragma experimental ABIEncoderV2;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAssetAllocation} from "contracts/common/Imports.sol";
 import {IMetaPool} from "./IMetaPool.sol";
-import {ISingleDepositor} from "./ISingleDepositor.sol";
+import {DepositorConstants} from "./Constants.sol";
 import {CurveGaugeZapBase} from "contracts/protocols/curve/common/Imports.sol";
 
-abstract contract SingleDepositorMetaPoolZap is CurveGaugeZapBase {
-    ISingleDepositor internal immutable _DEPOSITOR;
+abstract contract MetaPoolDepositorZap is
+    CurveGaugeZapBase,
+    DepositorConstants
+{
     IMetaPool internal immutable _META_POOL;
 
     constructor(
-        ISingleDepositor depositor,
         IMetaPool metapool,
         address lpAddress,
         address gaugeAddress,
@@ -22,7 +23,7 @@ abstract contract SingleDepositorMetaPoolZap is CurveGaugeZapBase {
     )
         public
         CurveGaugeZapBase(
-            address(depositor),
+            address(DEPOSITOR),
             lpAddress,
             gaugeAddress,
             denominator,
@@ -30,7 +31,6 @@ abstract contract SingleDepositorMetaPoolZap is CurveGaugeZapBase {
             4
         )
     {
-        _DEPOSITOR = depositor;
         _META_POOL = metapool;
     }
 
@@ -38,7 +38,8 @@ abstract contract SingleDepositorMetaPoolZap is CurveGaugeZapBase {
         internal
         override
     {
-        _DEPOSITOR.add_liquidity(
+        DEPOSITOR.add_liquidity(
+            address(_META_POOL),
             [amounts[0], amounts[1], amounts[2], amounts[3]],
             minAmount
         );
@@ -48,9 +49,14 @@ abstract contract SingleDepositorMetaPoolZap is CurveGaugeZapBase {
         internal
         override
     {
-        IERC20(LP_ADDRESS).safeApprove(address(_DEPOSITOR), 0);
-        IERC20(LP_ADDRESS).safeApprove(address(_DEPOSITOR), lpBalance);
-        _DEPOSITOR.remove_liquidity_one_coin(lpBalance, index, 0);
+        IERC20(LP_ADDRESS).safeApprove(address(DEPOSITOR), 0);
+        IERC20(LP_ADDRESS).safeApprove(address(DEPOSITOR), lpBalance);
+        DEPOSITOR.remove_liquidity_one_coin(
+            address(_META_POOL),
+            lpBalance,
+            index,
+            0
+        );
     }
 
     function _getVirtualPrice() internal view override returns (uint256) {
@@ -64,9 +70,9 @@ abstract contract SingleDepositorMetaPoolZap is CurveGaugeZapBase {
         returns (address)
     {
         if (i == 0) {
-            return _DEPOSITOR.coins(0);
+            return _META_POOL.coins(0);
         } else {
-            return _DEPOSITOR.base_coins(i.sub(1));
+            return BASE_POOL.coins(i.sub(1));
         }
     }
 }

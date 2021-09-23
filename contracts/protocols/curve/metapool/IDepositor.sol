@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 
-interface IMultiDepositor {
+interface IDepositor {
     // solhint-disable
     function add_liquidity(
         address _pool,

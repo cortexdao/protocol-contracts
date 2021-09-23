@@ -6,7 +6,7 @@ import {
     ILiquidityGauge
 } from "contracts/protocols/curve/common/interfaces/Imports.sol";
 import {IMetaPool} from "contracts/protocols/curve/metapool/Imports.sol";
-import {ISingleDepositor} from "contracts/protocols/curve/metapool/Imports.sol";
+import {IOldDepositor} from "contracts/protocols/curve/metapool/Imports.sol";
 
 abstract contract CurveUsdpConstants is INameIdentifier {
     string public constant override NAME = "curve-usdp";
@@ -26,6 +26,6 @@ abstract contract CurveUsdpConstants is INameIdentifier {
     IMetaPool public constant META_POOL =
         IMetaPool(0x42d7025938bEc20B69cBae5A77421082407f053A);
 
-    ISingleDepositor public constant DEPOSITOR =
-        ISingleDepositor(0x3c8cAee4E09296800f8D29A68Fa3837e2dae4940);
+    IOldDepositor public constant DEPOSITOR =
+        IOldDepositor(0x3c8cAee4E09296800f8D29A68Fa3837e2dae4940);
 }
