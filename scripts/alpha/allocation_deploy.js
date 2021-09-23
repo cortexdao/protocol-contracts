@@ -17,12 +17,7 @@ const { argv } = require("yargs")
   .demandOption(["name"]);
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const {
-  getGasPrice,
-  getDeployedAddress,
-  bytes32,
-  FAKE_ADDRESS,
-} = require("../../utils/helpers");
+const { getGasPrice, getDeployedAddress } = require("../../utils/helpers");
 const {
   SafeService,
   SafeEthersSigner,
@@ -46,25 +41,20 @@ async function main(argv) {
   console.log("Deployer address:", deployer.address);
   console.log("");
 
+  if (!process.env.SAFE_OWNER_KEY) {
+    throw new Error("Must set SAFE_OWNER_KEY env var.");
+  }
   const signer = new ethers.Wallet(process.env.SAFE_OWNER_KEY, ethers.provider);
   console.log("Safe owner: %s", signer.address);
   console.log("");
 
-  /* TESTING on localhost only
-   * need to fund as there is no ETH on Mainnet for the deployer
-   */
-  if (networkName == "LOCALHOST") {
-    const [funder] = await ethers.getSigners();
-    const fundingTrx = await funder.sendTransaction({
-      to: deployer.address,
-      value: ethers.utils.parseEther("1.0"),
-    });
-    await fundingTrx.wait();
-  }
-
-  const balance =
+  let balance =
     (await ethers.provider.getBalance(deployer.address)).toString() / 1e18;
-  console.log("ETH balance:", balance.toString());
+  console.log("ETH balance (deployer): %s", balance);
+  console.log("");
+  balance =
+    (await ethers.provider.getBalance(signer.address)).toString() / 1e18;
+  console.log("ETH balance (Safe signer): %s", balance);
   console.log("");
 
   const gasPrice = await getGasPrice(argv.gasPrice);
@@ -77,32 +67,27 @@ async function main(argv) {
     service
   );
 
-  // const allocationContractFactory = await ethers.getContractFactory(
-  //   allocationContractName
-  // );
-  // const allocation = await allocationContractFactory.deploy({ gasPrice });
-  // const allocationName = await allocation.NAME();
+  console.log("Deploying allocation ... ");
+  console.log("");
 
-  // console.log("");
-  // console.log("Registering %s", allocationName);
-  // console.log("");
+  const allocationContractFactory = await ethers.getContractFactory(
+    allocationContractName
+  );
+  const allocation = await allocationContractFactory.deploy({ gasPrice });
+  const allocationName = await allocation.NAME();
 
-  // const tvlManager = await ethers.getContractAt("TvlManager", tvlManagerAddress, safeSigner);
-  // const proposedTx = await tvlManager
-  //   .connect(safeSigner)
-  //   .registerAssetAllocation(allocation);
-  const addressRegistryAddress = getDeployedAddress(
-    "AddressRegistryProxy",
-    networkName
+  console.log("Registering %s", allocationName);
+  console.log("");
+
+  const alphaDeployment = getDeployedAddress("AlphaDeployment", networkName);
+  const tvlManagerAddress = await alphaDeployment.tvlManager();
+  const tvlManager = await ethers.getContractAt(
+    "TvlManager",
+    tvlManagerAddress
   );
-  const addressRegistry = await ethers.getContractAt(
-    "AddressRegistry",
-    addressRegistryAddress,
-    safeSigner
-  );
-  const proposedTx = await addressRegistry
+  const proposedTx = await tvlManager
     .connect(safeSigner)
-    .registerAddress(bytes32("foobar"), FAKE_ADDRESS);
+    .registerAssetAllocation(allocation, { gasPrice });
   console.log("USER ACTION REQUIRED");
   console.log("Go to the Gnosis Safe Web App to confirm the transaction");
   await proposedTx.wait();
@@ -112,7 +97,7 @@ if (!module.parent) {
   main(argv)
     .then(() => {
       console.log("");
-      console.log("Allocation %s registered.", "");
+      console.log("Allocation registered.");
       console.log("");
       process.exit(0);
     })
