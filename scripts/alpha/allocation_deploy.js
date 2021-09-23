@@ -57,8 +57,6 @@ async function main(argv) {
   console.log("ETH balance (Safe signer): %s", balance);
   console.log("");
 
-  const gasPrice = await getGasPrice(argv.gasPrice);
-
   const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
   const service = new SafeService(MAINNET_SERVICE_URL);
   const safeSigner = await SafeEthersSigner.create(
@@ -73,18 +71,27 @@ async function main(argv) {
   const allocationContractFactory = await ethers.getContractFactory(
     allocationContractName
   );
+  let gasPrice = await getGasPrice(argv.gasPrice);
   const allocation = await allocationContractFactory.deploy({ gasPrice });
   const allocationName = await allocation.NAME();
 
   console.log("Registering %s", allocationName);
   console.log("");
 
-  const alphaDeployment = getDeployedAddress("AlphaDeployment", networkName);
-  const tvlManagerAddress = await alphaDeployment.tvlManager();
+  const addressRegistryAddress = getDeployedAddress(
+    "AddressRegistryProxy",
+    networkName
+  );
+  const addressRegistry = await ethers.getContractAt(
+    "AddressRegistryV2",
+    addressRegistryAddress
+  );
+  const tvlManagerAddress = await addressRegistry.tvlManagerAddress();
   const tvlManager = await ethers.getContractAt(
     "TvlManager",
     tvlManagerAddress
   );
+  gasPrice = await getGasPrice(argv.gasPrice);
   const proposedTx = await tvlManager
     .connect(safeSigner)
     .registerAssetAllocation(allocation, { gasPrice });
