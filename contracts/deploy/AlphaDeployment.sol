@@ -99,26 +99,28 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     address public immutable adminSafe;
     address public immutable lpSafe;
 
+    // step 0
+    address public addressRegistryV2;
+
     // step 1
     address public mApt;
 
     // step 2
+    address public poolTokenV2;
+
+    // step 3
     address public daiDemoPool;
     address public usdcDemoPool;
     address public usdtDemoPool;
 
-    // step 3
+    // step 4
     address public tvlManager;
 
-    // step 4
+    // step 5
     address public oracleAdapter;
 
-    // step 5
-    address public lpAccount;
-
     // step 6
-    // pool v2 upgrades
-    address public poolTokenV2;
+    address public lpAccount;
 
     modifier updateStep(uint256 step_) {
         require(step == step_, "INVALID_STEP");
@@ -207,17 +209,21 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         ownedContracts[0] = ADDRESS_REGISTRY_PROXY_ADMIN;
         checkOwnerships(ownedContracts);
 
-        address logicV2 =
-            AddressRegistryV2Factory(addressRegistryV2Factory).create();
+        addressRegistryV2 = AddressRegistryV2Factory(addressRegistryV2Factory)
+            .create();
         ProxyAdmin(ADDRESS_REGISTRY_PROXY_ADMIN).upgrade(
             TransparentUpgradeableProxy(payable(ADDRESS_REGISTRY_PROXY)),
-            logicV2
+            addressRegistryV2
         );
+
+        // TODO: delete "poolManager" ID
 
         // Initialize logic storage to block possible attack vector:
         // attacker may control and selfdestruct the logic contract
         // if more powerful functionality is added later
-        AddressRegistryV2(logicV2).initialize(ADDRESS_REGISTRY_PROXY_ADMIN);
+        AddressRegistryV2(addressRegistryV2).initialize(
+            ADDRESS_REGISTRY_PROXY_ADMIN
+        );
     }
 
     /// @dev Deploy the mAPT proxy and its proxy admin.
@@ -245,44 +251,60 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         ProxyAdmin(proxyAdmin).transferOwnership(newOwner);
     }
 
+    function deploy_2_PoolTokenV2_logic() external onlyOwner updateStep(2) {
+        checkRegisteredDependencies(new bytes32[](0), new address[](0));
+        checkOwnerships(new address[](0));
+
+        poolTokenV2 = PoolTokenV2Factory(poolTokenV2Factory).create();
+
+        // Initialize logic storage to block possible attack vector:
+        // attacker may control and selfdestruct the logic contract
+        // if more powerful functionality is added later
+        PoolTokenV2(poolTokenV2).initialize(
+            POOL_PROXY_ADMIN,
+            IDetailedERC20(DAI_ADDRESS),
+            AggregatorV3Interface(0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe)
+        );
+    }
+
     /// @dev complete proxy deploy for the demo pools
     ///      Registers mAPT for a contract role.
-    function deploy_2_DemoPools() external onlyOwner updateStep(2) {
+    function deploy_3_DemoPools() external onlyOwner updateStep(3) {
         bytes32[] memory registeredIds = new bytes32[](1);
         address[] memory deployedAddresses = new address[](1);
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
         checkRegisteredDependencies(registeredIds, deployedAddresses);
 
-        address[] memory ownedContracts = new address[](2);
+        address[] memory ownedContracts = new address[](1);
         ownedContracts[0] = address(addressRegistry);
-        ownedContracts[1] = POOL_PROXY_ADMIN;
         checkOwnerships(ownedContracts);
 
-        address fakeAggAddress = 0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe;
-        bytes memory daiInitData =
-            abi.encodeWithSignature(
-                "initialize(address,address,address)",
-                POOL_PROXY_ADMIN,
-                DAI_ADDRESS,
-                fakeAggAddress
-            );
+        address newOwner = msg.sender; // will own the proxy admin
+        address proxyAdmin = ProxyAdminFactory(proxyAdminFactory).create();
 
-        address logicV2 = PoolTokenV2Factory(poolTokenV2Factory).create();
         bytes memory initDataV2 =
             abi.encodeWithSignature(
                 "initializeUpgrade(address)",
                 address(addressRegistry)
             );
 
+        address fakeAggAddress = 0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe;
+        bytes memory daiInitData =
+            abi.encodeWithSignature(
+                "initialize(address,address,address)",
+                proxyAdmin,
+                DAI_ADDRESS,
+                fakeAggAddress
+            );
         address daiProxy =
             PoolTokenV1Factory(poolTokenV1Factory).create(
                 proxyFactory,
-                POOL_PROXY_ADMIN,
+                proxyAdmin,
                 daiInitData
             );
-        ProxyAdmin(POOL_PROXY_ADMIN).upgradeAndCall(
+        ProxyAdmin(proxyAdmin).upgradeAndCall(
             PoolTokenProxy(payable(daiProxy)),
-            logicV2,
+            poolTokenV2,
             initDataV2
         );
         addressRegistry.registerAddress("daiDemoPool", daiProxy);
@@ -291,19 +313,19 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         bytes memory usdcInitData =
             abi.encodeWithSignature(
                 "initialize(address,address,address)",
-                POOL_PROXY_ADMIN,
+                proxyAdmin,
                 USDC_ADDRESS,
                 fakeAggAddress
             );
         address usdcProxy =
             PoolTokenV1Factory(poolTokenV1Factory).create(
                 proxyFactory,
-                POOL_PROXY_ADMIN,
+                proxyAdmin,
                 usdcInitData
             );
-        ProxyAdmin(POOL_PROXY_ADMIN).upgradeAndCall(
+        ProxyAdmin(proxyAdmin).upgradeAndCall(
             PoolTokenProxy(payable(usdcProxy)),
-            logicV2,
+            poolTokenV2,
             initDataV2
         );
         addressRegistry.registerAddress("usdcDemoPool", usdcProxy);
@@ -312,37 +334,30 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         bytes memory usdtInitData =
             abi.encodeWithSignature(
                 "initialize(address,address,address)",
-                POOL_PROXY_ADMIN,
+                proxyAdmin,
                 USDT_ADDRESS,
                 fakeAggAddress
             );
         address usdtProxy =
             PoolTokenV1Factory(poolTokenV1Factory).create(
                 proxyFactory,
-                POOL_PROXY_ADMIN,
+                proxyAdmin,
                 usdtInitData
             );
-        ProxyAdmin(POOL_PROXY_ADMIN).upgradeAndCall(
+        ProxyAdmin(proxyAdmin).upgradeAndCall(
             PoolTokenProxy(payable(usdtProxy)),
-            logicV2,
+            poolTokenV2,
             initDataV2
         );
         addressRegistry.registerAddress("usdtDemoPool", usdtProxy);
         usdtDemoPool = usdtProxy;
 
-        // Initialize logic storage to block possible attack vector:
-        // attacker may control and selfdestruct the logic contract
-        // if more powerful functionality is added later
-        PoolTokenV2(logicV2).initialize(
-            POOL_PROXY_ADMIN,
-            IDetailedERC20(DAI_ADDRESS),
-            AggregatorV3Interface(fakeAggAddress)
-        );
+        ProxyAdmin(proxyAdmin).transferOwnership(newOwner);
     }
 
     /// @dev Deploy ERC20 allocation and TVL Manager.
     ///      Does not register any roles for contracts.
-    function deploy_3_TvlManager() external onlyOwner updateStep(3) {
+    function deploy_4_TvlManager() external onlyOwner updateStep(4) {
         checkRegisteredDependencies(new bytes32[](0), new address[](0));
 
         address[] memory ownedContracts = new address[](1);
@@ -357,7 +372,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     }
 
     /// @dev registers mAPT and TvlManager for contract roles
-    function deploy_4_OracleAdapter() external onlyOwner updateStep(4) {
+    function deploy_5_OracleAdapter() external onlyOwner updateStep(5) {
         bytes32[] memory registeredIds = new bytes32[](2);
         address[] memory deployedAddresses = new address[](2);
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
@@ -393,7 +408,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     }
 
     /// @dev register mAPT for a contract role
-    function deploy_5_LpAccount() external onlyOwner updateStep(5) {
+    function deploy_6_LpAccount() external onlyOwner updateStep(6) {
         bytes32[] memory registeredIds = new bytes32[](1);
         address[] memory deployedAddresses = new address[](1);
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
@@ -425,7 +440,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
     /// @notice upgrade from v1 to v2
     /// @dev register mAPT for a contract role
-    function deploy_6_PoolTokenV2_upgrade() external onlyOwner updateStep(6) {
+    function deploy_7_PoolTokenV2_upgrade() external onlyOwner updateStep(7) {
         bytes32[] memory registeredIds = new bytes32[](1);
         address[] memory deployedAddresses = new address[](1);
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
@@ -436,7 +451,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         ownedContracts[1] = POOL_PROXY_ADMIN;
         checkOwnerships(ownedContracts);
 
-        address logicV2 = PoolTokenV2Factory(poolTokenV2Factory).create();
         bytes memory initData =
             abi.encodeWithSignature(
                 "initializeUpgrade(address)",
@@ -444,30 +458,19 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             );
         ProxyAdmin(POOL_PROXY_ADMIN).upgradeAndCall(
             TransparentUpgradeableProxy(payable(DAI_POOL_PROXY)),
-            logicV2,
+            poolTokenV2,
             initData
         );
         ProxyAdmin(POOL_PROXY_ADMIN).upgradeAndCall(
             TransparentUpgradeableProxy(payable(USDC_POOL_PROXY)),
-            logicV2,
+            poolTokenV2,
             initData
         );
         ProxyAdmin(POOL_PROXY_ADMIN).upgradeAndCall(
             TransparentUpgradeableProxy(payable(USDT_POOL_PROXY)),
-            logicV2,
+            poolTokenV2,
             initData
         );
-
-        // Initialize logic storage to block possible attack vector:
-        // attacker may control and selfdestruct the logic contract
-        // if more powerful functionality is added later
-        PoolTokenV2(logicV2).initialize(
-            POOL_PROXY_ADMIN,
-            IDetailedERC20(DAI_ADDRESS),
-            AggregatorV3Interface(0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe)
-        );
-
-        poolTokenV2 = logicV2;
     }
 
     function cleanup() external onlyOwner {

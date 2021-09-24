@@ -38,6 +38,10 @@ contract TestAlphaDeployment is AlphaDeployment {
         mApt = mApt_;
     }
 
+    function testSetPoolTokenV2(address poolTokenV2_) public {
+        poolTokenV2 = poolTokenV2_;
+    }
+
     function testSetTvlManager(address tvlManager_) public {
         tvlManager = tvlManager_;
     }
