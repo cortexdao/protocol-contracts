@@ -8,7 +8,7 @@
  *
  * $ HARDHAT_NETWORK=<network name> node scripts/<script filename> --arg1=val1 --arg2=val2
  */
-require("dotenv").config({ path: "./alpha.env" });
+require("dotenv").config();
 const { argv } = require("yargs").option("gasPrice", {
   type: "number",
   description: "Gas price in gwei; omitting uses EthGasStation value",
@@ -85,9 +85,6 @@ async function main(argv) {
   }
   expect(await addressRegistry.mAptAddress()).to.equal(mApt.address);
   expect(await addressRegistry.lpSafeAddress()).to.equal(lpSafeAddress);
-  expect(await addressRegistry.poolManagerAddress()).to.equal(
-    poolManager.address
-  );
   expect(await addressRegistry.tvlManagerAddress()).to.equal(
     tvlManager.address
   );
@@ -107,10 +104,6 @@ async function main(argv) {
   expect(await oracleAdapter.addressRegistry()).to.equal(
     addressRegistry.address
   );
-  console.logDone();
-
-  console.log("Check address registry set on pool manager ...");
-  expect(await poolManager.addressRegistry()).to.equal(addressRegistry.address);
   console.logDone();
 
   console.log("Check sources set on oracle adapter ...");
