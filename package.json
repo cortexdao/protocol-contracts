@@ -72,6 +72,7 @@
   },
   "dependencies": {
     "@chainlink/contracts": "0.0.9",
+    "@gnosis.pm/safe-ethers-adapters": "^0.1.0-alpha.3",
     "@openzeppelin/contracts": "3.4.0",
     "@openzeppelin/contracts-ethereum-package": "3.0.0",
     "abdk-libraries-solidity": "2.4.0",
