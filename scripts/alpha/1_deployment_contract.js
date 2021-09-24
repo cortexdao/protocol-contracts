@@ -15,8 +15,6 @@ const { argv } = require("yargs").option("gasPrice", {
 });
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const { BigNumber } = ethers;
-const chalk = require("chalk");
 const {
   getGasPrice,
   updateDeployJsons,
@@ -64,7 +62,7 @@ async function main(argv) {
   const deploy_data = {};
   const gasPrice = await getGasPrice(argv.gasPrice);
 
-  const addressesFilename = "deployment-factory-addresses.json";
+  const addressesFilename = "scripts/alpha/deployment-factory-addresses.json";
   const factoryAddresses = JSON.parse(
     fs.readFileSync(addressesFilename, "utf-8")
   );

@@ -8,7 +8,7 @@
  *
  * $ HARDHAT_NETWORK=<network name> node scripts/<script filename> --arg1=val1 --arg2=val2
  */
-require("dotenv").config({ path: "./alpha.env" });
+require("dotenv").config();
 const { argv } = require("yargs").option("gasPrice", {
   type: "number",
   description: "Gas price in gwei; omitting uses GasNow value",
@@ -30,17 +30,6 @@ async function main(argv) {
 
   const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
-  /* TESTING on localhost only
-   * need to fund as there is no ETH on Mainnet for the deployer
-   */
-  if (networkName == "LOCALHOST") {
-    const [funder] = await ethers.getSigners();
-    const fundingTrx = await funder.sendTransaction({
-      to: deployer.address,
-      value: ethers.utils.parseEther("1.0"),
-    });
-    await fundingTrx.wait();
-  }
 
   const balance =
     (await ethers.provider.getBalance(deployer.address)).toString() / 1e18;
@@ -79,7 +68,7 @@ async function main(argv) {
     factoryAddresses.push(contract.address);
   }
   const addressesJson = JSON.stringify(factoryAddresses, null, "  ");
-  const addressesFilename = "deployment-factory-addresses.json";
+  const addressesFilename = "scripts/alpha/deployment-factory-addresses.json";
   fs.writeFileSync(addressesFilename, addressesJson, (err) => {
     if (err) throw err;
   });
