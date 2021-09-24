@@ -8,7 +8,7 @@
  *
  * $ HARDHAT_NETWORK=<network name> node scripts/<script filename> --arg1=val1 --arg2=val2
  */
-require("dotenv").config({ path: "./alpha.env" });
+require("dotenv").config();
 const { argv } = require("yargs").option("gasPrice", {
   type: "number",
   description: "Gas price in gwei; omitting uses GasNow value",
