@@ -31,6 +31,7 @@ import {
     ProxyFactory,
     TvlManagerFactory
 } from "./factories.sol";
+import {IGnosisModuleManager, Enum} from "./IGnosisModuleManager.sol";
 
 /** @dev
 # Alpha Deployment
@@ -205,15 +206,28 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         onlyOwner
         updateStep(0)
     {
-        address[] memory ownedContracts = new address[](1);
-        ownedContracts[0] = ADDRESS_REGISTRY_PROXY_ADMIN;
-        checkOwnerships(ownedContracts);
+        // address[] memory ownedContracts = new address[](1);
+        /// ownedContracts[0] = ADDRESS_REGISTRY_PROXY_ADMIN;
+        // checkOwnerships(ownedContracts);
 
         addressRegistryV2 = AddressRegistryV2Factory(addressRegistryV2Factory)
             .create();
-        ProxyAdmin(ADDRESS_REGISTRY_PROXY_ADMIN).upgrade(
-            TransparentUpgradeableProxy(payable(ADDRESS_REGISTRY_PROXY)),
-            addressRegistryV2
+        // ProxyAdmin(ADDRESS_REGISTRY_PROXY_ADMIN).upgrade(
+        //     TransparentUpgradeableProxy(payable(ADDRESS_REGISTRY_PROXY)),
+        //     addressRegistryV2
+        // );
+        bytes memory data =
+            abi.encodeWithSignature(
+                "upgrade(address,address)",
+                ADDRESS_REGISTRY_PROXY,
+                addressRegistryV2
+            );
+
+        IGnosisModuleManager(adminSafe).execTransactionFromModule(
+            ADDRESS_REGISTRY_PROXY_ADMIN,
+            0,
+            data,
+            Enum.Operation.Call
         );
 
         // TODO: delete "poolManager" ID
