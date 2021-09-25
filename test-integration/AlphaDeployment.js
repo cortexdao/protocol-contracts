@@ -33,6 +33,8 @@ describe.only("Contract: AlphaDeployment", () => {
   let oracleAdapterFactory;
   let lpAccountFactory;
 
+  let poolProxyAdminAddress;
+
   let addressRegistry;
 
   // use EVM snapshots for test isolation
@@ -83,7 +85,7 @@ describe.only("Contract: AlphaDeployment", () => {
       .connect(addressRegistryDeployer)
       .transferOwnership(adminSafe.address);
 
-    const poolProxyAdminAddress = getDeployedAddress(
+    poolProxyAdminAddress = getDeployedAddress(
       "PoolTokenProxyAdmin",
       "MAINNET"
     );
@@ -205,7 +207,33 @@ describe.only("Contract: AlphaDeployment", () => {
     );
 
     await alphaDeployment.deploy_2_PoolTokenV2_logic();
-    await alphaDeployment.deploy_3_DemoPools();
+    const poolTokenV2Logic = await ethers.getContractAt(
+      "PoolTokenV2",
+      await alphaDeployment.poolTokenV2()
+    );
+    // check that the logic contract was initialized
+    expect(await poolTokenV2Logic.proxyAdmin()).to.equal(poolProxyAdminAddress);
+
+    const tx = await alphaDeployment.deploy_3_DemoPools();
+    console.log(tx);
+
+    const daiDemoPoolAddress = await addressRegistry.getAddress(
+      bytes32("daiDemoPool")
+    );
+    expect(daiDemoPoolAddress).to.equal(await alphaDeployment.daiDemoPool());
+
+    const daiDemoPool = await ethers.getContractAt(
+      "PoolTokenV2",
+      daiDemoPoolAddress
+    );
+    //await daiDemoPool.reservePercentage();
+
+    expect(await addressRegistry.getAddress(bytes32("usdcDemoPool"))).to.equal(
+      await alphaDeployment.usdcDemoPool()
+    );
+    expect(await addressRegistry.getAddress(bytes32("usdtDemoPool"))).to.equal(
+      await alphaDeployment.usdtDemoPool()
+    );
     // await alphaDeployment.deploy_4_TvlManager();
     // await alphaDeployment.deploy_5_OracleAdapter();
     // await alphaDeployment.deploy_6_LpAccount();
