@@ -82,6 +82,25 @@ describe.only("Contract: AlphaDeployment", () => {
     await addressRegistryProxyAdmin
       .connect(addressRegistryDeployer)
       .transferOwnership(adminSafe.address);
+
+    const poolProxyAdminAddress = getDeployedAddress(
+      "PoolTokenProxyAdmin",
+      "MAINNET"
+    );
+    const poolProxyAdmin = await ethers.getContractAt(
+      "ProxyAdmin",
+      poolProxyAdminAddress
+    );
+    const poolDeployerAddress = await poolProxyAdmin.owner();
+    const poolDeployer = await impersonateAccount(poolDeployerAddress);
+    await forciblySendEth(
+      poolDeployer.address,
+      tokenAmountToBigNumber(10),
+      deployer.address
+    );
+    await poolProxyAdmin
+      .connect(poolDeployer)
+      .transferOwnership(adminSafe.address);
   });
 
   before("Deploy factories and mock deployed addresses", async () => {
@@ -161,29 +180,12 @@ describe.only("Contract: AlphaDeployment", () => {
       lpAccountFactory.address // lp account factory
     );
 
-    // for ownership check
-    // 3. transfer ownership of pool proxy admin to deployment contract
-    // const poolProxyAdminAddress = await alphaDeployment.POOL_PROXY_ADMIN();
-    // const poolProxyAdmin = await ethers.getContractAt(
-    //   "ProxyAdmin",
-    //   poolProxyAdminAddress
-    // );
-    // const poolDeployerAddress = await poolProxyAdmin.owner();
-    // const poolDeployer = await impersonateAccount(poolDeployerAddress);
-    // await forciblySendEth(
-    //   poolDeployer.address,
-    //   tokenAmountToBigNumber(10),
-    //   deployer.address
-    // );
-    // await poolProxyAdmin
-    //   .connect(poolDeployer)
-    //   .transferOwnership(alphaDeployment.address);
-    //
     await forciblySendEth(
       adminSafe.address,
       tokenAmountToBigNumber(10),
       deployer.address
     );
+
     const adminSafeSigner = await impersonateAccount(adminSafe.address);
     await adminSafe
       .connect(adminSafeSigner)
@@ -202,8 +204,8 @@ describe.only("Contract: AlphaDeployment", () => {
       await alphaDeployment.mApt()
     );
 
-    // await alphaDeployment.deploy_2_PoolTokenV2_logic();
-    // await alphaDeployment.deploy_3_DemoPools();
+    await alphaDeployment.deploy_2_PoolTokenV2_logic();
+    await alphaDeployment.deploy_3_DemoPools();
     // await alphaDeployment.deploy_4_TvlManager();
     // await alphaDeployment.deploy_5_OracleAdapter();
     // await alphaDeployment.deploy_6_LpAccount();

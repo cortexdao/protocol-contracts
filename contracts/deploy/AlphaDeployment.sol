@@ -289,84 +289,158 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
         checkRegisteredDependencies(registeredIds, deployedAddresses);
 
-        address[] memory ownedContracts = new address[](1);
-        ownedContracts[0] = address(addressRegistry);
-        checkOwnerships(ownedContracts);
+        checkOwnerships(new address[](0));
 
-        address newOwner = msg.sender; // will own the proxy admin
+        //address newOwner = msg.sender; // will own the proxy admin
         address proxyAdmin = ProxyAdminFactory(proxyAdminFactory).create();
 
         bytes memory initDataV2 =
-            abi.encodeWithSignature(
-                "initializeUpgrade(address)",
+            abi.encodeWithSelector(
+                PoolTokenV2.initializeUpgrade.selector,
                 address(addressRegistry)
             );
 
         address fakeAggAddress = 0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe;
+
         bytes memory daiInitData =
-            abi.encodeWithSignature(
-                "initialize(address,address,address)",
+            abi.encodeWithSelector(
+                PoolToken.initialize.selector,
                 proxyAdmin,
                 DAI_ADDRESS,
                 fakeAggAddress
             );
+
         address daiProxy =
             PoolTokenV1Factory(poolTokenV1Factory).create(
                 proxyFactory,
                 proxyAdmin,
                 daiInitData
             );
-        ProxyAdmin(proxyAdmin).upgradeAndCall(
-            PoolTokenProxy(payable(daiProxy)),
-            poolTokenV2,
-            initDataV2
+
+        bytes memory daiUpgradeInitData =
+            abi.encodeWithSelector(
+                ProxyAdmin.upgradeAndCall.selector,
+                PoolTokenProxy(payable(daiProxy)),
+                poolTokenV2,
+                initDataV2
+            );
+
+        IGnosisModuleManager(adminSafe).execTransactionFromModule(
+            proxyAdmin,
+            0, // value
+            daiUpgradeInitData,
+            Enum.Operation.Call
         );
-        addressRegistry.registerAddress("daiDemoPool", daiProxy);
+
+        bytes memory daiRegisterInitData =
+            abi.encodeWithSelector(
+                AddressRegistryV2.registerAddress.selector,
+                bytes32("daiDemoPool"),
+                daiProxy
+            );
+
+        IGnosisModuleManager(adminSafe).execTransactionFromModule(
+            address(addressRegistry),
+            0, // value
+            daiRegisterInitData,
+            Enum.Operation.Call
+        );
+
         daiDemoPool = daiProxy;
 
         bytes memory usdcInitData =
-            abi.encodeWithSignature(
-                "initialize(address,address,address)",
+            abi.encodeWithSelector(
+                PoolToken.initialize.selector,
                 proxyAdmin,
                 USDC_ADDRESS,
                 fakeAggAddress
             );
+
         address usdcProxy =
             PoolTokenV1Factory(poolTokenV1Factory).create(
                 proxyFactory,
                 proxyAdmin,
                 usdcInitData
             );
-        ProxyAdmin(proxyAdmin).upgradeAndCall(
-            PoolTokenProxy(payable(usdcProxy)),
-            poolTokenV2,
-            initDataV2
+
+        bytes memory usdcUpgradeInitData =
+            abi.encodeWithSelector(
+                ProxyAdmin.upgradeAndCall.selector,
+                PoolTokenProxy(payable(usdcProxy)),
+                poolTokenV2,
+                initDataV2
+            );
+
+        IGnosisModuleManager(adminSafe).execTransactionFromModule(
+            proxyAdmin,
+            0,
+            usdcUpgradeInitData,
+            Enum.Operation.Call
         );
-        addressRegistry.registerAddress("usdcDemoPool", usdcProxy);
+
+        bytes memory usdcRegisterInitData =
+            abi.encodeWithSelector(
+                AddressRegistryV2.registerAddress.selector,
+                "usdcDemoPool",
+                usdcProxy
+            );
+
+        IGnosisModuleManager(adminSafe).execTransactionFromModule(
+            address(addressRegistry),
+            0,
+            usdcRegisterInitData,
+            Enum.Operation.Call
+        );
+
         usdcDemoPool = usdcProxy;
 
         bytes memory usdtInitData =
-            abi.encodeWithSignature(
-                "initialize(address,address,address)",
+            abi.encodeWithSelector(
+                PoolToken.initialize.selector,
                 proxyAdmin,
                 USDT_ADDRESS,
                 fakeAggAddress
             );
+
         address usdtProxy =
             PoolTokenV1Factory(poolTokenV1Factory).create(
                 proxyFactory,
                 proxyAdmin,
                 usdtInitData
             );
-        ProxyAdmin(proxyAdmin).upgradeAndCall(
-            PoolTokenProxy(payable(usdtProxy)),
-            poolTokenV2,
-            initDataV2
+
+        bytes memory usdtUpgradeInitData =
+            abi.encodeWithSelector(
+                ProxyAdmin.upgradeAndCall.selector,
+                PoolTokenProxy(payable(usdtProxy)),
+                poolTokenV2,
+                initDataV2
+            );
+
+        IGnosisModuleManager(adminSafe).execTransactionFromModule(
+            proxyAdmin,
+            0,
+            usdtUpgradeInitData,
+            Enum.Operation.Call
         );
-        addressRegistry.registerAddress("usdtDemoPool", usdtProxy);
+
+        bytes memory usdtRegisterInitData =
+            abi.encodeWithSelector(
+                AddressRegistryV2.registerAddress.selector,
+                "usdtDemoPool",
+                usdtProxy
+            );
+
+        IGnosisModuleManager(adminSafe).execTransactionFromModule(
+            address(addressRegistry),
+            0,
+            usdtRegisterInitData,
+            Enum.Operation.Call
+        );
+
         usdtDemoPool = usdtProxy;
 
-        ProxyAdmin(proxyAdmin).transferOwnership(newOwner);
+        //ProxyAdmin(proxyAdmin).transferOwnership(newOwner);
     }
 
     /// @dev Deploy ERC20 allocation and TVL Manager.
