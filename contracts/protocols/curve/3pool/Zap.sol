@@ -57,15 +57,16 @@ contract Curve3PoolZap is CurveGaugeZapBase, Curve3PoolConstants {
         );
     }
 
-    function _removeLiquidity(uint256 lpBalance, uint8 index)
-        internal
-        override
-    {
+    function _removeLiquidity(
+        uint256 lpBalance,
+        uint8 index,
+        uint256 minAmount
+    ) internal override {
         require(index < 3, "INVALID_INDEX");
         IStableSwap(SWAP_ADDRESS).remove_liquidity_one_coin(
             lpBalance,
             index,
-            0
+            minAmount
         );
     }
 }

@@ -64,7 +64,9 @@ abstract contract CurveZapBase is Curve3PoolUnderlyerConstants, IZap {
     function unwindLiquidity(uint256 amount, uint8 index) external override {
         require(index < N_COINS, "INVALID_INDEX");
         uint256 lpBalance = _withdrawFromGauge(amount);
-        _removeLiquidity(lpBalance, index);
+        uint256 minAmount =
+            _calcMinAmountUnderlyer(lpBalance, _getVirtualPrice());
+        _removeLiquidity(lpBalance, index, minAmount);
     }
 
     function claim() external override {
@@ -90,7 +92,11 @@ abstract contract CurveZapBase is Curve3PoolUnderlyerConstants, IZap {
         internal
         virtual;
 
-    function _removeLiquidity(uint256 lpBalance, uint8 index) internal virtual;
+    function _removeLiquidity(
+        uint256 lpBalance,
+        uint8 index,
+        uint256 minAmount
+    ) internal virtual;
 
     function _depositToGauge() internal virtual;
 
@@ -107,6 +113,15 @@ abstract contract CurveZapBase is Curve3PoolUnderlyerConstants, IZap {
         returns (uint256)
     {
         uint256 v = totalAmount.mul(1e18).div(virtualPrice);
+        return v.mul(DENOMINATOR.sub(SLIPPAGE)).div(DENOMINATOR);
+    }
+
+    function _calcMinAmountUnderlyer(uint256 totalAmount, uint256 virtualPrice)
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 v = totalAmount.mul(virtualPrice).div(1e18);
         return v.mul(DENOMINATOR.sub(SLIPPAGE)).div(DENOMINATOR);
     }
 

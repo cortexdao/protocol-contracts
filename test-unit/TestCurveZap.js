@@ -133,4 +133,42 @@ describe("Contract: TestCurveZap", () => {
       );
     });
   });
+
+  describe("_calcMinAmountUnderlyer", () => {
+    it("returns correct amount when virtual price is greater than 1", async () => {
+      // uint256 v = totalAmount.mul(virtualPrice).div(1e18);
+      // return v.mul(10000.sub(100)).div(10000);
+      const totalAmount = ethers.utils.parseEther("987654");
+      const virtualPrice = ethers.utils.parseEther("1.05");
+      const minAmount = await curvePool.calcMinAmountUnderlyer(
+        totalAmount,
+        virtualPrice
+      );
+      expect(minAmount.toString()).to.equals("1026666333000000000000000");
+    });
+
+    it("returns correct amount when virtual price is less than 1", async () => {
+      // uint256 v = totalAmount.mul(virtualPrice).div(1e18);
+      // return v.mul(10000.sub(100)).div(10000);
+      const totalAmount = ethers.utils.parseEther("987654");
+      const virtualPrice = ethers.utils.parseEther("0.95");
+      const minAmount = await curvePool.calcMinAmountUnderlyer(
+        totalAmount,
+        virtualPrice
+      );
+      expect(minAmount.toString()).to.equals("928888587000000000000000");
+    });
+
+    it("returns correct amount when values are small", async () => {
+      // uint256 v = totalAmount.mul(virtualPrice).div(1e18);
+      // return v.mul(10000.sub(100)).div(10000);
+      const totalAmount = ethers.utils.parseEther("0.0000000987654");
+      const virtualPrice = ethers.utils.parseEther("0.0000000095");
+      const minAmount = await curvePool.calcMinAmountUnderlyer(
+        totalAmount,
+        virtualPrice
+      );
+      expect(minAmount.toString()).to.equals("928");
+    });
+  });
 });
