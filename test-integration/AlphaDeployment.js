@@ -56,6 +56,34 @@ describe.only("Contract: AlphaDeployment", () => {
     );
   });
 
+  before("Transfer necessary ownerships to Admin Safe", async () => {
+    const adminSafeAddress = getDeployedAddress("AdminSafe", "MAINNET");
+    adminSafe = await ethers.getContractAt(
+      "IGnosisModuleManager",
+      adminSafeAddress
+    );
+    const addressRegistryProxyAdminAddress = getDeployedAddress(
+      "AddressRegistryProxyAdmin",
+      "MAINNET"
+    );
+    const addressRegistryProxyAdmin = await ethers.getContractAt(
+      "ProxyAdmin",
+      addressRegistryProxyAdminAddress
+    );
+    const addressRegistryDeployerAddress = await addressRegistryProxyAdmin.owner();
+    const addressRegistryDeployer = await impersonateAccount(
+      addressRegistryDeployerAddress
+    );
+    await forciblySendEth(
+      addressRegistryDeployer.address,
+      tokenAmountToBigNumber(10),
+      deployer.address
+    );
+    await addressRegistryProxyAdmin
+      .connect(addressRegistryDeployer)
+      .transferOwnership(adminSafe.address);
+  });
+
   before("Deploy factories and mock deployed addresses", async () => {
     const ProxyAdminFactory = await ethers.getContractFactory(
       "ProxyAdminFactory"
@@ -101,34 +129,6 @@ describe.only("Contract: AlphaDeployment", () => {
     lpAccountFactory = await LpAccountFactory.deploy();
 
     AlphaDeployment = await ethers.getContractFactory("AlphaDeployment");
-  });
-
-  before("Transfer necessary ownerships to Admin Safe", async () => {
-    const adminSafeAddress = getDeployedAddress("AdminSafe", "MAINNET");
-    adminSafe = await ethers.getContractAt(
-      "IGnosisModuleManager",
-      adminSafeAddress
-    );
-    const addressRegistryProxyAdminAddress = getDeployedAddress(
-      "AddressRegistryProxyAdmin",
-      "MAINNET"
-    );
-    const addressRegistryProxyAdmin = await ethers.getContractAt(
-      "ProxyAdmin",
-      addressRegistryProxyAdminAddress
-    );
-    const addressRegistryDeployerAddress = await addressRegistryProxyAdmin.owner();
-    const addressRegistryDeployer = await impersonateAccount(
-      addressRegistryDeployerAddress
-    );
-    await forciblySendEth(
-      addressRegistryDeployer.address,
-      tokenAmountToBigNumber(10),
-      deployer.address
-    );
-    await addressRegistryProxyAdmin
-      .connect(addressRegistryDeployer)
-      .transferOwnership(adminSafe.address);
   });
 
   it("constructor", async () => {

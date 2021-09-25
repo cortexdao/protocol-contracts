@@ -206,16 +206,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         onlyOwner
         updateStep(0)
     {
-        // address[] memory ownedContracts = new address[](1);
-        /// ownedContracts[0] = ADDRESS_REGISTRY_PROXY_ADMIN;
-        // checkOwnerships(ownedContracts);
-
         addressRegistryV2 = AddressRegistryV2Factory(addressRegistryV2Factory)
             .create();
-        // ProxyAdmin(ADDRESS_REGISTRY_PROXY_ADMIN).upgrade(
-        //     TransparentUpgradeableProxy(payable(ADDRESS_REGISTRY_PROXY)),
-        //     addressRegistryV2
-        // );
         bytes memory data =
             abi.encodeWithSelector(
                 ProxyAdmin.upgrade.selector,
