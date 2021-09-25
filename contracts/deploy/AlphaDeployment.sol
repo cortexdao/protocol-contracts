@@ -238,8 +238,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         address newOwner = msg.sender; // will own the proxy admin
         address proxyAdmin = ProxyAdminFactory(proxyAdminFactory).create();
         bytes memory initData =
-            abi.encodeWithSignature(
-                "initialize(address,address)",
+            abi.encodeWithSelector(
+                MetaPoolToken.initialize.selector,
                 proxyAdmin,
                 addressRegistry
             );
