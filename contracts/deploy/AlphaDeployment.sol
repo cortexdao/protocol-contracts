@@ -235,10 +235,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     /// @dev Deploy the mAPT proxy and its proxy admin.
     ///      Does not register any roles for contracts.
     function deploy_1_MetaPoolToken() external onlyOwner updateStep(1) {
-        address[] memory ownedContracts = new address[](1);
-        ownedContracts[0] = address(addressRegistry);
-        checkOwnerships(ownedContracts);
-
         address newOwner = msg.sender; // will own the proxy admin
         address proxyAdmin = ProxyAdminFactory(proxyAdminFactory).create();
         bytes memory initData =
@@ -252,7 +248,19 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             proxyAdmin,
             initData
         );
-        addressRegistry.registerAddress("mApt", mApt);
+
+        bytes memory data =
+            abi.encodeWithSelector(
+                AddressRegistryV2.registerAddress.selector,
+                bytes32("mApt"),
+                mApt
+            );
+        IGnosisModuleManager(adminSafe).execTransactionFromModule(
+            address(addressRegistry),
+            0, // value
+            data,
+            Enum.Operation.Call
+        );
 
         ProxyAdmin(proxyAdmin).transferOwnership(newOwner);
     }

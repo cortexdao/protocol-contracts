@@ -197,7 +197,11 @@ describe.only("Contract: AlphaDeployment", () => {
     await alphaDeployment.deploy_0_AddressRegistryV2_upgrade();
     await expect(addressRegistry.emergencySafeAddress()).to.not.be.reverted;
 
-    // await alphaDeployment.deploy_1_MetaPoolToken();
+    await alphaDeployment.deploy_1_MetaPoolToken();
+    expect(await addressRegistry.mAptAddress()).to.equal(
+      await alphaDeployment.mApt()
+    );
+
     // await alphaDeployment.deploy_2_PoolTokenV2_logic();
     // await alphaDeployment.deploy_3_DemoPools();
     // await alphaDeployment.deploy_4_TvlManager();
