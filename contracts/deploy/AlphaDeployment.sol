@@ -217,15 +217,15 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         //     addressRegistryV2
         // );
         bytes memory data =
-            abi.encodeWithSignature(
-                "upgrade(address,address)",
+            abi.encodeWithSelector(
+                ProxyAdmin.upgrade.selector,
                 ADDRESS_REGISTRY_PROXY,
                 addressRegistryV2
             );
 
         IGnosisModuleManager(adminSafe).execTransactionFromModule(
             ADDRESS_REGISTRY_PROXY_ADMIN,
-            0,
+            0, // value
             data,
             Enum.Operation.Call
         );

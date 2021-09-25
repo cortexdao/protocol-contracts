@@ -42,9 +42,9 @@ interface IGnosisModuleManager {
         Enum.Operation operation
     ) external returns (bool success, bytes memory returnData);
 
-    /// @dev Returns if an module is enabled
-    /// @return True if the module is enabled
-    function isModuleEnabled(address module) external view returns (bool);
+    /// @dev Returns array of first 10 modules.
+    /// @return Array of modules.
+    function getModules() external view returns (address[] memory);
 }
 
 /// @title Enum - Collection of enums
