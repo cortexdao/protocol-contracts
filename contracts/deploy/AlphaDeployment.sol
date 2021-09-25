@@ -255,6 +255,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 bytes32("mApt"),
                 mApt
             );
+
         IGnosisModuleManager(adminSafe).execTransactionFromModule(
             address(addressRegistry),
             0, // value
@@ -302,143 +303,153 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
         address fakeAggAddress = 0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe;
 
-        bytes memory daiInitData =
-            abi.encodeWithSelector(
-                PoolToken.initialize.selector,
+        {
+            bytes memory daiInitData =
+                abi.encodeWithSelector(
+                    PoolToken.initialize.selector,
+                    proxyAdmin,
+                    DAI_ADDRESS,
+                    fakeAggAddress
+                );
+
+            address daiProxy =
+                PoolTokenV1Factory(poolTokenV1Factory).create(
+                    proxyFactory,
+                    proxyAdmin,
+                    daiInitData
+                );
+
+            bytes memory daiUpgradeInitData =
+                abi.encodeWithSelector(
+                    ProxyAdmin.upgradeAndCall.selector,
+                    daiProxy,
+                    address(poolTokenV2),
+                    initDataV2
+                );
+
+            (bool success, ) =
+                IGnosisModuleManager(adminSafe)
+                    .execTransactionFromModuleReturnData(
+                    proxyAdmin,
+                    0, // value
+                    daiUpgradeInitData,
+                    Enum.Operation.Call
+                );
+
+            require(success, "FAILED_TO_UPGRADE");
+
+            bytes memory daiRegisterInitData =
+                abi.encodeWithSelector(
+                    AddressRegistryV2.registerAddress.selector,
+                    bytes32("daiDemoPool"),
+                    daiProxy
+                );
+
+            IGnosisModuleManager(adminSafe).execTransactionFromModule(
+                address(addressRegistry),
+                0, // value
+                daiRegisterInitData,
+                Enum.Operation.Call
+            );
+
+            daiDemoPool = daiProxy;
+        }
+
+        {
+            bytes memory usdcInitData =
+                abi.encodeWithSelector(
+                    PoolToken.initialize.selector,
+                    proxyAdmin,
+                    USDC_ADDRESS,
+                    fakeAggAddress
+                );
+
+            address usdcProxy =
+                PoolTokenV1Factory(poolTokenV1Factory).create(
+                    proxyFactory,
+                    proxyAdmin,
+                    usdcInitData
+                );
+
+            bytes memory usdcUpgradeInitData =
+                abi.encodeWithSelector(
+                    ProxyAdmin.upgradeAndCall.selector,
+                    PoolTokenProxy(payable(usdcProxy)),
+                    poolTokenV2,
+                    initDataV2
+                );
+
+            IGnosisModuleManager(adminSafe).execTransactionFromModule(
                 proxyAdmin,
-                DAI_ADDRESS,
-                fakeAggAddress
+                0,
+                usdcUpgradeInitData,
+                Enum.Operation.Call
             );
 
-        address daiProxy =
-            PoolTokenV1Factory(poolTokenV1Factory).create(
-                proxyFactory,
+            bytes memory usdcRegisterInitData =
+                abi.encodeWithSelector(
+                    AddressRegistryV2.registerAddress.selector,
+                    bytes32("usdcDemoPool"),
+                    usdcProxy
+                );
+
+            IGnosisModuleManager(adminSafe).execTransactionFromModule(
+                address(addressRegistry),
+                0,
+                usdcRegisterInitData,
+                Enum.Operation.Call
+            );
+
+            usdcDemoPool = usdcProxy;
+        }
+
+        {
+            bytes memory usdtInitData =
+                abi.encodeWithSelector(
+                    PoolToken.initialize.selector,
+                    proxyAdmin,
+                    USDT_ADDRESS,
+                    fakeAggAddress
+                );
+
+            address usdtProxy =
+                PoolTokenV1Factory(poolTokenV1Factory).create(
+                    proxyFactory,
+                    proxyAdmin,
+                    usdtInitData
+                );
+
+            bytes memory usdtUpgradeInitData =
+                abi.encodeWithSelector(
+                    ProxyAdmin.upgradeAndCall.selector,
+                    PoolTokenProxy(payable(usdtProxy)),
+                    poolTokenV2,
+                    initDataV2
+                );
+
+            IGnosisModuleManager(adminSafe).execTransactionFromModule(
                 proxyAdmin,
-                daiInitData
+                0,
+                usdtUpgradeInitData,
+                Enum.Operation.Call
             );
 
-        bytes memory daiUpgradeInitData =
-            abi.encodeWithSelector(
-                ProxyAdmin.upgradeAndCall.selector,
-                PoolTokenProxy(payable(daiProxy)),
-                poolTokenV2,
-                initDataV2
+            bytes memory usdtRegisterInitData =
+                abi.encodeWithSelector(
+                    AddressRegistryV2.registerAddress.selector,
+                    bytes32("usdtDemoPool"),
+                    usdtProxy
+                );
+
+            IGnosisModuleManager(adminSafe).execTransactionFromModule(
+                address(addressRegistry),
+                0,
+                usdtRegisterInitData,
+                Enum.Operation.Call
             );
 
-        IGnosisModuleManager(adminSafe).execTransactionFromModule(
-            proxyAdmin,
-            0, // value
-            daiUpgradeInitData,
-            Enum.Operation.Call
-        );
-
-        bytes memory daiRegisterInitData =
-            abi.encodeWithSelector(
-                AddressRegistryV2.registerAddress.selector,
-                bytes32("daiDemoPool"),
-                daiProxy
-            );
-
-        IGnosisModuleManager(adminSafe).execTransactionFromModule(
-            address(addressRegistry),
-            0, // value
-            daiRegisterInitData,
-            Enum.Operation.Call
-        );
-
-        daiDemoPool = daiProxy;
-
-        bytes memory usdcInitData =
-            abi.encodeWithSelector(
-                PoolToken.initialize.selector,
-                proxyAdmin,
-                USDC_ADDRESS,
-                fakeAggAddress
-            );
-
-        address usdcProxy =
-            PoolTokenV1Factory(poolTokenV1Factory).create(
-                proxyFactory,
-                proxyAdmin,
-                usdcInitData
-            );
-
-        bytes memory usdcUpgradeInitData =
-            abi.encodeWithSelector(
-                ProxyAdmin.upgradeAndCall.selector,
-                PoolTokenProxy(payable(usdcProxy)),
-                poolTokenV2,
-                initDataV2
-            );
-
-        IGnosisModuleManager(adminSafe).execTransactionFromModule(
-            proxyAdmin,
-            0,
-            usdcUpgradeInitData,
-            Enum.Operation.Call
-        );
-
-        bytes memory usdcRegisterInitData =
-            abi.encodeWithSelector(
-                AddressRegistryV2.registerAddress.selector,
-                "usdcDemoPool",
-                usdcProxy
-            );
-
-        IGnosisModuleManager(adminSafe).execTransactionFromModule(
-            address(addressRegistry),
-            0,
-            usdcRegisterInitData,
-            Enum.Operation.Call
-        );
-
-        usdcDemoPool = usdcProxy;
-
-        bytes memory usdtInitData =
-            abi.encodeWithSelector(
-                PoolToken.initialize.selector,
-                proxyAdmin,
-                USDT_ADDRESS,
-                fakeAggAddress
-            );
-
-        address usdtProxy =
-            PoolTokenV1Factory(poolTokenV1Factory).create(
-                proxyFactory,
-                proxyAdmin,
-                usdtInitData
-            );
-
-        bytes memory usdtUpgradeInitData =
-            abi.encodeWithSelector(
-                ProxyAdmin.upgradeAndCall.selector,
-                PoolTokenProxy(payable(usdtProxy)),
-                poolTokenV2,
-                initDataV2
-            );
-
-        IGnosisModuleManager(adminSafe).execTransactionFromModule(
-            proxyAdmin,
-            0,
-            usdtUpgradeInitData,
-            Enum.Operation.Call
-        );
-
-        bytes memory usdtRegisterInitData =
-            abi.encodeWithSelector(
-                AddressRegistryV2.registerAddress.selector,
-                "usdtDemoPool",
-                usdtProxy
-            );
-
-        IGnosisModuleManager(adminSafe).execTransactionFromModule(
-            address(addressRegistry),
-            0,
-            usdtRegisterInitData,
-            Enum.Operation.Call
-        );
-
-        usdtDemoPool = usdtProxy;
+            usdtDemoPool = usdtProxy;
+        }
 
         //ProxyAdmin(proxyAdmin).transferOwnership(newOwner);
     }
