@@ -1,7 +1,6 @@
 const { expect } = require("chai");
 const hre = require("hardhat");
 const { ethers } = hre;
-const timeMachine = require("ganache-time-traveler");
 const {
   bytes32,
   impersonateAccount,
@@ -35,19 +34,8 @@ describe.only("Contract: AlphaDeployment", () => {
 
   let poolProxyAdminAddress;
 
+  let alphaDeployment;
   let addressRegistry;
-
-  // use EVM snapshots for test isolation
-  let snapshotId;
-
-  beforeEach(async () => {
-    const snapshot = await timeMachine.takeSnapshot();
-    snapshotId = snapshot["result"];
-  });
-
-  afterEach(async () => {
-    await timeMachine.revertToSnapshot(snapshotId);
-  });
 
   before("Attach to Mainnet Address Registry", async () => {
     [deployer] = await ethers.getSigners();
@@ -153,7 +141,7 @@ describe.only("Contract: AlphaDeployment", () => {
   });
 
   it("constructor", async () => {
-    const alphaDeployment = await expect(
+    alphaDeployment = await expect(
       AlphaDeployment.deploy(
         proxyAdminFactory.address, // proxy admin factory
         proxyFactory.address, // proxy factory
@@ -169,120 +157,141 @@ describe.only("Contract: AlphaDeployment", () => {
     expect(await alphaDeployment.step()).to.equal(0);
   });
 
-  it("deploy all", async () => {
-    const alphaDeployment = await AlphaDeployment.deploy(
-      proxyAdminFactory.address, // proxy admin factory
-      proxyFactory.address, // proxy factory
-      addressRegistryV2Factory.address, // address registry v2 factory
-      metaPoolTokenFactory.address, // mAPT factory
-      poolTokenV1Factory.address, // pool token v1 factory
-      poolTokenV2Factory.address, // pool token v2 factory
-      tvlManagerFactory.address, // tvl manager factory
-      oracleAdapterFactory.address, // oracle adapter factory
-      lpAccountFactory.address // lp account factory
-    );
+  describe("Deployment steps", () => {
+    before("Register deployer module", async () => {
+      await forciblySendEth(
+        adminSafe.address,
+        tokenAmountToBigNumber(10),
+        deployer.address
+      );
 
-    await forciblySendEth(
-      adminSafe.address,
-      tokenAmountToBigNumber(10),
-      deployer.address
-    );
+      const adminSafeSigner = await impersonateAccount(adminSafe.address);
+      await adminSafe
+        .connect(adminSafeSigner)
+        .enableModule(alphaDeployment.address);
 
-    const adminSafeSigner = await impersonateAccount(adminSafe.address);
-    await adminSafe
-      .connect(adminSafeSigner)
-      .enableModule(alphaDeployment.address);
+      expect(await adminSafe.getModules()).to.deep.equals([
+        alphaDeployment.address,
+      ]);
+    });
 
-    expect(await adminSafe.getModules()).to.deep.equals([
-      alphaDeployment.address,
-    ]);
+    describe("Step 0: Upgrade AddressRegistry", () => {
+      it("new addresses should not be registered before upgrade", async () => {
+        await expect(addressRegistry.emergencySafeAddress()).to.be.reverted;
+      });
 
-    await expect(addressRegistry.emergencySafeAddress()).to.be.reverted;
-    await alphaDeployment.deploy_0_AddressRegistryV2_upgrade();
-    await expect(addressRegistry.emergencySafeAddress()).to.not.be.reverted;
+      it("should update step number", async () => {
+        await alphaDeployment.deploy_0_AddressRegistryV2_upgrade();
+        expect(await alphaDeployment.step()).to.equal(1);
+      });
 
-    await alphaDeployment.deploy_1_MetaPoolToken();
-    expect(await addressRegistry.mAptAddress()).to.equal(
-      await alphaDeployment.mApt()
-    );
+      it("new addresses should be registered after upgrade", async () => {
+        await expect(addressRegistry.emergencySafeAddress()).to.not.be.reverted;
+      });
+    });
 
-    await alphaDeployment.deploy_2_PoolTokenV2_logic();
+    describe("Step 1: Deploy mAPT", () => {
+      before("Run step 1", async () => {
+        await alphaDeployment.deploy_1_MetaPoolToken();
+      });
 
-    const poolTokenV2Logic = await ethers.getContractAt(
-      "PoolTokenV2",
-      await alphaDeployment.poolTokenV2()
-    );
-    // check that the logic contract was initialized
-    expect(await poolTokenV2Logic.proxyAdmin()).to.equal(poolProxyAdminAddress);
+      it("should update step number", async () => {
+        expect(await alphaDeployment.step()).to.equal(2);
+      });
 
-    await alphaDeployment.deploy_3_DemoPools();
+      it("should register the mAPT address", async () => {
+        expect(await addressRegistry.mAptAddress()).to.equal(
+          await alphaDeployment.mApt()
+        );
+      });
+    });
 
-    // check that the pool was registered
-    const daiDemoPoolAddress = await addressRegistry.getAddress(
-      bytes32("daiDemoPool")
-    );
-    expect(daiDemoPoolAddress).to.equal(await alphaDeployment.daiDemoPool());
+    describe("Step 2: Deploy PoolTokenV2 logic contract", () => {
+      before("Run step 2", async () => {
+        await alphaDeployment.deploy_2_PoolTokenV2_logic();
+      });
 
-    const daiDemoPool = await ethers.getContractAt(
-      "PoolTokenV2",
-      daiDemoPoolAddress
-    );
+      it("should update step number", async () => {
+        expect(await alphaDeployment.step()).to.equal(3);
+      });
 
-    // check that the proxy admin owner was transferred to the admin Safe
-    const daiProxyAdmin = await ethers.getContractAt(
-      "ProxyAdmin",
-      await daiDemoPool.proxyAdmin()
-    );
-    expect(await daiProxyAdmin.owner()).to.equal(adminSafe.address);
+      it("should initialize the logic contract so it cannot be stolen", async () => {
+        const poolTokenV2Logic = await ethers.getContractAt(
+          "PoolTokenV2",
+          await alphaDeployment.poolTokenV2()
+        );
 
-    // check that v2 pool functions are available and variables are initialized
-    expect(await daiDemoPool.reservePercentage()).to.equal(5);
+        expect(await poolTokenV2Logic.proxyAdmin()).to.equal(
+          poolProxyAdminAddress
+        );
+      });
+    });
 
-    // check that the pool was registered
-    const usdcDemoPoolAddress = await addressRegistry.getAddress(
-      bytes32("usdcDemoPool")
-    );
-    expect(usdcDemoPoolAddress).to.equal(await alphaDeployment.usdcDemoPool());
+    describe("Step 3: Deploy demo pools", async () => {
+      let demoPoolAddresses;
+      demoPoolAddresses = [
+        {
+          variable: "daiDemoPool",
+          addressId: "daiDemoPool",
+        },
+        {
+          variable: "usdcDemoPool",
+          addressId: "usdcDemoPool",
+        },
+        {
+          variable: "usdtDemoPool",
+          addressId: "usdtDemoPool",
+        },
+      ];
 
-    const usdcDemoPool = await ethers.getContractAt(
-      "PoolTokenV2",
-      usdcDemoPoolAddress
-    );
+      before("Run step 3", async () => {
+        await alphaDeployment.deploy_3_DemoPools();
+      });
 
-    // check that the proxy admin owner was transferred to the admin Safe
-    const usdcProxyAdmin = await ethers.getContractAt(
-      "ProxyAdmin",
-      await usdcDemoPool.proxyAdmin()
-    );
-    expect(await usdcProxyAdmin.owner()).to.equal(adminSafe.address);
+      it("should update step number", async () => {
+        expect(await alphaDeployment.step()).to.equal(4);
+      });
 
-    // check that v2 pool functions are available and variables are initialized
-    expect(await usdcDemoPool.reservePercentage()).to.equal(5);
+      demoPoolAddresses.forEach((poolData) => {
+        describe(poolData.addressId, async () => {
+          let addressFromRegistry;
+          let demoPool;
 
-    // check that the pool was registered
-    const usdtDemoPoolAddress = await addressRegistry.getAddress(
-      bytes32("usdtDemoPool")
-    );
-    expect(usdtDemoPoolAddress).to.equal(await alphaDeployment.usdtDemoPool());
+          it("should register the pool with the address registry", async () => {
+            addressFromRegistry = await addressRegistry.getAddress(
+              bytes32(poolData.addressId)
+            );
+            expect(addressFromRegistry).to.equal(
+              await alphaDeployment[poolData.variable]()
+            );
+          });
 
-    const usdtDemoPool = await ethers.getContractAt(
-      "PoolTokenV2",
-      usdtDemoPoolAddress
-    );
+          it("should transfer the proxy admin owner to the Admin Safe", async () => {
+            demoPool = await ethers.getContractAt(
+              "PoolTokenV2",
+              addressFromRegistry
+            );
 
-    // check that the proxy admin owner was transferred to the admin Safe
-    const usdtProxyAdmin = await ethers.getContractAt(
-      "ProxyAdmin",
-      await usdtDemoPool.proxyAdmin()
-    );
-    expect(await usdtProxyAdmin.owner()).to.equal(adminSafe.address);
+            const poolProxyAdmin = await ethers.getContractAt(
+              "ProxyAdmin",
+              await demoPool.proxyAdmin()
+            );
+            expect(await poolProxyAdmin.owner()).to.equal(adminSafe.address);
+          });
 
-    // check that v2 pool functions are available and variables are initialized
-    expect(await usdtDemoPool.reservePercentage()).to.equal(5);
+          it("should have v2 pool functions and v2 variables initialized", async () => {
+            expect(await demoPool.reservePercentage()).to.equal(5);
+          });
+        });
+      });
 
-    // await alphaDeployment.deploy_4_TvlManager();
-    // await alphaDeployment.deploy_5_OracleAdapter();
-    // await alphaDeployment.deploy_6_LpAccount();
-    // await alphaDeployment.deploy_7_PoolTokenV2_upgrade();
+      // await alphaDeployment.deploy_5_OracleAdapter();
+      // await alphaDeployment.deploy_6_LpAccount();
+      // await alphaDeployment.deploy_7_PoolTokenV2_upgrade();
+    });
+
+    describe("Step 4: Deploy TvlManager", () => {
+      // await alphaDeployment.deploy_4_TvlManager();
+    });
   });
 });
