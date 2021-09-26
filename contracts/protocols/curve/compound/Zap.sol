@@ -64,16 +64,17 @@ contract CompoundPoolZap is CurveGaugeZapBase, CurveCompoundConstants {
         );
     }
 
-    function _removeLiquidity(uint256 lpBalance, uint8 index)
-        internal
-        override
-    {
+    function _removeLiquidity(
+        uint256 lpBalance,
+        uint8 index,
+        uint256 minAmount
+    ) internal override {
         IERC20(LP_TOKEN_ADDRESS).safeApprove(SWAP_ADDRESS, 0);
         IERC20(LP_TOKEN_ADDRESS).safeApprove(SWAP_ADDRESS, lpBalance);
         IDepositZap(SWAP_ADDRESS).remove_liquidity_one_coin(
             lpBalance,
             index,
-            0
+            minAmount
         );
     }
 }

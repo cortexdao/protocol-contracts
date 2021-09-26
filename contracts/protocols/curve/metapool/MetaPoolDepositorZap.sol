@@ -45,17 +45,18 @@ abstract contract MetaPoolDepositorZap is
         );
     }
 
-    function _removeLiquidity(uint256 lpBalance, uint8 index)
-        internal
-        override
-    {
+    function _removeLiquidity(
+        uint256 lpBalance,
+        uint8 index,
+        uint256 minAmount
+    ) internal override {
         IERC20(LP_ADDRESS).safeApprove(address(DEPOSITOR), 0);
         IERC20(LP_ADDRESS).safeApprove(address(DEPOSITOR), lpBalance);
         DEPOSITOR.remove_liquidity_one_coin(
             address(_META_POOL),
             lpBalance,
             index,
-            0
+            minAmount
         );
     }
 

@@ -64,10 +64,11 @@ contract SusdV2Zap is CurveGaugeZapBase, CurveSusdV2Constants {
         );
     }
 
-    function _removeLiquidity(uint256 lpBalance, uint8 index)
-        internal
-        override
-    {
+    function _removeLiquidity(
+        uint256 lpBalance,
+        uint8 index,
+        uint256 minAmount
+    ) internal override {
         require(index < 4, "INVALID_INDEX");
 
         uint256[] memory balances = new uint256[](4);
@@ -92,6 +93,10 @@ contract SusdV2Zap is CurveGaugeZapBase, CurveSusdV2Constants {
             inToken.safeApprove(address(swap), balanceDelta);
             swap.exchange(int128(i), index, balanceDelta, 0);
         }
+
+        uint256 underlyerBalance =
+            IERC20(_getCoinAtIndex(index)).balanceOf(address(this));
+        require(underlyerBalance >= minAmount, "UNDER_MIN_AMOUNT");
     }
 
     /**

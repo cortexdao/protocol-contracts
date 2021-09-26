@@ -44,13 +44,14 @@ abstract contract MetaPoolOldDepositorZap is CurveGaugeZapBase {
         );
     }
 
-    function _removeLiquidity(uint256 lpBalance, uint8 index)
-        internal
-        override
-    {
+    function _removeLiquidity(
+        uint256 lpBalance,
+        uint8 index,
+        uint256 minAmount
+    ) internal override {
         IERC20(LP_ADDRESS).safeApprove(address(_DEPOSITOR), 0);
         IERC20(LP_ADDRESS).safeApprove(address(_DEPOSITOR), lpBalance);
-        _DEPOSITOR.remove_liquidity_one_coin(lpBalance, index, 0);
+        _DEPOSITOR.remove_liquidity_one_coin(lpBalance, index, minAmount);
     }
 
     function _getVirtualPrice() internal view override returns (uint256) {

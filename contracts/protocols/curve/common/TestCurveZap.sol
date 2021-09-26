@@ -68,6 +68,14 @@ contract TestCurveZap is CurveGaugeZapBase {
         return _calcMinAmount(totalAmount, virtualPrice);
     }
 
+    function calcMinAmountUnderlyer(uint256 totalAmount, uint256 virtualPrice)
+        external
+        view
+        returns (uint256)
+    {
+        return _calcMinAmountUnderlyer(totalAmount, virtualPrice);
+    }
+
     function assetAllocations() public view override returns (string[] memory) {
         string[] memory allocationNames = new string[](1);
         return allocationNames;
@@ -99,11 +107,9 @@ contract TestCurveZap is CurveGaugeZapBase {
 
     }
 
-    function _removeLiquidity(uint256 lpBalance, uint8 index)
-        internal
-        override
-    // solhint-disable-next-line no-empty-blocks
-    {
-
-    }
+    function _removeLiquidity(
+        uint256 lpBalance,
+        uint8 index,
+        uint256 minAmount // solhint-disable-next-line no-empty-blocks
+    ) internal override {}
 }
