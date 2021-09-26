@@ -495,11 +495,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
         checkRegisteredDependencies(registeredIds, deployedAddresses);
 
-        address[] memory ownedContracts = new address[](1);
-        ownedContracts[0] = address(addressRegistry);
-        checkOwnerships(ownedContracts);
+        checkOwnerships(new address[](0));
 
-        address newOwner = msg.sender; // will own the proxy admin
         address proxyAdmin = ProxyAdminFactory(proxyAdminFactory).create();
 
         bytes memory initData =
@@ -514,9 +511,22 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             proxyAdmin,
             initData
         );
-        addressRegistry.registerAddress("lpAccount", lpAccount);
 
-        ProxyAdmin(proxyAdmin).transferOwnership(newOwner);
+        bytes memory data =
+            abi.encodeWithSelector(
+                AddressRegistryV2.registerAddress.selector,
+                bytes32("lpAccount"),
+                address(lpAccount)
+            );
+
+        IGnosisModuleManager(adminSafe).execTransactionFromModule(
+            address(addressRegistry),
+            0,
+            data,
+            Enum.Operation.Call
+        );
+
+        ProxyAdmin(proxyAdmin).transferOwnership(adminSafe);
     }
 
     /// @notice upgrade from v1 to v2

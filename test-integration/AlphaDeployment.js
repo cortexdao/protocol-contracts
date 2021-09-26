@@ -288,7 +288,6 @@ describe.only("Contract: AlphaDeployment", () => {
         });
       });
 
-      // await alphaDeployment.deploy_6_LpAccount();
       // await alphaDeployment.deploy_7_PoolTokenV2_upgrade();
     });
 
@@ -358,6 +357,36 @@ describe.only("Contract: AlphaDeployment", () => {
             priceAgg.agg
           );
         });
+      });
+    });
+
+    describe("Step 6: Deploy LpAccount", () => {
+      let lpAccountAddress;
+
+      let lpAccount;
+
+      before("Run step 6", async () => {
+        await alphaDeployment.deploy_6_LpAccount();
+        lpAccountAddress = await alphaDeployment.lpAccount();
+        lpAccount = await ethers.getContractAt("LpAccount", lpAccountAddress);
+      });
+
+      it("should update step number", async () => {
+        expect(await alphaDeployment.step()).to.equal(7);
+      });
+
+      it("should register the LpAccount address", async () => {
+        expect(await addressRegistry.lpAccountAddress()).to.equal(
+          lpAccountAddress
+        );
+      });
+
+      it("should transfer the proxy admin owner to the Admin Safe", async () => {
+        const poolProxyAdmin = await ethers.getContractAt(
+          "ProxyAdmin",
+          await lpAccount.proxyAdmin()
+        );
+        expect(await poolProxyAdmin.owner()).to.equal(adminSafe.address);
       });
     });
   });
