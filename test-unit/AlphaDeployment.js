@@ -619,29 +619,4 @@ describe("Contract: AlphaDeployment", () => {
     await expect(alphaDeployment.deploy_7_PoolTokenV2_upgrade()).to.not.be
       .reverted;
   });
-
-  it("handoffOwnership", async () => {
-    const alphaDeployment = await AlphaDeployment.deploy(
-      FAKE_ADDRESS, // proxy admin factory
-      FAKE_ADDRESS, // proxy factory
-      FAKE_ADDRESS, // address registry v2 factory
-      FAKE_ADDRESS, // mAPT factory
-      FAKE_ADDRESS, // pool token v1 factory
-      FAKE_ADDRESS, // pool token v2 factory
-      FAKE_ADDRESS, // tvl manager factory
-      FAKE_ADDRESS, // oracle adapter factory
-      FAKE_ADDRESS // lp account factory
-    );
-
-    // any ownable contract here will do; ProxyAdmin is a simple one
-    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    const proxyAdmin = await ProxyAdmin.deploy();
-    expect(await proxyAdmin.owner()).to.equal(deployer.address);
-    await proxyAdmin.transferOwnership(alphaDeployment.address);
-    expect(await proxyAdmin.owner()).to.equal(alphaDeployment.address);
-    await alphaDeployment
-      .connect(deployer)
-      .handoffOwnership(proxyAdmin.address);
-    expect(await proxyAdmin.owner()).to.equal(deployer.address);
-  });
 });
