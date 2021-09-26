@@ -103,7 +103,9 @@ describe("Contract: TestCurveZap", () => {
       const shareValue = depositAmount
         .mul(tokenAmountToBigNumber(1))
         .div(virtualPrice);
-      const expectedMinAmount = shareValue.mul(99).div(100);
+      const expectedMinAmount = shareValue
+        .mul(denominator - slippage)
+        .div(denominator);
       expect(minAmount).to.equal(expectedMinAmount);
     });
   });
@@ -150,7 +152,9 @@ describe("Contract: TestCurveZap", () => {
       const shareValue = lpTokenAmount
         .mul(virtualPrice)
         .div(tokenAmountToBigNumber(1));
-      const expectedMinAmount = shareValue.mul(99).div(100);
+      const expectedMinAmount = shareValue
+        .mul(denominator - slippage)
+        .div(denominator);
       expect(minAmount).to.equal(expectedMinAmount);
     });
 
@@ -165,7 +169,9 @@ describe("Contract: TestCurveZap", () => {
       const shareValue = lpTokenAmount
         .mul(virtualPrice)
         .div(tokenAmountToBigNumber(1));
-      const expectedMinAmount = shareValue.mul(99).div(100);
+      const expectedMinAmount = shareValue
+        .mul(denominator - slippage)
+        .div(denominator);
       expect(minAmount).to.equal(expectedMinAmount);
     });
 
@@ -180,7 +186,9 @@ describe("Contract: TestCurveZap", () => {
       const shareValue = lpTokenAmount
         .mul(virtualPrice)
         .div(tokenAmountToBigNumber(1));
-      const expectedMinAmount = shareValue.mul(99).div(100);
+      const expectedMinAmount = shareValue
+        .mul(denominator - slippage)
+        .div(denominator);
       expect(minAmount).to.equal(expectedMinAmount);
     });
   });
