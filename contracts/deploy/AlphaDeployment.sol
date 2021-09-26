@@ -215,11 +215,14 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 addressRegistryV2
             );
 
-        IGnosisModuleManager(adminSafe).execTransactionFromModule(
-            ADDRESS_REGISTRY_PROXY_ADMIN,
-            0, // value
-            data,
-            Enum.Operation.Call
+        require(
+            IGnosisModuleManager(adminSafe).execTransactionFromModule(
+                ADDRESS_REGISTRY_PROXY_ADMIN,
+                0, // value
+                data,
+                Enum.Operation.Call
+            ),
+            "SAFE_TX_FAILED"
         );
 
         // TODO: delete "poolManager" ID
@@ -255,11 +258,14 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 mApt
             );
 
-        IGnosisModuleManager(adminSafe).execTransactionFromModule(
-            address(addressRegistry),
-            0, // value
-            data,
-            Enum.Operation.Call
+        require(
+            IGnosisModuleManager(adminSafe).execTransactionFromModule(
+                address(addressRegistry),
+                0, // value
+                data,
+                Enum.Operation.Call
+            ),
+            "SAFE_TX_FAILED"
         );
 
         // TODO: Shouldn't this already be owned by the Admin Safe?
@@ -330,11 +336,14 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 daiProxy
             );
 
-        IGnosisModuleManager(adminSafe).execTransactionFromModule(
-            address(addressRegistry),
-            0, // value
-            daiRegisterInitData,
-            Enum.Operation.Call
+        require(
+            IGnosisModuleManager(adminSafe).execTransactionFromModule(
+                address(addressRegistry),
+                0, // value
+                daiRegisterInitData,
+                Enum.Operation.Call
+            ),
+            "SAFE_TX_FAILED"
         );
 
         daiDemoPool = daiProxy;
@@ -367,11 +376,14 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 usdcProxy
             );
 
-        IGnosisModuleManager(adminSafe).execTransactionFromModule(
-            address(addressRegistry),
-            0,
-            usdcRegisterInitData,
-            Enum.Operation.Call
+        require(
+            IGnosisModuleManager(adminSafe).execTransactionFromModule(
+                address(addressRegistry),
+                0,
+                usdcRegisterInitData,
+                Enum.Operation.Call
+            ),
+            "SAFE_TX_FAILED"
         );
 
         usdcDemoPool = usdcProxy;
@@ -404,11 +416,14 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 usdtProxy
             );
 
-        IGnosisModuleManager(adminSafe).execTransactionFromModule(
-            address(addressRegistry),
-            0,
-            usdtRegisterInitData,
-            Enum.Operation.Call
+        require(
+            IGnosisModuleManager(adminSafe).execTransactionFromModule(
+                address(addressRegistry),
+                0,
+                usdtRegisterInitData,
+                Enum.Operation.Call
+            ),
+            "SAFE_TX_FAILED"
         );
 
         usdtDemoPool = usdtProxy;
@@ -433,11 +448,14 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 address(tvlManager)
             );
 
-        IGnosisModuleManager(adminSafe).execTransactionFromModule(
-            address(addressRegistry),
-            0,
-            data,
-            Enum.Operation.Call
+        require(
+            IGnosisModuleManager(adminSafe).execTransactionFromModule(
+                address(addressRegistry),
+                0,
+                data,
+                Enum.Operation.Call
+            ),
+            "SAFE_TX_FAILED"
         );
     }
 
@@ -480,11 +498,14 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 address(oracleAdapter)
             );
 
-        IGnosisModuleManager(adminSafe).execTransactionFromModule(
-            address(addressRegistry),
-            0,
-            data,
-            Enum.Operation.Call
+        require(
+            IGnosisModuleManager(adminSafe).execTransactionFromModule(
+                address(addressRegistry),
+                0,
+                data,
+                Enum.Operation.Call
+            ),
+            "SAFE_TX_FAILED"
         );
     }
 
@@ -519,11 +540,14 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 address(lpAccount)
             );
 
-        IGnosisModuleManager(adminSafe).execTransactionFromModule(
-            address(addressRegistry),
-            0,
-            data,
-            Enum.Operation.Call
+        require(
+            IGnosisModuleManager(adminSafe).execTransactionFromModule(
+                address(addressRegistry),
+                0,
+                data,
+                Enum.Operation.Call
+            ),
+            "SAFE_TX_FAILED"
         );
 
         ProxyAdmin(proxyAdmin).transferOwnership(adminSafe);
@@ -553,11 +577,14 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 initData
             );
 
-        IGnosisModuleManager(adminSafe).execTransactionFromModule(
-            POOL_PROXY_ADMIN,
-            0,
-            daiPoolData,
-            Enum.Operation.Call
+        require(
+            IGnosisModuleManager(adminSafe).execTransactionFromModule(
+                POOL_PROXY_ADMIN,
+                0,
+                daiPoolData,
+                Enum.Operation.Call
+            ),
+            "SAFE_TX_FAILED"
         );
 
         bytes memory usdcPoolData =
@@ -568,11 +595,14 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 initData
             );
 
-        IGnosisModuleManager(adminSafe).execTransactionFromModule(
-            POOL_PROXY_ADMIN,
-            0,
-            usdcPoolData,
-            Enum.Operation.Call
+        require(
+            IGnosisModuleManager(adminSafe).execTransactionFromModule(
+                POOL_PROXY_ADMIN,
+                0,
+                usdcPoolData,
+                Enum.Operation.Call
+            ),
+            "SAFE_TX_FAILED"
         );
 
         bytes memory usdtPoolData =
@@ -583,11 +613,14 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 initData
             );
 
-        IGnosisModuleManager(adminSafe).execTransactionFromModule(
-            POOL_PROXY_ADMIN,
-            0,
-            usdtPoolData,
-            Enum.Operation.Call
+        require(
+            IGnosisModuleManager(adminSafe).execTransactionFromModule(
+                POOL_PROXY_ADMIN,
+                0,
+                usdtPoolData,
+                Enum.Operation.Call
+            ),
+            "SAFE_TX_FAILED"
         );
     }
 }
