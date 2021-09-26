@@ -590,15 +590,5 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             Enum.Operation.Call
         );
     }
-
-    function cleanup() external onlyOwner {
-        handoffOwnership(ADDRESS_REGISTRY_PROXY_ADMIN);
-        handoffOwnership(ADDRESS_REGISTRY_PROXY);
-        handoffOwnership(POOL_PROXY_ADMIN);
-    }
-
-    function handoffOwnership(address ownedContract) public onlyOwner {
-        Ownable(ownedContract).transferOwnership(msg.sender);
-    }
 }
 /* solhint-enable func-name-mixedcase */
