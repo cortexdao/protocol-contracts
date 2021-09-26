@@ -8,6 +8,9 @@ const {
   tokenAmountToBigNumber,
   getDeployedAddress,
 } = require("../utils/helpers");
+const {
+  AGG_MAP: { MAINNET: AGGS },
+} = require("../utils/constants");
 
 const MAINNET_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
 
@@ -285,7 +288,6 @@ describe.only("Contract: AlphaDeployment", () => {
         });
       });
 
-      // await alphaDeployment.deploy_5_OracleAdapter();
       // await alphaDeployment.deploy_6_LpAccount();
       // await alphaDeployment.deploy_7_PoolTokenV2_upgrade();
     });
@@ -303,6 +305,59 @@ describe.only("Contract: AlphaDeployment", () => {
         expect(await addressRegistry.tvlManagerAddress()).to.equal(
           await alphaDeployment.tvlManager()
         );
+      });
+    });
+
+    describe("Step 5: Deploy OracleAdapter", () => {
+      let oracleAdapterAddress;
+      let oracleAdapter;
+      const priceAggs = [
+        {
+          symbol: "DAI",
+          token: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+          agg: AGGS["DAI-USD"],
+        },
+        {
+          symbol: "USDC",
+          token: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          agg: AGGS["USDC-USD"],
+        },
+        {
+          symbol: "USDT",
+          token: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+          agg: AGGS["USDT-USD"],
+        },
+      ];
+
+      before("Run step 5", async () => {
+        await alphaDeployment.deploy_5_OracleAdapter();
+        oracleAdapterAddress = await alphaDeployment.oracleAdapter();
+        oracleAdapter = await ethers.getContractAt(
+          "OracleAdapter",
+          oracleAdapterAddress
+        );
+      });
+
+      it("should update step number", async () => {
+        expect(await alphaDeployment.step()).to.equal(6);
+      });
+
+      it("should register the OracleAdapter address", async () => {
+        expect(await addressRegistry.oracleAdapterAddress()).to.equal(
+          oracleAdapterAddress
+        );
+      });
+
+      it("should set the TVL aggregator", async () => {
+        expect(await oracleAdapter.tvlSource()).to.equal(AGGS["TVL"]);
+      });
+
+      priceAggs.forEach((priceAgg) => {
+        it(`should set the ${priceAgg.symbol} price aggregator`, async () => {
+          expect(await oracleAdapter.assetSources(priceAgg.token)).to.equal(
+            priceAgg.agg
+          );
+        });
       });
     });
   });

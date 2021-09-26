@@ -449,9 +449,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         (registeredIds[1], deployedAddresses[1]) = ("tvlManager", tvlManager);
         checkRegisteredDependencies(registeredIds, deployedAddresses);
 
-        address[] memory ownedContracts = new address[](1);
-        ownedContracts[0] = address(addressRegistry);
-        checkOwnerships(ownedContracts);
+        checkOwnerships(new address[](0));
 
         address[] memory assets = new address[](3);
         assets[0] = DAI_ADDRESS;
@@ -474,7 +472,20 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             aggStalePeriod,
             defaultLockPeriod
         );
-        addressRegistry.registerAddress("oracleAdapter", oracleAdapter);
+
+        bytes memory data =
+            abi.encodeWithSelector(
+                AddressRegistryV2.registerAddress.selector,
+                bytes32("oracleAdapter"),
+                address(oracleAdapter)
+            );
+
+        IGnosisModuleManager(adminSafe).execTransactionFromModule(
+            address(addressRegistry),
+            0,
+            data,
+            Enum.Operation.Call
+        );
     }
 
     /// @dev register mAPT for a contract role
