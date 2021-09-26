@@ -195,7 +195,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     {
         for (uint256 i = 0; i < ownedContracts.length; i++) {
             require(
-                Ownable(ownedContracts[i]).owner() == address(this),
+                Ownable(ownedContracts[i]).owner() == adminSafe,
                 "MISSING_OWNERSHIP"
             );
         }
@@ -206,6 +206,11 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         onlyOwner
         updateStep(0)
     {
+        address[] memory ownerships = new address[](2);
+        ownerships[0] = ADDRESS_REGISTRY_PROXY;
+        ownerships[1] = ADDRESS_REGISTRY_PROXY_ADMIN;
+        checkOwnerships(ownerships);
+
         addressRegistryV2 = AddressRegistryV2Factory(addressRegistryV2Factory)
             .create();
         bytes memory data =
@@ -238,13 +243,19 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     /// @dev Deploy the mAPT proxy and its proxy admin.
     ///      Does not register any roles for contracts.
     function deploy_1_MetaPoolToken() external onlyOwner updateStep(1) {
+        address[] memory ownerships = new address[](1);
+        ownerships[0] = ADDRESS_REGISTRY_PROXY;
+        checkOwnerships(ownerships);
+
         address proxyAdmin = ProxyAdminFactory(proxyAdminFactory).create();
+
         bytes memory initData =
             abi.encodeWithSelector(
                 MetaPoolToken.initialize.selector,
                 proxyAdmin,
                 addressRegistry
             );
+
         mApt = MetaPoolTokenFactory(mAptFactory).create(
             proxyFactory,
             proxyAdmin,
@@ -268,14 +279,10 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             "SAFE_TX_FAILED"
         );
 
-        // TODO: Shouldn't this already be owned by the Admin Safe?
         ProxyAdmin(proxyAdmin).transferOwnership(adminSafe);
     }
 
     function deploy_2_PoolTokenV2_logic() external onlyOwner updateStep(2) {
-        checkRegisteredDependencies(new bytes32[](0), new address[](0));
-        checkOwnerships(new address[](0));
-
         poolTokenV2 = PoolTokenV2Factory(poolTokenV2Factory).create();
 
         // Initialize logic storage to block possible attack vector:
@@ -296,7 +303,9 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
         checkRegisteredDependencies(registeredIds, deployedAddresses);
 
-        checkOwnerships(new address[](0));
+        address[] memory ownerships = new address[](1);
+        ownerships[0] = ADDRESS_REGISTRY_PROXY;
+        checkOwnerships(ownerships);
 
         address proxyAdmin = ProxyAdminFactory(proxyAdminFactory).create();
 
@@ -434,8 +443,9 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     /// @dev Deploy ERC20 allocation and TVL Manager.
     ///      Does not register any roles for contracts.
     function deploy_4_TvlManager() external onlyOwner updateStep(4) {
-        checkRegisteredDependencies(new bytes32[](0), new address[](0));
-        checkOwnerships(new address[](0));
+        address[] memory ownerships = new address[](1);
+        ownerships[0] = ADDRESS_REGISTRY_PROXY;
+        checkOwnerships(ownerships);
 
         tvlManager = TvlManagerFactory(tvlManagerFactory).create(
             address(addressRegistry)
@@ -467,7 +477,9 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         (registeredIds[1], deployedAddresses[1]) = ("tvlManager", tvlManager);
         checkRegisteredDependencies(registeredIds, deployedAddresses);
 
-        checkOwnerships(new address[](0));
+        address[] memory ownerships = new address[](1);
+        ownerships[0] = ADDRESS_REGISTRY_PROXY;
+        checkOwnerships(ownerships);
 
         address[] memory assets = new address[](3);
         assets[0] = DAI_ADDRESS;
@@ -516,7 +528,9 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
         checkRegisteredDependencies(registeredIds, deployedAddresses);
 
-        checkOwnerships(new address[](0));
+        address[] memory ownerships = new address[](1);
+        ownerships[0] = ADDRESS_REGISTRY_PROXY;
+        checkOwnerships(ownerships);
 
         address proxyAdmin = ProxyAdminFactory(proxyAdminFactory).create();
 
@@ -561,7 +575,9 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
         checkRegisteredDependencies(registeredIds, deployedAddresses);
 
-        checkOwnerships(new address[](0));
+        address[] memory ownerships = new address[](1);
+        ownerships[0] = POOL_PROXY_ADMIN;
+        checkOwnerships(ownerships);
 
         bytes memory initData =
             abi.encodeWithSelector(
