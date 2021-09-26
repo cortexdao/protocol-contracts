@@ -537,30 +537,57 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
         checkRegisteredDependencies(registeredIds, deployedAddresses);
 
-        address[] memory ownedContracts = new address[](2);
-        ownedContracts[0] = address(addressRegistry);
-        ownedContracts[1] = POOL_PROXY_ADMIN;
-        checkOwnerships(ownedContracts);
+        checkOwnerships(new address[](0));
 
         bytes memory initData =
-            abi.encodeWithSignature(
-                "initializeUpgrade(address)",
+            abi.encodeWithSelector(
+                PoolTokenV2.initializeUpgrade.selector,
                 addressRegistry
             );
-        ProxyAdmin(POOL_PROXY_ADMIN).upgradeAndCall(
-            TransparentUpgradeableProxy(payable(DAI_POOL_PROXY)),
-            poolTokenV2,
-            initData
+
+        bytes memory daiPoolData =
+            abi.encodeWithSelector(
+                ProxyAdmin.upgradeAndCall.selector,
+                TransparentUpgradeableProxy(payable(DAI_POOL_PROXY)),
+                poolTokenV2,
+                initData
+            );
+
+        IGnosisModuleManager(adminSafe).execTransactionFromModule(
+            POOL_PROXY_ADMIN,
+            0,
+            daiPoolData,
+            Enum.Operation.Call
         );
-        ProxyAdmin(POOL_PROXY_ADMIN).upgradeAndCall(
-            TransparentUpgradeableProxy(payable(USDC_POOL_PROXY)),
-            poolTokenV2,
-            initData
+
+        bytes memory usdcPoolData =
+            abi.encodeWithSelector(
+                ProxyAdmin.upgradeAndCall.selector,
+                TransparentUpgradeableProxy(payable(USDC_POOL_PROXY)),
+                poolTokenV2,
+                initData
+            );
+
+        IGnosisModuleManager(adminSafe).execTransactionFromModule(
+            POOL_PROXY_ADMIN,
+            0,
+            usdcPoolData,
+            Enum.Operation.Call
         );
-        ProxyAdmin(POOL_PROXY_ADMIN).upgradeAndCall(
-            TransparentUpgradeableProxy(payable(USDT_POOL_PROXY)),
-            poolTokenV2,
-            initData
+
+        bytes memory usdtPoolData =
+            abi.encodeWithSelector(
+                ProxyAdmin.upgradeAndCall.selector,
+                TransparentUpgradeableProxy(payable(USDT_POOL_PROXY)),
+                poolTokenV2,
+                initData
+            );
+
+        IGnosisModuleManager(adminSafe).execTransactionFromModule(
+            POOL_PROXY_ADMIN,
+            0,
+            usdtPoolData,
+            Enum.Operation.Call
         );
     }
 
