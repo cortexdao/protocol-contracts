@@ -207,6 +207,7 @@ describe.only("Contract: AlphaDeployment", () => {
     );
 
     await alphaDeployment.deploy_2_PoolTokenV2_logic();
+
     const poolTokenV2Logic = await ethers.getContractAt(
       "PoolTokenV2",
       await alphaDeployment.poolTokenV2()
@@ -214,9 +215,9 @@ describe.only("Contract: AlphaDeployment", () => {
     // check that the logic contract was initialized
     expect(await poolTokenV2Logic.proxyAdmin()).to.equal(poolProxyAdminAddress);
 
-    const tx = await alphaDeployment.deploy_3_DemoPools();
-    console.log(tx);
+    await alphaDeployment.deploy_3_DemoPools();
 
+    // check that the pool was registered
     const daiDemoPoolAddress = await addressRegistry.getAddress(
       bytes32("daiDemoPool")
     );
@@ -226,14 +227,59 @@ describe.only("Contract: AlphaDeployment", () => {
       "PoolTokenV2",
       daiDemoPoolAddress
     );
-    //await daiDemoPool.reservePercentage();
 
-    expect(await addressRegistry.getAddress(bytes32("usdcDemoPool"))).to.equal(
-      await alphaDeployment.usdcDemoPool()
+    // check that the proxy admin owner was transferred to the admin Safe
+    const daiProxyAdmin = await ethers.getContractAt(
+      "ProxyAdmin",
+      await daiDemoPool.proxyAdmin()
     );
-    expect(await addressRegistry.getAddress(bytes32("usdtDemoPool"))).to.equal(
-      await alphaDeployment.usdtDemoPool()
+    expect(await daiProxyAdmin.owner()).to.equal(adminSafe.address);
+
+    // check that v2 pool functions are available and variables are initialized
+    expect(await daiDemoPool.reservePercentage()).to.equal(5);
+
+    // check that the pool was registered
+    const usdcDemoPoolAddress = await addressRegistry.getAddress(
+      bytes32("usdcDemoPool")
     );
+    expect(usdcDemoPoolAddress).to.equal(await alphaDeployment.usdcDemoPool());
+
+    const usdcDemoPool = await ethers.getContractAt(
+      "PoolTokenV2",
+      usdcDemoPoolAddress
+    );
+
+    // check that the proxy admin owner was transferred to the admin Safe
+    const usdcProxyAdmin = await ethers.getContractAt(
+      "ProxyAdmin",
+      await usdcDemoPool.proxyAdmin()
+    );
+    expect(await usdcProxyAdmin.owner()).to.equal(adminSafe.address);
+
+    // check that v2 pool functions are available and variables are initialized
+    expect(await usdcDemoPool.reservePercentage()).to.equal(5);
+
+    // check that the pool was registered
+    const usdtDemoPoolAddress = await addressRegistry.getAddress(
+      bytes32("usdtDemoPool")
+    );
+    expect(usdtDemoPoolAddress).to.equal(await alphaDeployment.usdtDemoPool());
+
+    const usdtDemoPool = await ethers.getContractAt(
+      "PoolTokenV2",
+      usdtDemoPoolAddress
+    );
+
+    // check that the proxy admin owner was transferred to the admin Safe
+    const usdtProxyAdmin = await ethers.getContractAt(
+      "ProxyAdmin",
+      await usdtDemoPool.proxyAdmin()
+    );
+    expect(await usdtProxyAdmin.owner()).to.equal(adminSafe.address);
+
+    // check that v2 pool functions are available and variables are initialized
+    expect(await usdtDemoPool.reservePercentage()).to.equal(5);
+
     // await alphaDeployment.deploy_4_TvlManager();
     // await alphaDeployment.deploy_5_OracleAdapter();
     // await alphaDeployment.deploy_6_LpAccount();
