@@ -3,6 +3,7 @@ const hre = require("hardhat");
 const { ethers, waffle, artifacts } = hre;
 const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
+const { tokenAmountToBigNumber } = require("../utils/helpers");
 
 describe("Contract: TestCurveZap", () => {
   // signers
@@ -92,15 +93,18 @@ describe("Contract: TestCurveZap", () => {
     });
 
     it("Test calcMinAmount returns correct amount", async () => {
-      // uint256 v = totalAmount.mul(1e18).div(virtualPrice);
-      // return v.mul(10000.sub(100)).div(10000);
-      const totalAmount = 987654;
-      const virtualPrice = 1234;
+      const depositAmount = tokenAmountToBigNumber(87654);
+      const virtualPrice = tokenAmountToBigNumber("1.234");
       const minAmount = await curvePool.calcMinAmount(
-        totalAmount,
+        depositAmount,
         virtualPrice
       );
-      expect(minAmount.toString()).to.equals("792364230145867098864");
+
+      const shareValue = depositAmount
+        .mul(tokenAmountToBigNumber(1))
+        .div(virtualPrice);
+      const expectedMinAmount = shareValue.mul(99).div(100);
+      expect(minAmount).to.equal(expectedMinAmount);
     });
   });
 
@@ -136,39 +140,48 @@ describe("Contract: TestCurveZap", () => {
 
   describe("_calcMinAmountUnderlyer", () => {
     it("returns correct amount when virtual price is greater than 1", async () => {
-      // uint256 v = totalAmount.mul(virtualPrice).div(1e18);
-      // return v.mul(10000.sub(100)).div(10000);
-      const totalAmount = ethers.utils.parseEther("987654");
-      const virtualPrice = ethers.utils.parseEther("1.05");
+      const lpTokenAmount = tokenAmountToBigNumber(87654);
+      const virtualPrice = tokenAmountToBigNumber("1.05");
       const minAmount = await curvePool.calcMinAmountUnderlyer(
-        totalAmount,
+        lpTokenAmount,
         virtualPrice
       );
-      expect(minAmount.toString()).to.equals("1026666333000000000000000");
+
+      const shareValue = lpTokenAmount
+        .mul(virtualPrice)
+        .div(tokenAmountToBigNumber(1));
+      const expectedMinAmount = shareValue.mul(99).div(100);
+      expect(minAmount).to.equal(expectedMinAmount);
     });
 
     it("returns correct amount when virtual price is less than 1", async () => {
-      // uint256 v = totalAmount.mul(virtualPrice).div(1e18);
-      // return v.mul(10000.sub(100)).div(10000);
-      const totalAmount = ethers.utils.parseEther("987654");
-      const virtualPrice = ethers.utils.parseEther("0.95");
+      const lpTokenAmount = tokenAmountToBigNumber(87654);
+      const virtualPrice = tokenAmountToBigNumber("0.95");
       const minAmount = await curvePool.calcMinAmountUnderlyer(
-        totalAmount,
+        lpTokenAmount,
         virtualPrice
       );
-      expect(minAmount.toString()).to.equals("928888587000000000000000");
+
+      const shareValue = lpTokenAmount
+        .mul(virtualPrice)
+        .div(tokenAmountToBigNumber(1));
+      const expectedMinAmount = shareValue.mul(99).div(100);
+      expect(minAmount).to.equal(expectedMinAmount);
     });
 
     it("returns correct amount when values are small", async () => {
-      // uint256 v = totalAmount.mul(virtualPrice).div(1e18);
-      // return v.mul(10000.sub(100)).div(10000);
-      const totalAmount = ethers.utils.parseEther("0.0000000987654");
-      const virtualPrice = ethers.utils.parseEther("0.0000000095");
+      const lpTokenAmount = tokenAmountToBigNumber("0.0000000987654");
+      const virtualPrice = tokenAmountToBigNumber("0.0000000095");
       const minAmount = await curvePool.calcMinAmountUnderlyer(
-        totalAmount,
+        lpTokenAmount,
         virtualPrice
       );
-      expect(minAmount.toString()).to.equals("928");
+
+      const shareValue = lpTokenAmount
+        .mul(virtualPrice)
+        .div(tokenAmountToBigNumber(1));
+      const expectedMinAmount = shareValue.mul(99).div(100);
+      expect(minAmount).to.equal(expectedMinAmount);
     });
   });
 });
