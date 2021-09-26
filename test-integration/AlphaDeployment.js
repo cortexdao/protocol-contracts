@@ -14,12 +14,10 @@ const {
 
 const MAINNET_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
 
-describe.only("Contract: AlphaDeployment", () => {
+describe("Contract: AlphaDeployment", () => {
   // signers
   let deployer;
-  let emergencySafe;
   let adminSafe;
-  let lpSafe;
 
   // contract factories
   let AlphaDeployment;
