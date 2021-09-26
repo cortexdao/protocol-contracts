@@ -291,7 +291,19 @@ describe.only("Contract: AlphaDeployment", () => {
     });
 
     describe("Step 4: Deploy TvlManager", () => {
-      // await alphaDeployment.deploy_4_TvlManager();
+      before("Run step 4", async () => {
+        await alphaDeployment.deploy_4_TvlManager();
+      });
+
+      it("should update step number", async () => {
+        expect(await alphaDeployment.step()).to.equal(5);
+      });
+
+      it("should register the TvlManager address", async () => {
+        expect(await addressRegistry.tvlManagerAddress()).to.equal(
+          await alphaDeployment.tvlManager()
+        );
+      });
     });
   });
 });

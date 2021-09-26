@@ -420,16 +420,25 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     ///      Does not register any roles for contracts.
     function deploy_4_TvlManager() external onlyOwner updateStep(4) {
         checkRegisteredDependencies(new bytes32[](0), new address[](0));
-
-        address[] memory ownedContracts = new address[](1);
-        ownedContracts[0] = address(addressRegistry);
-        checkOwnerships(ownedContracts);
+        checkOwnerships(new address[](0));
 
         tvlManager = TvlManagerFactory(tvlManagerFactory).create(
             address(addressRegistry)
         );
 
-        addressRegistry.registerAddress("tvlManager", address(tvlManager));
+        bytes memory data =
+            abi.encodeWithSelector(
+                AddressRegistryV2.registerAddress.selector,
+                bytes32("tvlManager"),
+                address(tvlManager)
+            );
+
+        IGnosisModuleManager(adminSafe).execTransactionFromModule(
+            address(addressRegistry),
+            0,
+            data,
+            Enum.Operation.Call
+        );
     }
 
     /// @dev registers mAPT and TvlManager for contract roles
