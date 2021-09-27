@@ -6,6 +6,7 @@ import {IDetailedERC20, Ownable} from "contracts/common/Imports.sol";
 import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
 import {AggregatorV3Interface} from "contracts/oracle/Imports.sol";
 import {PoolTokenV2} from "contracts/pool/PoolTokenV2.sol";
+import {LpAccount} from "contracts/lpaccount/LpAccount.sol";
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
 import {AddressRegistryV2} from "contracts/registry/AddressRegistryV2.sol";
 import {
@@ -432,8 +433,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         address proxyAdmin = ProxyAdminFactory(proxyAdminFactory).create();
 
         bytes memory initData =
-            abi.encodeWithSignature(
-                "initialize(address,address)",
+            abi.encodeWithSelector(
+                LpAccount.initialize.selector,
                 proxyAdmin,
                 address(addressRegistry)
             );
