@@ -114,6 +114,7 @@ describe("Contract: AlphaDeployment", () => {
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("emergencySafe"))
       .returns(emergencySafe.address);
+
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("lpSafe"))
@@ -359,7 +360,7 @@ describe("Contract: AlphaDeployment", () => {
     );
     await adminSafe.mock.execTransactionFromModule
       .withArgs(addressRegistry.address, 0, data, CALL)
-      .returns();
+      .returns(true);
     // USDC
     data = await encodeRegisterAddress("usdcDemoPool", demoPoolAddress);
     await adminSafe.mock.execTransactionFromModule
@@ -370,7 +371,7 @@ describe("Contract: AlphaDeployment", () => {
     );
     await adminSafe.mock.execTransactionFromModule
       .withArgs(addressRegistry.address, 0, data, CALL)
-      .returns();
+      .returns(true);
     // USDT
     data = await encodeRegisterAddress("usdtDemoPool", demoPoolAddress);
     await adminSafe.mock.execTransactionFromModule
@@ -381,7 +382,7 @@ describe("Contract: AlphaDeployment", () => {
     );
     await adminSafe.mock.execTransactionFromModule
       .withArgs(addressRegistry.address, 0, data, CALL)
-      .returns();
+      .returns(true);
 
     // check address set properly
     expect(await alphaDeployment.daiDemoPool()).to.equal(ZERO_ADDRESS);
@@ -435,7 +436,7 @@ describe("Contract: AlphaDeployment", () => {
     );
     await adminSafe.mock.execTransactionFromModule
       .withArgs(addressRegistry.address, 0, data, CALL)
-      .returns();
+      .returns(true);
 
     // check TVL Manager address set properly
     expect(await alphaDeployment.tvlManager()).to.equal(ZERO_ADDRESS);
@@ -501,7 +502,7 @@ describe("Contract: AlphaDeployment", () => {
     );
     await adminSafe.mock.execTransactionFromModule
       .withArgs(addressRegistry.address, 0, data, CALL)
-      .returns();
+      .returns(true);
 
     // check Oracle Adapter address set properly
     expect(await alphaDeployment.oracleAdapter()).to.equal(ZERO_ADDRESS);
@@ -567,7 +568,7 @@ describe("Contract: AlphaDeployment", () => {
     );
     await adminSafe.mock.execTransactionFromModule
       .withArgs(addressRegistry.address, 0, data, CALL)
-      .returns();
+      .returns(true);
 
     // check address set properly
     expect(await alphaDeployment.lpAccount()).to.equal(ZERO_ADDRESS);
@@ -618,14 +619,13 @@ describe("Contract: AlphaDeployment", () => {
       poolDeployer,
       artifacts.readArtifactSync("ProxyAdmin").abi
     );
+    proxyAdmin.mock.owner.returns(adminSafe.address);
     // proxy admin was created via the first transaction on Mainnet
     // of the pool deployer, so this mock contract should have the
     // same address
     expect(await alphaDeployment.POOL_PROXY_ADMIN()).to.equal(
       proxyAdmin.address
     );
-    // 2. Make deployment contract the owner of the pool proxy admin
-    await proxyAdmin.mock.owner.returns(alphaDeployment.address);
 
     // mock the upgrade calls
     await proxyAdmin.mock.upgradeAndCall.revertsWithReason("WRONG_ARGS");
@@ -647,7 +647,7 @@ describe("Contract: AlphaDeployment", () => {
       .withArgs(USDT_POOL_PROXY, logicV2.address, initData)
       .returns();
 
-    await expect(alphaDeployment.deploy_7_PoolTokenV2_upgrade()).to.not.be
-      .reverted;
+    await alphaDeployment.deploy_7_PoolTokenV2_upgrade();
+    //await expect(alphaDeployment.deploy_7_PoolTokenV2_upgrade()).to.not.be .reverted;
   });
 });

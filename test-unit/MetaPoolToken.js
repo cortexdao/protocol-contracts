@@ -36,6 +36,7 @@ describe("Contract: MetaPoolToken", () => {
   let mApt;
 
   // mocks
+  let adminSafe;
   let oracleAdapter;
   let addressRegistry;
   let erc20Allocation;
@@ -99,17 +100,22 @@ describe("Contract: MetaPoolToken", () => {
       .withArgs(bytes32("emergencySafe"))
       .returns(emergencySafe.address);
 
-    // Admin Safe is not used by mAPT;
-    // must still register for AlphaDeployment.
-    await addressRegistry.mock.adminSafeAddress.returns(FAKE_ADDRESS);
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("adminSafe"))
-      .returns(FAKE_ADDRESS);
-
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("lpSafe"))
       .returns(lpSafe.address);
+
+    // mock the Admin Safe to allow module function calls
+    adminSafe = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("IGnosisModuleManager").abi
+    );
+    await adminSafe.mock.execTransactionFromModule.returns(true);
+    // register the address
+    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("adminSafe"))
+      .returns(adminSafe.address);
   });
 
   before("Deploy mAPT", async () => {
@@ -180,8 +186,7 @@ describe("Contract: MetaPoolToken", () => {
       FAKE_ADDRESS // lp account factory
     );
 
-    // need some test setup to pass the pre-step checks
-    await addressRegistry.mock.owner.returns(alphaDeployment.address);
+    await addressRegistry.mock.owner.returns(adminSafe.address);
     await alphaDeployment.testSetStep(1);
 
     await addressRegistry.mock.registerAddress.returns();
