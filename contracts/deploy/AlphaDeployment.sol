@@ -4,16 +4,10 @@ pragma experimental ABIEncoderV2;
 
 import {IDetailedERC20, Ownable} from "contracts/common/Imports.sol";
 import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
-import {MetaPoolTokenProxy} from "contracts/mapt/MetaPoolTokenProxy.sol";
 import {AggregatorV3Interface} from "contracts/oracle/Imports.sol";
-import {PoolToken} from "contracts/pool/PoolToken.sol";
-import {PoolTokenProxy} from "contracts/pool/PoolTokenProxy.sol";
 import {PoolTokenV2} from "contracts/pool/PoolTokenV2.sol";
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
 import {AddressRegistryV2} from "contracts/registry/AddressRegistryV2.sol";
-import {Erc20Allocation} from "contracts/tvl/Erc20Allocation.sol";
-import {TvlManager} from "contracts/tvl/TvlManager.sol";
-import {OracleAdapter} from "contracts/oracle/OracleAdapter.sol";
 import {
     ProxyAdmin,
     TransparentUpgradeableProxy
@@ -28,7 +22,6 @@ import {
     ProxyAdminFactory,
     PoolTokenV1Factory,
     PoolTokenV2Factory,
-    ProxyFactory,
     TvlManagerFactory
 } from "./factories.sol";
 import {IGnosisModuleManager, Enum} from "./IGnosisModuleManager.sol";
@@ -346,7 +339,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
         bytes memory daiInitData =
             abi.encodeWithSelector(
-                PoolToken.initialize.selector,
+                PoolTokenV2.initialize.selector,
                 proxyAdmin,
                 DAI_ADDRESS,
                 fakeAggAddress
@@ -360,7 +353,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             );
 
         ProxyAdmin(proxyAdmin).upgradeAndCall(
-            PoolTokenProxy(payable(daiProxy)),
+            TransparentUpgradeableProxy(payable(daiProxy)),
             poolTokenV2,
             initDataV2
         );
@@ -386,7 +379,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
         bytes memory usdcInitData =
             abi.encodeWithSelector(
-                PoolToken.initialize.selector,
+                PoolTokenV2.initialize.selector,
                 proxyAdmin,
                 USDC_ADDRESS,
                 fakeAggAddress
@@ -400,7 +393,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             );
 
         ProxyAdmin(proxyAdmin).upgradeAndCall(
-            PoolTokenProxy(payable(usdcProxy)),
+            TransparentUpgradeableProxy(payable(usdcProxy)),
             poolTokenV2,
             initDataV2
         );
@@ -426,7 +419,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
         bytes memory usdtInitData =
             abi.encodeWithSelector(
-                PoolToken.initialize.selector,
+                PoolTokenV2.initialize.selector,
                 proxyAdmin,
                 USDT_ADDRESS,
                 fakeAggAddress
@@ -440,7 +433,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             );
 
         ProxyAdmin(proxyAdmin).upgradeAndCall(
-            PoolTokenProxy(payable(usdtProxy)),
+            TransparentUpgradeableProxy(payable(usdtProxy)),
             poolTokenV2,
             initDataV2
         );
