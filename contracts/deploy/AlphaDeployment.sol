@@ -525,6 +525,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         );
 
         _registerAddress(id, proxy);
+
+        return proxy;
     }
 
     function _upgradePool(
