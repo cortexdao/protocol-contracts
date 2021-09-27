@@ -271,28 +271,13 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 addressRegistry
             );
 
-        mApt = MetaPoolTokenFactory(mAptFactory).create(
+        mApt = IUpgradeableContractFactory(mAptFactory).create(
             proxyFactory,
             proxyAdmin,
             initData
         );
 
-        bytes memory data =
-            abi.encodeWithSelector(
-                AddressRegistryV2.registerAddress.selector,
-                bytes32("mApt"),
-                mApt
-            );
-
-        require(
-            IGnosisModuleManager(adminSafe).execTransactionFromModule(
-                address(addressRegistry),
-                0, // value
-                data,
-                Enum.Operation.Call
-            ),
-            "SAFE_TX_FAILED"
-        );
+        _registerAddress("mApt", mApt);
 
         ProxyAdmin(proxyAdmin).transferOwnership(adminSafe);
     }
@@ -358,22 +343,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             initDataV2
         );
 
-        bytes memory daiRegisterInitData =
-            abi.encodeWithSelector(
-                AddressRegistryV2.registerAddress.selector,
-                bytes32("daiDemoPool"),
-                daiProxy
-            );
-
-        require(
-            IGnosisModuleManager(adminSafe).execTransactionFromModule(
-                address(addressRegistry),
-                0, // value
-                daiRegisterInitData,
-                Enum.Operation.Call
-            ),
-            "SAFE_TX_FAILED"
-        );
+        _registerAddress("daiDemoPool", daiProxy);
 
         daiDemoPool = daiProxy;
 
@@ -398,22 +368,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             initDataV2
         );
 
-        bytes memory usdcRegisterInitData =
-            abi.encodeWithSelector(
-                AddressRegistryV2.registerAddress.selector,
-                bytes32("usdcDemoPool"),
-                usdcProxy
-            );
-
-        require(
-            IGnosisModuleManager(adminSafe).execTransactionFromModule(
-                address(addressRegistry),
-                0,
-                usdcRegisterInitData,
-                Enum.Operation.Call
-            ),
-            "SAFE_TX_FAILED"
-        );
+        _registerAddress("usdcDemoPool", usdcProxy);
 
         usdcDemoPool = usdcProxy;
 
@@ -438,22 +393,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             initDataV2
         );
 
-        bytes memory usdtRegisterInitData =
-            abi.encodeWithSelector(
-                AddressRegistryV2.registerAddress.selector,
-                bytes32("usdtDemoPool"),
-                usdtProxy
-            );
-
-        require(
-            IGnosisModuleManager(adminSafe).execTransactionFromModule(
-                address(addressRegistry),
-                0,
-                usdtRegisterInitData,
-                Enum.Operation.Call
-            ),
-            "SAFE_TX_FAILED"
-        );
+        _registerAddress("usdtDemoPool", usdtProxy);
 
         usdtDemoPool = usdtProxy;
 
@@ -476,22 +416,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             address(addressRegistry)
         );
 
-        bytes memory data =
-            abi.encodeWithSelector(
-                AddressRegistryV2.registerAddress.selector,
-                bytes32("tvlManager"),
-                address(tvlManager)
-            );
-
-        require(
-            IGnosisModuleManager(adminSafe).execTransactionFromModule(
-                address(addressRegistry),
-                0,
-                data,
-                Enum.Operation.Call
-            ),
-            "SAFE_TX_FAILED"
-        );
+        _registerAddress("tvlManager", tvlManager);
     }
 
     /// @dev registers mAPT and TvlManager for contract roles
@@ -533,22 +458,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             defaultLockPeriod
         );
 
-        bytes memory data =
-            abi.encodeWithSelector(
-                AddressRegistryV2.registerAddress.selector,
-                bytes32("oracleAdapter"),
-                address(oracleAdapter)
-            );
-
-        require(
-            IGnosisModuleManager(adminSafe).execTransactionFromModule(
-                address(addressRegistry),
-                0,
-                data,
-                Enum.Operation.Call
-            ),
-            "SAFE_TX_FAILED"
-        );
+        _registerAddress("oracleAdapter", oracleAdapter);
     }
 
     /// @dev register mAPT for a contract role
@@ -576,28 +486,13 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 address(addressRegistry)
             );
 
-        lpAccount = LpAccountFactory(lpAccountFactory).create(
+        lpAccount = IUpgradeableContractFactory(lpAccountFactory).create(
             proxyFactory,
             proxyAdmin,
             initData
         );
 
-        bytes memory data =
-            abi.encodeWithSelector(
-                AddressRegistryV2.registerAddress.selector,
-                bytes32("lpAccount"),
-                address(lpAccount)
-            );
-
-        require(
-            IGnosisModuleManager(adminSafe).execTransactionFromModule(
-                address(addressRegistry),
-                0,
-                data,
-                Enum.Operation.Call
-            ),
-            "SAFE_TX_FAILED"
-        );
+        _registerAddress("lpAccount", lpAccount);
 
         ProxyAdmin(proxyAdmin).transferOwnership(adminSafe);
     }
@@ -674,6 +569,25 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 POOL_PROXY_ADMIN,
                 0,
                 usdtPoolData,
+                Enum.Operation.Call
+            ),
+            "SAFE_TX_FAILED"
+        );
+    }
+
+    function _registerAddress(bytes32 id, address address_) internal {
+        bytes memory data =
+            abi.encodeWithSelector(
+                AddressRegistryV2.registerAddress.selector,
+                id,
+                address_
+            );
+
+        require(
+            IGnosisModuleManager(adminSafe).execTransactionFromModule(
+                address(addressRegistry),
+                0,
+                data,
                 Enum.Operation.Call
             ),
             "SAFE_TX_FAILED"
