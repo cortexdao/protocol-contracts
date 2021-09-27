@@ -276,7 +276,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 addressRegistry
             );
 
-        mApt = IUpgradeableContractFactory(mAptFactory).create(
+        mApt = MetaPoolTokenFactory(mAptFactory).create(
             proxyFactory,
             proxyAdmin,
             initData
@@ -491,7 +491,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 address(addressRegistry)
             );
 
-        lpAccount = IUpgradeableContractFactory(lpAccountFactory).create(
+        lpAccount = LpAccountFactory(lpAccountFactory).create(
             proxyFactory,
             proxyAdmin,
             initData
