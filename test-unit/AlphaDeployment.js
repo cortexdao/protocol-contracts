@@ -607,8 +607,6 @@ describe("Contract: AlphaDeployment", () => {
     await alphaDeployment.testSetPoolTokenV2(logicV2.address);
 
     // for ownership checks:
-    // 1. Make deployment contract the owner of the Address Registry
-    await addressRegistry.mock.owner.returns(alphaDeployment.address);
     const poolDeployer = await impersonateAccount(MAINNET_POOL_DEPLOYER);
     await forciblySendEth(
       poolDeployer.address,
@@ -619,13 +617,13 @@ describe("Contract: AlphaDeployment", () => {
       poolDeployer,
       artifacts.readArtifactSync("ProxyAdmin").abi
     );
-    proxyAdmin.mock.owner.returns(adminSafe.address);
     // proxy admin was created via the first transaction on Mainnet
     // of the pool deployer, so this mock contract should have the
     // same address
     expect(await alphaDeployment.POOL_PROXY_ADMIN()).to.equal(
       proxyAdmin.address
     );
+    await proxyAdmin.mock.owner.returns(adminSafe.address);
 
     // mock the upgrade calls
     await proxyAdmin.mock.upgradeAndCall.revertsWithReason("WRONG_ARGS");
@@ -647,7 +645,7 @@ describe("Contract: AlphaDeployment", () => {
       .withArgs(USDT_POOL_PROXY, logicV2.address, initData)
       .returns();
 
-    await alphaDeployment.deploy_7_PoolTokenV2_upgrade();
-    //await expect(alphaDeployment.deploy_7_PoolTokenV2_upgrade()).to.not.be .reverted;
+    await expect(alphaDeployment.deploy_7_PoolTokenV2_upgrade()).to.not.be
+      .reverted;
   });
 });
