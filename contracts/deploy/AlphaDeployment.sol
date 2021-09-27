@@ -75,6 +75,9 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     // TODO: figure out a versioning scheme
     uint256 public constant VERSION = 1;
 
+    address private FAKE_AGG_ADDRESS =
+        0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe;
+
     IAddressRegistryV2 public addressRegistry;
 
     address public immutable proxyAdminFactory;
@@ -325,82 +328,26 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 address(addressRegistry)
             );
 
-        address fakeAggAddress = 0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe;
-
-        bytes memory daiInitData =
-            abi.encodeWithSelector(
-                PoolTokenV2.initialize.selector,
-                proxyAdmin,
-                DAI_ADDRESS,
-                fakeAggAddress
-            );
-
-        address daiProxy =
-            PoolTokenV1Factory(poolTokenV1Factory).create(
-                proxyFactory,
-                proxyAdmin,
-                daiInitData
-            );
-
-        ProxyAdmin(proxyAdmin).upgradeAndCall(
-            TransparentUpgradeableProxy(payable(daiProxy)),
-            poolTokenV2,
+        daiDemoPool = _deployDemoPool(
+            DAI_ADDRESS,
+            "daiDemoPool",
+            proxyAdmin,
             initDataV2
         );
 
-        _registerAddress("daiDemoPool", daiProxy);
-
-        daiDemoPool = daiProxy;
-
-        bytes memory usdcInitData =
-            abi.encodeWithSelector(
-                PoolTokenV2.initialize.selector,
-                proxyAdmin,
-                USDC_ADDRESS,
-                fakeAggAddress
-            );
-
-        address usdcProxy =
-            PoolTokenV1Factory(poolTokenV1Factory).create(
-                proxyFactory,
-                proxyAdmin,
-                usdcInitData
-            );
-
-        ProxyAdmin(proxyAdmin).upgradeAndCall(
-            TransparentUpgradeableProxy(payable(usdcProxy)),
-            poolTokenV2,
+        usdcDemoPool = _deployDemoPool(
+            USDC_ADDRESS,
+            "usdcDemoPool",
+            proxyAdmin,
             initDataV2
         );
 
-        _registerAddress("usdcDemoPool", usdcProxy);
-
-        usdcDemoPool = usdcProxy;
-
-        bytes memory usdtInitData =
-            abi.encodeWithSelector(
-                PoolTokenV2.initialize.selector,
-                proxyAdmin,
-                USDT_ADDRESS,
-                fakeAggAddress
-            );
-
-        address usdtProxy =
-            PoolTokenV1Factory(poolTokenV1Factory).create(
-                proxyFactory,
-                proxyAdmin,
-                usdtInitData
-            );
-
-        ProxyAdmin(proxyAdmin).upgradeAndCall(
-            TransparentUpgradeableProxy(payable(usdtProxy)),
-            poolTokenV2,
+        usdtDemoPool = _deployDemoPool(
+            USDT_ADDRESS,
+            "usdtDemoPool",
+            proxyAdmin,
             initDataV2
         );
-
-        _registerAddress("usdtDemoPool", usdtProxy);
-
-        usdtDemoPool = usdtProxy;
 
         ProxyAdmin(proxyAdmin).transferOwnership(adminSafe);
     }
@@ -597,6 +544,36 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             ),
             "SAFE_TX_FAILED"
         );
+    }
+
+    function _deployDemoPool(
+        address token,
+        bytes32 id,
+        address proxyAdmin,
+        bytes memory initDataV2
+    ) internal returns (address) {
+        bytes memory data =
+            abi.encodeWithSelector(
+                PoolTokenV2.initialize.selector,
+                proxyAdmin,
+                token,
+                FAKE_AGG_ADDRESS
+            );
+
+        address proxy =
+            PoolTokenV1Factory(poolTokenV1Factory).create(
+                proxyFactory,
+                proxyAdmin,
+                data
+            );
+
+        ProxyAdmin(proxyAdmin).upgradeAndCall(
+            TransparentUpgradeableProxy(payable(proxy)),
+            poolTokenV2,
+            initDataV2
+        );
+
+        _registerAddress(id, proxy);
     }
 }
 /* solhint-enable func-name-mixedcase */
