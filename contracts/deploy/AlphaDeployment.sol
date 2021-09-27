@@ -74,9 +74,9 @@ to deploy in the order given, starting with the Safes.
 /* solhint-disable max-states-count, func-name-mixedcase */
 contract AlphaDeployment is Ownable, DeploymentConstants {
     // TODO: figure out a versioning scheme
-    uint256 public constant VERSION = 1;
+    string public constant VERSION = "1.0.0";
 
-    address private FAKE_AGG_ADDRESS =
+    address private constant FAKE_AGG_ADDRESS =
         0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe;
 
     IAddressRegistryV2 public addressRegistry;
