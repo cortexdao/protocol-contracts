@@ -473,59 +473,9 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 addressRegistry
             );
 
-        bytes memory daiPoolData =
-            abi.encodeWithSelector(
-                ProxyAdmin.upgradeAndCall.selector,
-                TransparentUpgradeableProxy(payable(DAI_POOL_PROXY)),
-                poolTokenV2,
-                initData
-            );
-
-        require(
-            IGnosisModuleManager(adminSafe).execTransactionFromModule(
-                POOL_PROXY_ADMIN,
-                0,
-                daiPoolData,
-                Enum.Operation.Call
-            ),
-            "SAFE_TX_FAILED"
-        );
-
-        bytes memory usdcPoolData =
-            abi.encodeWithSelector(
-                ProxyAdmin.upgradeAndCall.selector,
-                TransparentUpgradeableProxy(payable(USDC_POOL_PROXY)),
-                poolTokenV2,
-                initData
-            );
-
-        require(
-            IGnosisModuleManager(adminSafe).execTransactionFromModule(
-                POOL_PROXY_ADMIN,
-                0,
-                usdcPoolData,
-                Enum.Operation.Call
-            ),
-            "SAFE_TX_FAILED"
-        );
-
-        bytes memory usdtPoolData =
-            abi.encodeWithSelector(
-                ProxyAdmin.upgradeAndCall.selector,
-                TransparentUpgradeableProxy(payable(USDT_POOL_PROXY)),
-                poolTokenV2,
-                initData
-            );
-
-        require(
-            IGnosisModuleManager(adminSafe).execTransactionFromModule(
-                POOL_PROXY_ADMIN,
-                0,
-                usdtPoolData,
-                Enum.Operation.Call
-            ),
-            "SAFE_TX_FAILED"
-        );
+        _upgradePool(DAI_POOL_PROXY, POOL_PROXY_ADMIN, initData);
+        _upgradePool(USDC_POOL_PROXY, POOL_PROXY_ADMIN, initData);
+        _upgradePool(USDT_POOL_PROXY, POOL_PROXY_ADMIN, initData);
     }
 
     function _registerAddress(bytes32 id, address address_) internal {
@@ -551,7 +501,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         address token,
         bytes32 id,
         address proxyAdmin,
-        bytes memory initDataV2
+        bytes memory initData
     ) internal returns (address) {
         bytes memory data =
             abi.encodeWithSelector(
@@ -571,10 +521,34 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         ProxyAdmin(proxyAdmin).upgradeAndCall(
             TransparentUpgradeableProxy(payable(proxy)),
             poolTokenV2,
-            initDataV2
+            initData
         );
 
         _registerAddress(id, proxy);
+    }
+
+    function _upgradePool(
+        address proxy,
+        address proxyAdmin,
+        bytes memory initData
+    ) internal {
+        bytes memory data =
+            abi.encodeWithSelector(
+                ProxyAdmin.upgradeAndCall.selector,
+                TransparentUpgradeableProxy(payable(proxy)),
+                poolTokenV2,
+                initData
+            );
+
+        require(
+            IGnosisModuleManager(adminSafe).execTransactionFromModule(
+                proxyAdmin,
+                0,
+                data,
+                Enum.Operation.Call
+            ),
+            "SAFE_TX_FAILED"
+        );
     }
 }
 /* solhint-enable func-name-mixedcase */
