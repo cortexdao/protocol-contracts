@@ -99,7 +99,7 @@ if (!module.parent) {
   main(argv)
     .then(() => {
       console.log("");
-      console.log("Allocation registered.");
+      console.log("Zap registered.");
       console.log("");
       process.exit(0);
     })
