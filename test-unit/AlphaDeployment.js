@@ -23,13 +23,14 @@ describe("Contract: AlphaDeployment", () => {
   // signers
   let deployer;
   let emergencySafe;
-  let adminSafe;
   let lpSafe;
+  let adminSafeSigner; // adminSafe itself has to be mocked
 
   // contract factories
   let AlphaDeployment;
 
   // mocked contracts
+  let adminSafe;
   let addressRegistry;
   let addressRegistryProxyAdmin;
 
@@ -93,7 +94,7 @@ describe("Contract: AlphaDeployment", () => {
   });
 
   before("Register Safes", async () => {
-    [, emergencySafe, adminSafe, lpSafe] = await ethers.getSigners();
+    [, emergencySafe, lpSafe] = await ethers.getSigners();
 
     await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
@@ -101,14 +102,24 @@ describe("Contract: AlphaDeployment", () => {
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("emergencySafe"))
       .returns(emergencySafe.address);
-    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("adminSafe"))
-      .returns(FAKE_ADDRESS);
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("lpSafe"))
       .returns(lpSafe.address);
+
+    // mock the Admin Safe to allow module function calls
+    adminSafe = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("IGnosisModuleManager").abi
+    );
+    await adminSafe.mock.execTransactionFromModule.returns(true);
+    // create a signer for the same address
+    adminSafeSigner = await impersonateAccount(adminSafe.address);
+    // register the address
+    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("adminSafe"))
+      .returns(adminSafe.address);
 
     AlphaDeployment = await ethers.getContractFactory("TestAlphaDeployment");
   });
@@ -132,17 +143,17 @@ describe("Contract: AlphaDeployment", () => {
 
   it("deploy_0_AddressRegistryV2_upgrade", async () => {
     // mock logic storage initialize
-    const addressRegistry = await deployMockContract(
+    const logicV2 = await deployMockContract(
       deployer,
       artifacts.readArtifactSync("AddressRegistryV2").abi
     );
-    await addressRegistry.mock.initialize.returns();
+    await logicV2.mock.initialize.returns();
     // mock the factory create
     const addressRegistryV2Factory = await deployMockContract(
       deployer,
       artifacts.readArtifactSync("AddressRegistryV2Factory").abi
     );
-    await addressRegistryV2Factory.mock.create.returns(addressRegistry.address);
+    await addressRegistryV2Factory.mock.create.returns(logicV2.address);
     // mock the upgrade call
     await addressRegistryProxyAdmin.mock.upgrade.returns();
 
@@ -161,8 +172,8 @@ describe("Contract: AlphaDeployment", () => {
     ).to.not.be.reverted;
 
     // for ownership check:
-    // Proxy admin was mocked at the Mainnet address in earlier setup.
-    await addressRegistryProxyAdmin.mock.owner.returns(alphaDeployment.address);
+    await addressRegistry.mock.owner.returns(adminSafe.address);
+    await addressRegistryProxyAdmin.mock.owner.returns(adminSafe.address);
 
     await alphaDeployment.deploy_0_AddressRegistryV2_upgrade();
   });
@@ -204,7 +215,7 @@ describe("Contract: AlphaDeployment", () => {
     await alphaDeployment.testSetStep(1);
 
     // for ownership check
-    await addressRegistry.mock.owner.returns(alphaDeployment.address);
+    await addressRegistry.mock.owner.returns(adminSafe.address);
 
     // check for address registration
     await addressRegistry.mock.registerAddress
@@ -321,7 +332,7 @@ describe("Contract: AlphaDeployment", () => {
     await alphaDeployment.testSetMapt(mAptAddress);
 
     // for ownership check
-    await addressRegistry.mock.owner.returns(alphaDeployment.address);
+    await addressRegistry.mock.owner.returns(adminSafe.address);
 
     // need to mock the upgrade
     await proxyAdmin.mock.upgradeAndCall.returns();
@@ -398,7 +409,7 @@ describe("Contract: AlphaDeployment", () => {
     await alphaDeployment.testSetStep(4);
 
     // for ownership check
-    await addressRegistry.mock.owner.returns(alphaDeployment.address);
+    await addressRegistry.mock.owner.returns(adminSafe.address);
 
     // check for address registrations
     await addressRegistry.mock.registerAddress
@@ -460,7 +471,7 @@ describe("Contract: AlphaDeployment", () => {
     await alphaDeployment.testSetTvlManager(tvlManagerAddress);
 
     // for ownership check
-    await addressRegistry.mock.owner.returns(alphaDeployment.address);
+    await addressRegistry.mock.owner.returns(adminSafe.address);
 
     // check for address registrations
     await addressRegistry.mock.registerAddress
@@ -525,7 +536,7 @@ describe("Contract: AlphaDeployment", () => {
     await alphaDeployment.testSetMapt(mAptAddress);
 
     // for ownership check
-    await addressRegistry.mock.owner.returns(alphaDeployment.address);
+    await addressRegistry.mock.owner.returns(adminSafe.address);
 
     // check for address registration
     await addressRegistry.mock.registerAddress
