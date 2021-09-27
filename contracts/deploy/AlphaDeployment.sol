@@ -126,18 +126,24 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         step += 1;
     }
 
+    /**
+     * @dev Uses `getAddress` in case `AddressRegistry` has not been upgraded
+     */
     modifier checkSafeRegistrations() {
         require(
-            addressRegistry.emergencySafeAddress() == emergencySafe,
+            addressRegistry.getAddress("emergencySafe") == emergencySafe,
             "INVALID_EMERGENCY_SAFE"
         );
 
         require(
-            addressRegistry.adminSafeAddress() == adminSafe,
+            addressRegistry.getAddress("adminSafe") == adminSafe,
             "INVALID_ADMIN_SAFE"
         );
 
-        require(addressRegistry.lpSafeAddress() == lpSafe, "INVALID_LP_SAFE");
+        require(
+            addressRegistry.getAddress("lpSafe") == lpSafe,
+            "INVALID_LP_SAFE"
+        );
 
         _;
     }
