@@ -158,6 +158,13 @@ describe("Contract: AlphaDeployment", () => {
     expect(await alphaDeployment.step()).to.equal(0);
   });
 
+  /*
+   * These deployment step tests must be run in the order given.  This means we cannot
+   * run these tests in parallel.
+   *
+   * FIXME: 1. If a step fails, block subsequent steps, e.g. using `mocha-steps`.
+   *        2. Find a better way to ensure sequential test ordering.
+   */
   describe("Deployment steps", () => {
     before("Register deployer module", async () => {
       await forciblySendEth(
