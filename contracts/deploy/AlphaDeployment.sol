@@ -129,6 +129,22 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         step += 1;
     }
 
+    modifier checkSafeRegistrations() {
+        require(
+            addressRegistry.emergencySafeAddress() == emergencySafe,
+            "INVALID_EMERGENCY_SAFE"
+        );
+
+        require(
+            addressRegistry.adminSafeAddress() == adminSafe,
+            "INVALID_ADMIN_SAFE"
+        );
+
+        require(addressRegistry.lpSafeAddress() == lpSafe, "INVALID_LP_SAFE");
+
+        _;
+    }
+
     constructor(
         address proxyAdminFactory_,
         address proxyFactory_,
@@ -205,6 +221,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         external
         onlyOwner
         updateStep(0)
+        checkSafeRegistrations
     {
         address[] memory ownerships = new address[](2);
         ownerships[0] = ADDRESS_REGISTRY_PROXY;
@@ -242,7 +259,12 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
     /// @dev Deploy the mAPT proxy and its proxy admin.
     ///      Does not register any roles for contracts.
-    function deploy_1_MetaPoolToken() external onlyOwner updateStep(1) {
+    function deploy_1_MetaPoolToken()
+        external
+        onlyOwner
+        updateStep(1)
+        checkSafeRegistrations
+    {
         address[] memory ownerships = new address[](1);
         ownerships[0] = ADDRESS_REGISTRY_PROXY;
         checkOwnerships(ownerships);
@@ -297,7 +319,12 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
     /// @dev complete proxy deploy for the demo pools
     ///      Registers mAPT for a contract role.
-    function deploy_3_DemoPools() external onlyOwner updateStep(3) {
+    function deploy_3_DemoPools()
+        external
+        onlyOwner
+        updateStep(3)
+        checkSafeRegistrations
+    {
         bytes32[] memory registeredIds = new bytes32[](1);
         address[] memory deployedAddresses = new address[](1);
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
@@ -442,7 +469,12 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
     /// @dev Deploy ERC20 allocation and TVL Manager.
     ///      Does not register any roles for contracts.
-    function deploy_4_TvlManager() external onlyOwner updateStep(4) {
+    function deploy_4_TvlManager()
+        external
+        onlyOwner
+        updateStep(4)
+        checkSafeRegistrations
+    {
         address[] memory ownerships = new address[](1);
         ownerships[0] = ADDRESS_REGISTRY_PROXY;
         checkOwnerships(ownerships);
@@ -470,7 +502,12 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     }
 
     /// @dev registers mAPT and TvlManager for contract roles
-    function deploy_5_OracleAdapter() external onlyOwner updateStep(5) {
+    function deploy_5_OracleAdapter()
+        external
+        onlyOwner
+        updateStep(5)
+        checkSafeRegistrations
+    {
         bytes32[] memory registeredIds = new bytes32[](2);
         address[] memory deployedAddresses = new address[](2);
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
@@ -522,7 +559,12 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     }
 
     /// @dev register mAPT for a contract role
-    function deploy_6_LpAccount() external onlyOwner updateStep(6) {
+    function deploy_6_LpAccount()
+        external
+        onlyOwner
+        updateStep(6)
+        checkSafeRegistrations
+    {
         bytes32[] memory registeredIds = new bytes32[](1);
         address[] memory deployedAddresses = new address[](1);
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
@@ -569,7 +611,12 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
     /// @notice upgrade from v1 to v2
     /// @dev register mAPT for a contract role
-    function deploy_7_PoolTokenV2_upgrade() external onlyOwner updateStep(7) {
+    function deploy_7_PoolTokenV2_upgrade()
+        external
+        onlyOwner
+        updateStep(7)
+        checkSafeRegistrations
+    {
         bytes32[] memory registeredIds = new bytes32[](1);
         address[] memory deployedAddresses = new address[](1);
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
