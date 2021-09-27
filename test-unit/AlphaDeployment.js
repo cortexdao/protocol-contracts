@@ -21,12 +21,22 @@ const MAINNET_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
 
 const CALL = 0;
 
-describe("Contract: AlphaDeployment", () => {
+async function encodeRegisterAddress(contractIdString, contractAddress) {
+  const AddressRegistryV2 = await ethers.getContractFactory(
+    "AddressRegistryV2"
+  );
+  const data = AddressRegistryV2.interface.encodeFunctionData(
+    "registerAddress(bytes32,address)",
+    [bytes32(contractIdString), contractAddress]
+  );
+  return data;
+}
+
+describe.only("Contract: AlphaDeployment", () => {
   // signers
   let deployer;
   let emergencySafe;
   let lpSafe;
-  let adminSafeSigner; // adminSafe itself has to be mocked
 
   // contract factories
   let AlphaDeployment;
@@ -115,8 +125,6 @@ describe("Contract: AlphaDeployment", () => {
       artifacts.readArtifactSync("IGnosisModuleManager").abi
     );
     await adminSafe.mock.execTransactionFromModule.returns(true);
-    // create a signer for the same address
-    adminSafeSigner = await impersonateAccount(adminSafe.address);
     // register the address
     await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
     await addressRegistry.mock.getAddress
@@ -220,13 +228,7 @@ describe("Contract: AlphaDeployment", () => {
     await addressRegistry.mock.owner.returns(adminSafe.address);
 
     // check for address registration
-    const AddressRegistryV2 = await ethers.getContractFactory(
-      "AddressRegistryV2"
-    );
-    const data = AddressRegistryV2.interface.encodeFunctionData(
-      "registerAddress(bytes32,address)",
-      [bytes32("mApt"), mAptAddress]
-    );
+    const data = await encodeRegisterAddress("mApt", mAptAddress);
     await adminSafe.mock.execTransactionFromModule
       .withArgs(addressRegistry.address, 0, data, CALL)
       .revertsWithReason("ADDRESS_REGISTERED");
@@ -348,34 +350,37 @@ describe("Contract: AlphaDeployment", () => {
 
     // check for address registrations
     // DAI
-    await addressRegistry.mock.registerAddress
-      .withArgs(bytes32("daiDemoPool"), demoPoolAddress)
+    let data = await encodeRegisterAddress("daiDemoPool", demoPoolAddress);
+    await adminSafe.mock.execTransactionFromModule
+      .withArgs(addressRegistry.address, 0, data, CALL)
       .revertsWithReason("ADDRESS_REGISTERED");
     await expect(alphaDeployment.deploy_3_DemoPools()).to.be.revertedWith(
       "ADDRESS_REGISTERED"
     );
-    await addressRegistry.mock.registerAddress
-      .withArgs(bytes32("daiDemoPool"), demoPoolAddress)
+    await adminSafe.mock.execTransactionFromModule
+      .withArgs(addressRegistry.address, 0, data, CALL)
       .returns();
     // USDC
-    await addressRegistry.mock.registerAddress
-      .withArgs(bytes32("usdcDemoPool"), demoPoolAddress)
+    data = await encodeRegisterAddress("usdcDemoPool", demoPoolAddress);
+    await adminSafe.mock.execTransactionFromModule
+      .withArgs(addressRegistry.address, 0, data, CALL)
       .revertsWithReason("ADDRESS_REGISTERED");
     await expect(alphaDeployment.deploy_3_DemoPools()).to.be.revertedWith(
       "ADDRESS_REGISTERED"
     );
-    await addressRegistry.mock.registerAddress
-      .withArgs(bytes32("usdcDemoPool"), demoPoolAddress)
+    await adminSafe.mock.execTransactionFromModule
+      .withArgs(addressRegistry.address, 0, data, CALL)
       .returns();
     // USDT
-    await addressRegistry.mock.registerAddress
-      .withArgs(bytes32("usdtDemoPool"), demoPoolAddress)
+    data = await encodeRegisterAddress("usdtDemoPool", demoPoolAddress);
+    await adminSafe.mock.execTransactionFromModule
+      .withArgs(addressRegistry.address, 0, data, CALL)
       .revertsWithReason("ADDRESS_REGISTERED");
     await expect(alphaDeployment.deploy_3_DemoPools()).to.be.revertedWith(
       "ADDRESS_REGISTERED"
     );
-    await addressRegistry.mock.registerAddress
-      .withArgs(bytes32("usdtDemoPool"), demoPoolAddress)
+    await adminSafe.mock.execTransactionFromModule
+      .withArgs(addressRegistry.address, 0, data, CALL)
       .returns();
 
     // check address set properly
@@ -421,14 +426,15 @@ describe("Contract: AlphaDeployment", () => {
     await addressRegistry.mock.owner.returns(adminSafe.address);
 
     // check for address registrations
-    await addressRegistry.mock.registerAddress
-      .withArgs(bytes32("tvlManager"), tvlManager.address)
+    const data = await encodeRegisterAddress("tvlManager", tvlManager.address);
+    await adminSafe.mock.execTransactionFromModule
+      .withArgs(addressRegistry.address, 0, data, CALL)
       .revertsWithReason("ADDRESS_REGISTERED");
     await expect(alphaDeployment.deploy_4_TvlManager()).to.be.revertedWith(
       "ADDRESS_REGISTERED"
     );
-    await addressRegistry.mock.registerAddress
-      .withArgs(bytes32("tvlManager"), tvlManager.address)
+    await adminSafe.mock.execTransactionFromModule
+      .withArgs(addressRegistry.address, 0, data, CALL)
       .returns();
 
     // check TVL Manager address set properly
@@ -483,14 +489,18 @@ describe("Contract: AlphaDeployment", () => {
     await addressRegistry.mock.owner.returns(adminSafe.address);
 
     // check for address registrations
-    await addressRegistry.mock.registerAddress
-      .withArgs(bytes32("oracleAdapter"), oracleAdapter.address)
+    const data = await encodeRegisterAddress(
+      "oracleAdapter",
+      oracleAdapter.address
+    );
+    await adminSafe.mock.execTransactionFromModule
+      .withArgs(addressRegistry.address, 0, data, CALL)
       .revertsWithReason("ADDRESS_REGISTERED");
     await expect(alphaDeployment.deploy_5_OracleAdapter()).to.be.revertedWith(
       "ADDRESS_REGISTERED"
     );
-    await addressRegistry.mock.registerAddress
-      .withArgs(bytes32("oracleAdapter"), oracleAdapter.address)
+    await adminSafe.mock.execTransactionFromModule
+      .withArgs(addressRegistry.address, 0, data, CALL)
       .returns();
 
     // check Oracle Adapter address set properly
@@ -548,14 +558,15 @@ describe("Contract: AlphaDeployment", () => {
     await addressRegistry.mock.owner.returns(adminSafe.address);
 
     // check for address registration
-    await addressRegistry.mock.registerAddress
-      .withArgs(bytes32("lpAccount"), lpAccountAddress)
+    const data = await encodeRegisterAddress("lpAccount", lpAccountAddress);
+    await adminSafe.mock.execTransactionFromModule
+      .withArgs(addressRegistry.address, 0, data, CALL)
       .revertsWithReason("ADDRESS_REGISTERED");
     await expect(alphaDeployment.deploy_6_LpAccount()).to.be.revertedWith(
       "ADDRESS_REGISTERED"
     );
-    await addressRegistry.mock.registerAddress
-      .withArgs(bytes32("lpAccount"), lpAccountAddress)
+    await adminSafe.mock.execTransactionFromModule
+      .withArgs(addressRegistry.address, 0, data, CALL)
       .returns();
 
     // check address set properly
