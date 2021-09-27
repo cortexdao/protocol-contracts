@@ -19,6 +19,8 @@ const MAINNET_ADDRESS_REGISTRY_PROXY_ADMIN =
   "0xFbF6c940c1811C3ebc135A9c4e39E042d02435d1";
 const MAINNET_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
 
+const CALL = 0;
+
 describe("Contract: AlphaDeployment", () => {
   // signers
   let deployer;
@@ -218,15 +220,22 @@ describe("Contract: AlphaDeployment", () => {
     await addressRegistry.mock.owner.returns(adminSafe.address);
 
     // check for address registration
-    await addressRegistry.mock.registerAddress
-      .withArgs(bytes32("mApt"), mAptAddress)
+    const AddressRegistryV2 = await ethers.getContractFactory(
+      "AddressRegistryV2"
+    );
+    const data = AddressRegistryV2.interface.encodeFunctionData(
+      "registerAddress(bytes32,address)",
+      [bytes32("mApt"), mAptAddress]
+    );
+    await adminSafe.mock.execTransactionFromModule
+      .withArgs(addressRegistry.address, 0, data, CALL)
       .revertsWithReason("ADDRESS_REGISTERED");
     await expect(alphaDeployment.deploy_1_MetaPoolToken()).to.be.revertedWith(
       "ADDRESS_REGISTERED"
     );
-    await addressRegistry.mock.registerAddress
-      .withArgs(bytes32("mApt"), mAptAddress)
-      .returns();
+    await adminSafe.mock.execTransactionFromModule
+      .withArgs(addressRegistry.address, 0, data, CALL)
+      .returns(true);
 
     // check address set properly
     expect(await alphaDeployment.mApt()).to.equal(ZERO_ADDRESS);
