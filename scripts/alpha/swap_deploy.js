@@ -8,7 +8,7 @@ require("dotenv").config();
 const { argv } = require("yargs")
   .option("name", {
     type: "string",
-    description: "Zap contract name",
+    description: "Swap contract name",
   })
   .option("gasPrice", {
     type: "number",
@@ -33,8 +33,8 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  const zapContractName = argv.name;
-  console.log("Zap contract name: %s", zapContractName);
+  const swapContractName = argv.name;
+  console.log("Swap contract name: %s", swapContractName);
   console.log("");
 
   const [deployer] = await ethers.getSigners();
@@ -65,15 +65,15 @@ async function main(argv) {
     service
   );
 
-  console.log("Deploying zap ... ");
+  console.log("Deploying swap ... ");
   console.log("");
 
-  const zapContractFactory = await ethers.getContractFactory(zapContractName);
+  const swapContractFactory = await ethers.getContractFactory(swapContractName);
   let gasPrice = await getGasPrice(argv.gasPrice);
-  const zap = await zapContractFactory.deploy({ gasPrice });
-  const zapName = await zap.NAME();
+  const swap = await swapContractFactory.deploy({ gasPrice });
+  const swapName = await swap.NAME();
 
-  console.log("Registering %s", zapName);
+  console.log("Registering %s", swapName);
   console.log("");
 
   const addressRegistryAddress = getDeployedAddress(
@@ -89,7 +89,7 @@ async function main(argv) {
   gasPrice = await getGasPrice(argv.gasPrice);
   const proposedTx = await lpAccount
     .connect(safeSigner)
-    .registerZap(zap, { gasPrice });
+    .registerSwap(swap, { gasPrice });
   console.log("USER ACTION REQUIRED");
   console.log("Go to the Gnosis Safe Web App to confirm the transaction");
   await proposedTx.wait();
@@ -99,7 +99,7 @@ if (!module.parent) {
   main(argv)
     .then(() => {
       console.log("");
-      console.log("Zap registered.");
+      console.log("Swap registered.");
       console.log("");
       process.exit(0);
     })
