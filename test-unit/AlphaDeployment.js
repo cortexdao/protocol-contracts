@@ -32,7 +32,7 @@ async function encodeRegisterAddress(contractIdString, contractAddress) {
   return data;
 }
 
-describe.only("Contract: AlphaDeployment", () => {
+describe("Contract: AlphaDeployment", () => {
   // signers
   let deployer;
   let emergencySafe;
