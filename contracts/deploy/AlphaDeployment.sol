@@ -13,10 +13,12 @@ import {
     ProxyAdmin,
     TransparentUpgradeableProxy
 } from "contracts/proxy/Imports.sol";
+import {IAssetAllocationRegistry} from "contracts/tvl/Imports.sol";
 
 import {DeploymentConstants} from "./constants.sol";
 import {
     AddressRegistryV2Factory,
+    Erc20AllocationFactory,
     LpAccountFactory,
     MetaPoolTokenFactory,
     OracleAdapterFactory,
@@ -88,6 +90,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     address public immutable poolTokenV1Factory;
     address public immutable poolTokenV2Factory;
     address public immutable tvlManagerFactory;
+    address public immutable erc20AllocationFactory;
     address public immutable oracleAdapterFactory;
     address public immutable lpAccountFactory;
 
@@ -113,6 +116,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
     // step 4
     address public tvlManager;
+    address public erc20Allocation;
 
     // step 5
     address public oracleAdapter;
@@ -156,6 +160,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         address poolTokenV1Factory_,
         address poolTokenV2Factory_,
         address tvlManagerFactory_,
+        address erc20AllocationFactory_,
         address oracleAdapterFactory_,
         address lpAccountFactory_
     ) public {
@@ -174,6 +179,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         poolTokenV1Factory = poolTokenV1Factory_;
         poolTokenV2Factory = poolTokenV2Factory_;
         tvlManagerFactory = tvlManagerFactory_;
+        erc20AllocationFactory = erc20AllocationFactory_;
         oracleAdapterFactory = oracleAdapterFactory_;
         lpAccountFactory = lpAccountFactory_;
     }
@@ -374,8 +380,26 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         tvlManager = TvlManagerFactory(tvlManagerFactory).create(
             address(addressRegistry)
         );
-
         _registerAddress("tvlManager", tvlManager);
+
+        erc20Allocation = Erc20AllocationFactory(erc20AllocationFactory).create(
+            address(addressRegistry)
+        );
+
+        bytes memory data =
+            abi.encodeWithSelector(
+                IAssetAllocationRegistry.registerAssetAllocation.selector,
+                erc20Allocation
+            );
+        require(
+            IGnosisModuleManager(adminSafe).execTransactionFromModule(
+                tvlManager,
+                0,
+                data,
+                Enum.Operation.Call
+            ),
+            "SAFE_TX_FAILED"
+        );
     }
 
     /// @dev registers mAPT and TvlManager for contract roles
