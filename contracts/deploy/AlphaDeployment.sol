@@ -180,6 +180,11 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         bytes32[] memory registeredIds,
         address[] memory deployedAddresses
     ) public view virtual {
+        require(
+            registeredIds.length == deployedAddresses.length,
+            "LENGTH_MISMATCH"
+        );
+
         for (uint256 i = 0; i < registeredIds.length; i++) {
             require(
                 addressRegistry.getAddress(registeredIds[i]) ==
