@@ -49,7 +49,7 @@ contract LpAccount is
     using NamedAddressSet for NamedAddressSet.ZapSet;
     using NamedAddressSet for NamedAddressSet.SwapSet;
 
-    uint256 private constant _DEFAULT_LOCK_PERIOD;
+    uint256 private constant _DEFAULT_LOCK_PERIOD = 135;
 
     address public proxyAdmin;
     IAddressRegistryV2 public addressRegistry;
@@ -145,7 +145,7 @@ contract LpAccount is
 
     /**
      * @notice Set the lock period
-     * @param lockPeriod_
+     * @param lockPeriod_ The new lock period
      */
     function setLockPeriod(uint256 lockPeriod_) external onlyAdmin {
         lockPeriod = lockPeriod_;
@@ -213,8 +213,7 @@ contract LpAccount is
     function swap(
         string calldata name,
         uint256 amount,
-        uint256 minAmount,
-        uint256 lockPeriod
+        uint256 minAmount
     ) external override nonReentrant onlyLpRole {
         ISwap swap_ = _swaps.get(name);
         require(address(swap_) != address(0), "INVALID_NAME");
@@ -236,10 +235,10 @@ contract LpAccount is
         emit SwapRegistered(swap_);
     }
 
-    function _lockOracleAdapter(uint256 lockPeriod) internal {
+    function _lockOracleAdapter(uint256 lockPeriod_) internal {
         ILockingOracle oracleAdapter =
             ILockingOracle(addressRegistry.oracleAdapterAddress());
-        oracleAdapter.lockFor(lockPeriod);
+        oracleAdapter.lockFor(lockPeriod_);
     }
 
     function removeSwap(string calldata name) external override onlyAdminRole {
@@ -248,7 +247,7 @@ contract LpAccount is
         emit SwapRemoved(name);
     }
 
-    function claim(string calldata name, uint256 lockPeriod)
+    function claim(string calldata name)
         external
         override
         nonReentrant
