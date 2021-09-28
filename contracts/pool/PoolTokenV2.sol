@@ -21,45 +21,21 @@ import {
 } from "contracts/oracle/Imports.sol";
 import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
 
-import {IReservePool} from "./IReservePool.sol";
-import {IWithdrawFeePool} from "./IWithdrawFeePool.sol";
-import {ILockingPool} from "./ILockingPool.sol";
-import {IPoolToken} from "./IPoolToken.sol";
-import {ILiquidityPoolV2} from "./ILiquidityPoolV2.sol";
+import {
+    IReservePool,
+    IWithdrawFeePool,
+    ILockingPool,
+    IPoolToken,
+    ILiquidityPoolV2
+} from "./Imports.sol";
 
 /**
- * @title APY.Finance Pool Token
- * @author APY.Finance
- * @notice This token (APT) is the basic liquidity-provider token used
- * within the APY.Finance system.
- *
- * For simplicity, it has been integrated with pool functionality
- * enabling users to deposit and withdraw in an underlying token,
- * currently one of three stablecoins.
- *
- * Upon deposit of the underlyer, an appropriate amount of APT
- * is minted.  This amount is calculated as a share of the pool's
- * total value, which may change as strategies gain or lose.
- *
- * The pool's total value is comprised of the value of its balance
- * of the underlying stablecoin and also the value of its balance
- * of mAPT, an internal token used by the system to track how much
- * is owed to the pool.  Every time the PoolManager withdraws funds
- * from the pool, mAPT is issued to the pool.
- *
- * Upon redemption of APT (withdrawal), the user will get back
- * in the underlying stablecoin, the amount equivalent in value
- * to the user's APT share of the pool's total value.
- *
- * Currently the user may not be able to redeem their full APT
- * balance, as the majority of funds will be deployed at any
- * given time.  Funds will periodically be pushed to the pools
- * so that each pool maintains a reserve percentage of the
- * pool's total value.
- *
- * Later upgrades to the system will enable users to submit
- * withdrawal requests, which will be processed periodically
- * and unwind positions to free up funds.
+ * @notice Collect user deposits so they can be lent to the LP Account
+ * @notice Depositors share pool liquidity
+ * @notice Reserves are maintained to process withdrawals
+ * @notice Reserve tokens cannot be lent to the LP Account
+ * @notice If a user withdraws too early after their deposit, there's a fee
+ * @notice Tokens borrowed from the pool are tracked with the `MetaPoolToken`
  */
 contract PoolTokenV2 is
     ILiquidityPoolV2,
@@ -114,11 +90,14 @@ contract PoolTokenV2 is
 
     /* ------------------------------- */
 
+    /** @notice Log when the proxy admin is changed */
     event AdminChanged(address);
+
+    /** @notice Log when the address registry is changed */
     event AddressRegistryChanged(address);
 
     /**
-     * @dev Throws if called by any account other than the proxy admin.
+     * @dev Throw if called by any account other than the proxy admin.
      */
     modifier onlyAdmin() {
         require(msg.sender == proxyAdmin, "ADMIN_ONLY");
@@ -190,26 +169,16 @@ contract PoolTokenV2 is
         reservePercentage = 5;
     }
 
-    /**
-     * @notice Disable both depositing and withdrawals.
-     * Note that `addLiquidity` and `redeem` also have individual locks.
-     */
     function emergencyLock() external override onlyEmergencyRole {
         _pause();
     }
 
-    /**
-     * @notice Re-enable both depositing and withdrawals.
-     * Note that `addLiquidity` and `redeem` also have individual locks.
-     */
     function emergencyUnlock() external override onlyEmergencyRole {
         _unpause();
     }
 
     /**
-     * @notice Mint corresponding amount of APT tokens for deposited stablecoin.
      * @dev If no APT tokens have been minted yet, fallback to a fixed ratio.
-     * @param depositAmount Amount to deposit of the underlying stablecoin
      */
     function addLiquidity(uint256 depositAmount)
         external
@@ -245,22 +214,18 @@ contract PoolTokenV2 is
         );
     }
 
-    /** @notice Disable deposits. */
     function emergencyLockAddLiquidity() external override onlyEmergencyRole {
         addLiquidityLock = true;
         emit AddLiquidityLocked();
     }
 
-    /** @notice Enable deposits. */
     function emergencyUnlockAddLiquidity() external override onlyEmergencyRole {
         addLiquidityLock = false;
         emit AddLiquidityUnlocked();
     }
 
     /**
-     * @notice Redeems APT amount for its underlying stablecoin amount.
      * @dev May revert if there is not enough in the pool.
-     * @param aptAmount The amount of APT tokens to redeem
      */
     function redeem(uint256 aptAmount)
         external
@@ -291,22 +256,18 @@ contract PoolTokenV2 is
         );
     }
 
-    /** @notice Disable APT redeeming. */
     function emergencyLockRedeem() external override onlyEmergencyRole {
         redeemLock = true;
         emit RedeemLocked();
     }
 
-    /** @notice Enable APT redeeming. */
     function emergencyUnlockRedeem() external override onlyEmergencyRole {
         redeemLock = false;
         emit RedeemUnlocked();
     }
 
     /**
-     * @notice transfers underlyer to the LP Safe
      * @dev permissioned with CONTRACT_ROLE
-     * @param amount amount to transfer to the lp safe
      */
     function transferToLpAccount(uint256 amount)
         external
@@ -355,11 +316,6 @@ contract PoolTokenV2 is
         emit ReservePercentageChanged(reservePercentage_);
     }
 
-    /**
-     * @notice Calculate APT amount to be minted from deposit amount.
-     * @param depositAmount The deposit amount of stablecoin
-     * @return The mint amount
-     */
     function calculateMintAmount(uint256 depositAmount)
         external
         view
@@ -372,11 +328,7 @@ contract PoolTokenV2 is
     }
 
     /**
-     * @notice Get the underlying amount represented by APT amount,
-     * deducting early withdraw fee, if applicable.
      * @dev To check if fee will be applied, use `isEarlyRedeem`.
-     * @param aptAmount The amount of APT tokens
-     * @return uint256 The underlyer value of the APT tokens
      */
     function getUnderlyerAmountWithFee(uint256 aptAmount)
         public
@@ -392,11 +344,6 @@ contract PoolTokenV2 is
         return redeemUnderlyerAmt;
     }
 
-    /**
-     * @notice Get the underlying amount represented by APT amount.
-     * @param aptAmount The amount of APT tokens
-     * @return uint256 The underlying value of the APT tokens
-     */
     function getUnderlyerAmount(uint256 aptAmount)
         public
         view
@@ -425,10 +372,8 @@ contract PoolTokenV2 is
     }
 
     /**
-     * @notice Checks if caller will be charged early withdrawal fee.
      * @dev `lastDepositTime` is stored each time user makes a deposit, so
      * the waiting period is restarted on each deposit.
-     * @return "true" when fee will apply, "false" when it won't.
      */
     function isEarlyRedeem() public view override returns (bool) {
         // solhint-disable-next-line not-rely-on-time
@@ -436,10 +381,8 @@ contract PoolTokenV2 is
     }
 
     /**
-     * @notice Get the total USD-denominated value (in bits) of the pool's assets,
-     * including not only its underlyer balance, but any part of deployed
-     * capital that is owed to it.
-     * @return USD value
+     * @dev Total value also includes that have been borrowed from the pool
+     * @dev Typically it is the LP Account that borrows from the pool
      */
     function getPoolTotalValue() public view override returns (uint256) {
         uint256 underlyerValue = _getPoolUnderlyerValue();
@@ -447,11 +390,6 @@ contract PoolTokenV2 is
         return underlyerValue.add(mAptValue);
     }
 
-    /**
-     * @notice Get the USD-denominated value (in bits) represented by APT amount.
-     * @param aptAmount APT amount
-     * @return USD value
-     */
     function getAPTValue(uint256 aptAmount)
         external
         view
@@ -462,11 +400,6 @@ contract PoolTokenV2 is
         return aptAmount.mul(getPoolTotalValue()).div(totalSupply());
     }
 
-    /**
-     * @notice Get the USD-denominated value (in bits) represented by stablecoin amount.
-     * @param underlyerAmount amount of underlying stablecoin
-     * @return USD value
-     */
     function getValueFromUnderlyerAmount(uint256 underlyerAmount)
         public
         view
@@ -480,10 +413,6 @@ contract PoolTokenV2 is
         return getUnderlyerPrice().mul(underlyerAmount).div(10**decimals);
     }
 
-    /**
-     * @notice Get the underlyer stablecoin's USD price (in bits).
-     * @return USD price
-     */
     function getUnderlyerPrice() public view override returns (uint256) {
         IOracleAdapter oracleAdapter =
             IOracleAdapter(addressRegistry.oracleAdapterAddress());
@@ -491,10 +420,7 @@ contract PoolTokenV2 is
     }
 
     /**
-     * @notice Get the USD value needed to meet the reserve percentage
-     * of the pool's deployed value.
-     *
-     * This "top-up" value should satisfy:
+     * @dev This "top-up" value should satisfy:
      *
      * top-up USD value + pool underlyer USD value
      * = (reserve %) * pool deployed value (after unwinding)
@@ -524,8 +450,6 @@ contract PoolTokenV2 is
      * Making the latter substitutions in equation 1, gives:
      *
      * top-up value = (rPerc * DV_pre - 100 * R_pre) / (100 + rPerc)
-     *
-     * @return int256 The underlyer value to top-up the pool's reserve
      */
     function getReserveTopUpValue() external view override returns (int256) {
         uint256 unnormalizedTargetValue =
@@ -599,18 +523,18 @@ contract PoolTokenV2 is
     }
 
     /**
-     * @notice Get the USD-denominated value (in bits) of the pool's
-     * underlyer balance.
-     * @return USD value
+     * @notice Get the USD value of tokens in the pool
+     * @return The USD value
      */
     function _getPoolUnderlyerValue() internal view returns (uint256) {
         return getValueFromUnderlyerAmount(underlyer.balanceOf(address(this)));
     }
 
     /**
-     * @notice Get the USD-denominated value (in bits) of the pool's share
-     * of the deployed capital, as tracked by the mAPT token.
-     * @return USD value
+     * @notice Get the USD value of tokens owed to the pool
+     * @dev Tokens from the pool are typically borrowed by the LP Account
+     * @dev Tokens borrowed from the pool are tracked with mAPT
+     * @return The USD value
      */
     function _getDeployedValue() internal view returns (uint256) {
         MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAptAddress());
