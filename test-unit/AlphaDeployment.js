@@ -145,6 +145,7 @@ describe("Contract: AlphaDeployment", () => {
         FAKE_ADDRESS, // pool token v1 factory
         FAKE_ADDRESS, // pool token v2 factory
         FAKE_ADDRESS, // tvl manager factory
+        FAKE_ADDRESS, // erc20 allocation factory
         FAKE_ADDRESS, // oracle adapter factory
         FAKE_ADDRESS // lp account factory
       )
@@ -177,6 +178,7 @@ describe("Contract: AlphaDeployment", () => {
         FAKE_ADDRESS, // pool token v1 factory
         FAKE_ADDRESS, // pool token v2 factory
         FAKE_ADDRESS, // tvl manager factory
+        FAKE_ADDRESS, // erc20 allocation factory
         FAKE_ADDRESS, // oracle adapter factory
         FAKE_ADDRESS // lp account factory
       )
@@ -217,6 +219,7 @@ describe("Contract: AlphaDeployment", () => {
         FAKE_ADDRESS, // pool token v1 factory
         FAKE_ADDRESS, // pool token v2 factory
         FAKE_ADDRESS, // tvl manager factory
+        FAKE_ADDRESS, // erc20 allocation factory
         FAKE_ADDRESS, // oracle adapter factory
         FAKE_ADDRESS // lp account factory
       )
@@ -269,6 +272,7 @@ describe("Contract: AlphaDeployment", () => {
         FAKE_ADDRESS, // pool token v1 factory
         poolTokenV2Factory.address, // pool token v2 factory
         FAKE_ADDRESS, // tvl manager factory
+        FAKE_ADDRESS, // erc20 allocation factory
         FAKE_ADDRESS, // oracle adapter factory
         FAKE_ADDRESS // lp account factory
       )
@@ -328,6 +332,7 @@ describe("Contract: AlphaDeployment", () => {
         poolTokenV1Factory.address, // pool token v1 factory
         poolTokenV2Factory.address, // pool token v2 factory
         FAKE_ADDRESS, // tvl manager factory
+        FAKE_ADDRESS, // erc20 allocation factory
         FAKE_ADDRESS, // oracle adapter factory
         FAKE_ADDRESS // lp account factory
       )
@@ -395,6 +400,17 @@ describe("Contract: AlphaDeployment", () => {
   });
 
   it("deploy_4_TvlManager", async () => {
+    // mock erc20 allocation
+    const erc20AllocationFactory = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("Erc20AllocationFactory").abi
+    );
+    const erc20Allocation = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("Erc20Allocation").abi
+    );
+    await erc20AllocationFactory.mock.create.returns(erc20Allocation.address);
+    // mock tvl manager
     const tvlManagerFactory = await deployMockContract(
       deployer,
       artifacts.readArtifactSync("TvlManagerFactory").abi
@@ -404,7 +420,15 @@ describe("Contract: AlphaDeployment", () => {
       artifacts.readArtifactSync("TvlManager").abi
     );
     await tvlManagerFactory.mock.create.returns(tvlManager.address);
-    await tvlManager.mock.registerAssetAllocation.returns();
+    // mock registering erc20 allocation through Admin Safe
+    const TvlManager = await ethers.getContractFactory("TvlManager");
+    const encodedRegisterAllocation = TvlManager.interface.encodeFunctionData(
+      "registerAssetAllocation(address)",
+      [erc20Allocation.address]
+    );
+    await adminSafe.mock.execTransactionFromModule
+      .withArgs(tvlManager.address, 0, encodedRegisterAllocation, CALL)
+      .returns(true);
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
@@ -415,6 +439,7 @@ describe("Contract: AlphaDeployment", () => {
         FAKE_ADDRESS, // pool token v1 factory
         FAKE_ADDRESS, // pool token v2 factory
         tvlManagerFactory.address, // tvl manager factory
+        erc20AllocationFactory.address, // erc20 allocation factory
         FAKE_ADDRESS, // oracle adapter factory
         FAKE_ADDRESS // lp account factory
       )
@@ -464,6 +489,7 @@ describe("Contract: AlphaDeployment", () => {
         FAKE_ADDRESS, // pool token v1 factory
         FAKE_ADDRESS, // pool token v2 factory
         FAKE_ADDRESS, // tvl manager factory
+        FAKE_ADDRESS, // erc20 allocation factory
         oracleAdapterFactory.address, // oracle adapter factory
         FAKE_ADDRESS // lp account factory
       )
@@ -540,6 +566,7 @@ describe("Contract: AlphaDeployment", () => {
         FAKE_ADDRESS, // pool token v1 factory
         FAKE_ADDRESS, // pool token v2 factory
         FAKE_ADDRESS, // tvl manager factory
+        FAKE_ADDRESS, // erc20 allocation factory
         FAKE_ADDRESS, // oracle adapter factory
         lpAccountFactory.address // lp account factory
       )
@@ -586,6 +613,7 @@ describe("Contract: AlphaDeployment", () => {
         FAKE_ADDRESS, // pool token v1 factory
         FAKE_ADDRESS, // pool token v2 factory
         FAKE_ADDRESS, // tvl manager factory
+        FAKE_ADDRESS, // erc20 allocation factory
         FAKE_ADDRESS, // oracle adapter factory
         FAKE_ADDRESS // lp account factory
       )
