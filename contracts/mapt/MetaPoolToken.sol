@@ -29,33 +29,38 @@ import {ILpAccountFunder} from "./ILpAccountFunder.sol";
 /**
  * @title Meta Pool Token
  * @author APY.Finance
- * @notice This token is used to keep track of the capital that has been
- * pulled from the PoolToken contracts.
+ * @notice This contract has hybrid functionality:
+ *         - it acts as a token that tracks the capital that has been pulled
+ *           ("deployed") from APY Finance pools (PoolToken contracts)
+ *         - it is permissioned to transfer funds between the pools and the
+ *           LP Account contract.
  *
- * When the PoolManager pulls capital from the PoolToken contracts to
- * deploy to yield farming strategies, it will mint mAPT and transfer it to
- * the PoolToken contracts. The ratio of the mAPT held by each PoolToken
- * to the total supply of mAPT determines the amount of the TVL dedicated to
- * PoolToken.
+ * When MetaPoolToken pulls capital from the pools to the LP Account, it
+ * will mint mAPT for each pool. Conversely, when MetaPoolToken withdraws funds
+ * from the LP Account to the pools, it will burn mAPT for each pool.
+ *
+ * The ratio of each pool's mAPT balance to the total mAPT supply determines
+ * the amount of the TVL dedicated to the pool.
+ *
  *
  * DEPLOY CAPITAL TO YIELD FARMING STRATEGIES
- * Tracks the share of deployed TVL owned by an PoolToken using mAPT.
+ * Mints appropriate mAPT amount to track share of deployed TVL owned by a pool.
  *
- * +-------------+   PoolManager.fundAccount   +-------------+
- * |             |---------------------------->|             |
- * | PoolTokenV2 |     MetaPoolToken.mint      | PoolManager |
- * |             |<----------------------------|             |
- * +-------------+                             +-------------+
+ * +-------------+  MetaPoolToken.fundLpAccount  +-----------+
+ * |             |------------------------------>|           |
+ * | PoolTokenV2 |     MetaPoolToken.mint        | LpAccount |
+ * |             |<------------------------------|           |
+ * +-------------+                               +-----------+
  *
  *
  * WITHDRAW CAPITAL FROM YIELD FARMING STRATEGIES
  * Uses mAPT to calculate the amount of capital returned to the PoolToken.
  *
- * +-------------+    PoolManager.withdrawFromAccount   +-------------+
- * |             |<-------------------------------------|             |
- * | PoolTokenV2 |          MetaPoolToken.burn          | PoolManager |
- * |             |------------------------------------->|             |
- * +-------------+                                      +-------------+
+ * +-------------+  MetaPoolToken.withdrawFromLpAccount  +-----------+
+ * |             |<--------------------------------------|           |
+ * | PoolTokenV2 |          MetaPoolToken.burn           | LpAccount |
+ * |             |-------------------------------------->|           |
+ * +-------------+                                       +-----------+
  */
 contract MetaPoolToken is
     Initializable,
