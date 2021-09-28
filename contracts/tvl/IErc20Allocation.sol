@@ -61,7 +61,7 @@ interface IErc20Allocation {
 
     /**
      * @notice Check if multiple ERC20 tokens are ALL registered
-     * @param token An array of tokens to check
+     * @param tokens An array of tokens to check
      * @return `true` if every token is registered, `false` otherwise
      */
     function isErc20TokenRegistered(IERC20[] calldata tokens)

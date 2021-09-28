@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 import {IAssetAllocation} from "contracts/common/Imports.sol";
 
 /**
- * @notice For interacting with a collection of `IAssetAllocation` contracts
+ * @notice For managing a collection of `IAssetAllocation` contracts
  */
 interface IAssetAllocationRegistry {
     /** @notice Log when an asset allocation is registered */
