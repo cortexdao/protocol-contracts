@@ -49,8 +49,11 @@ contract LpAccount is
     using NamedAddressSet for NamedAddressSet.ZapSet;
     using NamedAddressSet for NamedAddressSet.SwapSet;
 
+    uint256 private constant _DEFAULT_LOCK_PERIOD;
+
     address public proxyAdmin;
     IAddressRegistryV2 public addressRegistry;
+    uint256 public lockPeriod;
 
     NamedAddressSet.ZapSet private _zaps;
     NamedAddressSet.SwapSet private _swaps;
@@ -60,6 +63,9 @@ contract LpAccount is
 
     /** @notice Log when the address registry is changed */
     event AddressRegistryChanged(address);
+
+    /** @notice Log when the lock period is changed */
+    event LockPeriodChanged(uint256);
 
     /**
      * @dev Throws if called by any account other than the proxy admin.
@@ -91,6 +97,8 @@ contract LpAccount is
         __Context_init_unchained();
         __AccessControl_init_unchained();
         __ReentrancyGuard_init_unchained();
+
+        lockPeriod = _DEFAULT_LOCK_PERIOD;
 
         // initialize impl-specific storage
         _setAdminAddress(adminAddress);
@@ -135,11 +143,21 @@ contract LpAccount is
         _setAddressRegistry(addressRegistry_);
     }
 
-    function deployStrategy(
-        string calldata name,
-        uint256[] calldata amounts,
-        uint256 lockPeriod
-    ) external override nonReentrant onlyLpRole {
+    /**
+     * @notice Set the lock period
+     * @param lockPeriod_
+     */
+    function setLockPeriod(uint256 lockPeriod_) external onlyAdmin {
+        lockPeriod = lockPeriod_;
+        emit LockPeriodChanged(lockPeriod_);
+    }
+
+    function deployStrategy(string calldata name, uint256[] calldata amounts)
+        external
+        override
+        nonReentrant
+        onlyLpRole
+    {
         IZap zap = _zaps.get(name);
         require(address(zap) != address(0), "INVALID_NAME");
 
@@ -160,8 +178,7 @@ contract LpAccount is
     function unwindStrategy(
         string calldata name,
         uint256 amount,
-        uint8 index,
-        uint256 lockPeriod
+        uint8 index
     ) external override nonReentrant onlyLpRole {
         address zap = address(_zaps.get(name));
         require(zap != address(0), "INVALID_NAME");
