@@ -150,10 +150,7 @@ contract LpAccount is
         address(zap).functionDelegateCall(
             abi.encodeWithSelector(IZap.deployLiquidity.selector, amounts)
         );
-
-        ILockingOracle oracleAdapter =
-            ILockingOracle(addressRegistry.oracleAdapterAddress());
-        oracleAdapter.lockFor(lockPeriod);
+        _lockOracleAdapter(lockPeriod);
     }
 
     function unwindStrategy(
@@ -168,10 +165,7 @@ contract LpAccount is
         zap.functionDelegateCall(
             abi.encodeWithSelector(IZap.unwindLiquidity.selector, amount, index)
         );
-
-        ILockingOracle oracleAdapter =
-            ILockingOracle(addressRegistry.oracleAdapterAddress());
-        oracleAdapter.lockFor(lockPeriod);
+        _lockOracleAdapter(lockPeriod);
     }
 
     function registerZap(IZap zap) external override onlyAdminRole {
@@ -213,16 +207,19 @@ contract LpAccount is
         address(swap_).functionDelegateCall(
             abi.encodeWithSelector(ISwap.swap.selector, amount, minAmount)
         );
-
-        ILockingOracle oracleAdapter =
-            ILockingOracle(addressRegistry.oracleAdapterAddress());
-        oracleAdapter.lockFor(lockPeriod);
+        _lockOracleAdapter(lockPeriod);
     }
 
     function registerSwap(ISwap swap_) external override onlyAdminRole {
         _swaps.add(swap_);
 
         emit SwapRegistered(swap_);
+    }
+
+    function _lockOracleAdapter(uint256 lockPeriod) internal {
+        ILockingOracle oracleAdapter =
+            ILockingOracle(addressRegistry.oracleAdapterAddress());
+        oracleAdapter.lockFor(lockPeriod);
     }
 
     function removeSwap(string calldata name) external override onlyAdminRole {
@@ -247,6 +244,7 @@ contract LpAccount is
         address(zap).functionDelegateCall(
             abi.encodeWithSelector(IZap.claim.selector)
         );
+        _lockOracleAdapter(lockPeriod);
     }
 
     function zapNames() external view override returns (string[] memory) {
