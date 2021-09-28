@@ -5,8 +5,7 @@ pragma experimental ABIEncoderV2;
 import {INameIdentifier} from "./INameIdentifier.sol";
 
 /**
- * @notice For use with the `TvlManager` to track the value locked in a protcol
- * @dev Contracts that extend this interface should never have storage variables
+ * @notice For use with the `TvlManager` to track the value locked in a protocol
  */
 interface IAssetAllocation is INameIdentifier {
     struct TokenData {
@@ -22,13 +21,13 @@ interface IAssetAllocation is INameIdentifier {
     function tokens() external view returns (TokenData[] memory);
 
     /**
-     * @notice Get the number of different tokens stored in the protcol
+     * @notice Get the number of different tokens stored in the protocol
      * @return The number of tokens
      */
     function numberOfTokens() external view returns (uint256);
 
     /**
-     * @notice Get an account's balance for a token stored in the protcol
+     * @notice Get an account's balance for a token stored in the protocol
      * @dev The token index should be ordered the same as the `tokens()` array
      * @param account The account to get the balance for
      * @param tokenIndex The index of the token to get the balance for
