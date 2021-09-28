@@ -40,12 +40,12 @@ contract TvlManager is
 
     NamedAddressSet.AssetAllocationSet private _assetAllocations;
 
+    /** @notice Log when the address registry is changed */
     event AddressRegistryChanged(address);
+
+    /** @notice Log when the ERC20 asset allocation is changed */
     event Erc20AllocationChanged(address);
 
-    /**
-     * @notice Constructor
-     */
     constructor(address addressRegistry_) public {
         _setAddressRegistry(addressRegistry_);
         _setupRole(DEFAULT_ADMIN_ROLE, addressRegistry.emergencySafeAddress());
@@ -54,9 +54,8 @@ contract TvlManager is
     }
 
     /**
-     * @notice Sets the new Address Registry
-     * @dev Only callable by the Emergency Safe
-     * @param addressRegistry_ new address of the Address Registry
+     * @notice Set the new address registry
+     * @param addressRegistry_ The new address registry
      */
     function emergencySetAddressRegistry(address addressRegistry_)
         external
@@ -65,10 +64,6 @@ contract TvlManager is
         _setAddressRegistry(addressRegistry_);
     }
 
-    /**
-     * @notice Register a new asset allocation
-     * @dev Only permissioned accounts can call.
-     */
     function registerAssetAllocation(IAssetAllocation assetAllocation)
         external
         override
@@ -82,10 +77,6 @@ contract TvlManager is
         emit AssetAllocationRegistered(assetAllocation);
     }
 
-    /**
-     * @notice Remove a new asset allocation
-     * @dev Only permissioned accounts can call.
-     */
     function removeAssetAllocation(string memory name)
         external
         override
@@ -115,12 +106,8 @@ contract TvlManager is
     }
 
     /**
-     * @notice Returns a list of all identifiers coming from registered
-     *         asset allocations.
-     * @dev The list contains no duplicate identifiers. Note that IDs
-     *      are not static, e.g. a particular position's ID may change
-     *      from updates to asset allocation contracts.
-     * @return list of all the registered identifiers
+     * @dev The list contains no duplicate identifiers
+     * @dev IDs are not constant, updates to an asset allocation change the ID
      */
     function getAssetAllocationIds()
         external
@@ -150,12 +137,6 @@ contract TvlManager is
         return true;
     }
 
-    /**
-     * @notice Executes the bytes lookup data registered under an id
-     * @dev The balance of an id may be aggregated from multiple contracts
-     * @param allocationId the id to fetch the balance for
-     * @return returns the result of the executed lookup data registered for the provided id
-     */
     function balanceOf(bytes32 allocationId)
         external
         view
@@ -171,11 +152,6 @@ contract TvlManager is
             );
     }
 
-    /**
-     * @notice Returns the token symbol registered under an id
-     * @param allocationId the id to fetch the token for
-     * @return returns the result of the token symbol registered for the provided id
-     */
     function symbolOf(bytes32 allocationId)
         external
         view
@@ -187,11 +163,6 @@ contract TvlManager is
         return assetAllocation.symbolOf(tokenIndex);
     }
 
-    /**
-     * @notice Returns the decimals registered under an id
-     * @param allocationId the id to fetch the decimals for
-     * @return returns the result of the decimal value registered for the provided id
-     */
     function decimalsOf(bytes32 allocationId)
         external
         view
@@ -209,12 +180,22 @@ contract TvlManager is
         emit AddressRegistryChanged(addressRegistry_);
     }
 
+    /**
+     * @notice Lock the `OracleAdapter` for the default period of time
+     * @dev Locking protects against front-running while Chainlink updates
+     */
     function _lockOracleAdapter() internal {
         ILockingOracle oracleAdapter =
             ILockingOracle(addressRegistry.oracleAdapterAddress());
         oracleAdapter.lock();
     }
 
+    /**
+     * @notice Get all IDs from an array of asset allocations
+     * @notice Each ID is a unique asset allocation and token index pair
+     * @dev Should contain no duplicate IDs
+     * @return list of all IDs
+     */
     function _getAssetAllocationsIds(IAssetAllocation[] memory allocations)
         internal
         view
@@ -241,6 +222,12 @@ contract TvlManager is
         return assetAllocationIds;
     }
 
+    /**
+     * @notice Get an asset allocation and token index pair from an ID
+     * @notice The token index references a token in the asset allocation
+     * @param id The ID
+     * @return The asset allocation and token index pair
+     */
     function _getAssetAllocation(bytes32 id)
         internal
         view
@@ -264,6 +251,13 @@ contract TvlManager is
         return (assetAllocation, tokenIndex);
     }
 
+    /**
+     * @notice Get the total number of IDs for an array of allocations
+     * @notice Used by `_getAssetAllocationsIds`
+     * @notice Needed to initialize an ID array with the correct length
+     * @param allocations The array of asset allocations
+     * @return The number of IDs
+     */
     function _getAssetAllocationIdCount(IAssetAllocation[] memory allocations)
         internal
         view
@@ -277,7 +271,11 @@ contract TvlManager is
         return idsLength;
     }
 
-    /// @dev Returns the list of asset allocation contracts.
+    /**
+     * @notice Get an array of registered asset allocations
+     * @dev Needed to convert from the set data structure to an array
+     * @return The array of asset allocations
+     */
     function _getAssetAllocations()
         internal
         view
@@ -294,6 +292,12 @@ contract TvlManager is
         return allocations;
     }
 
+    /**
+     * @notice Create an ID from an asset allocation and token index pair
+     * @param assetAllocation The asset allocation
+     * @param tokenIndex The token index
+     * @return The ID
+     */
     function _encodeAssetAllocationId(address assetAllocation, uint8 tokenIndex)
         internal
         pure
@@ -310,6 +314,12 @@ contract TvlManager is
         return id;
     }
 
+    /**
+     * @notice Get the asset allocation and token index for a given ID
+     * @param id The ID
+     * @return The asset allocation address
+     * @return The token index
+     */
     function _decodeAssetAllocationId(bytes32 id)
         internal
         pure
