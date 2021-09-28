@@ -31,7 +31,7 @@ interface ILpAccountFunder {
 
     /**
      * @notice Log when liquidity is repaid to the pools
-     * @param pool An array of address registry IDs for pools were repaid
+     * @param pools An array of address registry IDs for pools were repaid
      * @param amounts An array of the amount each pool was repaid
      */
     event EmergencyWithdrawFromLpAccount(
