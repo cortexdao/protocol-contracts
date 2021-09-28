@@ -24,14 +24,14 @@ interface ILpAccountFunder {
 
     /**
      * @notice Log when liquidity is lent to the LP Account
-     * @param poolIds An array of address registry IDs for pools that lent
+     * @param pools An array of address registry IDs for pools that lent
      * @param amounts An array of the amount each pool lent
      */
     event EmergencyFundLpAccount(IReservePool[] pools, uint256[] amounts);
 
     /**
      * @notice Log when liquidity is repaid to the pools
-     * @param poolIds An array of address registry IDs for pools were repaid
+     * @param pool An array of address registry IDs for pools were repaid
      * @param amounts An array of the amount each pool was repaid
      */
     event EmergencyWithdrawFromLpAccount(
