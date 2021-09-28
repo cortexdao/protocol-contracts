@@ -98,8 +98,6 @@ contract LpAccount is
         __AccessControl_init_unchained();
         __ReentrancyGuard_init_unchained();
 
-        lockPeriod = _DEFAULT_LOCK_PERIOD;
-
         // initialize impl-specific storage
         _setAdminAddress(adminAddress);
         _setAddressRegistry(addressRegistry_);
@@ -108,6 +106,8 @@ contract LpAccount is
         _setupRole(ADMIN_ROLE, addressRegistry.adminSafeAddress());
         _setupRole(LP_ROLE, addressRegistry.lpSafeAddress());
         _setupRole(CONTRACT_ROLE, addressRegistry.mAptAddress());
+
+        lockPeriod = _DEFAULT_LOCK_PERIOD;
     }
 
     /**
