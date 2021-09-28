@@ -10,13 +10,9 @@ interface ILpAccount {
      * @dev The order of token amounts should match `IZap.sortedSymbols`
      * @param name The name of the `IZap`
      * @param amounts The token amounts to deploy
-     * @param lockPeriod The number of blocks to lock the oracle for
      */
-    function deployStrategy(
-        string calldata name,
-        uint256[] calldata amounts,
-        uint256 lockPeriod
-    ) external;
+    function deployStrategy(string calldata name, uint256[] calldata amounts)
+        external;
 
     /**
      * @notice Unwind liquidity with a registered `IZap`
@@ -24,13 +20,11 @@ interface ILpAccount {
      * @param name The name of the `IZap`
      * @param amount The amount of the token to unwind
      * @param index The index of the token to unwind
-     * @param lockPeriod The number of blocks to lock the oracle for
      */
     function unwindStrategy(
         string calldata name,
         uint256 amount,
-        uint8 index,
-        uint256 lockPeriod
+        uint8 index
     ) external;
 
     /**
@@ -53,14 +47,12 @@ interface ILpAccount {
     function swap(
         string calldata name,
         uint256 amount,
-        uint256 minAmount,
-        uint256 lockPeriod
+        uint256 minAmount
     ) external;
 
     /**
      * @notice Claim reward tokens with a registered `IZap`
      * @param name The name of the `IZap`
-     * @param lockPeriod The number of blocks to lock the oracle for
      */
-    function claim(string calldata name, uint256 lockPeriod) external;
+    function claim(string calldata name) external;
 }

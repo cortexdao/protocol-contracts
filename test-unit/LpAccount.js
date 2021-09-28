@@ -334,7 +334,7 @@ describe("Contract: LpAccount", () => {
           const amounts = [];
 
           await expect(
-            lpAccount.connect(lpSafe).deployStrategy(name, amounts, 0)
+            lpAccount.connect(lpSafe).deployStrategy(name, amounts)
           ).to.be.revertedWith("INVALID_NAME");
         });
 
@@ -345,9 +345,8 @@ describe("Contract: LpAccount", () => {
           const name = await zap.NAME();
           const amounts = [];
 
-          await expect(
-            lpAccount.connect(lpSafe).deployStrategy(name, amounts, 0)
-          ).to.not.be.reverted;
+          await expect(lpAccount.connect(lpSafe).deployStrategy(name, amounts))
+            .to.not.be.reverted;
         });
 
         it("Unpermissioned cannot call", async () => {
@@ -358,7 +357,7 @@ describe("Contract: LpAccount", () => {
           const amounts = [];
 
           await expect(
-            lpAccount.connect(randomUser).deployStrategy(name, amounts, 0)
+            lpAccount.connect(randomUser).deployStrategy(name, amounts)
           ).to.be.revertedWith("NOT_LP_ROLE");
         });
 
@@ -373,7 +372,7 @@ describe("Contract: LpAccount", () => {
             tokenAmountToBigNumber(3),
           ];
 
-          await lpAccount.connect(lpSafe).deployStrategy(name, amounts, 0);
+          await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
           expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
         });
 
@@ -393,7 +392,7 @@ describe("Contract: LpAccount", () => {
           ].returns(false);
 
           await expect(
-            lpAccount.connect(lpSafe).deployStrategy(name, amounts, 0)
+            lpAccount.connect(lpSafe).deployStrategy(name, amounts)
           ).to.be.revertedWith("MISSING_ASSET_ALLOCATIONS");
         });
 
@@ -413,7 +412,7 @@ describe("Contract: LpAccount", () => {
           ].returns(false);
 
           await expect(
-            lpAccount.connect(lpSafe).deployStrategy(name, amounts, 0)
+            lpAccount.connect(lpSafe).deployStrategy(name, amounts)
           ).to.be.revertedWith("MISSING_ERC20_ALLOCATIONS");
         });
       });
@@ -427,7 +426,7 @@ describe("Contract: LpAccount", () => {
           const index = 2;
 
           await expect(
-            lpAccount.connect(lpSafe).unwindStrategy(name, amount, index, 0)
+            lpAccount.connect(lpSafe).unwindStrategy(name, amount, index)
           ).to.be.revertedWith("INVALID_NAME");
         });
 
@@ -440,7 +439,7 @@ describe("Contract: LpAccount", () => {
           const index = 2;
 
           await expect(
-            lpAccount.connect(lpSafe).unwindStrategy(name, amount, index, 0)
+            lpAccount.connect(lpSafe).unwindStrategy(name, amount, index)
           ).to.not.be.reverted;
         });
 
@@ -453,7 +452,7 @@ describe("Contract: LpAccount", () => {
           const index = 2;
 
           await expect(
-            lpAccount.connect(randomUser).unwindStrategy(name, amount, index, 0)
+            lpAccount.connect(randomUser).unwindStrategy(name, amount, index)
           ).to.be.revertedWith("NOT_LP_ROLE");
         });
 
@@ -465,9 +464,7 @@ describe("Contract: LpAccount", () => {
           const amount = tokenAmountToBigNumber(100);
           const index = 2;
 
-          await lpAccount
-            .connect(lpSafe)
-            .unwindStrategy(name, amount, index, 0);
+          await lpAccount.connect(lpSafe).unwindStrategy(name, amount, index);
           expect(await lpAccount._unwindCalls()).to.deep.equal([amount]);
         });
       });
@@ -478,7 +475,7 @@ describe("Contract: LpAccount", () => {
           const name = await zap.NAME();
 
           await expect(
-            lpAccount.connect(lpSafe).claim(name, 0)
+            lpAccount.connect(lpSafe).claim(name)
           ).to.be.revertedWith("INVALID_NAME");
         });
 
@@ -488,7 +485,7 @@ describe("Contract: LpAccount", () => {
 
           const name = await zap.NAME();
 
-          await expect(lpAccount.connect(lpSafe).claim(name, 0)).to.not.be
+          await expect(lpAccount.connect(lpSafe).claim(name)).to.not.be
             .reverted;
         });
 
@@ -499,7 +496,7 @@ describe("Contract: LpAccount", () => {
           const name = await zap.NAME();
 
           await expect(
-            lpAccount.connect(randomUser).claim(name, 0)
+            lpAccount.connect(randomUser).claim(name)
           ).to.be.revertedWith("NOT_LP_ROLE");
         });
 
@@ -509,7 +506,7 @@ describe("Contract: LpAccount", () => {
 
           const name = await zap.NAME();
 
-          await lpAccount.connect(lpSafe).claim(name, 0);
+          await lpAccount.connect(lpSafe).claim(name);
           expect(await lpAccount._claimsCounter()).to.equal(1);
         });
 
@@ -524,7 +521,7 @@ describe("Contract: LpAccount", () => {
           ].returns(false);
 
           await expect(
-            lpAccount.connect(lpSafe).claim(name, 0)
+            lpAccount.connect(lpSafe).claim(name)
           ).to.be.revertedWith("MISSING_ERC20_ALLOCATIONS");
         });
       });
@@ -618,7 +615,7 @@ describe("Contract: LpAccount", () => {
         const amount = tokenAmountToBigNumber(100);
 
         await expect(
-          lpAccount.connect(lpSafe).swap(name, amount, 0, 0)
+          lpAccount.connect(lpSafe).swap(name, amount, 0)
         ).to.be.revertedWith("INVALID_NAME");
       });
 
@@ -629,8 +626,8 @@ describe("Contract: LpAccount", () => {
         const name = await swap.NAME();
         const amount = tokenAmountToBigNumber(100);
 
-        await expect(lpAccount.connect(lpSafe).swap(name, amount, 0, 0)).to.not
-          .be.reverted;
+        await expect(lpAccount.connect(lpSafe).swap(name, amount, 0)).to.not.be
+          .reverted;
       });
 
       it("Unpermissioned cannot call", async () => {
@@ -641,7 +638,7 @@ describe("Contract: LpAccount", () => {
         const amount = tokenAmountToBigNumber(100);
 
         await expect(
-          lpAccount.connect(randomUser).swap(name, amount, 0, 0)
+          lpAccount.connect(randomUser).swap(name, amount, 0)
         ).to.be.revertedWith("NOT_LP_ROLE");
       });
 
@@ -652,7 +649,7 @@ describe("Contract: LpAccount", () => {
         const name = await swap.NAME();
         const amount = tokenAmountToBigNumber(100);
 
-        await lpAccount.connect(lpSafe).swap(name, amount, 0, 0);
+        await lpAccount.connect(lpSafe).swap(name, amount, 0);
         expect(await lpAccount._swapCalls()).to.deep.equal([amount]);
       });
 
@@ -668,7 +665,7 @@ describe("Contract: LpAccount", () => {
         );
 
         await expect(
-          lpAccount.connect(lpSafe).swap(name, amount, 0, 0)
+          lpAccount.connect(lpSafe).swap(name, amount, 0)
         ).to.be.revertedWith("MISSING_ERC20_ALLOCATIONS");
       });
     });
