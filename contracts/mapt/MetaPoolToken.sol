@@ -27,15 +27,15 @@ import {
 import {ILpAccountFunder} from "./ILpAccountFunder.sol";
 
 /**
- * @title Meta Pool Token
- * @author APY.Finance
  * @notice This contract has hybrid functionality:
- *         - it acts as a token that tracks the capital that has been pulled
- *           ("deployed") from APY Finance pools (PoolToken contracts)
- *         - it is permissioned to transfer funds between the pools and the
- *           LP Account contract.
  *
- * When MetaPoolToken pulls capital from the pools to the LP Account, it
+ * - It acts as a token that tracks the capital that has been pulled
+ * ("deployed") from APY Finance pools (PoolToken contracts)
+ *
+ * - It is permissioned to transfer funds between the pools and the
+ * LP Account contract.
+ *
+ * @dev When MetaPoolToken pulls capital from the pools to the LP Account, it
  * will mint mAPT for each pool. Conversely, when MetaPoolToken withdraws funds
  * from the LP Account to the pools, it will burn mAPT for each pool.
  *
@@ -145,6 +145,10 @@ contract MetaPoolToken is
     // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual onlyAdmin {}
 
+    /**
+     * @notice Set the new proxy admin
+     * @param adminAddress The new proxy admin
+     */
     function emergencySetAdminAddress(address adminAddress)
         external
         onlyEmergencyRole
@@ -154,7 +158,6 @@ contract MetaPoolToken is
 
     /**
      * @notice Sets the address registry
-     * @dev only callable by owner
      * @param addressRegistry_ the address of the registry
      */
     function emergencySetAddressRegistry(address addressRegistry_)
@@ -214,7 +217,7 @@ contract MetaPoolToken is
     /**
      * @notice Get the USD-denominated value (in wei) of the pool's share
      * of the deployed capital, as tracked by the mAPT token.
-     * @return uint256
+     * @return The value deployed to the LP Account
      */
     function getDeployedValue(address pool) external view returns (uint256) {
         uint256 balance = balanceOf(pool);
@@ -226,11 +229,11 @@ contract MetaPoolToken is
 
     /**
      * @notice Returns the (signed) top-up amount for each pool ID given.
-     *         A positive (negative) sign means the reserve level is in
-     *         deficit (excess) of required percentage.
+     * A positive (negative) sign means the reserve level is in deficit
+     * (excess) of required percentage.
      * @param poolIds array of pool identifiers
-     * @return depositAmounts array of pool amounts that need to deposit
-     * @return withdrawAmounts array of pool amounts that need to withdraw
+     * @return The array of pools
+     * @return An array of rebalance amounts
      */
     function getRebalanceAmounts(bytes32[] memory poolIds)
         public
@@ -258,11 +261,6 @@ contract MetaPoolToken is
         emit AdminChanged(adminAddress);
     }
 
-    /**
-     * @notice Sets the address registry
-     * @dev only callable by owner
-     * @param addressRegistry_ the address of the registry
-     */
     function _setAddressRegistry(address addressRegistry_) internal {
         require(addressRegistry_.isContract(), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
