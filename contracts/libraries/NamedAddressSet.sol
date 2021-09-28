@@ -7,6 +7,12 @@ import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import {IAssetAllocation, INameIdentifier} from "contracts/common/Imports.sol";
 import {IZap, ISwap} from "contracts/lpaccount/Imports.sol";
 
+/**
+ * @notice Stores a set of addresses that can be looked up by name
+ * @notice Addresses can be added or removed dynamically
+ * @notice Useful for keeping track of unique deployed contracts
+ * @dev Each address must be a contract with a `NAME` constant for lookup
+ */
 library NamedAddressSet {
     using EnumerableSet for EnumerableSet.AddressSet;
 

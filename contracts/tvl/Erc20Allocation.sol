@@ -66,23 +66,6 @@ contract Erc20Allocation is
         _registerErc20Token(token, symbol, decimals);
     }
 
-    function _registerErc20Token(
-        IERC20 token,
-        string memory symbol,
-        uint8 decimals
-    ) internal {
-        require(address(token).isContract(), "INVALID_ADDRESS");
-        require(bytes(symbol).length != 0, "INVALID_SYMBOL");
-        _tokenAddresses.add(address(token));
-        _tokenToData[address(token)] = TokenData(
-            address(token),
-            symbol,
-            decimals
-        );
-
-        emit Erc20TokenRegistered(token, symbol, decimals);
-    }
-
     function removeErc20Token(IERC20 token) external override onlyAdminRole {
         _tokenAddresses.remove(address(token));
         delete _tokenToData[address(token)];
@@ -132,5 +115,22 @@ contract Erc20Allocation is
             _tokens[i] = _tokenToData[tokenAddress];
         }
         return _tokens;
+    }
+
+    function _registerErc20Token(
+        IERC20 token,
+        string memory symbol,
+        uint8 decimals
+    ) internal {
+        require(address(token).isContract(), "INVALID_ADDRESS");
+        require(bytes(symbol).length != 0, "INVALID_SYMBOL");
+        _tokenAddresses.add(address(token));
+        _tokenToData[address(token)] = TokenData(
+            address(token),
+            symbol,
+            decimals
+        );
+
+        emit Erc20TokenRegistered(token, symbol, decimals);
     }
 }

@@ -55,7 +55,10 @@ contract LpAccount is
     NamedAddressSet.ZapSet private _zaps;
     NamedAddressSet.SwapSet private _swaps;
 
+    /** @notice Log when the proxy admin is changed */
     event AdminChanged(address);
+
+    /** @notice Log when the address registry is changed */
     event AddressRegistryChanged(address);
 
     /**
@@ -110,6 +113,10 @@ contract LpAccount is
     // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual onlyAdmin {}
 
+    /**
+     * @notice Set the new proxy admin
+     * @param adminAddress The new proxy admin
+     */
     function emergencySetAdminAddress(address adminAddress)
         external
         onlyEmergencyRole
@@ -119,7 +126,6 @@ contract LpAccount is
 
     /**
      * @notice Sets the address registry
-     * @dev only callable by owner
      * @param addressRegistry_ the address of the registry
      */
     function emergencySetAddressRegistry(address addressRegistry_)
@@ -139,12 +145,10 @@ contract LpAccount is
 
         bool isAssetAllocationRegistered =
             _checkAllocationRegistrations(zap.assetAllocations());
-        // TODO: If the asset allocation is deployed, but not registered, register it
         require(isAssetAllocationRegistered, "MISSING_ASSET_ALLOCATIONS");
 
         bool isErc20TokenRegistered =
             _checkErc20Registrations(zap.erc20Allocations());
-        // TODO: If an ERC20 allocation is missing, add it
         require(isErc20TokenRegistered, "MISSING_ERC20_ALLOCATIONS");
 
         address(zap).functionDelegateCall(
@@ -201,7 +205,6 @@ contract LpAccount is
         bool isErc20TokenRegistered =
             _checkErc20Registrations(swap_.erc20Allocations());
 
-        // TODO: If an ERC20 allocation is missing, add it
         require(isErc20TokenRegistered, "MISSING_ERC20_ALLOCATIONS");
 
         address(swap_).functionDelegateCall(
@@ -261,33 +264,37 @@ contract LpAccount is
         emit AdminChanged(adminAddress);
     }
 
-    /**
-     * @notice Sets the address registry
-     * @dev only callable by owner
-     * @param addressRegistry_ the address of the registry
-     */
     function _setAddressRegistry(address addressRegistry_) internal {
         require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
         emit AddressRegistryChanged(addressRegistry_);
     }
 
-    function _checkAllocationRegistrations(string[] memory allocations)
+    /**
+     * @notice Check if multiple asset allocations are ALL registered
+     * @param allocationNames An array of asset allocation names to check
+     * @return `true` if every asset allocation is registered, otherwise `false`
+     */
+    function _checkAllocationRegistrations(string[] memory allocationNames)
         internal
         view
-        returns (bool isAssetAllocationRegistered)
+        returns (bool)
     {
         IAssetAllocationRegistry tvlManager =
             IAssetAllocationRegistry(addressRegistry.getAddress("tvlManager"));
-        isAssetAllocationRegistered = tvlManager.isAssetAllocationRegistered(
-            allocations
-        );
+
+        return tvlManager.isAssetAllocationRegistered(allocationNames);
     }
 
+    /**
+     * @notice Check if multiple ERC20 asset allocations are ALL registered
+     * @param tokens An array of ERC20 tokens to check
+     * @return `true` if every ERC20 is registered, otherwise `false`
+     */
     function _checkErc20Registrations(IERC20[] memory tokens)
         internal
         view
-        returns (bool isErc20TokenRegistered)
+        returns (bool)
     {
         IAssetAllocationRegistry tvlManager =
             IAssetAllocationRegistry(addressRegistry.getAddress("tvlManager"));
@@ -297,6 +304,7 @@ contract LpAccount is
                     tvlManager.getAssetAllocation(Erc20AllocationConstants.NAME)
                 )
             );
-        isErc20TokenRegistered = erc20Allocation.isErc20TokenRegistered(tokens);
+
+        return erc20Allocation.isErc20TokenRegistered(tokens);
     }
 }

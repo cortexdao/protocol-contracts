@@ -2,31 +2,28 @@
 pragma solidity 0.6.11;
 
 /**
- * @title Interface to Access APY.Finance's Chainlink functions
- * @author APY.Finance
- * @notice Enables 3rd Parties (ie. Chainlink) to pull relevant asset allocations
- * in order to compute the TVL across the entire APY.Finance system.
+ * @notice Interface used by Chainlink to aggregate allocations and compute TVL
  */
 interface IChainlinkRegistry {
     /**
-     * @notice Returns a list of all identifiers where asset allocations have been registered
-     * @dev the list contains no duplicate identifiers
-     * @return list of all the registered identifiers
+     * @notice Get all IDs from registered asset allocations
+     * @notice Each ID is a unique asset allocation and token index pair
+     * @dev Should contain no duplicate IDs
+     * @return list of all IDs
      */
     function getAssetAllocationIds() external view returns (bytes32[] memory);
 
     /**
-     * @notice Executes the bytes lookup data registered under an id
-     * @dev The balance of an id may be aggregated from multiple contracts
-     * @param allocationId the id to fetch the balance for
-     * @return returns the result of the executed lookup data registered for the provided id
+     * @notice Get the LP Account's balance for an asset allocation ID
+     * @param allocationId The ID to fetch the balance for
+     * @return The balance for the LP Account
      */
     function balanceOf(bytes32 allocationId) external view returns (uint256);
 
     /**
-     * @notice Returns the token symbol registered under an id
-     * @param allocationId the id to fetch the token for
-     * @return returns the result of the token symbol registered for the provided id
+     * @notice Get the symbol for an allocation ID's underlying token
+     * @param allocationId The ID to fetch the symbol for
+     * @return The underlying token symbol
      */
     function symbolOf(bytes32 allocationId)
         external
@@ -34,9 +31,9 @@ interface IChainlinkRegistry {
         returns (string memory);
 
     /**
-     * @notice Returns the decimals registered under an id
-     * @param allocationId the id to fetch the decimals for
-     * @return returns the result of the decimal value registered for the provided id
+     * @notice Get the decimals for an allocation ID's underlying token
+     * @param allocationId The ID to fetch the decimals for
+     * @return The underlying token decimals
      */
     function decimalsOf(bytes32 allocationId) external view returns (uint256);
 }
