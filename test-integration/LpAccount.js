@@ -133,6 +133,7 @@ describe("Contract: LpAccount", () => {
     // Oracle Adapter is locked after adding/removing allocations
     const oracleAdapter = await deployMockContract(deployer, OracleAdapter.abi);
     await oracleAdapter.mock.lock.returns();
+    await oracleAdapter.mock.lockFor.returns();
     await addressRegistry.mock.oracleAdapterAddress.returns(
       oracleAdapter.address
     );
@@ -160,7 +161,7 @@ describe("Contract: LpAccount", () => {
         tokenAmountToBigNumber(3),
       ];
 
-      await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
+      await lpAccount.connect(lpSafe).deployStrategy(name, amounts, 0);
       expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
     });
 
@@ -180,7 +181,7 @@ describe("Contract: LpAccount", () => {
       await zap._setAssetAllocations([allocation.address]);
 
       await expect(
-        lpAccount.connect(lpSafe).deployStrategy(name, amounts)
+        lpAccount.connect(lpSafe).deployStrategy(name, amounts, 0)
       ).to.be.revertedWith("MISSING_ASSET_ALLOCATIONS");
     });
 
@@ -205,7 +206,7 @@ describe("Contract: LpAccount", () => {
       ]);
 
       await expect(
-        lpAccount.connect(lpSafe).deployStrategy(name, amounts)
+        lpAccount.connect(lpSafe).deployStrategy(name, amounts, 0)
       ).to.be.revertedWith("MISSING_ASSET_ALLOCATIONS");
     });
 
@@ -230,7 +231,7 @@ describe("Contract: LpAccount", () => {
         await allocation_1.NAME(),
       ]);
 
-      await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
+      await lpAccount.connect(lpSafe).deployStrategy(name, amounts, 0);
       expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
     });
 
@@ -250,7 +251,7 @@ describe("Contract: LpAccount", () => {
       await zap._setErc20Allocations([token.address]);
 
       await expect(
-        lpAccount.connect(lpSafe).deployStrategy(name, amounts)
+        lpAccount.connect(lpSafe).deployStrategy(name, amounts, 0)
       ).to.be.revertedWith("MISSING_ERC20_ALLOCATIONS");
     });
 
@@ -272,7 +273,7 @@ describe("Contract: LpAccount", () => {
         ["registerErc20Token(address)"](token.address);
       await zap._setErc20Allocations([token.address]);
 
-      await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
+      await lpAccount.connect(lpSafe).deployStrategy(name, amounts, 0);
       expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
     });
 
@@ -299,7 +300,7 @@ describe("Contract: LpAccount", () => {
         ["registerErc20Token(address)"](token.address);
       await zap._setErc20Allocations([token.address]);
 
-      await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
+      await lpAccount.connect(lpSafe).deployStrategy(name, amounts, 0);
       expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
     });
 
@@ -324,7 +325,7 @@ describe("Contract: LpAccount", () => {
       await zap._setErc20Allocations([token.address]);
 
       await expect(
-        lpAccount.connect(lpSafe).deployStrategy(name, amounts)
+        lpAccount.connect(lpSafe).deployStrategy(name, amounts, 0)
       ).to.be.revertedWith("MISSING_ERC20_ALLOCATIONS");
     });
 
@@ -351,7 +352,7 @@ describe("Contract: LpAccount", () => {
       await zap._setErc20Allocations([token.address]);
 
       await expect(
-        lpAccount.connect(lpSafe).deployStrategy(name, amounts)
+        lpAccount.connect(lpSafe).deployStrategy(name, amounts, 0)
       ).to.be.revertedWith("MISSING_ASSET_ALLOCATIONS");
     });
   });
@@ -365,7 +366,7 @@ describe("Contract: LpAccount", () => {
       const amount = tokenAmountToBigNumber(100);
       const index = 2;
 
-      await lpAccount.connect(lpSafe).unwindStrategy(name, amount, index);
+      await lpAccount.connect(lpSafe).unwindStrategy(name, amount, index, 0);
       expect(await lpAccount._unwindCalls()).to.deep.equal([amount]);
     });
   });
@@ -377,7 +378,7 @@ describe("Contract: LpAccount", () => {
 
       const name = await zap.NAME();
 
-      await lpAccount.connect(lpSafe).claim(name);
+      await lpAccount.connect(lpSafe).claim(name, 0);
       expect(await lpAccount._claimsCounter()).to.equal(1);
     });
 
@@ -394,7 +395,7 @@ describe("Contract: LpAccount", () => {
         ["registerErc20Token(address)"](token.address);
       await zap._setErc20Allocations([token.address]);
 
-      await lpAccount.connect(lpSafe).claim(name);
+      await lpAccount.connect(lpSafe).claim(name, 0);
       expect(await lpAccount._claimsCounter()).to.equal(1);
     });
 
@@ -408,7 +409,7 @@ describe("Contract: LpAccount", () => {
       const token = await deployMockErc20();
       await zap._setErc20Allocations([token.address]);
 
-      await expect(lpAccount.connect(lpSafe).claim(name)).to.be.revertedWith(
+      await expect(lpAccount.connect(lpSafe).claim(name, 0)).to.be.revertedWith(
         "MISSING_ERC20_ALLOCATIONS"
       );
     });
@@ -457,7 +458,7 @@ describe("Contract: LpAccount", () => {
       const name = await swap.NAME();
       const amount = tokenAmountToBigNumber(1);
 
-      await lpAccount.connect(lpSafe).swap(name, amount, 0);
+      await lpAccount.connect(lpSafe).swap(name, amount, 0, 0);
       expect(await lpAccount._swapCalls()).to.deep.equal([amount]);
     });
 
@@ -473,7 +474,7 @@ describe("Contract: LpAccount", () => {
       await swap._setErc20Allocations([token.address]);
 
       await expect(
-        lpAccount.connect(lpSafe).swap(name, amount, 0)
+        lpAccount.connect(lpSafe).swap(name, amount, 0, 0)
       ).to.be.revertedWith("MISSING_ERC20_ALLOCATIONS");
     });
 
@@ -491,7 +492,7 @@ describe("Contract: LpAccount", () => {
         ["registerErc20Token(address)"](token.address);
       await swap._setErc20Allocations([token.address]);
 
-      await expect(lpAccount.connect(lpSafe).swap(name, amount, 0)).to.not.be
+      await expect(lpAccount.connect(lpSafe).swap(name, amount, 0, 0)).to.not.be
         .reverted;
     });
   });

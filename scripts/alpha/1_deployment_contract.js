@@ -33,17 +33,6 @@ async function main(argv) {
 
   const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
-  /* TESTING on localhost only
-   * need to fund as there is no ETH on Mainnet for the deployer
-   */
-  if (networkName == "LOCALHOST") {
-    const [funder] = await ethers.getSigners();
-    const fundingTrx = await funder.sendTransaction({
-      to: deployer.address,
-      value: ethers.utils.parseEther("1.0"),
-    });
-    await fundingTrx.wait();
-  }
 
   const balance =
     (await ethers.provider.getBalance(deployer.address)).toString() / 1e18;

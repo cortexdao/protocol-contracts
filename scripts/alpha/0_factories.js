@@ -48,10 +48,12 @@ async function main(argv) {
     "PoolTokenV1Factory",
     "PoolTokenV2Factory",
     "TvlManagerFactory",
+    "Erc20AllocationFactory",
     "OracleAdapterFactory",
     "LpAccountFactory",
   ];
   const factoryAddresses = [];
+  const addressesFilename = "scripts/alpha/deployment-factory-addresses.json";
   let gasUsed = BigNumber.from("0");
 
   for (const name of factoryNames) {
@@ -66,12 +68,13 @@ async function main(argv) {
     console.log("");
 
     factoryAddresses.push(contract.address);
+
+    // rewrite file on each iteration to safeguard against failed deployment
+    const addressesJson = JSON.stringify(factoryAddresses, null, "  ");
+    fs.writeFileSync(addressesFilename, addressesJson, (err) => {
+      if (err) throw err;
+    });
   }
-  const addressesJson = JSON.stringify(factoryAddresses, null, "  ");
-  const addressesFilename = "scripts/alpha/deployment-factory-addresses.json";
-  fs.writeFileSync(addressesFilename, addressesJson, (err) => {
-    if (err) throw err;
-  });
 
   console.log("Total gas used: %s", chalk.yellow(gasUsed));
   console.log("");

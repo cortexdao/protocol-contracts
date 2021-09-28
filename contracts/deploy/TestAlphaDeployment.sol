@@ -13,6 +13,7 @@ contract TestAlphaDeployment is AlphaDeployment {
         address poolTokenV1Factory_,
         address poolTokenV2Factory_,
         address tvlManagerFactory_,
+        address erc20AllocationFactory_,
         address oracleAdapterFactory_,
         address lpAccountFactory_
     )
@@ -25,6 +26,7 @@ contract TestAlphaDeployment is AlphaDeployment {
             poolTokenV1Factory_,
             poolTokenV2Factory_,
             tvlManagerFactory_,
+            erc20AllocationFactory_,
             oracleAdapterFactory_,
             lpAccountFactory_
         )

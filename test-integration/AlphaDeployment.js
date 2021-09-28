@@ -30,6 +30,7 @@ describe("Contract: AlphaDeployment", () => {
   let poolTokenV1Factory;
   let poolTokenV2Factory;
   let tvlManagerFactory;
+  let erc20AllocationFactory;
   let oracleAdapterFactory;
   let lpAccountFactory;
 
@@ -128,6 +129,11 @@ describe("Contract: AlphaDeployment", () => {
     );
     tvlManagerFactory = await TvlManagerFactory.deploy();
 
+    const Erc20AllocationFactory = await ethers.getContractFactory(
+      "Erc20AllocationFactory"
+    );
+    erc20AllocationFactory = await Erc20AllocationFactory.deploy();
+
     const OracleAdapterFactory = await ethers.getContractFactory(
       "OracleAdapterFactory"
     );
@@ -141,6 +147,13 @@ describe("Contract: AlphaDeployment", () => {
     AlphaDeployment = await ethers.getContractFactory("AlphaDeployment");
   });
 
+  /*
+   * These deployment step tests must be run in the order given.  This means we cannot
+   * run these tests in parallel.
+   *
+   * FIXME: 1. If a step fails, block subsequent steps, e.g. using `mocha-steps`.
+   *        2. Find a better way to ensure sequential test ordering.
+   */
   it("constructor", async () => {
     alphaDeployment = await expect(
       AlphaDeployment.deploy(
@@ -151,6 +164,7 @@ describe("Contract: AlphaDeployment", () => {
         poolTokenV1Factory.address, // pool token v1 factory
         poolTokenV2Factory.address, // pool token v2 factory
         tvlManagerFactory.address, // tvl manager factory
+        erc20AllocationFactory.address, // erc20 allocation factory
         oracleAdapterFactory.address, // oracle adapter factory
         lpAccountFactory.address // lp account factory
       )
@@ -158,13 +172,6 @@ describe("Contract: AlphaDeployment", () => {
     expect(await alphaDeployment.step()).to.equal(0);
   });
 
-  /*
-   * These deployment step tests must be run in the order given.  This means we cannot
-   * run these tests in parallel.
-   *
-   * FIXME: 1. If a step fails, block subsequent steps, e.g. using `mocha-steps`.
-   *        2. Find a better way to ensure sequential test ordering.
-   */
   describe("Deployment steps", () => {
     before("Register deployer module", async () => {
       await forciblySendEth(
