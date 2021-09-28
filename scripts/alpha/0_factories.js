@@ -59,8 +59,12 @@ async function main(argv) {
   for (const name of factoryNames) {
     console.log(chalk.green(name));
     const contractFactory = await ethers.getContractFactory(name, deployer);
-    const gasPrice = await getGasPrice(argv.gasPrice);
-    const contract = await contractFactory.deploy({ gasPrice });
+    const maxFeePerGas = await getGasPrice(argv.gasPrice);
+    const maxPriorityFeePerGas = parseInt(2e9);
+    const contract = await contractFactory.deploy({
+      maxFeePerGas,
+      maxPriorityFeePerGas,
+    });
     console.log(`https://etherscan.io/tx/${contract.deployTransaction.hash}`);
     const receipt = await contract.deployTransaction.wait();
     gasUsed = gasUsed.add(receipt.gasUsed);
