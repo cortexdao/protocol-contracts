@@ -279,6 +279,10 @@ contract PoolTokenV2 is
         underlyer.safeTransfer(addressRegistry.lpAccountAddress(), amount);
     }
 
+    /**
+     * @notice Set the new proxy admin
+     * @param adminAddress The new proxy admin
+     */
     function emergencySetAdminAddress(address adminAddress)
         external
         onlyEmergencyRole
@@ -286,6 +290,10 @@ contract PoolTokenV2 is
         _setAdminAddress(adminAddress);
     }
 
+    /**
+     * @notice Set the new address registry
+     * @param addressRegistry_ The new address registry
+     */
     function emergencySetAddressRegistry(address addressRegistry_)
         external
         onlyEmergencyRole
