@@ -30,29 +30,18 @@ import {
  *      - Unlocked → Use Manual Submitted Value (emergency)
  *      - Locked → Reverts (nominal)
  *
- * @dev It is important to not that zero values are allowed for manual
- * submission, but will result in a revert for Chainlink.
+ * @dev It is important to note that zero values are allowed for manual
+ * submission but may result in a revert when pulling from Chainlink.
  *
- * This is because there are very rare situations where the TVL value can
- * accurately be zero, such as a situation where all funds are unwound and
- * moved back to the liquidity pools, but a zero value can also indicate a
- * failure with Chainlink.
+ * This is because there are uncommon situations where the zero TVL is valid,
+ * such as when all funds are unwound and moved back to the liquidity
+ * pools, but total mAPT supply would be zero in those cases.  Outside those
+ * situations, a zero TVL with nonzero supply likely indicates a Chainlink
+ * failure, hence we revert out of an abundance of caution.
  *
- * Because accurate zero values are rare, and occur due to intentional system
- * states where no funds are deployed, they due not need to be detected
- * automatically by Chainlink.
- *
- * In addition, the impact of failing to manually set a zero value when
- * necessary compared to the impact of an incorrect zero value from Chainlink
- * is much lower.
- *
- * Failing to manually set a zero value can result in either a locked contract,
- * which can be unlocked by setting the value, or reduced deposit/withdraw
- * amounts. But never a loss of funds.
- *
- * Conversely, if Chainlink reports a zero value in error and the contract
- * were to accept it, funds up to the amount available in the reserve pools
- * could be lost.
+ * In the rare situation where Chainlink *should* be returning zero TVL
+ * with nonzero mAPT supply, we can set the zero TVL manually via the
+ * Emergency Safe.  Such a situation is not expected to persist long.
  */
 contract OracleAdapter is
     AccessControl,
@@ -66,15 +55,15 @@ contract OracleAdapter is
     IAddressRegistryV2 public addressRegistry;
 
     uint256 public override defaultLockPeriod;
-    /** @notice Contract is locked until this block number is passed */
+    /// @notice Contract is locked until this block number is passed.
     uint256 public lockEnd;
 
-    /** @notice Chainlink variables */
-    uint256 public chainlinkStalePeriod; // Duration of Chainlink heartbeat
+    /// @notice Chainlink heartbeat duration in seconds
+    uint256 public chainlinkStalePeriod;
     AggregatorV3Interface public tvlSource;
     mapping(address => AggregatorV3Interface) public assetSources;
 
-    /** @notice Submitted values that override Chainlink values until stale */
+    /// @notice Submitted values that override Chainlink values until stale.
     mapping(address => Value) public submittedAssetValues;
     Value public submittedTvlValue;
 
@@ -86,7 +75,6 @@ contract OracleAdapter is
     }
 
     /**
-     * @notice Constructor
      * @param addressRegistry_ the address registry
      * @param assets the assets priced by sources
      * @param sources the source for each asset
@@ -133,6 +121,8 @@ contract OracleAdapter is
         emit Unlocked();
     }
 
+    /// @dev Can only increase the remaining locking duration.  If no lock exists,
+    ///      this allows setting of any defined locking period.
     function lockFor(uint256 activePeriod) external override onlyContractRole {
         uint256 oldLockEnd = lockEnd;
         _lockFor(activePeriod);
