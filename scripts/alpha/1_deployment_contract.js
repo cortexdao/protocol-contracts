@@ -22,6 +22,12 @@ const {
   getDeployedAddress,
 } = require("../../utils/helpers");
 const fs = require("fs");
+const {
+  SafeService,
+  SafeEthersSigner,
+} = require("@gnosis.pm/safe-ethers-adapters");
+
+const MAINNET_SERVICE_URL = "https://safe-transaction.gnosis.io/";
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -34,10 +40,29 @@ async function main(argv) {
   const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
 
-  const balance =
-    (await ethers.provider.getBalance(deployer.address)).toString() / 1e18;
-  console.log("ETH balance:", balance.toString());
+  if (!process.env.SAFE_OWNER_KEY) {
+    throw new Error("Must set SAFE_OWNER_KEY env var.");
+  }
+  const signer = new ethers.Wallet(process.env.SAFE_OWNER_KEY, ethers.provider);
+  console.log("Safe owner: %s", signer.address);
   console.log("");
+
+  let balance =
+    (await ethers.provider.getBalance(deployer.address)).toString() / 1e18;
+  console.log("ETH balance (deployer): %s", balance);
+  console.log("");
+  balance =
+    (await ethers.provider.getBalance(signer.address)).toString() / 1e18;
+  console.log("ETH balance (Safe signer): %s", balance);
+  console.log("");
+
+  const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
+  const service = new SafeService(MAINNET_SERVICE_URL);
+  const safeSigner = await SafeEthersSigner.create(
+    adminSafeAddress,
+    signer,
+    service
+  );
 
   console.log("");
   console.log("Deploying ...");
@@ -78,9 +103,14 @@ async function main(argv) {
   );
   console.log("");
 
-  const alphaDeployment = await AlphaDeployment.deploy(...factoryAddresses, {
-    gasPrice,
-  });
+  const alphaDeployment = await AlphaDeployment.connect(safeSigner).deploy(
+    ...factoryAddresses,
+    {
+      gasPrice,
+    }
+  );
+  console.log("USER ACTION REQUIRED");
+  console.log("Go to the Gnosis Safe Web App to confirm the transaction");
   console.log(
     `https://etherscan.io/tx/${alphaDeployment.deployTransaction.hash}`
   );
