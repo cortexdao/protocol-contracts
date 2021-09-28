@@ -17,12 +17,10 @@ contract TestZap is IZap, TestLpAccountStorage {
         _name = name;
     }
 
-    // array of underlyer amounts
     function deployLiquidity(uint256[] calldata amounts) external override {
         _deploysArray.push(amounts);
     }
 
-    // LP token amount
     // TODO: push index in addition to amount
     function unwindLiquidity(uint256 amount, uint8) external override {
         _unwindsArray.push(amount);
@@ -42,7 +40,6 @@ contract TestZap is IZap, TestLpAccountStorage {
         return _sortedSymbols;
     }
 
-    // Asset allocation contracts required for the strategy
     function assetAllocations()
         external
         view
@@ -52,7 +49,6 @@ contract TestZap is IZap, TestLpAccountStorage {
         return _assetAllocations;
     }
 
-    // ERC20 asset allocation tokens required for the strategy
     function erc20Allocations()
         external
         view
@@ -61,10 +57,6 @@ contract TestZap is IZap, TestLpAccountStorage {
     {
         return _tokens;
     }
-
-    /**
-     * Testing functions
-     */
 
     function _setAssetAllocations(string[] memory allocationNames) public {
         _assetAllocations = allocationNames;
