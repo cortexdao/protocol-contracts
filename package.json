@@ -2,17 +2,8 @@
   "name": "@apy-finance/apy-core",
   "version": "8.0.1",
   "description": "",
-  "keywords": [
-    "ethereum",
-    "solidity",
-    "defi"
-  ],
-  "files": [
-    "contracts",
-    "artifacts",
-    "utils",
-    "deployed_addresses"
-  ],
+  "keywords": ["ethereum", "solidity", "defi"],
+  "files": ["contracts", "artifacts", "utils", "deployed_addresses"],
   "scripts": {
     "check": "yarn lint",
     "clean": "hardhat clean",
@@ -62,7 +53,7 @@
     "ethereum-waffle": "^3.0.0",
     "ethers": "^5.0.24",
     "ganache-time-traveler": "^1.0.15",
-    "hardhat": "^2.5.0",
+    "hardhat": "^2.6.0",
     "husky": "4.0.10",
     "lint-staged": "^10.2.11",
     "prettier": "2.1.2",
