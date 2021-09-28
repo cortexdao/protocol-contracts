@@ -74,7 +74,8 @@ async function main(argv) {
   );
 
   const deploy_data = {};
-  const gasPrice = await getGasPrice(argv.gasPrice);
+  const maxFeePerGas = await getGasPrice(argv.gasPrice);
+  const maxPriorityFeePerGas = parseInt(2e9);
 
   const addressesFilename = "scripts/alpha/deployment-factory-addresses.json";
   const factoryAddresses = JSON.parse(
@@ -106,7 +107,8 @@ async function main(argv) {
   const alphaDeployment = await AlphaDeployment.connect(safeSigner).deploy(
     ...factoryAddresses,
     {
-      gasPrice,
+      maxFeePerGas,
+      maxPriorityFeePerGas,
     }
   );
   console.log("USER ACTION REQUIRED");
