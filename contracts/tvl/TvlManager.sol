@@ -16,16 +16,17 @@ import {IAssetAllocationRegistry} from "./IAssetAllocationRegistry.sol";
 import {Erc20AllocationConstants} from "./Erc20Allocation.sol";
 
 /**
- r @title TVL Manager
- * @author APY.Finance
  * @notice Assets can be deployed in a variety of ways within the DeFi
- *         ecosystem: accounts, pools, vaults, gauges, etc. This contract
- *         tracks deployed capital by registering functions that allow
- *         position balances to be priced and aggregated by Chainlink
- *         into the deployed TVL.
+ * ecosystem: accounts, pools, vaults, gauges, etc. This contract tracks
+ * deployed capital with asset allocations that allow position balances to
+ * be priced and aggregated by Chainlink into the deployed TVL.
+ * @notice When other contracts perform operations that can change how the TVL
+ * must be calculated, such as swaping, staking, or claiming rewards, they
+ * check the `TvlManager` to ensure the appropriate asset allocations are
+ * registered.
  * @dev It is imperative that the registered asset allocations are up-to-date.
- *      Any assets in the system that have been deployed but are not
- *      registered could lead to significant misreporting of the TVL.
+ * Any assets in the system that have been deployed but are not registered
+ * could lead to significant misreporting of the TVL.
  */
 contract TvlManager is
     AccessControl,
