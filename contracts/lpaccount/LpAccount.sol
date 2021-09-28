@@ -33,6 +33,8 @@ import {
     ISwapRegistry
 } from "./Imports.sol";
 
+import {ILockingOracle} from "contracts/oracle/Imports.sol";
+
 contract LpAccount is
     Initializable,
     AccessControlUpgradeSafe,
@@ -127,12 +129,11 @@ contract LpAccount is
         _setAddressRegistry(addressRegistry_);
     }
 
-    function deployStrategy(string calldata name, uint256[] calldata amounts)
-        external
-        override
-        nonReentrant
-        onlyLpRole
-    {
+    function deployStrategy(
+        string calldata name,
+        uint256[] calldata amounts,
+        uint256 lockPeriod
+    ) external override nonReentrant onlyLpRole {
         IZap zap = _zaps.get(name);
         require(address(zap) != address(0), "INVALID_NAME");
 
@@ -149,12 +150,17 @@ contract LpAccount is
         address(zap).functionDelegateCall(
             abi.encodeWithSelector(IZap.deployLiquidity.selector, amounts)
         );
+
+        ILockingOracle oracleAdapter =
+            ILockingOracle(addressRegistry.oracleAdapterAddress());
+        oracleAdapter.lockFor(lockPeriod);
     }
 
     function unwindStrategy(
         string calldata name,
         uint256 amount,
-        uint8 index
+        uint8 index,
+        uint256 lockPeriod
     ) external override nonReentrant onlyLpRole {
         address zap = address(_zaps.get(name));
         require(zap != address(0), "INVALID_NAME");
@@ -162,6 +168,10 @@ contract LpAccount is
         zap.functionDelegateCall(
             abi.encodeWithSelector(IZap.unwindLiquidity.selector, amount, index)
         );
+
+        ILockingOracle oracleAdapter =
+            ILockingOracle(addressRegistry.oracleAdapterAddress());
+        oracleAdapter.lockFor(lockPeriod);
     }
 
     function registerZap(IZap zap) external override onlyAdminRole {
@@ -188,7 +198,8 @@ contract LpAccount is
     function swap(
         string calldata name,
         uint256 amount,
-        uint256 minAmount
+        uint256 minAmount,
+        uint256 lockPeriod
     ) external override nonReentrant onlyLpRole {
         ISwap swap_ = _swaps.get(name);
         require(address(swap_) != address(0), "INVALID_NAME");
@@ -202,6 +213,10 @@ contract LpAccount is
         address(swap_).functionDelegateCall(
             abi.encodeWithSelector(ISwap.swap.selector, amount, minAmount)
         );
+
+        ILockingOracle oracleAdapter =
+            ILockingOracle(addressRegistry.oracleAdapterAddress());
+        oracleAdapter.lockFor(lockPeriod);
     }
 
     function registerSwap(ISwap swap_) external override onlyAdminRole {
