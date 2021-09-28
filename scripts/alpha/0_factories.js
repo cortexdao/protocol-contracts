@@ -48,6 +48,7 @@ async function main(argv) {
     "PoolTokenV1Factory",
     "PoolTokenV2Factory",
     "TvlManagerFactory",
+    "Erc20AllocationFactory",
     "OracleAdapterFactory",
     "LpAccountFactory",
   ];
