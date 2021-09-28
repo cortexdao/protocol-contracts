@@ -55,11 +55,13 @@ contract OracleAdapter is
     IAddressRegistryV2 public addressRegistry;
 
     uint256 public override defaultLockPeriod;
+
     /// @notice Contract is locked until this block number is passed.
     uint256 public lockEnd;
 
     /// @notice Chainlink heartbeat duration in seconds
     uint256 public chainlinkStalePeriod;
+
     AggregatorV3Interface public tvlSource;
     mapping(address => AggregatorV3Interface) public assetSources;
 
@@ -75,11 +77,12 @@ contract OracleAdapter is
     }
 
     /**
-     * @param addressRegistry_ the address registry
-     * @param assets the assets priced by sources
-     * @param sources the source for each asset
-     * @param tvlSource_ the source for the TVL value
-     * @param chainlinkStalePeriod_ the number of seconds until a source value is stale
+     * @param addressRegistry_ The address registry
+     * @param tvlSource_ The source for the TVL value
+     * @param assets The assets priced by sources
+     * @param sources The source for each asset
+     * @param chainlinkStalePeriod_ The number of seconds until a source value is stale
+     * @param defaultLockPeriod_ The default number of blocks a lock should last
      */
     constructor(
         address addressRegistry_,
@@ -121,8 +124,10 @@ contract OracleAdapter is
         emit Unlocked();
     }
 
-    /// @dev Can only increase the remaining locking duration.  If no lock exists,
-    ///      this allows setting of any defined locking period.
+    /**
+     * @dev Can only increase the remaining locking duration.
+     * @dev If no lock exists, this allows setting of any defined locking period
+     */
     function lockFor(uint256 activePeriod) external override onlyContractRole {
         uint256 oldLockEnd = lockEnd;
         _lockFor(activePeriod);
@@ -132,7 +137,6 @@ contract OracleAdapter is
 
     /**
      * @notice Sets the address registry
-     * @dev only callable by owner
      * @param addressRegistry_ the address of the registry
      */
     function emergencySetAddressRegistry(address addressRegistry_)
@@ -191,10 +195,6 @@ contract OracleAdapter is
     // CHAINLINK SETTERS
     //------------------------------------------------------------
 
-    /**
-     * @notice Set or replace the TVL source
-     * @param source the TVL source address
-     */
     function emergencySetTvlSource(address source)
         external
         override
@@ -203,11 +203,6 @@ contract OracleAdapter is
         _setTvlSource(source);
     }
 
-    /**
-     * @notice Set or replace asset price sources
-     * @param assets the array of assets token addresses
-     * @param sources the array of price sources (aggregators)
-     */
     function emergencySetAssetSources(
         address[] memory assets,
         address[] memory sources
@@ -215,11 +210,6 @@ contract OracleAdapter is
         _setAssetSources(assets, sources);
     }
 
-    /**
-     * @notice Set a single asset price source
-     * @param asset asset token address
-     * @param source the price source (aggregator)
-     */
     function emergencySetAssetSource(address asset, address source)
         external
         override
@@ -228,10 +218,6 @@ contract OracleAdapter is
         _setAssetSource(asset, source);
     }
 
-    /**
-     * @notice Set the length of time before an agg value is considered stale
-     * @param chainlinkStalePeriod_ the length of time in seconds
-     */
     function setChainlinkStalePeriod(uint256 chainlinkStalePeriod_)
         external
         override
@@ -245,10 +231,8 @@ contract OracleAdapter is
     //------------------------------------------------------------
 
     /**
-     * @notice Get the TVL
      * @dev Zero values are considered valid if there is no mAPT minted,
      * and therefore no PoolTokenV2 liquidity in the LP Safe.
-     * @return the TVL
      */
     function getTvl() external view override unlocked returns (uint256) {
         if (hasTvlOverride()) {
@@ -270,11 +254,6 @@ contract OracleAdapter is
         return block.number < submittedTvlValue.periodEnd;
     }
 
-    /**
-     * @notice Gets an asset price by address
-     * @param asset the asset address
-     * @return the asset price
-     */
     function getAssetPrice(address asset)
         external
         view
@@ -351,6 +330,7 @@ contract OracleAdapter is
 
     /**
      * @notice Get the price from a source (aggregator)
+     * @param source The Chainlink aggregator
      * @return the price from the source
      */
     function _getPriceFromSource(AggregatorV3Interface source)

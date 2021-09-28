@@ -3,6 +3,9 @@ pragma solidity 0.6.11;
 
 import {IOracleAdapter} from "./IOracleAdapter.sol";
 
+/**
+ * @notice For an `IOracleAdapter` that can be locked and unlocked
+ */
 interface ILockingOracle is IOracleAdapter {
     /// @notice Event fired when using the default lock
     event DefaultLocked(address locker, uint256 defaultPeriod, uint256 lockEnd);
@@ -30,7 +33,7 @@ interface ILockingOracle is IOracleAdapter {
 
     /**
      * @notice Unblock price/value retrieval.  Should only be callable
-     *         by the Emergency Safe.
+     * by the Emergency Safe.
      */
     function emergencyUnlock() external;
 
@@ -48,7 +51,7 @@ interface ILockingOracle is IOracleAdapter {
 
     /**
      * @notice Get the length of time, in number of blocks, before values
-     *         can be retrieved.
+     * can be retrieved.
      */
     function defaultLockPeriod() external returns (uint256 period);
 
