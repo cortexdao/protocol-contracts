@@ -478,7 +478,7 @@ describe("Contract: LpAccount", () => {
           const name = await zap.NAME();
 
           await expect(
-            lpAccount.connect(lpSafe).claim(name)
+            lpAccount.connect(lpSafe).claim(name, 0)
           ).to.be.revertedWith("INVALID_NAME");
         });
 
@@ -488,7 +488,7 @@ describe("Contract: LpAccount", () => {
 
           const name = await zap.NAME();
 
-          await expect(lpAccount.connect(lpSafe).claim(name)).to.not.be
+          await expect(lpAccount.connect(lpSafe).claim(name, 0)).to.not.be
             .reverted;
         });
 
@@ -499,7 +499,7 @@ describe("Contract: LpAccount", () => {
           const name = await zap.NAME();
 
           await expect(
-            lpAccount.connect(randomUser).claim(name)
+            lpAccount.connect(randomUser).claim(name, 0)
           ).to.be.revertedWith("NOT_LP_ROLE");
         });
 
@@ -509,7 +509,7 @@ describe("Contract: LpAccount", () => {
 
           const name = await zap.NAME();
 
-          await lpAccount.connect(lpSafe).claim(name);
+          await lpAccount.connect(lpSafe).claim(name, 0);
           expect(await lpAccount._claimsCounter()).to.equal(1);
         });
 
@@ -524,7 +524,7 @@ describe("Contract: LpAccount", () => {
           ].returns(false);
 
           await expect(
-            lpAccount.connect(lpSafe).claim(name)
+            lpAccount.connect(lpSafe).claim(name, 0)
           ).to.be.revertedWith("MISSING_ERC20_ALLOCATIONS");
         });
       });

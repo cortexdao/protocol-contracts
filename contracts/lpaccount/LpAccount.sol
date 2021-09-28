@@ -228,7 +228,7 @@ contract LpAccount is
         emit SwapRemoved(name);
     }
 
-    function claim(string calldata name)
+    function claim(string calldata name, uint256 lockPeriod)
         external
         override
         nonReentrant

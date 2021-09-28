@@ -378,7 +378,7 @@ describe("Contract: LpAccount", () => {
 
       const name = await zap.NAME();
 
-      await lpAccount.connect(lpSafe).claim(name);
+      await lpAccount.connect(lpSafe).claim(name, 0);
       expect(await lpAccount._claimsCounter()).to.equal(1);
     });
 
@@ -395,7 +395,7 @@ describe("Contract: LpAccount", () => {
         ["registerErc20Token(address)"](token.address);
       await zap._setErc20Allocations([token.address]);
 
-      await lpAccount.connect(lpSafe).claim(name);
+      await lpAccount.connect(lpSafe).claim(name, 0);
       expect(await lpAccount._claimsCounter()).to.equal(1);
     });
 
@@ -409,7 +409,7 @@ describe("Contract: LpAccount", () => {
       const token = await deployMockErc20();
       await zap._setErc20Allocations([token.address]);
 
-      await expect(lpAccount.connect(lpSafe).claim(name)).to.be.revertedWith(
+      await expect(lpAccount.connect(lpSafe).claim(name, 0)).to.be.revertedWith(
         "MISSING_ERC20_ALLOCATIONS"
       );
     });

@@ -25,5 +25,5 @@ interface ILpAccount {
         uint256 lockPeriod
     ) external;
 
-    function claim(string calldata name) external;
+    function claim(string calldata name, uint256 lockPeriod) external;
 }
