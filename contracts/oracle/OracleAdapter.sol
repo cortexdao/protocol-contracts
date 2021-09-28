@@ -55,15 +55,15 @@ contract OracleAdapter is
     IAddressRegistryV2 public addressRegistry;
 
     uint256 public override defaultLockPeriod;
-    /** @notice Contract is locked until this block number is passed */
+    /// @notice Contract is locked until this block number is passed.
     uint256 public lockEnd;
 
-    /** @notice Chainlink variables */
-    uint256 public chainlinkStalePeriod; // Duration of Chainlink heartbeat
+    /// @notice Chainlink heartbeat duration in seconds
+    uint256 public chainlinkStalePeriod;
     AggregatorV3Interface public tvlSource;
     mapping(address => AggregatorV3Interface) public assetSources;
 
-    /** @notice Submitted values that override Chainlink values until stale */
+    /// @notice Submitted values that override Chainlink values until stale.
     mapping(address => Value) public submittedAssetValues;
     Value public submittedTvlValue;
 
@@ -75,7 +75,6 @@ contract OracleAdapter is
     }
 
     /**
-     * @notice Constructor
      * @param addressRegistry_ the address registry
      * @param assets the assets priced by sources
      * @param sources the source for each asset
@@ -122,6 +121,8 @@ contract OracleAdapter is
         emit Unlocked();
     }
 
+    /// @dev Can only increase the remaining locking duration.  If no lock exists,
+    ///      this allows setting of any defined locking period.
     function lockFor(uint256 activePeriod) external override onlyContractRole {
         uint256 oldLockEnd = lockEnd;
         _lockFor(activePeriod);
