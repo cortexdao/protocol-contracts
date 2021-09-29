@@ -30,12 +30,6 @@ module.exports = {
         // default: 20
         count: 10,
       },
-      // default 9.5e6
-      gasLimit: 12.5e6,
-      // default 9.5e6
-      blockGasLimit: 12.5e6,
-      // default: 8 gwei
-      gasPrice: 40e9,
     },
     localhost: {
       url: "http://127.0.0.1:8545",
