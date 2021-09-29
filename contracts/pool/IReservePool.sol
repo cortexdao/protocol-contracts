@@ -28,7 +28,7 @@ interface IReservePool is ILiquidityPoolV2 {
 
     /**
      * @notice Get the amount of tokens missing from the reserve
-     * @dev A negative value indicates extra tokens not needed for the reserve
+     * @dev A negative amount indicates extra tokens not needed for the reserve
      * @return The amount of missing tokens
      */
     function getReserveTopUpValue() external view returns (int256);
