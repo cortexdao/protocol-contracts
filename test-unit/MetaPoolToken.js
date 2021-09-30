@@ -961,7 +961,7 @@ describe("Contract: MetaPoolToken", () => {
         tokenAmountToBigNumber("0"),
       ];
       let result = await mApt.testGetFundAmounts(amounts);
-      expect(result).to.deep.equal(expectedResult);
+      deepEqual(expectedResult, result);
 
       amounts = [
         tokenAmountToBigNumber("-159"),
@@ -974,7 +974,7 @@ describe("Contract: MetaPoolToken", () => {
         tokenAmountToBigNumber("11"),
       ];
       result = await mApt.testGetFundAmounts(amounts);
-      expect(result).to.deep.equal(expectedResult);
+      deepEqual(expectedResult, result);
 
       amounts = [
         tokenAmountToBigNumber("159"),
@@ -993,7 +993,7 @@ describe("Contract: MetaPoolToken", () => {
         tokenAmountToBigNumber("0"),
       ];
       result = await mApt.testGetFundAmounts(amounts);
-      expect(result).to.deep.equal(expectedResult);
+      deepEqual(expectedResult, result);
     });
   });
 

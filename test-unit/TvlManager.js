@@ -7,6 +7,7 @@ const {
   ZERO_ADDRESS,
   FAKE_ADDRESS,
   tokenAmountToBigNumber,
+  deepEqual,
 } = require("../utils/helpers");
 
 const IAssetAllocation = artifacts.readArtifactSync("IAssetAllocation");
@@ -462,7 +463,7 @@ describe("Contract: TvlManager", () => {
           allocation_1.address,
           1
         );
-        expect(result).to.deep.equal(expectedResult);
+        deepEqual(expectedResult, result);
       });
     });
 
@@ -497,7 +498,7 @@ describe("Contract: TvlManager", () => {
           }
         }
         const result = await tvlManager.getAssetAllocationIds();
-        expect(result).to.deep.equal(expectedResult);
+        deepEqual(expectedResult, result);
       });
     });
 
