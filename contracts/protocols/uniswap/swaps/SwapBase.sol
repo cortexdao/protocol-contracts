@@ -3,11 +3,15 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import {SafeERC20} from "contracts/libraries/Imports.sol";
-import {IERC20, IAssetAllocation} from "contracts/common/Imports.sol";
+import {
+    IERC20,
+    IAssetAllocation,
+    ReentrancyGuard
+} from "contracts/common/Imports.sol";
 import {ISwapRouter} from "./ISwapRouter.sol";
 import {ISwap} from "contracts/lpaccount/Imports.sol";
 
-abstract contract SwapBase is ISwap {
+abstract contract SwapBase is ISwap, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     ISwapRouter private constant _ROUTER =
@@ -24,7 +28,11 @@ abstract contract SwapBase is ISwap {
     }
 
     // TODO: create function for calculating min amount
-    function swap(uint256 amount, uint256 minAmount) external override {
+    function swap(uint256 amount, uint256 minAmount)
+        external
+        override
+        nonReentrant
+    {
         _IN_TOKEN.safeApprove(address(_ROUTER), 0);
         _IN_TOKEN.safeApprove(address(_ROUTER), amount);
 
