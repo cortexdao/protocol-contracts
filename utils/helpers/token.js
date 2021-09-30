@@ -45,7 +45,7 @@ async function acquireToken(sender, recipient, token, amount, ethFunder) {
   const decimals = await token.decimals();
   amount = tokenAmountToBigNumber(amount, decimals);
 
-  await prepareTokenSender(sender, "0.50", ethFunder);
+  await prepareTokenSender(sender, "10", ethFunder);
   const fundAccountSigner = await ethers.provider.getSigner(sender);
 
   const trx = await token

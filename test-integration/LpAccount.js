@@ -7,6 +7,7 @@ const {
   FAKE_ADDRESS,
   bytes32,
   tokenAmountToBigNumber,
+  tokenAmountToString,
   getStablecoinAddress,
   acquireToken,
 } = require("../utils/helpers");
@@ -156,13 +157,15 @@ describe("Contract: LpAccount", () => {
 
       const name = await zap.NAME();
       const amounts = [
-        tokenAmountToBigNumber(1),
-        tokenAmountToBigNumber(2),
-        tokenAmountToBigNumber(3),
+        tokenAmountToString(1),
+        tokenAmountToString(2),
+        tokenAmountToString(3),
       ];
 
       await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
-      expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
+      const result = await lpAccount._deployCalls();
+      const resultValues = result.map((x) => x.map((y) => y.toString()));
+      expect(resultValues).to.deep.equal([amounts]);
     });
 
     it("cannot deploy with unregistered allocation", async () => {
@@ -216,9 +219,9 @@ describe("Contract: LpAccount", () => {
 
       const name = await zap.NAME();
       const amounts = [
-        tokenAmountToBigNumber(1),
-        tokenAmountToBigNumber(2),
-        tokenAmountToBigNumber(3),
+        tokenAmountToString(1),
+        tokenAmountToString(2),
+        tokenAmountToString(3),
       ];
 
       // configure zap with registered allocations
@@ -232,7 +235,9 @@ describe("Contract: LpAccount", () => {
       ]);
 
       await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
-      expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
+      const result = await lpAccount._deployCalls();
+      const resultValues = result.map((x) => x.map((y) => y.toString()));
+      expect(resultValues).to.deep.equal([amounts]);
     });
 
     it("cannot deploy with unregistered ERC20", async () => {
@@ -261,9 +266,9 @@ describe("Contract: LpAccount", () => {
 
       const name = await zap.NAME();
       const amounts = [
-        tokenAmountToBigNumber(1),
-        tokenAmountToBigNumber(2),
-        tokenAmountToBigNumber(3),
+        tokenAmountToString(1),
+        tokenAmountToString(2),
+        tokenAmountToString(3),
       ];
 
       // configure zap with registered ERC20
@@ -274,7 +279,9 @@ describe("Contract: LpAccount", () => {
       await zap._setErc20Allocations([token.address]);
 
       await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
-      expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
+      const result = await lpAccount._deployCalls();
+      const resultValues = result.map((x) => x.map((y) => y.toString()));
+      expect(resultValues).to.deep.equal([amounts]);
     });
 
     it("can deploy with registered allocation and ERC20", async () => {
@@ -283,9 +290,9 @@ describe("Contract: LpAccount", () => {
 
       const name = await zap.NAME();
       const amounts = [
-        tokenAmountToBigNumber(1),
-        tokenAmountToBigNumber(2),
-        tokenAmountToBigNumber(3),
+        tokenAmountToString(1),
+        tokenAmountToString(2),
+        tokenAmountToString(3),
       ];
 
       // configure zap with registered allocation
@@ -301,7 +308,9 @@ describe("Contract: LpAccount", () => {
       await zap._setErc20Allocations([token.address]);
 
       await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
-      expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
+      const result = await lpAccount._deployCalls();
+      const resultValues = result.map((x) => x.map((y) => y.toString()));
+      expect(resultValues).to.deep.equal([amounts]);
     });
 
     it("cannot deploy with registered allocation but unregistered ERC20", async () => {
@@ -367,7 +376,9 @@ describe("Contract: LpAccount", () => {
       const index = 2;
 
       await lpAccount.connect(lpSafe).unwindStrategy(name, amount, index);
-      expect(await lpAccount._unwindCalls()).to.deep.equal([amount]);
+      const result = await lpAccount._unwindCalls();
+      const resultValues = result.map((x) => x.toString());
+      expect(resultValues).to.deep.equal([amount.toString()]);
     });
   });
 
@@ -459,7 +470,9 @@ describe("Contract: LpAccount", () => {
       const amount = tokenAmountToBigNumber(1);
 
       await lpAccount.connect(lpSafe).swap(name, amount, 0);
-      expect(await lpAccount._swapCalls()).to.deep.equal([amount]);
+      const result = await lpAccount._swapCalls();
+      const resultValues = result.map((x) => x.toString());
+      expect(resultValues).to.deep.equal([amount.toString()]);
     });
 
     it("cannot swap with unregistered ERC20", async () => {
