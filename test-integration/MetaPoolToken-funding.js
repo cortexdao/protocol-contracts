@@ -1042,7 +1042,7 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
     });
 
     describe("Initial funding of LP Account", () => {
-      before("", async () => {
+      beforeEach("Deposit into pools", async () => {
         const pools = [daiPool, usdcPool, usdtPool];
         const underlyers = [daiToken, usdcToken, usdtToken];
         for (const [pool, underlyer] of _.zip(pools, underlyers)) {
@@ -1134,12 +1134,40 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
     });
 
     describe("Emergency withdraw from LP Account", () => {
-      before("", async () => {
-        //
+      beforeEach("Seed LP Account with funds", async () => {
+        const ids = [daiPoolId, usdcPoolId, tetherPoolId];
+        const pools = [daiPool, usdcPool, usdtPool];
+        const underlyers = [daiToken, usdcToken, usdtToken];
+        for (const [id, pool, underlyer] of _.zip(ids, pools, underlyers)) {
+          const depositAmount = tokenAmountToBigNumber(
+            "105",
+            await underlyer.decimals()
+          );
+          await underlyer.approve(pool.address, depositAmount);
+          await pool.addLiquidity(depositAmount);
+
+          await mApt.fundLpAccount([id]);
+          expect(await underlyer.balanceOf(lpAccount.address)).to.be.gt(0);
+
+          await oracleAdapter.connect(emergencySafe).emergencyUnlock();
+        }
       });
 
       it("Should be able to fully withdraw (one pool)", async () => {
-        //
+        const oldPoolBalance = await usdcToken.balanceOf(usdcPool.address);
+        const lpAccountBalance = await usdcToken.balanceOf(lpAccount.address);
+
+        await mApt
+          .connect(emergencySafe)
+          .emergencyWithdrawFromLpAccount(
+            [usdcPool.address],
+            [lpAccountBalance]
+          );
+
+        expect(await usdcToken.balanceOf(lpAccount.address)).to.be.zero;
+        expect(await usdcToken.balanceOf(usdcPool.address)).to.equal(
+          oldPoolBalance.add(lpAccountBalance)
+        );
       });
 
       it("Should be able to fully withdraw (multiple pools)", async () => {
