@@ -36,7 +36,7 @@ const USDT_TOKEN = getStablecoinAddress("USDT", NETWORK);
 const daiPoolId = bytes32("daiPool");
 const usdtPoolId = bytes32("usdtPool");
 
-describe("Contract: MetaPoolToken - funding and withdrawing", () => {
+describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
   // to-be-deployed contracts
   let tvlManager;
   let mApt;
@@ -62,7 +62,9 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
   let usdtToken;
 
   // use EVM snapshots for test isolation
-  let snapshotId;
+  let testSnapshotId;
+  let suiteSnapshotId;
+  let subSuiteSnapshotId;
 
   // standard amounts we use in our tests
   const dollars = 100;
@@ -70,16 +72,25 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
   const usdcAmount = tokenAmountToBigNumber(dollars, 6);
   const usdtAmount = tokenAmountToBigNumber(dollars, 6);
 
+  before(async () => {
+    const snapshot = await timeMachine.takeSnapshot();
+    suiteSnapshotId = snapshot["result"];
+  });
+
+  after(async () => {
+    await timeMachine.revertToSnapshot(suiteSnapshotId);
+  });
+
   beforeEach(async () => {
     const snapshot = await timeMachine.takeSnapshot();
-    snapshotId = snapshot["result"];
+    testSnapshotId = snapshot["result"];
   });
 
   afterEach(async () => {
-    await timeMachine.revertToSnapshot(snapshotId);
+    await timeMachine.revertToSnapshot(testSnapshotId);
   });
 
-  before(async () => {
+  before("Main deployments and upgrades", async () => {
     [
       deployer,
       emergencySafe,
@@ -300,11 +311,9 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
       .connect(adminSafe)
       .registerAssetAllocation(erc20Allocation.address);
     await oracleAdapter.connect(emergencySafe).emergencyUnlock();
+  });
 
-    /*********************************************/
-    /* main deployments and upgrades finished 
-    /*********************************************/
-
+  before("Fund accounts with stables", async () => {
     daiToken = await ethers.getContractAt("IDetailedERC20", DAI_TOKEN);
     usdcToken = await ethers.getContractAt("IDetailedERC20", USDC_TOKEN);
     usdtToken = await ethers.getContractAt("IDetailedERC20", USDT_TOKEN);
@@ -330,28 +339,6 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
       "1000",
       deployer
     );
-    // fund each APY pool with corresponding stablecoin
-    await acquireToken(
-      WHALE_POOLS["DAI"],
-      daiPool,
-      daiToken,
-      "5000000",
-      deployer
-    );
-    await acquireToken(
-      WHALE_POOLS["USDC"],
-      usdcPool,
-      usdcToken,
-      "5000000",
-      deployer
-    );
-    await acquireToken(
-      WHALE_POOLS["USDT"],
-      usdtPool,
-      usdtToken,
-      "5000000",
-      deployer
-    );
   });
 
   async function getMintAmount(pool, underlyerAmount) {
@@ -368,6 +355,15 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
   }
 
   describe("Permissions and input validation", () => {
+    before(async () => {
+      const snapshot = await timeMachine.takeSnapshot();
+      subSuiteSnapshotId = snapshot["result"];
+    });
+
+    after(async () => {
+      await timeMachine.revertToSnapshot(subSuiteSnapshotId);
+    });
+
     describe("fundLpAccount", () => {
       it("Unpermissioned cannot call", async () => {
         await expect(
@@ -442,6 +438,40 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
   });
 
   describe("Balances and minting", () => {
+    before(async () => {
+      const snapshot = await timeMachine.takeSnapshot();
+      subSuiteSnapshotId = snapshot["result"];
+    });
+
+    after(async () => {
+      await timeMachine.revertToSnapshot(subSuiteSnapshotId);
+    });
+
+    before("Fund pools with stables", async () => {
+      // fund each APY pool with corresponding stablecoin
+      await acquireToken(
+        WHALE_POOLS["DAI"],
+        daiPool,
+        daiToken,
+        "5000000",
+        deployer
+      );
+      await acquireToken(
+        WHALE_POOLS["USDC"],
+        usdcPool,
+        usdcToken,
+        "5000000",
+        deployer
+      );
+      await acquireToken(
+        WHALE_POOLS["USDT"],
+        usdtPool,
+        usdtToken,
+        "5000000",
+        deployer
+      );
+    });
+
     describe("_fundLpAccount", () => {
       it("Revert on missing LP Safe address", async () => {
         await addressRegistry.deleteAddress(bytes32("lpAccount"));
@@ -1000,6 +1030,15 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
   });
 
   describe("Funding scenarios", () => {
+    before(async () => {
+      const snapshot = await timeMachine.takeSnapshot();
+      subSuiteSnapshotId = snapshot["result"];
+    });
+
+    after(async () => {
+      await timeMachine.revertToSnapshot(subSuiteSnapshotId);
+    });
+
     describe("Initial funding of LP Account", () => {
       before("", async () => {
         //
