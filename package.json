@@ -53,7 +53,7 @@
     "ethereum-waffle": "^3.0.0",
     "ethers": "^5.4.7",
     "ganache-time-traveler": "^1.0.15",
-    "hardhat": "^2.6.0",
+    "hardhat": "^2.5.0",
     "husky": "4.0.10",
     "lint-staged": "^10.2.11",
     "prettier": "2.1.2",
