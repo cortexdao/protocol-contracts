@@ -934,7 +934,11 @@ describe("Contract: MetaPoolToken", () => {
         bytes32("daiPool"),
         bytes32("usdcPool"),
       ]);
-      expect(result).to.deep.equal([
+      // expect(result).to.deep.equal([
+      //   [daiPool.address, usdcPool.address],
+      //   [daiRebalanceAmount, usdcRebalanceAmount],
+      // ]);
+      deepEqual(result, [
         [daiPool.address, usdcPool.address],
         [daiRebalanceAmount, usdcRebalanceAmount],
       ]);
