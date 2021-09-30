@@ -475,7 +475,7 @@ describe("Contract: PoolToken", () => {
         tokenAmountToBigNumber(32283729, usdDecimals),
       ];
       deployedValues.forEach(function (deployedValue) {
-        describe(`deployed value: ${deployedValue}`, () => {
+        describe(`Deployed value: ${deployedValue}`, () => {
           const mAptSupply = tokenAmountToBigNumber("100");
 
           async function updateTvlAgg(usdDeployedValue) {
@@ -624,7 +624,12 @@ describe("Contract: PoolToken", () => {
             });
 
             it("getReserveTopUpValue returns correct value", async () => {
-              const topUpValue = await poolToken.getReserveTopUpValue();
+              const price = await poolToken.getUnderlyerPrice();
+              const decimals = await underlyer.decimals();
+              const topUpAmount = await poolToken.getReserveTopUpValue();
+              const topUpValue = topUpAmount
+                .mul(price)
+                .div(ethers.BigNumber.from(10).pow(decimals));
               if (deployedValue == 0) {
                 expect(topUpValue).to.be.lt(0);
               } else {

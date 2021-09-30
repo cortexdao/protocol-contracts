@@ -9,6 +9,7 @@ const {
   tokenAmountToBigNumber,
   getStablecoinAddress,
   acquireToken,
+  deepEqual,
 } = require("../utils/helpers");
 const { WHALE_POOLS } = require("../utils/constants");
 
@@ -162,7 +163,8 @@ describe("Contract: LpAccount", () => {
       ];
 
       await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
-      expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
+      const result = await lpAccount._deployCalls();
+      deepEqual([amounts], result);
     });
 
     it("cannot deploy with unregistered allocation", async () => {
@@ -232,7 +234,9 @@ describe("Contract: LpAccount", () => {
       ]);
 
       await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
-      expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
+      const result = await lpAccount._deployCalls();
+
+      deepEqual(amounts, result);
     });
 
     it("cannot deploy with unregistered ERC20", async () => {
@@ -274,7 +278,8 @@ describe("Contract: LpAccount", () => {
       await zap._setErc20Allocations([token.address]);
 
       await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
-      expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
+      const result = await lpAccount._deployCalls();
+      deepEqual([amounts], result);
     });
 
     it("can deploy with registered allocation and ERC20", async () => {
@@ -301,7 +306,8 @@ describe("Contract: LpAccount", () => {
       await zap._setErc20Allocations([token.address]);
 
       await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
-      expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
+      const result = await lpAccount._deployCalls();
+      deepEqual([amounts], result);
     });
 
     it("cannot deploy with registered allocation but unregistered ERC20", async () => {
@@ -367,7 +373,9 @@ describe("Contract: LpAccount", () => {
       const index = 2;
 
       await lpAccount.connect(lpSafe).unwindStrategy(name, amount, index);
-      expect(await lpAccount._unwindCalls()).to.deep.equal([amount]);
+      const result = await lpAccount._unwindCalls();
+      const resultValues = result.map((x) => x.toString());
+      expect(resultValues).to.deep.equal([amount.toString()]);
     });
   });
 
@@ -459,7 +467,9 @@ describe("Contract: LpAccount", () => {
       const amount = tokenAmountToBigNumber(1);
 
       await lpAccount.connect(lpSafe).swap(name, amount, 0);
-      expect(await lpAccount._swapCalls()).to.deep.equal([amount]);
+      const result = await lpAccount._swapCalls();
+      const resultValues = result.map((x) => x.toString());
+      expect(resultValues).to.deep.equal([amount.toString()]);
     });
 
     it("cannot swap with unregistered ERC20", async () => {

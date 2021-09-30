@@ -10,6 +10,7 @@ const {
   bytes32,
   impersonateAccount,
   forciblySendEth,
+  deepEqual,
 } = require("../utils/helpers");
 const { deployMockContract } = waffle;
 const OracleAdapter = artifacts.readArtifactSync("OracleAdapter");
@@ -933,7 +934,7 @@ describe("Contract: MetaPoolToken", () => {
         bytes32("daiPool"),
         bytes32("usdcPool"),
       ]);
-      expect(result).to.deep.equal([
+      deepEqual(result, [
         [daiPool.address, usdcPool.address],
         [daiRebalanceAmount, usdcRebalanceAmount],
       ]);
@@ -960,7 +961,7 @@ describe("Contract: MetaPoolToken", () => {
         tokenAmountToBigNumber("0"),
       ];
       let result = await mApt.testGetFundAmounts(amounts);
-      expect(result).to.deep.equal(expectedResult);
+      deepEqual(expectedResult, result);
 
       amounts = [
         tokenAmountToBigNumber("-159"),
@@ -973,7 +974,7 @@ describe("Contract: MetaPoolToken", () => {
         tokenAmountToBigNumber("11"),
       ];
       result = await mApt.testGetFundAmounts(amounts);
-      expect(result).to.deep.equal(expectedResult);
+      deepEqual(expectedResult, result);
 
       amounts = [
         tokenAmountToBigNumber("159"),
@@ -992,7 +993,7 @@ describe("Contract: MetaPoolToken", () => {
         tokenAmountToBigNumber("0"),
       ];
       result = await mApt.testGetFundAmounts(amounts);
-      expect(result).to.deep.equal(expectedResult);
+      deepEqual(expectedResult, result);
     });
   });
 
@@ -1011,7 +1012,8 @@ describe("Contract: MetaPoolToken", () => {
       ];
       let expectedResult = amounts;
       let result = await mApt.testGetWithdrawAmounts(amounts);
-      expect(result).to.deep.equal(expectedResult);
+
+      deepEqual(expectedResult, result);
 
       amounts = [
         tokenAmountToBigNumber("159"),
@@ -1030,7 +1032,7 @@ describe("Contract: MetaPoolToken", () => {
         tokenAmountToBigNumber("0"),
       ];
       result = await mApt.testGetWithdrawAmounts(amounts);
-      expect(result).to.deep.equal(expectedResult);
+      deepEqual(expectedResult, result);
     });
   });
 });

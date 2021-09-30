@@ -427,6 +427,53 @@ contract PoolTokenV2 is
         return oracleAdapter.getAssetPrice(address(underlyer));
     }
 
+    function getReserveTopUpValue() external view override returns (int256) {
+        int256 topUpValue = _getReserveTopUpValue();
+        if (topUpValue == 0) {
+            return 0;
+        }
+
+        // Should never revert because the OracleAdapter converts from int256
+        uint256 price = getUnderlyerPrice();
+        require(price <= uint256(type(int256).max), "INVALID_PRICE");
+
+        int256 topUpAmount =
+            topUpValue.mul(int256(10**uint256(underlyer.decimals()))).div(
+                int256(getUnderlyerPrice())
+            );
+
+        return topUpAmount;
+    }
+
+    function _setAdminAddress(address adminAddress) internal {
+        require(adminAddress != address(0), "INVALID_ADMIN");
+        proxyAdmin = adminAddress;
+        emit AdminChanged(adminAddress);
+    }
+
+    function _setAddressRegistry(address addressRegistry_) internal {
+        require(addressRegistry_.isContract(), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(addressRegistry_);
+        emit AddressRegistryChanged(addressRegistry_);
+    }
+
+    /**
+     * @dev This hook is in-place to block inter-user APT transfers, as it
+     * is one avenue that can be used by arbitrageurs to drain the
+     * reserves.
+     */
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal override {
+        super._beforeTokenTransfer(from, to, amount);
+        // allow minting and burning
+        if (from == address(0) || to == address(0)) return;
+        // block transfer between users
+        revert("INVALID_TRANSFER");
+    }
+
     /**
      * @dev This "top-up" value should satisfy:
      *
@@ -459,7 +506,7 @@ contract PoolTokenV2 is
      *
      * top-up value = (rPerc * DV_pre - 100 * R_pre) / (100 + rPerc)
      */
-    function getReserveTopUpValue() external view override returns (int256) {
+    function _getReserveTopUpValue() internal view returns (int256) {
         uint256 unnormalizedTargetValue =
             _getDeployedValue().mul(reservePercentage);
         uint256 unnormalizedUnderlyerValue = _getPoolUnderlyerValue().mul(100);
@@ -474,35 +521,6 @@ contract PoolTokenV2 is
                 .sub(int256(unnormalizedUnderlyerValue))
                 .div(int256(reservePercentage).add(100));
         return topUpValue;
-    }
-
-    function _setAdminAddress(address adminAddress) internal {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-        proxyAdmin = adminAddress;
-        emit AdminChanged(adminAddress);
-    }
-
-    function _setAddressRegistry(address addressRegistry_) internal {
-        require(addressRegistry_.isContract(), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistryV2(addressRegistry_);
-        emit AddressRegistryChanged(addressRegistry_);
-    }
-
-    /**
-     * @dev This hook is in-place to block inter-user APT transfers, as it
-     * is one avenue that can be used by arbitrageurs to drain the
-     * reserves.
-     */
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal override {
-        super._beforeTokenTransfer(from, to, amount);
-        // allow minting and burning
-        if (from == address(0) || to == address(0)) return;
-        // block transfer between users
-        revert("INVALID_TRANSFER");
     }
 
     /**

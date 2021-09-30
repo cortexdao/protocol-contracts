@@ -8,6 +8,7 @@ const {
   FAKE_ADDRESS,
   bytes32,
   tokenAmountToBigNumber,
+  deepEqual,
 } = require("../utils/helpers");
 
 const IAddressRegistryV2 = artifacts.readArtifactSync("IAddressRegistryV2");
@@ -258,7 +259,7 @@ describe("Contract: LpAccount", () => {
         const name = await zap.NAME();
         await lpAccount.connect(adminSafe).registerZap(zap.address);
 
-        expect(await lpAccount.zapNames()).to.deep.equal([name]);
+        deepEqual([name], await lpAccount.zapNames());
       });
     });
 
@@ -373,7 +374,7 @@ describe("Contract: LpAccount", () => {
           ];
 
           await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
-          expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
+          deepEqual(amounts, await lpAccount._deployCalls());
         });
 
         it("cannot deploy with unregistered allocation", async () => {
@@ -465,7 +466,7 @@ describe("Contract: LpAccount", () => {
           const index = 2;
 
           await lpAccount.connect(lpSafe).unwindStrategy(name, amount, index);
-          expect(await lpAccount._unwindCalls()).to.deep.equal([amount]);
+          deepEqual([amount], await lpAccount._unwindCalls());
         });
       });
 
@@ -550,7 +551,7 @@ describe("Contract: LpAccount", () => {
         const name = await swap.NAME();
         await lpAccount.connect(adminSafe).registerSwap(swap.address);
 
-        expect(await lpAccount.swapNames()).to.deep.equal([name]);
+        deepEqual([name], await lpAccount.swapNames());
       });
     });
 
@@ -650,7 +651,7 @@ describe("Contract: LpAccount", () => {
         const amount = tokenAmountToBigNumber(100);
 
         await lpAccount.connect(lpSafe).swap(name, amount, 0);
-        expect(await lpAccount._swapCalls()).to.deep.equal([amount]);
+        deepEqual([amount], await lpAccount._swapCalls());
       });
 
       it("cannot deploy with unregistered ERC20", async () => {
