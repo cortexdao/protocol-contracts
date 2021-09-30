@@ -119,7 +119,7 @@ contract LpAccount is
      * to call this function during upgrades.
      */
     // solhint-disable-next-line no-empty-blocks
-    function initializeUpgrade() external virtual onlyAdmin {}
+    function initializeUpgrade() external virtual nonReentrant onlyAdmin {}
 
     /**
      * @notice Set the new proxy admin
@@ -127,6 +127,7 @@ contract LpAccount is
      */
     function emergencySetAdminAddress(address adminAddress)
         external
+        nonReentrant
         onlyEmergencyRole
     {
         _setAdminAddress(adminAddress);
@@ -138,6 +139,7 @@ contract LpAccount is
      */
     function emergencySetAddressRegistry(address addressRegistry_)
         external
+        nonReentrant
         onlyEmergencyRole
     {
         _setAddressRegistry(addressRegistry_);
@@ -147,7 +149,11 @@ contract LpAccount is
      * @notice Set the lock period
      * @param lockPeriod_ The new lock period
      */
-    function setLockPeriod(uint256 lockPeriod_) external onlyAdmin {
+    function setLockPeriod(uint256 lockPeriod_)
+        external
+        nonReentrant
+        onlyAdmin
+    {
         lockPeriod = lockPeriod_;
         emit LockPeriodChanged(lockPeriod_);
     }
@@ -189,13 +195,23 @@ contract LpAccount is
         _lockOracleAdapter(lockPeriod);
     }
 
-    function registerZap(IZap zap) external override onlyAdminRole {
+    function registerZap(IZap zap)
+        external
+        override
+        nonReentrant
+        onlyAdminRole
+    {
         _zaps.add(zap);
 
         emit ZapRegistered(zap);
     }
 
-    function removeZap(string calldata name) external override onlyAdminRole {
+    function removeZap(string calldata name)
+        external
+        override
+        nonReentrant
+        onlyAdminRole
+    {
         _zaps.remove(name);
 
         emit ZapRemoved(name);
@@ -204,6 +220,7 @@ contract LpAccount is
     function transferToPool(address pool, uint256 amount)
         external
         override
+        nonReentrant
         onlyContractRole
     {
         IDetailedERC20 underlyer = ILiquidityPoolV2(pool).underlyer();
@@ -229,7 +246,12 @@ contract LpAccount is
         _lockOracleAdapter(lockPeriod);
     }
 
-    function registerSwap(ISwap swap_) external override onlyAdminRole {
+    function registerSwap(ISwap swap_)
+        external
+        override
+        nonReentrant
+        onlyAdminRole
+    {
         _swaps.add(swap_);
 
         emit SwapRegistered(swap_);
@@ -241,7 +263,12 @@ contract LpAccount is
         oracleAdapter.lockFor(lockPeriod_);
     }
 
-    function removeSwap(string calldata name) external override onlyAdminRole {
+    function removeSwap(string calldata name)
+        external
+        override
+        nonReentrant
+        onlyAdminRole
+    {
         _swaps.remove(name);
 
         emit SwapRemoved(name);
