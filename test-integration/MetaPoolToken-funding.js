@@ -1040,7 +1040,7 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
     });
   });
 
-  describe("Funding scenarios", () => {
+  describe.only("Funding scenarios", () => {
     before(async () => {
       const snapshot = await timeMachine.takeSnapshot();
       subSuiteSnapshotId = snapshot["result"];
@@ -1215,18 +1215,61 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
 
         for (let i = 0; i < underlyers.length; i++) {
           expect(await underlyers[i].balanceOf(lpAccount.address)).to.be.zero;
-          expect(await underlyers[i].balanceOf(poolAddresses[i])).to.be.equal(
+          expect(await underlyers[i].balanceOf(poolAddresses[i])).to.equal(
             oldPoolBalances[i].add(lpAccountBalances[i])
           );
         }
       });
 
       it("Should be able to withdraw partial funds (one pool)", async () => {
-        //
+        const oldPoolBalance = await usdcToken.balanceOf(usdcPool.address);
+        const lpAccountBalance = await usdcToken.balanceOf(lpAccount.address);
+        const lpAccountPartialBalance = lpAccountBalance.mul(78).div(100);
+
+        await mApt
+          .connect(emergencySafe)
+          .emergencyWithdrawFromLpAccount(
+            [usdcPool.address],
+            [lpAccountPartialBalance]
+          );
+
+        expect(await usdcToken.balanceOf(lpAccount.address)).to.equal(
+          lpAccountBalance.sub(lpAccountPartialBalance)
+        );
+        expect(await usdcToken.balanceOf(usdcPool.address)).to.equal(
+          oldPoolBalance.add(lpAccountPartialBalance)
+        );
       });
 
       it("Should be able to withdraw partial funds (multiple pools)", async () => {
-        //
+        const poolAddresses = pools.map((p) => p.address);
+        const oldPoolBalances = await Promise.all(
+          _.zip(underlyers, poolAddresses).map(([u, p]) => u.balanceOf(p))
+        );
+        const lpAccountBalances = await Promise.all(
+          underlyers.map((u) => u.balanceOf(lpAccount.address))
+        );
+        const lpAccountPartialBalances = [
+          lpAccountBalances[0].mul(66).div(100),
+          lpAccountBalances[1].mul(88).div(100),
+          lpAccountBalances[2].mul(45).div(100),
+        ];
+
+        await mApt
+          .connect(emergencySafe)
+          .emergencyWithdrawFromLpAccount(
+            poolAddresses,
+            lpAccountPartialBalances
+          );
+
+        for (let i = 0; i < underlyers.length; i++) {
+          expect(await underlyers[i].balanceOf(lpAccount.address)).to.equal(
+            lpAccountBalances[i].sub(lpAccountPartialBalances[i])
+          );
+          expect(await underlyers[i].balanceOf(poolAddresses[i])).to.equal(
+            oldPoolBalances[i].add(lpAccountPartialBalances[i])
+          );
+        }
       });
     });
 
