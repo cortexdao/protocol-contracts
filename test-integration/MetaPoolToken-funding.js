@@ -1,5 +1,6 @@
 const { expect } = require("chai");
 const { artifacts, ethers } = require("hardhat");
+const { BigNumber } = ethers;
 const timeMachine = require("ganache-time-traveler");
 const _ = require("lodash");
 const {
@@ -1139,20 +1140,45 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
         const pools = [daiPool, usdcPool, usdtPool];
         const underlyers = [daiToken, usdcToken, usdtToken];
         for (const [id, pool, underlyer] of _.zip(ids, pools, underlyers)) {
+          const reservePercentage = await pool.reservePercentage();
+          const decimals = await underlyer.decimals();
+          const dollars = 100;
+          const depositDollars = reservePercentage.add(dollars).toNumber();
+
           const depositAmount = tokenAmountToBigNumber(
-            "105",
-            await underlyer.decimals()
+            depositDollars,
+            decimals
           );
           await underlyer.approve(pool.address, depositAmount);
           await pool.addLiquidity(depositAmount);
+
+          let tvl = await oracleAdapter.getTvl();
 
           await mApt.fundLpAccount([id]);
           expect(await underlyer.balanceOf(lpAccount.address)).to.be.gt(0);
 
           await oracleAdapter.connect(emergencySafe).emergencyUnlock();
+
+          const underlyerPrice = await pool.getUnderlyerPrice();
+          const tvlIncrease = tokenAmountToBigNumber(dollars, 8)
+            .mul(new BigNumber.from(10).pow(decimals))
+            .div(underlyerPrice);
+
+          tvl = tvl.add(tvlIncrease);
+          await oracleAdapter.connect(emergencySafe).emergencySetTvl(tvl, 50);
         }
       });
 
+      /*
+       * CAUTION: this is a somewhat bogus test, as it relies on underlyer
+       * prices not having moved since the LP Account was funded.
+       *
+       * Since the prices haven't changed, each portion of the TVL attributed
+       * to a pool's mAPT balance reflects the exact token amount that
+       * was originally funded to the LP Account.
+       *
+       * In practice, this is not a typical situation.
+       */
       it("Should be able to fully withdraw (one pool)", async () => {
         const oldPoolBalance = await usdcToken.balanceOf(usdcPool.address);
         const lpAccountBalance = await usdcToken.balanceOf(lpAccount.address);
