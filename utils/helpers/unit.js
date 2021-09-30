@@ -48,17 +48,12 @@ const tokenAmountToBigNumber = (amount, decimals) => {
   return amount;
 };
 
-const tokenAmountToString = (amount, decimals) => {
-  return tokenAmountToBigNumber(amount, decimals).toString();
-};
-
 module.exports = {
   bytes32,
   dai,
   erc20,
   undoErc20,
   tokenAmountToBigNumber,
-  tokenAmountToString,
   commify: ethers.utils.commify,
   formatUnits: ethers.utils.formatUnits,
 };
