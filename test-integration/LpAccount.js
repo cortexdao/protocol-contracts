@@ -10,6 +10,7 @@ const {
   tokenAmountToString,
   getStablecoinAddress,
   acquireToken,
+  deepEqual,
 } = require("../utils/helpers");
 const { WHALE_POOLS } = require("../utils/constants");
 
@@ -219,9 +220,9 @@ describe("Contract: LpAccount", () => {
 
       const name = await zap.NAME();
       const amounts = [
-        tokenAmountToString(1),
-        tokenAmountToString(2),
-        tokenAmountToString(3),
+        tokenAmountToBigNumber(1),
+        tokenAmountToBigNumber(2),
+        tokenAmountToBigNumber(3),
       ];
 
       // configure zap with registered allocations
@@ -236,8 +237,8 @@ describe("Contract: LpAccount", () => {
 
       await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
       const result = await lpAccount._deployCalls();
-      const resultValues = result.map((x) => x.map((y) => y.toString()));
-      expect(resultValues).to.deep.equal([amounts]);
+
+      deepEqual(amounts, result);
     });
 
     it("cannot deploy with unregistered ERC20", async () => {

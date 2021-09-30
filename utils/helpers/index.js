@@ -28,6 +28,7 @@ const {
   commify,
   formatUnits,
 } = require("./unit");
+const { deepEqual } = require("./test-helper");
 
 console.debug = function () {
   if (!console.debugging) return;
@@ -71,4 +72,5 @@ module.exports = {
   MAX_UINT256,
   FAKE_ADDRESS,
   ANOTHER_FAKE_ADDRESS,
+  deepEqual,
 };

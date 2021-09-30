@@ -10,6 +10,7 @@ const {
   bytes32,
   impersonateAccount,
   forciblySendEth,
+  deepEqual,
 } = require("../utils/helpers");
 const { deployMockContract } = waffle;
 const OracleAdapter = artifacts.readArtifactSync("OracleAdapter");
@@ -1011,7 +1012,8 @@ describe("Contract: MetaPoolToken", () => {
       ];
       let expectedResult = amounts;
       let result = await mApt.testGetWithdrawAmounts(amounts);
-      expect(result).to.deep.equal(expectedResult);
+
+      deepEqual(expectedResult, result);
 
       amounts = [
         tokenAmountToBigNumber("159"),
@@ -1030,7 +1032,7 @@ describe("Contract: MetaPoolToken", () => {
         tokenAmountToBigNumber("0"),
       ];
       result = await mApt.testGetWithdrawAmounts(amounts);
-      expect(result).to.deep.equal(expectedResult);
+      deepEqual(expectedResult, result);
     });
   });
 });
