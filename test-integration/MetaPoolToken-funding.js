@@ -957,4 +957,62 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
       expect(await daiToken.balanceOf(daiPool.address)).to.equal(poolBalance);
     });
   });
+
+  describe("Funding scenarios", () => {
+    describe("Initial funding of LP Account", () => {
+      before("", async () => {
+        //
+      });
+
+      it("Remaining pool balance should be reserve percentage", async () => {
+        //
+      });
+    });
+
+    describe("Top-up pools", () => {
+      before("", async () => {
+        //
+      });
+
+      it("Should top-up pool to reserve percentage", async () => {
+        //
+      });
+    });
+
+    describe("Emergency withdraw from LP Account", () => {
+      before("", async () => {
+        //
+      });
+
+      it("Should be able to fully withdraw (one pool)", async () => {
+        //
+      });
+
+      it("Should be able to fully withdraw (multiple pools)", async () => {
+        //
+      });
+
+      it("Should be able to withdraw partial funds (one pool)", async () => {
+        //
+      });
+
+      it("Should be able to withdraw partial funds (multiple pools)", async () => {
+        //
+      });
+    });
+
+    describe("Emergency funding of LP Account", () => {
+      before("", async () => {
+        //
+      });
+
+      it("Should be able to fund specified amount (one pool)", async () => {
+        //
+      });
+
+      it("Should be able to fund specified amount (multiple pools)", async () => {
+        //
+      });
+    });
+  });
 });
