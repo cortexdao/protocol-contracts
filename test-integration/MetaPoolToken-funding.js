@@ -34,6 +34,7 @@ const USDC_TOKEN = getStablecoinAddress("USDC", NETWORK);
 const USDT_TOKEN = getStablecoinAddress("USDT", NETWORK);
 
 const daiPoolId = bytes32("daiPool");
+const usdcPoolId = bytes32("usdcPool");
 const usdtPoolId = bytes32("usdtPool");
 
 describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
@@ -194,7 +195,7 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
       addressRegistry.address
     );
 
-    mApt = await MetaPoolToken.attach(mAptProxy.address);
+    mApt = await MetaPoolToken.attach(mAptProxy.address).connect(lpSafe);
     await addressRegistry.registerAddress(bytes32("mApt"), mApt.address);
 
     /*****************************/
@@ -322,21 +323,21 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
       WHALE_POOLS["DAI"],
       deployer,
       daiToken,
-      "1000",
+      "1000000",
       deployer
     );
     await acquireToken(
       WHALE_POOLS["USDC"],
       deployer,
       usdcToken,
-      "1000",
+      "1000000",
       deployer
     );
     await acquireToken(
       WHALE_POOLS["USDT"],
       deployer,
       usdtToken,
-      "1000",
+      "1000000",
       deployer
     );
   });
@@ -1029,7 +1030,7 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
     });
   });
 
-  describe("Funding scenarios", () => {
+  describe.only("Funding scenarios", () => {
     before(async () => {
       const snapshot = await timeMachine.takeSnapshot();
       subSuiteSnapshotId = snapshot["result"];
@@ -1041,11 +1042,31 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
 
     describe("Initial funding of LP Account", () => {
       before("", async () => {
-        //
+        const depositAmount = tokenAmountToBigNumber(
+          "105",
+          await usdcToken.decimals()
+        );
+        await usdcToken.approve(usdcPool.address, depositAmount);
+        await usdcPool.addLiquidity(depositAmount);
+
+        expect(await usdcToken.balanceOf(usdcPool.address)).to.equal(
+          depositAmount
+        );
+
+        expect(await usdcToken.balanceOf(lpAccount.address)).to.be.zero;
       });
 
       it("Remaining pool balance should be reserve percentage", async () => {
-        //
+        await mApt.fundLpAccount([usdcPoolId]);
+
+        const reservePercentage = await usdcPool.reservePercentage();
+        const expectedAmount = (await usdcToken.balanceOf(lpAccount.address))
+          .mul(reservePercentage)
+          .div(100);
+
+        expect(await usdcToken.balanceOf(usdcPool.address)).to.equal(
+          expectedAmount
+        );
       });
     });
 
