@@ -22,22 +22,21 @@ console.debugging = false;
 
 const NETWORK = "MAINNET";
 const SYMBOLS = ["DAI", "USDC", "USDT"];
+const TOKEN_ADDRESSES = SYMBOLS.map((symbol) =>
+  getStablecoinAddress(symbol, NETWORK)
+);
+const AGG_ADDRESSES = SYMBOLS.map((symbol) =>
+  getAggregatorAddress(`${symbol}-USD`, NETWORK)
+);
 
-const UNDERLYER_PARAMS = SYMBOLS.map((symbol) => {
-  return {
-    symbol: symbol,
-    tokenAddress: getStablecoinAddress(symbol, NETWORK),
-    aggAddress: getAggregatorAddress(`${symbol}-USD`, NETWORK),
-  };
-});
-
-const DAI_TOKEN = getStablecoinAddress("DAI", NETWORK);
-const USDC_TOKEN = getStablecoinAddress("USDC", NETWORK);
-const USDT_TOKEN = getStablecoinAddress("USDT", NETWORK);
+const DAI_TOKEN = TOKEN_ADDRESSES[0];
+const USDC_TOKEN = TOKEN_ADDRESSES[1];
+const USDT_TOKEN = TOKEN_ADDRESSES[2];
 
 const daiPoolId = bytes32("daiPool");
 const usdcPoolId = bytes32("usdcPool");
 const tetherPoolId = bytes32("usdtPool");
+const ids = [daiPoolId, usdcPoolId, tetherPoolId];
 
 describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
   // to-be-deployed contracts
@@ -59,10 +58,12 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
   let daiPool;
   let usdcPool;
   let usdtPool;
+  let pools;
 
   let daiToken;
   let usdcToken;
   let usdtToken;
+  let underlyers;
 
   // use EVM snapshots for test isolation
   let testSnapshotId;
@@ -208,7 +209,7 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
 
     const lpAccountAdmin = await ProxyAdmin.deploy();
 
-    const initData = LpAccount.interface.encodeFunctionData(
+    const lpAccountInitData = LpAccount.interface.encodeFunctionData(
       "initialize(address,address)",
       [lpAccountAdmin.address, addressRegistry.address]
     );
@@ -216,7 +217,7 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
     const lpAccountProxy = await TransparentUpgradeableProxy.deploy(
       lpAccountLogic.address,
       lpAccountAdmin.address,
-      initData
+      lpAccountInitData
     );
 
     lpAccount = await LpAccount.attach(lpAccountProxy.address);
@@ -237,8 +238,17 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
     const poolAdmin = await ProxyAdmin.deploy();
     const PoolTokenProxy = await ethers.getContractFactory("PoolTokenProxy");
 
-    const pools = {};
-    for (const { symbol, tokenAddress, aggAddress } of UNDERLYER_PARAMS) {
+    const poolTokenV2InitData = PoolTokenV2.interface.encodeFunctionData(
+      "initializeUpgrade(address)",
+      [addressRegistry.address]
+    );
+
+    pools = [];
+    for (const [symbol, tokenAddress, aggAddress] of _.zip(
+      SYMBOLS,
+      TOKEN_ADDRESSES,
+      AGG_ADDRESSES
+    )) {
       const poolProxy = await PoolTokenProxy.deploy(
         poolLogic.address,
         poolAdmin.address,
@@ -246,25 +256,21 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
         aggAddress
       );
 
-      const initData = PoolTokenV2.interface.encodeFunctionData(
-        "initializeUpgrade(address)",
-        [addressRegistry.address]
-      );
       await poolAdmin.upgradeAndCall(
         poolProxy.address,
         poolLogicV2.address,
-        initData
+        poolTokenV2InitData
       );
       const pool = await PoolTokenV2.attach(poolProxy.address);
 
       const poolId = bytes32(symbol.toLowerCase() + "Pool");
       await addressRegistry.registerAddress(poolId, pool.address);
 
-      pools[symbol.toLowerCase()] = pool;
+      pools.push(pool);
     }
-    daiPool = pools.dai;
-    usdcPool = pools.usdc;
-    usdtPool = pools.usdt;
+    daiPool = pools[0];
+    usdcPool = pools[1];
+    usdtPool = pools[2];
 
     /******************************/
     /***** deploy TVL Manager *****/
@@ -286,15 +292,13 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
     /*********************************/
 
     const tvlAggAddress = getAggregatorAddress("TVL", NETWORK);
-    const assetAddresses = UNDERLYER_PARAMS.map((_) => _.tokenAddress);
-    const sourceAddresses = UNDERLYER_PARAMS.map((_) => _.aggAddress);
 
     const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
     oracleAdapter = await OracleAdapter.deploy(
       addressRegistry.address,
       tvlAggAddress,
-      assetAddresses,
-      sourceAddresses,
+      TOKEN_ADDRESSES,
+      AGG_ADDRESSES,
       86400,
       270
     );
@@ -316,10 +320,14 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
     await oracleAdapter.connect(emergencySafe).emergencyUnlock();
   });
 
-  before("Fund accounts with stables", async () => {
+  before("Attach to Mainnet stablecoin contracts", async () => {
     daiToken = await ethers.getContractAt("IDetailedERC20", DAI_TOKEN);
     usdcToken = await ethers.getContractAt("IDetailedERC20", USDC_TOKEN);
     usdtToken = await ethers.getContractAt("IDetailedERC20", USDT_TOKEN);
+    underlyers = [daiToken, usdcToken, usdtToken];
+  });
+
+  before("Fund accounts with stables", async () => {
     // fund deployer with stablecoins
     await acquireToken(
       WHALE_POOLS["DAI"],
@@ -1044,8 +1052,6 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
 
     describe("Initial funding of LP Account", () => {
       beforeEach("Deposit into pools", async () => {
-        const pools = [daiPool, usdcPool, usdtPool];
-        const underlyers = [daiToken, usdcToken, usdtToken];
         for (const [pool, underlyer] of _.zip(pools, underlyers)) {
           const depositAmount = tokenAmountToBigNumber(
             "105",
@@ -1136,13 +1142,10 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
 
     describe("Emergency withdraw from LP Account", () => {
       beforeEach("Seed LP Account with funds", async () => {
-        const ids = [daiPoolId, usdcPoolId, tetherPoolId];
-        const pools = [daiPool, usdcPool, usdtPool];
-        const underlyers = [daiToken, usdcToken, usdtToken];
+        const dollars = 100;
         for (const [id, pool, underlyer] of _.zip(ids, pools, underlyers)) {
           const reservePercentage = await pool.reservePercentage();
           const decimals = await underlyer.decimals();
-          const dollars = 100;
           const depositDollars = reservePercentage.add(dollars).toNumber();
 
           const depositAmount = tokenAmountToBigNumber(
