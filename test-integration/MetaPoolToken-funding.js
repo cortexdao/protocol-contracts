@@ -1040,7 +1040,7 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
     });
   });
 
-  describe.only("Funding scenarios", () => {
+  describe("Funding scenarios", () => {
     before(async () => {
       const snapshot = await timeMachine.takeSnapshot();
       subSuiteSnapshotId = snapshot["result"];
@@ -1199,8 +1199,26 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
         );
       });
 
+      /* Same caveat applies as for the previous test */
       it("Should be able to fully withdraw (multiple pools)", async () => {
-        //
+        const poolAddresses = pools.map((p) => p.address);
+        const oldPoolBalances = await Promise.all(
+          _.zip(underlyers, poolAddresses).map(([u, p]) => u.balanceOf(p))
+        );
+        const lpAccountBalances = await Promise.all(
+          underlyers.map((u) => u.balanceOf(lpAccount.address))
+        );
+
+        await mApt
+          .connect(emergencySafe)
+          .emergencyWithdrawFromLpAccount(poolAddresses, lpAccountBalances);
+
+        for (let i = 0; i < underlyers.length; i++) {
+          expect(await underlyers[i].balanceOf(lpAccount.address)).to.be.zero;
+          expect(await underlyers[i].balanceOf(poolAddresses[i])).to.be.equal(
+            oldPoolBalances[i].add(lpAccountBalances[i])
+          );
+        }
       });
 
       it("Should be able to withdraw partial funds (one pool)", async () => {
