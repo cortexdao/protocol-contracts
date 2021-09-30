@@ -1,6 +1,7 @@
 const { expect } = require("chai");
 const { artifacts, ethers } = require("hardhat");
 const timeMachine = require("ganache-time-traveler");
+const _ = require("lodash");
 const {
   tokenAmountToBigNumber,
   bytes32,
@@ -35,7 +36,7 @@ const USDT_TOKEN = getStablecoinAddress("USDT", NETWORK);
 
 const daiPoolId = bytes32("daiPool");
 const usdcPoolId = bytes32("usdcPool");
-const usdtPoolId = bytes32("usdtPool");
+const tetherPoolId = bytes32("usdtPool");
 
 describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
   // to-be-deployed contracts
@@ -380,7 +381,7 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
         await expect(
           mApt
             .connect(lpSafe)
-            .fundLpAccount([daiPoolId, bytes32("invalidPool"), usdtPoolId])
+            .fundLpAccount([daiPoolId, bytes32("invalidPool"), tetherPoolId])
         ).to.be.revertedWith("Missing address");
       });
     });
@@ -404,7 +405,7 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
             .withdrawFromLpAccount([
               daiPoolId,
               bytes32("invalidPool"),
-              usdtPoolId,
+              tetherPoolId,
             ])
         ).to.be.revertedWith("Missing address");
       });
@@ -1042,31 +1043,83 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
 
     describe("Initial funding of LP Account", () => {
       before("", async () => {
-        const depositAmount = tokenAmountToBigNumber(
-          "105",
-          await usdcToken.decimals()
-        );
-        await usdcToken.approve(usdcPool.address, depositAmount);
-        await usdcPool.addLiquidity(depositAmount);
+        const pools = [daiPool, usdcPool, usdtPool];
+        const underlyers = [daiToken, usdcToken, usdtToken];
+        for (const [pool, underlyer] of _.zip(pools, underlyers)) {
+          const depositAmount = tokenAmountToBigNumber(
+            "105",
+            await underlyer.decimals()
+          );
+          await underlyer.approve(pool.address, depositAmount);
+          await pool.addLiquidity(depositAmount);
 
-        expect(await usdcToken.balanceOf(usdcPool.address)).to.equal(
-          depositAmount
-        );
-
-        expect(await usdcToken.balanceOf(lpAccount.address)).to.be.zero;
+          expect(await underlyer.balanceOf(pool.address)).to.equal(
+            depositAmount
+          );
+          expect(await underlyer.balanceOf(lpAccount.address)).to.be.zero;
+        }
       });
 
-      it("Remaining pool balance should be reserve percentage", async () => {
+      it("Remaining pool balance should be reserve percentage (one pool)", async () => {
+        const oldPoolBalance = await usdcToken.balanceOf(usdcPool.address);
+
         await mApt.fundLpAccount([usdcPoolId]);
 
+        const lpAccountBalance = await usdcToken.balanceOf(lpAccount.address);
+        const newPoolBalance = await usdcToken.balanceOf(usdcPool.address);
         const reservePercentage = await usdcPool.reservePercentage();
-        const expectedAmount = (await usdcToken.balanceOf(lpAccount.address))
+
+        const expectedAmount = lpAccountBalance.mul(reservePercentage).div(100);
+        expect(newPoolBalance).to.equal(expectedAmount);
+
+        expect(newPoolBalance.add(lpAccountBalance)).to.equal(oldPoolBalance);
+      });
+
+      it("Remaining pool balance should be reserve percentage (multiple pools)", async () => {
+        const oldDaiPoolBalance = await daiToken.balanceOf(daiPool.address);
+        const oldUsdcPoolBalance = await usdcToken.balanceOf(usdcPool.address);
+        const oldTetherPoolBalance = await usdtToken.balanceOf(
+          usdtPool.address
+        );
+
+        await mApt.fundLpAccount([daiPoolId, usdcPoolId, tetherPoolId]);
+
+        const newDaiPoolBalance = await daiToken.balanceOf(daiPool.address);
+        const newUsdcPoolBalance = await usdcToken.balanceOf(usdcPool.address);
+        const newTetherPoolBalance = await usdtToken.balanceOf(
+          usdtPool.address
+        );
+        const reservePercentage = await usdcPool.reservePercentage();
+
+        let expectedAmount = (await daiToken.balanceOf(lpAccount.address))
           .mul(reservePercentage)
           .div(100);
+        expect(newDaiPoolBalance).to.equal(expectedAmount);
 
-        expect(await usdcToken.balanceOf(usdcPool.address)).to.equal(
-          expectedAmount
+        expectedAmount = (await usdcToken.balanceOf(lpAccount.address))
+          .mul(reservePercentage)
+          .div(100);
+        expect(newUsdcPoolBalance).to.equal(expectedAmount);
+
+        expectedAmount = (await usdtToken.balanceOf(lpAccount.address))
+          .mul(reservePercentage)
+          .div(100);
+        expect(newTetherPoolBalance).to.equal(expectedAmount);
+
+        let totalBalance = (await daiToken.balanceOf(lpAccount.address)).add(
+          newDaiPoolBalance
         );
+        expect(totalBalance).to.equal(oldDaiPoolBalance);
+
+        totalBalance = (await usdcToken.balanceOf(lpAccount.address)).add(
+          newUsdcPoolBalance
+        );
+        expect(totalBalance).to.equal(oldUsdcPoolBalance);
+
+        totalBalance = (await usdtToken.balanceOf(lpAccount.address)).add(
+          newTetherPoolBalance
+        );
+        expect(totalBalance).to.equal(oldTetherPoolBalance);
       });
     });
 
