@@ -152,7 +152,11 @@ contract PoolTokenV2 is
      * this function can only be called as part of a delegate call
      * during upgrades, i.e. in ProxyAdmin's `upgradeAndCall`.
      */
-    function initializeUpgrade(address addressRegistry_) external onlyAdmin {
+    function initializeUpgrade(address addressRegistry_)
+        external
+        nonReentrant
+        onlyAdmin
+    {
         _setAddressRegistry(addressRegistry_);
 
         // Sadly, the AccessControl init is protected by `initializer` so can't
@@ -214,12 +218,22 @@ contract PoolTokenV2 is
         );
     }
 
-    function emergencyLockAddLiquidity() external override onlyEmergencyRole {
+    function emergencyLockAddLiquidity()
+        external
+        override
+        nonReentrant
+        onlyEmergencyRole
+    {
         addLiquidityLock = true;
         emit AddLiquidityLocked();
     }
 
-    function emergencyUnlockAddLiquidity() external override onlyEmergencyRole {
+    function emergencyUnlockAddLiquidity()
+        external
+        override
+        nonReentrant
+        onlyEmergencyRole
+    {
         addLiquidityLock = false;
         emit AddLiquidityUnlocked();
     }
@@ -256,12 +270,22 @@ contract PoolTokenV2 is
         );
     }
 
-    function emergencyLockRedeem() external override onlyEmergencyRole {
+    function emergencyLockRedeem()
+        external
+        override
+        nonReentrant
+        onlyEmergencyRole
+    {
         redeemLock = true;
         emit RedeemLocked();
     }
 
-    function emergencyUnlockRedeem() external override onlyEmergencyRole {
+    function emergencyUnlockRedeem()
+        external
+        override
+        nonReentrant
+        onlyEmergencyRole
+    {
         redeemLock = false;
         emit RedeemUnlocked();
     }
@@ -285,6 +309,7 @@ contract PoolTokenV2 is
      */
     function emergencySetAdminAddress(address adminAddress)
         external
+        nonReentrant
         onlyEmergencyRole
     {
         _setAdminAddress(adminAddress);
@@ -296,12 +321,18 @@ contract PoolTokenV2 is
      */
     function emergencySetAddressRegistry(address addressRegistry_)
         external
+        nonReentrant
         onlyEmergencyRole
     {
         _setAddressRegistry(addressRegistry_);
     }
 
-    function setFeePeriod(uint256 feePeriod_) external override onlyAdminRole {
+    function setFeePeriod(uint256 feePeriod_)
+        external
+        override
+        nonReentrant
+        onlyAdminRole
+    {
         feePeriod = feePeriod_;
         emit FeePeriodChanged(feePeriod_);
     }
@@ -309,6 +340,7 @@ contract PoolTokenV2 is
     function setFeePercentage(uint256 feePercentage_)
         external
         override
+        nonReentrant
         onlyAdminRole
     {
         feePercentage = feePercentage_;
@@ -318,6 +350,7 @@ contract PoolTokenV2 is
     function setReservePercentage(uint256 reservePercentage_)
         external
         override
+        nonReentrant
         onlyAdminRole
     {
         reservePercentage = reservePercentage_;
