@@ -7,7 +7,8 @@ import {IZap} from "contracts/lpaccount/Imports.sol";
 import {
     IAssetAllocation,
     IDetailedERC20,
-    IERC20
+    IERC20,
+    ReentrancyGuard
 } from "contracts/common/Imports.sol";
 import {SafeERC20} from "contracts/libraries/Imports.sol";
 import {ApyUnderlyerConstants} from "contracts/protocols/apy.sol";
@@ -18,7 +19,7 @@ import {
 } from "./interfaces/IAaveIncentivesController.sol";
 import {AaveConstants} from "contracts/protocols/aave/Constants.sol";
 
-abstract contract AaveBasePool is IZap, AaveConstants {
+abstract contract AaveBasePool is IZap, AaveConstants, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -34,7 +35,11 @@ abstract contract AaveBasePool is IZap, AaveConstants {
     }
 
     /// @param amounts array of underlyer amounts
-    function deployLiquidity(uint256[] calldata amounts) external override {
+    function deployLiquidity(uint256[] calldata amounts)
+        external
+        override
+        nonReentrant
+    {
         require(amounts.length == 1, "INVALID_AMOUNTS");
         IERC20(UNDERLYER_ADDRESS).safeApprove(POOL_ADDRESS, 0);
         IERC20(UNDERLYER_ADDRESS).safeApprove(POOL_ADDRESS, amounts[0]);
@@ -42,12 +47,16 @@ abstract contract AaveBasePool is IZap, AaveConstants {
     }
 
     /// @param amount LP token amount
-    function unwindLiquidity(uint256 amount, uint8 index) external override {
+    function unwindLiquidity(uint256 amount, uint8 index)
+        external
+        override
+        nonReentrant
+    {
         require(index == 0, "INVALID_INDEX");
         _withdraw(amount);
     }
 
-    function claim() external virtual override {
+    function claim() external virtual override nonReentrant {
         IAaveIncentivesController controller =
             IAaveIncentivesController(STAKED_INCENTIVES_CONTROLLER_ADDRESS);
         address[] memory assets = new address[](1);
