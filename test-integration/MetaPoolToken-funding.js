@@ -1131,25 +1131,18 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
     });
 
     describe("Top-up pools", () => {
-      before("", async () => {
-        //
-      });
-
-      it("Should top-up pool to reserve percentage", async () => {
-        //
-      });
-    });
-
-    describe("Emergency withdraw from LP Account", () => {
       beforeEach("Seed LP Account with funds", async () => {
-        const dollars = 100;
+        const deployedTokens = 15000;
         for (const [id, pool, underlyer] of _.zip(ids, pools, underlyers)) {
           const reservePercentage = await pool.reservePercentage();
           const decimals = await underlyer.decimals();
-          const depositDollars = reservePercentage.add(dollars).toNumber();
+          const depositTokens = reservePercentage
+            .add(100)
+            .mul(deployedTokens)
+            .div(100);
 
           const depositAmount = tokenAmountToBigNumber(
-            depositDollars,
+            depositTokens.toString(),
             decimals
           );
           await underlyer.approve(pool.address, depositAmount);
@@ -1163,9 +1156,73 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
           await oracleAdapter.connect(emergencySafe).emergencyUnlock();
 
           const underlyerPrice = await pool.getUnderlyerPrice();
-          const tvlIncrease = tokenAmountToBigNumber(dollars, 8)
-            .mul(new BigNumber.from(10).pow(decimals))
-            .div(underlyerPrice);
+          const tvlIncrease = tokenAmountToBigNumber(deployedTokens, decimals)
+            .mul(underlyerPrice)
+            .div(BigNumber.from(10).pow(decimals));
+
+          tvl = tvl.add(tvlIncrease);
+          await oracleAdapter.connect(emergencySafe).emergencySetTvl(tvl, 50);
+        }
+        const aptBalance = await usdcPool.balanceOf(deployer.address);
+        const redeemAmount = aptBalance.mul(1).div(100);
+        await usdcPool.redeem(redeemAmount);
+      });
+
+      it("Should top-up pool to reserve percentage", async () => {
+        await expect(mApt.withdrawFromLpAccount([usdcPoolId])).to.not.be
+          .reverted;
+        await oracleAdapter.connect(emergencySafe).emergencyUnlock();
+
+        const reservePercentage = await usdcPool.reservePercentage();
+        const lpAccountBalance = await usdcToken.balanceOf(lpAccount.address);
+        const expectedBalance = lpAccountBalance
+          .mul(reservePercentage)
+          .div(100);
+
+        const poolBalance = await usdcToken.balanceOf(usdcPool.address);
+        expect(poolBalance).to.equal(expectedBalance);
+      });
+
+      it("Revert when erroneous TVL is humongous", async () => {
+        const tvl = (await oracleAdapter.getTvl()).mul(2000);
+        await oracleAdapter.connect(emergencySafe).emergencySetTvl(tvl, 50);
+
+        await expect(
+          mApt.withdrawFromLpAccount([usdcPoolId])
+        ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
+      });
+    });
+
+    describe("Emergency withdraw from LP Account", () => {
+      beforeEach("Seed LP Account with funds", async () => {
+        const deployedTokens = 100;
+        for (const [id, pool, underlyer] of _.zip(ids, pools, underlyers)) {
+          const reservePercentage = await pool.reservePercentage();
+          const decimals = await underlyer.decimals();
+          const depositTokens = reservePercentage
+            .add(100)
+            .mul(deployedTokens)
+            .div(100);
+
+          const depositAmount = tokenAmountToBigNumber(
+            depositTokens.toString(),
+            decimals
+          );
+
+          await underlyer.approve(pool.address, depositAmount);
+          await pool.addLiquidity(depositAmount);
+
+          let tvl = await oracleAdapter.getTvl();
+
+          await mApt.fundLpAccount([id]);
+          expect(await underlyer.balanceOf(lpAccount.address)).to.be.gt(0);
+
+          await oracleAdapter.connect(emergencySafe).emergencyUnlock();
+
+          const underlyerPrice = await pool.getUnderlyerPrice();
+          const tvlIncrease = tokenAmountToBigNumber(deployedTokens, decimals)
+            .mul(underlyerPrice)
+            .div(BigNumber.from(10).pow(decimals));
 
           tvl = tvl.add(tvlIncrease);
           await oracleAdapter.connect(emergencySafe).emergencySetTvl(tvl, 50);
