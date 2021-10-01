@@ -12,3 +12,4 @@ import {
 import {AccessControl} from "./AccessControl.sol";
 import {INameIdentifier} from "./INameIdentifier.sol";
 import {IAssetAllocation} from "./IAssetAllocation.sol";
+import {IEmergencyExit} from "./IEmergencyExit.sol";
