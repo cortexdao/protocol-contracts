@@ -1219,8 +1219,8 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
 
         const newAptBalance = await usdcPool.balanceOf(deployer.address);
 
-        // In [1]: 15000 / (15000 + 1500)
-        // Out[1]: 0.9090909090909091
+        // In [1]: 15000 * 1.05 / (15000 * 1.05 + 1500)
+        // Out[1]: 0.9130434782608695
         expect(prevAptBalance.mul(100).div(newAptBalance)).to.equal(91);
 
         // can't redeem full balance since most of it is deployed
@@ -1233,7 +1233,7 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
         // should be allowed to redeem this amount
         const redeemableAptBalance = newAptBalance.mul(1).div(100);
         const expectedUnderlyerAmount = tokenAmountToBigNumber(
-          1500 + 15000,
+          15000 * 1.05 + 1500,
           decimals
         )
           .mul(1)
