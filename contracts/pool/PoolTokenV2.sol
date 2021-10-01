@@ -2,6 +2,8 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
+import "hardhat/console.sol";
+
 import {IDetailedERC20, IEmergencyExit} from "contracts/common/Imports.sol";
 import {SafeERC20} from "contracts/libraries/Imports.sol";
 import {
@@ -328,7 +330,7 @@ contract PoolTokenV2 is
     function emergencyExit(address token) external override onlyEmergencyRole {
         address emergencySafe = addressRegistry.emergencySafeAddress();
         IDetailedERC20 token_ = IDetailedERC20(token);
-        uint256 balance = token_.balanceOf(emergencySafe);
+        uint256 balance = token_.balanceOf(address(this));
         token_.safeTransfer(emergencySafe, balance);
 
         emit EmergencyExit(emergencySafe, token_, balance);

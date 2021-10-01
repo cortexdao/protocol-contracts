@@ -270,7 +270,7 @@ contract LpAccount is
     function emergencyExit(address token) external override onlyEmergencyRole {
         address emergencySafe = addressRegistry.emergencySafeAddress();
         IERC20 token_ = IERC20(token);
-        uint256 balance = token_.balanceOf(emergencySafe);
+        uint256 balance = token_.balanceOf(address(this));
         token_.safeTransfer(emergencySafe, balance);
 
         emit EmergencyExit(emergencySafe, token_, balance);
