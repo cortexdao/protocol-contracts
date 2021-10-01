@@ -1233,11 +1233,11 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
         }
       });
 
-      it("Can redeem less than reserve amount after funding LP Account", async () => {
-        const aptBalance = await usdcPool.balanceOf(deployer.address);
-        const redeemAmount = aptBalance.mul(1).div(100);
-        await expect(usdcPool.redeem(redeemAmount)).to.not.reverted;
-      });
+      // it("Can redeem less than reserve amount after funding LP Account", async () => {
+      //   const aptBalance = await usdcPool.balanceOf(deployer.address);
+      //   const redeemAmount = aptBalance.mul(1).div(100);
+      //   await expect(usdcPool.redeem(redeemAmount)).to.not.reverted;
+      // });
 
       it("Should top-up pool to reserve percentage", async () => {
         const transferAmount = await usdcPool.getReserveTopUpValue();
