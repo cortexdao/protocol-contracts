@@ -1063,6 +1063,12 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
   });
 
   describe("Funding scenarios", () => {
+    // CAUTION: some of the scenarios here rely on the "it" steps
+    // proceeding in sequence, using previous state.
+    //
+    // So we only revert to snapshot at the this level and leave
+    // it up to each "describe" below to revert or not at the
+    // individual test level.
     let subSuiteSnapshotId;
 
     before(async () => {
