@@ -412,33 +412,6 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
     });
   });
 
-  describe("emergencyFundLpAccount", () => {
-    it("Unpermissioned cannot call", async () => {
-      await expect(
-        mApt.connect(randomUser).emergencyFundLpAccount([], [])
-      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
-    });
-
-    it("Emergency role can call", async () => {
-      await expect(mApt.connect(emergencySafe).emergencyFundLpAccount([], []))
-        .to.not.be.reverted;
-    });
-  });
-
-  describe("emergencyWithdrawFromLpAccount", () => {
-    it("Unpermissioned cannot call", async () => {
-      await expect(
-        mApt.connect(randomUser).emergencyWithdrawFromLpAccount([], [])
-      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
-    });
-
-    it("Emergency role can call", async () => {
-      await expect(
-        mApt.connect(emergencySafe).emergencyWithdrawFromLpAccount([], [])
-      ).to.not.be.reverted;
-    });
-  });
-
   describe("_fundLpAccount", () => {
     it("Revert on missing LP Safe address", async () => {
       await addressRegistry.deleteAddress(bytes32("lpAccount"));
