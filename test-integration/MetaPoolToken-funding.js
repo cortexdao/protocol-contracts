@@ -38,7 +38,7 @@ const usdcPoolId = bytes32("usdcPool");
 const tetherPoolId = bytes32("usdtPool");
 const ids = [daiPoolId, usdcPoolId, tetherPoolId];
 
-describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
+describe("Contract: MetaPoolToken - funding and withdrawing", () => {
   // to-be-deployed contracts
   let tvlManager;
   let mApt;
@@ -1040,7 +1040,7 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
     });
   });
 
-  describe.only("Funding scenarios", () => {
+  describe("Funding scenarios", () => {
     before(async () => {
       const snapshot = await timeMachine.takeSnapshot();
       subSuiteSnapshotId = snapshot["result"];
@@ -1049,6 +1049,29 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
     after(async () => {
       await timeMachine.revertToSnapshot(subSuiteSnapshotId);
     });
+
+    /*
+     * @param pool
+     * @param underlyerAmount amount being transferred to LP Account.
+     * Negative means transferring to pool from LP Account.
+     */
+    async function updateTvl(pool, underlyerAmount) {
+      const underlyerPrice = await pool.getUnderlyerPrice();
+      const underlyerAddress = await pool.underlyer();
+
+      const underlyer = await ethers.getContractAt(
+        "IDetailedERC20",
+        underlyerAddress
+      );
+      const decimals = await underlyer.decimals();
+
+      const underlyerUsdValue = underlyerAmount
+        .mul(underlyerPrice)
+        .div(BigNumber.from(10).pow(decimals));
+
+      const newTvl = (await oracleAdapter.getTvl()).add(underlyerUsdValue);
+      await oracleAdapter.connect(emergencySafe).emergencySetTvl(newTvl, 50);
+    }
 
     describe("Initial funding of LP Account", () => {
       beforeEach("Deposit into pools", async () => {
@@ -1148,27 +1171,27 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
           await underlyer.approve(pool.address, depositAmount);
           await pool.addLiquidity(depositAmount);
 
-          let tvl = await oracleAdapter.getTvl();
-
           await mApt.fundLpAccount([id]);
           expect(await underlyer.balanceOf(lpAccount.address)).to.be.gt(0);
 
           await oracleAdapter.connect(emergencySafe).emergencyUnlock();
 
-          const underlyerPrice = await pool.getUnderlyerPrice();
-          const tvlIncrease = tokenAmountToBigNumber(deployedTokens, decimals)
-            .mul(underlyerPrice)
-            .div(BigNumber.from(10).pow(decimals));
-
-          tvl = tvl.add(tvlIncrease);
-          await oracleAdapter.connect(emergencySafe).emergencySetTvl(tvl, 50);
+          await updateTvl(
+            pool,
+            tokenAmountToBigNumber(deployedTokens, decimals)
+          );
         }
+      });
+
+      it("Can redeem less than reserve amount after funding LP Account", async () => {
         const aptBalance = await usdcPool.balanceOf(deployer.address);
         const redeemAmount = aptBalance.mul(1).div(100);
-        await usdcPool.redeem(redeemAmount);
+        await expect(usdcPool.redeem(redeemAmount)).to.not.reverted;
       });
 
       it("Should top-up pool to reserve percentage", async () => {
+        const transferAmount = await usdcPool.getReserveTopUpValue();
+
         await expect(mApt.withdrawFromLpAccount([usdcPoolId])).to.not.be
           .reverted;
         await oracleAdapter.connect(emergencySafe).emergencyUnlock();
@@ -1181,6 +1204,48 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
 
         const poolBalance = await usdcToken.balanceOf(usdcPool.address);
         expect(poolBalance).to.equal(expectedBalance);
+
+        await updateTvl(usdcPool, transferAmount);
+      });
+
+      it("Can add liquidity and redeem after top-up", async () => {
+        const decimals = await usdcToken.decimals();
+        const depositAmount = tokenAmountToBigNumber("1500", decimals);
+
+        const prevAptBalance = await usdcPool.balanceOf(deployer.address);
+
+        await usdcToken.approve(usdcPool.address, depositAmount);
+        await usdcPool.addLiquidity(depositAmount);
+
+        const newAptBalance = await usdcPool.balanceOf(deployer.address);
+
+        // In [1]: 15000 / (15000 + 1500)
+        // Out[1]: 0.9090909090909091
+        expect(prevAptBalance.mul(100).div(newAptBalance)).to.equal(91);
+
+        // can't redeem full balance since most of it is deployed
+        await expect(usdcPool.redeem(newAptBalance)).to.be.reverted;
+
+        const prevUnderlyerBalance = await usdcToken.balanceOf(
+          deployer.address
+        );
+
+        // should be allowed to redeem this amount
+        const redeemableAptBalance = newAptBalance.mul(1).div(100);
+        const expectedUnderlyerAmount = tokenAmountToBigNumber(
+          1500 + 15000,
+          decimals
+        )
+          .mul(1)
+          .div(100)
+          .mul(95)
+          .div(100);
+        await expect(usdcPool.redeem(redeemableAptBalance)).to.not.be.reverted;
+
+        const newUnderlyerBalance = await usdcToken.balanceOf(deployer.address);
+        expect(newUnderlyerBalance.sub(prevUnderlyerBalance)).to.equal(
+          expectedUnderlyerAmount
+        );
       });
 
       it("Revert when erroneous TVL is humongous", async () => {
@@ -1330,9 +1395,20 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
       });
     });
 
-    describe("Emergency funding of LP Account", () => {
-      before("", async () => {
-        //
+    describe.skip("Emergency funding of LP Account", () => {
+      beforeEach("Deposit into pools", async () => {
+        for (const [pool, underlyer] of _.zip(pools, underlyers)) {
+          const depositTokens = 15000;
+          const decimals = await underlyer.decimals();
+          const depositAmount = tokenAmountToBigNumber(depositTokens, decimals);
+          await underlyer.approve(pool.address, depositAmount);
+          await pool.addLiquidity(depositAmount);
+
+          expect(await underlyer.balanceOf(pool.address)).to.equal(
+            depositAmount
+          );
+          expect(await underlyer.balanceOf(lpAccount.address)).to.be.zero;
+        }
       });
 
       it("Should be able to fund specified amount (one pool)", async () => {
