@@ -11,7 +11,7 @@ const {
   acquireToken,
   deepEqual,
 } = require("../utils/helpers");
-const { WHALE_POOLS } = require("../utils/constants");
+const { WHALE_POOLS, FARM_TOKENS } = require("../utils/constants");
 
 const IAddressRegistryV2 = artifacts.readArtifactSync("IAddressRegistryV2");
 const IDetailedERC20 = artifacts.readArtifactSync("IDetailedERC20");
@@ -52,6 +52,7 @@ describe("Contract: LpAccount", () => {
   let emergencySafe;
   let adminSafe;
   let mApt;
+  let randomUser;
 
   // deployed contracts
   let lpAccount;
@@ -81,6 +82,7 @@ describe("Contract: LpAccount", () => {
       emergencySafe,
       adminSafe,
       mApt,
+      randomUser,
     ] = await ethers.getSigners();
 
     addressRegistry = await deployMockContract(
@@ -504,6 +506,60 @@ describe("Contract: LpAccount", () => {
 
       await expect(lpAccount.connect(lpSafe).swap(name, amount, 0)).to.not.be
         .reverted;
+    });
+  });
+
+  describe("emergencyExit", () => {
+    const symbol = "AAVE";
+    let token;
+
+    before("Get token", async () => {
+      token = await ethers.getContractAt("IDetailedERC20", FARM_TOKENS[symbol]);
+    });
+
+    beforeEach("Acquire token", async () => {
+      await acquireToken(
+        WHALE_POOLS[symbol],
+        lpAccount.address,
+        token,
+        "10000",
+        deployer.address
+      );
+    });
+
+    it("Should only be callable by the emergencySafe", async () => {
+      await expect(
+        lpAccount.connect(randomUser).emergencyExit(token.address)
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
+
+      await expect(
+        lpAccount.connect(emergencySafe).emergencyExit(token.address)
+      ).to.not.be.reverted;
+    });
+
+    it.skip("Should transfer all funded tokens to the emergencySafe", async () => {});
+
+    it("Should transfer tokens airdropped to the LpAccount", async () => {
+      const prevPoolBalance = await token.balanceOf(lpAccount.address);
+      const prevSafeBalance = await token.balanceOf(emergencySafe.address);
+
+      await lpAccount.connect(emergencySafe).emergencyExit(token.address);
+
+      const nextPoolBalance = await token.balanceOf(lpAccount.address);
+      const nextSafeBalance = await token.balanceOf(emergencySafe.address);
+
+      expect(nextPoolBalance).to.equal(0);
+      expect(nextSafeBalance.sub(prevSafeBalance)).to.equal(prevPoolBalance);
+    });
+
+    it("Should emit the EmergencyExit event", async () => {
+      const balance = await token.balanceOf(lpAccount.address);
+
+      await expect(
+        lpAccount.connect(emergencySafe).emergencyExit(token.address)
+      )
+        .to.emit(lpAccount, "EmergencyExit")
+        .withArgs(emergencySafe.address, token.address, balance);
     });
   });
 });
