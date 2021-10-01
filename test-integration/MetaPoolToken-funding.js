@@ -38,7 +38,7 @@ const usdcPoolId = bytes32("usdcPool");
 const tetherPoolId = bytes32("usdtPool");
 const ids = [daiPoolId, usdcPoolId, tetherPoolId];
 
-describe("Contract: MetaPoolToken - funding and withdrawing", () => {
+describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
   // to-be-deployed contracts
   let tvlManager;
   let mApt;
@@ -66,9 +66,7 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
   let underlyers;
 
   // use EVM snapshots for test isolation
-  let testSnapshotId;
   let suiteSnapshotId;
-  let subSuiteSnapshotId;
 
   // standard amounts we use in our tests
   const dollars = 100;
@@ -85,14 +83,14 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
     await timeMachine.revertToSnapshot(suiteSnapshotId);
   });
 
-  beforeEach(async () => {
-    const snapshot = await timeMachine.takeSnapshot();
-    testSnapshotId = snapshot["result"];
-  });
+  // beforeEach(async () => {
+  //   const snapshot = await timeMachine.takeSnapshot();
+  //   testSnapshotId = snapshot["result"];
+  // });
 
-  afterEach(async () => {
-    await timeMachine.revertToSnapshot(testSnapshotId);
-  });
+  // afterEach(async () => {
+  //   await timeMachine.revertToSnapshot(testSnapshotId);
+  // });
 
   before("Main deployments and upgrades", async () => {
     [
@@ -366,6 +364,18 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
   }
 
   describe("Permissions and input validation", () => {
+    let subSuiteSnapshotId;
+    let testSnapshotId;
+
+    beforeEach(async () => {
+      const snapshot = await timeMachine.takeSnapshot();
+      testSnapshotId = snapshot["result"];
+    });
+
+    afterEach(async () => {
+      await timeMachine.revertToSnapshot(testSnapshotId);
+    });
+
     before(async () => {
       const snapshot = await timeMachine.takeSnapshot();
       subSuiteSnapshotId = snapshot["result"];
@@ -449,6 +459,18 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
   });
 
   describe("Balances and minting", () => {
+    let subSuiteSnapshotId;
+    let testSnapshotId;
+
+    beforeEach(async () => {
+      const snapshot = await timeMachine.takeSnapshot();
+      testSnapshotId = snapshot["result"];
+    });
+
+    afterEach(async () => {
+      await timeMachine.revertToSnapshot(testSnapshotId);
+    });
+
     before(async () => {
       const snapshot = await timeMachine.takeSnapshot();
       subSuiteSnapshotId = snapshot["result"];
@@ -1041,6 +1063,8 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
   });
 
   describe("Funding scenarios", () => {
+    let subSuiteSnapshotId;
+
     before(async () => {
       const snapshot = await timeMachine.takeSnapshot();
       subSuiteSnapshotId = snapshot["result"];
@@ -1074,6 +1098,17 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
     }
 
     describe("Initial funding of LP Account", () => {
+      let testSnapshotId;
+
+      beforeEach(async () => {
+        const snapshot = await timeMachine.takeSnapshot();
+        testSnapshotId = snapshot["result"];
+      });
+
+      afterEach(async () => {
+        await timeMachine.revertToSnapshot(testSnapshotId);
+      });
+
       beforeEach("Deposit into pools", async () => {
         for (const [pool, underlyer] of _.zip(pools, underlyers)) {
           const depositAmount = tokenAmountToBigNumber(
@@ -1154,7 +1189,18 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
     });
 
     describe("Top-up pools", () => {
-      beforeEach("Seed LP Account with funds", async () => {
+      let snapshotId;
+
+      before(async () => {
+        const snapshot = await timeMachine.takeSnapshot();
+        snapshotId = snapshot["result"];
+      });
+
+      after(async () => {
+        await timeMachine.revertToSnapshot(snapshotId);
+      });
+
+      before("Seed LP Account with funds", async () => {
         const deployedTokens = 15000;
         for (const [id, pool, underlyer] of _.zip(ids, pools, underlyers)) {
           const reservePercentage = await pool.reservePercentage();
@@ -1172,14 +1218,18 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
           await pool.addLiquidity(depositAmount);
 
           await mApt.fundLpAccount([id]);
-          expect(await underlyer.balanceOf(lpAccount.address)).to.be.gt(0);
+
+          const deployedAmount = tokenAmountToBigNumber(
+            deployedTokens,
+            decimals
+          );
+          expect(await underlyer.balanceOf(lpAccount.address)).to.equal(
+            deployedAmount
+          );
 
           await oracleAdapter.connect(emergencySafe).emergencyUnlock();
 
-          await updateTvl(
-            pool,
-            tokenAmountToBigNumber(deployedTokens, decimals)
-          );
+          await updateTvl(pool, deployedAmount);
         }
       });
 
@@ -1259,6 +1309,17 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
     });
 
     describe("Emergency withdraw from LP Account", () => {
+      let testSnapshotId;
+
+      beforeEach(async () => {
+        const snapshot = await timeMachine.takeSnapshot();
+        testSnapshotId = snapshot["result"];
+      });
+
+      afterEach(async () => {
+        await timeMachine.revertToSnapshot(testSnapshotId);
+      });
+
       beforeEach("Seed LP Account with funds", async () => {
         const deployedTokens = 100;
         for (const [id, pool, underlyer] of _.zip(ids, pools, underlyers)) {
