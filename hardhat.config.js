@@ -6,6 +6,7 @@ require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-truffle5");
 require("@nomiclabs/hardhat-etherscan");
+require("hardhat-contract-sizer");
 
 const {
   TASK_COMPILE_SOLIDITY_LOG_COMPILATION_ERRORS,
