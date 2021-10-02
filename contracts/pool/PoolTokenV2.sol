@@ -2,7 +2,7 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {IDetailedERC20} from "contracts/common/Imports.sol";
+import {IDetailedERC20, IEmergencyExit} from "contracts/common/Imports.sol";
 import {SafeERC20} from "contracts/libraries/Imports.sol";
 import {
     Initializable,
@@ -47,7 +47,8 @@ contract PoolTokenV2 is
     AccessControlUpgradeSafe,
     ReentrancyGuardUpgradeSafe,
     PausableUpgradeSafe,
-    ERC20UpgradeSafe
+    ERC20UpgradeSafe,
+    IEmergencyExit
 {
     using AddressUpgradeSafe for address;
     using SafeMathUpgradeSafe for uint256;
@@ -355,6 +356,15 @@ contract PoolTokenV2 is
     {
         reservePercentage = reservePercentage_;
         emit ReservePercentageChanged(reservePercentage_);
+    }
+
+    function emergencyExit(address token) external override onlyEmergencyRole {
+        address emergencySafe = addressRegistry.emergencySafeAddress();
+        IDetailedERC20 token_ = IDetailedERC20(token);
+        uint256 balance = token_.balanceOf(address(this));
+        token_.safeTransfer(emergencySafe, balance);
+
+        emit EmergencyExit(emergencySafe, token_, balance);
     }
 
     function calculateMintAmount(uint256 depositAmount)
