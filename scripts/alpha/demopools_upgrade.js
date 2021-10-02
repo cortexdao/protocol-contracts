@@ -116,32 +116,50 @@ async function main(argv) {
     addressRegistryAddress
   );
 
+  feeData = await ethers.provider.getFeeData();
+  maxFeePerGas = feeData.maxFeePerGas.mul(85).div(100);
+
   const daiPoolAddress = await addressRegistry.getAddress(
     bytes32("daiDemoPool")
   );
   tx = await proxyAdmin
     .connect(safeSigner)
-    .upgrade(daiPoolAddress, poolTokenV2Address);
+    .upgrade(daiPoolAddress, poolTokenV2Address, {
+      maxFeePerGas,
+      maxPriorityFeePerGas,
+    });
   console.log("USER ACTION REQUIRED");
   console.log("Go to the Gnosis Safe Web App to confirm the transaction");
   await tx.wait();
+
+  feeData = await ethers.provider.getFeeData();
+  maxFeePerGas = feeData.maxFeePerGas.mul(85).div(100);
 
   const usdcPoolAddress = await addressRegistry.getAddress(
     bytes32("usdcDemoPool")
   );
   tx = await proxyAdmin
     .connect(safeSigner)
-    .upgrade(usdcPoolAddress, poolTokenV2Address);
+    .upgrade(usdcPoolAddress, poolTokenV2Address, {
+      maxFeePerGas,
+      maxPriorityFeePerGas,
+    });
   console.log("USER ACTION REQUIRED");
   console.log("Go to the Gnosis Safe Web App to confirm the transaction");
   await tx.wait();
+
+  feeData = await ethers.provider.getFeeData();
+  maxFeePerGas = feeData.maxFeePerGas.mul(85).div(100);
 
   const usdtPoolAddress = await addressRegistry.getAddress(
     bytes32("usdtDemoPool")
   );
   tx = await proxyAdmin
     .connect(safeSigner)
-    .upgrade(usdtPoolAddress, poolTokenV2Address);
+    .upgrade(usdtPoolAddress, poolTokenV2Address, {
+      maxFeePerGas,
+      maxPriorityFeePerGas,
+    });
   console.log("USER ACTION REQUIRED");
   console.log("Go to the Gnosis Safe Web App to confirm the transaction");
   await tx.wait();
