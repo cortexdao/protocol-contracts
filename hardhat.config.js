@@ -31,6 +31,10 @@ module.exports = {
         // default: 20
         count: 10,
       },
+      // Used to allow test contracts that exceed the size
+      // Production contracts should be checked with
+      // `yarn hardhat size-contracts` to verify they are under the limit
+      allowUnlimitedContractSize: true,
     },
     localhost: {
       url: "http://127.0.0.1:8545",
