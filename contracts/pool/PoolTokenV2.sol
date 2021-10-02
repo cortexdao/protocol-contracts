@@ -2,8 +2,6 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "hardhat/console.sol";
-
 import {IDetailedERC20, IEmergencyExit} from "contracts/common/Imports.sol";
 import {SafeERC20} from "contracts/libraries/Imports.sol";
 import {
