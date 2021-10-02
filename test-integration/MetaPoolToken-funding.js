@@ -38,7 +38,7 @@ const usdcPoolId = bytes32("usdcPool");
 const tetherPoolId = bytes32("usdtPool");
 const ids = [daiPoolId, usdcPoolId, tetherPoolId];
 
-describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
+describe("Contract: MetaPoolToken - funding and withdrawing", () => {
   // to-be-deployed contracts
   let tvlManager;
   let mApt;
@@ -1083,9 +1083,10 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
     /*
      * @param pool
      * @param underlyerAmount amount being transferred to LP Account.
-     * Negative means transferring to pool from LP Account.
+     * Uses the same sign convention as `pool.getReserveTopUpValue`.
      */
-    async function updateTvl(pool, underlyerAmount) {
+    async function updateTvlAfterTransfer(pool, underlyerAmount) {
+      underlyerAmount = underlyerAmount.mul(-1);
       await oracleAdapter.connect(emergencySafe).emergencyUnlock();
 
       const underlyerPrice = await pool.getUnderlyerPrice();
@@ -1097,11 +1098,23 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
       );
       const decimals = await underlyer.decimals();
 
-      const underlyerUsdValue = underlyerAmount
-        .mul(underlyerPrice)
-        .div(BigNumber.from(10).pow(decimals));
+      const underlyerUsdValue = convertToUsdValue(
+        underlyerAmount,
+        underlyerPrice,
+        decimals
+      );
 
-      const newTvl = (await oracleAdapter.getTvl()).add(underlyerUsdValue);
+      await updateTvl(underlyerUsdValue);
+    }
+
+    function convertToUsdValue(tokenWeiAmount, tokenUsdPrice, decimals) {
+      return tokenWeiAmount
+        .mul(tokenUsdPrice)
+        .div(BigNumber.from(10).pow(decimals));
+    }
+
+    async function updateTvl(usdValue) {
+      const newTvl = (await oracleAdapter.getTvl()).add(usdValue);
       await oracleAdapter.connect(emergencySafe).emergencySetTvl(newTvl, 50);
     }
 
@@ -1204,6 +1217,9 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
 
       let reservePercentage;
       let feePercentage;
+      // convenient to use this than always changing the
+      // percentage redeemed
+      const redeemPercentage = BigNumber.from(1);
 
       before(async () => {
         const snapshot = await timeMachine.takeSnapshot();
@@ -1214,7 +1230,7 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
         await timeMachine.revertToSnapshot(snapshotId);
       });
 
-      before("Seed LP Account with funds", async () => {
+      it("Seed LP Account with funds", async () => {
         for (const [id, pool, underlyer] of _.zip(ids, pools, underlyers)) {
           // FIXME: the test setup assumes each pool will have the same
           // fee and reserve percentages
@@ -1242,14 +1258,14 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
             deployedAmount
           );
 
-          await updateTvl(pool, deployedAmount);
+          await updateTvlAfterTransfer(pool, deployedAmount.mul(-1));
         }
       });
 
       it("Can redeem less than reserve amount after funding LP Account", async () => {
         const aptBalance = await usdcPool.balanceOf(deployer.address);
         const poolBalance = await usdcToken.balanceOf(usdcPool.address);
-        const redeemAmount = aptBalance.mul(1).div(100);
+        const redeemAmount = aptBalance.mul(redeemPercentage).div(100);
         await expect(usdcPool.redeem(redeemAmount)).to.not.reverted;
 
         const newPoolBalance = await usdcToken.balanceOf(usdcPool.address);
@@ -1272,7 +1288,8 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
         await expect(mApt.withdrawFromLpAccount([usdcPoolId])).to.not.be
           .reverted;
 
-        const reservePercentage = await usdcPool.reservePercentage();
+        await updateTvlAfterTransfer(usdcPool, transferAmount);
+
         const lpAccountBalance = await usdcToken.balanceOf(lpAccount.address);
         const expectedBalance = lpAccountBalance
           .mul(reservePercentage)
@@ -1280,13 +1297,14 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
 
         const poolBalance = await usdcToken.balanceOf(usdcPool.address);
         expect(poolBalance).to.equal(expectedBalance);
+      });
 
-        await updateTvl(usdcPool, transferAmount.mul(-1));
-
-        console.log(
-          "USDC balance: %s",
-          await usdcToken.balanceOf(usdcPool.address)
-        );
+      it("Can't redeem more than available reserve", async () => {
+        const aptBalance = await usdcPool.balanceOf(deployer.address);
+        const unredeemableAptAmount = aptBalance
+          .mul(reservePercentage.add(1))
+          .div(100);
+        await expect(usdcPool.redeem(unredeemableAptAmount)).to.be.reverted;
       });
 
       it("Can add liquidity and redeem after top-up", async () => {
@@ -1298,61 +1316,90 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
         await usdcToken.approve(usdcPool.address, depositAmount);
         await usdcPool.addLiquidity(depositAmount);
 
-        console.log(
-          "USDC balance: %s",
-          await usdcToken.balanceOf(usdcPool.address)
-        );
-
         const newAptBalance = await usdcPool.balanceOf(deployer.address);
 
         // In [1]: ((15000 * 1.05) * 0.99) / ((15000 * 1.05) * 0.99 + 1500)
         // Out[1]: 0.9122422114962703
         expect(prevAptBalance.mul(100).div(newAptBalance)).to.equal(91);
 
-        // can't redeem full balance since most of it is deployed
-        await expect(usdcPool.redeem(newAptBalance)).to.be.reverted;
-
         const prevUnderlyerBalance = await usdcToken.balanceOf(
           deployer.address
         );
 
-        console.log(
-          "USDC balance: %s",
-          await usdcToken.balanceOf(usdcPool.address)
-        );
-
         // should be allowed to redeem this amount
-        const redeemableAptBalance = newAptBalance.mul(1).div(100);
+        expect(redeemPercentage).to.be.lt(reservePercentage);
+        const redeemableAptBalance = newAptBalance
+          .mul(redeemPercentage)
+          .div(100);
         const originalUsdcBalance = tokenAmountToBigNumber(
           depositTokens,
           decimals
         );
-        const redeemedUsdcAfterFee = originalUsdcBalance
-          .mul(1)
-          .div(100)
-          .mul(95)
+        const redeemedUsdcAmount = originalUsdcBalance
+          .mul(redeemPercentage)
+          .div(100);
+        const redeemedUsdcAfterFee = redeemedUsdcAmount
+          .mul(BigNumber.from(100).sub(reservePercentage))
           .div(100);
         const usdcBalanceAfterRedeem = originalUsdcBalance.sub(
           redeemedUsdcAfterFee
         );
         const expectedUnderlyerAmount = usdcBalanceAfterRedeem
           .add(depositAmount)
-          .mul(1)
+          .mul(redeemPercentage)
           .div(100);
         const expectedUnderlyerAmountAfterFee = expectedUnderlyerAmount
           .mul(95)
           .div(100);
         await expect(usdcPool.redeem(redeemableAptBalance)).to.not.be.reverted;
 
-        console.log(
-          "USDC balance: %s",
-          await usdcToken.balanceOf(usdcPool.address)
-        );
-
         const newUnderlyerBalance = await usdcToken.balanceOf(deployer.address);
         expect(newUnderlyerBalance.sub(prevUnderlyerBalance)).to.equal(
           expectedUnderlyerAmountAfterFee
         );
+      });
+
+      it("Increase in TVL should increase value of APT holdings", async () => {
+        // increase TVL by 10 percent
+        const newTvl = (await oracleAdapter.getTvl()).mul(110).div(100);
+        await oracleAdapter.connect(emergencySafe).emergencySetTvl(newTvl, 50);
+
+        const poolBalance = await usdcToken.balanceOf(usdcPool.address);
+        const lpAccountBalance = await usdcToken.balanceOf(lpAccount.address);
+        const lpAccountBalanceWithYield = lpAccountBalance.mul(110).div(100);
+
+        const expectedUnderlyerAmount = poolBalance.add(
+          lpAccountBalanceWithYield
+        );
+
+        const aptBalance = await usdcPool.balanceOf(deployer.address);
+        expect(await usdcPool.totalSupply()).to.equal(aptBalance);
+        const underlyerAmount = await usdcPool.getUnderlyerAmount(aptBalance);
+        // allow a few wei deviation
+        expect(underlyerAmount.sub(expectedUnderlyerAmount).abs()).to.be.lt(3);
+      });
+
+      it("Top-up again after TVL increase", async () => {
+        const lpAccountBalance = await usdcToken.balanceOf(lpAccount.address);
+
+        const transferAmount = await usdcPool.getReserveTopUpValue();
+        // Because of the amount of liquidity we added since the last top-up,
+        // this is now negative.
+        expect(transferAmount).to.be.lt(0);
+        await expect(mApt.fundLpAccount([usdcPoolId])).to.not.be.reverted;
+
+        await updateTvlAfterTransfer(usdcPool, transferAmount);
+
+        // need to adjust also by the 10% yield
+        const lpAccountBalanceWithYield = lpAccountBalance.mul(110).div(100);
+        const expectedPoolBalance = lpAccountBalanceWithYield
+          .add(transferAmount.mul(-1))
+          .mul(reservePercentage)
+          .div(100);
+
+        const poolBalance = await usdcToken.balanceOf(usdcPool.address);
+        // allow a few wei deviation
+        expect(poolBalance.sub(expectedPoolBalance).abs()).to.be.lt(3);
       });
 
       it("Revert when erroneous TVL is humongous", async () => {
