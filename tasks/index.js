@@ -1,1 +1,2 @@
-module.exports = require("./compileOne");
+require("./compileOne");
+require("./filterCompilerWarnings");
