@@ -199,7 +199,12 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
         lpSafe = safes.lpSafe;
     }
 
-    function deploy0AddressRegistryV2() external onlyOwner updateStep(0) {
+    function deploy0AddressRegistryV2()
+        external
+        onlyOwner
+        nonReentrant
+        updateStep(0)
+    {
         address proxyAdmin = proxyAdminFactory.create();
 
         bytes memory initData =
@@ -232,6 +237,7 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
     function deploy2MetaPoolToken()
         external
         onlyOwner
+        nonReentrant
         updateStep(2)
         checkAddressRegistryOwnership
         checkSafeRegistrations
@@ -294,6 +300,7 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
     function deploy4TvlManager()
         external
         onlyOwner
+        nonReentrant
         updateStep(4)
         checkAddressRegistryOwnership
         checkSafeRegistrations
@@ -326,6 +333,7 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
     function deploy5OracleAdapter()
         external
         onlyOwner
+        nonReentrant
         updateStep(5)
         checkAddressRegistryOwnership
         checkSafeRegistrations
@@ -363,6 +371,7 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
     function deploy6LpAccount()
         external
         onlyOwner
+        nonReentrant
         updateStep(6)
         checkAddressRegistryOwnership
         checkSafeRegistrations
