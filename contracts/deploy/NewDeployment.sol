@@ -2,16 +2,10 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {
-    IDetailedERC20,
-    Ownable,
-    ReentrancyGuard
-} from "contracts/common/Imports.sol";
+import {Ownable, ReentrancyGuard} from "contracts/common/Imports.sol";
 import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
-import {AggregatorV3Interface} from "contracts/oracle/Imports.sol";
 import {PoolTokenV2} from "contracts/pool/PoolTokenV2.sol";
 import {LpAccount} from "contracts/lpaccount/LpAccount.sol";
-import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
 import {AddressRegistryV2} from "contracts/registry/AddressRegistryV2.sol";
 import {
     ProxyAdmin,
@@ -108,7 +102,7 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
     address private constant FAKE_AGG_ADDRESS =
         0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe;
 
-    IAddressRegistryV2 public addressRegistry;
+    AddressRegistryV2 public addressRegistry;
 
     ProxyAdminFactory public immutable proxyAdminFactory;
     ProxyFactory public immutable proxyFactory;
