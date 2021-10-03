@@ -163,7 +163,7 @@ describe("Contract: AlphaDeployment", () => {
     // mock the factory create
     const addressRegistryV2Factory = await deployMockContract(
       deployer,
-      artifacts.readArtifactSync("AddressRegistryV2Factory").abi
+      artifacts.readArtifactSync("AddressRegistryV2LogicFactory").abi
     );
     await addressRegistryV2Factory.mock.create.returns(logicV2.address);
     // mock the upgrade call
@@ -259,7 +259,7 @@ describe("Contract: AlphaDeployment", () => {
     // mock the v2 logic create
     const poolTokenV2Factory = await deployMockContract(
       deployer,
-      artifacts.readArtifactSync("PoolTokenV2Factory").abi
+      artifacts.readArtifactSync("PoolTokenV2LogicFactory").abi
     );
     poolTokenV2Factory.mock.create.returns(logicV2.address);
 
@@ -319,7 +319,7 @@ describe("Contract: AlphaDeployment", () => {
     // mock the v2 logic create
     const poolTokenV2Factory = await deployMockContract(
       deployer,
-      artifacts.readArtifactSync("PoolTokenV2Factory").abi
+      artifacts.readArtifactSync("PoolTokenV2LogicFactory").abi
     );
     poolTokenV2Factory.mock.create.returns(logicV2.address);
 
