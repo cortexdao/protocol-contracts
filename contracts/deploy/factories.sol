@@ -24,13 +24,12 @@ import {DeploymentConstants} from "./constants.sol";
 
 abstract contract UpgradeableContractFactory {
     function create(
-        address proxyFactory,
+        ProxyFactory proxyFactory,
         address proxyAdmin,
         bytes memory initData
     ) public returns (address) {
         address logic = _deployLogic(initData);
-        address proxy =
-            ProxyFactory(proxyFactory).create(logic, proxyAdmin, initData);
+        address proxy = proxyFactory.create(logic, proxyAdmin, initData);
         return address(proxy);
     }
 
@@ -112,16 +111,55 @@ contract PoolTokenV1Factory is UpgradeableContractFactory {
 }
 
 contract PoolTokenV2Factory {
+    using Address for address;
+
+    address private _logic;
+
+    function create(
+        address proxy,
+        address proxyAdmin,
+        bytes memory initData
+    ) public {
+        if (_logic != address(0)) {
+            _logic = address(new PoolTokenV2());
+            _logic.functionCall(initData);
+        }
+
+        ProxyAdmin(proxyAdmin).upgradeAndCall(
+            TransparentUpgradeableProxy(payable(proxy)),
+            _logic,
+            initData
+        );
+    }
+}
+
+contract PoolTokenV2LogicFactory {
     function create() external returns (address) {
         PoolTokenV2 logicV2 = new PoolTokenV2();
         return address(logicV2);
     }
 }
 
-contract AddressRegistryV2Factory {
+contract AddressRegistryV2LogicFactory {
     function create() external returns (address) {
         AddressRegistryV2 logicV2 = new AddressRegistryV2();
         return address(logicV2);
+    }
+}
+
+contract AddressRegistryV2Factory is UpgradeableContractFactory {
+    using Address for address;
+
+    function _deployLogic(bytes memory initData)
+        internal
+        virtual
+        override
+        returns (address)
+    {
+        AddressRegistryV2 logic = new AddressRegistryV2();
+        address _logic = address(logic);
+        _logic.functionCall(initData);
+        return _logic;
     }
 }
 
