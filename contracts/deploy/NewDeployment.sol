@@ -24,13 +24,13 @@ import {
     ProxyFactory,
     ProxyAdminFactory,
     PoolTokenV1Factory,
-    PoolTokenV2Factory,
+    PoolTokenV2LogicFactory,
     TvlManagerFactory
 } from "./factories.sol";
 import {IGnosisModuleManager, Enum} from "./IGnosisModuleManager.sol";
 
 /** @dev
-# Alpha Deployment
+# New Deployment
 
 ## Deployment order of contracts
 
