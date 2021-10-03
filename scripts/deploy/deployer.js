@@ -21,7 +21,7 @@ async function setup() {
 
   const deployer = await deployNewDeployment(factories, safeAddresses);
 
-  return { deployer, signers: { lpSafe, adminSafe, emergencySafe } };
+  return { deployer, safes: { lpSafe, adminSafe, emergencySafe } };
 }
 
 async function deployAddressRegistry(deployer) {
@@ -72,7 +72,7 @@ async function deployPools(deployer) {
 }
 
 async function deployTvlManager(deployer) {
-  await deployer.deploy4TvlManager();
+  await deployer.deploy6TvlManager();
 
   const tvlManagerAddress = await deployer.tvlManager();
   const tvlManager = await ethers.getContractAt(
@@ -84,7 +84,7 @@ async function deployTvlManager(deployer) {
 }
 
 async function deployOracleAdapter(deployer) {
-  await deployer.deploy5OracleAdapter();
+  await deployer.deploy7OracleAdapter();
 
   const oracleAdapterAddress = await deployer.oracleAdapter();
   const oracleAdapter = await ethers.getContractAt(
@@ -95,8 +95,15 @@ async function deployOracleAdapter(deployer) {
   return oracleAdapter;
 }
 
+async function registerErc20Allocation(deployer, tvlManager, adminSafe) {
+  const erc20AllocationAddress = await deployer.erc20Allocation();
+  await tvlManager
+    .connect(adminSafe)
+    .registerAssetAllocation(erc20AllocationAddress);
+}
+
 async function deployLpAccount(deployer) {
-  await deployer.deploy6LpAccount();
+  await deployer.deploy8LpAccount();
 
   const lpAccountAddress = await deployer.lpAccount();
   const lpAccount = await ethers.getContractAt("LpAccount", lpAccountAddress);
@@ -118,6 +125,8 @@ async function deploy() {
   const tvlManager = await deployTvlManager(deployer);
 
   const oracleAdapter = await deployOracleAdapter(deployer);
+
+  await registerErc20Allocation(deployer, tvlManager, safes.adminSafe);
 
   const lpAccount = await deployLpAccount(deployer);
 

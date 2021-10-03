@@ -305,22 +305,6 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
         erc20Allocation = erc20AllocationFactory.create(
             address(addressRegistryV2)
         );
-
-        bytes memory data =
-            abi.encodeWithSelector(
-                IAssetAllocationRegistry.registerAssetAllocation.selector,
-                erc20Allocation
-            );
-
-        require(
-            adminSafe.execTransactionFromModule(
-                tvlManager,
-                0,
-                data,
-                Enum.Operation.Call
-            ),
-            "SAFE_TX_FAILED"
-        );
     }
 
     function deploy7OracleAdapter()
