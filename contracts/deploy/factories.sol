@@ -121,29 +121,6 @@ contract PoolTokenV1Factory is UpgradeableContractFactory {
     }
 }
 
-contract PoolTokenV2Factory {
-    using Address for address;
-
-    address private _logic;
-
-    function create(
-        address proxy,
-        address proxyAdmin,
-        bytes memory initData
-    ) public {
-        if (_logic != address(0)) {
-            _logic = address(new PoolTokenV2());
-            _logic.functionCall(initData);
-        }
-
-        ProxyAdmin(proxyAdmin).upgradeAndCall(
-            TransparentUpgradeableProxy(payable(proxy)),
-            _logic,
-            initData
-        );
-    }
-}
-
 contract PoolTokenV2LogicFactory {
     function create() external returns (address) {
         PoolTokenV2 logicV2 = new PoolTokenV2();

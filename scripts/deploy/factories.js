@@ -8,7 +8,7 @@ async function deployFactories() {
     AddressRegistryV2Factory: "addressRegistryV2Factory",
     MetaPoolTokenFactory: "mAptFactory",
     PoolTokenV1Factory: "poolTokenV1Factory",
-    PoolTokenV2Factory: "poolTokenV2Factory",
+    PoolTokenV2LogicFactory: "poolTokenV2Factory",
     TvlManagerFactory: "tvlManagerFactory",
     Erc20AllocationFactory: "erc20AllocationFactory",
     OracleAdapterFactory: "oracleAdapterFactory",

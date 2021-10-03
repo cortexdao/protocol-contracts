@@ -53,13 +53,17 @@ async function deployMetaPoolToken(deployer) {
 }
 
 async function deployPools(deployer) {
-  await deployer.deploy3PoolTokenV2();
+  await deployer.deploy3DaiPoolTokenV2();
 
   const daiPoolAddress = await deployer.daiPool();
   const daiPool = await ethers.getContractAt("PoolTokenV2", daiPoolAddress);
 
+  await deployer.deploy4UsdcPoolTokenV2();
+
   const usdcPoolAddress = await deployer.usdcPool();
   const usdcPool = await ethers.getContractAt("PoolTokenV2", usdcPoolAddress);
+
+  await deployer.deploy5UsdtPoolTokenV2();
 
   const usdtPoolAddress = await deployer.usdtPool();
   const usdtPool = await ethers.getContractAt("PoolTokenV2", usdtPoolAddress);

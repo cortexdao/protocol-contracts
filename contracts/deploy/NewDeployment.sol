@@ -2,6 +2,7 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
+import {Address} from "contracts/libraries/Imports.sol";
 import {Ownable, ReentrancyGuard} from "contracts/common/Imports.sol";
 import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
 import {PoolTokenV2} from "contracts/pool/PoolTokenV2.sol";
@@ -72,13 +73,15 @@ to deploy in the order given, starting with the Safes.
 
 */
 contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
+    using Address for address;
+
     struct Factories {
         ProxyAdminFactory proxyAdminFactory;
         ProxyFactory proxyFactory;
         AddressRegistryV2Factory addressRegistryV2Factory;
         MetaPoolTokenFactory mAptFactory;
         PoolTokenV1Factory poolTokenV1Factory;
-        PoolTokenV2Factory poolTokenV2Factory;
+        PoolTokenV2LogicFactory poolTokenV2Factory;
         TvlManagerFactory tvlManagerFactory;
         Erc20AllocationFactory erc20AllocationFactory;
         OracleAdapterFactory oracleAdapterFactory;
@@ -107,7 +110,7 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
     AddressRegistryV2Factory public immutable addressRegistryV2Factory;
     MetaPoolTokenFactory public immutable mAptFactory;
     PoolTokenV1Factory public immutable poolTokenV1Factory;
-    PoolTokenV2Factory public immutable poolTokenV2Factory;
+    PoolTokenV2LogicFactory public immutable poolTokenV2Factory;
     TvlManagerFactory public immutable tvlManagerFactory;
     Erc20AllocationFactory public immutable erc20AllocationFactory;
     OracleAdapterFactory public immutable oracleAdapterFactory;
@@ -254,7 +257,7 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
         ProxyAdmin(proxyAdmin).transferOwnership(address(adminSafe));
     }
 
-    function deploy3PoolTokenV2()
+    function deploy3DaiPoolTokenV2()
         external
         onlyOwner
         nonReentrant
@@ -262,42 +265,36 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
         checkAddressRegistryOwnership
         checkSafeRegistrations
     {
-        Dependency[] memory dependencies = new Dependency[](1);
-        dependencies[0] = Dependency("mApt", mApt);
-        _checkRegisteredDependencies(dependencies);
-
-        address proxyAdmin = proxyAdminFactory.create();
-
-        bytes memory upgradeData =
-            abi.encodeWithSelector(
-                PoolTokenV2.initializeUpgrade.selector,
-                address(addressRegistryV2)
-            );
-
-        daiPool = _deployPool(DAI_ADDRESS, "daiPool", proxyAdmin, upgradeData);
-
-        usdcPool = _deployPool(
-            USDC_ADDRESS,
-            "usdcPool",
-            proxyAdmin,
-            upgradeData
-        );
-
-        usdtPool = _deployPool(
-            USDT_ADDRESS,
-            "usdtPool",
-            proxyAdmin,
-            upgradeData
-        );
-
-        ProxyAdmin(proxyAdmin).transferOwnership(address(adminSafe));
+        daiPool = _deployPool(DAI_ADDRESS, "daiPool");
     }
 
-    function deploy4TvlManager()
+    function deploy4UsdcPoolTokenV2()
         external
         onlyOwner
         nonReentrant
         updateStep(4)
+        checkAddressRegistryOwnership
+        checkSafeRegistrations
+    {
+        usdcPool = _deployPool(USDC_ADDRESS, "usdcPool");
+    }
+
+    function deploy5UsdtPoolTokenV2()
+        external
+        onlyOwner
+        nonReentrant
+        updateStep(5)
+        checkAddressRegistryOwnership
+        checkSafeRegistrations
+    {
+        usdtPool = _deployPool(USDT_ADDRESS, "usdtPool");
+    }
+
+    function deploy6TvlManager()
+        external
+        onlyOwner
+        nonReentrant
+        updateStep(6)
         checkAddressRegistryOwnership
         checkSafeRegistrations
     {
@@ -326,11 +323,11 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
         );
     }
 
-    function deploy5OracleAdapter()
+    function deploy7OracleAdapter()
         external
         onlyOwner
         nonReentrant
-        updateStep(5)
+        updateStep(7)
         checkAddressRegistryOwnership
         checkSafeRegistrations
     {
@@ -364,11 +361,11 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
         _registerAddress("oracleAdapter", oracleAdapter);
     }
 
-    function deploy6LpAccount()
+    function deploy8LpAccount()
         external
         onlyOwner
         nonReentrant
-        updateStep(6)
+        updateStep(8)
         checkAddressRegistryOwnership
         checkSafeRegistrations
     {
@@ -413,12 +410,19 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
         //);
     }
 
-    function _deployPool(
-        address token,
-        bytes32 id,
-        address proxyAdmin,
-        bytes memory upgradeData
-    ) internal returns (address) {
+    function _deployPool(address token, bytes32 id) internal returns (address) {
+        Dependency[] memory dependencies = new Dependency[](1);
+        dependencies[0] = Dependency("mApt", mApt);
+        _checkRegisteredDependencies(dependencies);
+
+        address proxyAdmin = proxyAdminFactory.create();
+
+        bytes memory upgradeData =
+            abi.encodeWithSelector(
+                PoolTokenV2.initializeUpgrade.selector,
+                address(addressRegistryV2)
+            );
+
         bytes memory initData =
             abi.encodeWithSelector(
                 PoolTokenV2.initialize.selector,
@@ -430,7 +434,16 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
         address proxy =
             poolTokenV1Factory.create(proxyFactory, proxyAdmin, initData);
 
-        poolTokenV2Factory.create(proxy, proxyAdmin, upgradeData);
+        address logic = poolTokenV2Factory.create();
+        logic.functionCall(initData);
+
+        ProxyAdmin(proxyAdmin).upgradeAndCall(
+            TransparentUpgradeableProxy(payable(proxy)),
+            logic,
+            upgradeData
+        );
+
+        ProxyAdmin(proxyAdmin).transferOwnership(address(adminSafe));
 
         _registerAddress(id, proxy);
 
