@@ -105,7 +105,7 @@ describe("Contract: AlphaDeployment", () => {
     proxyFactory = await ProxyFactory.deploy();
 
     const AddressRegistryV2Factory = await ethers.getContractFactory(
-      "AddressRegistryV2Factory"
+      "AddressRegistryV2LogicFactory"
     );
     addressRegistryV2Factory = await AddressRegistryV2Factory.deploy();
 
@@ -120,7 +120,7 @@ describe("Contract: AlphaDeployment", () => {
     poolTokenV1Factory = await PoolTokenV1Factory.deploy();
 
     const PoolTokenV2Factory = await ethers.getContractFactory(
-      "PoolTokenV2Factory"
+      "PoolTokenV2LogicFactory"
     );
     poolTokenV2Factory = await PoolTokenV2Factory.deploy();
 
