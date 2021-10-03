@@ -27,7 +27,7 @@ abstract contract UpgradeableContractFactory {
         ProxyFactory proxyFactory,
         address proxyAdmin,
         bytes memory initData
-    ) public returns (address) {
+    ) public virtual returns (address) {
         address logic = _deployLogic(initData);
         address proxy = proxyFactory.create(logic, proxyAdmin, initData);
         return address(proxy);
@@ -86,6 +86,17 @@ contract ProxyFactory {
         TransparentUpgradeableProxy proxy =
             new TransparentUpgradeableProxy(logic, proxyAdmin, initData);
         return address(proxy);
+    }
+
+    function createAndTransfer(
+        address logic,
+        address proxyAdmin,
+        bytes memory initData,
+        address owner
+    ) public returns (address) {
+        address proxy = create(logic, proxyAdmin, initData);
+        Ownable(proxy).transferOwnership(owner);
+        return proxy;
     }
 }
 
@@ -149,6 +160,22 @@ contract AddressRegistryV2LogicFactory {
 
 contract AddressRegistryV2Factory is UpgradeableContractFactory {
     using Address for address;
+
+    function create(
+        ProxyFactory proxyFactory,
+        address proxyAdmin,
+        bytes memory initData
+    ) public override returns (address) {
+        address logic = _deployLogic(initData);
+        address proxy =
+            proxyFactory.createAndTransfer(
+                logic,
+                proxyAdmin,
+                initData,
+                msg.sender
+            );
+        return proxy;
+    }
 
     function _deployLogic(bytes memory initData)
         internal

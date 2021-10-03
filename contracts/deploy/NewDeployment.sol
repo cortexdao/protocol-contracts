@@ -102,8 +102,6 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
     address private constant FAKE_AGG_ADDRESS =
         0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe;
 
-    AddressRegistryV2 public addressRegistry;
-
     ProxyAdminFactory public immutable proxyAdminFactory;
     ProxyFactory public immutable proxyFactory;
     AddressRegistryV2Factory public immutable addressRegistryV2Factory;
@@ -122,7 +120,7 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
     uint256 public step;
 
     // step 0
-    address public addressRegistryV2;
+    AddressRegistryV2 public addressRegistryV2;
 
     // step 1
     address public mApt;
@@ -156,18 +154,18 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
      */
     modifier checkSafeRegistrations() {
         require(
-            addressRegistry.getAddress("emergencySafe") ==
+            addressRegistryV2.getAddress("emergencySafe") ==
                 address(emergencySafe),
             "INVALID_EMERGENCY_SAFE"
         );
 
         require(
-            addressRegistry.getAddress("adminSafe") == address(adminSafe),
+            addressRegistryV2.getAddress("adminSafe") == address(adminSafe),
             "INVALID_ADMIN_SAFE"
         );
 
         require(
-            addressRegistry.getAddress("lpSafe") == address(lpSafe),
+            addressRegistryV2.getAddress("lpSafe") == address(lpSafe),
             "INVALID_LP_SAFE"
         );
 
@@ -176,7 +174,7 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
 
     modifier checkAddressRegistryOwnership() {
         address[] memory ownerships = new address[](1);
-        ownerships[0] = addressRegistryV2;
+        ownerships[0] = address(addressRegistryV2);
         _checkOwnerships(ownerships);
 
         _;
@@ -213,10 +211,8 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
                 proxyAdmin
             );
 
-        addressRegistryV2 = addressRegistryV2Factory.create(
-            proxyFactory,
-            proxyAdmin,
-            initData
+        addressRegistryV2 = AddressRegistryV2(
+            addressRegistryV2Factory.create(proxyFactory, proxyAdmin, initData)
         );
 
         ProxyAdmin(proxyAdmin).transferOwnership(address(adminSafe));
@@ -248,7 +244,7 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
             abi.encodeWithSelector(
                 MetaPoolToken.initialize.selector,
                 proxyAdmin,
-                addressRegistry
+                addressRegistryV2
             );
 
         mApt = mAptFactory.create(proxyFactory, proxyAdmin, initData);
@@ -275,7 +271,7 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
         bytes memory upgradeData =
             abi.encodeWithSelector(
                 PoolTokenV2.initializeUpgrade.selector,
-                address(addressRegistry)
+                address(addressRegistryV2)
             );
 
         daiPool = _deployPool(DAI_ADDRESS, "daiPool", proxyAdmin, upgradeData);
@@ -305,12 +301,12 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
         checkAddressRegistryOwnership
         checkSafeRegistrations
     {
-        tvlManager = tvlManagerFactory.create(address(addressRegistry));
+        tvlManager = tvlManagerFactory.create(address(addressRegistryV2));
 
         _registerAddress("tvlManager", tvlManager);
 
         erc20Allocation = erc20AllocationFactory.create(
-            address(addressRegistry)
+            address(addressRegistryV2)
         );
 
         bytes memory data =
@@ -357,7 +353,7 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
         uint256 defaultLockPeriod = 270;
 
         oracleAdapter = oracleAdapterFactory.create(
-            address(addressRegistry),
+            address(addressRegistryV2),
             TVL_AGG_ADDRESS,
             assets,
             sources,
@@ -386,7 +382,7 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
             abi.encodeWithSelector(
                 LpAccount.initialize.selector,
                 proxyAdmin,
-                address(addressRegistry)
+                address(addressRegistryV2)
             );
 
         lpAccount = lpAccountFactory.create(proxyFactory, proxyAdmin, initData);
@@ -397,22 +393,24 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
     }
 
     function _registerAddress(bytes32 id, address address_) internal {
-        bytes memory data =
-            abi.encodeWithSelector(
-                AddressRegistryV2.registerAddress.selector,
-                id,
-                address_
-            );
+        addressRegistryV2.registerAddress(id, address_);
 
-        require(
-            adminSafe.execTransactionFromModule(
-                address(addressRegistry),
-                0,
-                data,
-                Enum.Operation.Call
-            ),
-            "SAFE_TX_FAILED"
-        );
+        //bytes memory data =
+        //    abi.encodeWithSelector(
+        //        AddressRegistryV2.registerAddress.selector,
+        //        id,
+        //        address_
+        //    );
+
+        //require(
+        //    adminSafe.execTransactionFromModule(
+        //        address(addressRegistryV2),
+        //        0,
+        //        data,
+        //        Enum.Operation.Call
+        //    ),
+        //    "SAFE_TX_FAILED"
+        //);
     }
 
     function _deployPool(
@@ -453,7 +451,7 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
     {
         for (uint256 i = 0; i < ownedContracts.length; i++) {
             require(
-                Ownable(ownedContracts[i]).owner() == address(adminSafe),
+                Ownable(ownedContracts[i]).owner() == address(this),
                 "MISSING_OWNERSHIP"
             );
         }
@@ -472,7 +470,7 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
     {
         for (uint256 i = 0; i < dependencies.length; i++) {
             require(
-                addressRegistry.getAddress(dependencies[i].registeredId) ==
+                addressRegistryV2.getAddress(dependencies[i].registeredId) ==
                     dependencies[i].registeredAddress,
                 "MISSING_DEPLOYED_ADDRESS"
             );
