@@ -10,7 +10,9 @@ async function deployNewDeployment(factories, safes) {
 }
 
 async function setup() {
-  const [lpSafe, adminSafe, emergencySafe] = await ethers.getSigners();
+  const lpSafe = await ethers.getSigner(7);
+  const adminSafe = await ethers.getSigner(8);
+  const emergencySafe = await ethers.getSigner(9);
   const safes = { lpSafe, adminSafe, emergencySafe };
   const safeAddresses = _.zipObject(
     Object.keys(safes),
