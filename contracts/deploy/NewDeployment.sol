@@ -373,6 +373,19 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
         ProxyAdmin(proxyAdmin).transferOwnership(address(adminSafe));
     }
 
+    function deploy9TransferOwnership()
+        external
+        onlyOwner
+        nonReentrant
+        updateStep(9)
+        checkAddressRegistryOwnership
+        checkSafeRegistrations
+    {
+        AddressRegistryV2(addressRegistryV2).transferOwnership(
+            address(adminSafe)
+        );
+    }
+
     function _registerAddress(bytes32 id, address address_) internal {
         addressRegistryV2.registerAddress(id, address_);
 

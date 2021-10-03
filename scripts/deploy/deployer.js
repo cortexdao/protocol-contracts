@@ -111,6 +111,10 @@ async function deployLpAccount(deployer) {
   return lpAccount;
 }
 
+async function deployTransferOwnership(deployer) {
+  await deployer.deploy9TransferOwnership();
+}
+
 async function deploy() {
   const { deployer, safes } = await setup();
 
@@ -129,6 +133,8 @@ async function deploy() {
   await registerErc20Allocation(deployer, tvlManager, safes.adminSafe);
 
   const lpAccount = await deployLpAccount(deployer);
+
+  await deployTransferOwnership(deployer);
 
   return {
     ...safes,
