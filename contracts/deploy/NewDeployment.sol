@@ -131,9 +131,9 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
     address public poolTokenV2;
 
     // step 3
-    address public daiDemoPool;
-    address public usdcDemoPool;
-    address public usdtDemoPool;
+    address public daiPool;
+    address public usdcPool;
+    address public usdtPool;
 
     // step 4
     address public tvlManager;
@@ -272,23 +272,18 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
                 address(addressRegistry)
             );
 
-        daiDemoPool = _deployPool(
-            DAI_ADDRESS,
-            "daiDemoPool",
-            proxyAdmin,
-            upgradeData
-        );
+        daiPool = _deployPool(DAI_ADDRESS, "daiPool", proxyAdmin, upgradeData);
 
-        usdcDemoPool = _deployPool(
+        usdcPool = _deployPool(
             USDC_ADDRESS,
-            "usdcDemoPool",
+            "usdcPool",
             proxyAdmin,
             upgradeData
         );
 
-        usdtDemoPool = _deployPool(
+        usdtPool = _deployPool(
             USDT_ADDRESS,
-            "usdtDemoPool",
+            "usdtPool",
             proxyAdmin,
             upgradeData
         );
