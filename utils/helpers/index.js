@@ -28,6 +28,7 @@ const {
   formatUnits,
 } = require("./unit");
 const { deepEqual } = require("./test-helper");
+const { getSafeSigner, getSafeTxDetails } = require("./safe");
 
 console.debug = function () {
   if (!console.debugging) return;
@@ -71,4 +72,6 @@ module.exports = {
   FAKE_ADDRESS,
   ANOTHER_FAKE_ADDRESS,
   deepEqual,
+  getSafeSigner,
+  getSafeTxDetails,
 };
