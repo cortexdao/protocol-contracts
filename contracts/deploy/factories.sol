@@ -24,12 +24,13 @@ import {DeploymentConstants} from "./constants.sol";
 
 abstract contract UpgradeableContractFactory {
     function create(
-        ProxyFactory proxyFactory,
+        address proxyFactory,
         address proxyAdmin,
         bytes memory initData
-    ) public virtual returns (address) {
+    ) public returns (address) {
         address logic = _deployLogic(initData);
-        address proxy = proxyFactory.create(logic, proxyAdmin, initData);
+        address proxy =
+            ProxyFactory(proxyFactory).create(logic, proxyAdmin, initData);
         return address(proxy);
     }
 
@@ -87,17 +88,6 @@ contract ProxyFactory {
             new TransparentUpgradeableProxy(logic, proxyAdmin, initData);
         return address(proxy);
     }
-
-    function createAndTransfer(
-        address logic,
-        address proxyAdmin,
-        bytes memory initData,
-        address owner
-    ) public returns (address) {
-        address proxy = create(logic, proxyAdmin, initData);
-        Ownable(proxy).transferOwnership(owner);
-        return proxy;
-    }
 }
 
 contract PoolTokenV1Factory is UpgradeableContractFactory {
@@ -121,49 +111,17 @@ contract PoolTokenV1Factory is UpgradeableContractFactory {
     }
 }
 
-contract PoolTokenV2LogicFactory {
+contract PoolTokenV2Factory {
     function create() external returns (address) {
         PoolTokenV2 logicV2 = new PoolTokenV2();
         return address(logicV2);
     }
 }
 
-contract AddressRegistryV2LogicFactory {
+contract AddressRegistryV2Factory {
     function create() external returns (address) {
         AddressRegistryV2 logicV2 = new AddressRegistryV2();
         return address(logicV2);
-    }
-}
-
-contract AddressRegistryV2Factory is UpgradeableContractFactory {
-    using Address for address;
-
-    function create(
-        ProxyFactory proxyFactory,
-        address proxyAdmin,
-        bytes memory initData
-    ) public override returns (address) {
-        address logic = _deployLogic(initData);
-        address proxy =
-            proxyFactory.createAndTransfer(
-                logic,
-                proxyAdmin,
-                initData,
-                msg.sender
-            );
-        return proxy;
-    }
-
-    function _deployLogic(bytes memory initData)
-        internal
-        virtual
-        override
-        returns (address)
-    {
-        AddressRegistryV2 logic = new AddressRegistryV2();
-        address _logic = address(logic);
-        _logic.functionCall(initData);
-        return _logic;
     }
 }
 

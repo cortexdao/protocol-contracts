@@ -26,7 +26,7 @@ import {
     PoolTokenV1Factory,
     PoolTokenV2LogicFactory,
     TvlManagerFactory
-} from "./factories.sol";
+} from "./NewFactories.sol";
 import {IGnosisModuleManager, Enum} from "./IGnosisModuleManager.sol";
 
 /** @dev

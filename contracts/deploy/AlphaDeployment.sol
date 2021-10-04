@@ -17,15 +17,14 @@ import {IAssetAllocationRegistry} from "contracts/tvl/Imports.sol";
 
 import {DeploymentConstants} from "./constants.sol";
 import {
-    AddressRegistryV2LogicFactory,
+    AddressRegistryV2Factory,
     Erc20AllocationFactory,
     LpAccountFactory,
     MetaPoolTokenFactory,
     OracleAdapterFactory,
-    ProxyFactory,
     ProxyAdminFactory,
     PoolTokenV1Factory,
-    PoolTokenV2LogicFactory,
+    PoolTokenV2Factory,
     TvlManagerFactory
 } from "./factories.sol";
 import {IGnosisModuleManager, Enum} from "./IGnosisModuleManager.sol";
@@ -243,9 +242,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         ownerships[1] = ADDRESS_REGISTRY_PROXY_ADMIN;
         checkOwnerships(ownerships);
 
-        addressRegistryV2 = AddressRegistryV2LogicFactory(
-            addressRegistryV2Factory
-        )
+        addressRegistryV2 = AddressRegistryV2Factory(addressRegistryV2Factory)
             .create();
         bytes memory data =
             abi.encodeWithSelector(
@@ -296,7 +293,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             );
 
         mApt = MetaPoolTokenFactory(mAptFactory).create(
-            ProxyFactory(proxyFactory),
+            proxyFactory,
             proxyAdmin,
             initData
         );
@@ -307,7 +304,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     }
 
     function deploy_2_PoolTokenV2_logic() external onlyOwner updateStep(2) {
-        poolTokenV2 = PoolTokenV2LogicFactory(poolTokenV2Factory).create();
+        poolTokenV2 = PoolTokenV2Factory(poolTokenV2Factory).create();
 
         // Initialize logic storage to block possible attack vector:
         // attacker may control and selfdestruct the logic contract
@@ -473,7 +470,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             );
 
         lpAccount = LpAccountFactory(lpAccountFactory).create(
-            ProxyFactory(proxyFactory),
+            proxyFactory,
             proxyAdmin,
             initData
         );
@@ -546,7 +543,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
         address proxy =
             PoolTokenV1Factory(poolTokenV1Factory).create(
-                ProxyFactory(proxyFactory),
+                proxyFactory,
                 proxyAdmin,
                 data
             );
