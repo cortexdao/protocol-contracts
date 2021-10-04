@@ -95,7 +95,7 @@ async function main(argv) {
   maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
   const proposedTx = await tvlManager
     .connect(safeSigner)
-    .registerAssetAllocation(allocation, { maxFeePerGas });
+    .registerAssetAllocation(allocation.address, { maxFeePerGas });
   await waitForSafeTxDetails(proposedTx, safeSigner.service);
 }
 
