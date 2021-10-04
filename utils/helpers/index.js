@@ -11,7 +11,7 @@ const {
 const { deployAggregator } = require("./aggregator");
 const { getAssetAllocationValue } = require("./asset_allocation");
 const { expectEventInTransaction } = require("./event");
-const { getGasPrice } = require("./gas");
+const { getGasPrice, getMaxFee, getMaxPriorityFee } = require("./gas");
 const {
   acquireToken,
   transferERC20Tokens,
@@ -74,4 +74,6 @@ module.exports = {
   deepEqual,
   getSafeSigner,
   getSafeTxDetails,
+  getMaxFee,
+  getMaxPriorityFee,
 };
