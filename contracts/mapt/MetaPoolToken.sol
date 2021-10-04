@@ -143,7 +143,7 @@ contract MetaPoolToken is
      * to call this function during upgrades.
      */
     // solhint-disable-next-line no-empty-blocks
-    function initializeUpgrade() external virtual onlyAdmin {}
+    function initializeUpgrade() external virtual nonReentrant onlyAdmin {}
 
     /**
      * @notice Set the new proxy admin
@@ -151,6 +151,7 @@ contract MetaPoolToken is
      */
     function emergencySetAdminAddress(address adminAddress)
         external
+        nonReentrant
         onlyEmergencyRole
     {
         _setAdminAddress(adminAddress);
@@ -162,6 +163,7 @@ contract MetaPoolToken is
      */
     function emergencySetAddressRegistry(address addressRegistry_)
         external
+        nonReentrant
         onlyEmergencyRole
     {
         _setAddressRegistry(addressRegistry_);

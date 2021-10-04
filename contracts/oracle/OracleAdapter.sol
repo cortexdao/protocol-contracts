@@ -3,7 +3,11 @@ pragma solidity 0.6.11;
 
 import {Address, SafeMath} from "contracts/libraries/Imports.sol";
 
-import {IERC20, AccessControl} from "contracts/common/Imports.sol";
+import {
+    IERC20,
+    AccessControl,
+    ReentrancyGuard
+} from "contracts/common/Imports.sol";
 
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
 
@@ -45,6 +49,7 @@ import {
  */
 contract OracleAdapter is
     AccessControl,
+    ReentrancyGuard,
     IOracleAdapter,
     IOverrideOracle,
     ILockingOracle
@@ -108,18 +113,24 @@ contract OracleAdapter is
     function setDefaultLockPeriod(uint256 newPeriod)
         external
         override
+        nonReentrant
         onlyAdminRole
     {
         _setDefaultLockPeriod(newPeriod);
         emit DefaultLockPeriodChanged(newPeriod);
     }
 
-    function lock() external override onlyContractRole {
+    function lock() external override nonReentrant onlyContractRole {
         _lockFor(defaultLockPeriod);
         emit DefaultLocked(msg.sender, defaultLockPeriod, lockEnd);
     }
 
-    function emergencyUnlock() external override onlyEmergencyRole {
+    function emergencyUnlock()
+        external
+        override
+        nonReentrant
+        onlyEmergencyRole
+    {
         _lockFor(0);
         emit Unlocked();
     }
@@ -128,7 +139,12 @@ contract OracleAdapter is
      * @dev Can only increase the remaining locking duration.
      * @dev If no lock exists, this allows setting of any defined locking period
      */
-    function lockFor(uint256 activePeriod) external override onlyContractRole {
+    function lockFor(uint256 activePeriod)
+        external
+        override
+        nonReentrant
+        onlyContractRole
+    {
         uint256 oldLockEnd = lockEnd;
         _lockFor(activePeriod);
         require(lockEnd > oldLockEnd, "CANNOT_SHORTEN_LOCK");
@@ -141,6 +157,7 @@ contract OracleAdapter is
      */
     function emergencySetAddressRegistry(address addressRegistry_)
         external
+        nonReentrant
         onlyEmergencyRole
     {
         _setAddressRegistry(addressRegistry_);
@@ -154,7 +171,7 @@ contract OracleAdapter is
         address asset,
         uint256 value,
         uint256 period
-    ) external override onlyEmergencyRole {
+    ) external override nonReentrant onlyEmergencyRole {
         // We do allow 0 values for submitted values
         uint256 periodEnd = block.number.add(period);
         submittedAssetValues[asset] = Value(value, periodEnd);
@@ -164,6 +181,7 @@ contract OracleAdapter is
     function emergencyUnsetAssetValue(address asset)
         external
         override
+        nonReentrant
         onlyEmergencyRole
     {
         require(
@@ -177,6 +195,7 @@ contract OracleAdapter is
     function emergencySetTvl(uint256 value, uint256 period)
         external
         override
+        nonReentrant
         onlyEmergencyRole
     {
         // We do allow 0 values for submitted values
@@ -185,7 +204,12 @@ contract OracleAdapter is
         emit TvlSet(value, period, periodEnd);
     }
 
-    function emergencyUnsetTvl() external override onlyEmergencyRole {
+    function emergencyUnsetTvl()
+        external
+        override
+        nonReentrant
+        onlyEmergencyRole
+    {
         require(submittedTvlValue.periodEnd != 0, "NO_TVL_SET");
         submittedTvlValue.periodEnd = block.number;
         emit TvlUnset();
@@ -198,6 +222,7 @@ contract OracleAdapter is
     function emergencySetTvlSource(address source)
         external
         override
+        nonReentrant
         onlyEmergencyRole
     {
         _setTvlSource(source);
@@ -206,13 +231,14 @@ contract OracleAdapter is
     function emergencySetAssetSources(
         address[] memory assets,
         address[] memory sources
-    ) external override onlyEmergencyRole {
+    ) external override nonReentrant onlyEmergencyRole {
         _setAssetSources(assets, sources);
     }
 
     function emergencySetAssetSource(address asset, address source)
         external
         override
+        nonReentrant
         onlyEmergencyRole
     {
         _setAssetSource(asset, source);
@@ -221,6 +247,7 @@ contract OracleAdapter is
     function setChainlinkStalePeriod(uint256 chainlinkStalePeriod_)
         external
         override
+        nonReentrant
         onlyAdminRole
     {
         _setChainlinkStalePeriod(chainlinkStalePeriod_);

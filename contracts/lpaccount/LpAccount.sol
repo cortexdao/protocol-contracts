@@ -258,12 +258,6 @@ contract LpAccount is
         emit SwapRegistered(swap_);
     }
 
-    function _lockOracleAdapter(uint256 lockPeriod_) internal {
-        ILockingOracle oracleAdapter =
-            ILockingOracle(addressRegistry.oracleAdapterAddress());
-        oracleAdapter.lockFor(lockPeriod_);
-    }
-
     function removeSwap(string calldata name)
         external
         override
@@ -309,6 +303,16 @@ contract LpAccount is
 
     function swapNames() external view override returns (string[] memory) {
         return _swaps.names();
+    }
+
+    /**
+     * @notice Lock oracle adapter for the configured period
+     * @param lockPeriod_ The number of blocks to lock for
+     */
+    function _lockOracleAdapter(uint256 lockPeriod_) internal {
+        ILockingOracle oracleAdapter =
+            ILockingOracle(addressRegistry.oracleAdapterAddress());
+        oracleAdapter.lockFor(lockPeriod_);
     }
 
     function _setAdminAddress(address adminAddress) internal {
