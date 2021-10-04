@@ -185,14 +185,6 @@ contract MetaPoolToken is
         emit FundLpAccount(poolIds, fundAmounts);
     }
 
-    function emergencyFundLpAccount(
-        IReservePool[] calldata pools,
-        uint256[] calldata amounts
-    ) external override nonReentrant onlyEmergencyRole {
-        _fundLpAccount(pools, amounts);
-        emit EmergencyFundLpAccount(pools, amounts);
-    }
-
     function withdrawFromLpAccount(bytes32[] calldata poolIds)
         external
         override
@@ -206,14 +198,6 @@ contract MetaPoolToken is
 
         _withdrawFromLpAccount(pools, withdrawAmounts);
         emit WithdrawFromLpAccount(poolIds, withdrawAmounts);
-    }
-
-    function emergencyWithdrawFromLpAccount(
-        IReservePool[] calldata pools,
-        uint256[] calldata amounts
-    ) external override nonReentrant onlyEmergencyRole {
-        _withdrawFromLpAccount(pools, amounts);
-        emit EmergencyWithdrawFromLpAccount(pools, amounts);
     }
 
     /**

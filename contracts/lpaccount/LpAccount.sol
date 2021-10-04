@@ -4,8 +4,8 @@ pragma experimental ABIEncoderV2;
 
 import {
     IAssetAllocation,
-    IDetailedERC20,
-    IERC20
+    IERC20,
+    IEmergencyExit
 } from "contracts/common/Imports.sol";
 import {
     Address,
@@ -42,10 +42,11 @@ contract LpAccount is
     ILpAccount,
     IZapRegistry,
     ISwapRegistry,
-    Erc20AllocationConstants
+    Erc20AllocationConstants,
+    IEmergencyExit
 {
     using Address for address;
-    using SafeERC20 for IDetailedERC20;
+    using SafeERC20 for IERC20;
     using NamedAddressSet for NamedAddressSet.ZapSet;
     using NamedAddressSet for NamedAddressSet.SwapSet;
 
@@ -223,7 +224,7 @@ contract LpAccount is
         nonReentrant
         onlyContractRole
     {
-        IDetailedERC20 underlyer = ILiquidityPoolV2(pool).underlyer();
+        IERC20 underlyer = ILiquidityPoolV2(pool).underlyer();
         underlyer.safeTransfer(pool, amount);
     }
 
@@ -285,6 +286,15 @@ contract LpAccount is
             abi.encodeWithSelector(IZap.claim.selector)
         );
         _lockOracleAdapter(lockPeriod);
+    }
+
+    function emergencyExit(address token) external override onlyEmergencyRole {
+        address emergencySafe = addressRegistry.emergencySafeAddress();
+        IERC20 token_ = IERC20(token);
+        uint256 balance = token_.balanceOf(address(this));
+        token_.safeTransfer(emergencySafe, balance);
+
+        emit EmergencyExit(emergencySafe, token_, balance);
     }
 
     function zapNames() external view override returns (string[] memory) {

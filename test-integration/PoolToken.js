@@ -8,7 +8,7 @@ const {
   getStablecoinAddress,
 } = require("../utils/helpers");
 const timeMachine = require("ganache-time-traveler");
-const { WHALE_POOLS } = require("../utils/constants");
+const { WHALE_POOLS, FARM_TOKENS } = require("../utils/constants");
 const {
   acquireToken,
   console,
@@ -465,6 +465,82 @@ describe("Contract: PoolToken", () => {
               .connect(deployer)
               .transferFrom(randomUser.address, anotherUser.address, amount)
           ).to.be.revertedWith("INVALID_TRANSFER");
+        });
+      });
+
+      describe("emergencyExit", () => {
+        it("Should only be callable by the emergencySafe", async () => {
+          await expect(
+            poolToken.connect(randomUser).emergencyExit(underlyer.address)
+          ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
+
+          await expect(
+            poolToken.connect(emergencySafe).emergencyExit(underlyer.address)
+          ).to.not.be.reverted;
+        });
+
+        it("Should transfer all deposited tokens to the emergencySafe", async () => {
+          await poolToken.connect(randomUser).addLiquidity(100000);
+
+          const prevPoolBalance = await underlyer.balanceOf(poolToken.address);
+          const prevSafeBalance = await underlyer.balanceOf(
+            emergencySafe.address
+          );
+
+          await poolToken
+            .connect(emergencySafe)
+            .emergencyExit(underlyer.address);
+
+          const nextPoolBalance = await underlyer.balanceOf(poolToken.address);
+          const nextSafeBalance = await underlyer.balanceOf(
+            emergencySafe.address
+          );
+
+          expect(nextPoolBalance).to.equal(0);
+          expect(nextSafeBalance.sub(prevSafeBalance)).to.equal(
+            prevPoolBalance
+          );
+        });
+
+        it("Should transfer tokens airdropped to the pool", async () => {
+          const symbol = "AAVE";
+          const token = await ethers.getContractAt(
+            "IDetailedERC20",
+            FARM_TOKENS[symbol]
+          );
+
+          await acquireToken(
+            WHALE_POOLS[symbol],
+            poolToken.address,
+            token,
+            "10000",
+            deployer.address
+          );
+
+          const prevPoolBalance = await token.balanceOf(poolToken.address);
+          const prevSafeBalance = await token.balanceOf(emergencySafe.address);
+
+          await poolToken.connect(emergencySafe).emergencyExit(token.address);
+
+          const nextPoolBalance = await token.balanceOf(poolToken.address);
+          const nextSafeBalance = await token.balanceOf(emergencySafe.address);
+
+          expect(nextPoolBalance).to.equal(0);
+          expect(nextSafeBalance.sub(prevSafeBalance)).to.equal(
+            prevPoolBalance
+          );
+        });
+
+        it("Should emit the EmergencyExit event", async () => {
+          await poolToken.connect(randomUser).addLiquidity(100000);
+
+          const balance = await underlyer.balanceOf(poolToken.address);
+
+          await expect(
+            poolToken.connect(emergencySafe).emergencyExit(underlyer.address)
+          )
+            .to.emit(poolToken, "EmergencyExit")
+            .withArgs(emergencySafe.address, underlyer.address, balance);
         });
       });
 

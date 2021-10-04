@@ -868,47 +868,6 @@ describe("Contract: MetaPoolToken", () => {
     });
   });
 
-  describe("emergencyFundLpAccount", () => {
-    it("Emergency Safe can call", async () => {
-      await expect(mApt.connect(emergencySafe).emergencyFundLpAccount([], []))
-        .to.not.be.reverted;
-    });
-
-    it("Unpermissioned cannot call", async () => {
-      await expect(
-        mApt.connect(randomUser).emergencyFundLpAccount([], [])
-      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
-    });
-
-    it("Revert on unregistered LP Account address", async () => {
-      await addressRegistry.mock.lpAccountAddress.returns(ZERO_ADDRESS);
-      await expect(
-        mApt.connect(emergencySafe).emergencyFundLpAccount([], [])
-      ).to.be.revertedWith("INVALID_LP_ACCOUNT");
-    });
-  });
-
-  describe("emergencyWithdrawFromLpAccount", () => {
-    it("Emergency Safe can call", async () => {
-      await expect(
-        mApt.connect(emergencySafe).emergencyWithdrawFromLpAccount([], [])
-      ).to.not.be.reverted;
-    });
-
-    it("Unpermissioned cannot call", async () => {
-      await expect(
-        mApt.connect(randomUser).emergencyWithdrawFromLpAccount([], [])
-      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
-    });
-
-    it("Revert on unregistered LP Account address", async () => {
-      await addressRegistry.mock.lpAccountAddress.returns(ZERO_ADDRESS);
-      await expect(
-        mApt.connect(emergencySafe).emergencyWithdrawFromLpAccount([], [])
-      ).to.be.revertedWith("INVALID_LP_ACCOUNT");
-    });
-  });
-
   describe("getRebalanceAmounts", () => {
     it("Return pair of empty arrays when give an empty array", async () => {
       const result = await mApt.getRebalanceAmounts([]);
