@@ -7,18 +7,13 @@ import {IZap} from "contracts/lpaccount/Imports.sol";
 import {
     IAssetAllocation,
     IDetailedERC20,
-    IERC20,
-    ReentrancyGuard
+    IERC20
 } from "contracts/common/Imports.sol";
 import {
     Curve3PoolUnderlyerConstants
 } from "contracts/protocols/curve/3pool/Constants.sol";
 
-abstract contract CurveZapBase is
-    Curve3PoolUnderlyerConstants,
-    IZap,
-    ReentrancyGuard
-{
+abstract contract CurveZapBase is Curve3PoolUnderlyerConstants, IZap {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -43,11 +38,7 @@ abstract contract CurveZapBase is
     }
 
     /// @param amounts array of underlyer amounts
-    function deployLiquidity(uint256[] calldata amounts)
-        external
-        override
-        nonReentrant
-    {
+    function deployLiquidity(uint256[] calldata amounts) external override {
         require(amounts.length == N_COINS, "INVALID_AMOUNTS");
 
         uint256 totalAmount = 0;
@@ -70,11 +61,7 @@ abstract contract CurveZapBase is
      * @param amount LP token amount
      * @param index underlyer index
      */
-    function unwindLiquidity(uint256 amount, uint8 index)
-        external
-        override
-        nonReentrant
-    {
+    function unwindLiquidity(uint256 amount, uint8 index) external override {
         require(index < N_COINS, "INVALID_INDEX");
         uint256 lpBalance = _withdrawFromGauge(amount);
         uint256 minAmount =
@@ -82,7 +69,7 @@ abstract contract CurveZapBase is
         _removeLiquidity(lpBalance, index, minAmount);
     }
 
-    function claim() external override nonReentrant {
+    function claim() external override {
         _claim();
     }
 
