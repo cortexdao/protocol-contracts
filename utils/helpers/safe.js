@@ -2,6 +2,8 @@ const {
   SafeService,
   SafeEthersSigner,
 } = require("@gnosis.pm/safe-ethers-adapters");
+const hre = require("hardhat");
+const { ethers } = hre;
 
 const MAINNET_SERVICE_URL = "https://safe-transaction.gnosis.io/";
 
@@ -26,19 +28,24 @@ async function waitForSafeTxDetails(proposedTx, safeService) {
   console.log(
     "USER ACTION REQUIRED: Use the Gnosis Safe UI to confirm transaction"
   );
+  let txHash;
   // eslint-disable-next-line no-constant-condition
   while (true) {
     console.log("Waiting for transaction details ...");
     try {
       const safeTxHash = proposedTx.hash;
       const txDetails = await safeService.getSafeTxDetails(safeTxHash);
-      if (txDetails.transactionHash) break;
+      if (txDetails.transactionHash) {
+        txHash = txDetails.transactionHash;
+        console.log("Got transaction hash: %s", txHash);
+        break;
+      }
     } catch (e) {
       console.log(e);
     }
     await sleep(5000);
   }
-  const receipt = await proposedTx.wait();
+  const receipt = await ethers.provider.waitForTransaction(txHash, 1);
   return receipt;
 }
 
