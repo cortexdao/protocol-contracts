@@ -10,20 +10,22 @@ const { argv } = require("yargs")
     type: "string",
     description: "Zap contract name",
   })
-  .option("gasPrice", {
+  .option("maxFeePerGas", {
     type: "number",
-    description: "Gas price in gwei; omitting uses GasNow value",
+    description: "Gas price in gwei; omitting uses default Ethers logic",
+  })
+  .option("maxPriorityFeePerGas", {
+    type: "number",
+    description: "Gas price in gwei; omitting uses default Ethers logic",
   })
   .demandOption(["name"]);
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const { getGasPrice, getDeployedAddress } = require("../../utils/helpers");
+const { getMaxFee, getDeployedAddress } = require("../../utils/helpers");
 const {
-  SafeService,
-  SafeEthersSigner,
-} = require("@gnosis.pm/safe-ethers-adapters");
-
-const MAINNET_SERVICE_URL = "https://safe-transaction.gnosis.io/";
+  waitForSafeTxDetails,
+  getSafeSigner,
+} = require("../../utils/helpers/safe");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -44,33 +46,31 @@ async function main(argv) {
   if (!process.env.SAFE_OWNER_KEY) {
     throw new Error("Must set SAFE_OWNER_KEY env var.");
   }
-  const signer = new ethers.Wallet(process.env.SAFE_OWNER_KEY, ethers.provider);
-  console.log("Safe owner: %s", signer.address);
+  const owner = new ethers.Wallet(process.env.SAFE_OWNER_KEY, ethers.provider);
+  console.log("Safe owner: %s", owner.address);
   console.log("");
 
   let balance =
     (await ethers.provider.getBalance(deployer.address)).toString() / 1e18;
   console.log("ETH balance (deployer): %s", balance);
   console.log("");
-  balance =
-    (await ethers.provider.getBalance(signer.address)).toString() / 1e18;
-  console.log("ETH balance (Safe signer): %s", balance);
+  balance = (await ethers.provider.getBalance(owner.address)).toString() / 1e18;
+  console.log("ETH balance (Safe owner): %s", balance);
   console.log("");
 
   const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
-  const service = new SafeService(MAINNET_SERVICE_URL);
-  const safeSigner = await SafeEthersSigner.create(
-    adminSafeAddress,
-    signer,
-    service
-  );
+  const safeSigner = await getSafeSigner(adminSafeAddress, owner);
 
   console.log("Deploying zap ... ");
   console.log("");
 
   const zapContractFactory = await ethers.getContractFactory(zapContractName);
-  let gasPrice = await getGasPrice(argv.gasPrice);
-  const zap = await zapContractFactory.deploy({ gasPrice });
+  let maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
+  const zap = await zapContractFactory
+    .connect(safeSigner)
+    .deploy({ maxFeePerGas });
+  await waitForSafeTxDetails(zap.deployTransaction, safeSigner.service);
+
   const zapName = await zap.NAME();
 
   console.log("Registering %s", zapName);
@@ -86,13 +86,11 @@ async function main(argv) {
   );
   const lpAccountAddress = await addressRegistry.lpAccountAddress();
   const lpAccount = await ethers.getContractAt("LpAccount", lpAccountAddress);
-  gasPrice = await getGasPrice(argv.gasPrice);
+  maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
   const proposedTx = await lpAccount
     .connect(safeSigner)
-    .registerZap(zap, { gasPrice });
-  console.log("USER ACTION REQUIRED");
-  console.log("Go to the Gnosis Safe Web App to confirm the transaction");
-  await proposedTx.wait();
+    .registerZap(zap, { maxFeePerGas });
+  await waitForSafeTxDetails(proposedTx, safeSigner.service);
 }
 
 if (!module.parent) {
