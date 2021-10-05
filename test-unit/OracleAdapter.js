@@ -27,6 +27,7 @@ describe("Contract: OracleAdapter", () => {
   let lpSafe;
   let mApt;
   let tvlManager;
+  let lpAccount;
   let randomUser;
 
   // deployed contracts
@@ -127,7 +128,7 @@ describe("Contract: OracleAdapter", () => {
   });
 
   before("Deploy Oracle Adapter", async () => {
-    [, , , mApt, tvlManager, randomUser] = await ethers.getSigners();
+    [, , , mApt, tvlManager, lpAccount, randomUser] = await ethers.getSigners();
 
     await addressRegistry.mock.mAptAddress.returns(mApt.address);
     await addressRegistry.mock.getAddress
@@ -138,6 +139,11 @@ describe("Contract: OracleAdapter", () => {
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("tvlManager"))
       .returns(tvlManager.address);
+
+    await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("lpAccount"))
+      .returns(lpAccount.address);
 
     tvlAggMock = await deployMockContract(deployer, AggregatorV3Interface.abi);
     assetAggMock_1 = await deployMockContract(
@@ -308,11 +314,13 @@ describe("Contract: OracleAdapter", () => {
     it("Contract role given to TVL Manager and mAPT", async () => {
       const CONTRACT_ROLE = await oracleAdapter.CONTRACT_ROLE();
       const memberCount = await oracleAdapter.getRoleMemberCount(CONTRACT_ROLE);
-      expect(memberCount).to.equal(2);
+      expect(memberCount).to.equal(3);
       expect(await oracleAdapter.hasRole(CONTRACT_ROLE, tvlManager.address)).to
         .be.true;
       expect(await oracleAdapter.hasRole(CONTRACT_ROLE, mApt.address)).to.be
         .true;
+      expect(await oracleAdapter.hasRole(CONTRACT_ROLE, lpAccount.address)).to
+        .be.true;
     });
 
     it("Emergency role given to Emergency Safe", async () => {
@@ -526,6 +534,7 @@ describe("Contract: OracleAdapter", () => {
     it("Contract role can call", async () => {
       await expect(oracleAdapter.connect(mApt).lock()).to.not.be.reverted;
       await expect(oracleAdapter.connect(tvlManager).lock()).to.not.be.reverted;
+      await expect(oracleAdapter.connect(lpAccount).lock()).to.not.be.reverted;
     });
   });
 
@@ -551,6 +560,10 @@ describe("Contract: OracleAdapter", () => {
       expect(await oracleAdapter.isLocked()).to.be.true;
 
       await expect(oracleAdapter.connect(tvlManager).lockFor(period)).to.not.be
+        .reverted;
+      expect(await oracleAdapter.isLocked()).to.be.true;
+
+      await expect(oracleAdapter.connect(lpAccount).lockFor(period)).to.not.be
         .reverted;
       expect(await oracleAdapter.isLocked()).to.be.true;
     });
