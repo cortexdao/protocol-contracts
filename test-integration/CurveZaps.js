@@ -58,6 +58,16 @@ describe("Curve Zaps", () => {
       useUnwrapped: true,
     },
     {
+      contractName: "SAavePoolZap",
+      swapAddress: "0xEB16Ae0052ed37f479f7fe63849198Df1765a733",
+      swapInterface: "IStableSwap",
+      lpTokenAddress: "0x02d341CcB60fAaf662bC0554d13778015d1b285C",
+      gaugeAddress: "0x462253b8F74B72304c145DB0e4Eebd326B22ca39",
+      gaugeInterface: "ILiquidityGauge",
+      numberOfCoins: 2,
+      whaleAddress: WHALE_POOLS["ADAI"],
+    },
+    {
       contractName: "CompoundPoolZap",
       swapAddress: "0xeB21209ae4C2c9FF2a86ACA31E123764A3B6Bc06",
       swapInterface: "IDepositZap",
@@ -144,16 +154,6 @@ describe("Curve Zaps", () => {
       gaugeInterface: "ILiquidityGauge",
       numberOfCoins: 4,
       whaleAddress: WHALE_POOLS["MUSD"],
-    },
-    {
-      contractName: "SAavePoolZap",
-      swapAddress: "0xEB16Ae0052ed37f479f7fe63849198Df1765a733",
-      swapInterface: "IStableSwap",
-      lpTokenAddress: "0x02d341CcB60fAaf662bC0554d13778015d1b285C",
-      gaugeAddress: "0x462253b8F74B72304c145DB0e4Eebd326B22ca39",
-      gaugeInterface: "ILiquidityGauge",
-      numberOfCoins: 2,
-      whaleAddress: WHALE_POOLS["ADAI"],
     },
     {
       contractName: "UsdnPoolZap",
