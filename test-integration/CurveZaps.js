@@ -34,7 +34,7 @@ describe.only("Curve Zaps", () => {
   // use EVM snapshots for test isolation
   let snapshotId;
 
-  const CurveConstants = [
+  const CurvePoolZaps = [
     {
       contractName: "Curve3PoolZap",
       swapAddress: "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7",
@@ -57,6 +57,42 @@ describe.only("Curve Zaps", () => {
       useUnwrapped: true,
     },
     {
+      contractName: "CompoundPoolZap",
+      swapAddress: "0xeB21209ae4C2c9FF2a86ACA31E123764A3B6Bc06",
+      swapInterface: "IDepositZap",
+      lpTokenAddress: "0x845838DF265Dcd2c412A1Dc9e959c7d08537f8a2",
+      gaugeAddress: "0x7ca5b0a2910B33e9759DC7dDB0413949071D7575",
+      gaugeInterface: "ILiquidityGauge",
+      numberOfCoins: 2,
+      whaleAddress: WHALE_POOLS["DAI"],
+      useUnwrapped: true,
+    },
+    {
+      contractName: "IronBankPoolZap",
+      swapAddress: "0x2dded6Da1BF5DBdF597C45fcFaa3194e53EcfeAF",
+      swapInterface: "IStableSwap",
+      lpTokenAddress: "0x5282a4eF67D9C33135340fB3289cc1711c13638C",
+      gaugeAddress: "0xF5194c3325202F456c95c1Cf0cA36f8475C1949F",
+      gaugeInterface: "ILiquidityGauge",
+      numberOfCoins: 3,
+      whaleAddress: WHALE_POOLS["DAI"],
+      useUnwrapped: true,
+    },
+    {
+      contractName: "SusdV2Zap",
+      swapAddress: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD",
+      swapInterface: "IOldStableSwap4",
+      lpTokenAddress: "0xC25a3A3b969415c80451098fa907EC722572917F",
+      gaugeAddress: "0xA90996896660DEcC6E997655E065b23788857849",
+      gaugeInterface: "ILiquidityGauge",
+      numberOfCoins: 4,
+      whaleAddress: WHALE_POOLS["DAI"],
+      rewardToken: "0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F",
+    },
+  ];
+
+  const CurveMetaPoolZaps = [
+    {
       contractName: "AlUsdPoolZap",
       swapAddress: "0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c",
       swapInterface: "IMetaPool",
@@ -78,17 +114,6 @@ describe.only("Curve Zaps", () => {
       whaleAddress: WHALE_POOLS["BUSD"],
     },
     {
-      contractName: "CompoundPoolZap",
-      swapAddress: "0xeB21209ae4C2c9FF2a86ACA31E123764A3B6Bc06",
-      swapInterface: "IDepositZap",
-      lpTokenAddress: "0x845838DF265Dcd2c412A1Dc9e959c7d08537f8a2",
-      gaugeAddress: "0x7ca5b0a2910B33e9759DC7dDB0413949071D7575",
-      gaugeInterface: "ILiquidityGauge",
-      numberOfCoins: 2,
-      whaleAddress: WHALE_POOLS["DAI"],
-      useUnwrapped: true,
-    },
-    {
       contractName: "FraxPoolZap",
       swapAddress: "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B",
       swapInterface: "IStableSwap",
@@ -98,17 +123,6 @@ describe.only("Curve Zaps", () => {
       numberOfCoins: 4,
       whaleAddress: WHALE_POOLS["FRAX"],
       rewardToken: "0x3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0",
-    },
-    {
-      contractName: "IronBankPoolZap",
-      swapAddress: "0x2dded6Da1BF5DBdF597C45fcFaa3194e53EcfeAF",
-      swapInterface: "IStableSwap",
-      lpTokenAddress: "0x5282a4eF67D9C33135340fB3289cc1711c13638C",
-      gaugeAddress: "0xF5194c3325202F456c95c1Cf0cA36f8475C1949F",
-      gaugeInterface: "ILiquidityGauge",
-      numberOfCoins: 3,
-      whaleAddress: WHALE_POOLS["DAI"],
-      useUnwrapped: true,
     },
     {
       contractName: "LusdPoolZap",
@@ -139,17 +153,6 @@ describe.only("Curve Zaps", () => {
       gaugeInterface: "ILiquidityGauge",
       numberOfCoins: 2,
       whaleAddress: WHALE_POOLS["ADAI"],
-    },
-    {
-      contractName: "SusdV2Zap",
-      swapAddress: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD",
-      swapInterface: "IOldStableSwap4",
-      lpTokenAddress: "0xC25a3A3b969415c80451098fa907EC722572917F",
-      gaugeAddress: "0xA90996896660DEcC6E997655E065b23788857849",
-      gaugeInterface: "ILiquidityGauge",
-      numberOfCoins: 4,
-      whaleAddress: WHALE_POOLS["DAI"],
-      rewardToken: "0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F",
     },
     {
       contractName: "UsdnPoolZap",
@@ -238,7 +241,184 @@ describe.only("Curve Zaps", () => {
       .registerAssetAllocation(erc20Allocation.address);
   });
 
-  CurveConstants.forEach((curveConstant) => {
+  CurvePoolZaps.forEach((curveConstant) => {
+    const {
+      contractName,
+      swapAddress,
+      swapInterface,
+      lpTokenAddress,
+      gaugeAddress,
+      gaugeInterface,
+      numberOfCoins,
+      whaleAddress,
+      rewardToken,
+      useUnwrapped,
+    } = curveConstant;
+
+    describe(contractName, () => {
+      let zap;
+      let swap;
+      let lpToken;
+      let gauge;
+      let underlyerToken;
+      // const underlyerIndex = 0;
+      //
+      let subSuiteSnapshotId;
+
+      const underlyerIndices = Array.from(Array(numberOfCoins).keys());
+
+      before(async () => {
+        let snapshot = await timeMachine.takeSnapshot();
+        subSuiteSnapshotId = snapshot["result"];
+      });
+
+      after(async () => {
+        await timeMachine.revertToSnapshot(subSuiteSnapshotId);
+      });
+
+      underlyerIndices.forEach((underlyerIndex) => {
+        describe(`Underlyer index: ${underlyerIndex}`, () => {
+          before("Deploy Zap", async () => {
+            const zapFactory = await ethers.getContractFactory(
+              contractName,
+              adminSafe
+            );
+            zap = await zapFactory.deploy();
+          });
+
+          before("Attach to Mainnet Curve contracts", async () => {
+            swap = await ethers.getContractAt(
+              swapInterface,
+              swapAddress,
+              adminSafe
+            );
+            lpToken = await ethers.getContractAt(
+              "IDetailedERC20",
+              lpTokenAddress,
+              adminSafe
+            );
+            gauge = await ethers.getContractAt(
+              gaugeInterface,
+              gaugeAddress,
+              adminSafe
+            );
+          });
+
+          before("Fund Zap with Pool Underlyer", async () => {
+            let underlyerAddress;
+            if (useUnwrapped) {
+              underlyerAddress = await swap.underlying_coins(underlyerIndex);
+            } else {
+              underlyerAddress = await swap.coins(underlyerIndex);
+            }
+
+            underlyerToken = await ethers.getContractAt(
+              "IDetailedERC20",
+              underlyerAddress
+            );
+            const amount = tokenAmountToBigNumber(
+              100000,
+              await underlyerToken.decimals()
+            );
+
+            await acquireToken(
+              whaleAddress,
+              zap.address,
+              underlyerToken,
+              amount,
+              deployer
+            );
+          });
+
+          it("Deposit into pool and stake", async () => {
+            const amounts = new Array(numberOfCoins).fill("0");
+            const underlyerAmount = tokenAmountToBigNumber(
+              1000,
+              await underlyerToken.decimals()
+            );
+            amounts[underlyerIndex] = underlyerAmount;
+
+            await zap.deployLiquidity(amounts);
+
+            const deployedZapUnderlyerBalance = await underlyerToken.balanceOf(
+              zap.address
+            );
+            expect(deployedZapUnderlyerBalance).gt(0);
+            const deployedZapLpBalance = await lpToken.balanceOf(zap.address);
+            expect(deployedZapLpBalance).to.equal(0);
+            const deployedGaugeLpBalance = await gauge.balanceOf(zap.address);
+            expect(deployedGaugeLpBalance).gt(0);
+
+            await zap.unwindLiquidity(deployedGaugeLpBalance, underlyerIndex);
+
+            const withdrawnZapUnderlyerBalance = await underlyerToken.balanceOf(
+              zap.address
+            );
+            expect(withdrawnZapUnderlyerBalance).gt(
+              deployedZapUnderlyerBalance
+            );
+            const withdrawnZapLpBalance = await lpToken.balanceOf(zap.address);
+            expect(withdrawnZapLpBalance).to.equal(0);
+            const withdrawnGaugeLpBalance = await gauge.balanceOf(zap.address);
+            expect(withdrawnGaugeLpBalance).to.equal(0);
+          });
+
+          it("Claim", async () => {
+            const erc20s = await zap.erc20Allocations();
+
+            expect(erc20s).to.include(ethers.utils.getAddress(CRV_ADDRESS));
+            const crv = await ethers.getContractAt(
+              "IDetailedERC20",
+              CRV_ADDRESS
+            );
+            expect(await crv.balanceOf(zap.address)).to.equal(0);
+
+            if (typeof rewardToken !== "undefined") {
+              expect(erc20s).to.include(ethers.utils.getAddress(rewardToken));
+              const token = await ethers.getContractAt(
+                "IDetailedERC20",
+                rewardToken
+              );
+              expect(await token.balanceOf(zap.address)).to.equal(0);
+            }
+
+            const amounts = new Array(numberOfCoins).fill("0");
+            const underlyerAmount = tokenAmountToBigNumber(
+              100000,
+              await underlyerToken.decimals()
+            );
+            amounts[underlyerIndex] = underlyerAmount;
+
+            await zap.deployLiquidity(amounts);
+
+            // allows rewards to accumulate:
+            // CRV rewards accumulate within a block, but other rewards, like
+            // staked Aave, require longer
+            if (erc20s.length > 1) {
+              const oneDayInSeconds = 60 * 60 * 24;
+              await hre.network.provider.send("evm_increaseTime", [
+                oneDayInSeconds,
+              ]);
+              await hre.network.provider.send("evm_mine");
+            }
+
+            await zap.claim();
+
+            expect(await crv.balanceOf(zap.address)).to.be.gt(0);
+            if (typeof rewardToken !== "undefined") {
+              const token = await ethers.getContractAt(
+                "IDetailedERC20",
+                rewardToken
+              );
+              expect(await token.balanceOf(zap.address)).to.be.gt(0);
+            }
+          });
+        });
+      });
+    });
+  });
+
+  CurveMetaPoolZaps.forEach((curveConstant) => {
     const {
       contractName,
       swapAddress,
