@@ -316,7 +316,36 @@ describe("Contract: AlphaDeployment", () => {
       });
     });
 
-    describe("Step 5: Deploy OracleAdapter", () => {
+    describe("Step 5: Deploy LpAccount", () => {
+      let lpAccountAddress;
+      let lpAccount;
+
+      before("Run step 5", async () => {
+        await alphaDeployment.deploy_5_LpAccount();
+        lpAccountAddress = await alphaDeployment.lpAccount();
+        lpAccount = await ethers.getContractAt("LpAccount", lpAccountAddress);
+      });
+
+      it("should update step number", async () => {
+        expect(await alphaDeployment.step()).to.equal(6);
+      });
+
+      it("should register the LpAccount address", async () => {
+        expect(await addressRegistry.lpAccountAddress()).to.equal(
+          lpAccountAddress
+        );
+      });
+
+      it("should transfer the proxy admin owner to the Admin Safe", async () => {
+        const poolProxyAdmin = await ethers.getContractAt(
+          "ProxyAdmin",
+          await lpAccount.proxyAdmin()
+        );
+        expect(await poolProxyAdmin.owner()).to.equal(adminSafe.address);
+      });
+    });
+
+    describe("Step 6: Deploy OracleAdapter", () => {
       let oracleAdapterAddress;
       let oracleAdapter;
       const priceAggs = [
@@ -337,8 +366,8 @@ describe("Contract: AlphaDeployment", () => {
         },
       ];
 
-      before("Run step 5", async () => {
-        await alphaDeployment.deploy_5_OracleAdapter();
+      before("Run step 6", async () => {
+        await alphaDeployment.deploy_6_OracleAdapter();
         oracleAdapterAddress = await alphaDeployment.oracleAdapter();
         oracleAdapter = await ethers.getContractAt(
           "OracleAdapter",
@@ -347,7 +376,7 @@ describe("Contract: AlphaDeployment", () => {
       });
 
       it("should update step number", async () => {
-        expect(await alphaDeployment.step()).to.equal(6);
+        expect(await alphaDeployment.step()).to.equal(7);
       });
 
       it("should register the OracleAdapter address", async () => {
@@ -366,35 +395,6 @@ describe("Contract: AlphaDeployment", () => {
             priceAgg.agg
           );
         });
-      });
-    });
-
-    describe("Step 6: Deploy LpAccount", () => {
-      let lpAccountAddress;
-      let lpAccount;
-
-      before("Run step 6", async () => {
-        await alphaDeployment.deploy_6_LpAccount();
-        lpAccountAddress = await alphaDeployment.lpAccount();
-        lpAccount = await ethers.getContractAt("LpAccount", lpAccountAddress);
-      });
-
-      it("should update step number", async () => {
-        expect(await alphaDeployment.step()).to.equal(7);
-      });
-
-      it("should register the LpAccount address", async () => {
-        expect(await addressRegistry.lpAccountAddress()).to.equal(
-          lpAccountAddress
-        );
-      });
-
-      it("should transfer the proxy admin owner to the Admin Safe", async () => {
-        const poolProxyAdmin = await ethers.getContractAt(
-          "ProxyAdmin",
-          await lpAccount.proxyAdmin()
-        );
-        expect(await poolProxyAdmin.owner()).to.equal(adminSafe.address);
       });
     });
 
