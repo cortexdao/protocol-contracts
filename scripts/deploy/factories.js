@@ -4,11 +4,11 @@ const { ethers } = require("hardhat");
 async function deployFactories() {
   const factoryConfig = {
     ProxyAdminFactory: "proxyAdminFactory",
-    ProxyFactory: "proxyFactory",
-    AddressRegistryV2Factory: "addressRegistryV2Factory",
+    ProxyFactoryV2: "proxyFactory",
+    AddressRegistryV2FactoryV2: "addressRegistryV2Factory",
     MetaPoolTokenFactory: "mAptFactory",
     PoolTokenV1Factory: "poolTokenV1Factory",
-    PoolTokenV2LogicFactory: "poolTokenV2Factory",
+    PoolTokenV2Factory: "poolTokenV2Factory",
     TvlManagerFactory: "tvlManagerFactory",
     Erc20AllocationFactory: "erc20AllocationFactory",
     OracleAdapterFactory: "oracleAdapterFactory",

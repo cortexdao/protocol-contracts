@@ -16,17 +16,17 @@ import {IAssetAllocationRegistry} from "contracts/tvl/Imports.sol";
 
 import {DeploymentConstants} from "./constants.sol";
 import {
-    AddressRegistryV2Factory,
+    AddressRegistryV2FactoryV2,
     Erc20AllocationFactory,
     LpAccountFactory,
     MetaPoolTokenFactory,
     OracleAdapterFactory,
-    ProxyFactory,
+    ProxyFactoryV2,
     ProxyAdminFactory,
     PoolTokenV1Factory,
-    PoolTokenV2LogicFactory,
+    PoolTokenV2Factory,
     TvlManagerFactory
-} from "./NewFactories.sol";
+} from "./factories/Imports.sol";
 import {IGnosisModuleManager, Enum} from "./IGnosisModuleManager.sol";
 
 /** @dev
@@ -77,11 +77,11 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
 
     struct Factories {
         ProxyAdminFactory proxyAdminFactory;
-        ProxyFactory proxyFactory;
-        AddressRegistryV2Factory addressRegistryV2Factory;
+        ProxyFactoryV2 proxyFactory;
+        AddressRegistryV2FactoryV2 addressRegistryV2Factory;
         MetaPoolTokenFactory mAptFactory;
         PoolTokenV1Factory poolTokenV1Factory;
-        PoolTokenV2LogicFactory poolTokenV2Factory;
+        PoolTokenV2Factory poolTokenV2Factory;
         TvlManagerFactory tvlManagerFactory;
         Erc20AllocationFactory erc20AllocationFactory;
         OracleAdapterFactory oracleAdapterFactory;
@@ -106,11 +106,11 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
         0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe;
 
     ProxyAdminFactory public immutable proxyAdminFactory;
-    ProxyFactory public immutable proxyFactory;
-    AddressRegistryV2Factory public immutable addressRegistryV2Factory;
+    ProxyFactoryV2 public immutable proxyFactory;
+    AddressRegistryV2FactoryV2 public immutable addressRegistryV2Factory;
     MetaPoolTokenFactory public immutable mAptFactory;
     PoolTokenV1Factory public immutable poolTokenV1Factory;
-    PoolTokenV2LogicFactory public immutable poolTokenV2Factory;
+    PoolTokenV2Factory public immutable poolTokenV2Factory;
     TvlManagerFactory public immutable tvlManagerFactory;
     Erc20AllocationFactory public immutable erc20AllocationFactory;
     OracleAdapterFactory public immutable oracleAdapterFactory;
@@ -215,7 +215,11 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
             );
 
         addressRegistryV2 = AddressRegistryV2(
-            addressRegistryV2Factory.create(proxyFactory, proxyAdmin, initData)
+            addressRegistryV2Factory.create(
+                address(proxyFactory),
+                proxyAdmin,
+                initData
+            )
         );
 
         ProxyAdmin(proxyAdmin).transferOwnership(address(adminSafe));
@@ -250,7 +254,7 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
                 addressRegistryV2
             );
 
-        mApt = mAptFactory.create(proxyFactory, proxyAdmin, initData);
+        mApt = mAptFactory.create(address(proxyFactory), proxyAdmin, initData);
 
         _registerAddress("mApt", mApt);
 
@@ -366,7 +370,11 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
                 address(addressRegistryV2)
             );
 
-        lpAccount = lpAccountFactory.create(proxyFactory, proxyAdmin, initData);
+        lpAccount = lpAccountFactory.create(
+            address(proxyFactory),
+            proxyAdmin,
+            initData
+        );
 
         _registerAddress("lpAccount", lpAccount);
 
@@ -429,7 +437,11 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
             );
 
         address proxy =
-            poolTokenV1Factory.create(proxyFactory, proxyAdmin, initData);
+            poolTokenV1Factory.create(
+                address(proxyFactory),
+                proxyAdmin,
+                initData
+            );
 
         address logic = poolTokenV2Factory.create();
         logic.functionCall(initData);
