@@ -51,7 +51,9 @@ abstract contract CurveZapBase is Curve3PoolUnderlyerConstants, IZap {
 
             uint256 normalizedDeposit =
                 deposit.mul(10**uint256(18)).div(10**uint256(decimals));
-            totalNormalizedDeposit += normalizedDeposit;
+            totalNormalizedDeposit = totalNormalizedDeposit.add(
+                normalizedDeposit
+            );
 
             IERC20(underlyerAddress).safeApprove(SWAP_ADDRESS, 0);
             IERC20(underlyerAddress).safeApprove(SWAP_ADDRESS, amounts[i]);
