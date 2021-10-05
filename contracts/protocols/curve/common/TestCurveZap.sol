@@ -71,9 +71,9 @@ contract TestCurveZap is CurveGaugeZapBase {
     function calcMinAmountUnderlyer(
         uint256 totalAmount,
         uint256 virtualPrice,
-        uint8 index
+        uint8 decimals
     ) external view returns (uint256) {
-        return _calcMinAmountUnderlyer(totalAmount, virtualPrice, index);
+        return _calcMinAmountUnderlyer(totalAmount, virtualPrice, decimals);
     }
 
     function assetAllocations() public view override returns (string[] memory) {

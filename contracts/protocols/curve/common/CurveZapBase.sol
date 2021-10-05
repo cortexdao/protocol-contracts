@@ -70,8 +70,10 @@ abstract contract CurveZapBase is Curve3PoolUnderlyerConstants, IZap {
     function unwindLiquidity(uint256 amount, uint8 index) external override {
         require(index < N_COINS, "INVALID_INDEX");
         uint256 lpBalance = _withdrawFromGauge(amount);
+        address underlyerAddress = _getCoinAtIndex(index);
+        uint8 decimals = IDetailedERC20(underlyerAddress).decimals();
         uint256 minAmount =
-            _calcMinAmountUnderlyer(lpBalance, _getVirtualPrice(), index);
+            _calcMinAmountUnderlyer(lpBalance, _getVirtualPrice(), decimals);
         _removeLiquidity(lpBalance, index, minAmount);
     }
 
@@ -133,10 +135,8 @@ abstract contract CurveZapBase is Curve3PoolUnderlyerConstants, IZap {
     function _calcMinAmountUnderlyer(
         uint256 lpTokenAmount,
         uint256 virtualPrice,
-        uint8 index
+        uint8 decimals
     ) internal view returns (uint256) {
-        address underlyerAddress = _getCoinAtIndex(index);
-        uint8 decimals = IDetailedERC20(underlyerAddress).decimals();
         // TODO: grab LP Token decimals explicitly?
         uint256 normalizedUnderlyerAmount =
             lpTokenAmount.mul(virtualPrice).div(1e18);
