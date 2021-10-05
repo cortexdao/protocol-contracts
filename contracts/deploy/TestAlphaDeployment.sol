@@ -47,4 +47,8 @@ contract TestAlphaDeployment is AlphaDeployment {
     function testSetTvlManager(address tvlManager_) public {
         tvlManager = tvlManager_;
     }
+
+    function testSetLpAccount(address lpAccount_) public {
+        lpAccount = lpAccount_;
+    }
 }
