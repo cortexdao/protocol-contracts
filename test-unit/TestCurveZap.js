@@ -68,6 +68,7 @@ describe("Contract: TestCurveZap", () => {
           const underlyer = await deployMockContract(deployer, erc20Abi);
           await underlyer.mock.allowance.returns(0);
           await underlyer.mock.approve.returns(true);
+          await underlyer.mock.decimals.returns(6);
           return underlyer.address;
         })
     );
