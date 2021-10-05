@@ -153,7 +153,7 @@ contract LpAccount is
     function setLockPeriod(uint256 lockPeriod_)
         external
         nonReentrant
-        onlyAdmin
+        onlyAdminRole
     {
         lockPeriod = lockPeriod_;
         emit LockPeriodChanged(lockPeriod_);
