@@ -41,18 +41,26 @@ abstract contract CurveZapBase is Curve3PoolUnderlyerConstants, IZap {
     function deployLiquidity(uint256[] calldata amounts) external override {
         require(amounts.length == N_COINS, "INVALID_AMOUNTS");
 
-        uint256 totalAmount = 0;
+        uint256 totalNormalizedDeposit = 0;
         for (uint256 i = 0; i < amounts.length; i++) {
-            totalAmount += amounts[i];
-
-            // if amounts is 0 skip approval
             if (amounts[i] == 0) continue;
+
+            uint256 deposit = amounts[i];
             address underlyerAddress = _getCoinAtIndex(i);
+            uint8 decimals = IDetailedERC20(underlyerAddress).decimals();
+
+            uint256 normalizedDeposit =
+                deposit.mul(10**uint256(18)).div(10**uint256(decimals));
+            totalNormalizedDeposit = totalNormalizedDeposit.add(
+                normalizedDeposit
+            );
+
             IERC20(underlyerAddress).safeApprove(SWAP_ADDRESS, 0);
             IERC20(underlyerAddress).safeApprove(SWAP_ADDRESS, amounts[i]);
         }
 
-        uint256 minAmount = _calcMinAmount(totalAmount, _getVirtualPrice());
+        uint256 minAmount =
+            _calcMinAmount(totalNormalizedDeposit, _getVirtualPrice());
         _addLiquidity(amounts, minAmount);
         _depositToGauge();
     }
@@ -64,8 +72,10 @@ abstract contract CurveZapBase is Curve3PoolUnderlyerConstants, IZap {
     function unwindLiquidity(uint256 amount, uint8 index) external override {
         require(index < N_COINS, "INVALID_INDEX");
         uint256 lpBalance = _withdrawFromGauge(amount);
+        address underlyerAddress = _getCoinAtIndex(index);
+        uint8 decimals = IDetailedERC20(underlyerAddress).decimals();
         uint256 minAmount =
-            _calcMinAmountUnderlyer(lpBalance, _getVirtualPrice());
+            _calcMinAmountUnderlyer(lpBalance, _getVirtualPrice(), decimals);
         _removeLiquidity(lpBalance, index, minAmount);
     }
 
@@ -107,22 +117,43 @@ abstract contract CurveZapBase is Curve3PoolUnderlyerConstants, IZap {
 
     function _claim() internal virtual;
 
-    function _calcMinAmount(uint256 totalAmount, uint256 virtualPrice)
-        internal
-        view
-        returns (uint256)
-    {
-        uint256 v = totalAmount.mul(1e18).div(virtualPrice);
-        return v.mul(DENOMINATOR.sub(SLIPPAGE)).div(DENOMINATOR);
+    /**
+     * @dev normalizedDepositAmount the amount in same units as virtual price (18 decimals)
+     * @dev virtualPrice the "price", in 18 decimals, per big token unit of the LP token
+     * @return required minimum amount of LP token (in token wei)
+     */
+    function _calcMinAmount(
+        uint256 normalizedDepositAmount,
+        uint256 virtualPrice
+    ) internal view returns (uint256) {
+        uint256 idealLpTokenAmount =
+            normalizedDepositAmount.mul(1e18).div(virtualPrice);
+        // allow some slippage/MEV
+        return
+            idealLpTokenAmount.mul(DENOMINATOR.sub(SLIPPAGE)).div(DENOMINATOR);
     }
 
-    function _calcMinAmountUnderlyer(uint256 totalAmount, uint256 virtualPrice)
-        internal
-        view
-        returns (uint256)
-    {
-        uint256 v = totalAmount.mul(virtualPrice).div(1e18);
-        return v.mul(DENOMINATOR.sub(SLIPPAGE)).div(DENOMINATOR);
+    /**
+     * @param lpTokenAmount the amount in the same units as Curve LP token (18 decimals)
+     * @param virtualPrice the "price", in 18 decimals, per big token unit of the LP token
+     * @param decimals the number of decimals for underlyer token
+     * @return required minimum amount of underlyer (in token wei)
+     */
+    function _calcMinAmountUnderlyer(
+        uint256 lpTokenAmount,
+        uint256 virtualPrice,
+        uint8 decimals
+    ) internal view returns (uint256) {
+        // TODO: grab LP Token decimals explicitly?
+        uint256 normalizedUnderlyerAmount =
+            lpTokenAmount.mul(virtualPrice).div(1e18);
+        uint256 underlyerAmount =
+            normalizedUnderlyerAmount.mul(10**uint256(decimals)).div(
+                10**uint256(18)
+            );
+
+        // allow some slippage/MEV
+        return underlyerAmount.mul(DENOMINATOR.sub(SLIPPAGE)).div(DENOMINATOR);
     }
 
     function _createErc20AllocationArray(uint256 extraAllocations)
