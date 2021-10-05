@@ -18,7 +18,7 @@ const CRV_ADDRESS = "0xD533a949740bb3306d119CC777fa900bA034cd52";
 console.debugging = false;
 /* ************************ */
 
-describe("Curve Zaps", () => {
+describe.only("Curve Zaps", () => {
   /* signers */
   let deployer;
   let emergencySafe;
@@ -258,137 +258,159 @@ describe("Curve Zaps", () => {
       let lpToken;
       let gauge;
       let underlyerToken;
-      const underlyerIndex = 0;
+      // const underlyerIndex = 0;
+      //
+      let subSuiteSnapshotId;
 
-      before("Deploy Zap", async () => {
-        const zapFactory = await ethers.getContractFactory(
-          contractName,
-          adminSafe
-        );
-        zap = await zapFactory.deploy();
+      const underlyerIndices = Array.from(Array(numberOfCoins).keys());
+
+      before(async () => {
+        let snapshot = await timeMachine.takeSnapshot();
+        subSuiteSnapshotId = snapshot["result"];
       });
 
-      before("Attach to Mainnet Curve contracts", async () => {
-        swap = await ethers.getContractAt(
-          swapInterface,
-          swapAddress,
-          adminSafe
-        );
-        lpToken = await ethers.getContractAt(
-          "IDetailedERC20",
-          lpTokenAddress,
-          adminSafe
-        );
-        gauge = await ethers.getContractAt(
-          gaugeInterface,
-          gaugeAddress,
-          adminSafe
-        );
+      after(async () => {
+        await timeMachine.revertToSnapshot(subSuiteSnapshotId);
       });
 
-      before("Fund Zap with Pool Underlyer", async () => {
-        let underlyerAddress;
-        if (useUnwrapped) {
-          underlyerAddress = await swap.underlying_coins(underlyerIndex);
-        } else {
-          underlyerAddress = await swap.coins(underlyerIndex);
-        }
+      underlyerIndices.forEach((underlyerIndex) => {
+        describe(`Underlyer index: ${underlyerIndex}`, () => {
+          before("Deploy Zap", async () => {
+            const zapFactory = await ethers.getContractFactory(
+              contractName,
+              adminSafe
+            );
+            zap = await zapFactory.deploy();
+          });
 
-        underlyerToken = await ethers.getContractAt(
-          "IDetailedERC20",
-          underlyerAddress
-        );
-        const amount = tokenAmountToBigNumber(
-          100000,
-          await underlyerToken.decimals()
-        );
+          before("Attach to Mainnet Curve contracts", async () => {
+            swap = await ethers.getContractAt(
+              swapInterface,
+              swapAddress,
+              adminSafe
+            );
+            lpToken = await ethers.getContractAt(
+              "IDetailedERC20",
+              lpTokenAddress,
+              adminSafe
+            );
+            gauge = await ethers.getContractAt(
+              gaugeInterface,
+              gaugeAddress,
+              adminSafe
+            );
+          });
 
-        await acquireToken(
-          whaleAddress,
-          zap.address,
-          underlyerToken,
-          amount,
-          deployer
-        );
-      });
+          before("Fund Zap with Pool Underlyer", async () => {
+            let underlyerAddress;
+            if (useUnwrapped) {
+              underlyerAddress = await swap.underlying_coins(underlyerIndex);
+            } else {
+              underlyerAddress = await swap.coins(underlyerIndex);
+            }
 
-      it("Deposit into pool and stake", async () => {
-        const amounts = new Array(numberOfCoins).fill("0");
-        const underlyerAmount = tokenAmountToBigNumber(
-          1000,
-          await underlyerToken.decimals()
-        );
-        amounts[underlyerIndex] = underlyerAmount;
+            underlyerToken = await ethers.getContractAt(
+              "IDetailedERC20",
+              underlyerAddress
+            );
+            const amount = tokenAmountToBigNumber(
+              100000,
+              await underlyerToken.decimals()
+            );
 
-        await zap.deployLiquidity(amounts);
+            await acquireToken(
+              whaleAddress,
+              zap.address,
+              underlyerToken,
+              amount,
+              deployer
+            );
+          });
 
-        const deployedZapUnderlyerBalance = await underlyerToken.balanceOf(
-          zap.address
-        );
-        expect(deployedZapUnderlyerBalance).gt(0);
-        const deployedZapLpBalance = await lpToken.balanceOf(zap.address);
-        expect(deployedZapLpBalance).to.equal(0);
-        const deployedGaugeLpBalance = await gauge.balanceOf(zap.address);
-        expect(deployedGaugeLpBalance).gt(0);
+          it("Deposit into pool and stake", async () => {
+            const amounts = new Array(numberOfCoins).fill("0");
+            const underlyerAmount = tokenAmountToBigNumber(
+              1000,
+              await underlyerToken.decimals()
+            );
+            amounts[underlyerIndex] = underlyerAmount;
 
-        await zap.unwindLiquidity(deployedGaugeLpBalance, underlyerIndex);
+            await zap.deployLiquidity(amounts);
 
-        const withdrawnZapUnderlyerBalance = await underlyerToken.balanceOf(
-          zap.address
-        );
-        expect(withdrawnZapUnderlyerBalance).gt(deployedZapUnderlyerBalance);
-        const withdrawnZapLpBalance = await lpToken.balanceOf(zap.address);
-        expect(withdrawnZapLpBalance).to.equal(0);
-        const withdrawnGaugeLpBalance = await gauge.balanceOf(zap.address);
-        expect(withdrawnGaugeLpBalance).to.equal(0);
-      });
+            const deployedZapUnderlyerBalance = await underlyerToken.balanceOf(
+              zap.address
+            );
+            expect(deployedZapUnderlyerBalance).gt(0);
+            const deployedZapLpBalance = await lpToken.balanceOf(zap.address);
+            expect(deployedZapLpBalance).to.equal(0);
+            const deployedGaugeLpBalance = await gauge.balanceOf(zap.address);
+            expect(deployedGaugeLpBalance).gt(0);
 
-      it("Claim", async () => {
-        const erc20s = await zap.erc20Allocations();
+            await zap.unwindLiquidity(deployedGaugeLpBalance, underlyerIndex);
 
-        expect(erc20s).to.include(ethers.utils.getAddress(CRV_ADDRESS));
-        const crv = await ethers.getContractAt("IDetailedERC20", CRV_ADDRESS);
-        expect(await crv.balanceOf(zap.address)).to.equal(0);
+            const withdrawnZapUnderlyerBalance = await underlyerToken.balanceOf(
+              zap.address
+            );
+            expect(withdrawnZapUnderlyerBalance).gt(
+              deployedZapUnderlyerBalance
+            );
+            const withdrawnZapLpBalance = await lpToken.balanceOf(zap.address);
+            expect(withdrawnZapLpBalance).to.equal(0);
+            const withdrawnGaugeLpBalance = await gauge.balanceOf(zap.address);
+            expect(withdrawnGaugeLpBalance).to.equal(0);
+          });
 
-        if (typeof rewardToken !== "undefined") {
-          expect(erc20s).to.include(ethers.utils.getAddress(rewardToken));
-          const token = await ethers.getContractAt(
-            "IDetailedERC20",
-            rewardToken
-          );
-          expect(await token.balanceOf(zap.address)).to.equal(0);
-        }
+          it("Claim", async () => {
+            const erc20s = await zap.erc20Allocations();
 
-        const amounts = new Array(numberOfCoins).fill("0");
-        const underlyerAmount = tokenAmountToBigNumber(
-          100000,
-          await underlyerToken.decimals()
-        );
-        amounts[underlyerIndex] = underlyerAmount;
+            expect(erc20s).to.include(ethers.utils.getAddress(CRV_ADDRESS));
+            const crv = await ethers.getContractAt(
+              "IDetailedERC20",
+              CRV_ADDRESS
+            );
+            expect(await crv.balanceOf(zap.address)).to.equal(0);
 
-        await zap.deployLiquidity(amounts);
+            if (typeof rewardToken !== "undefined") {
+              expect(erc20s).to.include(ethers.utils.getAddress(rewardToken));
+              const token = await ethers.getContractAt(
+                "IDetailedERC20",
+                rewardToken
+              );
+              expect(await token.balanceOf(zap.address)).to.equal(0);
+            }
 
-        // allows rewards to accumulate:
-        // CRV rewards accumulate within a block, but other rewards, like
-        // staked Aave, require longer
-        if (erc20s.length > 1) {
-          const oneDayInSeconds = 60 * 60 * 24;
-          await hre.network.provider.send("evm_increaseTime", [
-            oneDayInSeconds,
-          ]);
-          await hre.network.provider.send("evm_mine");
-        }
+            const amounts = new Array(numberOfCoins).fill("0");
+            const underlyerAmount = tokenAmountToBigNumber(
+              100000,
+              await underlyerToken.decimals()
+            );
+            amounts[underlyerIndex] = underlyerAmount;
 
-        await zap.claim();
+            await zap.deployLiquidity(amounts);
 
-        expect(await crv.balanceOf(zap.address)).to.be.gt(0);
-        if (typeof rewardToken !== "undefined") {
-          const token = await ethers.getContractAt(
-            "IDetailedERC20",
-            rewardToken
-          );
-          expect(await token.balanceOf(zap.address)).to.be.gt(0);
-        }
+            // allows rewards to accumulate:
+            // CRV rewards accumulate within a block, but other rewards, like
+            // staked Aave, require longer
+            if (erc20s.length > 1) {
+              const oneDayInSeconds = 60 * 60 * 24;
+              await hre.network.provider.send("evm_increaseTime", [
+                oneDayInSeconds,
+              ]);
+              await hre.network.provider.send("evm_mine");
+            }
+
+            await zap.claim();
+
+            expect(await crv.balanceOf(zap.address)).to.be.gt(0);
+            if (typeof rewardToken !== "undefined") {
+              const token = await ethers.getContractAt(
+                "IDetailedERC20",
+                rewardToken
+              );
+              expect(await token.balanceOf(zap.address)).to.be.gt(0);
+            }
+          });
+        });
       });
     });
   });
