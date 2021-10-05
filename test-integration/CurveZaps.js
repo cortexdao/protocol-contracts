@@ -18,7 +18,7 @@ const CRV_ADDRESS = "0xD533a949740bb3306d119CC777fa900bA034cd52";
 console.debugging = false;
 /* ************************ */
 
-describe.only("Curve Zaps", () => {
+describe("Curve Zaps", () => {
   /* signers */
   let deployer;
   let emergencySafe;
@@ -34,6 +34,7 @@ describe.only("Curve Zaps", () => {
   // use EVM snapshots for test isolation
   let snapshotId;
 
+  // "regular" pools; meta pools should be added further below
   const CurvePoolZaps = [
     {
       contractName: "Curve3PoolZap",
@@ -241,7 +242,7 @@ describe.only("Curve Zaps", () => {
       .registerAssetAllocation(erc20Allocation.address);
   });
 
-  CurvePoolZaps.forEach((curveConstant) => {
+  CurvePoolZaps.forEach((curveConstants) => {
     const {
       contractName,
       swapAddress,
@@ -253,19 +254,18 @@ describe.only("Curve Zaps", () => {
       whaleAddress,
       rewardToken,
       useUnwrapped,
-    } = curveConstant;
+    } = curveConstants;
 
     describe(contractName, () => {
       let zap;
-      let swap;
+      let stableSwap;
       let lpToken;
       let gauge;
-      let underlyerToken;
-      // const underlyerIndex = 0;
-      //
-      let subSuiteSnapshotId;
 
+      let underlyerToken;
       const underlyerIndices = Array.from(Array(numberOfCoins).keys());
+
+      let subSuiteSnapshotId;
 
       before(async () => {
         let snapshot = await timeMachine.takeSnapshot();
@@ -287,7 +287,7 @@ describe.only("Curve Zaps", () => {
           });
 
           before("Attach to Mainnet Curve contracts", async () => {
-            swap = await ethers.getContractAt(
+            stableSwap = await ethers.getContractAt(
               swapInterface,
               swapAddress,
               adminSafe
@@ -307,9 +307,11 @@ describe.only("Curve Zaps", () => {
           before("Fund Zap with Pool Underlyer", async () => {
             let underlyerAddress;
             if (useUnwrapped) {
-              underlyerAddress = await swap.underlying_coins(underlyerIndex);
+              underlyerAddress = await stableSwap.underlying_coins(
+                underlyerIndex
+              );
             } else {
-              underlyerAddress = await swap.coins(underlyerIndex);
+              underlyerAddress = await stableSwap.coins(underlyerIndex);
             }
 
             underlyerToken = await ethers.getContractAt(
@@ -418,7 +420,7 @@ describe.only("Curve Zaps", () => {
     });
   });
 
-  CurveMetaPoolZaps.forEach((curveConstant) => {
+  CurveMetaPoolZaps.forEach((curveConstants) => {
     const {
       contractName,
       swapAddress,
@@ -427,22 +429,21 @@ describe.only("Curve Zaps", () => {
       gaugeAddress,
       gaugeInterface,
       numberOfCoins,
-      whaleAddress,
       rewardToken,
-      useUnwrapped,
-    } = curveConstant;
+    } = curveConstants;
+    let { whaleAddress } = curveConstants;
 
     describe(contractName, () => {
       let zap;
-      let swap;
+      let metaPool;
       let lpToken;
       let gauge;
-      let underlyerToken;
-      // const underlyerIndex = 0;
-      //
-      let subSuiteSnapshotId;
+      let basePool;
 
+      let underlyerToken;
       const underlyerIndices = Array.from(Array(numberOfCoins).keys());
+
+      let subSuiteSnapshotId;
 
       before(async () => {
         let snapshot = await timeMachine.takeSnapshot();
@@ -464,7 +465,7 @@ describe.only("Curve Zaps", () => {
           });
 
           before("Attach to Mainnet Curve contracts", async () => {
-            swap = await ethers.getContractAt(
+            metaPool = await ethers.getContractAt(
               swapInterface,
               swapAddress,
               adminSafe
@@ -479,14 +480,21 @@ describe.only("Curve Zaps", () => {
               gaugeAddress,
               adminSafe
             );
+
+            // 3Pool
+            basePool = await ethers.getContractAt(
+              "IStableSwap",
+              "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7"
+            );
           });
 
           before("Fund Zap with Pool Underlyer", async () => {
             let underlyerAddress;
-            if (useUnwrapped) {
-              underlyerAddress = await swap.underlying_coins(underlyerIndex);
+            if (underlyerIndex == 0) {
+              underlyerAddress = await metaPool.coins(underlyerIndex);
             } else {
-              underlyerAddress = await swap.coins(underlyerIndex);
+              underlyerAddress = await basePool.coins(underlyerIndex - 1);
+              whaleAddress = basePool.address;
             }
 
             underlyerToken = await ethers.getContractAt(
