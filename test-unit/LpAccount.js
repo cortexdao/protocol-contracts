@@ -237,6 +237,27 @@ describe("Contract: LpAccount", () => {
     });
   });
 
+  describe("setLockPeriod", () => {
+    it("Admin Safe can call", async () => {
+      const lockPeriod = 100;
+      await expect(lpAccount.connect(adminSafe).setLockPeriod(lockPeriod)).to
+        .not.be.reverted;
+    });
+
+    it("Unpermissioned cannot call", async () => {
+      const lockPeriod = 100;
+      await expect(
+        lpAccount.connect(randomUser).setLockPeriod(lockPeriod)
+      ).to.be.revertedWith("NOT_ADMIN_ROLE");
+    });
+
+    it("Lock period can be set", async () => {
+      const lockPeriod = 100;
+      await lpAccount.connect(adminSafe).setLockPeriod(lockPeriod);
+      expect(await lpAccount.lockPeriod()).to.equal(lockPeriod);
+    });
+  });
+
   describe("Zaps", () => {
     describe("registerZap", () => {
       it("Admin Safe can call", async () => {
