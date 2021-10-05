@@ -41,24 +41,24 @@ abstract contract CurveZapBase is Curve3PoolUnderlyerConstants, IZap {
     function deployLiquidity(uint256[] calldata amounts) external override {
         require(amounts.length == N_COINS, "INVALID_AMOUNTS");
 
-        uint256 totalNormalizedAmount = 0;
+        uint256 totalNormalizedDeposit = 0;
         for (uint256 i = 0; i < amounts.length; i++) {
             if (amounts[i] == 0) continue;
 
-            uint256 amount = amounts[i];
+            uint256 deposit = amounts[i];
             address underlyerAddress = _getCoinAtIndex(i);
             uint8 decimals = IDetailedERC20(underlyerAddress).decimals();
 
-            uint256 normalizedAmount =
-                amount.mul(10**uint256(18)).div(10**uint256(decimals));
-            totalNormalizedAmount += normalizedAmount;
+            uint256 normalizedDeposit =
+                deposit.mul(10**uint256(18)).div(10**uint256(decimals));
+            totalNormalizedDeposit += normalizedDeposit;
 
             IERC20(underlyerAddress).safeApprove(SWAP_ADDRESS, 0);
             IERC20(underlyerAddress).safeApprove(SWAP_ADDRESS, amounts[i]);
         }
 
         uint256 minAmount =
-            _calcMinAmount(totalNormalizedAmount, _getVirtualPrice());
+            _calcMinAmount(totalNormalizedDeposit, _getVirtualPrice());
         _addLiquidity(amounts, minAmount);
         _depositToGauge();
     }
@@ -116,21 +116,26 @@ abstract contract CurveZapBase is Curve3PoolUnderlyerConstants, IZap {
     function _claim() internal virtual;
 
     /**
-     * @dev normalizedAmount the amount in the same units as virtual price (18 decimals)
+     * @dev normalizedDepositAmount the amount in same units as virtual price (18 decimals)
      * @dev virtualPrice the "price", in 18 decimals, per big token unit of the LP token
+     * @return required minimum amount of LP token (in token wei)
      */
-    function _calcMinAmount(uint256 normalizedAmount, uint256 virtualPrice)
-        internal
-        view
-        returns (uint256)
-    {
-        uint256 v = normalizedAmount.mul(1e18).div(virtualPrice);
-        return v.mul(DENOMINATOR.sub(SLIPPAGE)).div(DENOMINATOR);
+    function _calcMinAmount(
+        uint256 normalizedDepositAmount,
+        uint256 virtualPrice
+    ) internal view returns (uint256) {
+        uint256 idealLpTokenAmount =
+            normalizedDepositAmount.mul(1e18).div(virtualPrice);
+        // allow some slippage/MEV
+        return
+            idealLpTokenAmount.mul(DENOMINATOR.sub(SLIPPAGE)).div(DENOMINATOR);
     }
 
     /**
-     * @dev lpTokenAmount the amount in the same units as Curve LP token (18 decimals)
-     * @dev virtualPrice the "price", in 18 decimals, per big token unit of the LP token
+     * @param lpTokenAmount the amount in the same units as Curve LP token (18 decimals)
+     * @param virtualPrice the "price", in 18 decimals, per big token unit of the LP token
+     * @param decimals the number of decimals for underlyer token
+     * @return required minimum amount of underlyer (in token wei)
      */
     function _calcMinAmountUnderlyer(
         uint256 lpTokenAmount,
@@ -145,6 +150,7 @@ abstract contract CurveZapBase is Curve3PoolUnderlyerConstants, IZap {
                 10**uint256(18)
             );
 
+        // allow some slippage/MEV
         return underlyerAmount.mul(DENOMINATOR.sub(SLIPPAGE)).div(DENOMINATOR);
     }
 
