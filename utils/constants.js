@@ -2,7 +2,7 @@ const WHALE_POOLS = {
   // sUSD curve pool has plenty of these stablecoins
   // https://etherscan.io/address/0xa5407eae9ba41422680e2e00537571bcc53efbfd
   DAI: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD",
-  ADAI: "0x6231bd0147ca6d052b833183037b04cfb2090e5c",
+  ADAI: "0xeb16ae0052ed37f479f7fe63849198df1765a733",
   USDC: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD",
   USDT: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD",
   ALUSD: "0x43b4fdfd4ff969587185cdb6f0bd875c5fc83f8c",
