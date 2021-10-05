@@ -41,18 +41,24 @@ abstract contract CurveZapBase is Curve3PoolUnderlyerConstants, IZap {
     function deployLiquidity(uint256[] calldata amounts) external override {
         require(amounts.length == N_COINS, "INVALID_AMOUNTS");
 
-        uint256 totalAmount = 0;
+        uint256 totalNormalizedAmount = 0;
         for (uint256 i = 0; i < amounts.length; i++) {
-            totalAmount += amounts[i];
-
-            // if amounts is 0 skip approval
             if (amounts[i] == 0) continue;
+
+            uint256 amount = amounts[i];
             address underlyerAddress = _getCoinAtIndex(i);
+            uint8 decimals = IDetailedERC20(underlyerAddress).decimals();
+
+            uint256 normalizedAmount =
+                amount.mul(10**uint256(18)).div(10**uint256(decimals));
+            totalNormalizedAmount += normalizedAmount;
+
             IERC20(underlyerAddress).safeApprove(SWAP_ADDRESS, 0);
             IERC20(underlyerAddress).safeApprove(SWAP_ADDRESS, amounts[i]);
         }
 
-        uint256 minAmount = _calcMinAmount(totalAmount, _getVirtualPrice());
+        uint256 minAmount =
+            _calcMinAmount(totalNormalizedAmount, _getVirtualPrice());
         _addLiquidity(amounts, minAmount);
         _depositToGauge();
     }
@@ -65,7 +71,7 @@ abstract contract CurveZapBase is Curve3PoolUnderlyerConstants, IZap {
         require(index < N_COINS, "INVALID_INDEX");
         uint256 lpBalance = _withdrawFromGauge(amount);
         uint256 minAmount =
-            _calcMinAmountUnderlyer(lpBalance, _getVirtualPrice());
+            _calcMinAmountUnderlyer(lpBalance, _getVirtualPrice(), index);
         _removeLiquidity(lpBalance, index, minAmount);
     }
 
@@ -107,22 +113,39 @@ abstract contract CurveZapBase is Curve3PoolUnderlyerConstants, IZap {
 
     function _claim() internal virtual;
 
-    function _calcMinAmount(uint256 totalAmount, uint256 virtualPrice)
+    /**
+     * @dev normalizedAmount the amount in the same units as virtual price (18 decimals)
+     * @dev virtualPrice the "price", in 18 decimals, per big token unit of the LP token
+     */
+    function _calcMinAmount(uint256 normalizedAmount, uint256 virtualPrice)
         internal
         view
         returns (uint256)
     {
-        uint256 v = totalAmount.mul(1e18).div(virtualPrice);
+        uint256 v = normalizedAmount.mul(1e18).div(virtualPrice);
         return v.mul(DENOMINATOR.sub(SLIPPAGE)).div(DENOMINATOR);
     }
 
-    function _calcMinAmountUnderlyer(uint256 totalAmount, uint256 virtualPrice)
-        internal
-        view
-        returns (uint256)
-    {
-        uint256 v = totalAmount.mul(virtualPrice).div(1e18);
-        return v.mul(DENOMINATOR.sub(SLIPPAGE)).div(DENOMINATOR);
+    /**
+     * @dev lpTokenAmount the amount in the same units as Curve LP token (18 decimals)
+     * @dev virtualPrice the "price", in 18 decimals, per big token unit of the LP token
+     */
+    function _calcMinAmountUnderlyer(
+        uint256 lpTokenAmount,
+        uint256 virtualPrice,
+        uint8 index
+    ) internal view returns (uint256) {
+        address underlyerAddress = _getCoinAtIndex(index);
+        uint8 decimals = IDetailedERC20(underlyerAddress).decimals();
+        // TODO: grab LP Token decimals explicitly?
+        uint256 normalizedUnderlyerAmount =
+            lpTokenAmount.mul(virtualPrice).div(1e18);
+        uint256 underlyerAmount =
+            normalizedUnderlyerAmount.mul(10**uint256(decimals)).div(
+                10**uint256(18)
+            );
+
+        return underlyerAmount.mul(DENOMINATOR.sub(SLIPPAGE)).div(DENOMINATOR);
     }
 
     function _createErc20AllocationArray(uint256 extraAllocations)
