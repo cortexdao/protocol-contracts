@@ -1,3 +1,4 @@
+const _ = require("lodash");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const timeMachine = require("ganache-time-traveler");
@@ -213,80 +214,125 @@ describe("Funding scenarios", () => {
     });
 
     describe("Run zaps", () => {
-      let testSnapshotId;
       const poolTests = [
         {
           name: "curve-3pool",
           amounts: [tokenAmountToBigNumber("1000", 18), 0, 0],
+          gaugeAddress: "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A",
         },
         {
           name: "curve-aave",
           amounts: [tokenAmountToBigNumber("1000", 18), 0, 0],
+          gaugeAddress: "0xd662908ADA2Ea1916B3318327A97eB18aD588b5d",
         },
         {
           name: "curve-alusd",
           amounts: [0, tokenAmountToBigNumber("1000", 18), 0, 0],
+          gaugeAddress: "0x9582C4ADACB3BCE56Fea3e590F05c3ca2fb9C477",
         },
         {
           name: "curve-busdv2",
           amounts: [0, tokenAmountToBigNumber("1000", 18), 0, 0],
+          gaugeAddress: "0xd4B22fEdcA85E684919955061fDf353b9d38389b",
         },
         {
           name: "curve-compound",
           amounts: [tokenAmountToBigNumber("1000", 18), 0],
+          gaugeAddress: "0x7ca5b0a2910B33e9759DC7dDB0413949071D7575",
         },
         {
           name: "curve-frax",
           amounts: [0, tokenAmountToBigNumber("1000", 18), 0, 0],
+          gaugeAddress: "0x72E158d38dbd50A483501c24f792bDAAA3e7D55C",
         },
         {
           name: "curve-ironbank",
           amounts: [tokenAmountToBigNumber("1000", 18), 0, 0],
+          gaugeAddress: "0xF5194c3325202F456c95c1Cf0cA36f8475C1949F",
         },
         {
           name: "curve-lusd",
           amounts: [0, tokenAmountToBigNumber("1000", 18), 0, 0],
+          gaugeAddress: "0x9B8519A9a00100720CCdC8a120fBeD319cA47a14",
         },
         {
           name: "curve-musd",
           amounts: [0, tokenAmountToBigNumber("1000", 18), 0, 0],
+          gaugeAddress: "0x5f626c30EC1215f4EdCc9982265E8b1F411D1352",
         },
         //{
         //  name: "curve-saave",
         //  amounts: [tokenAmountToBigNumber("1000", 18), 0],
+        //  gaugeAddress: "0x462253b8F74B72304c145DB0e4Eebd326B22ca39",
         //},
         {
           name: "curve-susdv2",
           amounts: [tokenAmountToBigNumber("1000", 18), 0, 0, 0],
+          gaugeAddress: "0xA90996896660DEcC6E997655E065b23788857849",
         },
         {
           name: "curve-usdn",
           amounts: [0, tokenAmountToBigNumber("1000", 18), 0, 0],
+          gaugeAddress: "0xF98450B5602fa59CC66e1379DFfB6FDDc724CfC4",
         },
         {
           name: "curve-usdp",
           amounts: [0, tokenAmountToBigNumber("1000", 18), 0, 0],
+          gaugeAddress: "0x055be5DDB7A925BfEF3417FC157f53CA77cA7222",
         },
         {
           name: "curve-ust",
           amounts: [0, tokenAmountToBigNumber("1000", 18), 0, 0],
+          gaugeAddress: "0x3B7020743Bc2A4ca9EaF9D0722d42E20d6935855",
         },
       ];
 
-      beforeEach(async () => {
-        const snapshot = await timeMachine.takeSnapshot();
-        testSnapshotId = snapshot["result"];
-      });
+      poolTests.forEach(({ name, amounts, gaugeAddress }) => {
+        describe(name, () => {
+          let subsuiteSnapshotId;
 
-      afterEach(async () => {
-        await timeMachine.revertToSnapshot(testSnapshotId);
-      });
+          before(async () => {
+            const snapshot = await timeMachine.takeSnapshot();
+            subsuiteSnapshotId = snapshot["result"];
+          });
 
-      poolTests.forEach(({ name, amounts }) => {
-        it(`Should deploy to ${name}`, async () => {
-          //const amounts = [tokenAmountToBigNumber("1000", 18), 0, 0];
+          after(async () => {
+            await timeMachine.revertToSnapshot(subsuiteSnapshotId);
+          });
 
-          await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
+          it("Should deploy to the pool", async () => {
+            //const amounts = [tokenAmountToBigNumber("1000", 18), 0, 0];
+
+            await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
+          });
+
+          describe("Should unwind each token from the pool", () => {
+            let testSnapshotId;
+
+            beforeEach(async () => {
+              const snapshot = await timeMachine.takeSnapshot();
+              testSnapshotId = snapshot["result"];
+            });
+
+            afterEach(async () => {
+              await timeMachine.revertToSnapshot(testSnapshotId);
+            });
+
+            _.range(amounts.length).forEach((index) => {
+              it(`token ${index}`, async () => {
+                const gauge = await ethers.getContractAt(
+                  "ILiquidityGauge",
+                  gaugeAddress
+                );
+
+                const amount = await gauge.balanceOf(lpAccount.address);
+
+                await lpAccount
+                  .connect(lpSafe)
+                  .unwindStrategy(name, amount, index);
+              });
+            });
+          });
         });
       });
     });
