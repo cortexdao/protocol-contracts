@@ -1,4 +1,5 @@
 const { expect } = require("chai");
+const { ethers } = require("hardhat");
 const timeMachine = require("ganache-time-traveler");
 const { deploy } = require("../scripts/deploy/deployer.js");
 const { WHALE_POOLS } = require("../utils/constants");
@@ -7,6 +8,7 @@ const {
   bytes32,
   acquireToken,
   getStablecoinAddress,
+  updateTvlAfterTransfer,
 } = require("../utils/helpers");
 
 /****************************/
@@ -73,8 +75,8 @@ describe("Funding scenarios", () => {
       usdcPool,
       usdtPool,
       tvlManager,
-      oracleAdapter,
       lpAccount,
+      oracleAdapter,
     } = await deploy());
 
     await oracleAdapter.connect(emergencySafe).emergencyUnlock();
@@ -115,7 +117,10 @@ describe("Funding scenarios", () => {
 
   describe("Normal funding", () => {
     it("Should add liquidity to a pool", async () => {
-      const amount = tokenAmountToBigNumber("1000", await daiToken.decimals());
+      const amount = tokenAmountToBigNumber(
+        "100000",
+        await daiToken.decimals()
+      );
       const prevUserBalance = await daiToken.balanceOf(deployer.address);
       const prevPoolBalance = await daiToken.balanceOf(daiPool.address);
 
@@ -176,17 +181,114 @@ describe("Funding scenarios", () => {
       await metaPoolToken.connect(lpSafe).fundLpAccount(pools);
 
       const newPoolBalance = await daiToken.balanceOf(daiPool.address);
+      await updateTvlAfterTransfer(
+        daiPool,
+        newPoolBalance,
+        oracleAdapter,
+        emergencySafe
+      );
+
       const newLpBalance = await daiToken.balanceOf(lpAccount.address);
 
       const expectedReserveSize = newLpBalance
         .mul(reservePercentage)
         .div(ethers.BigNumber.from(100));
-      expect(newPoolBalance).to.equal(expectedReserveSize);
 
-      expect(prevPoolBalance.sub(newPoolBalance)).to.equal(fundAmount);
+      expect(newPoolBalance).to.be.gt(
+        expectedReserveSize.sub(tokenAmountToBigNumber("0.001"))
+      );
+      expect(newPoolBalance).to.be.lt(
+        expectedReserveSize.add(tokenAmountToBigNumber("0.001"))
+      );
+
+      expect(prevPoolBalance.sub(newPoolBalance)).to.be.gt(
+        fundAmount.sub(tokenAmountToBigNumber("0.001"))
+      );
+      expect(prevPoolBalance.sub(newPoolBalance)).to.be.lt(
+        fundAmount.add(tokenAmountToBigNumber("0.001"))
+      );
 
       const newPoolMapt = await metaPoolToken.balanceOf(daiPool.address);
       expect(newPoolMapt).to.be.gt(0);
+    });
+
+    describe("Run zaps", () => {
+      let testSnapshotId;
+      const poolTests = [
+        {
+          name: "curve-3pool",
+          amounts: [tokenAmountToBigNumber("1000", 18), 0, 0],
+        },
+        {
+          name: "curve-aave",
+          amounts: [tokenAmountToBigNumber("1000", 18), 0, 0],
+        },
+        {
+          name: "curve-alusd",
+          amounts: [0, tokenAmountToBigNumber("1000", 18), 0, 0],
+        },
+        {
+          name: "curve-busdv2",
+          amounts: [0, tokenAmountToBigNumber("1000", 18), 0, 0],
+        },
+        {
+          name: "curve-compound",
+          amounts: [tokenAmountToBigNumber("1000", 18), 0],
+        },
+        {
+          name: "curve-frax",
+          amounts: [0, tokenAmountToBigNumber("1000", 18), 0, 0],
+        },
+        {
+          name: "curve-ironbank",
+          amounts: [tokenAmountToBigNumber("1000", 18), 0, 0],
+        },
+        {
+          name: "curve-lusd",
+          amounts: [0, tokenAmountToBigNumber("1000", 18), 0, 0],
+        },
+        {
+          name: "curve-musd",
+          amounts: [0, tokenAmountToBigNumber("1000", 18), 0, 0],
+        },
+        //{
+        //  name: "curve-saave",
+        //  amounts: [tokenAmountToBigNumber("1000", 18), 0],
+        //},
+        {
+          name: "curve-susdv2",
+          amounts: [tokenAmountToBigNumber("1000", 18), 0, 0, 0],
+        },
+        {
+          name: "curve-usdn",
+          amounts: [0, tokenAmountToBigNumber("1000", 18), 0, 0],
+        },
+        {
+          name: "curve-usdp",
+          amounts: [0, tokenAmountToBigNumber("1000", 18), 0, 0],
+        },
+        {
+          name: "curve-ust",
+          amounts: [0, tokenAmountToBigNumber("1000", 18), 0, 0],
+        },
+      ];
+
+      beforeEach(async () => {
+        const snapshot = await timeMachine.takeSnapshot();
+        testSnapshotId = snapshot["result"];
+      });
+
+      afterEach(async () => {
+        await timeMachine.revertToSnapshot(testSnapshotId);
+      });
+
+      poolTests.forEach(({ name, amounts }) => {
+        it(`Should deploy to ${name}`, async () => {
+          //const amounts = [tokenAmountToBigNumber("1000", 18), 0, 0];
+
+          await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
+        });
+      });
     });
   });
 });
