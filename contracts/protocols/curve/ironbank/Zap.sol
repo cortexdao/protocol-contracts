@@ -64,7 +64,7 @@ contract IronBankPoolZap is CurveGaugeZapBase, CurveIronBankConstants {
         uint8 index,
         uint256 minAmount
     ) internal override {
-        require(index < 2, "INVALID_INDEX");
+        require(index < N_COINS, "INVALID_INDEX");
         IStableSwap(SWAP_ADDRESS).remove_liquidity_one_coin(
             lpBalance,
             index,

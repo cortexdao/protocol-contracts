@@ -6,7 +6,8 @@ import {
     IERC20,
     IDetailedERC20,
     AccessControl,
-    INameIdentifier
+    INameIdentifier,
+    ReentrancyGuard
 } from "contracts/common/Imports.sol";
 import {Address, EnumerableSet} from "contracts/libraries/Imports.sol";
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
@@ -22,7 +23,8 @@ contract Erc20Allocation is
     IErc20Allocation,
     AssetAllocationBase,
     Erc20AllocationConstants,
-    AccessControl
+    AccessControl,
+    ReentrancyGuard
 {
     using Address for address;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -42,6 +44,7 @@ contract Erc20Allocation is
     function registerErc20Token(IDetailedERC20 token)
         external
         override
+        nonReentrant
         onlyAdminOrContractRole
     {
         string memory symbol = token.symbol();
@@ -52,6 +55,7 @@ contract Erc20Allocation is
     function registerErc20Token(IDetailedERC20 token, string calldata symbol)
         external
         override
+        nonReentrant
         onlyAdminRole
     {
         uint8 decimals = token.decimals();
@@ -62,11 +66,16 @@ contract Erc20Allocation is
         IERC20 token,
         string calldata symbol,
         uint8 decimals
-    ) external override onlyAdminRole {
+    ) external override nonReentrant onlyAdminRole {
         _registerErc20Token(token, symbol, decimals);
     }
 
-    function removeErc20Token(IERC20 token) external override onlyAdminRole {
+    function removeErc20Token(IERC20 token)
+        external
+        override
+        nonReentrant
+        onlyAdminRole
+    {
         _tokenAddresses.remove(address(token));
         delete _tokenToData[address(token)];
 

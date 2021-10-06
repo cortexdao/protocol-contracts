@@ -1,6 +1,7 @@
 const { expect } = require("chai");
 const hre = require("hardhat");
 const { ethers, waffle, artifacts } = hre;
+const { BigNumber } = ethers;
 const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
 const { tokenAmountToBigNumber } = require("../utils/helpers");
@@ -67,6 +68,7 @@ describe("Contract: TestCurveZap", () => {
           const underlyer = await deployMockContract(deployer, erc20Abi);
           await underlyer.mock.allowance.returns(0);
           await underlyer.mock.approve.returns(true);
+          await underlyer.mock.decimals.returns(6);
           return underlyer.address;
         })
     );
@@ -144,52 +146,67 @@ describe("Contract: TestCurveZap", () => {
     it("returns correct amount when virtual price is greater than 1", async () => {
       const lpTokenAmount = tokenAmountToBigNumber(87654);
       const virtualPrice = tokenAmountToBigNumber("1.05");
+      const decimals = 6;
       const minAmount = await curvePool.calcMinAmountUnderlyer(
         lpTokenAmount,
-        virtualPrice
+        virtualPrice,
+        decimals
       );
 
-      const shareValue = lpTokenAmount
+      const normalizedUnderlyerShare = lpTokenAmount
         .mul(virtualPrice)
         .div(tokenAmountToBigNumber(1));
-      const expectedMinAmount = shareValue
+      const underlyerShare = normalizedUnderlyerShare
+        .mul(BigNumber.from(10).pow(decimals))
+        .div(BigNumber.from(10).pow(18));
+      const expectedUnderlyerAmount = underlyerShare
         .mul(denominator - slippage)
         .div(denominator);
-      expect(minAmount).to.equal(expectedMinAmount);
+      expect(minAmount).to.equal(expectedUnderlyerAmount);
     });
 
     it("returns correct amount when virtual price is less than 1", async () => {
       const lpTokenAmount = tokenAmountToBigNumber(87654);
       const virtualPrice = tokenAmountToBigNumber("0.95");
+      const decimals = 6;
       const minAmount = await curvePool.calcMinAmountUnderlyer(
         lpTokenAmount,
-        virtualPrice
+        virtualPrice,
+        decimals
       );
 
-      const shareValue = lpTokenAmount
+      const normalizedUnderlyerShare = lpTokenAmount
         .mul(virtualPrice)
         .div(tokenAmountToBigNumber(1));
-      const expectedMinAmount = shareValue
+      const underlyerShare = normalizedUnderlyerShare
+        .mul(BigNumber.from(10).pow(decimals))
+        .div(BigNumber.from(10).pow(18));
+      const expectedUnderlyerAmount = underlyerShare
         .mul(denominator - slippage)
         .div(denominator);
-      expect(minAmount).to.equal(expectedMinAmount);
+      expect(minAmount).to.equal(expectedUnderlyerAmount);
     });
 
     it("returns correct amount when values are small", async () => {
       const lpTokenAmount = tokenAmountToBigNumber("0.0000000987654");
       const virtualPrice = tokenAmountToBigNumber("0.0000000095");
+      const decimals = 6;
       const minAmount = await curvePool.calcMinAmountUnderlyer(
         lpTokenAmount,
-        virtualPrice
+        virtualPrice,
+        decimals
       );
 
-      const shareValue = lpTokenAmount
+      const normalizedUnderlyerShare = lpTokenAmount
         .mul(virtualPrice)
         .div(tokenAmountToBigNumber(1));
-      const expectedMinAmount = shareValue
+      const underlyerShare = normalizedUnderlyerShare
+        .mul(BigNumber.from(10).pow(decimals))
+        .div(BigNumber.from(10).pow(18));
+      const expectedUnderlyerAmount = underlyerShare
         .mul(denominator - slippage)
         .div(denominator);
-      expect(minAmount).to.equal(expectedMinAmount);
+      expect(minAmount).to.equal(expectedUnderlyerAmount);
     });
   });
 });

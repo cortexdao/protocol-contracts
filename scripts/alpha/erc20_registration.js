@@ -8,7 +8,7 @@ require("dotenv").config();
 const { argv } = require("yargs")
   .option("name", {
     type: "string",
-    description: "Zap contract name",
+    description: "Allocation contract name",
   })
   .option("maxFeePerGas", {
     type: "number",
@@ -21,22 +21,22 @@ const { argv } = require("yargs")
   .demandOption(["name"]);
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const { getMaxFee, getDeployedAddress } = require("../../utils/helpers");
 const {
-  waitForSafeTxDetails,
+  getDeployedAddress,
   getSafeSigner,
-} = require("../../utils/helpers/safe");
+  waitForSafeTxDetails,
+  getMaxFee,
+} = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
-  await hre.run("compile");
   const networkName = network.name.toUpperCase();
   console.log("");
   console.log(`${networkName} selected`);
   console.log("");
 
-  const zapContractName = argv.name;
-  console.log("Zap contract name: %s", zapContractName);
+  const allocationContractName = argv.name;
+  console.log("Allocation contract name: %s", allocationContractName);
   console.log("");
 
   const [deployer] = await ethers.getSigners();
@@ -61,19 +61,24 @@ async function main(argv) {
   const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
   const safeSigner = await getSafeSigner(adminSafeAddress, owner);
 
-  console.log("Deploying zap ... ");
+  console.log("Deploying allocation ... ");
   console.log("");
 
-  const zapContractFactory = await ethers.getContractFactory(zapContractName);
+  const allocationContractFactory = await ethers.getContractFactory(
+    allocationContractName
+  );
   let maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
-  const zap = await zapContractFactory
+  await hre.run("clean");
+  await hre.run("compile");
+  await hre.run("compile:one");
+  const allocation = await allocationContractFactory
     .connect(safeSigner)
     .deploy({ maxFeePerGas });
-  await waitForSafeTxDetails(zap.deployTransaction, safeSigner.service);
+  await waitForSafeTxDetails(allocation.deployTransaction, safeSigner.service);
 
-  const zapName = await zap.NAME();
+  const allocationName = await allocation.NAME();
 
-  console.log("Registering %s", zapName);
+  console.log("Registering %s", allocationName);
   console.log("");
 
   const addressRegistryAddress = getDeployedAddress(
@@ -84,12 +89,15 @@ async function main(argv) {
     "AddressRegistryV2",
     addressRegistryAddress
   );
-  const lpAccountAddress = await addressRegistry.lpAccountAddress();
-  const lpAccount = await ethers.getContractAt("LpAccount", lpAccountAddress);
+  const tvlManagerAddress = await addressRegistry.tvlManagerAddress();
+  const tvlManager = await ethers.getContractAt(
+    "TvlManager",
+    tvlManagerAddress
+  );
   maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
-  const proposedTx = await lpAccount
+  const proposedTx = await tvlManager
     .connect(safeSigner)
-    .registerZap(zap, { maxFeePerGas });
+    .registerAssetAllocation(allocation.address, { maxFeePerGas });
   await waitForSafeTxDetails(proposedTx, safeSigner.service);
 }
 
@@ -97,7 +105,7 @@ if (!module.parent) {
   main(argv)
     .then(() => {
       console.log("");
-      console.log("Zap registered.");
+      console.log("Allocation registered.");
       console.log("");
       process.exit(0);
     })
