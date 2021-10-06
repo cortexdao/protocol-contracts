@@ -120,15 +120,13 @@ contract MetaPoolToken is
     /**
      * @dev Dummy function to show how one would implement an init function
      * for future upgrades.  Note the `initializer` modifier can only be used
-     * once in the entire contract, so we can't use it here.  Instead,
-     * we protect the upgrade initializer by checking `msg.sender` against
-     * the proxy admin slot defined in EIP-1967.  This will allow only
-     * the proxy admin to call this function durin upgrades.
-     *
+     * once in the entire contract, so we can't use it here.  Instead, we
+     * protect the upgrade init with the `onlyProxyAdmin` modifier, which
+     * checks `msg.sender` against the proxy admin slot defined in EIP-1967.
+     * This will only allow the proxy admin to call this function during upgrades.
      */
-    function initializeUpgrade() external virtual nonReentrant {
-        require(msg.sender == proxyAdmin(), "PROXY_ADMIN_ONLY");
-    }
+    // solhint-disable-next-line no-empty-blocks
+    function initializeUpgrade() external virtual onlyProxyAdmin nonReentrant {}
 
     /**
      * @notice Sets the address registry
@@ -184,21 +182,6 @@ contract MetaPoolToken is
         if (totalSupply == 0 || balance == 0) return 0;
 
         return _getTvl().mul(balance).div(totalSupply);
-    }
-
-    /**
-     * @dev Returns the proxy admin address using the slot specified in EIP-1967:
-     *
-     * 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103
-     *  = bytes32(uint256(keccak256('eip1967.proxy.admin')) - 1)
-     */
-    function proxyAdmin() public view returns (address adm) {
-        bytes32 slot =
-            0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            adm := sload(slot)
-        }
     }
 
     /**

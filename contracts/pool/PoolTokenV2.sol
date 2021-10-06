@@ -5,7 +5,9 @@ pragma experimental ABIEncoderV2;
 import {IDetailedERC20, IEmergencyExit} from "contracts/common/Imports.sol";
 import {SafeERC20} from "contracts/libraries/Imports.sol";
 import {
-    Initializable,
+    Initializable
+} from "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
+import {
     ERC20UpgradeSafe,
     ReentrancyGuardUpgradeSafe,
     PausableUpgradeSafe,
