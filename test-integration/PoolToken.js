@@ -170,13 +170,14 @@ describe("Contract: PoolToken", () => {
         const mAptLogic = await MetaPoolToken.deploy();
         await mAptLogic.deployed();
 
-        const MetaPoolTokenProxy = await ethers.getContractFactory(
-          "MetaPoolTokenProxy"
+        const mAptInitData = MetaPoolToken.interface.encodeFunctionData(
+          "initialize(address)",
+          [addressRegistry.address]
         );
-        const mAptProxy = await MetaPoolTokenProxy.deploy(
+        const mAptProxy = await TransparentUpgradeableProxy.deploy(
           mAptLogic.address,
           proxyAdmin.address,
-          addressRegistry.address
+          mAptInitData
         );
         await mAptProxy.deployed();
         mApt = await MetaPoolToken.attach(mAptProxy.address);
@@ -217,13 +218,13 @@ describe("Contract: PoolToken", () => {
         const logicV2 = await PoolTokenV2.deploy();
         await logicV2.deployed();
 
-        const initData = PoolTokenV2.interface.encodeFunctionData(
+        const poolTokenV2InitData = PoolTokenV2.interface.encodeFunctionData(
           "initializeUpgrade(address)",
           [addressRegistry.address]
         );
         await proxyAdmin
           .connect(deployer)
-          .upgradeAndCall(proxy.address, logicV2.address, initData);
+          .upgradeAndCall(proxy.address, logicV2.address, poolTokenV2InitData);
 
         poolToken = await PoolTokenV2.attach(proxy.address);
 
