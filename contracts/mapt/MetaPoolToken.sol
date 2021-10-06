@@ -126,7 +126,7 @@ contract MetaPoolToken is
      * This will only allow the proxy admin to call this function during upgrades.
      */
     // solhint-disable-next-line no-empty-blocks
-    function initializeUpgrade() external virtual onlyProxyAdmin nonReentrant {}
+    function initializeUpgrade() external virtual nonReentrant onlyProxyAdmin {}
 
     /**
      * @notice Sets the address registry
