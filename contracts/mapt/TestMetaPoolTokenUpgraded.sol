@@ -7,7 +7,8 @@ import {MetaPoolToken} from "./MetaPoolToken.sol";
 contract MetaPoolTokenUpgraded is MetaPoolToken {
     bool public newlyAddedVariable;
 
-    function initializeUpgrade() public override onlyAdmin {
+    function initializeUpgrade() public override {
+        require(msg.sender == proxyAdmin(), "PROXY_ADMIN_ONLY");
         newlyAddedVariable = true;
     }
 }

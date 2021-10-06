@@ -81,8 +81,6 @@ contract MetaPoolToken is
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
-    /** @notice used to protect init functions for upgrades */
-    address public proxyAdmin;
     /** @notice used to protect mint and burn function */
     IAddressRegistryV2 public addressRegistry;
 
@@ -90,16 +88,7 @@ contract MetaPoolToken is
 
     event Mint(address acccount, uint256 amount);
     event Burn(address acccount, uint256 amount);
-    event AdminChanged(address);
     event AddressRegistryChanged(address);
-
-    /**
-     * @dev Throws if called by any account other than the proxy admin.
-     */
-    modifier onlyAdmin() {
-        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
-        _;
-    }
 
     /**
      * @dev Since the proxy delegate calls to this "logic" contract, any
@@ -113,12 +102,7 @@ contract MetaPoolToken is
      * repeatedly.  It should be called during the deployment so that
      * it cannot be called by someone else later.
      */
-    function initialize(address adminAddress, address addressRegistry_)
-        external
-        initializer
-    {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-
+    function initialize(address addressRegistry_) external initializer {
         // initialize ancestor storage
         __Context_init_unchained();
         __AccessControl_init_unchained();
@@ -127,7 +111,6 @@ contract MetaPoolToken is
         __ERC20_init_unchained("APY MetaPool Token", "mAPT");
 
         // initialize impl-specific storage
-        _setAdminAddress(adminAddress);
         _setAddressRegistry(addressRegistry_);
         _setupRole(DEFAULT_ADMIN_ROLE, addressRegistry.emergencySafeAddress());
         _setupRole(LP_ROLE, addressRegistry.lpSafeAddress());
@@ -138,23 +121,13 @@ contract MetaPoolToken is
      * @dev Dummy function to show how one would implement an init function
      * for future upgrades.  Note the `initializer` modifier can only be used
      * once in the entire contract, so we can't use it here.  Instead,
-     * we set the proxy admin address as a variable and protect this
-     * function with `onlyAdmin`, which only allows the proxy admin
-     * to call this function during upgrades.
+     * we protect the upgrade initializer by checking `msg.sender` against
+     * the proxy admin slot defined in EIP-1967.  This will allow only
+     * the proxy admin to call this function durin upgrades.
+     *
      */
-    // solhint-disable-next-line no-empty-blocks
-    function initializeUpgrade() external virtual nonReentrant onlyAdmin {}
-
-    /**
-     * @notice Set the new proxy admin
-     * @param adminAddress The new proxy admin
-     */
-    function emergencySetAdminAddress(address adminAddress)
-        external
-        nonReentrant
-        onlyEmergencyRole
-    {
-        _setAdminAddress(adminAddress);
+    function initializeUpgrade() external virtual nonReentrant {
+        require(msg.sender == proxyAdmin(), "PROXY_ADMIN_ONLY");
     }
 
     /**
@@ -214,6 +187,21 @@ contract MetaPoolToken is
     }
 
     /**
+     * @dev Returns the proxy admin address using the slot specified in EIP-1967:
+     *
+     * 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103
+     *  = bytes32(uint256(keccak256('eip1967.proxy.admin')) - 1)
+     */
+    function proxyAdmin() public view returns (address adm) {
+        bytes32 slot =
+            0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            adm := sload(slot)
+        }
+    }
+
+    /**
      * @notice Returns the (signed) top-up amount for each pool ID given.
      * A positive (negative) sign means the reserve level is in deficit
      * (excess) of required percentage.
@@ -239,12 +227,6 @@ contract MetaPoolToken is
         }
 
         return (pools, rebalanceAmounts);
-    }
-
-    function _setAdminAddress(address adminAddress) internal {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-        proxyAdmin = adminAddress;
-        emit AdminChanged(adminAddress);
     }
 
     function _setAddressRegistry(address addressRegistry_) internal {
