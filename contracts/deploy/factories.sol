@@ -5,7 +5,6 @@ pragma experimental ABIEncoderV2;
 import {Ownable} from "contracts/common/Imports.sol";
 import {Address} from "contracts/libraries/Imports.sol";
 import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
-import {MetaPoolTokenProxy} from "contracts/mapt/MetaPoolTokenProxy.sol";
 import {PoolToken} from "contracts/pool/PoolToken.sol";
 import {PoolTokenProxy} from "contracts/pool/PoolTokenProxy.sol";
 import {PoolTokenV2} from "contracts/pool/PoolTokenV2.sol";
