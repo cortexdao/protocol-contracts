@@ -402,53 +402,11 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         );
     }
 
-    /// @dev registers mAPT and TvlManager for contract roles
-    function deploy_5_OracleAdapter()
+    /// @dev register mAPT for a contract role
+    function deploy_5_LpAccount()
         external
         onlyOwner
         updateStep(5)
-        checkSafeRegistrations
-    {
-        bytes32[] memory registeredIds = new bytes32[](2);
-        address[] memory deployedAddresses = new address[](2);
-        (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
-        (registeredIds[1], deployedAddresses[1]) = ("tvlManager", tvlManager);
-        checkRegisteredDependencies(registeredIds, deployedAddresses);
-
-        address[] memory ownerships = new address[](1);
-        ownerships[0] = ADDRESS_REGISTRY_PROXY;
-        checkOwnerships(ownerships);
-
-        address[] memory assets = new address[](3);
-        assets[0] = DAI_ADDRESS;
-        assets[1] = USDC_ADDRESS;
-        assets[2] = USDT_ADDRESS;
-
-        address[] memory sources = new address[](3);
-        sources[0] = DAI_USD_AGG_ADDRESS;
-        sources[1] = USDC_USD_AGG_ADDRESS;
-        sources[2] = USDT_USD_AGG_ADDRESS;
-
-        uint256 aggStalePeriod = 86400;
-        uint256 defaultLockPeriod = 270;
-
-        oracleAdapter = OracleAdapterFactory(oracleAdapterFactory).create(
-            address(addressRegistry),
-            TVL_AGG_ADDRESS,
-            assets,
-            sources,
-            aggStalePeriod,
-            defaultLockPeriod
-        );
-
-        _registerAddress("oracleAdapter", oracleAdapter);
-    }
-
-    /// @dev register mAPT for a contract role
-    function deploy_6_LpAccount()
-        external
-        onlyOwner
-        updateStep(6)
         checkSafeRegistrations
     {
         bytes32[] memory registeredIds = new bytes32[](1);
@@ -478,6 +436,49 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         _registerAddress("lpAccount", lpAccount);
 
         ProxyAdmin(proxyAdmin).transferOwnership(adminSafe);
+    }
+
+    /// @dev registers mAPT, TvlManager, LpAccount for contract roles
+    function deploy_6_OracleAdapter()
+        external
+        onlyOwner
+        updateStep(6)
+        checkSafeRegistrations
+    {
+        bytes32[] memory registeredIds = new bytes32[](3);
+        address[] memory deployedAddresses = new address[](3);
+        (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
+        (registeredIds[1], deployedAddresses[1]) = ("tvlManager", tvlManager);
+        (registeredIds[2], deployedAddresses[2]) = ("lpAccount", lpAccount);
+        checkRegisteredDependencies(registeredIds, deployedAddresses);
+
+        address[] memory ownerships = new address[](1);
+        ownerships[0] = ADDRESS_REGISTRY_PROXY;
+        checkOwnerships(ownerships);
+
+        address[] memory assets = new address[](3);
+        assets[0] = DAI_ADDRESS;
+        assets[1] = USDC_ADDRESS;
+        assets[2] = USDT_ADDRESS;
+
+        address[] memory sources = new address[](3);
+        sources[0] = DAI_USD_AGG_ADDRESS;
+        sources[1] = USDC_USD_AGG_ADDRESS;
+        sources[2] = USDT_USD_AGG_ADDRESS;
+
+        uint256 aggStalePeriod = 86400;
+        uint256 defaultLockPeriod = 270;
+
+        oracleAdapter = OracleAdapterFactory(oracleAdapterFactory).create(
+            address(addressRegistry),
+            TVL_AGG_ADDRESS,
+            assets,
+            sources,
+            aggStalePeriod,
+            defaultLockPeriod
+        );
+
+        _registerAddress("oracleAdapter", oracleAdapter);
     }
 
     /// @notice upgrade from v1 to v2
