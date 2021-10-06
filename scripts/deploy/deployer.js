@@ -111,6 +111,13 @@ async function registerErc20Allocation(deployer, tvlManager, adminSafe) {
   await tvlManager
     .connect(adminSafe)
     .registerAssetAllocation(erc20AllocationAddress);
+
+  const erc20Allocation = await ethers.getContractAt(
+    "Erc20Allocation",
+    erc20AllocationAddress
+  );
+
+  return erc20Allocation;
 }
 
 async function deployTransferOwnership(deployer) {
@@ -174,6 +181,57 @@ async function deployAllocations(tvlManager, adminSafe) {
   return allAllocations;
 }
 
+async function deployZaps(lpAccount, erc20Allocation, adminSafe) {
+  const contracts = [
+    //"AaveDaiZap",
+    //"AaveUsdcZap",
+    //"AaveUsdtZap",
+    "StakedAaveZap",
+    "Curve3PoolZap",
+    "AavePoolZap",
+    "AlUsdPoolZap",
+    "BusdV2PoolZap",
+    "CompoundPoolZap",
+    "FraxPoolZap",
+    "IronBankPoolZap",
+    "LusdPoolZap",
+    "MusdPoolZap",
+    "SAavePoolZap",
+    "SusdV2Zap",
+    "UsdnPoolZap",
+    "UsdpPoolZap",
+    "UstPoolZap",
+  ];
+
+  const zaps = await Promise.all(
+    contracts.map(async (contract) => {
+      const Zap = await ethers.getContractFactory(contract);
+      return await Zap.deploy();
+    })
+  );
+
+  await Promise.all(
+    zaps.map(async (zap) => {
+      await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+      const erc20s = await zap.erc20Allocations();
+      await registerErc20Allocations(erc20Allocation, erc20s, adminSafe);
+    })
+  );
+
+  return zaps;
+}
+
+async function registerErc20Allocations(erc20Allocation, erc20s, adminSafe) {
+  await Promise.all(
+    erc20s.map(async (erc20) => {
+      await erc20Allocation
+        .connect(adminSafe)
+        ["registerErc20Token(address)"](erc20);
+    })
+  );
+}
+
 async function deploy() {
   const { deployer, safes } = await setup();
 
@@ -191,11 +249,25 @@ async function deploy() {
 
   const oracleAdapter = await deployOracleAdapter(deployer);
 
-  await registerErc20Allocation(deployer, tvlManager, safes.adminSafe);
+  const erc20Allocation = await registerErc20Allocation(
+    deployer,
+    tvlManager,
+    safes.adminSafe
+  );
+
+  const erc20s = await Promise.all(
+    Object.values(pools).map(async (pool) => {
+      return await pool.underlyer();
+    })
+  );
+
+  await registerErc20Allocations(erc20Allocation, erc20s, safes.adminSafe);
 
   await deployTransferOwnership(deployer);
 
   await deployAllocations(tvlManager, safes.adminSafe);
+
+  await deployZaps(lpAccount, erc20Allocation, safes.adminSafe);
 
   return {
     ...safes,
