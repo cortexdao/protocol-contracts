@@ -311,49 +311,11 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
         );
     }
 
-    function deploy7OracleAdapter()
+    function deploy7LpAccount()
         external
         onlyOwner
         nonReentrant
         updateStep(7)
-        checkAddressRegistryOwnership
-        checkSafeRegistrations
-    {
-        Dependency[] memory dependencies = new Dependency[](2);
-        dependencies[0] = Dependency("mApt", mApt);
-        dependencies[1] = Dependency("tvlManager", tvlManager);
-        _checkRegisteredDependencies(dependencies);
-
-        address[] memory assets = new address[](3);
-        assets[0] = DAI_ADDRESS;
-        assets[1] = USDC_ADDRESS;
-        assets[2] = USDT_ADDRESS;
-
-        address[] memory sources = new address[](3);
-        sources[0] = DAI_USD_AGG_ADDRESS;
-        sources[1] = USDC_USD_AGG_ADDRESS;
-        sources[2] = USDT_USD_AGG_ADDRESS;
-
-        uint256 aggStalePeriod = 86400;
-        uint256 defaultLockPeriod = 270;
-
-        oracleAdapter = oracleAdapterFactory.create(
-            address(addressRegistryV2),
-            TVL_AGG_ADDRESS,
-            assets,
-            sources,
-            aggStalePeriod,
-            defaultLockPeriod
-        );
-
-        _registerAddress("oracleAdapter", oracleAdapter);
-    }
-
-    function deploy8LpAccount()
-        external
-        onlyOwner
-        nonReentrant
-        updateStep(8)
         checkAddressRegistryOwnership
         checkSafeRegistrations
     {
@@ -379,6 +341,45 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
         _registerAddress("lpAccount", lpAccount);
 
         ProxyAdmin(proxyAdmin).transferOwnership(address(adminSafe));
+    }
+
+    function deploy8OracleAdapter()
+        external
+        onlyOwner
+        nonReentrant
+        updateStep(8)
+        checkAddressRegistryOwnership
+        checkSafeRegistrations
+    {
+        Dependency[] memory dependencies = new Dependency[](3);
+        dependencies[0] = Dependency("mApt", mApt);
+        dependencies[1] = Dependency("tvlManager", tvlManager);
+        dependencies[2] = Dependency("lpAccount", lpAccount);
+        _checkRegisteredDependencies(dependencies);
+
+        address[] memory assets = new address[](3);
+        assets[0] = DAI_ADDRESS;
+        assets[1] = USDC_ADDRESS;
+        assets[2] = USDT_ADDRESS;
+
+        address[] memory sources = new address[](3);
+        sources[0] = DAI_USD_AGG_ADDRESS;
+        sources[1] = USDC_USD_AGG_ADDRESS;
+        sources[2] = USDT_USD_AGG_ADDRESS;
+
+        uint256 aggStalePeriod = 86400;
+        uint256 defaultLockPeriod = 270;
+
+        oracleAdapter = oracleAdapterFactory.create(
+            address(addressRegistryV2),
+            TVL_AGG_ADDRESS,
+            assets,
+            sources,
+            aggStalePeriod,
+            defaultLockPeriod
+        );
+
+        _registerAddress("oracleAdapter", oracleAdapter);
     }
 
     function deploy9TransferOwnership()
