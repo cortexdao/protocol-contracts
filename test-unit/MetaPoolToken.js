@@ -201,55 +201,59 @@ describe("Contract: MetaPoolToken", () => {
     return mApt;
   }
 
-  describe("Constructor", () => {
-    let MetaPoolTokenProxy;
+  describe("Initializer", () => {
     let logic;
 
     before(async () => {
-      MetaPoolTokenProxy = await ethers.getContractFactory(
-        "MetaPoolTokenProxy"
-      );
       const MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
       logic = await MetaPoolToken.deploy();
     });
 
-    it("Revert when logic is not a contract address", async () => {
+    it("Allow when address registry is a contract address", async () => {
       const contractAddress = (await deployMockContract(deployer, [])).address;
       await expect(
-        MetaPoolTokenProxy.connect(deployer).deploy(
-          DUMMY_ADDRESS,
-          contractAddress,
+        logic.initialize(
           contractAddress
         )
-      ).to.be.revertedWith(
-        "UpgradeableProxy: new implementation is not a contract"
-      );
-    });
-
-    it("Revert when proxy admin is zero address", async () => {
-      const contractAddress = (await deployMockContract(deployer, [])).address;
-      await expect(
-        MetaPoolTokenProxy.connect(deployer).deploy(
-          logic.address,
-          ZERO_ADDRESS,
-          contractAddress
-        )
-      ).to.be.revertedWith("INVALID_ADMIN");
+      ).to.not.be.reverted
     });
 
     it("Revert when address registry is not a contract address", async () => {
-      const contractAddress = (await deployMockContract(deployer, [])).address;
       await expect(
-        MetaPoolTokenProxy.connect(deployer).deploy(
-          logic.address,
-          contractAddress,
+        logic.initialize(
           DUMMY_ADDRESS
         )
       ).to.be.revertedWith("INVALID_ADDRESS");
     });
+
+    it("Revert when called twice", async () => {
+      const contractAddress = (await deployMockContract(deployer, [])).address;
+      await expect(
+        logic.initialize(
+          contractAddress
+        )
+      ).to.not.be.reverted
+      await expect(
+        logic.initialize(
+          contractAddress
+        )
+      ).to.not.be.reverted
+    })
   });
 
   describe("Defaults", () => {
+
+    async function getProxyAdmin(contractAddress) {
+      // get admin address from slot specified by EIP-1967
+      let proxyAdminAddress = await ethers.provider.getStorageAt(
+        contractAddress,
+        "0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103"
+      );
+      proxyAdminAddress = ethers.utils.getAddress(proxyAdminAddress.slice(-40));
+      const proxyAdmin = await ethers.getContractAt("ProxyAdmin", proxyAdminAddress)
+      return proxyAdmin;
+    }
+
     it("Default admin role given to Emergency Safe", async () => {
       const DEFAULT_ADMIN_ROLE = await mApt.DEFAULT_ADMIN_ROLE();
       const memberCount = await mApt.getRoleMemberCount(DEFAULT_ADMIN_ROLE);
@@ -285,18 +289,34 @@ describe("Contract: MetaPoolToken", () => {
       expect(await mApt.decimals()).to.equal(18);
     });
 
-    it("Admin set correctly", async () => {
-      // get admin address from slot specified by EIP-1967
-      let proxyAdminAddress = await ethers.provider.getStorageAt(
-        mApt.address,
-        "0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103"
-      );
-      proxyAdminAddress = ethers.utils.getAddress(proxyAdminAddress.slice(-40));
-      expect(await mApt.proxyAdmin()).to.equal(proxyAdminAddress);
-    });
-
     it("Address registry set correctly", async () => {
       expect(await mApt.addressRegistry()).to.equal(addressRegistry.address);
+    });
+
+    it("Proxy admin set correctly", async () => {
+      const proxyAdmin = await getProxyAdmin(mApt.address)
+      expect(await mApt.proxyAdmin()).to.equal(proxyAdmin.address);
+    });
+
+    it("Proxy admin owner is Admin Safe", async () => {
+      const proxyAdmin = await getProxyAdmin(mApt.address)
+      expect(await proxyAdmin.owner()).to.equal(adminSafe.address) 
+    })
+
+    it.skip("Proxy implementation is set to logic contract", async () => {
+      const proxyAdmin = await getProxyAdmin(mApt.address)
+      expect(
+        await proxyAdmin.connect(adminSafe).getProxyImplementation(mApt.address)).to.equal(
+        logic.address
+      );
+    });
+
+    it("MetaPoolToken's proxy admin is ProxyAdmin", async () => {
+      const proxyAdmin = await getProxyAdmin(mApt.address)
+      expect(
+        await proxyAdmin.connect(adminSafe).getProxyAdmin(mApt.address)).to.equal(
+          proxyAdmin.address
+      );
     });
   });
 
