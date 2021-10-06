@@ -117,6 +117,63 @@ async function deployTransferOwnership(deployer) {
   await deployer.deploy9TransferOwnership();
 }
 
+async function deployAllocations(tvlManager, adminSafe) {
+  const contracts = [
+    "AaveStableCoinAllocation",
+    "CurveAaveAllocation",
+    "CurveCompoundAllocation",
+    "CurveIronBankAllocation",
+    "CurveSaaveAllocation",
+    "CurveSusdV2Allocation",
+  ];
+
+  const curve3PoolAllocationContract = "Curve3PoolAllocation";
+
+  const curveMetaPoolContracts = [
+    "CurveAlUsdAllocation",
+    "CurveBusdV2Allocation",
+    "CurveFraxAllocation",
+    "CurveLusdAllocation",
+    "CurveMusdAllocation",
+    "CurveUsdnAllocation",
+    "CurveUsdpAllocation",
+    "CurveUstAllocation",
+  ];
+
+  const regularAllocations = await Promise.all(
+    contracts.map(async (contract) => {
+      const Allocation = await ethers.getContractFactory(contract);
+      return await Allocation.deploy();
+    })
+  );
+
+  const Curve3PoolAllocation = await ethers.getContractFactory(
+    curve3PoolAllocationContract
+  );
+  const curve3PoolAllocation = await Curve3PoolAllocation.deploy();
+
+  const metaPoolAllocations = await Promise.all(
+    curveMetaPoolContracts.map(async (contract) => {
+      const Allocation = await ethers.getContractFactory(contract);
+      return await Allocation.deploy(curve3PoolAllocation.address);
+    })
+  );
+
+  const allAllocations = [
+    ...regularAllocations,
+    curve3PoolAllocation,
+    ...metaPoolAllocations,
+  ];
+
+  allAllocations.forEach(async (allocation) => {
+    await tvlManager
+      .connect(adminSafe)
+      .registerAssetAllocation(allocation.address);
+  });
+
+  return allAllocations;
+}
+
 async function deploy() {
   const { deployer, safes } = await setup();
 
@@ -137,6 +194,8 @@ async function deploy() {
   await registerErc20Allocation(deployer, tvlManager, safes.adminSafe);
 
   await deployTransferOwnership(deployer);
+
+  await deployAllocations(tvlManager, safes.adminSafe);
 
   return {
     ...safes,
