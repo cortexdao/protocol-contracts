@@ -29,6 +29,11 @@ const {
 } = require("./unit");
 const { deepEqual } = require("./test-helper");
 const { getSafeSigner, waitForSafeTxDetails } = require("./safe");
+const {
+  getEip1967Addresses,
+  getProxyAdmin,
+  getLogicContract,
+} = require("./proxy");
 
 console.debug = function () {
   if (!console.debugging) return;
@@ -76,4 +81,8 @@ module.exports = {
   waitForSafeTxDetails,
   getMaxFee,
   getMaxPriorityFee,
+
+  getEip1967Addresses,
+  getProxyAdmin,
+  getLogicContract,
 };
