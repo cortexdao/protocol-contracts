@@ -276,29 +276,6 @@ describe("Contract: PoolToken", () => {
         });
       });
 
-      describe("Set admin address", async () => {
-        it("Emergency Safe can set admin", async () => {
-          await poolToken
-            .connect(emergencySafe)
-            .emergencySetAdminAddress(FAKE_ADDRESS);
-          expect(await poolToken.proxyAdmin()).to.equal(FAKE_ADDRESS);
-        });
-
-        it("Revert on setting to zero address", async () => {
-          await expect(
-            poolToken
-              .connect(emergencySafe)
-              .emergencySetAdminAddress(ZERO_ADDRESS)
-          ).to.be.revertedWith("INVALID_ADMIN");
-        });
-
-        it("Revert when unpermissioned account attempts to set address", async () => {
-          await expect(
-            poolToken.connect(randomUser).emergencySetAdminAddress(FAKE_ADDRESS)
-          ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
-        });
-      });
-
       describe("Lock pool", () => {
         it("Emergency Safe can lock and unlock pool", async () => {
           await expect(
