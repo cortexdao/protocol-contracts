@@ -241,7 +241,7 @@ async function deploy() {
 
   const metaPoolToken = await deployMetaPoolToken(deployer);
 
-  const pools = await deployPools(deployer);
+  const underlyerPools = await deployPools(deployer);
 
   const tvlManager = await deployTvlManager(deployer);
 
@@ -256,7 +256,7 @@ async function deploy() {
   );
 
   const erc20s = await Promise.all(
-    Object.values(pools).map(async (pool) => {
+    Object.values(underlyerPools).map(async (pool) => {
       return await pool.underlyer();
     })
   );
@@ -273,7 +273,7 @@ async function deploy() {
     ...safes,
     addressRegistry,
     metaPoolToken,
-    ...pools,
+    underlyerPools,
     tvlManager,
     lpAccount,
     oracleAdapter,

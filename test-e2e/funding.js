@@ -41,9 +41,8 @@ describe("Funding scenarios", () => {
   let oracleAdapter;
   let lpAccount;
 
-  let daiPool;
-  let usdcPool;
-  let usdtPool;
+  let underlyerPools;
+  let underlyerTokens = {};
 
   let daiToken;
   let usdcToken;
@@ -72,9 +71,7 @@ describe("Funding scenarios", () => {
       emergencySafe,
       addressRegistry,
       metaPoolToken,
-      daiPool,
-      usdcPool,
-      usdtPool,
+      underlyerPools,
       tvlManager,
       lpAccount,
       oracleAdapter,
@@ -84,9 +81,18 @@ describe("Funding scenarios", () => {
   });
 
   before("Attach to Mainnet stablecoin contracts", async () => {
-    daiToken = await ethers.getContractAt("IDetailedERC20", DAI_TOKEN);
-    usdcToken = await ethers.getContractAt("IDetailedERC20", USDC_TOKEN);
-    usdtToken = await ethers.getContractAt("IDetailedERC20", USDT_TOKEN);
+    underlyerTokens.daiToken = await ethers.getContractAt(
+      "IDetailedERC20",
+      DAI_TOKEN
+    );
+    underlyerTokens.usdcToken = await ethers.getContractAt(
+      "IDetailedERC20",
+      USDC_TOKEN
+    );
+    underlyerTokens.usdtToken = await ethers.getContractAt(
+      "IDetailedERC20",
+      USDT_TOKEN
+    );
   });
 
   before("Fund accounts with stables", async () => {
@@ -94,7 +100,7 @@ describe("Funding scenarios", () => {
     await acquireToken(
       WHALE_POOLS["DAI"],
       deployer,
-      daiToken,
+      underlyerTokens.daiToken,
       "1000000",
       deployer
     );
@@ -102,7 +108,7 @@ describe("Funding scenarios", () => {
     await acquireToken(
       WHALE_POOLS["USDC"],
       deployer,
-      usdcToken,
+      underlyerTokens.usdcToken,
       "1000000",
       deployer
     );
@@ -110,59 +116,78 @@ describe("Funding scenarios", () => {
     await acquireToken(
       WHALE_POOLS["USDT"],
       deployer,
-      usdtToken,
+      underlyerTokens.usdtToken,
       "1000000",
       deployer
     );
   });
 
-  describe("Normal funding", () => {
-    it("Should add liquidity to a pool", async () => {
-      const amount = tokenAmountToBigNumber(
-        "100000",
-        await daiToken.decimals()
-      );
-      const prevUserBalance = await daiToken.balanceOf(deployer.address);
-      const prevPoolBalance = await daiToken.balanceOf(daiPool.address);
+  describe("Normal funding", async () => {
+    [
+      { tokenKey: "daiToken", poolKey: "daiPool" },
+      { tokenKey: "usdcToken", poolKey: "usdcPool" },
+      { tokenKey: "usdtToken", poolKey: "usdtPool" },
+    ].forEach(({ tokenKey, poolKey }) => {
+      it(`Should add liquidity to a pool`, async () => {
+        const underlyer = underlyerTokens[tokenKey];
+        const underlyerPool = underlyerPools[poolKey];
 
-      const prevUserApt = await daiPool.balanceOf(deployer.address);
-      expect(prevUserApt).to.equal(0);
+        const amount = tokenAmountToBigNumber(
+          "100000",
+          await underlyer.decimals()
+        );
+        const prevUserBalance = await underlyer.balanceOf(deployer.address);
+        const prevPoolBalance = await underlyer.balanceOf(
+          underlyerPool.address
+        );
 
-      await daiToken.approve(daiPool.address, amount);
-      await daiPool.addLiquidity(amount);
+        const prevUserApt = await underlyerPool.balanceOf(deployer.address);
+        expect(prevUserApt).to.equal(0);
 
-      const newUserBalance = await daiToken.balanceOf(deployer.address);
-      const newPoolBalance = await daiToken.balanceOf(daiPool.address);
+        await underlyer.approve(underlyerPool.address, amount);
+        await underlyerPool.addLiquidity(amount);
 
-      expect(prevUserBalance.sub(newUserBalance)).to.equal(amount);
-      expect(newPoolBalance.sub(prevPoolBalance)).to.equal(amount);
+        const newUserBalance = await underlyer.balanceOf(deployer.address);
+        const newPoolBalance = await underlyer.balanceOf(underlyerPool.address);
 
-      const newUserApt = await daiPool.balanceOf(deployer.address);
-      expect(newUserApt).to.be.gt(0);
-    });
+        expect(prevUserBalance.sub(newUserBalance)).to.equal(amount);
+        expect(newPoolBalance.sub(prevPoolBalance)).to.equal(amount);
 
-    it("Should remove liquidity from a pool", async () => {
-      const prevUserBalance = await daiToken.balanceOf(deployer.address);
-      const prevPoolBalance = await daiToken.balanceOf(daiPool.address);
+        const newUserApt = await underlyerPool.balanceOf(deployer.address);
+        expect(newUserApt).to.be.gt(0);
+      });
 
-      const prevUserApt = await daiPool.balanceOf(deployer.address);
-      const aptAmount = prevUserApt.div(5);
-      // Make sure to add early withdrawal fee
-      const amount = prevPoolBalance.div(5).mul(95).div(100);
+      it("Should remove liquidity from a pool", async () => {
+        const underlyer = underlyerTokens[tokenKey];
+        const underlyerPool = underlyerPools[poolKey];
 
-      await daiPool.redeem(aptAmount);
+        const prevUserBalance = await underlyer.balanceOf(deployer.address);
+        const prevPoolBalance = await underlyer.balanceOf(
+          underlyerPool.address
+        );
 
-      const newUserBalance = await daiToken.balanceOf(deployer.address);
-      const newPoolBalance = await daiToken.balanceOf(daiPool.address);
+        const prevUserApt = await underlyerPool.balanceOf(deployer.address);
+        const aptAmount = prevUserApt.div(5);
+        // Make sure to add early withdrawal fee
+        const amount = prevPoolBalance.div(5).mul(95).div(100);
 
-      expect(newUserBalance.sub(prevUserBalance)).to.equal(amount);
-      expect(prevPoolBalance.sub(newPoolBalance)).to.equal(amount);
+        await underlyerPool.redeem(aptAmount);
 
-      const newUserApt = await daiPool.balanceOf(deployer.address);
-      expect(prevUserApt.sub(newUserApt)).to.equal(aptAmount);
+        const newUserBalance = await underlyer.balanceOf(deployer.address);
+        const newPoolBalance = await underlyer.balanceOf(underlyerPool.address);
+
+        expect(newUserBalance.sub(prevUserBalance)).to.equal(amount);
+        expect(prevPoolBalance.sub(newPoolBalance)).to.equal(amount);
+
+        const newUserApt = await underlyerPool.balanceOf(deployer.address);
+        expect(prevUserApt.sub(newUserApt)).to.equal(aptAmount);
+      });
     });
 
     it("Should lend pool liquidity to the LP Account", async () => {
+      const daiToken = underlyerTokens.daiToken;
+      const daiPool = underlyerPools.daiPool;
+
       // Cannot rely on Chainlink values during testing
       await oracleAdapter.connect(emergencySafe).emergencySetTvl(0, 50);
 
