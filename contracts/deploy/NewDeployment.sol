@@ -250,7 +250,6 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
         bytes memory initData =
             abi.encodeWithSelector(
                 MetaPoolToken.initialize.selector,
-                proxyAdmin,
                 addressRegistryV2
             );
 
@@ -328,7 +327,6 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
         bytes memory initData =
             abi.encodeWithSelector(
                 LpAccount.initialize.selector,
-                proxyAdmin,
                 address(addressRegistryV2)
             );
 
