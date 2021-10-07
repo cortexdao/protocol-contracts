@@ -262,9 +262,9 @@ describe("Contract: MetaPoolToken", () => {
 
   describe("Defaults", () => {
     it("Cannot call `initialize` after deploy", async () => {
-      await expect(
-        mApt.connect(adminSafeSigner).initialize(addressRegistry.address)
-      ).to.be.revertedWith("Contract instance has already been initialized");
+      await expect(mApt.initialize(addressRegistry.address)).to.be.revertedWith(
+        "Contract instance has already been initialized"
+      );
     });
 
     it("Default admin role given to Emergency Safe", async () => {

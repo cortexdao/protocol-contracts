@@ -423,7 +423,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         bytes memory initData =
             abi.encodeWithSelector(
                 LpAccount.initialize.selector,
-                proxyAdmin,
                 address(addressRegistry)
             );
 

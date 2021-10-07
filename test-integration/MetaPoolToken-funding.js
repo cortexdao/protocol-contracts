@@ -209,8 +209,8 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
     const lpAccountAdmin = await ProxyAdmin.deploy();
 
     const lpAccountInitData = LpAccount.interface.encodeFunctionData(
-      "initialize(address,address)",
-      [lpAccountAdmin.address, addressRegistry.address]
+      "initialize(address)",
+      [addressRegistry.address]
     );
 
     const lpAccountProxy = await TransparentUpgradeableProxy.deploy(

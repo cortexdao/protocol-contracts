@@ -4,7 +4,6 @@ const { ethers, waffle, artifacts } = hre;
 const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
 const {
-  ZERO_ADDRESS,
   FAKE_ADDRESS,
   bytes32,
   tokenAmountToBigNumber,
@@ -42,6 +41,9 @@ describe("Contract: LpAccount", () => {
   let adminSafe;
   let mApt;
   let randomUser;
+
+  // contract factories
+  let LpAccount;
 
   // deployed contracts
   let lpAccount;
@@ -90,12 +92,12 @@ describe("Contract: LpAccount", () => {
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     proxyAdmin = await ProxyAdmin.deploy();
 
-    const LpAccount = await ethers.getContractFactory("TestLpAccount");
+    LpAccount = await ethers.getContractFactory("TestLpAccount");
     const logic = await LpAccount.deploy();
 
     const initData = LpAccount.interface.encodeFunctionData(
-      "initialize(address,address)",
-      [proxyAdmin.address, addressRegistry.address]
+      "initialize(address)",
+      [addressRegistry.address]
     );
 
     const TransparentUpgradeableProxy = await ethers.getContractFactory(
@@ -110,13 +112,60 @@ describe("Contract: LpAccount", () => {
     lpAccount = await LpAccount.attach(proxy.address);
   });
 
-  describe("Initializer", () => {
-    it.skip("Reverts on non-contract address for logic contract", async () => {});
-    it.skip("Reverts on zero address for proxy admin", async () => {});
-    it.skip("Reverts on non-contract address for address registry", async () => {});
+  describe("Initialization", () => {
+    let logic;
+
+    before(async () => {
+      logic = await LpAccount.deploy();
+    });
+
+    it("Allow when address registry is a contract address", async () => {
+      await expect(logic.initialize(addressRegistry.address)).to.not.be
+        .reverted;
+    });
+
+    it("Revert when address registry is not a contract address", async () => {
+      await expect(logic.initialize(FAKE_ADDRESS)).to.be.revertedWith(
+        "INVALID_ADDRESS"
+      );
+    });
+
+    it("Revert when called twice", async () => {
+      await expect(logic.initialize(addressRegistry.address)).to.not.be
+        .reverted;
+      await expect(
+        logic.initialize(addressRegistry.address)
+      ).to.be.revertedWith("Contract instance has already been initialized");
+    });
+
+    it("Proxy admin can call `initializeUpgrade` during upgrade", async () => {
+      const initData = LpAccount.interface.encodeFunctionData(
+        "initializeUpgrade()",
+        []
+      );
+      // await expect(
+      await proxyAdmin
+        .connect(deployer)
+        .upgradeAndCall(lpAccount.address, logic.address, initData);
+      // ).to.not.be.reverted;
+    });
+
+    it("Revert when non-admin attempts `initializeUpgrade`", async () => {
+      // need to initialize before calling `initializeUpgrade`
+      await logic.initialize(addressRegistry.address);
+      await expect(logic.initializeUpgrade()).to.be.revertedWith(
+        "PROXY_ADMIN_ONLY"
+      );
+    });
   });
 
   describe("Defaults", () => {
+    it("Cannot call `initialize` after deploy", async () => {
+      await expect(
+        lpAccount.initialize(addressRegistry.address)
+      ).to.be.revertedWith("Contract instance has already been initialized");
+    });
+
     it("Default admin role given to Emergency Safe", async () => {
       const DEFAULT_ADMIN_ROLE = await lpAccount.DEFAULT_ADMIN_ROLE();
       const memberCount = await lpAccount.getRoleMemberCount(
@@ -200,40 +249,6 @@ describe("Contract: LpAccount", () => {
           .connect(emergencySafe)
           .emergencySetAddressRegistry(FAKE_ADDRESS)
       ).to.be.revertedWith("INVALID_ADDRESS");
-    });
-  });
-
-  describe("emergencySetAdminAddress", () => {
-    it("Emergency Safe can call", async () => {
-      const someContractAddress = await generateContractAddress(deployer);
-      await expect(
-        lpAccount
-          .connect(emergencySafe)
-          .emergencySetAdminAddress(someContractAddress)
-      ).to.not.be.reverted;
-    });
-
-    it("Unpermissioned cannot call", async () => {
-      const someContractAddress = await generateContractAddress(deployer);
-      await expect(
-        lpAccount
-          .connect(randomUser)
-          .emergencySetAdminAddress(someContractAddress)
-      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
-    });
-
-    it("Address can be set", async () => {
-      const someContractAddress = await generateContractAddress(deployer);
-      await lpAccount
-        .connect(emergencySafe)
-        .emergencySetAdminAddress(someContractAddress);
-      expect(await lpAccount.proxyAdmin()).to.equal(someContractAddress);
-    });
-
-    it("Cannot set to non-contract address", async () => {
-      await expect(
-        lpAccount.connect(emergencySafe).emergencySetAdminAddress(ZERO_ADDRESS)
-      ).to.be.revertedWith("INVALID_ADMIN");
     });
   });
 
