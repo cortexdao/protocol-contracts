@@ -240,27 +240,6 @@ describe("Contract: PoolTokenV2", () => {
     });
   });
 
-  describe("Set admin address", () => {
-    it("Emergency Safe can set admin", async () => {
-      await poolToken
-        .connect(emergencySafe)
-        .emergencySetAdminAddress(FAKE_ADDRESS);
-      assert.equal(await poolToken.proxyAdmin(), FAKE_ADDRESS);
-    });
-
-    it("Revert on setting to zero address", async () => {
-      await expect(
-        poolToken.connect(emergencySafe).emergencySetAdminAddress(ZERO_ADDRESS)
-      ).to.be.reverted;
-    });
-
-    it("Revert when unpermissioned account attempts to set address", async () => {
-      await expect(
-        poolToken.connect(randomUser).emergencySetAdminAddress(FAKE_ADDRESS)
-      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
-    });
-  });
-
   describe("Set address registry", () => {
     it("Emergency Safe can set", async () => {
       const dummyContract = await deployMockContract(deployer, []);
