@@ -1,16 +1,16 @@
-const { assert } = require("chai");
-const { ethers, artifacts, contract } = require("hardhat");
+const { assert, expect } = require("chai");
+const { artifacts, contract } = require("hardhat");
 const MockContract = artifacts.require("MockContract");
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const PoolTokenProxy = artifacts.require("PoolTokenProxy");
 const PoolToken = artifacts.require("PoolToken");
-const PoolTokenUpgraded = artifacts.require("PoolTokenUpgraded");
+const PoolTokenV2 = artifacts.require("PoolTokenV2");
 const {
   expectRevert, // Assertions for transactions that should fail
 } = require("@openzeppelin/test-helpers");
 
 contract("PoolTokenProxy Unit Test", async (accounts) => {
-  const [owner, randomUser] = accounts;
+  const [owner] = accounts;
 
   let proxyAdmin;
   let logic;
@@ -37,12 +37,12 @@ contract("PoolTokenProxy Unit Test", async (accounts) => {
     instance = await PoolToken.at(proxy.address);
   });
 
-  describe("Test Defaults", async () => {
-    it("Test ProxyAdmin's owner", async () => {
+  describe("Default values", async () => {
+    it("Deployer is set as ProxyAdmin's owner ", async () => {
       assert.equal(await proxyAdmin.owner.call(), owner);
     });
 
-    it("Test Proxy's Implementation", async () => {
+    it("Proxy logic is set correctly", async () => {
       assert.equal(
         await proxyAdmin.getProxyImplementation.call(proxy.address, {
           from: owner,
@@ -51,7 +51,7 @@ contract("PoolTokenProxy Unit Test", async (accounts) => {
       );
     });
 
-    it("Test Proxy's Admin", async () => {
+    it("Proxy admin is set correctly", async () => {
       assert.equal(
         await proxyAdmin.getProxyAdmin(proxy.address),
         proxyAdmin.address
@@ -59,7 +59,7 @@ contract("PoolTokenProxy Unit Test", async (accounts) => {
     });
   });
 
-  describe("Test Upgradability through proxyAdmin", async () => {
+  describe("Initialization", async () => {
     beforeEach(async () => {
       // reset variables
       proxy = await PoolTokenProxy.new(
@@ -74,112 +74,33 @@ contract("PoolTokenProxy Unit Test", async (accounts) => {
       instance = await PoolToken.at(proxy.address);
     });
 
-    it("Test Proxy Upgrade Implementation fails when not called by owner", async () => {
-      // deploy new implementation
-      const newLogic = await PoolTokenUpgraded.new({ from: owner });
-      await expectRevert(
-        proxyAdmin.upgrade(proxy.address, newLogic.address, {
-          from: randomUser,
-        }),
-        "Ownable: caller is not the owner"
-      );
+    it("Cannot call `initialize` after deploy", async () => {
+      await expect(
+        instance.initialize(
+          proxyAdmin.address,
+          mockToken.address,
+          mockPriceAgg.address
+        )
+      ).to.be.revertedWith("Contract instance has already been initialized");
     });
 
-    it("Test Proxy Upgrade Implementation", async () => {
-      // confirm that newlyAddedVariable is not availble within the instance yet
-      assert.equal(typeof instance.newlyAddedVariable, "undefined");
-
-      //prematurely point instance to upgraded implementation
-      instance = await PoolTokenUpgraded.at(proxy.address);
-      assert.equal(typeof instance.newlyAddedVariable, "function");
-
-      //function should fail due to the proxy not pointing to the correct implementation
-      await expectRevert.unspecified(instance.newlyAddedVariable.call());
-
-      // create the new implementation and point the proxy to it
-      const newLogic = await PoolTokenUpgraded.new({ from: owner });
-      await proxyAdmin.upgrade(proxy.address, newLogic.address, {
-        from: owner,
-      });
-      instance = await PoolTokenUpgraded.at(proxy.address);
-
-      const newVal = await instance.newlyAddedVariable.call();
-      assert.equal(newVal, false);
-      assert.equal(
-        await proxyAdmin.getProxyImplementation.call(proxy.address, {
-          from: owner,
-        }),
-        newLogic.address
-      );
-    });
-
-    it("Test Proxy Upgrade Implementation and Initialize when not called by admin", async () => {
+    it("`initializeUpgrade` reverts when called by non-admin", async () => {
       // deploy new implementation
-      const newLogic = await PoolTokenUpgraded.new({ from: owner });
+      const newLogic = await PoolTokenV2.new({ from: owner });
       await proxyAdmin.upgrade(proxy.address, newLogic.address, {
         from: owner,
       });
 
       // point instance to upgraded implementation
-      instance = await PoolTokenUpgraded.at(proxy.address);
+      let instance = await PoolTokenV2.at(proxy.address);
+
+      const mockAddressRegistry = await MockContract.new();
 
       await expectRevert(
-        instance.initializeUpgrade({ from: owner }),
-        "ADMIN_ONLY"
-      );
-    });
-
-    it("Test Proxy Upgrade Implementation and Initialize fails when not owner", async () => {
-      // deploy new implementation
-      const newLogic = await PoolTokenUpgraded.new({ from: owner });
-      // construct init data
-      const iImplementation = new ethers.utils.Interface(PoolTokenUpgraded.abi);
-      const initData = iImplementation.encodeFunctionData(
-        "initializeUpgrade",
-        []
-      );
-
-      await expectRevert(
-        proxyAdmin.upgradeAndCall(proxy.address, newLogic.address, initData, {
-          from: randomUser,
-        }),
-        "Ownable: caller is not the owner"
-      );
-    });
-
-    it("Test Proxy Upgrade Implementation and Initialize", async () => {
-      // confirm that newlyAddedVariable is not availble within the instance yet
-      assert.equal(typeof instance.newlyAddedVariable, "undefined");
-
-      //prematurely point instance to upgraded implementation
-      instance = await PoolTokenUpgraded.at(proxy.address);
-      assert.equal(typeof instance.newlyAddedVariable, "function");
-
-      //function should fail due to the proxy not pointing to the correct implementation
-      await expectRevert.unspecified(instance.newlyAddedVariable.call());
-
-      // create the new implementation and point the proxy to it
-      const newLogic = await PoolTokenUpgraded.new({ from: owner });
-      const iImplementation = new ethers.utils.Interface(PoolTokenUpgraded.abi);
-      const initData = iImplementation.encodeFunctionData(
-        "initializeUpgrade",
-        []
-      );
-
-      await proxyAdmin.upgradeAndCall(
-        proxy.address,
-        newLogic.address,
-        initData,
-        { from: owner }
-      );
-
-      const newVal = await instance.newlyAddedVariable.call();
-      assert.equal(newVal, true);
-      assert.equal(
-        await proxyAdmin.getProxyImplementation.call(proxy.address, {
+        instance.initializeUpgrade(mockAddressRegistry.address, {
           from: owner,
         }),
-        newLogic.address
+        "PROXY_ADMIN_ONLY"
       );
     });
   });
