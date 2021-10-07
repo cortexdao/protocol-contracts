@@ -54,18 +54,19 @@ TvlManager
 - emergencySafe (emergency role, default admin role)
 - lpSafe (LP role)
 
+LpAccount
+
+- emergencySafe (emergency role, default admin role)
+- adminSafe (admin role)
+- lpSafe (LP role)
+
 OracleAdapter
 
 - emergencySafe (emergency role, default admin role)
 - adminSafe (admin role)
 - tvlManager (contract role)
 - mApt (contract role)
-
-LpAccount
-
-- emergencySafe (emergency role, default admin role)
-- adminSafe (admin role)
-- lpSafe (LP role)
+- lpAccount (contract role)
 
 Note the order of dependencies: a contract requires contracts
 above it in the list to be deployed first. Thus we need
@@ -288,7 +289,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         bytes memory initData =
             abi.encodeWithSelector(
                 MetaPoolToken.initialize.selector,
-                proxyAdmin,
                 addressRegistry
             );
 
@@ -423,7 +423,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         bytes memory initData =
             abi.encodeWithSelector(
                 LpAccount.initialize.selector,
-                proxyAdmin,
                 address(addressRegistry)
             );
 

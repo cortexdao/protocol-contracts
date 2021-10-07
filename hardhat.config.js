@@ -51,11 +51,56 @@ module.exports = {
     },
   },
   solidity: {
-    version: "0.6.11",
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 200,
+    compilers: [
+      {
+        version: "0.6.11",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+    ],
+    // These overrides ensure we use the same
+    // compiler version and optimizer settings
+    // as used in the production deployments.
+    overrides: {
+      "contracts/pool/PoolToken.sol": {
+        version: "0.6.11",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 999999,
+          },
+        },
+      },
+      "contracts/pool/TestPoolToken.sol": {
+        version: "0.6.11",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 999999,
+          },
+        },
+      },
+      "contracts/pool/PoolTokenProxy.sol": {
+        version: "0.6.11",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 999999,
+          },
+        },
+      },
+      "contracts/registry/AddressRegistry.sol": {
+        version: "0.6.11",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 999999,
+          },
+        },
       },
     },
   },

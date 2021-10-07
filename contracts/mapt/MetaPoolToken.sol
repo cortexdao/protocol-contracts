@@ -81,8 +81,6 @@ contract MetaPoolToken is
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
-    /** @notice used to protect init functions for upgrades */
-    address public proxyAdmin;
     /** @notice used to protect mint and burn function */
     IAddressRegistryV2 public addressRegistry;
 
@@ -90,16 +88,7 @@ contract MetaPoolToken is
 
     event Mint(address acccount, uint256 amount);
     event Burn(address acccount, uint256 amount);
-    event AdminChanged(address);
     event AddressRegistryChanged(address);
-
-    /**
-     * @dev Throws if called by any account other than the proxy admin.
-     */
-    modifier onlyAdmin() {
-        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
-        _;
-    }
 
     /**
      * @dev Since the proxy delegate calls to this "logic" contract, any
@@ -113,12 +102,7 @@ contract MetaPoolToken is
      * repeatedly.  It should be called during the deployment so that
      * it cannot be called by someone else later.
      */
-    function initialize(address adminAddress, address addressRegistry_)
-        external
-        initializer
-    {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-
+    function initialize(address addressRegistry_) external initializer {
         // initialize ancestor storage
         __Context_init_unchained();
         __AccessControl_init_unchained();
@@ -127,7 +111,6 @@ contract MetaPoolToken is
         __ERC20_init_unchained("APY MetaPool Token", "mAPT");
 
         // initialize impl-specific storage
-        _setAdminAddress(adminAddress);
         _setAddressRegistry(addressRegistry_);
         _setupRole(DEFAULT_ADMIN_ROLE, addressRegistry.emergencySafeAddress());
         _setupRole(LP_ROLE, addressRegistry.lpSafeAddress());
@@ -137,25 +120,13 @@ contract MetaPoolToken is
     /**
      * @dev Dummy function to show how one would implement an init function
      * for future upgrades.  Note the `initializer` modifier can only be used
-     * once in the entire contract, so we can't use it here.  Instead,
-     * we set the proxy admin address as a variable and protect this
-     * function with `onlyAdmin`, which only allows the proxy admin
-     * to call this function during upgrades.
+     * once in the entire contract, so we can't use it here.  Instead, we
+     * protect the upgrade init with the `onlyProxyAdmin` modifier, which
+     * checks `msg.sender` against the proxy admin slot defined in EIP-1967.
+     * This will only allow the proxy admin to call this function during upgrades.
      */
     // solhint-disable-next-line no-empty-blocks
-    function initializeUpgrade() external virtual nonReentrant onlyAdmin {}
-
-    /**
-     * @notice Set the new proxy admin
-     * @param adminAddress The new proxy admin
-     */
-    function emergencySetAdminAddress(address adminAddress)
-        external
-        nonReentrant
-        onlyEmergencyRole
-    {
-        _setAdminAddress(adminAddress);
-    }
+    function initializeUpgrade() external virtual nonReentrant onlyProxyAdmin {}
 
     /**
      * @notice Sets the address registry
@@ -239,12 +210,6 @@ contract MetaPoolToken is
         }
 
         return (pools, rebalanceAmounts);
-    }
-
-    function _setAdminAddress(address adminAddress) internal {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-        proxyAdmin = adminAddress;
-        emit AdminChanged(adminAddress);
     }
 
     function _setAddressRegistry(address addressRegistry_) internal {

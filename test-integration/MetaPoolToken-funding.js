@@ -187,13 +187,14 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
 
     const mAptAdmin = await ProxyAdmin.deploy();
 
-    const MetaPoolTokenProxy = await ethers.getContractFactory(
-      "MetaPoolTokenProxy"
+    const initData = MetaPoolToken.interface.encodeFunctionData(
+      "initialize(address)",
+      [addressRegistry.address]
     );
-    const mAptProxy = await MetaPoolTokenProxy.deploy(
+    const mAptProxy = await TransparentUpgradeableProxy.deploy(
       mAptLogic.address,
       mAptAdmin.address,
-      addressRegistry.address
+      initData
     );
 
     mApt = await MetaPoolToken.attach(mAptProxy.address).connect(lpSafe);
@@ -208,8 +209,8 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
     const lpAccountAdmin = await ProxyAdmin.deploy();
 
     const lpAccountInitData = LpAccount.interface.encodeFunctionData(
-      "initialize(address,address)",
-      [lpAccountAdmin.address, addressRegistry.address]
+      "initialize(address)",
+      [addressRegistry.address]
     );
 
     const lpAccountProxy = await TransparentUpgradeableProxy.deploy(

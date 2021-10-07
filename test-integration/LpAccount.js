@@ -108,8 +108,8 @@ describe("Contract: LpAccount", () => {
     const logic = await LpAccount.deploy();
 
     const initData = LpAccount.interface.encodeFunctionData(
-      "initialize(address,address)",
-      [proxyAdmin.address, addressRegistry.address]
+      "initialize(address)",
+      [addressRegistry.address]
     );
 
     const TransparentUpgradeableProxy = await ethers.getContractFactory(

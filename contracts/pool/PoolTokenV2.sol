@@ -63,8 +63,8 @@ contract PoolTokenV2 is
     /* ------------------------------- */
 
     // V1
-    /** @notice used to protect init functions for upgrades */
-    address public proxyAdmin;
+    /** @dev used to protect init functions for upgrades */
+    address private _proxyAdmin; // <-- deprecated in v2; visibility changed to avoid name clash
     /** @notice true if depositing is locked */
     bool public addLiquidityLock;
     /** @notice true if withdrawing is locked */
@@ -91,19 +91,8 @@ contract PoolTokenV2 is
 
     /* ------------------------------- */
 
-    /** @notice Log when the proxy admin is changed */
-    event AdminChanged(address);
-
     /** @notice Log when the address registry is changed */
     event AddressRegistryChanged(address);
-
-    /**
-     * @dev Throw if called by any account other than the proxy admin.
-     */
-    modifier onlyAdmin() {
-        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
-        _;
-    }
 
     /**
      * @dev Since the proxy delegate calls to this "logic" contract, any
@@ -137,7 +126,7 @@ contract PoolTokenV2 is
         __ERC20_init_unchained("APY Pool Token", "APT");
 
         // initialize impl-specific storage
-        _setAdminAddress(adminAddress);
+        // _setAdminAddress(adminAddress);  <-- deprecated in V2.
         addLiquidityLock = false;
         redeemLock = false;
         underlyer = underlyer_;
@@ -147,16 +136,15 @@ contract PoolTokenV2 is
     /**
      * @dev Note the `initializer` modifier can only be used once in the
      * entire contract, so we can't use it here.  Instead, we protect
-     * this function with `onlyAdmin`, which allows only the `proxyAdmin`
-     * address to call this function.  Since that address is in fact
-     * set to the actual proxy admin during deployment, this ensures
-     * this function can only be called as part of a delegate call
-     * during upgrades, i.e. in ProxyAdmin's `upgradeAndCall`.
+     * the upgrade init with the `onlyProxyAdmin` modifier, which checks
+     * `msg.sender` against the proxy admin slot defined in EIP-1967.
+     * This will only allow the proxy admin to call this function during upgrades.
      */
+    // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade(address addressRegistry_)
         external
         nonReentrant
-        onlyAdmin
+        onlyProxyAdmin
     {
         _setAddressRegistry(addressRegistry_);
 
@@ -302,18 +290,6 @@ contract PoolTokenV2 is
         onlyContractRole
     {
         underlyer.safeTransfer(addressRegistry.lpAccountAddress(), amount);
-    }
-
-    /**
-     * @notice Set the new proxy admin
-     * @param adminAddress The new proxy admin
-     */
-    function emergencySetAdminAddress(address adminAddress)
-        external
-        nonReentrant
-        onlyEmergencyRole
-    {
-        _setAdminAddress(adminAddress);
     }
 
     /**
@@ -486,12 +462,6 @@ contract PoolTokenV2 is
             );
 
         return topUpAmount;
-    }
-
-    function _setAdminAddress(address adminAddress) internal {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-        proxyAdmin = adminAddress;
-        emit AdminChanged(adminAddress);
     }
 
     function _setAddressRegistry(address addressRegistry_) internal {

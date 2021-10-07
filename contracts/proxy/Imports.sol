@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 
-import {
-    Initializable
-} from "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
+import {Initializable} from "./Initializable.sol";
 import {
     OwnableUpgradeSafe
 } from "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
