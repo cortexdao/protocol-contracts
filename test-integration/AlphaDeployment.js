@@ -7,6 +7,8 @@ const {
   forciblySendEth,
   tokenAmountToBigNumber,
   getDeployedAddress,
+  FAKE_ADDRESS,
+  ZERO_ADDRESS,
 } = require("../utils/helpers");
 const {
   AGG_MAP: { MAINNET: AGGS },
@@ -230,15 +232,39 @@ describe("Contract: AlphaDeployment", () => {
         expect(await alphaDeployment.step()).to.equal(3);
       });
 
-      it("should initialize the logic contract so it cannot be stolen", async () => {
+      // See comment on next test;
+      // essentially there is no longer a need to do this, but
+      // we continue initializing the logic separately as a matter
+      // of best practice.
+      it("should call initialize", async () => {
         const poolTokenV2Logic = await ethers.getContractAt(
           "PoolTokenV2",
           await alphaDeployment.poolTokenV2()
         );
 
-        expect(await poolTokenV2Logic.proxyAdmin()).to.equal(
-          poolProxyAdminAddress
+        await expect(
+          poolTokenV2Logic.initialize(FAKE_ADDRESS, FAKE_ADDRESS, FAKE_ADDRESS)
+        ).to.be.revertedWith("Contract instance has already been initialized");
+      });
+
+      // Normally `initialize` would be responsible for ownership/access
+      // control of the contract, but in PoolTokenV2, now that all happens
+      // in `initializeUpgrade`; `initialize` has been stripped of any
+      // controls setting.  Thus to protect the contract, it suffices to
+      // check that nobody can call `initializeUpgrade`.
+      it("should revert on `initializeUpgrade`", async () => {
+        const poolTokenV2Logic = await ethers.getContractAt(
+          "PoolTokenV2",
+          await alphaDeployment.poolTokenV2()
         );
+
+        // EIP-1967 slot for proxy admin won't be set on logic contract
+        expect(await poolTokenV2Logic.proxyAdmin()).to.equal(ZERO_ADDRESS);
+
+        // nobody should be able to call this
+        await expect(
+          poolTokenV2Logic.initializeUpgrade(addressRegistry.address)
+        ).to.be.revertedWith("PROXY_ADMIN_ONLY");
       });
     });
 
