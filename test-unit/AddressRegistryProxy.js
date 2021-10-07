@@ -1,16 +1,16 @@
 const { assert, expect } = require("chai");
-const { ethers, artifacts, contract } = require("hardhat");
+const { artifacts, contract } = require("hardhat");
 const timeMachine = require("ganache-time-traveler");
 const { expectRevert } = require("@openzeppelin/test-helpers");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 
 const ProxyAdmin = artifacts.require("ProxyAdmin");
-const AddressRegistryUpgraded = artifacts.require("AddressRegistryUpgraded");
 const TransparentUpgradeableProxy = artifacts.require(
   "TransparentUpgradeableProxy"
 );
 const ProxyConstructorArg = artifacts.require("ProxyConstructorArg");
 const AddressRegistry = artifacts.require("AddressRegistry");
+const AddressRegistryV2 = artifacts.require("AddressRegistryV2");
 
 contract("AddressRegistryProxy", async (accounts) => {
   const [deployer, randomUser] = accounts;
@@ -18,7 +18,7 @@ contract("AddressRegistryProxy", async (accounts) => {
   let proxyAdmin;
   let logic;
   let proxy;
-  let manager;
+  let registry;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -46,9 +46,11 @@ contract("AddressRegistryProxy", async (accounts) => {
         from: deployer,
       }
     );
+
+    registry = await AddressRegistry.at(proxy.address);
   });
 
-  describe("ProxyAdmin defaults", async () => {
+  describe("Defaults", async () => {
     it("ProxyAdmin owner is deployer", async () => {
       assert.equal(await proxyAdmin.owner(), deployer);
     });
@@ -68,117 +70,53 @@ contract("AddressRegistryProxy", async (accounts) => {
         proxyAdmin.address
       );
     });
+
+    it("proxyAdmin() is set to proxy admin", async () => {
+      expect(await registry.proxyAdmin()).to.equal(proxyAdmin.address);
+    });
   });
 
-  describe("Upgradability", async () => {
-    beforeEach(async () => {
-      manager = await AddressRegistry.at(proxy.address);
-    });
-
-    it("Owner can upgrade logic", async () => {
-      // confirm that newlyAddedVariable is not availble within the instance yet
-      assert.equal(typeof manager.newlyAddedVariable, "undefined");
-
-      //prematurely point instance to upgraded implementation
-      manager = await AddressRegistryUpgraded.at(proxy.address);
-      assert.equal(typeof manager.newlyAddedVariable, "function");
-
-      //function should fail due to the proxy not pointing to the correct implementation
-      await expectRevert.unspecified(manager.newlyAddedVariable());
-
-      // create the new implementation and point the proxy to it
-      const newLogic = await AddressRegistryUpgraded.new({ from: deployer });
-      await proxyAdmin.upgrade(proxy.address, newLogic.address, {
-        from: deployer,
-      });
-
-      const newVal = await manager.newlyAddedVariable();
-      assert.equal(newVal, false);
-      assert.equal(
-        await proxyAdmin.getProxyImplementation(proxy.address, {
-          from: deployer,
-        }),
-        newLogic.address
+  describe("Initialization", async () => {
+    it("Cannot call `initialize` after deploy", async () => {
+      await expectRevert(
+        registry.initialize(proxyAdmin.address, { from: randomUser }),
+        "Contract instance has already been initialized"
       );
     });
 
-    it("Revert when non-owner attempts upgrade", async () => {
-      const newLogic = await AddressRegistryUpgraded.new({ from: deployer });
+    it("Revert when non-admin attempts `initializeUpgrade` on V1", async () => {
+      logic = await AddressRegistry.new({ from: deployer });
       await expectRevert(
-        proxyAdmin.upgrade(proxy.address, newLogic.address, {
-          from: randomUser,
-        }),
-        "Ownable: caller is not the owner"
-      );
-    });
-
-    it("Revert when user attempts to initialize upgrade", async () => {
-      await expectRevert(
-        manager.initializeUpgrade({ from: randomUser }),
+        registry.initializeUpgrade({ from: randomUser }),
         "ADMIN_ONLY"
       );
     });
 
-    it("Revert when non-admin attempts `upgradeAndCall`", async () => {
-      // deploy new implementation
-      const newLogic = await AddressRegistryUpgraded.new({ from: deployer });
-      // construct init data
-      const iImplementation = new ethers.utils.Interface(
-        AddressRegistryUpgraded.abi
-      );
-      const initData = iImplementation.encodeFunctionData(
-        "initializeUpgrade",
-        []
-      );
-
-      await expectRevert(
-        proxyAdmin.upgradeAndCall(proxy.address, newLogic.address, initData, {
-          from: randomUser,
-        }),
-        "Ownable: caller is not the owner"
-      );
+    it("Proxy admin can call `initializeUpgrade` during upgrade", async () => {
+      const logicV2 = await AddressRegistryV2.new({ from: deployer });
+      const initData = logicV2.contract.methods.initializeUpgrade().encodeABI();
+      await expect(
+        proxyAdmin.upgradeAndCall(proxy.address, logicV2.address, initData, {
+          from: deployer,
+        })
+      ).to.not.be.reverted;
     });
 
-    it("Owner can upgrade logic and initialize", async () => {
-      // confirm that newlyAddedVariable is not availble within the instance yet
-      assert.equal(typeof manager.newlyAddedVariable, "undefined");
-
-      //prematurely point instance to upgraded implementation
-      manager = await AddressRegistryUpgraded.at(proxy.address);
-      assert.equal(typeof manager.newlyAddedVariable, "function");
-
-      //function should fail due to the proxy not pointing to the correct implementation
-      await expectRevert.unspecified(manager.newlyAddedVariable());
-
-      // create the new implementation and point the proxy to it
-      const newLogic = await AddressRegistryUpgraded.new({ from: deployer });
-      const iImplementation = new ethers.utils.Interface(
-        AddressRegistryUpgraded.abi
-      );
-      const initData = iImplementation.encodeFunctionData(
-        "initializeUpgrade",
-        []
-      );
-
+    it("Revert when non-admin attempts `initializeUpgrade` on V2", async () => {
+      const logicV2 = await AddressRegistryV2.new({ from: deployer });
+      const initData = logicV2.contract.methods.initializeUpgrade().encodeABI();
       await proxyAdmin.upgradeAndCall(
         proxy.address,
-        newLogic.address,
+        logicV2.address,
         initData,
         { from: deployer }
       );
-
-      const newVal = await manager.newlyAddedVariable.call();
-      assert.equal(newVal, true);
-      assert.equal(
-        await proxyAdmin.getProxyImplementation(proxy.address, {
-          from: deployer,
-        }),
-        newLogic.address
+      await expectRevert(
+        registry.initializeUpgrade({ from: randomUser }),
+        "PROXY_ADMIN_ONLY"
       );
     });
-  });
 
-  describe("initialize", () => {
     it("Cannot initialize with zero admin address", async () => {
       const encodedArg = await (await ProxyConstructorArg.new()).getEncodedArg(
         ZERO_ADDRESS
@@ -193,22 +131,6 @@ contract("AddressRegistryProxy", async (accounts) => {
           }
         )
       ).to.be.reverted;
-    });
-
-    it("deploy initializes correctly", async () => {
-      const encodedArg = await (await ProxyConstructorArg.new()).getEncodedArg(
-        proxyAdmin.address
-      );
-      const proxy = await TransparentUpgradeableProxy.new(
-        logic.address,
-        proxyAdmin.address,
-        encodedArg,
-        { from: deployer }
-      );
-      const registry = await AddressRegistry.at(proxy.address);
-
-      expect(await registry.owner()).to.equal(deployer);
-      expect(await registry.proxyAdmin()).to.equal(proxyAdmin.address);
     });
   });
 });
