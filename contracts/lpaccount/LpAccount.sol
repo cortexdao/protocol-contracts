@@ -13,7 +13,9 @@ import {
     SafeERC20
 } from "contracts/libraries/Imports.sol";
 import {
-    Initializable,
+    Initializable
+} from "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
+import {
     ReentrancyGuardUpgradeSafe,
     AccessControlUpgradeSafe
 } from "contracts/proxy/Imports.sol";
