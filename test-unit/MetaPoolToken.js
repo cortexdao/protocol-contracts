@@ -210,10 +210,10 @@ describe("Contract: MetaPoolToken", () => {
     return mApt;
   }
 
-  describe("Initializer", () => {
+  describe("Initialization", () => {
     let logic;
 
-    before(async () => {
+    before("Deploy logic contract", async () => {
       const MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
       logic = await MetaPoolToken.deploy();
     });
@@ -236,9 +236,37 @@ describe("Contract: MetaPoolToken", () => {
         logic.initialize(addressRegistry.address)
       ).to.be.revertedWith("Contract instance has already been initialized");
     });
+
+    it("Proxy admin can call `initializeUpgrade` during upgrade", async () => {
+      const MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
+      const initData = MetaPoolToken.interface.encodeFunctionData(
+        "initializeUpgrade()",
+        []
+      );
+      const proxyAdmin = await getProxyAdmin(mApt.address);
+      await expect(
+        proxyAdmin
+          .connect(adminSafeSigner)
+          .upgradeAndCall(mApt.address, logic.address, initData)
+      ).to.not.be.reverted;
+    });
+
+    it("Revert when non-admin attempts `initializeUpgrade`", async () => {
+      // need to initialize before calling `initializeUpgrade`
+      await logic.initialize(addressRegistry.address);
+      await expect(logic.initializeUpgrade()).to.be.revertedWith(
+        "PROXY_ADMIN_ONLY"
+      );
+    });
   });
 
   describe("Defaults", () => {
+    it("Cannot call `initialize` after deploy", async () => {
+      await expect(
+        mApt.connect(adminSafeSigner).initialize(addressRegistry.address)
+      ).to.be.revertedWith("Contract instance has already been initialized");
+    });
+
     it("Default admin role given to Emergency Safe", async () => {
       const DEFAULT_ADMIN_ROLE = await mApt.DEFAULT_ADMIN_ROLE();
       const memberCount = await mApt.getRoleMemberCount(DEFAULT_ADMIN_ROLE);
