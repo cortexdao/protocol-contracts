@@ -136,12 +136,11 @@ contract PoolTokenV2 is
     /**
      * @dev Note the `initializer` modifier can only be used once in the
      * entire contract, so we can't use it here.  Instead, we protect
-     * this function with `onlyAdmin`, which allows only the `proxyAdmin`
-     * address to call this function.  Since that address is in fact
-     * set to the actual proxy admin during deployment, this ensures
-     * this function can only be called as part of a delegate call
-     * during upgrades, i.e. in ProxyAdmin's `upgradeAndCall`.
+     * the upgrade init with the `onlyProxyAdmin` modifier, which checks
+     * `msg.sender` against the proxy admin slot defined in EIP-1967.
+     * This will only allow the proxy admin to call this function during upgrades.
      */
+    // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade(address addressRegistry_)
         external
         nonReentrant

@@ -62,6 +62,9 @@ module.exports = {
         },
       },
     ],
+    // These overrides ensure we use the same
+    // compiler version and optimizer settings
+    // as used in the production deployments.
     overrides: {
       "contracts/pool/PoolToken.sol": {
         version: "0.6.11",
