@@ -2,10 +2,7 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {OwnableUpgradeSafe} from "contracts/proxy/Imports.sol";
-import {
-    Initializable
-} from "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
+import {Initializable, OwnableUpgradeSafe} from "contracts/proxy/Imports.sol";
 import {IAddressRegistryV2} from "./IAddressRegistryV2.sol";
 
 contract AddressRegistryV2 is
@@ -16,23 +13,13 @@ contract AddressRegistryV2 is
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
-    /** @notice the same address as the proxy admin; used
+    /** @dev the same address as the proxy admin; used
      *  to protect init functions for upgrades */
-    address public proxyAdmin;
+    address private _proxyAdmin; // <-- deprecated in V2.
     bytes32[] internal _idList;
     mapping(bytes32 => address) internal _idToAddress;
 
     /* ------------------------------- */
-
-    event AdminChanged(address);
-
-    /**
-     * @dev Throws if called by any account other than the proxy admin.
-     */
-    modifier onlyAdmin() {
-        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
-        _;
-    }
 
     /**
      * @dev Since the proxy delegate calls to this "logic" contract, any
@@ -57,19 +44,19 @@ contract AddressRegistryV2 is
         __Ownable_init_unchained();
 
         // initialize impl-specific storage
-        _setAdminAddress(adminAddress);
+        // _setAdminAddress(adminAddress);  <-- deprecated in V2.
     }
 
     /**
      * @dev Dummy function to show how one would implement an init function
      * for future upgrades.  Note the `initializer` modifier can only be used
-     * once in the entire contract, so we can't use it here.  Instead,
-     * we set the proxy admin address as a variable and protect this
-     * function with `onlyAdmin`, which only allows the proxy admin
-     * to call this function during upgrades.
+     * once in the entire contract, so we can't use it here.  Instead, we
+     * protect the upgrade init with the `onlyProxyAdmin` modifier, which
+     * checks `msg.sender` against the proxy admin slot defined in EIP-1967.
+     * This will only allow the proxy admin to call this function during upgrades.
      */
     // solhint-disable-next-line no-empty-blocks
-    function initializeUpgrade() external virtual onlyAdmin {}
+    function initializeUpgrade() external virtual onlyProxyAdmin {}
 
     function registerMultipleAddresses(
         bytes32[] calldata ids,
@@ -95,10 +82,6 @@ contract AddressRegistryV2 is
                 break;
             }
         }
-    }
-
-    function setAdminAddress(address adminAddress) external onlyOwner {
-        _setAdminAddress(adminAddress);
     }
 
     function getIds() external view override returns (bytes32[] memory) {
@@ -174,9 +157,5 @@ contract AddressRegistryV2 is
         emit AddressRegistered(id, address_);
     }
 
-    function _setAdminAddress(address adminAddress) internal {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-        proxyAdmin = adminAddress;
-        emit AdminChanged(adminAddress);
     }
 }
