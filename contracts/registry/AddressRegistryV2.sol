@@ -88,16 +88,6 @@ contract AddressRegistryV2 is
         return _idList;
     }
 
-    function getAddress(bytes32 id) public view override returns (address) {
-        address address_ = _idToAddress[id];
-        require(address_ != address(0), "Missing address");
-        return address_;
-    }
-
-    function tvlManagerAddress() public view override returns (address) {
-        return getAddress("tvlManager");
-    }
-
     function chainlinkRegistryAddress()
         external
         view
@@ -157,5 +147,13 @@ contract AddressRegistryV2 is
         emit AddressRegistered(id, address_);
     }
 
+    function tvlManagerAddress() public view override returns (address) {
+        return getAddress("tvlManager");
+    }
+
+    function getAddress(bytes32 id) public view override returns (address) {
+        address address_ = _idToAddress[id];
+        require(address_ != address(0), "Missing address");
+        return address_;
     }
 }
