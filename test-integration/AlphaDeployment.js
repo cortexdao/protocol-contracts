@@ -9,6 +9,7 @@ const {
   getDeployedAddress,
   FAKE_ADDRESS,
   ZERO_ADDRESS,
+  getLogicContract,
 } = require("../utils/helpers");
 const {
   AGG_MAP: { MAINNET: AGGS },
@@ -205,6 +206,18 @@ describe("Contract: AlphaDeployment", () => {
       it("new addresses should be registered after upgrade", async () => {
         await expect(addressRegistry.emergencySafeAddress()).to.not.be.reverted;
       });
+
+      it("should call initialize directly on logic contract", async () => {
+        const logicAddress = await alphaDeployment.addressRegistryV2();
+        const logic = await ethers.getContractAt(
+          "AddressRegistryV2",
+          logicAddress
+        );
+
+        await expect(logic.initialize(FAKE_ADDRESS)).to.be.revertedWith(
+          "Contract instance has already been initialized"
+        );
+      });
     });
 
     describe("Step 1: Deploy mAPT", () => {
@@ -221,6 +234,15 @@ describe("Contract: AlphaDeployment", () => {
           await alphaDeployment.mApt()
         );
       });
+
+      it("should call initialize directly on logic contract", async () => {
+        const mAptAddress = await alphaDeployment.mApt();
+        const logic = await getLogicContract(mAptAddress, "MetaPoolToken");
+
+        await expect(
+          logic.initialize(addressRegistry.address)
+        ).to.be.revertedWith("Contract instance has already been initialized");
+      });
     });
 
     describe("Step 2: Deploy PoolTokenV2 logic contract", () => {
@@ -236,7 +258,7 @@ describe("Contract: AlphaDeployment", () => {
       // essentially there is no longer a need to do this, but
       // we continue initializing the logic separately as a matter
       // of best practice.
-      it("should call initialize", async () => {
+      it("should call initialize directly on logic contract", async () => {
         const poolTokenV2Logic = await ethers.getContractAt(
           "PoolTokenV2",
           await alphaDeployment.poolTokenV2()
