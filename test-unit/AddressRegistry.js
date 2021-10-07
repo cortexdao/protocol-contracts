@@ -15,7 +15,7 @@ const AddressRegistryV2 = artifacts.require("AddressRegistryV2");
 const bytes32 = ethers.utils.formatBytes32String;
 
 contract("AddressRegistry", async (accounts) => {
-  const [deployer, admin, randomUser] = accounts;
+  const [deployer, randomUser] = accounts;
 
   let proxyAdmin;
   let registry;
@@ -66,27 +66,6 @@ contract("AddressRegistry", async (accounts) => {
 
     it("Revert when ETH is sent", async () => {
       await expectRevert.unspecified(registry.send(10));
-    });
-  });
-
-  describe("Set admin address", async () => {
-    it("Owner can set to valid address", async () => {
-      await registry.setAdminAddress(randomUser, { from: deployer });
-      assert.equal(await registry.proxyAdmin(), randomUser);
-    });
-
-    it("Revert when non-owner attempts to set", async () => {
-      await expectRevert(
-        registry.setAdminAddress(admin, { from: randomUser }),
-        "Ownable: caller is not the owner"
-      );
-    });
-
-    it("Cannot set to zero address", async () => {
-      await expectRevert(
-        registry.setAdminAddress(ZERO_ADDRESS, { from: deployer }),
-        "INVALID_ADMIN"
-      );
     });
   });
 

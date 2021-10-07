@@ -10,6 +10,7 @@ const TransparentUpgradeableProxy = artifacts.require(
 );
 const ProxyConstructorArg = artifacts.require("ProxyConstructorArg");
 const AddressRegistry = artifacts.require("AddressRegistry");
+const AddressRegistryV2 = artifacts.require("AddressRegistryV2");
 
 contract("AddressRegistryProxy", async (accounts) => {
   const [deployer, randomUser] = accounts;
@@ -83,10 +84,36 @@ contract("AddressRegistryProxy", async (accounts) => {
       );
     });
 
-    it("Revert when non-admin attempts `initializeUpgrade`", async () => {
+    it("Revert when non-admin attempts `initializeUpgrade` on V1", async () => {
+      logic = await AddressRegistry.new({ from: deployer });
       await expectRevert(
         registry.initializeUpgrade({ from: randomUser }),
         "ADMIN_ONLY"
+      );
+    });
+
+    it("Proxy admin can call `initializeUpgrade` during upgrade", async () => {
+      const logicV2 = await AddressRegistryV2.new({ from: deployer });
+      const initData = logicV2.contract.methods.initializeUpgrade().encodeABI();
+      await expect(
+        proxyAdmin.upgradeAndCall(proxy.address, logicV2.address, initData, {
+          from: deployer,
+        })
+      ).to.not.be.reverted;
+    });
+
+    it("Revert when non-admin attempts `initializeUpgrade` on V2", async () => {
+      const logicV2 = await AddressRegistryV2.new({ from: deployer });
+      const initData = logicV2.contract.methods.initializeUpgrade().encodeABI();
+      await proxyAdmin.upgradeAndCall(
+        proxy.address,
+        logicV2.address,
+        initData,
+        { from: deployer }
+      );
+      await expectRevert(
+        registry.initializeUpgrade({ from: randomUser }),
+        "PROXY_ADMIN_ONLY"
       );
     });
 
