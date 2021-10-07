@@ -42,6 +42,9 @@ describe("Contract: LpAccount", () => {
   let mApt;
   let randomUser;
 
+  // contract factories
+  let LpAccount;
+
   // deployed contracts
   let lpAccount;
   let proxyAdmin;
@@ -89,7 +92,7 @@ describe("Contract: LpAccount", () => {
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     proxyAdmin = await ProxyAdmin.deploy();
 
-    const LpAccount = await ethers.getContractFactory("TestLpAccount");
+    LpAccount = await ethers.getContractFactory("TestLpAccount");
     const logic = await LpAccount.deploy();
 
     const initData = LpAccount.interface.encodeFunctionData(
@@ -109,11 +112,10 @@ describe("Contract: LpAccount", () => {
     lpAccount = await LpAccount.attach(proxy.address);
   });
 
-  describe("Initializer", () => {
+  describe("Initialization", () => {
     let logic;
 
     before(async () => {
-      const LpAccount = await ethers.getContractFactory("LpAccount");
       logic = await LpAccount.deploy();
     });
 
@@ -135,9 +137,35 @@ describe("Contract: LpAccount", () => {
         logic.initialize(addressRegistry.address)
       ).to.be.revertedWith("Contract instance has already been initialized");
     });
+
+    it("Proxy admin can call `initializeUpgrade` during upgrade", async () => {
+      const initData = LpAccount.interface.encodeFunctionData(
+        "initializeUpgrade()",
+        []
+      );
+      // await expect(
+      await proxyAdmin
+        .connect(deployer)
+        .upgradeAndCall(lpAccount.address, logic.address, initData);
+      // ).to.not.be.reverted;
+    });
+
+    it("Revert when non-admin attempts `initializeUpgrade`", async () => {
+      // need to initialize before calling `initializeUpgrade`
+      await logic.initialize(addressRegistry.address);
+      await expect(logic.initializeUpgrade()).to.be.revertedWith(
+        "PROXY_ADMIN_ONLY"
+      );
+    });
   });
 
   describe("Defaults", () => {
+    it("Cannot call `initialize` after deploy", async () => {
+      await expect(
+        lpAccount.initialize(addressRegistry.address)
+      ).to.be.revertedWith("Contract instance has already been initialized");
+    });
+
     it("Default admin role given to Emergency Safe", async () => {
       const DEFAULT_ADMIN_ROLE = await lpAccount.DEFAULT_ADMIN_ROLE();
       const memberCount = await lpAccount.getRoleMemberCount(
