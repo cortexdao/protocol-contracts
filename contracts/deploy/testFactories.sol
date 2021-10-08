@@ -6,7 +6,10 @@ import {Address} from "contracts/libraries/Imports.sol";
 import {TestMetaPoolToken} from "contracts/mapt/TestMetaPoolToken.sol";
 import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
 
-import {MetaPoolTokenFactory, OracleAdapterFactory} from "./factories.sol";
+import {
+    MetaPoolTokenFactory,
+    OracleAdapterFactory
+} from "./factories/Imports.sol";
 
 contract TestMetaPoolTokenFactory is MetaPoolTokenFactory {
     using Address for address;

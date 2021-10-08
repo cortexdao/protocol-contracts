@@ -27,7 +27,7 @@ const {
   commify,
   formatUnits,
 } = require("./unit");
-const { deepEqual } = require("./test-helper");
+const { deepEqual, updateTvlAfterTransfer } = require("./test-helper");
 const { getSafeSigner, waitForSafeTxDetails } = require("./safe");
 const {
   getEip1967Addresses,
@@ -77,6 +77,7 @@ module.exports = {
   FAKE_ADDRESS,
   ANOTHER_FAKE_ADDRESS,
   deepEqual,
+  updateTvlAfterTransfer,
   getSafeSigner,
   waitForSafeTxDetails,
   getMaxFee,

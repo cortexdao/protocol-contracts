@@ -1,4 +1,5 @@
 const { expect } = require("chai");
+const { ethers } = require("hardhat");
 const _ = require("lodash");
 
 const deepEqual = (expected, actual) => {
@@ -11,6 +12,49 @@ const deepEqual = (expected, actual) => {
   });
 };
 
+/*
+ * @param pool
+ * @param underlyerAmount amount being transferred to LP Account.
+ * Uses the same sign convention as `pool.getReserveTopUpValue`.
+ */
+async function updateTvlAfterTransfer(
+  pool,
+  underlyerAmount,
+  oracleAdapter,
+  emergencySafe
+) {
+  await oracleAdapter.connect(emergencySafe).emergencyUnlock();
+
+  const underlyerPrice = await pool.getUnderlyerPrice();
+  const underlyerAddress = await pool.underlyer();
+
+  const underlyer = await ethers.getContractAt(
+    "IDetailedERC20",
+    underlyerAddress
+  );
+  const decimals = await underlyer.decimals();
+
+  const underlyerUsdValue = convertToUsdValue(
+    underlyerAmount,
+    underlyerPrice,
+    decimals
+  );
+
+  await updateTvl(underlyerUsdValue, oracleAdapter, emergencySafe);
+}
+
+function convertToUsdValue(tokenWeiAmount, tokenUsdPrice, decimals) {
+  return tokenWeiAmount
+    .mul(tokenUsdPrice)
+    .div(ethers.BigNumber.from(10).pow(decimals));
+}
+
+async function updateTvl(usdValue, oracleAdapter, emergencySafe) {
+  const newTvl = (await oracleAdapter.getTvl()).add(usdValue);
+  await oracleAdapter.connect(emergencySafe).emergencySetTvl(newTvl, 50);
+}
+
 module.exports = {
   deepEqual,
+  updateTvlAfterTransfer,
 };
