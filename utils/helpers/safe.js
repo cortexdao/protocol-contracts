@@ -28,24 +28,28 @@ async function waitForSafeTxDetails(proposedTx, safeService) {
   console.log(
     "USER ACTION REQUIRED: Use the Gnosis Safe UI to confirm transaction"
   );
+  console.log("Waiting for transaction details ...");
   let txHash;
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    console.log("Waiting for transaction details ...");
+  while (!txHash) {
+    process.stdout.write(".");
     try {
       const safeTxHash = proposedTx.hash;
       const txDetails = await safeService.getSafeTxDetails(safeTxHash);
       if (txDetails.transactionHash) {
         txHash = txDetails.transactionHash;
+        console.log("");
         console.log("Got transaction hash: %s", txHash);
-        break;
       }
     } catch (e) {
       console.log(e);
     }
     await sleep(5000);
   }
-  const receipt = await ethers.provider.waitForTransaction(txHash, 1);
+  let receipt;
+  while (!receipt) {
+    receipt = await ethers.provider.waitForTransaction(txHash, 5, 15000);
+    await sleep(5000);
+  }
   return receipt;
 }
 
