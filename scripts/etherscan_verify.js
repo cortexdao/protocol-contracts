@@ -8,10 +8,16 @@
  *
  * $ HARDHAT_NETWORK=<network name> node scripts/<script filename> --arg1=val1 --arg2=val2
  */
-const { argv } = require("yargs").option("gasPrice", {
-  type: "number",
-  description: "Gas price in gwei; omitting uses GasNow value",
-});
+const { argv } = require("yargs")
+  .option("gasPrice", {
+    type: "number",
+    description: "Gas price in gwei; omitting uses GasNow value",
+  })
+  .option("address", {
+    type: "string",
+    description: "Address of the contract to be verified.",
+  })
+  .demandOption("address", "Please provide the contract address.");
 const hre = require("hardhat");
 const { network } = hre;
 
@@ -26,7 +32,7 @@ async function main(argv) {
   console.log("");
 
   await hre.run("verify:verify", {
-    address: "0x27010a52b24a8c6ee84216ae10437e3a9ad5924e",
+    address: argv.address,
   });
 }
 
