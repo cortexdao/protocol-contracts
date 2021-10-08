@@ -62,20 +62,24 @@ async function main(argv) {
   const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
   const safeSigner = await getSafeSigner(adminSafeAddress, owner);
 
+  await hre.run("clean");
+  await hre.run("compile");
+  await hre.run("compile:one", { contractName: allocationContractName });
+
+  let maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
+
   console.log("Deploying allocation ... ");
   console.log("");
 
   const allocationContractFactory = await ethers.getContractFactory(
     allocationContractName
   );
-  let maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
   const allocation = await allocationContractFactory
     .connect(safeSigner)
     .deploy({ maxFeePerGas });
   await waitForSafeTxDetails(allocation.deployTransaction, safeSigner.service);
 
   const allocationName = await allocation.NAME();
-
   console.log("Registering %s", allocationName);
   console.log("");
 
@@ -93,9 +97,10 @@ async function main(argv) {
     tvlManagerAddress
   );
   maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
+  const allocationAddress = allocation.address;
   const proposedTx = await tvlManager
     .connect(safeSigner)
-    .registerAssetAllocation(allocation.address, { maxFeePerGas });
+    .registerAssetAllocation(allocationAddress, { maxFeePerGas });
   await waitForSafeTxDetails(proposedTx, safeSigner.service);
 }
 

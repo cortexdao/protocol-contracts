@@ -61,18 +61,22 @@ async function main(argv) {
   const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
   const safeSigner = await getSafeSigner(adminSafeAddress, owner);
 
+  await hre.run("clean");
+  await hre.run("compile");
+  await hre.run("compile:one", { contractName: zapContractName });
+
+  let maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
+
   console.log("Deploying zap ... ");
   console.log("");
 
   const zapContractFactory = await ethers.getContractFactory(zapContractName);
-  let maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
   const zap = await zapContractFactory
     .connect(safeSigner)
     .deploy({ maxFeePerGas });
   await waitForSafeTxDetails(zap.deployTransaction, safeSigner.service);
 
   const zapName = await zap.NAME();
-
   console.log("Registering %s", zapName);
   console.log("");
 
@@ -87,9 +91,10 @@ async function main(argv) {
   const lpAccountAddress = await addressRegistry.lpAccountAddress();
   const lpAccount = await ethers.getContractAt("LpAccount", lpAccountAddress);
   maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
+  const zapAddress = zap.address;
   const proposedTx = await lpAccount
     .connect(safeSigner)
-    .registerZap(zap, { maxFeePerGas });
+    .registerZap(zapAddress, { maxFeePerGas });
   await waitForSafeTxDetails(proposedTx, safeSigner.service);
 }
 
