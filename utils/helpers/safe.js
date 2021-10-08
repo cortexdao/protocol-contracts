@@ -21,13 +21,27 @@ async function getSafeSigner(safeAddress, owner) {
 }
 
 /*
- * @proposedTx Transaction response from calling function
- * @safeService SafeService instance (can be handily obtained via safeSigner.service)
+ * @param proposedTx Transaction response from calling function
+ * @param safeService SafeService instance (can be handily obtained via safeSigner.service)
+ * @param confirmations number of confirmations to wait for
+ * @param pollingDelay seconds to wait before making another request
+ * @param timeout seconds to wait before giving up on current request
  */
-async function waitForSafeTxDetails(proposedTx, safeService) {
+async function waitForSafeTxDetails(
+  proposedTx,
+  safeService,
+  confirmations,
+  pollingDelay,
+  timeout
+) {
   console.log(
     "USER ACTION REQUIRED: Use the Gnosis Safe UI to confirm transaction"
   );
+
+  confirmations = confirmations || 1;
+  pollingDelay = (pollingDelay || 5) * 1000; // convert to milliseconds
+  timeout = (timeout || 15) * 1000; // convert to milliseconds
+
   console.log("Waiting for transaction details ...");
   let txHash;
   while (!txHash) {
@@ -43,12 +57,18 @@ async function waitForSafeTxDetails(proposedTx, safeService) {
     } catch (e) {
       console.log(e);
     }
-    await sleep(5000);
+    await sleep(pollingDelay);
   }
+
+  console.log("Waiting for transaction to be mined ...");
   let receipt;
   while (!receipt) {
-    receipt = await ethers.provider.waitForTransaction(txHash, 5, 15000);
-    await sleep(5000);
+    receipt = await ethers.provider.waitForTransaction(
+      txHash,
+      confirmations,
+      timeout
+    );
+    await sleep(pollingDelay);
   }
   return receipt;
 }
