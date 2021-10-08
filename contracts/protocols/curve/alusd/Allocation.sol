@@ -6,9 +6,9 @@ import {
     MetaPoolAllocationBase
 } from "contracts/protocols/curve/metapool/Imports.sol";
 
-import {CurveAlUsdConstants} from "./Constants.sol";
+import {CurveAlusdConstants} from "./Constants.sol";
 
-contract CurveAlUsdAllocation is MetaPoolAllocationBase, CurveAlUsdConstants {
+contract CurveAlusdAllocation is MetaPoolAllocationBase, CurveAlusdConstants {
     constructor(address curve3PoolAllocation_)
         public
         MetaPoolAllocationBase(curve3PoolAllocation_)

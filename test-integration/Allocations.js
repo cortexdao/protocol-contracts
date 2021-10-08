@@ -90,7 +90,7 @@ const CurveMetaPoolAllocations = [
     whaleAddress: "0x87dA823B6fC8EB8575a235A824690fda94674c88",
   },
   {
-    contractName: "CurveAlUsdAllocation",
+    contractName: "CurveAlusdAllocation",
     primaryUnderlyerSymbol: "alUSD",
     whaleAddress: "0xAB8e74017a8Cc7c15FFcCd726603790d26d7DeCa",
   },

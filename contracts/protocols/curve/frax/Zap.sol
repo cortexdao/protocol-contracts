@@ -9,7 +9,7 @@ import {
     MetaPoolDepositorZap
 } from "contracts/protocols/curve/metapool/Imports.sol";
 
-contract FraxPoolZap is MetaPoolDepositorZap, CurveFraxConstants {
+contract CurveFraxZap is MetaPoolDepositorZap, CurveFraxConstants {
     constructor()
         public
         MetaPoolDepositorZap(

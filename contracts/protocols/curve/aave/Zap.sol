@@ -11,7 +11,7 @@ import {
 import {CurveAaveConstants} from "./Constants.sol";
 import {CurveGaugeZapBase} from "contracts/protocols/curve/common/Imports.sol";
 
-contract AavePoolZap is CurveGaugeZapBase, CurveAaveConstants {
+contract CurveAaveZap is CurveGaugeZapBase, CurveAaveConstants {
     string internal constant AAVE_ALLOCATION = "aave";
 
     constructor()
