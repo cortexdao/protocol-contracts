@@ -95,7 +95,12 @@ async function main(argv) {
   const proposedTx = await lpAccount
     .connect(safeSigner)
     .registerZap(zapAddress, { maxFeePerGas });
-  await waitForSafeTxDetails(proposedTx, safeSigner.service);
+  await waitForSafeTxDetails(proposedTx, safeSigner.service, 5);
+
+  console.log("Verifying on Etherscan ...");
+  await hre.run("verify:verify", {
+    address: zapAddress,
+  });
 }
 
 if (!module.parent) {

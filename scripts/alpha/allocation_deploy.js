@@ -101,7 +101,12 @@ async function main(argv) {
   const proposedTx = await tvlManager
     .connect(safeSigner)
     .registerAssetAllocation(allocationAddress, { maxFeePerGas });
-  await waitForSafeTxDetails(proposedTx, safeSigner.service);
+  await waitForSafeTxDetails(proposedTx, safeSigner.service, 5);
+
+  console.log("Verifying on Etherscan ...");
+  await hre.run("verify:verify", {
+    address: allocationAddress,
+  });
 }
 
 if (!module.parent) {
