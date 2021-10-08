@@ -62,10 +62,15 @@ jobs:
         yarn compile
     - name: Unit tests
       run: yarn test:unit
-    - name: Integration tests 
+    - name: Integration tests
       run: |
         yarn test:integration
-      env: 
+      env:
+        INFURA_API_KEY: ${{ secrets.INFURA_API_KEY }}
+    - name: End-to-end tests
+      run: |
+        yarn test:e2e
+      env:
         INFURA_API_KEY: ${{ secrets.INFURA_API_KEY }}
     - name: Check for dot-only
       run: yarn dot-only

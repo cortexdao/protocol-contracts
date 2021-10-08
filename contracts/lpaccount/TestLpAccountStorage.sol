@@ -12,6 +12,6 @@ abstract contract TestLpAccountStorage {
 
     uint256 public _claimsCounter;
 
-    IAssetAllocation[] internal _assetAllocations;
+    string[] internal _assetAllocations;
     IERC20[] internal _tokens;
 }

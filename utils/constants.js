@@ -2,7 +2,7 @@ const WHALE_POOLS = {
   // sUSD curve pool has plenty of these stablecoins
   // https://etherscan.io/address/0xa5407eae9ba41422680e2e00537571bcc53efbfd
   DAI: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD",
-  ADAI: "0x6231bd0147ca6d052b833183037b04cfb2090e5c",
+  ADAI: "0xeb16ae0052ed37f479f7fe63849198df1765a733",
   USDC: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD",
   USDT: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD",
   ALUSD: "0x43b4fdfd4ff969587185cdb6f0bd875c5fc83f8c",
@@ -15,14 +15,17 @@ const WHALE_POOLS = {
   USDN: "0x0f9cb53ebe405d49a0bbdbd291a65ff571bc83e1",
   USDP: "0x42d7025938bec20b69cbae5a77421082407f053a",
   UST: "0xf92cd566ea4864356c5491c177a430c222d7e678",
+  AAVE: "0xC697051d1C6296C24aE3bceF39acA743861D9A81",
 };
 
 const FARM_TOKENS = {
   CRV: "0xD533a949740bb3306d119CC777fa900bA034cd52",
+  AAVE: "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9",
 };
 
 const FARM_TOKEN_POOLS = {
   CRV: "0xd2D43555134dC575BF7279F4bA18809645dB0F1D",
+  AAVE: "0xC697051d1C6296C24aE3bceF39acA743861D9A81",
 };
 
 const CHAIN_IDS = {
@@ -192,7 +195,9 @@ const CONTRACT_NAMES = [
   "RewardDistributor",
   "TvlManager",
   "AdminSafe",
+  "EmergencySafe",
   "LpSafe",
+  "AlphaDeployment",
 ];
 
 const DEPLOYS_JSON = {};

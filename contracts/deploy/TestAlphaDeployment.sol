@@ -13,6 +13,7 @@ contract TestAlphaDeployment is AlphaDeployment {
         address poolTokenV1Factory_,
         address poolTokenV2Factory_,
         address tvlManagerFactory_,
+        address erc20AllocationFactory_,
         address oracleAdapterFactory_,
         address lpAccountFactory_
     )
@@ -25,6 +26,7 @@ contract TestAlphaDeployment is AlphaDeployment {
             poolTokenV1Factory_,
             poolTokenV2Factory_,
             tvlManagerFactory_,
+            erc20AllocationFactory_,
             oracleAdapterFactory_,
             lpAccountFactory_
         )
@@ -38,7 +40,15 @@ contract TestAlphaDeployment is AlphaDeployment {
         mApt = mApt_;
     }
 
+    function testSetPoolTokenV2(address poolTokenV2_) public {
+        poolTokenV2 = poolTokenV2_;
+    }
+
     function testSetTvlManager(address tvlManager_) public {
         tvlManager = tvlManager_;
+    }
+
+    function testSetLpAccount(address lpAccount_) public {
+        lpAccount = lpAccount_;
     }
 }

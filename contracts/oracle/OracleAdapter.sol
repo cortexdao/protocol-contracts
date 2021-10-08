@@ -3,7 +3,11 @@ pragma solidity 0.6.11;
 
 import {Address, SafeMath} from "contracts/libraries/Imports.sol";
 
-import {IERC20, AccessControl} from "contracts/common/Imports.sol";
+import {
+    IERC20,
+    AccessControl,
+    ReentrancyGuard
+} from "contracts/common/Imports.sol";
 
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
 
@@ -30,32 +34,22 @@ import {
  *      - Unlocked → Use Manual Submitted Value (emergency)
  *      - Locked → Reverts (nominal)
  *
- * @dev It is important to not that zero values are allowed for manual
- * submission, but will result in a revert for Chainlink.
+ * @dev It is important to note that zero values are allowed for manual
+ * submission but may result in a revert when pulling from Chainlink.
  *
- * This is because there are very rare situations where the TVL value can
- * accurately be zero, such as a situation where all funds are unwound and
- * moved back to the liquidity pools, but a zero value can also indicate a
- * failure with Chainlink.
+ * This is because there are uncommon situations where the zero TVL is valid,
+ * such as when all funds are unwound and moved back to the liquidity
+ * pools, but total mAPT supply would be zero in those cases.  Outside those
+ * situations, a zero TVL with nonzero supply likely indicates a Chainlink
+ * failure, hence we revert out of an abundance of caution.
  *
- * Because accurate zero values are rare, and occur due to intentional system
- * states where no funds are deployed, they due not need to be detected
- * automatically by Chainlink.
- *
- * In addition, the impact of failing to manually set a zero value when
- * necessary compared to the impact of an incorrect zero value from Chainlink
- * is much lower.
- *
- * Failing to manually set a zero value can result in either a locked contract,
- * which can be unlocked by setting the value, or reduced deposit/withdraw
- * amounts. But never a loss of funds.
- *
- * Conversely, if Chainlink reports a zero value in error and the contract
- * were to accept it, funds up to the amount available in the reserve pools
- * could be lost.
+ * In the rare situation where Chainlink *should* be returning zero TVL
+ * with nonzero mAPT supply, we can set the zero TVL manually via the
+ * Emergency Safe.  Such a situation is not expected to persist long.
  */
 contract OracleAdapter is
     AccessControl,
+    ReentrancyGuard,
     IOracleAdapter,
     IOverrideOracle,
     ILockingOracle
@@ -66,15 +60,17 @@ contract OracleAdapter is
     IAddressRegistryV2 public addressRegistry;
 
     uint256 public override defaultLockPeriod;
-    /** @notice Contract is locked until this block number is passed */
+
+    /// @notice Contract is locked until this block number is passed.
     uint256 public lockEnd;
 
-    /** @notice Chainlink variables */
-    uint256 public chainlinkStalePeriod; // Duration of Chainlink heartbeat
+    /// @notice Chainlink heartbeat duration in seconds
+    uint256 public chainlinkStalePeriod;
+
     AggregatorV3Interface public tvlSource;
     mapping(address => AggregatorV3Interface) public assetSources;
 
-    /** @notice Submitted values that override Chainlink values until stale */
+    /// @notice Submitted values that override Chainlink values until stale.
     mapping(address => Value) public submittedAssetValues;
     Value public submittedTvlValue;
 
@@ -86,12 +82,12 @@ contract OracleAdapter is
     }
 
     /**
-     * @notice Constructor
-     * @param addressRegistry_ the address registry
-     * @param assets the assets priced by sources
-     * @param sources the source for each asset
-     * @param tvlSource_ the source for the TVL value
-     * @param chainlinkStalePeriod_ the number of seconds until a source value is stale
+     * @param addressRegistry_ The address registry
+     * @param tvlSource_ The source for the TVL value
+     * @param assets The assets priced by sources
+     * @param sources The source for each asset
+     * @param chainlinkStalePeriod_ The number of seconds until a source value is stale
+     * @param defaultLockPeriod_ The default number of blocks a lock should last
      */
     constructor(
         address addressRegistry_,
@@ -110,6 +106,7 @@ contract OracleAdapter is
         _setupRole(DEFAULT_ADMIN_ROLE, addressRegistry.emergencySafeAddress());
         _setupRole(CONTRACT_ROLE, addressRegistry.mAptAddress());
         _setupRole(CONTRACT_ROLE, addressRegistry.tvlManagerAddress());
+        _setupRole(CONTRACT_ROLE, addressRegistry.lpAccountAddress());
         _setupRole(ADMIN_ROLE, addressRegistry.adminSafeAddress());
         _setupRole(EMERGENCY_ROLE, addressRegistry.emergencySafeAddress());
     }
@@ -117,23 +114,38 @@ contract OracleAdapter is
     function setDefaultLockPeriod(uint256 newPeriod)
         external
         override
+        nonReentrant
         onlyAdminRole
     {
         _setDefaultLockPeriod(newPeriod);
         emit DefaultLockPeriodChanged(newPeriod);
     }
 
-    function lock() external override onlyContractRole {
+    function lock() external override nonReentrant onlyContractRole {
         _lockFor(defaultLockPeriod);
         emit DefaultLocked(msg.sender, defaultLockPeriod, lockEnd);
     }
 
-    function emergencyUnlock() external override onlyEmergencyRole {
+    function emergencyUnlock()
+        external
+        override
+        nonReentrant
+        onlyEmergencyRole
+    {
         _lockFor(0);
         emit Unlocked();
     }
 
-    function lockFor(uint256 activePeriod) external override onlyContractRole {
+    /**
+     * @dev Can only increase the remaining locking duration.
+     * @dev If no lock exists, this allows setting of any defined locking period
+     */
+    function lockFor(uint256 activePeriod)
+        external
+        override
+        nonReentrant
+        onlyContractRole
+    {
         uint256 oldLockEnd = lockEnd;
         _lockFor(activePeriod);
         require(lockEnd > oldLockEnd, "CANNOT_SHORTEN_LOCK");
@@ -142,11 +154,11 @@ contract OracleAdapter is
 
     /**
      * @notice Sets the address registry
-     * @dev only callable by owner
      * @param addressRegistry_ the address of the registry
      */
     function emergencySetAddressRegistry(address addressRegistry_)
         external
+        nonReentrant
         onlyEmergencyRole
     {
         _setAddressRegistry(addressRegistry_);
@@ -160,7 +172,7 @@ contract OracleAdapter is
         address asset,
         uint256 value,
         uint256 period
-    ) external override onlyEmergencyRole {
+    ) external override nonReentrant onlyEmergencyRole {
         // We do allow 0 values for submitted values
         uint256 periodEnd = block.number.add(period);
         submittedAssetValues[asset] = Value(value, periodEnd);
@@ -170,6 +182,7 @@ contract OracleAdapter is
     function emergencyUnsetAssetValue(address asset)
         external
         override
+        nonReentrant
         onlyEmergencyRole
     {
         require(
@@ -183,6 +196,7 @@ contract OracleAdapter is
     function emergencySetTvl(uint256 value, uint256 period)
         external
         override
+        nonReentrant
         onlyEmergencyRole
     {
         // We do allow 0 values for submitted values
@@ -191,7 +205,12 @@ contract OracleAdapter is
         emit TvlSet(value, period, periodEnd);
     }
 
-    function emergencyUnsetTvl() external override onlyEmergencyRole {
+    function emergencyUnsetTvl()
+        external
+        override
+        nonReentrant
+        onlyEmergencyRole
+    {
         require(submittedTvlValue.periodEnd != 0, "NO_TVL_SET");
         submittedTvlValue.periodEnd = block.number;
         emit TvlUnset();
@@ -201,50 +220,35 @@ contract OracleAdapter is
     // CHAINLINK SETTERS
     //------------------------------------------------------------
 
-    /**
-     * @notice Set or replace the TVL source
-     * @param source the TVL source address
-     */
     function emergencySetTvlSource(address source)
         external
         override
+        nonReentrant
         onlyEmergencyRole
     {
         _setTvlSource(source);
     }
 
-    /**
-     * @notice Set or replace asset price sources
-     * @param assets the array of assets token addresses
-     * @param sources the array of price sources (aggregators)
-     */
     function emergencySetAssetSources(
         address[] memory assets,
         address[] memory sources
-    ) external override onlyEmergencyRole {
+    ) external override nonReentrant onlyEmergencyRole {
         _setAssetSources(assets, sources);
     }
 
-    /**
-     * @notice Set a single asset price source
-     * @param asset asset token address
-     * @param source the price source (aggregator)
-     */
     function emergencySetAssetSource(address asset, address source)
         external
         override
+        nonReentrant
         onlyEmergencyRole
     {
         _setAssetSource(asset, source);
     }
 
-    /**
-     * @notice Set the length of time before an agg value is considered stale
-     * @param chainlinkStalePeriod_ the length of time in seconds
-     */
     function setChainlinkStalePeriod(uint256 chainlinkStalePeriod_)
         external
         override
+        nonReentrant
         onlyAdminRole
     {
         _setChainlinkStalePeriod(chainlinkStalePeriod_);
@@ -255,10 +259,8 @@ contract OracleAdapter is
     //------------------------------------------------------------
 
     /**
-     * @notice Get the TVL
      * @dev Zero values are considered valid if there is no mAPT minted,
      * and therefore no PoolTokenV2 liquidity in the LP Safe.
-     * @return the TVL
      */
     function getTvl() external view override unlocked returns (uint256) {
         if (hasTvlOverride()) {
@@ -280,11 +282,6 @@ contract OracleAdapter is
         return block.number < submittedTvlValue.periodEnd;
     }
 
-    /**
-     * @notice Gets an asset price by address
-     * @param asset the asset address
-     * @return the asset price
-     */
     function getAssetPrice(address asset)
         external
         view
@@ -361,6 +358,7 @@ contract OracleAdapter is
 
     /**
      * @notice Get the price from a source (aggregator)
+     * @param source The Chainlink aggregator
      * @return the price from the source
      */
     function _getPriceFromSource(AggregatorV3Interface source)

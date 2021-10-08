@@ -11,7 +11,7 @@ const {
 const { deployAggregator } = require("./aggregator");
 const { getAssetAllocationValue } = require("./asset_allocation");
 const { expectEventInTransaction } = require("./event");
-const { getGasPrice } = require("./gas");
+const { getGasPrice, getMaxFee, getMaxPriorityFee } = require("./gas");
 const {
   acquireToken,
   transferERC20Tokens,
@@ -27,6 +27,13 @@ const {
   commify,
   formatUnits,
 } = require("./unit");
+const { deepEqual, updateTvlAfterTransfer } = require("./test-helper");
+const { getSafeSigner, waitForSafeTxDetails } = require("./safe");
+const {
+  getEip1967Addresses,
+  getProxyAdmin,
+  getLogicContract,
+} = require("./proxy");
 
 console.debug = function () {
   if (!console.debugging) return;
@@ -69,4 +76,14 @@ module.exports = {
   MAX_UINT256,
   FAKE_ADDRESS,
   ANOTHER_FAKE_ADDRESS,
+  deepEqual,
+  updateTvlAfterTransfer,
+  getSafeSigner,
+  waitForSafeTxDetails,
+  getMaxFee,
+  getMaxPriorityFee,
+
+  getEip1967Addresses,
+  getProxyAdmin,
+  getLogicContract,
 };

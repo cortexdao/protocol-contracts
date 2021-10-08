@@ -11,7 +11,7 @@ import {
 import {CurveIronBankConstants} from "./Constants.sol";
 import {CurveGaugeZapBase} from "contracts/protocols/curve/common/Imports.sol";
 
-contract IronBankPoolZap is CurveGaugeZapBase, CurveIronBankConstants {
+contract CurveIronBankZap is CurveGaugeZapBase, CurveIronBankConstants {
     constructor()
         public
         CurveGaugeZapBase(
@@ -24,20 +24,14 @@ contract IronBankPoolZap is CurveGaugeZapBase, CurveIronBankConstants {
         ) // solhint-disable-next-line no-empty-blocks
     {}
 
-    function assetAllocations()
-        public
-        view
-        override
-        returns (IAssetAllocation[] memory)
-    {
-        IAssetAllocation[] memory allocations = new IAssetAllocation[](1);
-        allocations[0] = IAssetAllocation(address(0));
-        return allocations;
+    function assetAllocations() public view override returns (string[] memory) {
+        string[] memory allocationNames = new string[](1);
+        allocationNames[0] = NAME;
+        return allocationNames;
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
-        IERC20[] memory allocations = new IERC20[](1);
-        allocations[0] = IERC20(CRV_ADDRESS);
+        IERC20[] memory allocations = _createErc20AllocationArray(0);
         return allocations;
     }
 
@@ -51,7 +45,7 @@ contract IronBankPoolZap is CurveGaugeZapBase, CurveIronBankConstants {
         override
         returns (address)
     {
-        return IStableSwap(SWAP_ADDRESS).coins(i);
+        return IStableSwap(SWAP_ADDRESS).underlying_coins(i);
     }
 
     function _addLiquidity(uint256[] calldata amounts, uint256 minAmount)
@@ -60,14 +54,22 @@ contract IronBankPoolZap is CurveGaugeZapBase, CurveIronBankConstants {
     {
         IStableSwap(SWAP_ADDRESS).add_liquidity(
             [amounts[0], amounts[1], amounts[2]],
-            minAmount
+            minAmount,
+            true
         );
     }
 
-    function _removeLiquidity(uint256 lpBalance) internal override {
-        IStableSwap(SWAP_ADDRESS).remove_liquidity(
+    function _removeLiquidity(
+        uint256 lpBalance,
+        uint8 index,
+        uint256 minAmount
+    ) internal override {
+        require(index < N_COINS, "INVALID_INDEX");
+        IStableSwap(SWAP_ADDRESS).remove_liquidity_one_coin(
             lpBalance,
-            [uint256(0), uint256(0), uint256(0)]
+            index,
+            minAmount,
+            true
         );
     }
 }

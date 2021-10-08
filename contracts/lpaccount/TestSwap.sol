@@ -15,7 +15,7 @@ contract TestSwap is ISwap, TestLpAccountStorage {
         _name = name;
     }
 
-    function swap(uint256 amount) external override {
+    function swap(uint256 amount, uint256) external override {
         _swapsArray.push(amount);
     }
 
@@ -24,7 +24,6 @@ contract TestSwap is ISwap, TestLpAccountStorage {
         return _name;
     }
 
-    // ERC20 asset allocation tokens required for the strategy
     function erc20Allocations()
         external
         view
@@ -33,10 +32,6 @@ contract TestSwap is ISwap, TestLpAccountStorage {
     {
         return _tokens;
     }
-
-    /**
-     * Testing functions
-     */
 
     function _setErc20Allocations(IERC20[] memory tokens) public {
         _tokens = tokens;

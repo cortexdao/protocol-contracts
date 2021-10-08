@@ -27,35 +27,40 @@ import {
 import {ILpAccountFunder} from "./ILpAccountFunder.sol";
 
 /**
- * @title Meta Pool Token
- * @author APY.Finance
- * @notice This token is used to keep track of the capital that has been
- * pulled from the PoolToken contracts.
+ * @notice This contract has hybrid functionality:
  *
- * When the PoolManager pulls capital from the PoolToken contracts to
- * deploy to yield farming strategies, it will mint mAPT and transfer it to
- * the PoolToken contracts. The ratio of the mAPT held by each PoolToken
- * to the total supply of mAPT determines the amount of the TVL dedicated to
- * PoolToken.
+ * - It acts as a token that tracks the capital that has been pulled
+ * ("deployed") from APY Finance pools (PoolToken contracts)
+ *
+ * - It is permissioned to transfer funds between the pools and the
+ * LP Account contract.
+ *
+ * @dev When MetaPoolToken pulls capital from the pools to the LP Account, it
+ * will mint mAPT for each pool. Conversely, when MetaPoolToken withdraws funds
+ * from the LP Account to the pools, it will burn mAPT for each pool.
+ *
+ * The ratio of each pool's mAPT balance to the total mAPT supply determines
+ * the amount of the TVL dedicated to the pool.
+ *
  *
  * DEPLOY CAPITAL TO YIELD FARMING STRATEGIES
- * Tracks the share of deployed TVL owned by an PoolToken using mAPT.
+ * Mints appropriate mAPT amount to track share of deployed TVL owned by a pool.
  *
- * +-------------+   PoolManager.fundAccount   +-------------+
- * |             |---------------------------->|             |
- * | PoolTokenV2 |     MetaPoolToken.mint      | PoolManager |
- * |             |<----------------------------|             |
- * +-------------+                             +-------------+
+ * +-------------+  MetaPoolToken.fundLpAccount  +-----------+
+ * |             |------------------------------>|           |
+ * | PoolTokenV2 |     MetaPoolToken.mint        | LpAccount |
+ * |             |<------------------------------|           |
+ * +-------------+                               +-----------+
  *
  *
  * WITHDRAW CAPITAL FROM YIELD FARMING STRATEGIES
  * Uses mAPT to calculate the amount of capital returned to the PoolToken.
  *
- * +-------------+    PoolManager.withdrawFromAccount   +-------------+
- * |             |<-------------------------------------|             |
- * | PoolTokenV2 |          MetaPoolToken.burn          | PoolManager |
- * |             |------------------------------------->|             |
- * +-------------+                                      +-------------+
+ * +-------------+  MetaPoolToken.withdrawFromLpAccount  +-----------+
+ * |             |<--------------------------------------|           |
+ * | PoolTokenV2 |          MetaPoolToken.burn           | LpAccount |
+ * |             |-------------------------------------->|           |
+ * +-------------+                                       +-----------+
  */
 contract MetaPoolToken is
     Initializable,
@@ -76,8 +81,6 @@ contract MetaPoolToken is
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
-    /** @notice used to protect init functions for upgrades */
-    address public proxyAdmin;
     /** @notice used to protect mint and burn function */
     IAddressRegistryV2 public addressRegistry;
 
@@ -85,16 +88,7 @@ contract MetaPoolToken is
 
     event Mint(address acccount, uint256 amount);
     event Burn(address acccount, uint256 amount);
-    event AdminChanged(address);
     event AddressRegistryChanged(address);
-
-    /**
-     * @dev Throws if called by any account other than the proxy admin.
-     */
-    modifier onlyAdmin() {
-        require(msg.sender == proxyAdmin, "ADMIN_ONLY");
-        _;
-    }
 
     /**
      * @dev Since the proxy delegate calls to this "logic" contract, any
@@ -108,12 +102,7 @@ contract MetaPoolToken is
      * repeatedly.  It should be called during the deployment so that
      * it cannot be called by someone else later.
      */
-    function initialize(address adminAddress, address addressRegistry_)
-        external
-        initializer
-    {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-
+    function initialize(address addressRegistry_) external initializer {
         // initialize ancestor storage
         __Context_init_unchained();
         __AccessControl_init_unchained();
@@ -122,7 +111,6 @@ contract MetaPoolToken is
         __ERC20_init_unchained("APY MetaPool Token", "mAPT");
 
         // initialize impl-specific storage
-        _setAdminAddress(adminAddress);
         _setAddressRegistry(addressRegistry_);
         _setupRole(DEFAULT_ADMIN_ROLE, addressRegistry.emergencySafeAddress());
         _setupRole(LP_ROLE, addressRegistry.lpSafeAddress());
@@ -132,28 +120,21 @@ contract MetaPoolToken is
     /**
      * @dev Dummy function to show how one would implement an init function
      * for future upgrades.  Note the `initializer` modifier can only be used
-     * once in the entire contract, so we can't use it here.  Instead,
-     * we set the proxy admin address as a variable and protect this
-     * function with `onlyAdmin`, which only allows the proxy admin
-     * to call this function during upgrades.
+     * once in the entire contract, so we can't use it here.  Instead, we
+     * protect the upgrade init with the `onlyProxyAdmin` modifier, which
+     * checks `msg.sender` against the proxy admin slot defined in EIP-1967.
+     * This will only allow the proxy admin to call this function during upgrades.
      */
     // solhint-disable-next-line no-empty-blocks
-    function initializeUpgrade() external virtual onlyAdmin {}
-
-    function emergencySetAdminAddress(address adminAddress)
-        external
-        onlyEmergencyRole
-    {
-        _setAdminAddress(adminAddress);
-    }
+    function initializeUpgrade() external virtual nonReentrant onlyProxyAdmin {}
 
     /**
      * @notice Sets the address registry
-     * @dev only callable by owner
      * @param addressRegistry_ the address of the registry
      */
     function emergencySetAddressRegistry(address addressRegistry_)
         external
+        nonReentrant
         onlyEmergencyRole
     {
         _setAddressRegistry(addressRegistry_);
@@ -175,14 +156,6 @@ contract MetaPoolToken is
         emit FundLpAccount(poolIds, fundAmounts);
     }
 
-    function emergencyFundLpAccount(
-        IReservePool[] calldata pools,
-        uint256[] calldata amounts
-    ) external override nonReentrant onlyEmergencyRole {
-        _fundLpAccount(pools, amounts);
-        emit EmergencyFundLpAccount(pools, amounts);
-    }
-
     function withdrawFromLpAccount(bytes32[] calldata poolIds)
         external
         override
@@ -198,18 +171,10 @@ contract MetaPoolToken is
         emit WithdrawFromLpAccount(poolIds, withdrawAmounts);
     }
 
-    function emergencyWithdrawFromLpAccount(
-        IReservePool[] calldata pools,
-        uint256[] calldata amounts
-    ) external override nonReentrant onlyEmergencyRole {
-        _withdrawFromLpAccount(pools, amounts);
-        emit EmergencyWithdrawFromLpAccount(pools, amounts);
-    }
-
     /**
      * @notice Get the USD-denominated value (in wei) of the pool's share
      * of the deployed capital, as tracked by the mAPT token.
-     * @return uint256
+     * @return The value deployed to the LP Account
      */
     function getDeployedValue(address pool) external view returns (uint256) {
         uint256 balance = balanceOf(pool);
@@ -221,11 +186,11 @@ contract MetaPoolToken is
 
     /**
      * @notice Returns the (signed) top-up amount for each pool ID given.
-     *         A positive (negative) sign means the reserve level is in
-     *         deficit (excess) of required percentage.
+     * A positive (negative) sign means the reserve level is in deficit
+     * (excess) of required percentage.
      * @param poolIds array of pool identifiers
-     * @return depositAmounts array of pool amounts that need to deposit
-     * @return withdrawAmounts array of pool amounts that need to withdraw
+     * @return The array of pools
+     * @return An array of rebalance amounts
      */
     function getRebalanceAmounts(bytes32[] memory poolIds)
         public
@@ -247,17 +212,6 @@ contract MetaPoolToken is
         return (pools, rebalanceAmounts);
     }
 
-    function _setAdminAddress(address adminAddress) internal {
-        require(adminAddress != address(0), "INVALID_ADMIN");
-        proxyAdmin = adminAddress;
-        emit AdminChanged(adminAddress);
-    }
-
-    /**
-     * @notice Sets the address registry
-     * @dev only callable by owner
-     * @param addressRegistry_ the address of the registry
-     */
     function _setAddressRegistry(address addressRegistry_) internal {
         require(addressRegistry_.isContract(), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);

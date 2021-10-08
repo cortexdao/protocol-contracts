@@ -11,22 +11,8 @@ import {
 import {IAddressRegistry} from "./IAddressRegistry.sol";
 
 /**
- * @title APY.Finance's address registry
- * @author APY.Finance
- * @notice The address registry has two important purposes, one which
- * is fairly concrete and another abstract.
- *
- * 1. The registry enables components of the APY.Finance system
- * and external systems to retrieve core addresses reliably
- * even when the functionality may move to a different
- * address.
- *
- * 2. The registry also makes explicit which contracts serve
- * as primary entrypoints for interacting with different
- * components.  Not every contract is registered here, only
- * the ones properly deserving of an identifier.  This helps
- * define explicit boundaries between groups of contracts,
- * each of which is logically cohesive.
+ * @notice Old version of the `AddressRegistry`
+ * @notice Should not be used in deployment
  */
 contract AddressRegistry is
     Initializable,

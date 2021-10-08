@@ -27,6 +27,10 @@ import {
 import {ILiquidityPool} from "./ILiquidityPool.sol";
 import {IDetailedERC20} from "contracts/common/Imports.sol";
 
+/**
+ * @notice Old version of the `PoolToken`
+ * @notice Should not be used in deployment
+ */
 contract PoolToken is
     ILiquidityPool,
     Initializable,

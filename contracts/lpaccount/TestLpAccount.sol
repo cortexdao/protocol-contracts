@@ -6,10 +6,6 @@ import {LpAccount} from "./LpAccount.sol";
 import {TestLpAccountStorage} from "./TestLpAccountStorage.sol";
 
 contract TestLpAccount is TestLpAccountStorage, LpAccount {
-    /**
-     * Testing functions
-     */
-
     function _deployCalls() external view returns (uint256[][] memory) {
         return _deploysArray;
     }

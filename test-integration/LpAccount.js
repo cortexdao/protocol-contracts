@@ -9,8 +9,9 @@ const {
   tokenAmountToBigNumber,
   getStablecoinAddress,
   acquireToken,
+  deepEqual,
 } = require("../utils/helpers");
-const { WHALE_POOLS } = require("../utils/constants");
+const { WHALE_POOLS, FARM_TOKENS } = require("../utils/constants");
 
 const IAddressRegistryV2 = artifacts.readArtifactSync("IAddressRegistryV2");
 const IDetailedERC20 = artifacts.readArtifactSync("IDetailedERC20");
@@ -51,6 +52,7 @@ describe("Contract: LpAccount", () => {
   let emergencySafe;
   let adminSafe;
   let mApt;
+  let randomUser;
 
   // deployed contracts
   let lpAccount;
@@ -80,6 +82,7 @@ describe("Contract: LpAccount", () => {
       emergencySafe,
       adminSafe,
       mApt,
+      randomUser,
     ] = await ethers.getSigners();
 
     addressRegistry = await deployMockContract(
@@ -105,8 +108,8 @@ describe("Contract: LpAccount", () => {
     const logic = await LpAccount.deploy();
 
     const initData = LpAccount.interface.encodeFunctionData(
-      "initialize(address,address)",
-      [proxyAdmin.address, addressRegistry.address]
+      "initialize(address)",
+      [addressRegistry.address]
     );
 
     const TransparentUpgradeableProxy = await ethers.getContractFactory(
@@ -123,7 +126,7 @@ describe("Contract: LpAccount", () => {
 
   before("Prepare TVL Manager and ERC20 Allocation", async () => {
     // deploy and register TVL Manager
-    const TvlManager = await ethers.getContractFactory("TvlManager", lpSafe);
+    const TvlManager = await ethers.getContractFactory("TvlManager", adminSafe);
     tvlManager = await TvlManager.deploy(addressRegistry.address);
 
     await addressRegistry.mock.getAddress
@@ -133,6 +136,7 @@ describe("Contract: LpAccount", () => {
     // Oracle Adapter is locked after adding/removing allocations
     const oracleAdapter = await deployMockContract(deployer, OracleAdapter.abi);
     await oracleAdapter.mock.lock.returns();
+    await oracleAdapter.mock.lockFor.returns();
     await addressRegistry.mock.oracleAdapterAddress.returns(
       oracleAdapter.address
     );
@@ -161,7 +165,8 @@ describe("Contract: LpAccount", () => {
       ];
 
       await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
-      expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
+      const result = await lpAccount._deployCalls();
+      deepEqual([amounts], result);
     });
 
     it("cannot deploy with unregistered allocation", async () => {
@@ -226,12 +231,14 @@ describe("Contract: LpAccount", () => {
       await tvlManager.registerAssetAllocation(allocation_0.address);
       await tvlManager.registerAssetAllocation(allocation_1.address);
       await zap._setAssetAllocations([
-        allocation_0.address,
-        allocation_1.address,
+        await allocation_0.NAME(),
+        await allocation_1.NAME(),
       ]);
 
       await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
-      expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
+      const result = await lpAccount._deployCalls();
+
+      deepEqual(amounts, result);
     });
 
     it("cannot deploy with unregistered ERC20", async () => {
@@ -268,12 +275,13 @@ describe("Contract: LpAccount", () => {
       // configure zap with registered ERC20
       const token = await deployMockErc20();
       await erc20Allocation
-        .connect(lpSafe)
+        .connect(adminSafe)
         ["registerErc20Token(address)"](token.address);
       await zap._setErc20Allocations([token.address]);
 
       await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
-      expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
+      const result = await lpAccount._deployCalls();
+      deepEqual([amounts], result);
     });
 
     it("can deploy with registered allocation and ERC20", async () => {
@@ -290,17 +298,18 @@ describe("Contract: LpAccount", () => {
       // configure zap with registered allocation
       const allocation = await deployMockAllocation();
       await tvlManager.registerAssetAllocation(allocation.address);
-      await zap._setAssetAllocations([allocation.address]);
+      await zap._setAssetAllocations([await allocation.NAME()]);
 
       // configure zap with registered ERC20
       const token = await deployMockErc20();
       await erc20Allocation
-        .connect(lpSafe)
+        .connect(adminSafe)
         ["registerErc20Token(address)"](token.address);
       await zap._setErc20Allocations([token.address]);
 
       await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
-      expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
+      const result = await lpAccount._deployCalls();
+      deepEqual([amounts], result);
     });
 
     it("cannot deploy with registered allocation but unregistered ERC20", async () => {
@@ -317,7 +326,7 @@ describe("Contract: LpAccount", () => {
       // configure zap with registered allocation
       const allocation = await deployMockAllocation();
       await tvlManager.registerAssetAllocation(allocation.address);
-      await zap._setAssetAllocations([allocation.address]);
+      await zap._setAssetAllocations([await allocation.NAME()]);
 
       // configure zap with unregistered ERC20
       const token = await deployMockErc20();
@@ -346,7 +355,7 @@ describe("Contract: LpAccount", () => {
       // configure zap with registered ERC20
       const token = await deployMockErc20();
       await erc20Allocation
-        .connect(lpSafe)
+        .connect(adminSafe)
         ["registerErc20Token(address)"](token.address);
       await zap._setErc20Allocations([token.address]);
 
@@ -363,9 +372,12 @@ describe("Contract: LpAccount", () => {
 
       const name = await zap.NAME();
       const amount = tokenAmountToBigNumber(100);
+      const index = 2;
 
-      await lpAccount.connect(lpSafe).unwindStrategy(name, amount);
-      expect(await lpAccount._unwindCalls()).to.deep.equal([amount]);
+      await lpAccount.connect(lpSafe).unwindStrategy(name, amount, index);
+      const result = await lpAccount._unwindCalls();
+      const resultValues = result.map((x) => x.toString());
+      expect(resultValues).to.deep.equal([amount.toString()]);
     });
   });
 
@@ -389,7 +401,7 @@ describe("Contract: LpAccount", () => {
       // configure zap with registered ERC20
       const token = await deployMockErc20();
       await erc20Allocation
-        .connect(lpSafe)
+        .connect(adminSafe)
         ["registerErc20Token(address)"](token.address);
       await zap._setErc20Allocations([token.address]);
 
@@ -456,8 +468,10 @@ describe("Contract: LpAccount", () => {
       const name = await swap.NAME();
       const amount = tokenAmountToBigNumber(1);
 
-      await lpAccount.connect(lpSafe).swap(name, amount);
-      expect(await lpAccount._swapCalls()).to.deep.equal([amount]);
+      await lpAccount.connect(lpSafe).swap(name, amount, 0);
+      const result = await lpAccount._swapCalls();
+      const resultValues = result.map((x) => x.toString());
+      expect(resultValues).to.deep.equal([amount.toString()]);
     });
 
     it("cannot swap with unregistered ERC20", async () => {
@@ -472,7 +486,7 @@ describe("Contract: LpAccount", () => {
       await swap._setErc20Allocations([token.address]);
 
       await expect(
-        lpAccount.connect(lpSafe).swap(name, amount)
+        lpAccount.connect(lpSafe).swap(name, amount, 0)
       ).to.be.revertedWith("MISSING_ERC20_ALLOCATIONS");
     });
 
@@ -486,12 +500,66 @@ describe("Contract: LpAccount", () => {
       // configure swap with registered ERC20
       const token = await deployMockErc20();
       await erc20Allocation
-        .connect(lpSafe)
+        .connect(adminSafe)
         ["registerErc20Token(address)"](token.address);
       await swap._setErc20Allocations([token.address]);
 
-      await expect(lpAccount.connect(lpSafe).swap(name, amount)).to.not.be
+      await expect(lpAccount.connect(lpSafe).swap(name, amount, 0)).to.not.be
         .reverted;
+    });
+  });
+
+  describe("emergencyExit", () => {
+    const symbol = "AAVE";
+    let token;
+
+    before("Get token", async () => {
+      token = await ethers.getContractAt("IDetailedERC20", FARM_TOKENS[symbol]);
+    });
+
+    beforeEach("Acquire token", async () => {
+      await acquireToken(
+        WHALE_POOLS[symbol],
+        lpAccount.address,
+        token,
+        "10000",
+        deployer.address
+      );
+    });
+
+    it("Should only be callable by the emergencySafe", async () => {
+      await expect(
+        lpAccount.connect(randomUser).emergencyExit(token.address)
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
+
+      await expect(
+        lpAccount.connect(emergencySafe).emergencyExit(token.address)
+      ).to.not.be.reverted;
+    });
+
+    it.skip("Should transfer all funded tokens to the emergencySafe", async () => {});
+
+    it("Should transfer tokens airdropped to the LpAccount", async () => {
+      const prevPoolBalance = await token.balanceOf(lpAccount.address);
+      const prevSafeBalance = await token.balanceOf(emergencySafe.address);
+
+      await lpAccount.connect(emergencySafe).emergencyExit(token.address);
+
+      const nextPoolBalance = await token.balanceOf(lpAccount.address);
+      const nextSafeBalance = await token.balanceOf(emergencySafe.address);
+
+      expect(nextPoolBalance).to.equal(0);
+      expect(nextSafeBalance.sub(prevSafeBalance)).to.equal(prevPoolBalance);
+    });
+
+    it("Should emit the EmergencyExit event", async () => {
+      const balance = await token.balanceOf(lpAccount.address);
+
+      await expect(
+        lpAccount.connect(emergencySafe).emergencyExit(token.address)
+      )
+        .to.emit(lpAccount, "EmergencyExit")
+        .withArgs(emergencySafe.address, token.address, balance);
     });
   });
 });

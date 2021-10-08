@@ -8,7 +8,7 @@ const {
   getStablecoinAddress,
 } = require("../utils/helpers");
 const timeMachine = require("ganache-time-traveler");
-const { WHALE_POOLS } = require("../utils/constants");
+const { WHALE_POOLS, FARM_TOKENS } = require("../utils/constants");
 const {
   acquireToken,
   console,
@@ -170,13 +170,14 @@ describe("Contract: PoolToken", () => {
         const mAptLogic = await MetaPoolToken.deploy();
         await mAptLogic.deployed();
 
-        const MetaPoolTokenProxy = await ethers.getContractFactory(
-          "MetaPoolTokenProxy"
+        const mAptInitData = MetaPoolToken.interface.encodeFunctionData(
+          "initialize(address)",
+          [addressRegistry.address]
         );
-        const mAptProxy = await MetaPoolTokenProxy.deploy(
+        const mAptProxy = await TransparentUpgradeableProxy.deploy(
           mAptLogic.address,
           proxyAdmin.address,
-          addressRegistry.address
+          mAptInitData
         );
         await mAptProxy.deployed();
         mApt = await MetaPoolToken.attach(mAptProxy.address);
@@ -217,13 +218,13 @@ describe("Contract: PoolToken", () => {
         const logicV2 = await PoolTokenV2.deploy();
         await logicV2.deployed();
 
-        const initData = PoolTokenV2.interface.encodeFunctionData(
+        const poolTokenV2InitData = PoolTokenV2.interface.encodeFunctionData(
           "initializeUpgrade(address)",
           [addressRegistry.address]
         );
         await proxyAdmin
           .connect(deployer)
-          .upgradeAndCall(proxy.address, logicV2.address, initData);
+          .upgradeAndCall(proxy.address, logicV2.address, poolTokenV2InitData);
 
         poolToken = await PoolTokenV2.attach(proxy.address);
 
@@ -272,29 +273,6 @@ describe("Contract: PoolToken", () => {
 
         it("Decimals has correct value", async () => {
           assert.equal(await poolToken.decimals(), 18);
-        });
-      });
-
-      describe("Set admin address", async () => {
-        it("Emergency Safe can set admin", async () => {
-          await poolToken
-            .connect(emergencySafe)
-            .emergencySetAdminAddress(FAKE_ADDRESS);
-          expect(await poolToken.proxyAdmin()).to.equal(FAKE_ADDRESS);
-        });
-
-        it("Revert on setting to zero address", async () => {
-          await expect(
-            poolToken
-              .connect(emergencySafe)
-              .emergencySetAdminAddress(ZERO_ADDRESS)
-          ).to.be.revertedWith("INVALID_ADMIN");
-        });
-
-        it("Revert when unpermissioned account attempts to set address", async () => {
-          await expect(
-            poolToken.connect(randomUser).emergencySetAdminAddress(FAKE_ADDRESS)
-          ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
         });
       });
 
@@ -468,6 +446,82 @@ describe("Contract: PoolToken", () => {
         });
       });
 
+      describe("emergencyExit", () => {
+        it("Should only be callable by the emergencySafe", async () => {
+          await expect(
+            poolToken.connect(randomUser).emergencyExit(underlyer.address)
+          ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
+
+          await expect(
+            poolToken.connect(emergencySafe).emergencyExit(underlyer.address)
+          ).to.not.be.reverted;
+        });
+
+        it("Should transfer all deposited tokens to the emergencySafe", async () => {
+          await poolToken.connect(randomUser).addLiquidity(100000);
+
+          const prevPoolBalance = await underlyer.balanceOf(poolToken.address);
+          const prevSafeBalance = await underlyer.balanceOf(
+            emergencySafe.address
+          );
+
+          await poolToken
+            .connect(emergencySafe)
+            .emergencyExit(underlyer.address);
+
+          const nextPoolBalance = await underlyer.balanceOf(poolToken.address);
+          const nextSafeBalance = await underlyer.balanceOf(
+            emergencySafe.address
+          );
+
+          expect(nextPoolBalance).to.equal(0);
+          expect(nextSafeBalance.sub(prevSafeBalance)).to.equal(
+            prevPoolBalance
+          );
+        });
+
+        it("Should transfer tokens airdropped to the pool", async () => {
+          const symbol = "AAVE";
+          const token = await ethers.getContractAt(
+            "IDetailedERC20",
+            FARM_TOKENS[symbol]
+          );
+
+          await acquireToken(
+            WHALE_POOLS[symbol],
+            poolToken.address,
+            token,
+            "10000",
+            deployer.address
+          );
+
+          const prevPoolBalance = await token.balanceOf(poolToken.address);
+          const prevSafeBalance = await token.balanceOf(emergencySafe.address);
+
+          await poolToken.connect(emergencySafe).emergencyExit(token.address);
+
+          const nextPoolBalance = await token.balanceOf(poolToken.address);
+          const nextSafeBalance = await token.balanceOf(emergencySafe.address);
+
+          expect(nextPoolBalance).to.equal(0);
+          expect(nextSafeBalance.sub(prevSafeBalance)).to.equal(
+            prevPoolBalance
+          );
+        });
+
+        it("Should emit the EmergencyExit event", async () => {
+          await poolToken.connect(randomUser).addLiquidity(100000);
+
+          const balance = await underlyer.balanceOf(poolToken.address);
+
+          await expect(
+            poolToken.connect(emergencySafe).emergencyExit(underlyer.address)
+          )
+            .to.emit(poolToken, "EmergencyExit")
+            .withArgs(emergencySafe.address, underlyer.address, balance);
+        });
+      });
+
       const usdDecimals = 8;
       const deployedValues = [
         tokenAmountToBigNumber(0, usdDecimals),
@@ -475,7 +529,7 @@ describe("Contract: PoolToken", () => {
         tokenAmountToBigNumber(32283729, usdDecimals),
       ];
       deployedValues.forEach(function (deployedValue) {
-        describe(`deployed value: ${deployedValue}`, () => {
+        describe(`Deployed value: ${deployedValue}`, () => {
           const mAptSupply = tokenAmountToBigNumber("100");
 
           async function updateTvlAgg(usdDeployedValue) {
@@ -624,7 +678,12 @@ describe("Contract: PoolToken", () => {
             });
 
             it("getReserveTopUpValue returns correct value", async () => {
-              const topUpValue = await poolToken.getReserveTopUpValue();
+              const price = await poolToken.getUnderlyerPrice();
+              const decimals = await underlyer.decimals();
+              const topUpAmount = await poolToken.getReserveTopUpValue();
+              const topUpValue = topUpAmount
+                .mul(price)
+                .div(ethers.BigNumber.from(10).pow(decimals));
               if (deployedValue == 0) {
                 expect(topUpValue).to.be.lt(0);
               } else {

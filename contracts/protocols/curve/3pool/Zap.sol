@@ -24,21 +24,14 @@ contract Curve3PoolZap is CurveGaugeZapBase, Curve3PoolConstants {
         ) // solhint-disable-next-line no-empty-blocks
     {}
 
-    function assetAllocations()
-        public
-        view
-        override
-        returns (IAssetAllocation[] memory)
-    {
-        IAssetAllocation[] memory allocations = new IAssetAllocation[](1);
-        allocations[0] = IAssetAllocation(address(0));
-        return allocations;
+    function assetAllocations() public view override returns (string[] memory) {
+        string[] memory allocationNames = new string[](1);
+        allocationNames[0] = NAME;
+        return allocationNames;
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
-        IERC20[] memory allocations = new IERC20[](1);
-        allocations[0] = IERC20(CRV_ADDRESS);
-        return allocations;
+        return _createErc20AllocationArray(0);
     }
 
     function _getVirtualPrice() internal view override returns (uint256) {
@@ -64,10 +57,16 @@ contract Curve3PoolZap is CurveGaugeZapBase, Curve3PoolConstants {
         );
     }
 
-    function _removeLiquidity(uint256 lpBalance) internal override {
-        IStableSwap(SWAP_ADDRESS).remove_liquidity(
+    function _removeLiquidity(
+        uint256 lpBalance,
+        uint8 index,
+        uint256 minAmount
+    ) internal override {
+        require(index < 3, "INVALID_INDEX");
+        IStableSwap(SWAP_ADDRESS).remove_liquidity_one_coin(
             lpBalance,
-            [uint256(0), uint256(0), uint256(0)]
+            index,
+            minAmount
         );
     }
 }

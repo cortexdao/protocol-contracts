@@ -7,6 +7,7 @@ const {
   ZERO_ADDRESS,
   FAKE_ADDRESS,
   tokenAmountToBigNumber,
+  deepEqual,
 } = require("../utils/helpers");
 
 const IAssetAllocation = artifacts.readArtifactSync("IAssetAllocation");
@@ -36,7 +37,7 @@ async function deployMockAllocation(signer, name) {
 describe("Contract: TvlManager", () => {
   // signers
   let deployer;
-  let lpSafe;
+  let adminSafe;
   let emergencySafe;
   let lpAccount;
   let randomUser;
@@ -68,7 +69,7 @@ describe("Contract: TvlManager", () => {
   before(async () => {
     [
       deployer,
-      lpSafe,
+      adminSafe,
       emergencySafe,
       lpAccount,
       randomUser,
@@ -89,7 +90,7 @@ describe("Contract: TvlManager", () => {
 
     // These registered addresses are setup for roles in the
     // constructor for TvlManager
-    await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
     await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
@@ -132,11 +133,12 @@ describe("Contract: TvlManager", () => {
         .be.true;
     });
 
-    it("LP role given to LP Safe", async () => {
-      const LP_ROLE = await tvlManager.LP_ROLE();
-      const memberCount = await tvlManager.getRoleMemberCount(LP_ROLE);
+    it("Admin role given to Admin Safe", async () => {
+      const ADMIN_ROLE = await tvlManager.ADMIN_ROLE();
+      const memberCount = await tvlManager.getRoleMemberCount(ADMIN_ROLE);
       expect(memberCount).to.equal(1);
-      expect(await tvlManager.hasRole(LP_ROLE, lpSafe.address)).to.be.true;
+      expect(await tvlManager.hasRole(ADMIN_ROLE, adminSafe.address)).to.be
+        .true;
     });
 
     it("addressRegistry was set", async () => {
@@ -187,7 +189,9 @@ describe("Contract: TvlManager", () => {
       it("LP Safe can call", async () => {
         const allocationAddress = await generateAllocationAddress(deployer);
         await expect(
-          tvlManager.connect(lpSafe).registerAssetAllocation(allocationAddress)
+          tvlManager
+            .connect(adminSafe)
+            .registerAssetAllocation(allocationAddress)
         ).to.not.be.reverted;
       });
 
@@ -197,12 +201,12 @@ describe("Contract: TvlManager", () => {
           tvlManager
             .connect(randomUser)
             .registerAssetAllocation(allocationAddress)
-        ).to.be.revertedWith("NOT_LP_OR_CONTRACT_ROLE");
+        ).to.be.revertedWith("NOT_ADMIN_ROLE");
       });
 
       it("Cannot register non-contract address", async () => {
         await expect(
-          tvlManager.connect(lpSafe).registerAssetAllocation(FAKE_ADDRESS)
+          tvlManager.connect(adminSafe).registerAssetAllocation(FAKE_ADDRESS)
         ).to.be.revertedWith("INVALID_ADDRESS");
       });
 
@@ -222,14 +226,14 @@ describe("Contract: TvlManager", () => {
         const contractAddress_1 = allocation_1.address;
 
         await tvlManager
-          .connect(lpSafe)
+          .connect(adminSafe)
           .registerAssetAllocation(contractAddress_0);
         allocations = await tvlManager.testGetAssetAllocations();
         expect(allocations).to.have.lengthOf(1);
         expect(allocations).to.include(contractAddress_0);
 
         await tvlManager
-          .connect(lpSafe)
+          .connect(adminSafe)
           .registerAssetAllocation(contractAddress_1);
         allocations = await tvlManager.testGetAssetAllocations();
         expect(allocations).to.have.lengthOf(2);
@@ -238,7 +242,9 @@ describe("Contract: TvlManager", () => {
 
         // check no duplicates can be registered
         await expect(
-          tvlManager.connect(lpSafe).registerAssetAllocation(contractAddress_0)
+          tvlManager
+            .connect(adminSafe)
+            .registerAssetAllocation(contractAddress_0)
         ).to.be.revertedWith("DUPLICATE_ADDRESS");
       });
     });
@@ -248,10 +254,10 @@ describe("Contract: TvlManager", () => {
         const allocation = await deployMockAllocation(deployer);
         const name = await allocation.NAME();
         await tvlManager
-          .connect(lpSafe)
+          .connect(adminSafe)
           .registerAssetAllocation(allocation.address);
-        await expect(tvlManager.connect(lpSafe).removeAssetAllocation(name)).to
-          .not.be.reverted;
+        await expect(tvlManager.connect(adminSafe).removeAssetAllocation(name))
+          .to.not.be.reverted;
       });
 
       it("Unpermissioned cannot call", async () => {
@@ -259,13 +265,15 @@ describe("Contract: TvlManager", () => {
         const name = await allocation.NAME();
         await expect(
           tvlManager.connect(randomUser).removeAssetAllocation(name)
-        ).to.be.revertedWith("NOT_LP_OR_CONTRACT_ROLE");
+        ).to.be.revertedWith("NOT_ADMIN_ROLE");
       });
 
       it("Cannot remove ERC20 allocation", async () => {
         const erc20AllocationName = await tvlManager.NAME();
         await expect(
-          tvlManager.connect(lpSafe).removeAssetAllocation(erc20AllocationName)
+          tvlManager
+            .connect(adminSafe)
+            .removeAssetAllocation(erc20AllocationName)
         ).to.be.revertedWith("CANNOT_REMOVE_ALLOCATION");
       });
 
@@ -284,10 +292,10 @@ describe("Contract: TvlManager", () => {
 
         // setup and assert preconditions
         await tvlManager
-          .connect(lpSafe)
+          .connect(adminSafe)
           .registerAssetAllocation(contractAddress_0);
         await tvlManager
-          .connect(lpSafe)
+          .connect(adminSafe)
           .registerAssetAllocation(contractAddress_1);
 
         let allocations = await tvlManager.testGetAssetAllocations();
@@ -296,7 +304,7 @@ describe("Contract: TvlManager", () => {
         expect(allocations).to.include(contractAddress_1);
 
         // start test
-        await tvlManager.connect(lpSafe).removeAssetAllocation(name_0);
+        await tvlManager.connect(adminSafe).removeAssetAllocation(name_0);
 
         allocations = await tvlManager.testGetAssetAllocations();
         expect(allocations).to.have.lengthOf(1);
@@ -330,27 +338,27 @@ describe("Contract: TvlManager", () => {
 
       // register and remove
       await tvlManager
-        .connect(lpSafe)
+        .connect(adminSafe)
         .registerAssetAllocation(contractAddress_0);
 
       allocations = await tvlManager.testGetAssetAllocations();
       expect(allocations).to.have.lengthOf(1);
       expect(allocations).to.include(contractAddress_0);
 
-      await tvlManager.connect(lpSafe).removeAssetAllocation(name_0);
+      await tvlManager.connect(adminSafe).removeAssetAllocation(name_0);
 
       allocations = await tvlManager.testGetAssetAllocations();
       expect(allocations).to.have.lengthOf(0);
 
       // register multiple
       await tvlManager
-        .connect(lpSafe)
+        .connect(adminSafe)
         .registerAssetAllocation(contractAddress_0);
       await tvlManager
-        .connect(lpSafe)
+        .connect(adminSafe)
         .registerAssetAllocation(contractAddress_1);
       await tvlManager
-        .connect(lpSafe)
+        .connect(adminSafe)
         .registerAssetAllocation(contractAddress_2);
 
       allocations = await tvlManager.testGetAssetAllocations();
@@ -360,10 +368,10 @@ describe("Contract: TvlManager", () => {
       expect(allocations).to.include(contractAddress_2);
 
       // remove multiple and register one
-      await tvlManager.connect(lpSafe).removeAssetAllocation(name_0);
-      await tvlManager.connect(lpSafe).removeAssetAllocation(name_2);
+      await tvlManager.connect(adminSafe).removeAssetAllocation(name_0);
+      await tvlManager.connect(adminSafe).removeAssetAllocation(name_2);
       await tvlManager
-        .connect(lpSafe)
+        .connect(adminSafe)
         .registerAssetAllocation(contractAddress_3);
 
       allocations = await tvlManager.testGetAssetAllocations();
@@ -455,7 +463,7 @@ describe("Contract: TvlManager", () => {
           allocation_1.address,
           1
         );
-        expect(result).to.deep.equal(expectedResult);
+        deepEqual(expectedResult, result);
       });
     });
 
@@ -473,7 +481,7 @@ describe("Contract: TvlManager", () => {
           );
           allocation.mock.numberOfTokens.returns(numTokens[i]);
           await tvlManager
-            .connect(lpSafe)
+            .connect(adminSafe)
             .registerAssetAllocation(allocation.address);
           allocations.push(allocation);
         }
@@ -490,7 +498,7 @@ describe("Contract: TvlManager", () => {
           }
         }
         const result = await tvlManager.getAssetAllocationIds();
-        expect(result).to.deep.equal(expectedResult);
+        deepEqual(expectedResult, result);
       });
     });
 
@@ -507,7 +515,7 @@ describe("Contract: TvlManager", () => {
         const allocation = await deployMockAllocation(deployer);
         const name = await allocation.NAME();
         await tvlManager
-          .connect(lpSafe)
+          .connect(adminSafe)
           .registerAssetAllocation(allocation.address);
 
         const result = await tvlManager.getAssetAllocation(name);
@@ -592,7 +600,7 @@ describe("Contract: TvlManager", () => {
       await allocation.mock.numberOfTokens.returns(2);
 
       await tvlManager
-        .connect(lpSafe)
+        .connect(adminSafe)
         .registerAssetAllocation(allocation.address);
 
       allocationId_0 = await tvlManager.testEncodeAssetAllocationId(

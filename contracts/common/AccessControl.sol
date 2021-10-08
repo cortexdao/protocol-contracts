@@ -44,4 +44,13 @@ contract AccessControl is OZAccessControl {
         );
         _;
     }
+
+    modifier onlyAdminOrContractRole() {
+        require(
+            hasRole(ADMIN_ROLE, _msgSender()) ||
+                hasRole(CONTRACT_ROLE, _msgSender()),
+            "NOT_ADMIN_OR_CONTRACT_ROLE"
+        );
+        _;
+    }
 }

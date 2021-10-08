@@ -23,7 +23,7 @@ describe("Swaps", () => {
   /* signers */
   let deployer;
   let emergencySafe;
-  let lpSafe;
+  let adminSafe;
   let mApt;
 
   /* contract factories */
@@ -45,7 +45,7 @@ describe("Swaps", () => {
   });
 
   before(async () => {
-    [deployer, emergencySafe, lpSafe, mApt] = await ethers.getSigners();
+    [deployer, emergencySafe, adminSafe, mApt] = await ethers.getSigners();
 
     const addressRegistry = await deployMockContract(
       deployer,
@@ -64,10 +64,10 @@ describe("Swaps", () => {
     /* These registered addresses are setup for roles in the
      * constructor for Erc20Allocation:
      * - emergencySafe (default admin role)
-     * - lpSafe (LP role)
+     * - adminSafe (admin role)
      * - mApt (contract role)
      */
-    await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
     await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
@@ -80,30 +80,45 @@ describe("Swaps", () => {
 
     /* These registered addresses are setup for roles in the
      * constructor for TvlManager
-     * - lpSafe (LP role)
      * - emergencySafe (emergency role, default admin role)
+     * - adminSafe (admin role)
      */
     TvlManager = await ethers.getContractFactory("TvlManager");
     tvlManager = await TvlManager.deploy(addressRegistry.address);
     await tvlManager
-      .connect(lpSafe)
+      .connect(adminSafe)
       .registerAssetAllocation(erc20Allocation.address);
   });
 
   const swapParams = [
     {
-      swapContractName: "SwapCrvToDai",
+      swapContractName: "CrvToDaiSwap",
       inTokenSymbol: "CRV",
       outTokenSymbol: "DAI",
     },
     {
-      swapContractName: "SwapCrvToUsdc",
+      swapContractName: "CrvToUsdcSwap",
       inTokenSymbol: "CRV",
       outTokenSymbol: "USDC",
     },
     {
-      swapContractName: "SwapCrvToUsdt",
+      swapContractName: "CrvToUsdtSwap",
       inTokenSymbol: "CRV",
+      outTokenSymbol: "USDT",
+    },
+    {
+      swapContractName: "AaveToDaiSwap",
+      inTokenSymbol: "AAVE",
+      outTokenSymbol: "DAI",
+    },
+    {
+      swapContractName: "AaveToUsdcSwap",
+      inTokenSymbol: "AAVE",
+      outTokenSymbol: "USDC",
+    },
+    {
+      swapContractName: "AaveToUsdtSwap",
+      inTokenSymbol: "AAVE",
       outTokenSymbol: "USDT",
     },
   ];
@@ -111,7 +126,7 @@ describe("Swaps", () => {
   swapParams.forEach(function (params) {
     const { swapContractName, inTokenSymbol, outTokenSymbol } = params;
 
-    describe("SwapCrvToUsdc", () => {
+    describe(swapContractName, () => {
       let swap;
       let inToken;
       let outToken;
@@ -119,10 +134,7 @@ describe("Swaps", () => {
       let whaleAddress = FARM_TOKEN_POOLS[inTokenSymbol];
 
       before("Deploy swap contract", async () => {
-        const SwapContract = await ethers.getContractFactory(
-          swapContractName,
-          lpSafe
-        );
+        const SwapContract = await ethers.getContractFactory(swapContractName);
         swap = await SwapContract.deploy();
       });
 
@@ -132,7 +144,7 @@ describe("Swaps", () => {
           FARM_TOKENS[inTokenSymbol]
         );
 
-        const amount = tokenAmountToBigNumber(100000, await inToken.decimals());
+        const amount = tokenAmountToBigNumber(1000, await inToken.decimals());
         const sender = whaleAddress;
         await acquireToken(sender, swap.address, inToken, amount, deployer);
       });
@@ -149,7 +161,7 @@ describe("Swaps", () => {
         it("Should swap in-token for out-token", async () => {
           const beforeInTokenBalance = await inToken.balanceOf(swap.address);
 
-          await swap.swap(beforeInTokenBalance);
+          await swap.swap(beforeInTokenBalance, 0);
 
           const afterInTokenBalance = await inToken.balanceOf(swap.address);
           expect(afterInTokenBalance).to.equal(0);

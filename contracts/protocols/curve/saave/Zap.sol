@@ -11,7 +11,9 @@ import {
 import {CurveSaaveConstants} from "./Constants.sol";
 import {CurveGaugeZapBase} from "contracts/protocols/curve/common/Imports.sol";
 
-contract SAavePoolZap is CurveGaugeZapBase, CurveSaaveConstants {
+contract CurveSaaveZap is CurveGaugeZapBase, CurveSaaveConstants {
+    string internal constant AAVE_ALLOCATION = "aave";
+
     constructor()
         public
         CurveGaugeZapBase(
@@ -24,21 +26,15 @@ contract SAavePoolZap is CurveGaugeZapBase, CurveSaaveConstants {
         ) // solhint-disable-next-line no-empty-blocks
     {}
 
-    function assetAllocations()
-        public
-        view
-        override
-        returns (IAssetAllocation[] memory)
-    {
-        IAssetAllocation[] memory allocations = new IAssetAllocation[](1);
-        allocations[0] = IAssetAllocation(address(0));
-        return allocations;
+    function assetAllocations() public view override returns (string[] memory) {
+        string[] memory allocationNames = new string[](2);
+        allocationNames[0] = NAME;
+        allocationNames[1] = AAVE_ALLOCATION;
+        return allocationNames;
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
-        IERC20[] memory allocations = new IERC20[](2);
-        allocations[0] = IERC20(CRV_ADDRESS);
-        allocations[1] = IERC20(0x4da27a545c0c5B758a6BA100e3a049001de870f5); // staked Aave (stkAAVE)
+        IERC20[] memory allocations = _createErc20AllocationArray(0);
         return allocations;
     }
 
@@ -65,10 +61,16 @@ contract SAavePoolZap is CurveGaugeZapBase, CurveSaaveConstants {
         );
     }
 
-    function _removeLiquidity(uint256 lpBalance) internal override {
-        IStableSwap(SWAP_ADDRESS).remove_liquidity(
+    function _removeLiquidity(
+        uint256 lpBalance,
+        uint8 index,
+        uint256 minAmount
+    ) internal override {
+        require(index < 2, "INVALID_INDEX");
+        IStableSwap(SWAP_ADDRESS).remove_liquidity_one_coin(
             lpBalance,
-            [uint256(0), uint256(0)]
+            index,
+            minAmount
         );
     }
 

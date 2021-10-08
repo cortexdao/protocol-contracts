@@ -6,7 +6,8 @@ import {
     IERC20,
     IDetailedERC20,
     AccessControl,
-    INameIdentifier
+    INameIdentifier,
+    ReentrancyGuard
 } from "contracts/common/Imports.sol";
 import {Address, EnumerableSet} from "contracts/libraries/Imports.sol";
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
@@ -22,7 +23,8 @@ contract Erc20Allocation is
     IErc20Allocation,
     AssetAllocationBase,
     Erc20AllocationConstants,
-    AccessControl
+    AccessControl,
+    ReentrancyGuard
 {
     using Address for address;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -36,13 +38,14 @@ contract Erc20Allocation is
             IAddressRegistryV2(addressRegistry_);
         _setupRole(DEFAULT_ADMIN_ROLE, addressRegistry.emergencySafeAddress());
         _setupRole(CONTRACT_ROLE, addressRegistry.mAptAddress());
-        _setupRole(LP_ROLE, addressRegistry.lpSafeAddress());
+        _setupRole(ADMIN_ROLE, addressRegistry.adminSafeAddress());
     }
 
     function registerErc20Token(IDetailedERC20 token)
         external
         override
-        onlyLpOrContractRole
+        nonReentrant
+        onlyAdminOrContractRole
     {
         string memory symbol = token.symbol();
         uint8 decimals = token.decimals();
@@ -52,7 +55,8 @@ contract Erc20Allocation is
     function registerErc20Token(IDetailedERC20 token, string calldata symbol)
         external
         override
-        onlyLpRole
+        nonReentrant
+        onlyAdminRole
     {
         uint8 decimals = token.decimals();
         _registerErc20Token(token, symbol, decimals);
@@ -62,28 +66,16 @@ contract Erc20Allocation is
         IERC20 token,
         string calldata symbol,
         uint8 decimals
-    ) external override onlyLpRole {
+    ) external override nonReentrant onlyAdminRole {
         _registerErc20Token(token, symbol, decimals);
     }
 
-    function _registerErc20Token(
-        IERC20 token,
-        string memory symbol,
-        uint8 decimals
-    ) internal {
-        require(address(token).isContract(), "INVALID_ADDRESS");
-        require(bytes(symbol).length != 0, "INVALID_SYMBOL");
-        _tokenAddresses.add(address(token));
-        _tokenToData[address(token)] = TokenData(
-            address(token),
-            symbol,
-            decimals
-        );
-
-        emit Erc20TokenRegistered(token, symbol, decimals);
-    }
-
-    function removeErc20Token(IERC20 token) external override onlyLpRole {
+    function removeErc20Token(IERC20 token)
+        external
+        override
+        nonReentrant
+        onlyAdminRole
+    {
         _tokenAddresses.remove(address(token));
         delete _tokenToData[address(token)];
 
@@ -132,5 +124,22 @@ contract Erc20Allocation is
             _tokens[i] = _tokenToData[tokenAddress];
         }
         return _tokens;
+    }
+
+    function _registerErc20Token(
+        IERC20 token,
+        string memory symbol,
+        uint8 decimals
+    ) internal {
+        require(address(token).isContract(), "INVALID_ADDRESS");
+        require(bytes(symbol).length != 0, "INVALID_SYMBOL");
+        _tokenAddresses.add(address(token));
+        _tokenToData[address(token)] = TokenData(
+            address(token),
+            symbol,
+            decimals
+        );
+
+        emit Erc20TokenRegistered(token, symbol, decimals);
     }
 }

@@ -3,8 +3,12 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import {IZap} from "contracts/lpaccount/Imports.sol";
-import {IAssetAllocation, IDetailedERC20} from "contracts/common/Imports.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {
+    IAssetAllocation,
+    IERC20,
+    IDetailedERC20
+} from "contracts/common/Imports.sol";
+import {SafeERC20} from "contracts/libraries/Imports.sol";
 import {
     ILiquidityGauge,
     ITokenMinter
@@ -12,6 +16,14 @@ import {
 import {CurveZapBase} from "contracts/protocols/curve/common/CurveZapBase.sol";
 
 abstract contract CurveGaugeZapBase is IZap, CurveZapBase {
+    using SafeERC20 for IERC20;
+
+    address internal constant MINTER_ADDRESS =
+        0xd061D61a4d941c39E5453435B6345Dc261C2fcE0;
+
+    address internal immutable LP_ADDRESS;
+    address internal immutable GAUGE_ADDRESS;
+
     constructor(
         address swapAddress,
         address lpAddress,
@@ -21,15 +33,12 @@ abstract contract CurveGaugeZapBase is IZap, CurveZapBase {
         uint256 nCoins
     )
         public
-        CurveZapBase(
-            swapAddress,
-            lpAddress,
-            gaugeAddress,
-            denominator,
-            slippage,
-            nCoins
-        ) // solhint-disable-next-line no-empty-blocks
-    {}
+        CurveZapBase(swapAddress, denominator, slippage, nCoins)
+    // solhint-disable-next-line no-empty-blocks
+    {
+        LP_ADDRESS = lpAddress;
+        GAUGE_ADDRESS = gaugeAddress;
+    }
 
     function _depositToGauge() internal override {
         ILiquidityGauge liquidityGauge = ILiquidityGauge(GAUGE_ADDRESS);

@@ -4,15 +4,16 @@ const { ethers, waffle, artifacts } = hre;
 const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
 const {
-  ZERO_ADDRESS,
   FAKE_ADDRESS,
   bytes32,
   tokenAmountToBigNumber,
+  deepEqual,
 } = require("../utils/helpers");
 
 const IAddressRegistryV2 = artifacts.readArtifactSync("IAddressRegistryV2");
 const TvlManager = artifacts.readArtifactSync("TvlManager");
 const Erc20Allocation = artifacts.readArtifactSync("Erc20Allocation");
+const OracleAdapter = artifacts.readArtifactSync("OracleAdapter");
 
 async function generateContractAddress() {
   const [deployer] = await ethers.getSigners();
@@ -40,6 +41,9 @@ describe("Contract: LpAccount", () => {
   let adminSafe;
   let mApt;
   let randomUser;
+
+  // contract factories
+  let LpAccount;
 
   // deployed contracts
   let lpAccount;
@@ -88,12 +92,12 @@ describe("Contract: LpAccount", () => {
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     proxyAdmin = await ProxyAdmin.deploy();
 
-    const LpAccount = await ethers.getContractFactory("TestLpAccount");
+    LpAccount = await ethers.getContractFactory("TestLpAccount");
     const logic = await LpAccount.deploy();
 
     const initData = LpAccount.interface.encodeFunctionData(
-      "initialize(address,address)",
-      [proxyAdmin.address, addressRegistry.address]
+      "initialize(address)",
+      [addressRegistry.address]
     );
 
     const TransparentUpgradeableProxy = await ethers.getContractFactory(
@@ -108,13 +112,60 @@ describe("Contract: LpAccount", () => {
     lpAccount = await LpAccount.attach(proxy.address);
   });
 
-  describe("Initializer", () => {
-    it.skip("Reverts on non-contract address for logic contract", async () => {});
-    it.skip("Reverts on zero address for proxy admin", async () => {});
-    it.skip("Reverts on non-contract address for address registry", async () => {});
+  describe("Initialization", () => {
+    let logic;
+
+    before(async () => {
+      logic = await LpAccount.deploy();
+    });
+
+    it("Allow when address registry is a contract address", async () => {
+      await expect(logic.initialize(addressRegistry.address)).to.not.be
+        .reverted;
+    });
+
+    it("Revert when address registry is not a contract address", async () => {
+      await expect(logic.initialize(FAKE_ADDRESS)).to.be.revertedWith(
+        "INVALID_ADDRESS"
+      );
+    });
+
+    it("Revert when called twice", async () => {
+      await expect(logic.initialize(addressRegistry.address)).to.not.be
+        .reverted;
+      await expect(
+        logic.initialize(addressRegistry.address)
+      ).to.be.revertedWith("Contract instance has already been initialized");
+    });
+
+    it("Proxy admin can call `initializeUpgrade` during upgrade", async () => {
+      const initData = LpAccount.interface.encodeFunctionData(
+        "initializeUpgrade()",
+        []
+      );
+      // await expect(
+      await proxyAdmin
+        .connect(deployer)
+        .upgradeAndCall(lpAccount.address, logic.address, initData);
+      // ).to.not.be.reverted;
+    });
+
+    it("Revert when non-admin attempts `initializeUpgrade`", async () => {
+      // need to initialize before calling `initializeUpgrade`
+      await logic.initialize(addressRegistry.address);
+      await expect(logic.initializeUpgrade()).to.be.revertedWith(
+        "PROXY_ADMIN_ONLY"
+      );
+    });
   });
 
   describe("Defaults", () => {
+    it("Cannot call `initialize` after deploy", async () => {
+      await expect(
+        lpAccount.initialize(addressRegistry.address)
+      ).to.be.revertedWith("Contract instance has already been initialized");
+    });
+
     it("Default admin role given to Emergency Safe", async () => {
       const DEFAULT_ADMIN_ROLE = await lpAccount.DEFAULT_ADMIN_ROLE();
       const memberCount = await lpAccount.getRoleMemberCount(
@@ -201,37 +252,24 @@ describe("Contract: LpAccount", () => {
     });
   });
 
-  describe("emergencySetAdminAddress", () => {
-    it("Emergency Safe can call", async () => {
-      const someContractAddress = await generateContractAddress(deployer);
-      await expect(
-        lpAccount
-          .connect(emergencySafe)
-          .emergencySetAdminAddress(someContractAddress)
-      ).to.not.be.reverted;
+  describe("setLockPeriod", () => {
+    it("Admin Safe can call", async () => {
+      const lockPeriod = 100;
+      await expect(lpAccount.connect(adminSafe).setLockPeriod(lockPeriod)).to
+        .not.be.reverted;
     });
 
     it("Unpermissioned cannot call", async () => {
-      const someContractAddress = await generateContractAddress(deployer);
+      const lockPeriod = 100;
       await expect(
-        lpAccount
-          .connect(randomUser)
-          .emergencySetAdminAddress(someContractAddress)
-      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
+        lpAccount.connect(randomUser).setLockPeriod(lockPeriod)
+      ).to.be.revertedWith("NOT_ADMIN_ROLE");
     });
 
-    it("Address can be set", async () => {
-      const someContractAddress = await generateContractAddress(deployer);
-      await lpAccount
-        .connect(emergencySafe)
-        .emergencySetAdminAddress(someContractAddress);
-      expect(await lpAccount.proxyAdmin()).to.equal(someContractAddress);
-    });
-
-    it("Cannot set to non-contract address", async () => {
-      await expect(
-        lpAccount.connect(emergencySafe).emergencySetAdminAddress(ZERO_ADDRESS)
-      ).to.be.revertedWith("INVALID_ADMIN");
+    it("Lock period can be set", async () => {
+      const lockPeriod = 100;
+      await lpAccount.connect(adminSafe).setLockPeriod(lockPeriod);
+      expect(await lpAccount.lockPeriod()).to.equal(lockPeriod);
     });
   });
 
@@ -257,7 +295,7 @@ describe("Contract: LpAccount", () => {
         const name = await zap.NAME();
         await lpAccount.connect(adminSafe).registerZap(zap.address);
 
-        expect(await lpAccount.zapNames()).to.deep.equal([name]);
+        deepEqual([name], await lpAccount.zapNames());
       });
     });
 
@@ -293,6 +331,7 @@ describe("Contract: LpAccount", () => {
     describe("Deploying, unwinding, and claiming", () => {
       let tvlManager;
       let erc20Allocation;
+      let oracleAdapter;
 
       before("Setup TvlManager", async () => {
         const [deployer] = await ethers.getSigners();
@@ -301,6 +340,7 @@ describe("Contract: LpAccount", () => {
           deployer,
           Erc20Allocation.abi
         );
+        oracleAdapter = await deployMockContract(deployer, OracleAdapter.abi);
 
         await addressRegistry.mock.getAddress
           .withArgs(bytes32("tvlManager"))
@@ -310,12 +350,17 @@ describe("Contract: LpAccount", () => {
           .withArgs("erc20Allocation")
           .returns(erc20Allocation.address);
 
-        await tvlManager.mock["isAssetAllocationRegistered(address[])"].returns(
+        await addressRegistry.mock.oracleAdapterAddress.returns(
+          oracleAdapter.address
+        );
+
+        await tvlManager.mock["isAssetAllocationRegistered(string[])"].returns(
           true
         );
         await erc20Allocation.mock["isErc20TokenRegistered(address[])"].returns(
           true
         );
+        await oracleAdapter.mock.lockFor.returns();
       });
 
       describe("deployStrategy", () => {
@@ -365,7 +410,7 @@ describe("Contract: LpAccount", () => {
           ];
 
           await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
-          expect(await lpAccount._deployCalls()).to.deep.equal([amounts]);
+          deepEqual(amounts, await lpAccount._deployCalls());
         });
 
         it("cannot deploy with unregistered allocation", async () => {
@@ -380,7 +425,7 @@ describe("Contract: LpAccount", () => {
           ];
 
           await tvlManager.mock[
-            "isAssetAllocationRegistered(address[])"
+            "isAssetAllocationRegistered(string[])"
           ].returns(false);
 
           await expect(
@@ -415,9 +460,10 @@ describe("Contract: LpAccount", () => {
 
           const name = await zap.NAME();
           const amount = tokenAmountToBigNumber(100);
+          const index = 2;
 
           await expect(
-            lpAccount.connect(lpSafe).unwindStrategy(name, amount)
+            lpAccount.connect(lpSafe).unwindStrategy(name, amount, index)
           ).to.be.revertedWith("INVALID_NAME");
         });
 
@@ -427,9 +473,11 @@ describe("Contract: LpAccount", () => {
 
           const name = await zap.NAME();
           const amount = tokenAmountToBigNumber(100);
+          const index = 2;
 
-          await expect(lpAccount.connect(lpSafe).unwindStrategy(name, amount))
-            .to.not.be.reverted;
+          await expect(
+            lpAccount.connect(lpSafe).unwindStrategy(name, amount, index)
+          ).to.not.be.reverted;
         });
 
         it("Unpermissioned cannot call", async () => {
@@ -438,9 +486,10 @@ describe("Contract: LpAccount", () => {
 
           const name = await zap.NAME();
           const amount = tokenAmountToBigNumber(100);
+          const index = 2;
 
           await expect(
-            lpAccount.connect(randomUser).unwindStrategy(name, amount)
+            lpAccount.connect(randomUser).unwindStrategy(name, amount, index)
           ).to.be.revertedWith("NOT_LP_ROLE");
         });
 
@@ -450,9 +499,10 @@ describe("Contract: LpAccount", () => {
 
           const name = await zap.NAME();
           const amount = tokenAmountToBigNumber(100);
+          const index = 2;
 
-          await lpAccount.connect(lpSafe).unwindStrategy(name, amount);
-          expect(await lpAccount._unwindCalls()).to.deep.equal([amount]);
+          await lpAccount.connect(lpSafe).unwindStrategy(name, amount, index);
+          deepEqual([amount], await lpAccount._unwindCalls());
         });
       });
 
@@ -537,7 +587,7 @@ describe("Contract: LpAccount", () => {
         const name = await swap.NAME();
         await lpAccount.connect(adminSafe).registerSwap(swap.address);
 
-        expect(await lpAccount.swapNames()).to.deep.equal([name]);
+        deepEqual([name], await lpAccount.swapNames());
       });
     });
 
@@ -602,7 +652,7 @@ describe("Contract: LpAccount", () => {
         const amount = tokenAmountToBigNumber(100);
 
         await expect(
-          lpAccount.connect(lpSafe).swap(name, amount)
+          lpAccount.connect(lpSafe).swap(name, amount, 0)
         ).to.be.revertedWith("INVALID_NAME");
       });
 
@@ -613,7 +663,7 @@ describe("Contract: LpAccount", () => {
         const name = await swap.NAME();
         const amount = tokenAmountToBigNumber(100);
 
-        await expect(lpAccount.connect(lpSafe).swap(name, amount)).to.not.be
+        await expect(lpAccount.connect(lpSafe).swap(name, amount, 0)).to.not.be
           .reverted;
       });
 
@@ -625,7 +675,7 @@ describe("Contract: LpAccount", () => {
         const amount = tokenAmountToBigNumber(100);
 
         await expect(
-          lpAccount.connect(randomUser).swap(name, amount)
+          lpAccount.connect(randomUser).swap(name, amount, 0)
         ).to.be.revertedWith("NOT_LP_ROLE");
       });
 
@@ -636,8 +686,8 @@ describe("Contract: LpAccount", () => {
         const name = await swap.NAME();
         const amount = tokenAmountToBigNumber(100);
 
-        await lpAccount.connect(lpSafe).swap(name, amount);
-        expect(await lpAccount._swapCalls()).to.deep.equal([amount]);
+        await lpAccount.connect(lpSafe).swap(name, amount, 0);
+        deepEqual([amount], await lpAccount._swapCalls());
       });
 
       it("cannot deploy with unregistered ERC20", async () => {
@@ -652,7 +702,7 @@ describe("Contract: LpAccount", () => {
         );
 
         await expect(
-          lpAccount.connect(lpSafe).swap(name, amount)
+          lpAccount.connect(lpSafe).swap(name, amount, 0)
         ).to.be.revertedWith("MISSING_ERC20_ALLOCATIONS");
       });
     });

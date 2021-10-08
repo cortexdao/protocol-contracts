@@ -10,6 +10,8 @@ const {
   bytes32,
   impersonateAccount,
   forciblySendEth,
+  deepEqual,
+  getProxyAdmin,
 } = require("../utils/helpers");
 const { deployMockContract } = waffle;
 const OracleAdapter = artifacts.readArtifactSync("OracleAdapter");
@@ -31,11 +33,13 @@ describe("Contract: MetaPoolToken", () => {
   let lpAccount;
   let randomUser;
   let anotherUser;
+  let adminSafeSigner;
 
   // deployed contracts
   let mApt;
 
   // mocks
+  let adminSafe;
   let oracleAdapter;
   let addressRegistry;
   let erc20Allocation;
@@ -99,17 +103,29 @@ describe("Contract: MetaPoolToken", () => {
       .withArgs(bytes32("emergencySafe"))
       .returns(emergencySafe.address);
 
-    // Admin Safe is not used by mAPT;
-    // must still register for AlphaDeployment.
-    await addressRegistry.mock.adminSafeAddress.returns(FAKE_ADDRESS);
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("adminSafe"))
-      .returns(FAKE_ADDRESS);
-
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("lpSafe"))
       .returns(lpSafe.address);
+
+    // mock the Admin Safe to allow module function calls
+    adminSafe = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("IGnosisModuleManager").abi
+    );
+    await adminSafe.mock.execTransactionFromModule.returns(true);
+    // register the address
+    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("adminSafe"))
+      .returns(adminSafe.address);
+    // create signer for few cases where we need to connect with Admin Safe
+    adminSafeSigner = await impersonateAccount(adminSafe.address);
+    await forciblySendEth(
+      adminSafe.address,
+      tokenAmountToBigNumber(1),
+      deployer.address
+    );
   });
 
   before("Deploy mAPT", async () => {
@@ -176,12 +192,12 @@ describe("Contract: MetaPoolToken", () => {
       FAKE_ADDRESS, // pool token v1 factory
       FAKE_ADDRESS, // pool token v2 factory
       FAKE_ADDRESS, // tvl manager factory
+      FAKE_ADDRESS, // erc20 allocation factory
       FAKE_ADDRESS, // oracle adapter factory
       FAKE_ADDRESS // lp account factory
     );
 
-    // need some test setup to pass the pre-step checks
-    await addressRegistry.mock.owner.returns(alphaDeployment.address);
+    await addressRegistry.mock.owner.returns(adminSafe.address);
     await alphaDeployment.testSetStep(1);
 
     await addressRegistry.mock.registerAddress.returns();
@@ -189,60 +205,68 @@ describe("Contract: MetaPoolToken", () => {
     await alphaDeployment.deploy_1_MetaPoolToken();
 
     const proxyAddress = await alphaDeployment.mApt();
-    mApt = await ethers.getContractAt("TestMetaPoolToken", proxyAddress);
+    const mApt = await ethers.getContractAt("TestMetaPoolToken", proxyAddress);
 
     return mApt;
   }
 
-  describe("Constructor", () => {
-    let MetaPoolTokenProxy;
+  describe("Initialization", () => {
     let logic;
 
-    before(async () => {
-      MetaPoolTokenProxy = await ethers.getContractFactory(
-        "MetaPoolTokenProxy"
-      );
+    before("Deploy logic contract", async () => {
       const MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
       logic = await MetaPoolToken.deploy();
     });
 
-    it("Revert when logic is not a contract address", async () => {
-      const contractAddress = (await deployMockContract(deployer, [])).address;
-      await expect(
-        MetaPoolTokenProxy.connect(deployer).deploy(
-          DUMMY_ADDRESS,
-          contractAddress,
-          contractAddress
-        )
-      ).to.be.revertedWith(
-        "UpgradeableProxy: new implementation is not a contract"
-      );
-    });
-
-    it("Revert when proxy admin is zero address", async () => {
-      const contractAddress = (await deployMockContract(deployer, [])).address;
-      await expect(
-        MetaPoolTokenProxy.connect(deployer).deploy(
-          logic.address,
-          ZERO_ADDRESS,
-          contractAddress
-        )
-      ).to.be.revertedWith("INVALID_ADMIN");
+    it("Allow when address registry is a contract address", async () => {
+      await expect(logic.initialize(addressRegistry.address)).to.not.be
+        .reverted;
     });
 
     it("Revert when address registry is not a contract address", async () => {
-      const contractAddress = (await deployMockContract(deployer, [])).address;
+      await expect(logic.initialize(DUMMY_ADDRESS)).to.be.revertedWith(
+        "INVALID_ADDRESS"
+      );
+    });
+
+    it("Revert when called twice", async () => {
+      await expect(logic.initialize(addressRegistry.address)).to.not.be
+        .reverted;
       await expect(
-        MetaPoolTokenProxy.connect(deployer).deploy(
-          logic.address,
-          contractAddress,
-          DUMMY_ADDRESS
-        )
-      ).to.be.revertedWith("INVALID_ADDRESS");
+        logic.initialize(addressRegistry.address)
+      ).to.be.revertedWith("Contract instance has already been initialized");
+    });
+
+    it("Proxy admin can call `initializeUpgrade` during upgrade", async () => {
+      const MetaPoolToken = await ethers.getContractFactory("MetaPoolToken");
+      const initData = MetaPoolToken.interface.encodeFunctionData(
+        "initializeUpgrade()",
+        []
+      );
+      const proxyAdmin = await getProxyAdmin(mApt.address);
+      await expect(
+        proxyAdmin
+          .connect(adminSafeSigner)
+          .upgradeAndCall(mApt.address, logic.address, initData)
+      ).to.not.be.reverted;
+    });
+
+    it("Revert when non-admin attempts `initializeUpgrade`", async () => {
+      // need to initialize before calling `initializeUpgrade`
+      await logic.initialize(addressRegistry.address);
+      await expect(logic.initializeUpgrade()).to.be.revertedWith(
+        "PROXY_ADMIN_ONLY"
+      );
     });
   });
 
   describe("Defaults", () => {
+    it("Cannot call `initialize` after deploy", async () => {
+      await expect(mApt.initialize(addressRegistry.address)).to.be.revertedWith(
+        "Contract instance has already been initialized"
+      );
+    });
+
     it("Default admin role given to Emergency Safe", async () => {
       const DEFAULT_ADMIN_ROLE = await mApt.DEFAULT_ADMIN_ROLE();
       const memberCount = await mApt.getRoleMemberCount(DEFAULT_ADMIN_ROLE);
@@ -278,18 +302,37 @@ describe("Contract: MetaPoolToken", () => {
       expect(await mApt.decimals()).to.equal(18);
     });
 
-    it("Admin set correctly", async () => {
-      // get admin address from slot specified by EIP-1967
-      let proxyAdminAddress = await ethers.provider.getStorageAt(
-        mApt.address,
-        "0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103"
-      );
-      proxyAdminAddress = ethers.utils.getAddress(proxyAdminAddress.slice(-40));
-      expect(await mApt.proxyAdmin()).to.equal(proxyAdminAddress);
+    it("Address Registry set correctly", async () => {
+      expect(await mApt.addressRegistry()).to.equal(addressRegistry.address);
     });
 
-    it("Address registry set correctly", async () => {
-      expect(await mApt.addressRegistry()).to.equal(addressRegistry.address);
+    it("proxyAdmin() returns EIP-1967 slot value", async () => {
+      // grab the proxy admin using EIP-1967 slot
+      const proxyAdmin = await getProxyAdmin(mApt.address);
+      expect(await mApt.proxyAdmin()).to.equal(proxyAdmin.address);
+    });
+
+    it("Proxy Admin owner is Admin Safe", async () => {
+      const proxyAdmin = await getProxyAdmin(mApt.address);
+      expect(await proxyAdmin.owner()).to.equal(adminSafe.address);
+    });
+
+    it.skip("Proxy implementation is set to logic contract", async () => {
+      // FIXME: need to grab the deployed logic address somehow
+      const proxyAdmin = await getProxyAdmin(mApt.address);
+      expect(
+        await proxyAdmin
+          .connect(adminSafeSigner)
+          .getProxyImplementation(mApt.address)
+      ).to.equal(logic.address); // eslint-disable-line no-undef
+    });
+
+    // possibly very redundant
+    it("getProxyAdmin() on Proxy Admin returns correct address", async () => {
+      const proxyAdmin = await getProxyAdmin(mApt.address);
+      expect(
+        await proxyAdmin.connect(adminSafeSigner).getProxyAdmin(mApt.address)
+      ).to.equal(proxyAdmin.address);
     });
   });
 
@@ -313,27 +356,6 @@ describe("Contract: MetaPoolToken", () => {
       await expect(
         mApt.connect(emergencySafe).emergencySetAddressRegistry(FAKE_ADDRESS)
       ).to.be.revertedWith("INVALID_ADDRESS");
-    });
-  });
-
-  describe("emergencySetAdminAddress", () => {
-    it("Emergency Safe can set to valid address", async () => {
-      await mApt
-        .connect(emergencySafe)
-        .emergencySetAdminAddress(randomUser.address);
-      expect(await mApt.proxyAdmin()).to.equal(randomUser.address);
-    });
-
-    it("Revert when unpermissioned attempts to set", async () => {
-      await expect(
-        mApt.connect(randomUser).emergencySetAdminAddress(FAKE_ADDRESS)
-      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
-    });
-
-    it("Cannot set to zero address", async () => {
-      await expect(
-        mApt.connect(emergencySafe).emergencySetAdminAddress(ZERO_ADDRESS)
-      ).to.be.revertedWith("INVALID_ADMIN");
     });
   });
 
@@ -861,47 +883,6 @@ describe("Contract: MetaPoolToken", () => {
     });
   });
 
-  describe("emergencyFundLpAccount", () => {
-    it("Emergency Safe can call", async () => {
-      await expect(mApt.connect(emergencySafe).emergencyFundLpAccount([], []))
-        .to.not.be.reverted;
-    });
-
-    it("Unpermissioned cannot call", async () => {
-      await expect(
-        mApt.connect(randomUser).emergencyFundLpAccount([], [])
-      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
-    });
-
-    it("Revert on unregistered LP Account address", async () => {
-      await addressRegistry.mock.lpAccountAddress.returns(ZERO_ADDRESS);
-      await expect(
-        mApt.connect(emergencySafe).emergencyFundLpAccount([], [])
-      ).to.be.revertedWith("INVALID_LP_ACCOUNT");
-    });
-  });
-
-  describe("emergencyWithdrawFromLpAccount", () => {
-    it("Emergency Safe can call", async () => {
-      await expect(
-        mApt.connect(emergencySafe).emergencyWithdrawFromLpAccount([], [])
-      ).to.not.be.reverted;
-    });
-
-    it("Unpermissioned cannot call", async () => {
-      await expect(
-        mApt.connect(randomUser).emergencyWithdrawFromLpAccount([], [])
-      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
-    });
-
-    it("Revert on unregistered LP Account address", async () => {
-      await addressRegistry.mock.lpAccountAddress.returns(ZERO_ADDRESS);
-      await expect(
-        mApt.connect(emergencySafe).emergencyWithdrawFromLpAccount([], [])
-      ).to.be.revertedWith("INVALID_LP_ACCOUNT");
-    });
-  });
-
   describe("getRebalanceAmounts", () => {
     it("Return pair of empty arrays when give an empty array", async () => {
       const result = await mApt.getRebalanceAmounts([]);
@@ -927,7 +908,7 @@ describe("Contract: MetaPoolToken", () => {
         bytes32("daiPool"),
         bytes32("usdcPool"),
       ]);
-      expect(result).to.deep.equal([
+      deepEqual(result, [
         [daiPool.address, usdcPool.address],
         [daiRebalanceAmount, usdcRebalanceAmount],
       ]);
@@ -954,7 +935,7 @@ describe("Contract: MetaPoolToken", () => {
         tokenAmountToBigNumber("0"),
       ];
       let result = await mApt.testGetFundAmounts(amounts);
-      expect(result).to.deep.equal(expectedResult);
+      deepEqual(expectedResult, result);
 
       amounts = [
         tokenAmountToBigNumber("-159"),
@@ -967,7 +948,7 @@ describe("Contract: MetaPoolToken", () => {
         tokenAmountToBigNumber("11"),
       ];
       result = await mApt.testGetFundAmounts(amounts);
-      expect(result).to.deep.equal(expectedResult);
+      deepEqual(expectedResult, result);
 
       amounts = [
         tokenAmountToBigNumber("159"),
@@ -986,7 +967,7 @@ describe("Contract: MetaPoolToken", () => {
         tokenAmountToBigNumber("0"),
       ];
       result = await mApt.testGetFundAmounts(amounts);
-      expect(result).to.deep.equal(expectedResult);
+      deepEqual(expectedResult, result);
     });
   });
 
@@ -1005,7 +986,8 @@ describe("Contract: MetaPoolToken", () => {
       ];
       let expectedResult = amounts;
       let result = await mApt.testGetWithdrawAmounts(amounts);
-      expect(result).to.deep.equal(expectedResult);
+
+      deepEqual(expectedResult, result);
 
       amounts = [
         tokenAmountToBigNumber("159"),
@@ -1024,7 +1006,7 @@ describe("Contract: MetaPoolToken", () => {
         tokenAmountToBigNumber("0"),
       ];
       result = await mApt.testGetWithdrawAmounts(amounts);
-      expect(result).to.deep.equal(expectedResult);
+      deepEqual(expectedResult, result);
     });
   });
 });

@@ -116,8 +116,8 @@ describe("Contract: MetaPoolToken - TVL aggregator integration", () => {
     await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    const MetaPoolTokenProxy = await ethers.getContractFactory(
-      "MetaPoolTokenProxy"
+    const TransparentUpgradeableProxy = await ethers.getContractFactory(
+      "TransparentUpgradeableProxy"
     );
     const MetaPoolToken = await ethers.getContractFactory("TestMetaPoolToken");
 
@@ -125,10 +125,14 @@ describe("Contract: MetaPoolToken - TVL aggregator integration", () => {
     await proxyAdmin.deployed();
     logic = await MetaPoolToken.deploy();
     await logic.deployed();
-    proxy = await MetaPoolTokenProxy.deploy(
+    const initData = MetaPoolToken.interface.encodeFunctionData(
+      "initialize(address)",
+      [addressRegistry.address]
+    );
+    proxy = await TransparentUpgradeableProxy.deploy(
       logic.address,
       proxyAdmin.address,
-      addressRegistry.address
+      initData
     );
     await proxy.deployed();
     mApt = await MetaPoolToken.attach(proxy.address);

@@ -5,6 +5,9 @@ pragma experimental ABIEncoderV2;
 import {Address} from "contracts/libraries/Imports.sol";
 import {AssetAllocationBase} from "./AssetAllocationBase.sol";
 
+/**
+ * @notice Asset allocation with underlying tokens that cannot be added/removed
+ */
 abstract contract ImmutableAssetAllocation is AssetAllocationBase {
     using Address for address;
 
@@ -17,8 +20,18 @@ abstract contract ImmutableAssetAllocation is AssetAllocationBase {
         return tokens_;
     }
 
+    /**
+     * @notice Get the immutable array of underlying `TokenData`
+     * @dev Should be implemented in child contracts with a hardcoded array
+     * @return The array of `TokenData`
+     */
     function _getTokenData() internal pure virtual returns (TokenData[] memory);
 
+    /**
+     * @notice Verifies that a `TokenData` array works with the `TvlManager`
+     * @dev Reverts when there is invalid `TokenData`
+     * @param tokens_ The array of `TokenData`
+     */
     function _validateTokens(TokenData[] memory tokens_) internal view virtual {
         // length restriction due to encoding logic for allocation IDs
         require(tokens_.length < type(uint8).max, "TOO_MANY_TOKENS");
@@ -31,6 +44,10 @@ abstract contract ImmutableAssetAllocation is AssetAllocationBase {
         // TODO: check for duplicate tokens
     }
 
+    /**
+     * @notice Verify that a token is a contract
+     * @param token The token to verify
+     */
     function _validateTokenAddress(address token) internal view virtual {
         require(token.isContract(), "INVALID_ADDRESS");
     }

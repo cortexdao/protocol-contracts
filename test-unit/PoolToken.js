@@ -240,27 +240,6 @@ describe("Contract: PoolTokenV2", () => {
     });
   });
 
-  describe("Set admin address", () => {
-    it("Emergency Safe can set admin", async () => {
-      await poolToken
-        .connect(emergencySafe)
-        .emergencySetAdminAddress(FAKE_ADDRESS);
-      assert.equal(await poolToken.proxyAdmin(), FAKE_ADDRESS);
-    });
-
-    it("Revert on setting to zero address", async () => {
-      await expect(
-        poolToken.connect(emergencySafe).emergencySetAdminAddress(ZERO_ADDRESS)
-      ).to.be.reverted;
-    });
-
-    it("Revert when unpermissioned account attempts to set address", async () => {
-      await expect(
-        poolToken.connect(randomUser).emergencySetAdminAddress(FAKE_ADDRESS)
-      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
-    });
-  });
-
   describe("Set address registry", () => {
     it("Emergency Safe can set", async () => {
       const dummyContract = await deployMockContract(deployer, []);
@@ -536,7 +515,7 @@ describe("Contract: PoolTokenV2", () => {
     });
   });
 
-  describe("getReserveTopUpAmount", () => {
+  describe("getReserveTopUpValue", () => {
     it("Returns 0 when pool has zero total value", async () => {
       // set pool total ETH value to 0
       await oracleAdapterMock.mock.getAssetPrice.returns(1);
@@ -560,20 +539,20 @@ describe("Contract: PoolTokenV2", () => {
       const aptSupply = tokenAmountToBigNumber(10000);
       await poolToken.testMint(deployer.address, aptSupply);
 
-      const poolUnderlyerValue = await poolToken.testGetPoolUnderlyerValue();
-      const topUpValue = await poolToken.getReserveTopUpValue();
-      expect(topUpValue).to.be.lt(0);
+      const topUpAmount = await poolToken.getReserveTopUpValue();
+      expect(topUpAmount).to.be.lt(0);
 
       // assuming we add the top-up absolute value as the deployed
       // capital, the reserve percentage of resulting deployed value
       // is what we are targeting
       const reservePercentage = await poolToken.reservePercentage();
-      const targetValue = topUpValue.mul(-1).mul(reservePercentage).div(100);
-      expect(poolUnderlyerValue.add(topUpValue)).to.equal(targetValue);
+      const targetValue = topUpAmount.mul(-1).mul(reservePercentage).div(100);
+      expect(poolBalance.add(topUpAmount)).to.equal(targetValue);
     });
 
     it("Returns reservePercentage of post deployed value when zero balance", async () => {
-      await oracleAdapterMock.mock.getAssetPrice.returns(1);
+      const price = 1;
+      await oracleAdapterMock.mock.getAssetPrice.returns(price);
       await underlyerMock.mock.balanceOf.returns(0);
       const decimals = 6;
       await underlyerMock.mock.decimals.returns(decimals);
@@ -584,7 +563,8 @@ describe("Contract: PoolTokenV2", () => {
       const deployedValue = tokenAmountToBigNumber(1000);
       await mAptMock.mock.getDeployedValue.returns(deployedValue);
 
-      const topUpValue = await poolToken.getReserveTopUpValue();
+      const topUpAmount = await poolToken.getReserveTopUpValue();
+      const topUpValue = topUpAmount.mul(price).div(10 ** decimals);
 
       // assuming we unwind the top-up value from the pool's deployed
       // capital, the reserve percentage of resulting deployed value
@@ -598,7 +578,8 @@ describe("Contract: PoolTokenV2", () => {
     });
 
     it("Returns correctly calculated value when top-up is positive", async () => {
-      await oracleAdapterMock.mock.getAssetPrice.returns(1);
+      const price = 1;
+      await oracleAdapterMock.mock.getAssetPrice.returns(price);
       const decimals = 6;
       const poolBalance = tokenAmountToBigNumber(1e10, decimals);
       await underlyerMock.mock.balanceOf.returns(poolBalance);
@@ -611,8 +592,10 @@ describe("Contract: PoolTokenV2", () => {
       await mAptMock.mock.getDeployedValue.returns(deployedValue);
 
       const poolUnderlyerValue = await poolToken.testGetPoolUnderlyerValue();
-      const topUpValue = await poolToken.getReserveTopUpValue();
-      expect(topUpValue).to.be.gt(0);
+      const topUpAmount = await poolToken.getReserveTopUpValue();
+      expect(topUpAmount).to.be.gt(0);
+
+      const topUpValue = topUpAmount.mul(price).div(10 ** decimals);
 
       // assuming we unwind the top-up value from the pool's deployed
       // capital, the reserve percentage of resulting deployed value
@@ -626,8 +609,9 @@ describe("Contract: PoolTokenV2", () => {
     });
 
     it("Returns correctly calculated value when top-up is negative", async () => {
-      await oracleAdapterMock.mock.getAssetPrice.returns(1);
-      const decimals = 0;
+      const price = 1;
+      await oracleAdapterMock.mock.getAssetPrice.returns(price);
+      const decimals = 6;
       const poolBalance = tokenAmountToBigNumber(2.05e18, decimals);
       await underlyerMock.mock.balanceOf.returns(poolBalance);
       await underlyerMock.mock.decimals.returns(decimals);
@@ -639,8 +623,10 @@ describe("Contract: PoolTokenV2", () => {
       await mAptMock.mock.getDeployedValue.returns(deployedValue);
 
       const poolUnderlyerValue = await poolToken.testGetPoolUnderlyerValue();
-      const topUpValue = await poolToken.getReserveTopUpValue();
-      expect(topUpValue).to.be.lt(0);
+      const topUpAmount = await poolToken.getReserveTopUpValue();
+      expect(topUpAmount).to.be.lt(0);
+
+      const topUpValue = topUpAmount.mul(price).div(10 ** decimals);
 
       // assuming we deploy the top-up (abs) value to the pool's deployed
       // capital, the reserve percentage of resulting deployed value
