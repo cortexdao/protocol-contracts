@@ -137,7 +137,7 @@ async function deployAllocations(tvlManager, adminSafe) {
   const curve3PoolAllocationContract = "Curve3PoolAllocation";
 
   const curveMetaPoolContracts = [
-    "CurveAlUsdAllocation",
+    "CurveAlusdAllocation",
     "CurveBusdV2Allocation",
     "CurveFraxAllocation",
     "CurveLusdAllocation",
@@ -188,19 +188,19 @@ async function deployZaps(lpAccount, erc20Allocation, adminSafe) {
     //"AaveUsdtZap",
     "StakedAaveZap",
     "Curve3PoolZap",
-    "AavePoolZap",
-    "AlUsdPoolZap",
-    "BusdV2PoolZap",
-    "CompoundPoolZap",
-    "FraxPoolZap",
-    "IronBankPoolZap",
-    "LusdPoolZap",
-    "MusdPoolZap",
-    "SAavePoolZap",
-    "SusdV2Zap",
-    "UsdnPoolZap",
-    "UsdpPoolZap",
-    "UstPoolZap",
+    "CurveAaveZap",
+    "CurveAlusdZap",
+    "CurveBusdV2Zap",
+    "CurveCompoundZap",
+    "CurveFraxZap",
+    "CurveIronBankZap",
+    "CurveLusdZap",
+    "CurveMusdZap",
+    "CurveSaaveZap",
+    "CurveSusdV2Zap",
+    "CurveUsdnZap",
+    "CurveUsdpZap",
+    "CurveUstZap",
   ];
 
   const zaps = await Promise.all(

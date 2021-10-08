@@ -7,7 +7,7 @@ import {
 } from "contracts/protocols/curve/common/interfaces/Imports.sol";
 import {IMetaPool} from "contracts/protocols/curve/metapool/Imports.sol";
 
-abstract contract CurveAlUsdConstants is INameIdentifier {
+abstract contract CurveAlusdConstants is INameIdentifier {
     string public constant override NAME = "curve-alusd";
 
     // sometimes a metapool is its own LP token; otherwise,

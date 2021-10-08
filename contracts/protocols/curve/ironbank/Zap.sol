@@ -11,7 +11,7 @@ import {
 import {CurveIronBankConstants} from "./Constants.sol";
 import {CurveGaugeZapBase} from "contracts/protocols/curve/common/Imports.sol";
 
-contract IronBankPoolZap is CurveGaugeZapBase, CurveIronBankConstants {
+contract CurveIronBankZap is CurveGaugeZapBase, CurveIronBankConstants {
     constructor()
         public
         CurveGaugeZapBase(

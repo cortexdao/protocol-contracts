@@ -13,7 +13,7 @@ import {
 import {CurveCompoundConstants} from "./Constants.sol";
 import {CurveGaugeZapBase} from "contracts/protocols/curve/common/Imports.sol";
 
-contract CompoundPoolZap is CurveGaugeZapBase, CurveCompoundConstants {
+contract CurveCompoundZap is CurveGaugeZapBase, CurveCompoundConstants {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 

@@ -12,7 +12,7 @@ import {
 import {CurveSusdV2Constants} from "./Constants.sol";
 import {CurveGaugeZapBase} from "contracts/protocols/curve/common/Imports.sol";
 
-contract SusdV2Zap is CurveGaugeZapBase, CurveSusdV2Constants {
+contract CurveSusdV2Zap is CurveGaugeZapBase, CurveSusdV2Constants {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 

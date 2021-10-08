@@ -47,7 +47,7 @@ describe("Curve Zaps", () => {
       whaleAddress: WHALE_POOLS["DAI"],
     },
     {
-      contractName: "AavePoolZap",
+      contractName: "CurveAaveZap",
       swapAddress: "0xDeBF20617708857ebe4F679508E7b7863a8A8EeE",
       swapInterface: "IStableSwap",
       lpTokenAddress: "0xFd2a8fA60Abd58Efe3EeE34dd494cD491dC14900",
@@ -58,7 +58,7 @@ describe("Curve Zaps", () => {
       useUnwrapped: true,
     },
     {
-      contractName: "SAavePoolZap",
+      contractName: "CurveSaaveZap",
       swapAddress: "0xEB16Ae0052ed37f479f7fe63849198Df1765a733",
       swapInterface: "IStableSwap",
       lpTokenAddress: "0x02d341CcB60fAaf662bC0554d13778015d1b285C",
@@ -68,7 +68,7 @@ describe("Curve Zaps", () => {
       whaleAddress: WHALE_POOLS["ADAI"],
     },
     {
-      contractName: "CompoundPoolZap",
+      contractName: "CurveCompoundZap",
       swapAddress: "0xeB21209ae4C2c9FF2a86ACA31E123764A3B6Bc06",
       swapInterface: "IDepositZap",
       lpTokenAddress: "0x845838DF265Dcd2c412A1Dc9e959c7d08537f8a2",
@@ -79,7 +79,7 @@ describe("Curve Zaps", () => {
       useUnwrapped: true,
     },
     {
-      contractName: "IronBankPoolZap",
+      contractName: "CurveIronBankZap",
       swapAddress: "0x2dded6Da1BF5DBdF597C45fcFaa3194e53EcfeAF",
       swapInterface: "IStableSwap",
       lpTokenAddress: "0x5282a4eF67D9C33135340fB3289cc1711c13638C",
@@ -90,7 +90,7 @@ describe("Curve Zaps", () => {
       useUnwrapped: true,
     },
     {
-      contractName: "SusdV2Zap",
+      contractName: "CurveSusdV2Zap",
       swapAddress: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD",
       swapInterface: "IOldStableSwap4",
       lpTokenAddress: "0xC25a3A3b969415c80451098fa907EC722572917F",
@@ -104,7 +104,7 @@ describe("Curve Zaps", () => {
 
   const CurveMetaPoolZaps = [
     {
-      contractName: "AlUsdPoolZap",
+      contractName: "CurveAlusdZap",
       swapAddress: "0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c",
       swapInterface: "IMetaPool",
       lpTokenAddress: "0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c",
@@ -115,7 +115,7 @@ describe("Curve Zaps", () => {
       rewardToken: "0xdBdb4d16EdA451D0503b854CF79D55697F90c8DF",
     },
     {
-      contractName: "BusdV2PoolZap",
+      contractName: "CurveBusdV2Zap",
       swapAddress: "0x4807862AA8b2bF68830e4C8dc86D0e9A998e085a",
       swapInterface: "IStableSwap",
       lpTokenAddress: "0x4807862AA8b2bF68830e4C8dc86D0e9A998e085a",
@@ -125,7 +125,7 @@ describe("Curve Zaps", () => {
       whaleAddress: WHALE_POOLS["BUSD"],
     },
     {
-      contractName: "FraxPoolZap",
+      contractName: "CurveFraxZap",
       swapAddress: "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B",
       swapInterface: "IStableSwap",
       lpTokenAddress: "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B",
@@ -136,7 +136,7 @@ describe("Curve Zaps", () => {
       rewardToken: "0x3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0",
     },
     {
-      contractName: "LusdPoolZap",
+      contractName: "CurveLusdZap",
       swapAddress: "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
       swapInterface: "IStableSwap",
       lpTokenAddress: "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
@@ -146,7 +146,7 @@ describe("Curve Zaps", () => {
       whaleAddress: WHALE_POOLS["LUSD"],
     },
     {
-      contractName: "MusdPoolZap",
+      contractName: "CurveMusdZap",
       swapAddress: "0x8474DdbE98F5aA3179B3B3F5942D724aFcdec9f6",
       swapInterface: "IStableSwap",
       lpTokenAddress: "0x1AEf73d49Dedc4b1778d0706583995958Dc862e6",
@@ -156,7 +156,7 @@ describe("Curve Zaps", () => {
       whaleAddress: WHALE_POOLS["MUSD"],
     },
     {
-      contractName: "UsdnPoolZap",
+      contractName: "CurveUsdnZap",
       swapAddress: "0x0f9cb53Ebe405d49A0bbdBD291A65Ff571bC83e1",
       swapInterface: "IStableSwap",
       lpTokenAddress: "0x4f3E8F405CF5aFC05D68142F3783bDfE13811522",
@@ -166,7 +166,7 @@ describe("Curve Zaps", () => {
       whaleAddress: WHALE_POOLS["USDN"],
     },
     {
-      contractName: "UsdpPoolZap",
+      contractName: "CurveUsdpZap",
       swapAddress: "0x42d7025938bEc20B69cBae5A77421082407f053A",
       swapInterface: "IStableSwap",
       lpTokenAddress: "0x7Eb40E450b9655f4B3cC4259BCC731c63ff55ae6",
@@ -176,7 +176,7 @@ describe("Curve Zaps", () => {
       whaleAddress: WHALE_POOLS["USDP"],
     },
     {
-      contractName: "UstPoolZap",
+      contractName: "CurveUstZap",
       swapAddress: "0x890f4e345B1dAED0367A877a1612f86A1f86985f",
       swapInterface: "IStableSwap",
       lpTokenAddress: "0x94e131324b6054c0D789b190b2dAC504e4361b53",
