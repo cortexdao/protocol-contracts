@@ -29,6 +29,9 @@ describe("Contract: Erc20Allocation", () => {
   // deployed contracts
   let erc20Allocation;
 
+  // mocks
+  let addressRegistry;
+
   // use EVM snapshots for test isolation
   let snapshotId;
 
@@ -69,17 +72,14 @@ describe("Contract: Erc20Allocation", () => {
       "Erc20Allocation",
       adminSafe
     );
-    const addressRegistryMock = await deployMockContract(
-      deployer,
-      AddressRegistryV2.abi
-    );
-    await addressRegistryMock.mock.emergencySafeAddress.returns(
+    addressRegistry = await deployMockContract(deployer, AddressRegistryV2.abi);
+    await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
-    await addressRegistryMock.mock.adminSafeAddress.returns(adminSafe.address);
-    await addressRegistryMock.mock.lpAccountAddress.returns(lpAccount.address);
-    await addressRegistryMock.mock.mAptAddress.returns(mApt.address);
-    erc20Allocation = await Erc20Allocation.deploy(addressRegistryMock.address);
+    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
+    await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
+    await addressRegistry.mock.mAptAddress.returns(mApt.address);
+    erc20Allocation = await Erc20Allocation.deploy(addressRegistry.address);
 
     // setup each mock ERC20 token
     tokenMock_0 = await deployMockContract(deployer, IDetailedERC20.abi);
@@ -139,6 +139,12 @@ describe("Contract: Erc20Allocation", () => {
       expect(memberCount).to.equal(1);
       expect(await erc20Allocation.hasRole(CONTRACT_ROLE, mApt.address)).to.be
         .true;
+    });
+
+    it("Address registry is set", async () => {
+      expect(await erc20Allocation.addressRegistry()).to.equal(
+        addressRegistry.address
+      );
     });
   });
 
