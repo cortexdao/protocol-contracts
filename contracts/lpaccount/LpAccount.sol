@@ -282,7 +282,23 @@ contract LpAccount is
     function _lockOracleAdapter(uint256 lockPeriod_) internal {
         ILockingOracle oracleAdapter =
             ILockingOracle(addressRegistry.oracleAdapterAddress());
-        oracleAdapter.lockFor(lockPeriod_);
+        // solhint-disable no-empty-blocks
+        try oracleAdapter.lockFor(lockPeriod_) {} catch Error(
+            string memory reason
+        ) {
+            if (
+                keccak256(bytes(reason)) ==
+                keccak256(bytes("CANNOT_SHORTEN_LOCK"))
+            ) {
+                // Since Oracle Adapter is already locked (but with longer period)
+                // just let the error pass.
+            } else {
+                revert(reason);
+            }
+        } catch (bytes memory) {
+            revert("UNKNOWN_REASON");
+        }
+        // solhint-enable no-empty-blocks
     }
 
     function _setAddressRegistry(address addressRegistry_) internal {

@@ -274,20 +274,39 @@ describe("Contract: LpAccount", () => {
   });
 
   describe("_lockOracleAdapter", () => {
-    it("Locks adapter when it's unlocked", async () => {
-      //
+    let oracleAdapter;
+
+    before("Mock oracle adapter", async () => {
+      oracleAdapter = await deployMockContract(
+        deployer,
+        artifacts.readArtifactSync("OracleAdapter").abi
+      );
+
+      await addressRegistry.mock.oracleAdapterAddress.returns(
+        oracleAdapter.address
+      );
     });
 
-    it("Can increase lock period on locked adapter", async () => {
-      //
+    it("Delegates properly to adapter", async () => {
+      const lockPeriod = 112;
+      await oracleAdapter.mock.lockFor.reverts();
+      await oracleAdapter.mock.lockFor.withArgs(lockPeriod).returns();
+      await expect(lpAccount.testLockOracleAdapter(lockPeriod)).to.not.be
+        .reverted;
     });
 
-    it("Does not revert when attempting to decrease lock period", async () => {
-      //
+    it("Does not revert when adapter reverts with shorten lock reason", async () => {
+      await oracleAdapter.mock.lockFor.revertsWithReason("CANNOT_SHORTEN_LOCK");
+      await expect(lpAccount.testLockOracleAdapter(100)).to.not.be.reverted;
     });
 
-    it("Bubbles up any unexpected revert from the adapter", async () => {
-      //
+    it("Bubbles up any other revert from the adapter", async () => {
+      await oracleAdapter.mock.lockFor.revertsWithReason(
+        "UNEXPECTED_BAD_THING"
+      );
+      await expect(lpAccount.testLockOracleAdapter(100)).to.be.revertedWith(
+        "UNEXPECTED_BAD_THING"
+      );
     });
   });
 
