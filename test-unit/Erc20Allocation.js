@@ -31,6 +31,7 @@ describe("Contract: Erc20Allocation", () => {
 
   // mocks
   let addressRegistry;
+  let oracleAdapter;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -88,8 +89,7 @@ describe("Contract: Erc20Allocation", () => {
     erc20Allocation = await Erc20Allocation.deploy(addressRegistry.address);
   });
 
-  before(async () => {
-    // setup each mock ERC20 token
+  before("Mock ERC20 tokens", async () => {
     tokenMock_0 = await deployMockContract(deployer, IDetailedERC20.abi);
     token_0.token = tokenMock_0.address;
     await tokenMock_0.mock.symbol.returns(token_0.symbol);
@@ -106,6 +106,17 @@ describe("Contract: Erc20Allocation", () => {
     await tokenMock_1.mock.balanceOf
       .withArgs(anotherUser.address)
       .returns(anotherUserBalance);
+  });
+
+  before("Mock oracle adapter", async () => {
+    oracleAdapter = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("OracleAdapter").abi
+    );
+    await addressRegistry.mock.oracleAdapterAddress.returns(
+      oracleAdapter.address
+    );
+    await oracleAdapter.mock.lock.returns();
   });
 
   describe("Defaults", () => {
@@ -271,6 +282,33 @@ describe("Contract: Erc20Allocation", () => {
         ).to.be.revertedWith("NOT_ADMIN_OR_CONTRACT_ROLE");
       });
 
+      it("Calls lock on oracle adapter", async () => {
+        await oracleAdapter.mock.lock.revertsWithReason("CALLED_LOCK");
+
+        await expect(
+          erc20Allocation
+            .connect(adminSafe)
+            ["registerErc20Token(address,string,uint8)"](
+              token_0.token,
+              token_0.symbol,
+              token_0.decimals
+            )
+        ).to.be.revertedWith("CALLED_LOCK");
+        await expect(
+          erc20Allocation
+            .connect(adminSafe)
+            ["registerErc20Token(address,string)"](
+              token_0.token,
+              token_0.symbol
+            )
+        ).to.be.revertedWith("CALLED_LOCK");
+        await expect(
+          erc20Allocation
+            .connect(adminSafe)
+            ["registerErc20Token(address)"](token_0.token)
+        ).to.be.revertedWith("CALLED_LOCK");
+      });
+
       it("registerErc20Token populates tokens correctly", async () => {
         await erc20Allocation["registerErc20Token(address,string,uint8)"](
           token_0.token,
@@ -310,6 +348,15 @@ describe("Contract: Erc20Allocation", () => {
             .connect(user)
             ["removeErc20Token(address)"](token_0.token)
         ).to.be.revertedWith("NOT_ADMIN_ROLE");
+      });
+
+      it("Calls lock on oracle adapter", async () => {
+        await oracleAdapter.mock.lock.revertsWithReason("CALLED_LOCK");
+        await expect(
+          erc20Allocation
+            .connect(adminSafe)
+            ["removeErc20Token(address)"](token_0.token)
+        ).to.be.revertedWith("CALLED_LOCK");
       });
 
       it("removeErc20Token", async () => {
