@@ -1,9 +1,10 @@
 const _ = require("lodash");
+const hre = require("hardhat");
 const { expect } = require("chai");
-const { ethers } = require("hardhat");
+const { ethers } = hre;
 const timeMachine = require("ganache-time-traveler");
 const { deploy } = require("../scripts/deploy/deployer.js");
-const { WHALE_POOLS } = require("../utils/constants");
+const { FARM_TOKENS, WHALE_POOLS } = require("../utils/constants");
 const {
   tokenAmountToBigNumber,
   bytes32,
@@ -343,6 +344,35 @@ describe("Funding scenarios", () => {
         },
       ];
 
+      function testDeploy(name, nCoins, decimals, ignoreIndexes) {
+        return _.range(nCoins).forEach((index) => {
+          if (!_.includes(ignoreIndexes, index)) {
+            it(`Should deploy to token ${index} the pool`, async () => {
+              //const amounts = [tokenAmountToBigNumber("1000", 18), 0, 0];
+
+              const amounts = _.times(nCoins, _.constant(0));
+              amounts[index] = tokenAmountToBigNumber("1000", decimals[index]);
+              await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
+            });
+          }
+        });
+      }
+
+      function testUnwind(name, nCoins, gaugeAddress) {
+        _.range(nCoins).forEach((index) => {
+          it(`token ${index}`, async () => {
+            const gauge = await ethers.getContractAt(
+              "ILiquidityGauge",
+              gaugeAddress
+            );
+
+            const amount = await gauge.balanceOf(lpAccount.address);
+
+            await lpAccount.connect(lpSafe).unwindStrategy(name, amount, index);
+          });
+        });
+      }
+
       poolTests.forEach(
         ({ name, nCoins, decimals, ignoreIndexes, gaugeAddress }) => {
           describe(name, () => {
@@ -357,20 +387,7 @@ describe("Funding scenarios", () => {
               await timeMachine.revertToSnapshot(subsuiteSnapshotId);
             });
 
-            _.range(nCoins).forEach((index) => {
-              if (!_.includes(ignoreIndexes, index)) {
-                it(`Should deploy to token ${index} the pool`, async () => {
-                  //const amounts = [tokenAmountToBigNumber("1000", 18), 0, 0];
-
-                  const amounts = _.times(nCoins, _.constant(0));
-                  amounts[index] = tokenAmountToBigNumber(
-                    "1000",
-                    decimals[index]
-                  );
-                  await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
-                });
-              }
-            });
+            testDeploy(name, nCoins, decimals, ignoreIndexes);
 
             describe("Should unwind each token from the pool", () => {
               let testSnapshotId;
@@ -384,19 +401,36 @@ describe("Funding scenarios", () => {
                 await timeMachine.revertToSnapshot(testSnapshotId);
               });
 
-              _.range(nCoins).forEach((index) => {
-                it(`token ${index}`, async () => {
-                  const gauge = await ethers.getContractAt(
-                    "ILiquidityGauge",
-                    gaugeAddress
-                  );
+              testUnwind(name, nCoins, gaugeAddress);
+            });
 
-                  const amount = await gauge.balanceOf(lpAccount.address);
+            describe("Should claim rewards from the pool", async () => {
+              let crv;
 
-                  await lpAccount
-                    .connect(lpSafe)
-                    .unwindStrategy(name, amount, index);
-                });
+              before(async () => {
+                const stakeTime = 60 * 60 * 24 * 30; // 1 month
+                await hre.network.provider.send("evm_increaseTime", [
+                  stakeTime,
+                ]);
+                // advance a few blocks just in case
+                await Promise.all(
+                  _.range(10).map(() => hre.network.provider.send("evm_mine"))
+                );
+              });
+
+              before(async () => {
+                crv = await ethers.getContractAt(
+                  "IDetailedERC20",
+                  FARM_TOKENS["CRV"]
+                );
+              });
+
+              it("Claim CRV", async () => {
+                const prevBalance = await crv.balanceOf(lpAccount.address);
+                await lpAccount.connect(lpSafe).claim(name);
+                const newBalance = await crv.balanceOf(lpAccount.address);
+
+                expect(newBalance.sub(prevBalance)).to.be.gt(0);
               });
             });
           });
