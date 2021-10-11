@@ -112,14 +112,15 @@ describe("Contract: Erc20Allocation", () => {
       ).to.be.true;
     });
 
-    it("Contract role given to mAPT", async () => {
-      const CONTRACT_ROLE = await erc20Allocation.CONTRACT_ROLE();
+    it("Emergency role given to Emergency Safe", async () => {
+      const EMERGENCY_ROLE = await erc20Allocation.EMERGENCY_ROLE();
       const memberCount = await erc20Allocation.getRoleMemberCount(
-        CONTRACT_ROLE
+        EMERGENCY_ROLE
       );
       expect(memberCount).to.equal(1);
-      expect(await erc20Allocation.hasRole(CONTRACT_ROLE, mApt.address)).to.be
-        .true;
+      expect(
+        await erc20Allocation.hasRole(EMERGENCY_ROLE, emergencySafe.address)
+      ).to.be.true;
     });
 
     it("Admin role given to Admin Safe", async () => {
@@ -127,6 +128,16 @@ describe("Contract: Erc20Allocation", () => {
       const memberCount = await erc20Allocation.getRoleMemberCount(ADMIN_ROLE);
       expect(memberCount).to.equal(1);
       expect(await erc20Allocation.hasRole(ADMIN_ROLE, adminSafe.address)).to.be
+        .true;
+    });
+
+    it("Contract role given to mAPT", async () => {
+      const CONTRACT_ROLE = await erc20Allocation.CONTRACT_ROLE();
+      const memberCount = await erc20Allocation.getRoleMemberCount(
+        CONTRACT_ROLE
+      );
+      expect(memberCount).to.equal(1);
+      expect(await erc20Allocation.hasRole(CONTRACT_ROLE, mApt.address)).to.be
         .true;
     });
   });
