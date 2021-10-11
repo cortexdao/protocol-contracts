@@ -273,6 +273,24 @@ describe("Contract: LpAccount", () => {
     });
   });
 
+  describe("_lockOracleAdapter", () => {
+    it("Locks adapter when it's unlocked", async () => {
+      //
+    });
+
+    it("Can increase lock period on locked adapter", async () => {
+      //
+    });
+
+    it("Does not revert when attempting to decrease lock period", async () => {
+      //
+    });
+
+    it("Bubbles up any unexpected revert from the adapter", async () => {
+      //
+    });
+  });
+
   describe("Zaps", () => {
     describe("registerZap", () => {
       it("Admin Safe can call", async () => {
