@@ -2,14 +2,17 @@
 pragma solidity 0.6.11;
 
 import {Address, SafeMath} from "contracts/libraries/Imports.sol";
-
 import {
     IERC20,
     AccessControl,
     ReentrancyGuard
 } from "contracts/common/Imports.sol";
-
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
+import {
+    IAssetAllocationRegistry,
+    IErc20Allocation,
+    Erc20AllocationConstants
+} from "contracts/tvl/Imports.sol";
 
 import {
     AggregatorV3Interface,
@@ -52,7 +55,8 @@ contract OracleAdapter is
     ReentrancyGuard,
     IOracleAdapter,
     IOverrideOracle,
-    ILockingOracle
+    ILockingOracle,
+    Erc20AllocationConstants
 {
     using SafeMath for uint256;
     using Address for address;
@@ -104,11 +108,21 @@ contract OracleAdapter is
         _setDefaultLockPeriod(defaultLockPeriod_);
 
         _setupRole(DEFAULT_ADMIN_ROLE, addressRegistry.emergencySafeAddress());
+        _setupRole(EMERGENCY_ROLE, addressRegistry.emergencySafeAddress());
+        _setupRole(ADMIN_ROLE, addressRegistry.adminSafeAddress());
         _setupRole(CONTRACT_ROLE, addressRegistry.mAptAddress());
         _setupRole(CONTRACT_ROLE, addressRegistry.tvlManagerAddress());
         _setupRole(CONTRACT_ROLE, addressRegistry.lpAccountAddress());
-        _setupRole(ADMIN_ROLE, addressRegistry.adminSafeAddress());
-        _setupRole(EMERGENCY_ROLE, addressRegistry.emergencySafeAddress());
+
+        IAssetAllocationRegistry tvlManager =
+            IAssetAllocationRegistry(addressRegistry.tvlManagerAddress());
+        IErc20Allocation erc20Allocation =
+            IErc20Allocation(
+                address(
+                    tvlManager.getAssetAllocation(Erc20AllocationConstants.NAME)
+                )
+            );
+        _setupRole(CONTRACT_ROLE, address(erc20Allocation));
     }
 
     function setDefaultLockPeriod(uint256 newPeriod)
