@@ -11,6 +11,7 @@ import {
 } from "contracts/common/Imports.sol";
 import {Address, EnumerableSet} from "contracts/libraries/Imports.sol";
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
+import {ILockingOracle} from "contracts/oracle/Imports.sol";
 
 import {IErc20Allocation} from "./IErc20Allocation.sol";
 import {AssetAllocationBase} from "./AssetAllocationBase.sol";
@@ -29,16 +30,32 @@ contract Erc20Allocation is
     using Address for address;
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    IAddressRegistryV2 public addressRegistry;
+
     EnumerableSet.AddressSet private _tokenAddresses;
     mapping(address => TokenData) private _tokenToData;
 
+    /** @notice Log when the address registry is changed */
+    event AddressRegistryChanged(address);
+
     constructor(address addressRegistry_) public {
-        require(addressRegistry_.isContract(), "INVALID_ADDRESS_REGISTRY");
-        IAddressRegistryV2 addressRegistry =
-            IAddressRegistryV2(addressRegistry_);
+        _setAddressRegistry(addressRegistry_);
         _setupRole(DEFAULT_ADMIN_ROLE, addressRegistry.emergencySafeAddress());
+        _setupRole(EMERGENCY_ROLE, addressRegistry.emergencySafeAddress());
         _setupRole(CONTRACT_ROLE, addressRegistry.mAptAddress());
         _setupRole(ADMIN_ROLE, addressRegistry.adminSafeAddress());
+    }
+
+    /**
+     * @notice Set the new address registry
+     * @param addressRegistry_ The new address registry
+     */
+    function emergencySetAddressRegistry(address addressRegistry_)
+        external
+        nonReentrant
+        onlyEmergencyRole
+    {
+        _setAddressRegistry(addressRegistry_);
     }
 
     function registerErc20Token(IDetailedERC20 token)
@@ -78,6 +95,8 @@ contract Erc20Allocation is
     {
         _tokenAddresses.remove(address(token));
         delete _tokenToData[address(token)];
+
+        _lockOracleAdapter();
 
         emit Erc20TokenRemoved(token);
     }
@@ -126,6 +145,12 @@ contract Erc20Allocation is
         return _tokens;
     }
 
+    function _setAddressRegistry(address addressRegistry_) internal {
+        require(addressRegistry_.isContract(), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(addressRegistry_);
+        emit AddressRegistryChanged(addressRegistry_);
+    }
+
     function _registerErc20Token(
         IERC20 token,
         string memory symbol,
@@ -140,6 +165,18 @@ contract Erc20Allocation is
             decimals
         );
 
+        _lockOracleAdapter();
+
         emit Erc20TokenRegistered(token, symbol, decimals);
+    }
+
+    /**
+     * @notice Lock the `OracleAdapter` for the default period of time
+     * @dev Locking protects against front-running while Chainlink updates
+     */
+    function _lockOracleAdapter() internal {
+        ILockingOracle oracleAdapter =
+            ILockingOracle(addressRegistry.oracleAdapterAddress());
+        oracleAdapter.lock();
     }
 }
