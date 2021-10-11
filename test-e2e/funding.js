@@ -222,6 +222,7 @@ describe("Funding scenarios", () => {
       const newLpBalance = await daiToken.balanceOf(lpAccount.address);
 
       const expectedReserveSize = newLpBalance
+        .sub(prevLpBalance)
         .mul(reservePercentage)
         .div(ethers.BigNumber.from(100));
 
@@ -406,6 +407,8 @@ describe("Funding scenarios", () => {
 
             describe("Should claim rewards from the pool", async () => {
               let crv;
+              let stkAave;
+              let snx;
 
               before(async () => {
                 const stakeTime = 60 * 60 * 24 * 30; // 1 month
@@ -423,15 +426,55 @@ describe("Funding scenarios", () => {
                   "IDetailedERC20",
                   FARM_TOKENS["CRV"]
                 );
+
+                stkAave = await ethers.getContractAt(
+                  "IDetailedERC20",
+                  FARM_TOKENS["stkAAVE"]
+                );
+
+                snx = await ethers.getContractAt(
+                  "IDetailedERC20",
+                  FARM_TOKENS["SNX"]
+                );
               });
 
-              it("Claim CRV", async () => {
-                const prevBalance = await crv.balanceOf(lpAccount.address);
-                await lpAccount.connect(lpSafe).claim(name);
-                const newBalance = await crv.balanceOf(lpAccount.address);
+              if (
+                !_.includes(["curve-aave", "curve-saave", "curve-susdv2"], name)
+              ) {
+                it("Claim CRV", async () => {
+                  const prevBalance = await crv.balanceOf(lpAccount.address);
+                  await lpAccount.connect(lpSafe).claim(name);
+                  const newBalance = await crv.balanceOf(lpAccount.address);
 
-                expect(newBalance.sub(prevBalance)).to.be.gt(0);
-              });
+                  expect(newBalance.sub(prevBalance)).to.be.gt(0);
+                });
+              } else if (!_.includes(["curve-susdv2"], name)) {
+                it("Claim CRV and stkAAVE", async () => {
+                  const prevCrvBalance = await crv.balanceOf(lpAccount.address);
+                  const prevStkAaveBalance = await stkAave.balanceOf(
+                    lpAccount.address
+                  );
+                  await lpAccount.connect(lpSafe).claim(name);
+                  const newCrvBalance = await crv.balanceOf(lpAccount.address);
+                  const newStkAaveBalance = await stkAave.balanceOf(
+                    lpAccount.address
+                  );
+
+                  expect(newStkAaveBalance.sub(prevStkAaveBalance)).to.be.gt(0);
+                  expect(newCrvBalance.sub(prevCrvBalance)).to.be.gt(0);
+                });
+              } else {
+                it("Claim CRV and SNX", async () => {
+                  const prevCrvBalance = await crv.balanceOf(lpAccount.address);
+                  const prevSnxBalance = await snx.balanceOf(lpAccount.address);
+                  await lpAccount.connect(lpSafe).claim(name);
+                  const newCrvBalance = await crv.balanceOf(lpAccount.address);
+                  const newSnxBalance = await snx.balanceOf(lpAccount.address);
+
+                  expect(newSnxBalance.sub(prevSnxBalance)).to.be.gt(0);
+                  expect(newCrvBalance.sub(prevCrvBalance)).to.be.gt(0);
+                });
+              }
             });
           });
         }
