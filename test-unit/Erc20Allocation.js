@@ -2,10 +2,16 @@ const { expect } = require("chai");
 const hre = require("hardhat");
 const { artifacts, ethers, waffle } = hre;
 const timeMachine = require("ganache-time-traveler");
+const { FAKE_ADDRESS } = require("../utils/helpers");
 const { deployMockContract } = waffle;
 
 const IDetailedERC20 = artifacts.readArtifactSync("IDetailedERC20");
 const AddressRegistryV2 = artifacts.readArtifactSync("AddressRegistryV2");
+
+async function generateContractAddress(signer) {
+  const mockContract = await deployMockContract(signer, []);
+  return mockContract.address;
+}
 
 describe("Contract: Erc20Allocation", () => {
   // signers
@@ -122,6 +128,44 @@ describe("Contract: Erc20Allocation", () => {
       expect(memberCount).to.equal(1);
       expect(await erc20Allocation.hasRole(ADMIN_ROLE, adminSafe.address)).to.be
         .true;
+    });
+  });
+
+  describe("emergencySetAddressRegistry", () => {
+    it("Emergency Safe can call", async () => {
+      const someContractAddress = await generateContractAddress(deployer);
+      await expect(
+        erc20Allocation
+          .connect(emergencySafe)
+          .emergencySetAddressRegistry(someContractAddress)
+      ).to.not.be.reverted;
+    });
+
+    it("Unpermissioned cannot call", async () => {
+      const someContractAddress = await generateContractAddress(deployer);
+      await expect(
+        erc20Allocation
+          .connect(anotherUser)
+          .emergencySetAddressRegistry(someContractAddress)
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
+    });
+
+    it("Address can be set", async () => {
+      const someContractAddress = await generateContractAddress(deployer);
+      await erc20Allocation
+        .connect(emergencySafe)
+        .emergencySetAddressRegistry(someContractAddress);
+      expect(await erc20Allocation.addressRegistry()).to.equal(
+        someContractAddress
+      );
+    });
+
+    it("Cannot set to non-contract address", async () => {
+      await expect(
+        erc20Allocation
+          .connect(emergencySafe)
+          .emergencySetAddressRegistry(FAKE_ADDRESS)
+      ).to.be.revertedWith("INVALID_ADDRESS");
     });
   });
 
