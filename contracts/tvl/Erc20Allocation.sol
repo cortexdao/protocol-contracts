@@ -42,8 +42,8 @@ contract Erc20Allocation is
         _setAddressRegistry(addressRegistry_);
         _setupRole(DEFAULT_ADMIN_ROLE, addressRegistry.emergencySafeAddress());
         _setupRole(EMERGENCY_ROLE, addressRegistry.emergencySafeAddress());
-        _setupRole(CONTRACT_ROLE, addressRegistry.mAptAddress());
         _setupRole(ADMIN_ROLE, addressRegistry.adminSafeAddress());
+        _setupRole(CONTRACT_ROLE, addressRegistry.mAptAddress());
     }
 
     /**
