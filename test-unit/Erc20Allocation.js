@@ -58,7 +58,7 @@ describe("Contract: Erc20Allocation", () => {
     await timeMachine.revertToSnapshot(snapshotId);
   });
 
-  before(async () => {
+  before("Setup signers", async () => {
     [
       deployer,
       emergencySafe,
@@ -68,10 +68,9 @@ describe("Contract: Erc20Allocation", () => {
       user,
       anotherUser,
     ] = await ethers.getSigners();
-    Erc20Allocation = await ethers.getContractFactory(
-      "Erc20Allocation",
-      adminSafe
-    );
+  });
+
+  before("Mock Address Registry and register Safes", async () => {
     addressRegistry = await deployMockContract(deployer, AddressRegistryV2.abi);
     await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
@@ -79,8 +78,17 @@ describe("Contract: Erc20Allocation", () => {
     await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
     await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
     await addressRegistry.mock.mAptAddress.returns(mApt.address);
-    erc20Allocation = await Erc20Allocation.deploy(addressRegistry.address);
+  });
 
+  before("Deploy ERC20 allocation", async () => {
+    Erc20Allocation = await ethers.getContractFactory(
+      "Erc20Allocation",
+      adminSafe
+    );
+    erc20Allocation = await Erc20Allocation.deploy(addressRegistry.address);
+  });
+
+  before(async () => {
     // setup each mock ERC20 token
     tokenMock_0 = await deployMockContract(deployer, IDetailedERC20.abi);
     token_0.token = tokenMock_0.address;
