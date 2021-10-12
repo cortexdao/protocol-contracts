@@ -8,11 +8,6 @@ import {
     ReentrancyGuard
 } from "contracts/common/Imports.sol";
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
-import {
-    IAssetAllocationRegistry,
-    IErc20Allocation,
-    Erc20AllocationConstants
-} from "contracts/tvl/Imports.sol";
 
 import {
     AggregatorV3Interface,
@@ -55,8 +50,7 @@ contract OracleAdapter is
     ReentrancyGuard,
     IOracleAdapter,
     IOverrideOracle,
-    ILockingOracle,
-    Erc20AllocationConstants
+    ILockingOracle
 {
     using SafeMath for uint256;
     using Address for address;
