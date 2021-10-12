@@ -1,5 +1,5 @@
 const { assert, expect } = require("chai");
-const { ethers } = require("hardhat");
+const { waffle, ethers } = require("hardhat");
 const { AddressZero: ZERO_ADDRESS, MaxUint256: MAX_UINT256 } = ethers.constants;
 const {
   impersonateAccount,
@@ -18,6 +18,7 @@ const {
   deployAggregator,
   forciblySendEth,
 } = require("../utils/helpers");
+const { deployMockContract } = require(waffle);
 
 const link = (amount) => tokenAmountToBigNumber(amount, "18");
 
@@ -27,12 +28,14 @@ const link = (amount) => tokenAmountToBigNumber(amount, "18");
 console.debugging = false;
 /* ************************ */
 
+async function generateContractAddress(signer) {
+  const contract = await deployMockContract(signer, []);
+  return contract.address;
+}
+
 describe("Contract: PoolToken", () => {
   let deployer;
   let oracle;
-  let lpAccount;
-  let tvlManager;
-  let lpSafe;
   let adminSafe;
   let emergencySafe;
   let randomUser;
@@ -42,9 +45,6 @@ describe("Contract: PoolToken", () => {
     [
       deployer,
       oracle,
-      lpAccount,
-      tvlManager,
-      lpSafe,
       adminSafe,
       emergencySafe,
       randomUser,
@@ -136,14 +136,22 @@ describe("Contract: PoolToken", () => {
           addressRegistryProxy.address
         );
 
+        const erc20AllocationAddress = await generateContractAddress(deployer);
         await addressRegistry.registerAddress(
-          bytes32("tvlManager"),
-          tvlManager.address
+          bytes32("erc20Allocation"),
+          erc20AllocationAddress
         );
 
+        const tvlManagerAddress = await generateContractAddress(deployer);
+        await addressRegistry.registerAddress(
+          bytes32("tvlManager"),
+          tvlManagerAddress
+        );
+
+        const lpAccountAddress = await generateContractAddress(deployer);
         await addressRegistry.registerAddress(
           bytes32("lpAccount"),
-          lpAccount.address
+          lpAccountAddress
         );
 
         await addressRegistry.registerAddress(
@@ -156,10 +164,8 @@ describe("Contract: PoolToken", () => {
           emergencySafe.address
         );
 
-        await addressRegistry.registerAddress(
-          bytes32("lpSafe"),
-          lpSafe.address
-        );
+        const lpSafeAddress = await generateContractAddress(deployer);
+        await addressRegistry.registerAddress(bytes32("lpSafe"), lpSafeAddress);
 
         const proxyAdmin = await ProxyAdmin.deploy();
         await proxyAdmin.deployed();

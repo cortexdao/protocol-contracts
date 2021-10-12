@@ -27,7 +27,7 @@ describe("Contract: OracleAdapter", () => {
   let lpSafe;
   let mApt;
   let lpAccount;
-  let tvlManagerSigner;
+  let tvlManager;
   let erc20Allocation;
   let randomUser;
 
@@ -37,7 +37,6 @@ describe("Contract: OracleAdapter", () => {
   // mocks
   let adminSafe;
   let addressRegistry;
-  let tvlManager;
   let tvlAggMock;
   let assetAggMock_1;
   let assetAggMock_2;
@@ -137,30 +136,19 @@ describe("Contract: OracleAdapter", () => {
       ,
       mApt,
       lpAccount,
+      tvlManager,
       erc20Allocation,
       randomUser,
     ] = await ethers.getSigners();
-
-    tvlManager = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("TvlManager").abi
-    );
-    // needed to give contract role to erc20Allocation
-    await tvlManager.mock.getAssetAllocation
-      .withArgs("erc20Allocation")
-      .returns(erc20Allocation.address);
-    // create signer for tvlManager so we can test permissions later
-    tvlManagerSigner = await impersonateAccount(tvlManager.address);
-    await forciblySendEth(
-      tvlManager.address,
-      tokenAmountToBigNumber(1),
-      deployer.address
-    );
 
     await addressRegistry.mock.tvlManagerAddress.returns(tvlManager.address);
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("tvlManager"))
       .returns(tvlManager.address);
+
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("erc20Allocation"))
+      .returns(erc20Allocation.address);
 
     await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
     await addressRegistry.mock.getAddress
@@ -230,8 +218,9 @@ describe("Contract: OracleAdapter", () => {
     // need some test setup to pass the pre-step checks
     await alphaDeployment.testSetStep(6);
     await alphaDeployment.testSetMapt(mApt.address);
-    await alphaDeployment.testSetTvlManager(tvlManager.address);
     await alphaDeployment.testSetLpAccount(lpAccount.address);
+    await alphaDeployment.testSetTvlManager(tvlManager.address);
+    await alphaDeployment.testSetErc20Allocation(erc20Allocation.address);
     await addressRegistry.mock.owner.returns(adminSafe.address);
 
     await addressRegistry.mock.registerAddress.returns();
@@ -564,8 +553,7 @@ describe("Contract: OracleAdapter", () => {
 
     it("Contract role can call", async () => {
       await expect(oracleAdapter.connect(mApt).lock()).to.not.be.reverted;
-      await expect(oracleAdapter.connect(tvlManagerSigner).lock()).to.not.be
-        .reverted;
+      await expect(oracleAdapter.connect(tvlManager).lock()).to.not.be.reverted;
       await expect(oracleAdapter.connect(lpAccount).lock()).to.not.be.reverted;
       await expect(oracleAdapter.connect(erc20Allocation).lock()).to.not.be
         .reverted;
@@ -593,8 +581,8 @@ describe("Contract: OracleAdapter", () => {
         .reverted;
       expect(await oracleAdapter.isLocked()).to.be.true;
 
-      await expect(oracleAdapter.connect(tvlManagerSigner).lockFor(period)).to
-        .not.be.reverted;
+      await expect(oracleAdapter.connect(tvlManager).lockFor(period)).to.not.be
+        .reverted;
       expect(await oracleAdapter.isLocked()).to.be.true;
 
       await expect(oracleAdapter.connect(lpAccount).lockFor(period)).to.not.be

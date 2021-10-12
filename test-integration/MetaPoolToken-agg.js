@@ -9,6 +9,7 @@ const {
   ANOTHER_FAKE_ADDRESS,
   acquireToken,
   console,
+  bytes32,
 } = require("../utils/helpers");
 const { BigNumber } = require("ethers");
 
@@ -29,8 +30,6 @@ console.debugging = false;
 describe("Contract: MetaPoolToken - TVL aggregator integration", () => {
   // accounts
   let deployer;
-  let tvlManager;
-  let lpAccount;
   let emergencySafe;
   let lpSafe;
   let adminSafe;
@@ -62,8 +61,6 @@ describe("Contract: MetaPoolToken - TVL aggregator integration", () => {
   before(async () => {
     [
       deployer,
-      tvlManager,
-      lpAccount,
       emergencySafe,
       lpSafe,
       adminSafe,
@@ -100,10 +97,12 @@ describe("Contract: MetaPoolToken - TVL aggregator integration", () => {
      * - emergencySafe (emergency role, default admin role)
      *
      * OracleAdapter
-     * - tvlManager (contract role)
-     * - mApt (contract role)
-     * - adminSafe (admin role)
      * - emergencySafe (emergency role, default admin role)
+     * - adminSafe (admin role)
+     * - mApt (contract role)
+     * - lpAccount (contract role)
+     * - tvlManager (contract role)
+     * - erc20Allocation (contract role)
      *
      * mApt is added below after deployment.
      */
@@ -112,8 +111,14 @@ describe("Contract: MetaPoolToken - TVL aggregator integration", () => {
       emergencySafe.address
     );
     await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
-    await addressRegistry.mock.tvlManagerAddress.returns(tvlManager.address);
+    const lpAccount = await deployMockContract(deployer, []);
     await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
+    const tvlManager = await deployMockContract(deployer, []);
+    await addressRegistry.mock.tvlManagerAddress.returns(tvlManager.address);
+    const erc20Allocation = await deployMockContract(deployer, []);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("erc20Allocation"))
+      .returns(erc20Allocation.address);
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     const TransparentUpgradeableProxy = await ethers.getContractFactory(

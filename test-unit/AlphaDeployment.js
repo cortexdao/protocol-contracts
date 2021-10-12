@@ -452,7 +452,22 @@ describe("Contract: AlphaDeployment", () => {
     await addressRegistry.mock.owner.returns(adminSafe.address);
 
     // check for address registrations
-    const data = await encodeRegisterAddress("tvlManager", tvlManager.address);
+    // 1. TvlManager
+    let data = await encodeRegisterAddress("tvlManager", tvlManager.address);
+    await adminSafe.mock.execTransactionFromModule
+      .withArgs(addressRegistry.address, 0, data, CALL)
+      .revertsWithReason("ADDRESS_REGISTERED");
+    await expect(alphaDeployment.deploy_4_TvlManager()).to.be.revertedWith(
+      "ADDRESS_REGISTERED"
+    );
+    await adminSafe.mock.execTransactionFromModule
+      .withArgs(addressRegistry.address, 0, data, CALL)
+      .returns(true);
+    // 2. Erc20Allocation
+    data = await encodeRegisterAddress(
+      "erc20Allocation",
+      erc20Allocation.address
+    );
     await adminSafe.mock.execTransactionFromModule
       .withArgs(addressRegistry.address, 0, data, CALL)
       .revertsWithReason("ADDRESS_REGISTERED");
@@ -570,18 +585,25 @@ describe("Contract: AlphaDeployment", () => {
       .withArgs(bytes32("mApt"))
       .returns(mAptAddress);
     await alphaDeployment.testSetMapt(mAptAddress);
-    // 2. deploy and register mock TvlManager
-    const tvlManagerAddress = (await deployMockContract(deployer, [])).address;
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("tvlManager"))
-      .returns(tvlManagerAddress);
-    await alphaDeployment.testSetTvlManager(tvlManagerAddress);
-    // 3. deploy and register mock LpAccount
+    // 2. deploy and register mock LpAccount
     const lpAccountAddress = (await deployMockContract(deployer, [])).address;
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("lpAccount"))
       .returns(lpAccountAddress);
     await alphaDeployment.testSetLpAccount(lpAccountAddress);
+    // 3. deploy and register mock TvlManager
+    const tvlManagerAddress = (await deployMockContract(deployer, [])).address;
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("tvlManager"))
+      .returns(tvlManagerAddress);
+    await alphaDeployment.testSetTvlManager(tvlManagerAddress);
+    // 4. deploy and register mock Erc20Allocation
+    const erc20AllocationAddress = (await deployMockContract(deployer, []))
+      .address;
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("erc20Allocation"))
+      .returns(erc20AllocationAddress);
+    await alphaDeployment.testSetErc20Allocation(erc20AllocationAddress);
 
     // for ownership check
     await addressRegistry.mock.owner.returns(adminSafe.address);
