@@ -51,4 +51,8 @@ contract TestAlphaDeployment is AlphaDeployment {
     function testSetLpAccount(address lpAccount_) public {
         lpAccount = lpAccount_;
     }
+
+    function testSetErc20Allocation(address erc20Allocation_) public {
+        erc20Allocation = erc20Allocation_;
+    }
 }

@@ -113,16 +113,10 @@ contract OracleAdapter is
         _setupRole(CONTRACT_ROLE, addressRegistry.mAptAddress());
         _setupRole(CONTRACT_ROLE, addressRegistry.tvlManagerAddress());
         _setupRole(CONTRACT_ROLE, addressRegistry.lpAccountAddress());
-
-        IAssetAllocationRegistry tvlManager =
-            IAssetAllocationRegistry(addressRegistry.tvlManagerAddress());
-        IErc20Allocation erc20Allocation =
-            IErc20Allocation(
-                address(
-                    tvlManager.getAssetAllocation(Erc20AllocationConstants.NAME)
-                )
-            );
-        _setupRole(CONTRACT_ROLE, address(erc20Allocation));
+        _setupRole(
+            CONTRACT_ROLE,
+            addressRegistry.getAddress("erc20Allocation")
+        );
     }
 
     function setDefaultLockPeriod(uint256 newPeriod)

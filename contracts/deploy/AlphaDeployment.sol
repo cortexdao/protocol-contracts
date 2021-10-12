@@ -65,6 +65,7 @@ OracleAdapter
 - emergencySafe (emergency role, default admin role)
 - adminSafe (admin role)
 - tvlManager (contract role)
+- erc20Allocation (contract role)
 - mApt (contract role)
 - lpAccount (contract role)
 
@@ -400,6 +401,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             ),
             "SAFE_TX_FAILED"
         );
+
+        _registerAddress("erc20Allocation", erc20Allocation);
     }
 
     /// @dev register mAPT for a contract role
@@ -444,11 +447,15 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         updateStep(6)
         checkSafeRegistrations
     {
-        bytes32[] memory registeredIds = new bytes32[](3);
-        address[] memory deployedAddresses = new address[](3);
+        bytes32[] memory registeredIds = new bytes32[](4);
+        address[] memory deployedAddresses = new address[](4);
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
-        (registeredIds[1], deployedAddresses[1]) = ("tvlManager", tvlManager);
-        (registeredIds[2], deployedAddresses[2]) = ("lpAccount", lpAccount);
+        (registeredIds[1], deployedAddresses[1]) = ("lpAccount", lpAccount);
+        (registeredIds[2], deployedAddresses[2]) = ("tvlManager", tvlManager);
+        (registeredIds[3], deployedAddresses[3]) = (
+            "erc20Allocation",
+            erc20Allocation
+        );
         checkRegisteredDependencies(registeredIds, deployedAddresses);
 
         address[] memory ownerships = new address[](1);
