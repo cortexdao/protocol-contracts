@@ -393,7 +393,6 @@ describe("Contract: AlphaDeployment", () => {
       });
 
       it("should call initialize directly on logic contract", async () => {
-        const lpAccountAddress = await alphaDeployment.lpAccountAddress();
         const logic = await getLogicContract(lpAccountAddress, "LpAccount");
 
         await expect(
