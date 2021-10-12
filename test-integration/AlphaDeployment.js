@@ -391,6 +391,15 @@ describe("Contract: AlphaDeployment", () => {
         );
         expect(await poolProxyAdmin.owner()).to.equal(adminSafe.address);
       });
+
+      it("should call initialize directly on logic contract", async () => {
+        const lpAccountAddress = await alphaDeployment.lpAccountAddress();
+        const logic = await getLogicContract(lpAccountAddress, "LpAccount");
+
+        await expect(
+          logic.initialize(addressRegistry.address)
+        ).to.be.revertedWith("Contract instance has already been initialized");
+      });
     });
 
     describe("Step 6: Deploy OracleAdapter", () => {
