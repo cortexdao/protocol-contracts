@@ -29,7 +29,6 @@ const {
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
-  await hre.run("compile");
   const networkName = network.name.toUpperCase();
   console.log("");
   console.log(`${networkName} selected`);
