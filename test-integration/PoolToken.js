@@ -18,7 +18,7 @@ const {
   deployAggregator,
   forciblySendEth,
 } = require("../utils/helpers");
-const { deployMockContract } = require(waffle);
+const { deployMockContract } = waffle;
 
 const link = (amount) => tokenAmountToBigNumber(amount, "18");
 
