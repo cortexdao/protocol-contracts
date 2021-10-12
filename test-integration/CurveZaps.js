@@ -65,7 +65,8 @@ describe("Curve Zaps", () => {
       gaugeAddress: "0x462253b8F74B72304c145DB0e4Eebd326B22ca39",
       gaugeInterface: "ILiquidityGauge",
       numberOfCoins: 2,
-      whaleAddress: WHALE_POOLS["ADAI"],
+      whaleAddress: WHALE_POOLS["DAI"],
+      useUnwrapped: true,
     },
     {
       contractName: "CurveCompoundZap",
