@@ -7,6 +7,8 @@ const {
   console,
   tokenAmountToBigNumber,
   acquireToken,
+  FAKE_ADDRESS,
+  bytes32,
 } = require("../utils/helpers");
 const { WHALE_POOLS } = require("../utils/constants");
 
@@ -18,18 +20,20 @@ const CRV_ADDRESS = "0xD533a949740bb3306d119CC777fa900bA034cd52";
 console.debugging = false;
 /* ************************ */
 
-describe("Curve Zaps", () => {
+describe.only("Curve Zaps - LP Account integration", () => {
   /* signers */
   let deployer;
   let emergencySafe;
   let adminSafe;
-  let mApt;
-
-  /* contract factories */
-  let TvlManager;
+  let lpSafe;
 
   /* deployed contracts */
+  let lpAccount;
   let tvlManager;
+  let erc20Allocation;
+
+  /* mocks */
+  let addressRegistry;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -37,7 +41,7 @@ describe("Curve Zaps", () => {
   // "regular" pools; meta pools should be added further below
   const CurvePoolZaps = [
     {
-      contractName: "Curve3PoolZap",
+      contractName: "Curve3poolZap",
       swapAddress: "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7",
       swapInterface: "IStableSwap",
       lpTokenAddress: "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490",
@@ -80,7 +84,7 @@ describe("Curve Zaps", () => {
       useUnwrapped: true,
     },
     {
-      contractName: "CurveIronBankZap",
+      contractName: "CurveIronbankZap",
       swapAddress: "0x2dded6Da1BF5DBdF597C45fcFaa3194e53EcfeAF",
       swapInterface: "IStableSwap",
       lpTokenAddress: "0x5282a4eF67D9C33135340fB3289cc1711c13638C",
@@ -91,7 +95,7 @@ describe("Curve Zaps", () => {
       useUnwrapped: true,
     },
     {
-      contractName: "CurveSusdV2Zap",
+      contractName: "CurveSusdv2Zap",
       swapAddress: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD",
       swapInterface: "IOldStableSwap4",
       lpTokenAddress: "0xC25a3A3b969415c80451098fa907EC722572917F",
@@ -116,7 +120,7 @@ describe("Curve Zaps", () => {
       rewardToken: "0xdBdb4d16EdA451D0503b854CF79D55697F90c8DF",
     },
     {
-      contractName: "CurveBusdV2Zap",
+      contractName: "CurveBusdv2Zap",
       swapAddress: "0x4807862AA8b2bF68830e4C8dc86D0e9A998e085a",
       swapInterface: "IMetaPool",
       lpTokenAddress: "0x4807862AA8b2bF68830e4C8dc86D0e9A998e085a",
@@ -197,50 +201,75 @@ describe("Curve Zaps", () => {
     await timeMachine.revertToSnapshot(snapshotId);
   });
 
-  before(async () => {
-    [deployer, emergencySafe, adminSafe, mApt] = await ethers.getSigners();
+  before("Setup mock address registry", async () => {
+    [deployer, lpSafe, emergencySafe, adminSafe] = await ethers.getSigners();
 
-    const addressRegistry = await deployMockContract(
+    addressRegistry = await deployMockContract(
       deployer,
-      artifacts.require("IAddressRegistryV2").abi
+      artifacts.readArtifactSync("IAddressRegistryV2").abi
     );
 
+    // These registered addresses are setup for roles in the
+    // constructor for LpAccount
+    await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
+    await addressRegistry.mock.emergencySafeAddress.returns(
+      emergencySafe.address
+    );
+    // mAPT is never used, but we need to return something as a role
+    // is setup for it in the Erc20Allocation constructor
+    await addressRegistry.mock.mAptAddress.returns(FAKE_ADDRESS);
+  });
+
+  before("Deploy LP Account", async () => {
+    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+    const proxyAdmin = await ProxyAdmin.deploy();
+
+    const LpAccount = await ethers.getContractFactory("LpAccount");
+    const logic = await LpAccount.deploy();
+
+    const initData = LpAccount.interface.encodeFunctionData(
+      "initialize(address)",
+      [addressRegistry.address]
+    );
+
+    const TransparentUpgradeableProxy = await ethers.getContractFactory(
+      "TransparentUpgradeableProxy"
+    );
+    const proxy = await TransparentUpgradeableProxy.deploy(
+      logic.address,
+      proxyAdmin.address,
+      initData
+    );
+
+    lpAccount = await LpAccount.attach(proxy.address);
+  });
+
+  before("Prepare TVL Manager and ERC20 Allocation", async () => {
+    // deploy and register TVL Manager
+    const TvlManager = await ethers.getContractFactory("TvlManager", adminSafe);
+    tvlManager = await TvlManager.deploy(addressRegistry.address);
+
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("tvlManager"))
+      .returns(tvlManager.address);
+
+    // Oracle Adapter is locked after adding/removing allocations
     const oracleAdapter = await deployMockContract(
       deployer,
-      artifacts.require("ILockingOracle").abi
+      artifacts.readArtifactSync("OracleAdapter").abi
     );
     await oracleAdapter.mock.lock.returns();
+    await oracleAdapter.mock.lockFor.returns();
     await addressRegistry.mock.oracleAdapterAddress.returns(
       oracleAdapter.address
     );
 
-    /* These registered addresses are setup for roles in the
-     * constructor for Erc20Allocation:
-     * - emergencySafe (default admin role)
-     * - adminSafe (admin role)
-     * - mApt (contract role)
-     */
-    await addressRegistry.mock.emergencySafeAddress.returns(
-      emergencySafe.address
-    );
-    await addressRegistry.mock.mAptAddress.returns(mApt.address);
-    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
-
+    // deploy and register ERC20 allocation
     const Erc20Allocation = await ethers.getContractFactory("Erc20Allocation");
-    const erc20Allocation = await Erc20Allocation.deploy(
-      addressRegistry.address
-    );
+    erc20Allocation = await Erc20Allocation.deploy(addressRegistry.address);
 
-    /* These registered addresses are setup for roles in the
-     * constructor for TvlManager
-     * - adminSafe (admin role)
-     * - emergencySafe (emergency role, default admin role)
-     */
-    TvlManager = await ethers.getContractFactory("TvlManager");
-    tvlManager = await TvlManager.deploy(addressRegistry.address);
-    await tvlManager
-      .connect(adminSafe)
-      .registerAssetAllocation(erc20Allocation.address);
+    await tvlManager.registerAssetAllocation(erc20Allocation.address);
   });
 
   CurvePoolZaps.forEach((curveConstants) => {
@@ -277,35 +306,69 @@ describe("Curve Zaps", () => {
         await timeMachine.revertToSnapshot(subSuiteSnapshotId);
       });
 
+      before("Deploy zap", async () => {
+        const zapFactory = await ethers.getContractFactory(
+          contractName,
+          adminSafe
+        );
+        zap = await zapFactory.deploy();
+      });
+
+      before("Register zap with LP Account", async () => {
+        await lpAccount.connect(adminSafe).registerZap(zap.address);
+      });
+
+      before("Attach to Mainnet Curve contracts", async () => {
+        stableSwap = await ethers.getContractAt(
+          swapInterface,
+          swapAddress,
+          adminSafe
+        );
+        lpToken = await ethers.getContractAt(
+          "IDetailedERC20",
+          lpTokenAddress,
+          adminSafe
+        );
+        gauge = await ethers.getContractAt(
+          gaugeInterface,
+          gaugeAddress,
+          adminSafe
+        );
+      });
+
+      before("Register allocations with TVL Manager", async () => {
+        const allocationNames = await zap.assetAllocations();
+        for (let name of allocationNames) {
+          name = name
+            .split("-")
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join("");
+          if (name === "Aave") {
+            name = "AaveStableCoin";
+          }
+          const allocationContractName = name + "Allocation";
+          const allocationFactory = await ethers.getContractFactory(
+            allocationContractName
+          );
+          const allocation = await allocationFactory.deploy();
+          await tvlManager
+            .connect(adminSafe)
+            .registerAssetAllocation(allocation.address);
+        }
+      });
+
+      before("Register tokens with ERC20 Allocation", async () => {
+        const erc20s = await zap.erc20Allocations();
+        for (const token of erc20s) {
+          await erc20Allocation
+            .connect(adminSafe)
+            ["registerErc20Token(address)"](token);
+        }
+      });
+
       underlyerIndices.forEach((underlyerIndex) => {
         describe(`Underlyer index: ${underlyerIndex}`, () => {
-          before("Deploy Zap", async () => {
-            const zapFactory = await ethers.getContractFactory(
-              contractName,
-              adminSafe
-            );
-            zap = await zapFactory.deploy();
-          });
-
-          before("Attach to Mainnet Curve contracts", async () => {
-            stableSwap = await ethers.getContractAt(
-              swapInterface,
-              swapAddress,
-              adminSafe
-            );
-            lpToken = await ethers.getContractAt(
-              "IDetailedERC20",
-              lpTokenAddress,
-              adminSafe
-            );
-            gauge = await ethers.getContractAt(
-              gaugeInterface,
-              gaugeAddress,
-              adminSafe
-            );
-          });
-
-          before("Fund Zap with Pool Underlyer", async () => {
+          before("Fund LP Account with pool underlyer", async () => {
             let underlyerAddress;
             if (useUnwrapped) {
               underlyerAddress = await stableSwap.underlying_coins(
@@ -326,14 +389,14 @@ describe("Curve Zaps", () => {
 
             await acquireToken(
               whaleAddress,
-              zap.address,
+              lpAccount.address,
               underlyerToken,
               amount,
               deployer
             );
           });
 
-          it("Deposit into pool and stake", async () => {
+          it("Deploy and unwind", async () => {
             const amounts = new Array(numberOfCoins).fill("0");
             const underlyerAmount = tokenAmountToBigNumber(
               1000,
@@ -341,29 +404,32 @@ describe("Curve Zaps", () => {
             );
             amounts[underlyerIndex] = underlyerAmount;
 
-            await zap.deployLiquidity(amounts);
+            const name = await zap.NAME();
+            await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
 
-            const deployedZapUnderlyerBalance = await underlyerToken.balanceOf(
-              zap.address
+            const prevUnderlyerBalance = await underlyerToken.balanceOf(
+              lpAccount.address
             );
-            expect(deployedZapUnderlyerBalance).gt(0);
-            const deployedZapLpBalance = await lpToken.balanceOf(zap.address);
-            expect(deployedZapLpBalance).to.equal(0);
-            const deployedGaugeLpBalance = await gauge.balanceOf(zap.address);
-            expect(deployedGaugeLpBalance).gt(0);
+            expect(prevUnderlyerBalance).gt(0);
+            const prevLpBalance = await lpToken.balanceOf(lpAccount.address);
+            expect(prevLpBalance).to.equal(0);
+            const prevGaugeLpBalance = await gauge.balanceOf(lpAccount.address);
+            expect(prevGaugeLpBalance).gt(0);
 
-            await zap.unwindLiquidity(deployedGaugeLpBalance, underlyerIndex);
+            await lpAccount
+              .connect(lpSafe)
+              .unwindStrategy(name, prevGaugeLpBalance, underlyerIndex);
 
-            const withdrawnZapUnderlyerBalance = await underlyerToken.balanceOf(
-              zap.address
+            const afterUnderlyerBalance = await underlyerToken.balanceOf(
+              lpAccount.address
             );
-            expect(withdrawnZapUnderlyerBalance).gt(
-              deployedZapUnderlyerBalance
+            expect(afterUnderlyerBalance).gt(prevUnderlyerBalance);
+            const afterLpBalance = await lpToken.balanceOf(lpAccount.address);
+            expect(afterLpBalance).to.equal(0);
+            const afterGaugeLpBalance = await gauge.balanceOf(
+              lpAccount.address
             );
-            const withdrawnZapLpBalance = await lpToken.balanceOf(zap.address);
-            expect(withdrawnZapLpBalance).to.equal(0);
-            const withdrawnGaugeLpBalance = await gauge.balanceOf(zap.address);
-            expect(withdrawnGaugeLpBalance).to.equal(0);
+            expect(afterGaugeLpBalance).to.equal(0);
           });
 
           it("Claim", async () => {
@@ -374,7 +440,7 @@ describe("Curve Zaps", () => {
               "IDetailedERC20",
               CRV_ADDRESS
             );
-            expect(await crv.balanceOf(zap.address)).to.equal(0);
+            expect(await crv.balanceOf(lpAccount.address)).to.equal(0);
 
             if (typeof rewardToken !== "undefined") {
               expect(erc20s).to.include(ethers.utils.getAddress(rewardToken));
@@ -382,7 +448,7 @@ describe("Curve Zaps", () => {
                 "IDetailedERC20",
                 rewardToken
               );
-              expect(await token.balanceOf(zap.address)).to.equal(0);
+              expect(await token.balanceOf(lpAccount.address)).to.equal(0);
             }
 
             const amounts = new Array(numberOfCoins).fill("0");
@@ -392,7 +458,8 @@ describe("Curve Zaps", () => {
             );
             amounts[underlyerIndex] = underlyerAmount;
 
-            await zap.deployLiquidity(amounts);
+            const name = await zap.NAME();
+            await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
 
             // allows rewards to accumulate:
             // CRV rewards accumulate within a block, but other rewards, like
@@ -405,15 +472,15 @@ describe("Curve Zaps", () => {
               await hre.network.provider.send("evm_mine");
             }
 
-            await zap.claim();
+            await lpAccount.connect(lpSafe).claim(name);
 
-            expect(await crv.balanceOf(zap.address)).to.be.gt(0);
+            expect(await crv.balanceOf(lpAccount.address)).to.be.gt(0);
             if (typeof rewardToken !== "undefined") {
               const token = await ethers.getContractAt(
                 "IDetailedERC20",
                 rewardToken
               );
-              expect(await token.balanceOf(zap.address)).to.be.gt(0);
+              expect(await token.balanceOf(lpAccount.address)).to.be.gt(0);
             }
           });
         });
@@ -441,6 +508,8 @@ describe("Curve Zaps", () => {
       let gauge;
       let basePool;
 
+      let curve3poolAllocation;
+
       let underlyerToken;
       const underlyerIndices = Array.from(Array(numberOfCoins).keys());
 
@@ -455,41 +524,84 @@ describe("Curve Zaps", () => {
         await timeMachine.revertToSnapshot(subSuiteSnapshotId);
       });
 
+      before("Deploy Zap", async () => {
+        const zapFactory = await ethers.getContractFactory(
+          contractName,
+          adminSafe
+        );
+        zap = await zapFactory.deploy();
+      });
+
+      before("Register zap with LP Account", async () => {
+        await lpAccount.connect(adminSafe).registerZap(zap.address);
+      });
+
+      before("Attach to Mainnet Curve contracts", async () => {
+        metaPool = await ethers.getContractAt(
+          swapInterface,
+          swapAddress,
+          adminSafe
+        );
+        lpToken = await ethers.getContractAt(
+          "IDetailedERC20",
+          lpTokenAddress,
+          adminSafe
+        );
+        gauge = await ethers.getContractAt(
+          gaugeInterface,
+          gaugeAddress,
+          adminSafe
+        );
+
+        // 3pool
+        basePool = await ethers.getContractAt(
+          "IStableSwap",
+          "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7"
+        );
+      });
+
+      before("Deploy 3pool allocation", async () => {
+        const Curve3poolAllocation = await ethers.getContractFactory(
+          "Curve3poolAllocation"
+        );
+        curve3poolAllocation = await Curve3poolAllocation.deploy();
+      });
+
+      before("Register allocations with TVL Manager", async () => {
+        const allocationNames = await zap.assetAllocations();
+        for (let name of allocationNames) {
+          name = name
+            .split("-")
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join("");
+          if (name === "Aave") {
+            name = "AaveStableCoin";
+          }
+          const allocationContractName = name + "Allocation";
+          const allocationFactory = await ethers.getContractFactory(
+            allocationContractName
+          );
+          const allocation = await allocationFactory.deploy(
+            curve3poolAllocation.address
+          );
+          await tvlManager
+            .connect(adminSafe)
+            .registerAssetAllocation(allocation.address);
+        }
+      });
+
+      before("Register tokens with ERC20 Allocation", async () => {
+        const erc20s = await zap.erc20Allocations();
+        for (const token of erc20s) {
+          await erc20Allocation
+            .connect(adminSafe)
+            ["registerErc20Token(address)"](token);
+        }
+      });
+
       underlyerIndices.forEach((underlyerIndex) => {
         describe(`Underlyer index: ${underlyerIndex}`, () => {
-          before("Deploy Zap", async () => {
-            const zapFactory = await ethers.getContractFactory(
-              contractName,
-              adminSafe
-            );
-            zap = await zapFactory.deploy();
-          });
-
-          before("Attach to Mainnet Curve contracts", async () => {
-            metaPool = await ethers.getContractAt(
-              swapInterface,
-              swapAddress,
-              adminSafe
-            );
-            lpToken = await ethers.getContractAt(
-              "IDetailedERC20",
-              lpTokenAddress,
-              adminSafe
-            );
-            gauge = await ethers.getContractAt(
-              gaugeInterface,
-              gaugeAddress,
-              adminSafe
-            );
-
-            // 3Pool
-            basePool = await ethers.getContractAt(
-              "IStableSwap",
-              "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7"
-            );
-          });
-
-          before("Fund Zap with Pool Underlyer", async () => {
+          before("Fund LP Account with Pool Underlyer", async () => {
             let underlyerAddress;
             if (underlyerIndex == 0) {
               underlyerAddress = await metaPool.coins(underlyerIndex);
@@ -509,14 +621,14 @@ describe("Curve Zaps", () => {
 
             await acquireToken(
               whaleAddress,
-              zap.address,
+              lpAccount.address,
               underlyerToken,
               amount,
               deployer
             );
           });
 
-          it("Deposit into pool and stake", async () => {
+          it("Deploy and unwind", async () => {
             const amounts = new Array(numberOfCoins).fill("0");
             const underlyerAmount = tokenAmountToBigNumber(
               1000,
@@ -524,29 +636,32 @@ describe("Curve Zaps", () => {
             );
             amounts[underlyerIndex] = underlyerAmount;
 
-            await zap.deployLiquidity(amounts);
+            const name = await zap.NAME();
+            await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
 
-            const deployedZapUnderlyerBalance = await underlyerToken.balanceOf(
-              zap.address
+            const prevUnderlyerBalance = await underlyerToken.balanceOf(
+              lpAccount.address
             );
-            expect(deployedZapUnderlyerBalance).gt(0);
-            const deployedZapLpBalance = await lpToken.balanceOf(zap.address);
-            expect(deployedZapLpBalance).to.equal(0);
-            const deployedGaugeLpBalance = await gauge.balanceOf(zap.address);
-            expect(deployedGaugeLpBalance).gt(0);
+            expect(prevUnderlyerBalance).gt(0);
+            const prevLpBalance = await lpToken.balanceOf(lpAccount.address);
+            expect(prevLpBalance).to.equal(0);
+            const prevGaugeLpBalance = await gauge.balanceOf(lpAccount.address);
+            expect(prevGaugeLpBalance).gt(0);
 
-            await zap.unwindLiquidity(deployedGaugeLpBalance, underlyerIndex);
+            await lpAccount
+              .connect(lpSafe)
+              .unwindStrategy(name, prevGaugeLpBalance, underlyerIndex);
 
-            const withdrawnZapUnderlyerBalance = await underlyerToken.balanceOf(
-              zap.address
+            const afterUnderlyerBalance = await underlyerToken.balanceOf(
+              lpAccount.address
             );
-            expect(withdrawnZapUnderlyerBalance).gt(
-              deployedZapUnderlyerBalance
+            expect(afterUnderlyerBalance).gt(prevUnderlyerBalance);
+            const afterLpBalance = await lpToken.balanceOf(lpAccount.address);
+            expect(afterLpBalance).to.equal(0);
+            const afterGaugeLpBalance = await gauge.balanceOf(
+              lpAccount.address
             );
-            const withdrawnZapLpBalance = await lpToken.balanceOf(zap.address);
-            expect(withdrawnZapLpBalance).to.equal(0);
-            const withdrawnGaugeLpBalance = await gauge.balanceOf(zap.address);
-            expect(withdrawnGaugeLpBalance).to.equal(0);
+            expect(afterGaugeLpBalance).to.equal(0);
           });
 
           it("Claim", async () => {
@@ -557,7 +672,7 @@ describe("Curve Zaps", () => {
               "IDetailedERC20",
               CRV_ADDRESS
             );
-            expect(await crv.balanceOf(zap.address)).to.equal(0);
+            expect(await crv.balanceOf(lpAccount.address)).to.equal(0);
 
             if (typeof rewardToken !== "undefined") {
               expect(erc20s).to.include(ethers.utils.getAddress(rewardToken));
@@ -565,7 +680,7 @@ describe("Curve Zaps", () => {
                 "IDetailedERC20",
                 rewardToken
               );
-              expect(await token.balanceOf(zap.address)).to.equal(0);
+              expect(await token.balanceOf(lpAccount.address)).to.equal(0);
             }
 
             const amounts = new Array(numberOfCoins).fill("0");
@@ -575,7 +690,8 @@ describe("Curve Zaps", () => {
             );
             amounts[underlyerIndex] = underlyerAmount;
 
-            await zap.deployLiquidity(amounts);
+            const name = await zap.NAME();
+            await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
 
             // allows rewards to accumulate:
             // CRV rewards accumulate within a block, but other rewards, like
@@ -588,15 +704,15 @@ describe("Curve Zaps", () => {
               await hre.network.provider.send("evm_mine");
             }
 
-            await zap.claim();
+            await lpAccount.connect(lpSafe).claim(name);
 
-            expect(await crv.balanceOf(zap.address)).to.be.gt(0);
+            expect(await crv.balanceOf(lpAccount.address)).to.be.gt(0);
             if (typeof rewardToken !== "undefined") {
               const token = await ethers.getContractAt(
                 "IDetailedERC20",
                 rewardToken
               );
-              expect(await token.balanceOf(zap.address)).to.be.gt(0);
+              expect(await token.balanceOf(lpAccount.address)).to.be.gt(0);
             }
           });
         });
