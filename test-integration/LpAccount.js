@@ -4,18 +4,13 @@ const { ethers, waffle, artifacts } = hre;
 const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
 const {
-  FAKE_ADDRESS,
   bytes32,
   tokenAmountToBigNumber,
   getStablecoinAddress,
   acquireToken,
   deepEqual,
 } = require("../utils/helpers");
-const {
-  WHALE_POOLS,
-  FARM_TOKENS,
-  FARM_TOKEN_POOLS,
-} = require("../utils/constants");
+const { WHALE_POOLS, FARM_TOKENS } = require("../utils/constants");
 
 const IAddressRegistryV2 = artifacts.readArtifactSync("IAddressRegistryV2");
 const IDetailedERC20 = artifacts.readArtifactSync("IDetailedERC20");
@@ -144,10 +139,6 @@ describe("Contract: LpAccount", () => {
     await addressRegistry.mock.oracleAdapterAddress.returns(
       oracleAdapter.address
     );
-
-    // mAPT is never used, but we need to return something as a role
-    // is setup for it in the Erc20Allocation constructor
-    await addressRegistry.mock.mAptAddress.returns(FAKE_ADDRESS);
 
     // deploy and register ERC20 allocation
     const Erc20Allocation = await ethers.getContractFactory("Erc20Allocation");
@@ -510,49 +501,6 @@ describe("Contract: LpAccount", () => {
 
       await expect(lpAccount.connect(lpSafe).swap(name, amount, 0)).to.not.be
         .reverted;
-    });
-
-    it("Integrate with real swap", async () => {
-      const CrvToUsdcSwap = await ethers.getContractFactory("CrvToUsdcSwap");
-      const swap = await CrvToUsdcSwap.deploy();
-      await lpAccount.connect(adminSafe).registerSwap(swap.address);
-
-      const crvToken = await ethers.getContractAt(
-        "IDetailedERC20",
-        FARM_TOKENS["CRV"]
-      );
-      const usdcToken = await ethers.getContractAt(
-        "IDetailedERC20",
-        getStablecoinAddress("USDC", "MAINNET")
-      );
-      await erc20Allocation
-        .connect(adminSafe)
-        ["registerErc20Token(address)"](crvToken.address);
-      await erc20Allocation
-        .connect(adminSafe)
-        ["registerErc20Token(address)"](usdcToken.address);
-
-      const numTokens = "1000";
-      const crvAmount = tokenAmountToBigNumber(
-        numTokens,
-        await crvToken.decimals()
-      );
-
-      await acquireToken(
-        FARM_TOKEN_POOLS["CRV"],
-        lpAccount.address,
-        crvToken,
-        numTokens,
-        deployer.address
-      );
-
-      const name = await swap.NAME();
-
-      expect(await usdcToken.balanceOf(lpAccount.address)).to.be.zero;
-      await expect(lpAccount.connect(lpSafe).swap(name, crvAmount, 0)).to.not.be
-        .reverted;
-      expect(await usdcToken.balanceOf(lpAccount.address)).to.be.gt(0);
-      expect(await crvToken.balanceOf(lpAccount.address)).to.be.zero;
     });
   });
 
