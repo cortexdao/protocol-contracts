@@ -105,7 +105,7 @@ describe("Swaps - LP Account integration", () => {
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     const proxyAdmin = await ProxyAdmin.deploy();
 
-    const LpAccount = await ethers.getContractFactory("TestLpAccount");
+    const LpAccount = await ethers.getContractFactory("LpAccount");
     const logic = await LpAccount.deploy();
 
     const initData = LpAccount.interface.encodeFunctionData(
