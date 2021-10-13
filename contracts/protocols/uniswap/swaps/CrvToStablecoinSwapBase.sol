@@ -12,8 +12,8 @@ abstract contract CrvToStablecoinSwapBase is SwapBase {
     IERC20 private constant _WETH =
         IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
-    uint24 private _CRV_WETH_FEE = 10000;
-    uint24 private _WETH_STABLECOIN_FEE = 500;
+    uint24 private constant _CRV_WETH_FEE = 10000;
+    uint24 private constant _WETH_STABLECOIN_FEE = 500;
 
     constructor(IERC20 stablecoin) public SwapBase(_CRV, stablecoin) {} // solhint-disable-line no-empty-blocks
 
