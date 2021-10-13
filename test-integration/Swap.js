@@ -8,6 +8,8 @@ const {
   tokenAmountToBigNumber,
   acquireToken,
   getStablecoinAddress,
+  FAKE_ADDRESS,
+  bytes32,
 } = require("../utils/helpers");
 const { FARM_TOKENS, FARM_TOKEN_POOLS } = require("../utils/constants");
 
@@ -17,20 +19,55 @@ const { FARM_TOKENS, FARM_TOKEN_POOLS } = require("../utils/constants");
 console.debugging = false;
 /* ************************ */
 
-describe("Swaps", () => {
+const swapParams = [
+  {
+    swapContractName: "CrvToDaiSwap",
+    inTokenSymbol: "CRV",
+    outTokenSymbol: "DAI",
+  },
+  {
+    swapContractName: "CrvToUsdcSwap",
+    inTokenSymbol: "CRV",
+    outTokenSymbol: "USDC",
+  },
+  {
+    swapContractName: "CrvToUsdtSwap",
+    inTokenSymbol: "CRV",
+    outTokenSymbol: "USDT",
+  },
+  {
+    swapContractName: "AaveToDaiSwap",
+    inTokenSymbol: "AAVE",
+    outTokenSymbol: "DAI",
+  },
+  {
+    swapContractName: "AaveToUsdcSwap",
+    inTokenSymbol: "AAVE",
+    outTokenSymbol: "USDC",
+  },
+  {
+    swapContractName: "AaveToUsdtSwap",
+    inTokenSymbol: "AAVE",
+    outTokenSymbol: "USDT",
+  },
+];
+
+describe("Swaps - LP Account integration", () => {
   const NETWORK = "MAINNET";
 
   /* signers */
   let deployer;
   let emergencySafe;
   let adminSafe;
-  let mApt;
-
-  /* contract factories */
-  let TvlManager;
+  let lpSafe;
 
   /* deployed contracts */
+  let lpAccount;
   let tvlManager;
+  let erc20Allocation;
+
+  /* mocks */
+  let addressRegistry;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -44,84 +81,76 @@ describe("Swaps", () => {
     await timeMachine.revertToSnapshot(snapshotId);
   });
 
-  before(async () => {
-    [deployer, emergencySafe, adminSafe, mApt] = await ethers.getSigners();
+  before("Setup mock address registry", async () => {
+    [deployer, lpSafe, emergencySafe, adminSafe] = await ethers.getSigners();
 
-    const addressRegistry = await deployMockContract(
+    addressRegistry = await deployMockContract(
       deployer,
-      artifacts.require("IAddressRegistryV2").abi
+      artifacts.readArtifactSync("IAddressRegistryV2").abi
     );
 
-    const oracleAdapter = await deployMockContract(
-      deployer,
-      artifacts.require("ILockingOracle").abi
-    );
-    await oracleAdapter.mock.lock.returns();
-    await addressRegistry.mock.oracleAdapterAddress.returns(
-      oracleAdapter.address
-    );
-
-    /* These registered addresses are setup for roles in the
-     * constructor for Erc20Allocation:
-     * - emergencySafe (default admin role)
-     * - adminSafe (admin role)
-     * - mApt (contract role)
-     */
+    // These registered addresses are setup for roles in the
+    // constructor for LpAccount
+    await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
     await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
     await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
-    await addressRegistry.mock.mAptAddress.returns(mApt.address);
-
-    const Erc20Allocation = await ethers.getContractFactory("Erc20Allocation");
-    const erc20Allocation = await Erc20Allocation.deploy(
-      addressRegistry.address
-    );
-
-    /* These registered addresses are setup for roles in the
-     * constructor for TvlManager
-     * - emergencySafe (emergency role, default admin role)
-     * - adminSafe (admin role)
-     */
-    TvlManager = await ethers.getContractFactory("TvlManager");
-    tvlManager = await TvlManager.deploy(addressRegistry.address);
-    await tvlManager
-      .connect(adminSafe)
-      .registerAssetAllocation(erc20Allocation.address);
+    // mAPT is never used, but we need to return something as a role
+    // is setup for it in the Erc20Allocation constructor
+    await addressRegistry.mock.mAptAddress.returns(FAKE_ADDRESS);
   });
 
-  const swapParams = [
-    {
-      swapContractName: "CrvToDaiSwap",
-      inTokenSymbol: "CRV",
-      outTokenSymbol: "DAI",
-    },
-    {
-      swapContractName: "CrvToUsdcSwap",
-      inTokenSymbol: "CRV",
-      outTokenSymbol: "USDC",
-    },
-    {
-      swapContractName: "CrvToUsdtSwap",
-      inTokenSymbol: "CRV",
-      outTokenSymbol: "USDT",
-    },
-    {
-      swapContractName: "AaveToDaiSwap",
-      inTokenSymbol: "AAVE",
-      outTokenSymbol: "DAI",
-    },
-    {
-      swapContractName: "AaveToUsdcSwap",
-      inTokenSymbol: "AAVE",
-      outTokenSymbol: "USDC",
-    },
-    {
-      swapContractName: "AaveToUsdtSwap",
-      inTokenSymbol: "AAVE",
-      outTokenSymbol: "USDT",
-    },
-  ];
+  before("Deploy LP Account", async () => {
+    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+    const proxyAdmin = await ProxyAdmin.deploy();
+
+    const LpAccount = await ethers.getContractFactory("TestLpAccount");
+    const logic = await LpAccount.deploy();
+
+    const initData = LpAccount.interface.encodeFunctionData(
+      "initialize(address)",
+      [addressRegistry.address]
+    );
+
+    const TransparentUpgradeableProxy = await ethers.getContractFactory(
+      "TransparentUpgradeableProxy"
+    );
+    const proxy = await TransparentUpgradeableProxy.deploy(
+      logic.address,
+      proxyAdmin.address,
+      initData
+    );
+
+    lpAccount = await LpAccount.attach(proxy.address);
+  });
+
+  before("Prepare TVL Manager and ERC20 Allocation", async () => {
+    // deploy and register TVL Manager
+    const TvlManager = await ethers.getContractFactory("TvlManager", adminSafe);
+    tvlManager = await TvlManager.deploy(addressRegistry.address);
+
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("tvlManager"))
+      .returns(tvlManager.address);
+
+    // Oracle Adapter is locked after adding/removing allocations
+    const oracleAdapter = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("OracleAdapter").abi
+    );
+    await oracleAdapter.mock.lock.returns();
+    await oracleAdapter.mock.lockFor.returns();
+    await addressRegistry.mock.oracleAdapterAddress.returns(
+      oracleAdapter.address
+    );
+
+    // deploy and register ERC20 allocation
+    const Erc20Allocation = await ethers.getContractFactory("Erc20Allocation");
+    erc20Allocation = await Erc20Allocation.deploy(addressRegistry.address);
+
+    await tvlManager.registerAssetAllocation(erc20Allocation.address);
+  });
 
   swapParams.forEach(function (params) {
     const { swapContractName, inTokenSymbol, outTokenSymbol } = params;
@@ -138,7 +167,11 @@ describe("Swaps", () => {
         swap = await SwapContract.deploy();
       });
 
-      before("Fund swap with in-token", async () => {
+      before("Register swap with LP Account", async () => {
+        await lpAccount.connect(adminSafe).registerSwap(swap.address);
+      });
+
+      before("Fund LP Account with in-token", async () => {
         inToken = await ethers.getContractAt(
           "IDetailedERC20",
           FARM_TOKENS[inTokenSymbol]
@@ -146,7 +179,13 @@ describe("Swaps", () => {
 
         const amount = tokenAmountToBigNumber(1000, await inToken.decimals());
         const sender = whaleAddress;
-        await acquireToken(sender, swap.address, inToken, amount, deployer);
+        await acquireToken(
+          sender,
+          lpAccount.address,
+          inToken,
+          amount,
+          deployer
+        );
       });
 
       before("Attach to out-token", async () => {
@@ -157,18 +196,25 @@ describe("Swaps", () => {
         );
       });
 
-      describe("swap", () => {
-        it("Should swap in-token for out-token", async () => {
-          const beforeInTokenBalance = await inToken.balanceOf(swap.address);
+      before("Register tokens with ERC20 Allocation", async () => {
+        await erc20Allocation
+          .connect(adminSafe)
+          ["registerErc20Token(address)"](inToken.address);
+        await erc20Allocation
+          .connect(adminSafe)
+          ["registerErc20Token(address)"](outToken.address);
+      });
 
-          await swap.swap(beforeInTokenBalance, 0);
+      it("Swap in-token for out-token", async () => {
+        let inTokenBalance = await inToken.balanceOf(lpAccount.address);
+        expect(inTokenBalance).to.be.gt(0);
+        expect(await outToken.balanceOf(lpAccount.address)).to.be.zero;
 
-          const afterInTokenBalance = await inToken.balanceOf(swap.address);
-          expect(afterInTokenBalance).to.equal(0);
+        const name = await swap.NAME();
+        await lpAccount.connect(lpSafe).swap(name, inTokenBalance, 0);
 
-          const afterOutTokenBalance = await outToken.balanceOf(swap.address);
-          expect(afterOutTokenBalance).to.be.gt(0);
-        });
+        expect(await inToken.balanceOf(lpAccount.address)).to.equal(0);
+        expect(await outToken.balanceOf(lpAccount.address)).to.be.gt(0);
       });
     });
   });
