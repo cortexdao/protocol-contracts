@@ -517,9 +517,6 @@ describe("Contract: LpAccount", () => {
       const swap = await CrvToUsdcSwap.deploy();
       await lpAccount.connect(adminSafe).registerSwap(swap.address);
 
-      const name = await swap.NAME();
-      const amount = tokenAmountToBigNumber(1);
-
       const crvToken = await ethers.getContractAt(
         "IDetailedERC20",
         FARM_TOKENS["CRV"]
@@ -535,16 +532,27 @@ describe("Contract: LpAccount", () => {
         .connect(adminSafe)
         ["registerErc20Token(address)"](usdcToken.address);
 
+      const numTokens = "1000";
+      const crvAmount = tokenAmountToBigNumber(
+        numTokens,
+        await crvToken.decimals()
+      );
+
       await acquireToken(
         FARM_TOKEN_POOLS["CRV"],
         lpAccount.address,
         crvToken,
-        "10000",
+        numTokens,
         deployer.address
       );
 
-      await expect(lpAccount.connect(lpSafe).swap(name, amount, 0)).to.not.be
+      const name = await swap.NAME();
+
+      expect(await usdcToken.balanceOf(lpAccount.address)).to.be.zero;
+      await expect(lpAccount.connect(lpSafe).swap(name, crvAmount, 0)).to.not.be
         .reverted;
+      expect(await usdcToken.balanceOf(lpAccount.address)).to.be.gt(0);
+      expect(await crvToken.balanceOf(lpAccount.address)).to.be.zero;
     });
   });
 
