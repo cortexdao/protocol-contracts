@@ -71,7 +71,7 @@ abstract contract AaveBasePool is IZap, AaveConstants {
         returns (string[] memory)
     {
         string[] memory allocationNames = new string[](1);
-        allocationNames[0] = NAME;
+        allocationNames[0] = BASE_NAME;
         return allocationNames;
     }
 

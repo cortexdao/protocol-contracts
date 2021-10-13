@@ -9,6 +9,8 @@ import {IStakedAave} from "./common/interfaces/IStakedAave.sol";
 import {AaveBasePool} from "./common/AaveBasePool.sol";
 
 contract StakedAaveZap is AaveBasePool {
+    string public constant override NAME = "aave-stkAave";
+
     event WithdrawSucceeded(uint256 amount);
     event CooldownFromWithdrawFail(uint256 timestamp);
 

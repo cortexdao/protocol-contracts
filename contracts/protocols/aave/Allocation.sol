@@ -17,6 +17,8 @@ contract AaveStableCoinAllocation is
     AaveConstants,
     ApyUnderlyerConstants
 {
+    string public constant override NAME = BASE_NAME;
+
     function balanceOf(address account, uint8 tokenIndex)
         external
         view
