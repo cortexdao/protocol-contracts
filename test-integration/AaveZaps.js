@@ -23,7 +23,7 @@ console.debugging = false;
 const AAVE_ADDRESS = "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9";
 const STAKED_AAVE_ADDRESS = "0x4da27a545c0c5B758a6BA100e3a049001de870f5";
 
-describe.only("Aave Zaps", () => {
+describe("Aave Zaps", () => {
   /* signers */
   let deployer;
   let emergencySafe;
@@ -183,6 +183,11 @@ describe.only("Aave Zaps", () => {
       before("Register allocations with TVL Manager", async () => {
         const allocationNames = await zap.assetAllocations();
         for (let name of allocationNames) {
+          const isRegistered = await tvlManager.isAssetAllocationRegistered([
+            name,
+          ]);
+          if (isRegistered) continue;
+
           name = name
             .split("-")
             .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
