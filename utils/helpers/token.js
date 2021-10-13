@@ -84,12 +84,20 @@ async function prepareTokenSender(sender, ethAmount, ethFunder) {
   }
 }
 
+/**
+ * @param recipient: address, receives the ETH
+ * @param amount: BigNumber or string, should be in big units not wei if string
+ * @param ethFunder: unlocked address holding ETH, e.g. hardhat test account
+ */
 async function forciblySendEth(recipient, amount, ethFunder) {
   /* Will forcibly send ETH to any recipient, even a
     contract that rejects ETH.  Only requires that `ethFunder`
     has ETH to send to the EthSender contract, e.g. is a hardhat
     test account.
   */
+  recipient = await getAddress(recipient);
+  ethFunder = await getAddress(ethFunder);
+
   const EthSender = await ethers.getContractFactory("EthSender");
   const ethSender = await EthSender.deploy();
   await ethSender.deployed();
