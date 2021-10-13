@@ -1,10 +1,9 @@
 const { assert } = require("chai");
 const { artifacts, contract } = require("hardhat");
-const { expectRevert } = require("@openzeppelin/test-helpers");
+const { expectRevert, ether } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
 const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
-const { erc20 } = require("../utils/helpers");
 
 const ProxyAdmin = artifacts.require("ProxyAdmin");
 const GovernanceTokenProxy = artifacts.require("GovernanceTokenProxy");
@@ -18,7 +17,7 @@ contract("GovernanceToken Unit Test", async (accounts) => {
   let proxy;
   let instance;
 
-  const totalSupply = erc20("100000000");
+  const totalSupply = ether("100000000");
 
   // use EVM snapshots for test isolation
   let snapshotId;

@@ -1,13 +1,14 @@
 const hre = require("hardhat");
 const { ethers } = hre;
 const { BigNumber } = ethers;
-const { ether, BN } = require("@openzeppelin/test-helpers");
 
 const bytes32 = ethers.utils.formatBytes32String;
+const commify = ethers.utils.commify;
+const formatUnits = ethers.utils.formatUnits;
 
-const dai = ether;
+const tokenAmountToBigNumber = (amount, decimals) => {
+  if (BigNumber.isBigNumber(amount)) return amount;
 
-const erc20 = (amount, decimals) => {
   amount = amount.toString();
   if (decimals == undefined) decimals = "18";
   decimals = decimals.toString();
@@ -21,39 +22,24 @@ const erc20 = (amount, decimals) => {
   while (fracPart.length < decimals) {
     fracPart += "0";
   }
-  fracPart = new BN(fracPart);
-  wholePart = new BN(wholePart || "0");
+  fracPart = BigNumber.from(fracPart);
+  wholePart = BigNumber.from(wholePart || "0");
 
-  const base = new BN("10").pow(new BN(decimals));
+  const base = BigNumber.from("10").pow(BigNumber.from(decimals));
   const amountBits = wholePart.mul(base).add(fracPart);
-  return amountBits;
-};
 
-const undoErc20 = (amount, decimals) => {
-  decimals = (decimals || "18").toString();
-  let base = "1";
-  while (decimals > 0) {
-    base += "0";
-    decimals -= 1;
-  }
-  return amount.div(new BN(base));
-};
-
-const tokenAmountToBigNumber = (amount, decimals) => {
-  if (BigNumber.isBigNumber(amount)) return amount;
-
-  amount = amount.toString();
-  amount = erc20(amount, decimals);
-  amount = BigNumber.from(amount.toString());
+  amount = BigNumber.from(amountBits.toString());
   return amount;
 };
+
+const dai = (amount) => tokenAmountToBigNumber(amount, 18);
+const erc20 = tokenAmountToBigNumber;
 
 module.exports = {
   bytes32,
   dai,
   erc20,
-  undoErc20,
   tokenAmountToBigNumber,
-  commify: ethers.utils.commify,
-  formatUnits: ethers.utils.formatUnits,
+  commify,
+  formatUnits,
 };

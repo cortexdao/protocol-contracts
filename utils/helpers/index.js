@@ -23,7 +23,6 @@ const {
   dai,
   erc20,
   tokenAmountToBigNumber,
-  undoErc20,
   commify,
   formatUnits,
 } = require("./unit");
@@ -59,7 +58,6 @@ module.exports = {
   erc20,
   transferERC20Tokens,
   getERC20Balance,
-  undoErc20,
   console,
   getAddress,
   impersonateAccount,
