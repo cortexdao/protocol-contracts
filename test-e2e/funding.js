@@ -135,9 +135,9 @@ const swapTests = [
   //{ name: "aave-to-dai", symbol: "AAVE", outToken: "DAI" },
   //{ name: "aave-to-usdc", symbol: "AAVE", outToken: "USDC" },
   //{ name: "aave-to-usdt", symbol: "AAVE", outToken: "USDT" },
-  { name: "crv-to-dai", symbol: "CRV", outToken: "DAI" },
-  { name: "crv-to-usdc", symbol: "CRV", outToken: "USDC" },
-  { name: "crv-to-usdt", symbol: "CRV", outToken: "USDT" },
+  { name: "crv-to-dai", symbol: "CRV", outToken: "daiToken" },
+  { name: "crv-to-usdc", symbol: "CRV", outToken: "usdcToken" },
+  { name: "crv-to-usdt", symbol: "CRV", outToken: "usdtToken" },
 ];
 
 describe("Funding scenarios", () => {
@@ -488,11 +488,24 @@ describe("Funding scenarios", () => {
           }
         });
 
-        swapTests.forEach(({ name, symbol }) => {
+        swapTests.forEach(({ name, symbol, outToken }) => {
           it(`Should swap ${symbol} with ${name}`, async () => {
-            const balance = await crv.balanceOf(lpAccount.address);
-            const amount = balance.div(swapTests.length);
+            const prevRewardBalance = await crv.balanceOf(lpAccount.address);
+            const amount = prevRewardBalance.div(swapTests.length);
+
+            const prevUnderlyerBalance = await underlyerTokens[
+              outToken
+            ].balanceOf(lpAccount.address);
+
             await lpAccount.connect(lpSafe).swap(name, amount, 0);
+
+            const newRewardBalance = await crv.balanceOf(lpAccount.address);
+            const newUnderlyerBalance = await underlyerTokens[
+              outToken
+            ].balanceOf(lpAccount.address);
+
+            expect(prevRewardBalance.sub(newRewardBalance)).to.be.equal(amount);
+            expect(newUnderlyerBalance.sub(prevUnderlyerBalance)).to.be.gt(0);
           });
         });
       });
