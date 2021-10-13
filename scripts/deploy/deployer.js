@@ -129,16 +129,16 @@ async function deployAllocations(tvlManager, adminSafe) {
     "AaveStableCoinAllocation",
     "CurveAaveAllocation",
     "CurveCompoundAllocation",
-    "CurveIronBankAllocation",
+    "CurveIronbankAllocation",
     "CurveSaaveAllocation",
-    "CurveSusdV2Allocation",
+    "CurveSusdv2Allocation",
   ];
 
-  const curve3PoolAllocationContract = "Curve3PoolAllocation";
+  const curve3PoolAllocationContract = "Curve3poolAllocation";
 
   const curveMetaPoolContracts = [
     "CurveAlusdAllocation",
-    "CurveBusdV2Allocation",
+    "CurveBusdv2Allocation",
     "CurveFraxAllocation",
     "CurveLusdAllocation",
     "CurveMusdAllocation",
@@ -187,17 +187,17 @@ async function deployZaps(lpAccount, erc20Allocation, adminSafe) {
     //"AaveUsdcZap",
     //"AaveUsdtZap",
     "StakedAaveZap",
-    "Curve3PoolZap",
+    "Curve3poolZap",
     "CurveAaveZap",
     "CurveAlusdZap",
-    "CurveBusdV2Zap",
+    "CurveBusdv2Zap",
     "CurveCompoundZap",
     "CurveFraxZap",
-    "CurveIronBankZap",
+    "CurveIronbankZap",
     "CurveLusdZap",
     "CurveMusdZap",
     "CurveSaaveZap",
-    "CurveSusdV2Zap",
+    "CurveSusdv2Zap",
     "CurveUsdnZap",
     "CurveUsdpZap",
     "CurveUstZap",
