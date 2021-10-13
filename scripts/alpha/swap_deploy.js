@@ -73,7 +73,7 @@ async function main(argv) {
   const swap = await swapContractFactory
     .connect(safeSigner)
     .deploy({ maxFeePerGas });
-  await waitForSafeTxDetails(swap.deployTransaction, safeSigner.service);
+  await waitForSafeTxDetails(swap.deployTransaction, safeSigner.service, 5);
 
   const swapName = await swap.NAME();
   console.log("Registering %s", swapName);

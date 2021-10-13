@@ -63,11 +63,16 @@ async function waitForSafeTxDetails(
   console.log("Waiting for transaction to be mined ...");
   let receipt;
   while (!receipt) {
-    receipt = await ethers.provider.waitForTransaction(
-      txHash,
-      confirmations,
-      timeout
-    );
+    process.stdout.write(".");
+    try {
+      receipt = await ethers.provider.waitForTransaction(
+        txHash,
+        confirmations,
+        timeout
+      );
+    } catch (e) {
+      console.log(e);
+    }
     await sleep(pollingDelay);
   }
   return receipt;
