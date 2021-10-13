@@ -11,7 +11,11 @@ const {
   acquireToken,
   deepEqual,
 } = require("../utils/helpers");
-const { WHALE_POOLS, FARM_TOKENS } = require("../utils/constants");
+const {
+  WHALE_POOLS,
+  FARM_TOKENS,
+  FARM_TOKEN_POOLS,
+} = require("../utils/constants");
 
 const IAddressRegistryV2 = artifacts.readArtifactSync("IAddressRegistryV2");
 const IDetailedERC20 = artifacts.readArtifactSync("IDetailedERC20");
@@ -503,6 +507,41 @@ describe("Contract: LpAccount", () => {
         .connect(adminSafe)
         ["registerErc20Token(address)"](token.address);
       await swap._setErc20Allocations([token.address]);
+
+      await expect(lpAccount.connect(lpSafe).swap(name, amount, 0)).to.not.be
+        .reverted;
+    });
+
+    it("Integrate with real swap", async () => {
+      const CrvToUsdcSwap = await ethers.getContractFactory("CrvToUsdcSwap");
+      const swap = await CrvToUsdcSwap.deploy();
+      await lpAccount.connect(adminSafe).registerSwap(swap.address);
+
+      const name = await swap.NAME();
+      const amount = tokenAmountToBigNumber(1);
+
+      const crvToken = await ethers.getContractAt(
+        "IDetailedERC20",
+        FARM_TOKENS["CRV"]
+      );
+      const usdcToken = await ethers.getContractAt(
+        "IDetailedERC20",
+        getStablecoinAddress("USDC", "MAINNET")
+      );
+      await erc20Allocation
+        .connect(adminSafe)
+        ["registerErc20Token(address)"](crvToken.address);
+      await erc20Allocation
+        .connect(adminSafe)
+        ["registerErc20Token(address)"](usdcToken.address);
+
+      await acquireToken(
+        FARM_TOKEN_POOLS["CRV"],
+        lpAccount.address,
+        crvToken,
+        "10000",
+        deployer.address
+      );
 
       await expect(lpAccount.connect(lpSafe).swap(name, amount, 0)).to.not.be
         .reverted;
