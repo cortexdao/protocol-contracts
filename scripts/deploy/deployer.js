@@ -222,6 +222,34 @@ async function deployZaps(lpAccount, erc20Allocation, adminSafe) {
   return zaps;
 }
 
+async function deploySwaps(lpAccount, erc20Allocation, adminSafe) {
+  const contracts = [
+    "AaveToDaiSwap",
+    "AaveToUsdcSwap",
+    "AaveToUsdtSwap",
+    "CrvToDaiSwap",
+    "CrvToUsdcSwap",
+    "CrvToUsdtSwap",
+  ];
+
+  const swaps = await Promise.all(
+    contracts.map(async (contract) => {
+      const Swap = await ethers.getContractFactory(contract);
+      return await Swap.deploy();
+    })
+  );
+
+  await Promise.all(
+    swaps.map(async (swap) => {
+      await lpAccount.connect(adminSafe).registerSwap(swap.address);
+      const erc20s = await swap.erc20Allocations();
+      await registerErc20Allocations(erc20Allocation, erc20s, adminSafe);
+    })
+  );
+
+  return swaps;
+}
+
 async function registerErc20Allocations(erc20Allocation, erc20s, adminSafe) {
   await Promise.all(
     erc20s.map(async (erc20) => {
@@ -268,6 +296,8 @@ async function deploy() {
   await deployAllocations(tvlManager, safes.adminSafe);
 
   await deployZaps(lpAccount, erc20Allocation, safes.adminSafe);
+
+  await deploySwaps(lpAccount, erc20Allocation, safes.adminSafe);
 
   return {
     ...safes,

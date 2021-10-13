@@ -131,6 +131,15 @@ const poolTests = [
   },
 ];
 
+const swapTests = [
+  //{ name: "aave-to-dai", symbol: "AAVE", outToken: "DAI" },
+  //{ name: "aave-to-usdc", symbol: "AAVE", outToken: "USDC" },
+  //{ name: "aave-to-usdt", symbol: "AAVE", outToken: "USDT" },
+  { name: "crv-to-dai", symbol: "CRV", outToken: "DAI" },
+  { name: "crv-to-usdc", symbol: "CRV", outToken: "USDC" },
+  { name: "crv-to-usdt", symbol: "CRV", outToken: "USDT" },
+];
+
 describe("Funding scenarios", () => {
   let deployer;
   let randomUser;
@@ -145,7 +154,7 @@ describe("Funding scenarios", () => {
   let lpAccount;
 
   let underlyerPools;
-  let underlyerTokens;
+  let underlyerTokens = {};
 
   // use EVM snapshots for test isolation
   let suiteSnapshotId;
@@ -440,44 +449,50 @@ describe("Funding scenarios", () => {
         });
 
         poolTests.forEach(({ name }) => {
-          describe(`${name} harvest`, async () => {
-            if (
-              !_.includes(["curve-aave", "curve-saave", "curve-susdv2"], name)
-            ) {
-              it("Should claim CRV", async () => {
-                const prevBalance = await crv.balanceOf(lpAccount.address);
-                await lpAccount.connect(lpSafe).claim(name);
-                const newBalance = await crv.balanceOf(lpAccount.address);
+          if (
+            !_.includes(["curve-aave", "curve-saave", "curve-susdv2"], name)
+          ) {
+            it(`Should claim CRV from ${name}`, async () => {
+              const prevBalance = await crv.balanceOf(lpAccount.address);
+              await lpAccount.connect(lpSafe).claim(name);
+              const newBalance = await crv.balanceOf(lpAccount.address);
 
-                expect(newBalance.sub(prevBalance)).to.be.gt(0);
-              });
-            } else if (!_.includes(["curve-susdv2"], name)) {
-              it("Should claim CRV and stkAAVE", async () => {
-                const prevCrvBalance = await crv.balanceOf(lpAccount.address);
-                const prevStkAaveBalance = await stkAave.balanceOf(
-                  lpAccount.address
-                );
-                await lpAccount.connect(lpSafe).claim(name);
-                const newCrvBalance = await crv.balanceOf(lpAccount.address);
-                const newStkAaveBalance = await stkAave.balanceOf(
-                  lpAccount.address
-                );
+              expect(newBalance.sub(prevBalance)).to.be.gt(0);
+            });
+          } else if (!_.includes(["curve-susdv2"], name)) {
+            it(`Should claim CRV and stkAAVE from ${name}`, async () => {
+              const prevCrvBalance = await crv.balanceOf(lpAccount.address);
+              const prevStkAaveBalance = await stkAave.balanceOf(
+                lpAccount.address
+              );
+              await lpAccount.connect(lpSafe).claim(name);
+              const newCrvBalance = await crv.balanceOf(lpAccount.address);
+              const newStkAaveBalance = await stkAave.balanceOf(
+                lpAccount.address
+              );
 
-                expect(newStkAaveBalance.sub(prevStkAaveBalance)).to.be.gt(0);
-                expect(newCrvBalance.sub(prevCrvBalance)).to.be.gt(0);
-              });
-            } else {
-              it("Should claim CRV and SNX", async () => {
-                const prevCrvBalance = await crv.balanceOf(lpAccount.address);
-                const prevSnxBalance = await snx.balanceOf(lpAccount.address);
-                await lpAccount.connect(lpSafe).claim(name);
-                const newCrvBalance = await crv.balanceOf(lpAccount.address);
-                const newSnxBalance = await snx.balanceOf(lpAccount.address);
+              expect(newStkAaveBalance.sub(prevStkAaveBalance)).to.be.gt(0);
+              expect(newCrvBalance.sub(prevCrvBalance)).to.be.gt(0);
+            });
+          } else {
+            it(`Should claim CRV and SNX from ${name}`, async () => {
+              const prevCrvBalance = await crv.balanceOf(lpAccount.address);
+              const prevSnxBalance = await snx.balanceOf(lpAccount.address);
+              await lpAccount.connect(lpSafe).claim(name);
+              const newCrvBalance = await crv.balanceOf(lpAccount.address);
+              const newSnxBalance = await snx.balanceOf(lpAccount.address);
 
-                expect(newSnxBalance.sub(prevSnxBalance)).to.be.gt(0);
-                expect(newCrvBalance.sub(prevCrvBalance)).to.be.gt(0);
-              });
-            }
+              expect(newSnxBalance.sub(prevSnxBalance)).to.be.gt(0);
+              expect(newCrvBalance.sub(prevCrvBalance)).to.be.gt(0);
+            });
+          }
+        });
+
+        swapTests.forEach(({ name, symbol }) => {
+          it(`Should swap ${symbol} with ${name}`, async () => {
+            const balance = await crv.balanceOf(lpAccount.address);
+            const amount = balance.div(swapTests.length);
+            await lpAccount.connect(lpSafe).swap(name, amount, 0);
           });
         });
       });
