@@ -9,6 +9,8 @@ const {
   acquireToken,
   impersonateAccount,
   forciblySendEth,
+  FAKE_ADDRESS,
+  bytes32,
 } = require("../utils/helpers");
 const { WHALE_POOLS } = require("../utils/constants");
 
@@ -21,18 +23,20 @@ console.debugging = false;
 const AAVE_ADDRESS = "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9";
 const STAKED_AAVE_ADDRESS = "0x4da27a545c0c5B758a6BA100e3a049001de870f5";
 
-describe("Aave Zaps", () => {
+describe.only("Aave Zaps", () => {
   /* signers */
   let deployer;
   let emergencySafe;
   let adminSafe;
-  let mApt;
-
-  /* contract factories */
-  let TvlManager;
+  let lpSafe;
 
   /* deployed contracts */
+  let lpAccount;
   let tvlManager;
+  let erc20Allocation;
+
+  /* mocks */
+  let addressRegistry;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -67,50 +71,75 @@ describe("Aave Zaps", () => {
     await timeMachine.revertToSnapshot(snapshotId);
   });
 
-  before(async () => {
-    [deployer, emergencySafe, adminSafe, mApt] = await ethers.getSigners();
+  before("Setup mock address registry", async () => {
+    [deployer, lpSafe, emergencySafe, adminSafe] = await ethers.getSigners();
 
-    const addressRegistry = await deployMockContract(
+    addressRegistry = await deployMockContract(
       deployer,
-      artifacts.require("IAddressRegistryV2").abi
+      artifacts.readArtifactSync("IAddressRegistryV2").abi
     );
 
+    // These registered addresses are setup for roles in the
+    // constructor for LpAccount
+    await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
+    await addressRegistry.mock.emergencySafeAddress.returns(
+      emergencySafe.address
+    );
+    // mAPT is never used, but we need to return something as a role
+    // is setup for it in the Erc20Allocation constructor
+    await addressRegistry.mock.mAptAddress.returns(FAKE_ADDRESS);
+  });
+
+  before("Deploy LP Account", async () => {
+    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+    const proxyAdmin = await ProxyAdmin.deploy();
+
+    const LpAccount = await ethers.getContractFactory("LpAccount");
+    const logic = await LpAccount.deploy();
+
+    const initData = LpAccount.interface.encodeFunctionData(
+      "initialize(address)",
+      [addressRegistry.address]
+    );
+
+    const TransparentUpgradeableProxy = await ethers.getContractFactory(
+      "TransparentUpgradeableProxy"
+    );
+    const proxy = await TransparentUpgradeableProxy.deploy(
+      logic.address,
+      proxyAdmin.address,
+      initData
+    );
+
+    lpAccount = await LpAccount.attach(proxy.address);
+  });
+
+  before("Prepare TVL Manager and ERC20 Allocation", async () => {
+    // deploy and register TVL Manager
+    const TvlManager = await ethers.getContractFactory("TvlManager", adminSafe);
+    tvlManager = await TvlManager.deploy(addressRegistry.address);
+
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("tvlManager"))
+      .returns(tvlManager.address);
+
+    // Oracle Adapter is locked after adding/removing allocations
     const oracleAdapter = await deployMockContract(
       deployer,
-      artifacts.require("ILockingOracle").abi
+      artifacts.readArtifactSync("OracleAdapter").abi
     );
     await oracleAdapter.mock.lock.returns();
+    await oracleAdapter.mock.lockFor.returns();
     await addressRegistry.mock.oracleAdapterAddress.returns(
       oracleAdapter.address
     );
 
-    /* These registered addresses are setup for roles in the
-     * constructor for Erc20Allocation:
-     * - emergencySafe (default admin role)
-     * - adminSafe (admin role)
-     * - mApt (contract role)
-     */
-    await addressRegistry.mock.emergencySafeAddress.returns(
-      emergencySafe.address
-    );
-    await addressRegistry.mock.mAptAddress.returns(mApt.address);
-    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
-
+    // deploy and register ERC20 allocation
     const Erc20Allocation = await ethers.getContractFactory("Erc20Allocation");
-    const erc20Allocation = await Erc20Allocation.deploy(
-      addressRegistry.address
-    );
+    erc20Allocation = await Erc20Allocation.deploy(addressRegistry.address);
 
-    /* These registered addresses are setup for roles in the
-     * constructor for TvlManager
-     * - emergencySafe (emergency role, default admin role)
-     * - adminSafe (admin role)
-     */
-    TvlManager = await ethers.getContractFactory("TvlManager");
-    tvlManager = await TvlManager.deploy(addressRegistry.address);
-    await tvlManager
-      .connect(adminSafe)
-      .registerAssetAllocation(erc20Allocation.address);
+    await tvlManager.registerAssetAllocation(erc20Allocation.address);
   });
 
   aTokenZaps.forEach((params) => {
@@ -127,12 +156,16 @@ describe("Aave Zaps", () => {
       let aToken;
       let stkAaveToken;
 
-      before("Deploy Zap", async () => {
+      before("Deploy zap", async () => {
         const zapFactory = await ethers.getContractFactory(
           contractName,
           adminSafe
         );
         zap = await zapFactory.deploy();
+      });
+
+      before("Register zap with LP Account", async () => {
+        await lpAccount.connect(adminSafe).registerZap(zap.address);
       });
 
       before("Attach to Mainnet Curve contracts", async () => {
@@ -145,6 +178,36 @@ describe("Aave Zaps", () => {
           "IStakedAave",
           STAKED_AAVE_ADDRESS
         );
+      });
+
+      before("Register allocations with TVL Manager", async () => {
+        const allocationNames = await zap.assetAllocations();
+        for (let name of allocationNames) {
+          name = name
+            .split("-")
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join("");
+          if (name === "Aave") {
+            name = "AaveStableCoin";
+          }
+          const allocationContractName = name + "Allocation";
+          const allocationFactory = await ethers.getContractFactory(
+            allocationContractName
+          );
+          const allocation = await allocationFactory.deploy();
+          await tvlManager
+            .connect(adminSafe)
+            .registerAssetAllocation(allocation.address);
+        }
+      });
+
+      before("Register tokens with ERC20 Allocation", async () => {
+        const erc20s = await zap.erc20Allocations();
+        for (const token of erc20s) {
+          await erc20Allocation
+            .connect(adminSafe)
+            ["registerErc20Token(address)"](token);
+        }
       });
 
       before("Fund Zap with Pool Underlyer", async () => {
