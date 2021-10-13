@@ -20,7 +20,7 @@ console.debugging = false;
 
 const CurvePoolAllocations = [
   {
-    contractName: "Curve3PoolAllocation",
+    contractName: "Curve3poolAllocation",
     poolName: "3Pool",
     // Curve sUSDv2 pool, holds DAI
     whaleAddress: WHALE_POOLS["DAI"],
@@ -30,8 +30,8 @@ const CurvePoolAllocations = [
     },
   },
   {
-    contractName: "CurveIronBankAllocation",
-    poolName: "IronBank",
+    contractName: "CurveIronbankAllocation",
+    poolName: "Ironbank",
     // ibDAIv2, holds cyDAI
     whaleAddress: "0xee8389d235E092b2945fE363e97CDBeD121A0439",
     numberOfCoins: 3,
@@ -61,9 +61,9 @@ const CurvePoolAllocations = [
     },
   },
   {
-    contractName: "CurveSusdV2Allocation",
+    contractName: "CurveSusdv2Allocation",
     poolName: "sUSDv2",
-    // 3Pool, holds DAI
+    // 3pool, holds DAI
     whaleAddress: "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7",
     numberOfCoins: 4,
     interfaceOverride: {
@@ -123,7 +123,7 @@ const CurveMetaPoolAllocations = [
     whaleAddress: "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B",
   },
   {
-    contractName: "CurveBusdV2Allocation",
+    contractName: "CurveBusdv2Allocation",
     primaryUnderlyerSymbol: "BUSD",
     // using the Curve pool itself as the "whale": see prior note
     whaleAddress: "0x4807862AA8b2bF68830e4C8dc86D0e9A998e085a",
@@ -536,13 +536,13 @@ describe("Allocations", () => {
 
     describe(`Curve ${primaryUnderlyerSymbol} allocation`, () => {
       let allocation;
-      let curve3PoolAllocation;
+      let curve3poolAllocation;
 
       // MetaPool
       let lpToken;
       let metaPool;
       let gauge;
-      // Curve 3Pool;
+      // Curve 3pool;
       let baseLpToken;
       let basePool;
 
@@ -555,12 +555,12 @@ describe("Allocations", () => {
       const daiIndex = 1;
 
       before("Deploy allocation contracts", async () => {
-        const Curve3PoolAllocation = await ethers.getContractFactory(
-          "Curve3PoolAllocation"
+        const Curve3poolAllocation = await ethers.getContractFactory(
+          "Curve3poolAllocation"
         );
-        curve3PoolAllocation = await Curve3PoolAllocation.deploy();
+        curve3poolAllocation = await Curve3poolAllocation.deploy();
         const CurveAllocation = await ethers.getContractFactory(contractName);
-        allocation = await CurveAllocation.deploy(curve3PoolAllocation.address);
+        allocation = await CurveAllocation.deploy(curve3poolAllocation.address);
       });
 
       // need to reset these for each pool
@@ -590,8 +590,8 @@ describe("Allocations", () => {
           lpAccount
         );
 
-        // 3Pool
-        const BASE_POOL_ADDRESS = await curve3PoolAllocation.STABLE_SWAP_ADDRESS();
+        // 3pool
+        const BASE_POOL_ADDRESS = await curve3poolAllocation.STABLE_SWAP_ADDRESS();
         basePool = await getContractAt(
           "IStableSwap",
           BASE_POOL_ADDRESS,
@@ -599,7 +599,7 @@ describe("Allocations", () => {
           lpAccount
         );
 
-        const BASE_LP_TOKEN_ADDRESS = await curve3PoolAllocation.LP_TOKEN_ADDRESS();
+        const BASE_LP_TOKEN_ADDRESS = await curve3poolAllocation.LP_TOKEN_ADDRESS();
         baseLpToken = await getContractAt(
           "IDetailedERC20",
           BASE_LP_TOKEN_ADDRESS,
