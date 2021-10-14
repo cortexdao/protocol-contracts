@@ -65,7 +65,8 @@ describe("Curve Zaps", () => {
       gaugeAddress: "0x462253b8F74B72304c145DB0e4Eebd326B22ca39",
       gaugeInterface: "ILiquidityGauge",
       numberOfCoins: 2,
-      whaleAddress: WHALE_POOLS["ADAI"],
+      whaleAddress: WHALE_POOLS["DAI"],
+      useUnwrapped: true,
     },
     {
       contractName: "CurveCompoundZap",
@@ -117,7 +118,7 @@ describe("Curve Zaps", () => {
     {
       contractName: "CurveBusdV2Zap",
       swapAddress: "0x4807862AA8b2bF68830e4C8dc86D0e9A998e085a",
-      swapInterface: "IStableSwap",
+      swapInterface: "IMetaPool",
       lpTokenAddress: "0x4807862AA8b2bF68830e4C8dc86D0e9A998e085a",
       gaugeAddress: "0xd4B22fEdcA85E684919955061fDf353b9d38389b",
       gaugeInterface: "ILiquidityGauge",
@@ -127,7 +128,7 @@ describe("Curve Zaps", () => {
     {
       contractName: "CurveFraxZap",
       swapAddress: "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B",
-      swapInterface: "IStableSwap",
+      swapInterface: "IMetaPool",
       lpTokenAddress: "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B",
       gaugeAddress: "0x72E158d38dbd50A483501c24f792bDAAA3e7D55C",
       gaugeInterface: "ILiquidityGauge",
@@ -138,7 +139,7 @@ describe("Curve Zaps", () => {
     {
       contractName: "CurveLusdZap",
       swapAddress: "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
-      swapInterface: "IStableSwap",
+      swapInterface: "IMetaPool",
       lpTokenAddress: "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
       gaugeAddress: "0x9B8519A9a00100720CCdC8a120fBeD319cA47a14",
       gaugeInterface: "ILiquidityGauge",
@@ -148,7 +149,7 @@ describe("Curve Zaps", () => {
     {
       contractName: "CurveMusdZap",
       swapAddress: "0x8474DdbE98F5aA3179B3B3F5942D724aFcdec9f6",
-      swapInterface: "IStableSwap",
+      swapInterface: "IMetaPool",
       lpTokenAddress: "0x1AEf73d49Dedc4b1778d0706583995958Dc862e6",
       gaugeAddress: "0x5f626c30EC1215f4EdCc9982265E8b1F411D1352",
       gaugeInterface: "ILiquidityGauge",
@@ -158,7 +159,7 @@ describe("Curve Zaps", () => {
     {
       contractName: "CurveUsdnZap",
       swapAddress: "0x0f9cb53Ebe405d49A0bbdBD291A65Ff571bC83e1",
-      swapInterface: "IStableSwap",
+      swapInterface: "IMetaPool",
       lpTokenAddress: "0x4f3E8F405CF5aFC05D68142F3783bDfE13811522",
       gaugeAddress: "0xF98450B5602fa59CC66e1379DFfB6FDDc724CfC4",
       gaugeInterface: "ILiquidityGauge",
@@ -168,7 +169,7 @@ describe("Curve Zaps", () => {
     {
       contractName: "CurveUsdpZap",
       swapAddress: "0x42d7025938bEc20B69cBae5A77421082407f053A",
-      swapInterface: "IStableSwap",
+      swapInterface: "IMetaPool",
       lpTokenAddress: "0x7Eb40E450b9655f4B3cC4259BCC731c63ff55ae6",
       gaugeAddress: "0x055be5DDB7A925BfEF3417FC157f53CA77cA7222",
       gaugeInterface: "ILiquidityGauge",
@@ -178,7 +179,7 @@ describe("Curve Zaps", () => {
     {
       contractName: "CurveUstZap",
       swapAddress: "0x890f4e345B1dAED0367A877a1612f86A1f86985f",
-      swapInterface: "IStableSwap",
+      swapInterface: "IMetaPool",
       lpTokenAddress: "0x94e131324b6054c0D789b190b2dAC504e4361b53",
       gaugeAddress: "0x3B7020743Bc2A4ca9EaF9D0722d42E20d6935855",
       gaugeInterface: "ILiquidityGauge",
