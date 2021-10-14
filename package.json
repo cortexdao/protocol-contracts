@@ -2,17 +2,8 @@
   "name": "@apy-finance/apy-core",
   "version": "8.1.0",
   "description": "",
-  "keywords": [
-    "ethereum",
-    "solidity",
-    "defi"
-  ],
-  "files": [
-    "contracts",
-    "artifacts",
-    "utils",
-    "deployed_addresses"
-  ],
+  "keywords": ["ethereum", "solidity", "defi"],
+  "files": ["contracts", "artifacts", "utils", "deployed_addresses"],
   "scripts": {
     "check": "yarn lint",
     "clean": "hardhat clean",
@@ -61,9 +52,9 @@
     "eslint": "^7.11.0",
     "eslint-config-prettier": "^6.14.0",
     "ethereum-waffle": "^3.0.0",
-    "ethers": "^5.4.7",
+    "ethers": "~5.4.7",
     "ganache-time-traveler": "^1.0.15",
-    "hardhat": "^2.5.0",
+    "hardhat": "2.6.6",
     "hardhat-contract-sizer": "^2.1.1",
     "husky": "4.0.10",
     "lint-staged": "^10.2.11",
@@ -84,5 +75,8 @@
     "commander": "^6.2.0",
     "lodash": "^4.17.21",
     "yargs": "^16.1.1"
-  }
+  },
+  "resolutions": {
+    "@ethereumjs/vm": "5.5.0"
+   }
 }
