@@ -288,14 +288,14 @@ describe("Curve Pool Zaps - LP Account integration", () => {
         const startingTokens = 100000;
 
         async function getTotalNormalizedBalance(allocationIds) {
-          let totalNormalizedBalance = new BigNumber.from(0);
+          let totalNormalizedBalance = BigNumber.from(0);
           for (const id of allocationIds) {
             const balance = await tvlManager.balanceOf(id);
             const decimals = await tvlManager.decimalsOf(id);
             // normalize each balance to 18 decimals
             const normalizedBalance = balance
-              .mul(new BigNumber.from(10).pow(18))
-              .div(new BigNumber.from(10).pow(decimals));
+              .mul(BigNumber.from(10).pow(18))
+              .div(BigNumber.from(10).pow(decimals));
             totalNormalizedBalance = totalNormalizedBalance.add(
               normalizedBalance
             );
