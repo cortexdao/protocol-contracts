@@ -287,6 +287,22 @@ describe("Curve Pool Zaps - LP Account integration", () => {
       underlyerIndices.forEach((underlyerIndex) => {
         const startingTokens = 100000;
 
+        async function getTotalNormalizedBalance(allocationIds) {
+          let totalNormalizedBalance = new BigNumber.from(0);
+          for (const id of allocationIds) {
+            const balance = await tvlManager.balanceOf(id);
+            const decimals = await tvlManager.decimalsOf(id);
+            // normalize each balance to 18 decimals
+            const normalizedBalance = balance
+              .mul(new BigNumber.from(10).pow(18))
+              .div(new BigNumber.from(10).pow(decimals));
+            totalNormalizedBalance = totalNormalizedBalance.add(
+              normalizedBalance
+            );
+          }
+          return totalNormalizedBalance;
+        }
+
         describe(`Underlyer index: ${underlyerIndex}`, () => {
           beforeEach("Fund LP Account with pool underlyer", async () => {
             let underlyerAddress;
@@ -406,29 +422,12 @@ describe("Curve Pool Zaps - LP Account integration", () => {
             }
           });
 
-          async function getTotalNormalizedBalance(allocationIds) {
-            let totalNormalizedBalance = new BigNumber.from(0);
-            for (const id of allocationIds) {
-              const balance = await tvlManager.balanceOf(id);
-              const decimals = await tvlManager.decimalsOf(id);
-              // normalize each balance to 18 decimals
-              const normalizedBalance = balance
-                .mul(new BigNumber.from(10).pow(18))
-                .div(new BigNumber.from(10).pow(decimals));
-              totalNormalizedBalance = totalNormalizedBalance.add(
-                normalizedBalance
-              );
-            }
-            return totalNormalizedBalance;
-          }
-
           it("Allocation picks up deployed balances", async () => {
             const allocationIds = await tvlManager.getAssetAllocationIds();
 
             const totalNormalizedBalance = await getTotalNormalizedBalance(
               allocationIds
             );
-            console.log("Total normalized balance: %s", totalNormalizedBalance);
 
             const amounts = new Array(numberOfCoins).fill("0");
             const decimals = await underlyerToken.decimals();
