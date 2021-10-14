@@ -10,10 +10,10 @@ import {
     IERC20
 } from "contracts/common/Imports.sol";
 import {
-    Curve3PoolUnderlyerConstants
+    Curve3poolUnderlyerConstants
 } from "contracts/protocols/curve/3pool/Constants.sol";
 
-abstract contract CurveZapBase is Curve3PoolUnderlyerConstants, IZap {
+abstract contract CurveZapBase is Curve3poolUnderlyerConstants, IZap {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 

@@ -3,7 +3,7 @@ pragma solidity 0.6.11;
 
 import {INameIdentifier} from "contracts/common/Imports.sol";
 
-abstract contract Curve3PoolUnderlyerConstants {
+abstract contract Curve3poolUnderlyerConstants {
     // underlyer addresses
     address public constant DAI_ADDRESS =
         0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -13,8 +13,8 @@ abstract contract Curve3PoolUnderlyerConstants {
         0xdAC17F958D2ee523a2206206994597C13D831ec7;
 }
 
-abstract contract Curve3PoolConstants is
-    Curve3PoolUnderlyerConstants,
+abstract contract Curve3poolConstants is
+    Curve3poolUnderlyerConstants,
     INameIdentifier
 {
     string public constant override NAME = "curve-3pool";

@@ -4,12 +4,12 @@ pragma experimental ABIEncoderV2;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAssetAllocation} from "contracts/common/Imports.sol";
-import {CurveBusdV2Constants} from "./Constants.sol";
+import {CurveBusdv2Constants} from "./Constants.sol";
 import {
     MetaPoolDepositorZap
 } from "contracts/protocols/curve/metapool/Imports.sol";
 
-contract CurveBusdV2Zap is MetaPoolDepositorZap, CurveBusdV2Constants {
+contract CurveBusdv2Zap is MetaPoolDepositorZap, CurveBusdv2Constants {
     constructor()
         public
         MetaPoolDepositorZap(

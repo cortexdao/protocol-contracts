@@ -8,5 +8,7 @@ import {AaveBasePool} from "./common/AaveBasePool.sol";
 import {ApyUnderlyerConstants} from "contracts/protocols/apy.sol";
 
 contract AaveUsdtZap is AaveBasePool, ApyUnderlyerConstants {
+    string public constant override NAME = "aave-usdt";
+
     constructor() public AaveBasePool(USDT_ADDRESS, LENDING_POOL_ADDRESS) {} // solhint-disable-line no-empty-blocks
 }

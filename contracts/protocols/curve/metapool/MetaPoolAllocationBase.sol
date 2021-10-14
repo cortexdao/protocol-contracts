@@ -11,12 +11,12 @@ import {
 import {IMetaPool} from "./IMetaPool.sol";
 
 import {
-    Curve3PoolAllocation
+    Curve3poolAllocation
 } from "contracts/protocols/curve/3pool/Allocation.sol";
 
 import {ImmutableAssetAllocation} from "contracts/tvl/Imports.sol";
 import {
-    Curve3PoolUnderlyerConstants
+    Curve3poolUnderlyerConstants
 } from "contracts/protocols/curve/3pool/Constants.sol";
 
 /**
@@ -30,15 +30,15 @@ import {
  */
 abstract contract MetaPoolAllocationBase is
     ImmutableAssetAllocation,
-    Curve3PoolUnderlyerConstants
+    Curve3poolUnderlyerConstants
 {
     using SafeMath for uint256;
 
-    /// @dev all existing Curve metapools are paired with 3Pool
-    Curve3PoolAllocation public immutable curve3PoolAllocation;
+    /// @dev all existing Curve metapools are paired with 3pool
+    Curve3poolAllocation public immutable curve3poolAllocation;
 
-    constructor(address curve3PoolAllocation_) public {
-        curve3PoolAllocation = Curve3PoolAllocation(curve3PoolAllocation_);
+    constructor(address curve3poolAllocation_) public {
+        curve3poolAllocation = Curve3poolAllocation(curve3poolAllocation_);
     }
 
     /**
@@ -79,7 +79,7 @@ abstract contract MetaPoolAllocationBase is
         }
         coin -= 1;
         uint256 balance =
-            curve3PoolAllocation.balanceOf(address(metaPool), uint8(coin));
+            curve3poolAllocation.balanceOf(address(metaPool), uint8(coin));
         // renormalize using the pool's tracked 3Crv balance
         IERC20 baseLpToken = IERC20(metaPool.coins(1));
         uint256 adjustedBalance =
