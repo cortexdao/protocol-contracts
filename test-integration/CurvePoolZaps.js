@@ -442,13 +442,16 @@ describe("Curve Pool Zaps - LP Account integration", () => {
             await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
 
             // allow some deviation from diverging stablecoin rates
-            const deviation = underlyerAmount.div(100);
+            const normalizedUnderlyerAmount = underlyerAmount
+              .mul(BigNumber.from(10).pow(18))
+              .div(BigNumber.from(10).pow(decimals));
+            const deviation = normalizedUnderlyerAmount.div(100);
 
             let newTotalNormalizedAmount = await getTotalNormalizedBalance(
               allocationIds
             );
             expect(
-              newTotalNormalizedAmount.sub(totalNormalizedBalance)
+              newTotalNormalizedAmount.sub(totalNormalizedBalance).abs()
             ).to.be.lt(deviation);
 
             const gaugeLpBalance = await gauge.balanceOf(lpAccount.address);
@@ -460,7 +463,7 @@ describe("Curve Pool Zaps - LP Account integration", () => {
               allocationIds
             );
             expect(
-              newTotalNormalizedAmount.sub(totalNormalizedBalance)
+              newTotalNormalizedAmount.sub(totalNormalizedBalance).abs()
             ).to.be.lt(deviation);
           });
         });
