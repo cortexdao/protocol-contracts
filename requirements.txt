@@ -1,3 +1,6 @@
-slither-analyzer==0.7.0
-solc-select==0.2.0
+crytic-compile==0.1.12
 mnemonic==0.19
+prettytable==0.7.2
+pysha3==1.0.2
+slither-analyzer==0.6.14
+solc-select==0.2.0
