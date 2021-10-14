@@ -29,6 +29,117 @@ const DAI_TOKEN = TOKEN_ADDRESSES[0];
 const USDC_TOKEN = TOKEN_ADDRESSES[1];
 const USDT_TOKEN = TOKEN_ADDRESSES[2];
 
+const depositTokens = ethers.BigNumber.from("1000000");
+
+const poolTests = [
+  {
+    name: "curve-3pool",
+    nCoins: 3,
+    decimals: [18, 6, 6],
+    ignoreIndexes: [],
+    gaugeAddress: "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A",
+  },
+  {
+    name: "curve-aave",
+    nCoins: 3,
+    decimals: [18, 6, 6],
+    ignoreIndexes: [],
+    gaugeAddress: "0xd662908ADA2Ea1916B3318327A97eB18aD588b5d",
+  },
+  {
+    name: "curve-alusd",
+    nCoins: 4,
+    decimals: [18, 18, 6, 6],
+    ignoreIndexes: [0],
+    gaugeAddress: "0x9582C4ADACB3BCE56Fea3e590F05c3ca2fb9C477",
+  },
+  {
+    name: "curve-busdv2",
+    nCoins: 4,
+    decimals: [18, 18, 6, 6],
+    ignoreIndexes: [0],
+    gaugeAddress: "0xd4B22fEdcA85E684919955061fDf353b9d38389b",
+  },
+  {
+    name: "curve-compound",
+    nCoins: 2,
+    decimals: [18, 6],
+    ignoreIndexes: [],
+    gaugeAddress: "0x7ca5b0a2910B33e9759DC7dDB0413949071D7575",
+  },
+  {
+    name: "curve-frax",
+    nCoins: 4,
+    decimals: [18, 18, 6, 6],
+    ignoreIndexes: [0],
+    gaugeAddress: "0x72E158d38dbd50A483501c24f792bDAAA3e7D55C",
+  },
+  {
+    name: "curve-ironbank",
+    nCoins: 3,
+    decimals: [18, 6, 6],
+    gaugeAddress: "0xF5194c3325202F456c95c1Cf0cA36f8475C1949F",
+  },
+  {
+    name: "curve-lusd",
+    nCoins: 4,
+    decimals: [18, 18, 6, 6],
+    ignoreIndexes: [0],
+    gaugeAddress: "0x9B8519A9a00100720CCdC8a120fBeD319cA47a14",
+  },
+  {
+    name: "curve-musd",
+    nCoins: 4,
+    decimals: [18, 18, 6, 6],
+    ignoreIndexes: [0],
+    gaugeAddress: "0x5f626c30EC1215f4EdCc9982265E8b1F411D1352",
+  },
+  {
+    name: "curve-saave",
+    nCoins: 2,
+    decimals: [18, 18],
+    ignoreIndexes: [1],
+    gaugeAddress: "0x462253b8F74B72304c145DB0e4Eebd326B22ca39",
+  },
+  {
+    name: "curve-susdv2",
+    nCoins: 4,
+    decimals: [18, 6, 6, 18],
+    ignoreIndexes: [3],
+    gaugeAddress: "0xA90996896660DEcC6E997655E065b23788857849",
+  },
+  {
+    name: "curve-usdn",
+    nCoins: 4,
+    decimals: [18, 18, 6, 6],
+    ignoreIndexes: [0],
+    gaugeAddress: "0xF98450B5602fa59CC66e1379DFfB6FDDc724CfC4",
+  },
+  {
+    name: "curve-usdp",
+    nCoins: 4,
+    decimals: [18, 18, 6, 6],
+    ignoreIndexes: [0],
+    gaugeAddress: "0x055be5DDB7A925BfEF3417FC157f53CA77cA7222",
+  },
+  {
+    name: "curve-ust",
+    nCoins: 4,
+    decimals: [18, 18, 6, 6],
+    ignoreIndexes: [0],
+    gaugeAddress: "0x3B7020743Bc2A4ca9EaF9D0722d42E20d6935855",
+  },
+];
+
+const swapTests = [
+  //{ name: "aave-to-dai", symbol: "AAVE", outToken: "DAI" },
+  //{ name: "aave-to-usdc", symbol: "AAVE", outToken: "USDC" },
+  //{ name: "aave-to-usdt", symbol: "AAVE", outToken: "USDT" },
+  { name: "crv-to-dai", symbol: "CRV", outToken: "daiToken" },
+  { name: "crv-to-usdc", symbol: "CRV", outToken: "usdcToken" },
+  { name: "crv-to-usdt", symbol: "CRV", outToken: "usdtToken" },
+];
+
 describe("Funding scenarios", () => {
   let deployer;
   let randomUser;
@@ -44,10 +155,6 @@ describe("Funding scenarios", () => {
 
   let underlyerPools;
   let underlyerTokens = {};
-
-  let daiToken;
-  let usdcToken;
-  let usdtToken;
 
   // use EVM snapshots for test isolation
   let suiteSnapshotId;
@@ -102,7 +209,7 @@ describe("Funding scenarios", () => {
       WHALE_POOLS["DAI"],
       deployer,
       underlyerTokens.daiToken,
-      "1000000",
+      depositTokens.toString(),
       deployer
     );
 
@@ -110,7 +217,7 @@ describe("Funding scenarios", () => {
       WHALE_POOLS["USDC"],
       deployer,
       underlyerTokens.usdcToken,
-      "1000000",
+      depositTokens.toString(),
       deployer
     );
 
@@ -118,23 +225,27 @@ describe("Funding scenarios", () => {
       WHALE_POOLS["USDT"],
       deployer,
       underlyerTokens.usdtToken,
-      "1000000",
+      depositTokens.toString(),
       deployer
     );
   });
 
   describe("Normal funding", async () => {
-    [
+    let fundingSnapshot;
+
+    const fundingTests = [
       { tokenKey: "daiToken", poolKey: "daiPool" },
       { tokenKey: "usdcToken", poolKey: "usdcPool" },
       { tokenKey: "usdtToken", poolKey: "usdtPool" },
-    ].forEach(({ tokenKey, poolKey }) => {
+    ];
+
+    fundingTests.forEach(({ tokenKey, poolKey }) => {
       it(`Should add liquidity to a pool`, async () => {
         const underlyer = underlyerTokens[tokenKey];
         const underlyerPool = underlyerPools[poolKey];
 
         const amount = tokenAmountToBigNumber(
-          "100000",
+          depositTokens.toString(),
           await underlyer.decimals()
         );
         const prevUserBalance = await underlyer.balanceOf(deployer.address);
@@ -156,8 +267,13 @@ describe("Funding scenarios", () => {
 
         const newUserApt = await underlyerPool.balanceOf(deployer.address);
         expect(newUserApt).to.be.gt(0);
-      });
 
+        const snapshot = await timeMachine.takeSnapshot();
+        fundingSnapshot = snapshot["result"];
+      });
+    });
+
+    fundingTests.forEach(({ tokenKey, poolKey }) => {
       it("Should remove liquidity from a pool", async () => {
         const underlyer = underlyerTokens[tokenKey];
         const underlyerPool = underlyerPools[poolKey];
@@ -186,6 +302,8 @@ describe("Funding scenarios", () => {
     });
 
     it("Should lend pool liquidity to the LP Account", async () => {
+      await timeMachine.revertToSnapshot(fundingSnapshot);
+
       const daiToken = underlyerTokens.daiToken;
       const daiPool = underlyerPools.daiPool;
 
@@ -245,114 +363,16 @@ describe("Funding scenarios", () => {
     });
 
     describe("Run zaps", () => {
-      const poolTests = [
-        {
-          name: "curve-3pool",
-          nCoins: 3,
-          decimals: [18, 6, 6],
-          ignoreIndexes: [],
-          gaugeAddress: "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A",
-        },
-        {
-          name: "curve-aave",
-          nCoins: 3,
-          decimals: [18, 6, 6],
-          ignoreIndexes: [],
-          gaugeAddress: "0xd662908ADA2Ea1916B3318327A97eB18aD588b5d",
-        },
-        {
-          name: "curve-alusd",
-          nCoins: 4,
-          decimals: [18, 18, 6, 6],
-          ignoreIndexes: [0],
-          gaugeAddress: "0x9582C4ADACB3BCE56Fea3e590F05c3ca2fb9C477",
-        },
-        {
-          name: "curve-busdv2",
-          nCoins: 4,
-          decimals: [18, 18, 6, 6],
-          ignoreIndexes: [0],
-          gaugeAddress: "0xd4B22fEdcA85E684919955061fDf353b9d38389b",
-        },
-        {
-          name: "curve-compound",
-          nCoins: 2,
-          decimals: [18, 6],
-          ignoreIndexes: [],
-          gaugeAddress: "0x7ca5b0a2910B33e9759DC7dDB0413949071D7575",
-        },
-        {
-          name: "curve-frax",
-          nCoins: 4,
-          decimals: [18, 18, 6, 6],
-          ignoreIndexes: [0],
-          gaugeAddress: "0x72E158d38dbd50A483501c24f792bDAAA3e7D55C",
-        },
-        {
-          name: "curve-ironbank",
-          nCoins: 3,
-          decimals: [18, 6, 6],
-          gaugeAddress: "0xF5194c3325202F456c95c1Cf0cA36f8475C1949F",
-        },
-        {
-          name: "curve-lusd",
-          nCoins: 4,
-          decimals: [18, 18, 6, 6],
-          ignoreIndexes: [0],
-          gaugeAddress: "0x9B8519A9a00100720CCdC8a120fBeD319cA47a14",
-        },
-        {
-          name: "curve-musd",
-          nCoins: 4,
-          decimals: [18, 18, 6, 6],
-          ignoreIndexes: [0],
-          gaugeAddress: "0x5f626c30EC1215f4EdCc9982265E8b1F411D1352",
-        },
-        {
-          name: "curve-saave",
-          nCoins: 2,
-          decimals: [18, 18],
-          ignoreIndexes: [1],
-          gaugeAddress: "0x462253b8F74B72304c145DB0e4Eebd326B22ca39",
-        },
-        {
-          name: "curve-susdv2",
-          nCoins: 4,
-          decimals: [18, 6, 6, 18],
-          ignoreIndexes: [3],
-          gaugeAddress: "0xA90996896660DEcC6E997655E065b23788857849",
-        },
-        {
-          name: "curve-usdn",
-          nCoins: 4,
-          decimals: [18, 18, 6, 6],
-          ignoreIndexes: [0],
-          gaugeAddress: "0xF98450B5602fa59CC66e1379DFfB6FDDc724CfC4",
-        },
-        {
-          name: "curve-usdp",
-          nCoins: 4,
-          decimals: [18, 18, 6, 6],
-          ignoreIndexes: [0],
-          gaugeAddress: "0x055be5DDB7A925BfEF3417FC157f53CA77cA7222",
-        },
-        {
-          name: "curve-ust",
-          nCoins: 4,
-          decimals: [18, 18, 6, 6],
-          ignoreIndexes: [0],
-          gaugeAddress: "0x3B7020743Bc2A4ca9EaF9D0722d42E20d6935855",
-        },
-      ];
-
       function testDeploy(name, nCoins, decimals, ignoreIndexes) {
         return _.range(nCoins).forEach((index) => {
           if (!_.includes(ignoreIndexes, index)) {
             it(`Should deploy to token ${index} the pool`, async () => {
-              //const amounts = [tokenAmountToBigNumber("1000", 18), 0, 0];
-
               const amounts = _.times(nCoins, _.constant(0));
-              amounts[index] = tokenAmountToBigNumber("1000", decimals[index]);
+              const amountToDeploy = depositTokens.div(poolTests.length + 1);
+              amounts[index] = tokenAmountToBigNumber(
+                amountToDeploy.toString(),
+                decimals[index]
+              );
               await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
             });
           }
@@ -376,18 +396,7 @@ describe("Funding scenarios", () => {
 
       poolTests.forEach(
         ({ name, nCoins, decimals, ignoreIndexes, gaugeAddress }) => {
-          describe(name, () => {
-            let subsuiteSnapshotId;
-
-            before(async () => {
-              const snapshot = await timeMachine.takeSnapshot();
-              subsuiteSnapshotId = snapshot["result"];
-            });
-
-            after(async () => {
-              await timeMachine.revertToSnapshot(subsuiteSnapshotId);
-            });
-
+          describe(`${name} liquidity`, () => {
             testDeploy(name, nCoins, decimals, ignoreIndexes);
 
             describe("Should unwind each token from the pool", () => {
@@ -404,81 +413,102 @@ describe("Funding scenarios", () => {
 
               testUnwind(name, nCoins, gaugeAddress);
             });
-
-            describe("Should claim rewards from the pool", async () => {
-              let crv;
-              let stkAave;
-              let snx;
-
-              before(async () => {
-                const stakeTime = 60 * 60 * 24 * 30; // 1 month
-                await hre.network.provider.send("evm_increaseTime", [
-                  stakeTime,
-                ]);
-                // advance a few blocks just in case
-                await Promise.all(
-                  _.range(10).map(() => hre.network.provider.send("evm_mine"))
-                );
-              });
-
-              before(async () => {
-                crv = await ethers.getContractAt(
-                  "IDetailedERC20",
-                  FARM_TOKENS["CRV"]
-                );
-
-                stkAave = await ethers.getContractAt(
-                  "IDetailedERC20",
-                  FARM_TOKENS["stkAAVE"]
-                );
-
-                snx = await ethers.getContractAt(
-                  "IDetailedERC20",
-                  FARM_TOKENS["SNX"]
-                );
-              });
-
-              if (
-                !_.includes(["curve-aave", "curve-saave", "curve-susdv2"], name)
-              ) {
-                it("Claim CRV", async () => {
-                  const prevBalance = await crv.balanceOf(lpAccount.address);
-                  await lpAccount.connect(lpSafe).claim(name);
-                  const newBalance = await crv.balanceOf(lpAccount.address);
-
-                  expect(newBalance.sub(prevBalance)).to.be.gt(0);
-                });
-              } else if (!_.includes(["curve-susdv2"], name)) {
-                it("Claim CRV and stkAAVE", async () => {
-                  const prevCrvBalance = await crv.balanceOf(lpAccount.address);
-                  const prevStkAaveBalance = await stkAave.balanceOf(
-                    lpAccount.address
-                  );
-                  await lpAccount.connect(lpSafe).claim(name);
-                  const newCrvBalance = await crv.balanceOf(lpAccount.address);
-                  const newStkAaveBalance = await stkAave.balanceOf(
-                    lpAccount.address
-                  );
-
-                  expect(newStkAaveBalance.sub(prevStkAaveBalance)).to.be.gt(0);
-                  expect(newCrvBalance.sub(prevCrvBalance)).to.be.gt(0);
-                });
-              } else {
-                it("Claim CRV and SNX", async () => {
-                  const prevCrvBalance = await crv.balanceOf(lpAccount.address);
-                  const prevSnxBalance = await snx.balanceOf(lpAccount.address);
-                  await lpAccount.connect(lpSafe).claim(name);
-                  const newCrvBalance = await crv.balanceOf(lpAccount.address);
-                  const newSnxBalance = await snx.balanceOf(lpAccount.address);
-
-                  expect(newSnxBalance.sub(prevSnxBalance)).to.be.gt(0);
-                  expect(newCrvBalance.sub(prevCrvBalance)).to.be.gt(0);
-                });
-              }
-            });
           });
         }
       );
+
+      describe("Farming for 1 month / 10 blocks...", async () => {
+        let crv;
+        let stkAave;
+        let snx;
+
+        before(async () => {
+          const stakeTime = 60 * 60 * 24 * 30; // 1 month
+          await hre.network.provider.send("evm_increaseTime", [stakeTime]);
+          // advance a few blocks just in case
+          await Promise.all(
+            _.range(10).map(() => hre.network.provider.send("evm_mine"))
+          );
+        });
+
+        before(async () => {
+          crv = await ethers.getContractAt(
+            "IDetailedERC20",
+            FARM_TOKENS["CRV"]
+          );
+
+          stkAave = await ethers.getContractAt(
+            "IDetailedERC20",
+            FARM_TOKENS["stkAAVE"]
+          );
+
+          snx = await ethers.getContractAt(
+            "IDetailedERC20",
+            FARM_TOKENS["SNX"]
+          );
+        });
+
+        poolTests.forEach(({ name }) => {
+          if (
+            !_.includes(["curve-aave", "curve-saave", "curve-susdv2"], name)
+          ) {
+            it(`Should claim CRV from ${name}`, async () => {
+              const prevBalance = await crv.balanceOf(lpAccount.address);
+              await lpAccount.connect(lpSafe).claim(name);
+              const newBalance = await crv.balanceOf(lpAccount.address);
+
+              expect(newBalance.sub(prevBalance)).to.be.gt(0);
+            });
+          } else if (!_.includes(["curve-susdv2"], name)) {
+            it(`Should claim CRV and stkAAVE from ${name}`, async () => {
+              const prevCrvBalance = await crv.balanceOf(lpAccount.address);
+              const prevStkAaveBalance = await stkAave.balanceOf(
+                lpAccount.address
+              );
+              await lpAccount.connect(lpSafe).claim(name);
+              const newCrvBalance = await crv.balanceOf(lpAccount.address);
+              const newStkAaveBalance = await stkAave.balanceOf(
+                lpAccount.address
+              );
+
+              expect(newStkAaveBalance.sub(prevStkAaveBalance)).to.be.gt(0);
+              expect(newCrvBalance.sub(prevCrvBalance)).to.be.gt(0);
+            });
+          } else {
+            it(`Should claim CRV and SNX from ${name}`, async () => {
+              const prevCrvBalance = await crv.balanceOf(lpAccount.address);
+              const prevSnxBalance = await snx.balanceOf(lpAccount.address);
+              await lpAccount.connect(lpSafe).claim(name);
+              const newCrvBalance = await crv.balanceOf(lpAccount.address);
+              const newSnxBalance = await snx.balanceOf(lpAccount.address);
+
+              expect(newSnxBalance.sub(prevSnxBalance)).to.be.gt(0);
+              expect(newCrvBalance.sub(prevCrvBalance)).to.be.gt(0);
+            });
+          }
+        });
+
+        swapTests.forEach(({ name, symbol, outToken }) => {
+          it(`Should swap ${symbol} with ${name}`, async () => {
+            const prevRewardBalance = await crv.balanceOf(lpAccount.address);
+            const amount = prevRewardBalance.div(swapTests.length);
+
+            const prevUnderlyerBalance = await underlyerTokens[
+              outToken
+            ].balanceOf(lpAccount.address);
+
+            await lpAccount.connect(lpSafe).swap(name, amount, 0);
+
+            const newRewardBalance = await crv.balanceOf(lpAccount.address);
+            const newUnderlyerBalance = await underlyerTokens[
+              outToken
+            ].balanceOf(lpAccount.address);
+
+            expect(prevRewardBalance.sub(newRewardBalance)).to.be.equal(amount);
+            expect(newUnderlyerBalance.sub(prevUnderlyerBalance)).to.be.gt(0);
+          });
+        });
+      });
     });
   });
 });
