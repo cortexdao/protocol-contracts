@@ -422,7 +422,7 @@ describe("Curve Pool Zaps - LP Account integration", () => {
             return totalNormalizedBalance;
           }
 
-          it.only("Allocation picks up deployed balances", async () => {
+          it("Allocation picks up deployed balances", async () => {
             const allocationIds = await tvlManager.getAssetAllocationIds();
 
             const totalNormalizedBalance = await getTotalNormalizedBalance(
@@ -442,6 +442,7 @@ describe("Curve Pool Zaps - LP Account integration", () => {
             const name = await zap.NAME();
             await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
 
+            // allow some deviation from diverging stablecoin rates
             const deviation = underlyerAmount.div(100);
 
             let newTotalNormalizedAmount = await getTotalNormalizedBalance(
