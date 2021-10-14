@@ -286,15 +286,14 @@ contract LpAccount is
         try oracleAdapter.lockFor(lockPeriod_) {} catch Error(
             string memory reason
         ) {
-            if (
+            // Silence the revert in the case when Oracle Adapter is already
+            // locked but with longer period.  In other cases, bubble
+            // up the revert.
+            require(
                 keccak256(bytes(reason)) ==
-                keccak256(bytes("CANNOT_SHORTEN_LOCK"))
-            ) {
-                // Since Oracle Adapter is already locked (but with longer period)
-                // just let the error pass.
-            } else {
-                revert(reason);
-            }
+                    keccak256(bytes("CANNOT_SHORTEN_LOCK")),
+                reason
+            );
         } catch (bytes memory) {
             revert("UNKNOWN_REASON");
         }
