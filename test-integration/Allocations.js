@@ -43,8 +43,8 @@ const CurvePoolAllocations = [
   {
     contractName: "CurveSaaveAllocation",
     poolName: "sAAVE",
-    // Curve sUSDv2 pool, holds DAI
-    whaleAddress: WHALE_POOLS["DAI"],
+    // Aave whale, holds aDAI
+    whaleAddress: "0x3DdfA8eC3052539b6C9549F12cEA2C295cfF5296",
     numberOfCoins: 2,
     interfaceOverride: {
       IStableSwap: "IStableSwap2",
