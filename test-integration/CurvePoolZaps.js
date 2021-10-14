@@ -1,6 +1,7 @@
 const hre = require("hardhat");
 const { expect } = require("chai");
 const { ethers, waffle, artifacts } = hre;
+const { BigNumber } = ethers;
 const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
 const {
@@ -107,6 +108,20 @@ describe("Curve Pool Zaps - LP Account integration", () => {
     },
   ];
 
+  async function getTotalNormalizedBalance(allocationIds) {
+    let totalNormalizedBalance = BigNumber.from(0);
+    for (const id of allocationIds) {
+      const balance = await tvlManager.balanceOf(id);
+      const decimals = await tvlManager.decimalsOf(id);
+      // normalize each balance to 18 decimals
+      const normalizedBalance = balance
+        .mul(BigNumber.from(10).pow(18))
+        .div(BigNumber.from(10).pow(decimals));
+      totalNormalizedBalance = totalNormalizedBalance.add(normalizedBalance);
+    }
+    return totalNormalizedBalance;
+  }
+
   beforeEach(async () => {
     let snapshot = await timeMachine.takeSnapshot();
     snapshotId = snapshot["result"];
@@ -158,6 +173,8 @@ describe("Curve Pool Zaps - LP Account integration", () => {
     );
 
     lpAccount = await LpAccount.attach(proxy.address);
+
+    await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
   });
 
   before("Prepare TVL Manager and ERC20 Allocation", async () => {
@@ -282,8 +299,10 @@ describe("Curve Pool Zaps - LP Account integration", () => {
       });
 
       underlyerIndices.forEach((underlyerIndex) => {
+        const startingTokens = 100000;
+
         describe(`Underlyer index: ${underlyerIndex}`, () => {
-          before("Fund LP Account with pool underlyer", async () => {
+          beforeEach("Fund LP Account with pool underlyer", async () => {
             let underlyerAddress;
             if (useUnwrapped) {
               underlyerAddress = await stableSwap.underlying_coins(
@@ -298,7 +317,7 @@ describe("Curve Pool Zaps - LP Account integration", () => {
               underlyerAddress
             );
             const amount = tokenAmountToBigNumber(
-              100000,
+              startingTokens,
               await underlyerToken.decimals()
             );
 
@@ -313,8 +332,9 @@ describe("Curve Pool Zaps - LP Account integration", () => {
 
           it("Deploy and unwind", async () => {
             const amounts = new Array(numberOfCoins).fill("0");
+            // deposit 1% of the starting amount
             const underlyerAmount = tokenAmountToBigNumber(
-              1000,
+              startingTokens * 0.01,
               await underlyerToken.decimals()
             );
             amounts[underlyerIndex] = underlyerAmount;
@@ -367,8 +387,9 @@ describe("Curve Pool Zaps - LP Account integration", () => {
             }
 
             const amounts = new Array(numberOfCoins).fill("0");
+            // deposit 1% of the starting amount
             const underlyerAmount = tokenAmountToBigNumber(
-              100000,
+              startingTokens * 0.01,
               await underlyerToken.decimals()
             );
             amounts[underlyerIndex] = underlyerAmount;
@@ -397,6 +418,51 @@ describe("Curve Pool Zaps - LP Account integration", () => {
               );
               expect(await token.balanceOf(lpAccount.address)).to.be.gt(0);
             }
+          });
+
+          it("Allocation picks up deployed balances", async () => {
+            const allocationIds = await tvlManager.getAssetAllocationIds();
+
+            const totalNormalizedBalance = await getTotalNormalizedBalance(
+              allocationIds
+            );
+
+            const amounts = new Array(numberOfCoins).fill("0");
+            const decimals = await underlyerToken.decimals();
+            // deposit 1% of the starting amount
+            const underlyerAmount = tokenAmountToBigNumber(
+              startingTokens * 0.01,
+              decimals
+            );
+            amounts[underlyerIndex] = underlyerAmount;
+
+            const name = await zap.NAME();
+            await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
+
+            // allow some deviation from diverging stablecoin rates
+            const normalizedUnderlyerAmount = underlyerAmount
+              .mul(BigNumber.from(10).pow(18))
+              .div(BigNumber.from(10).pow(decimals));
+            const deviation = normalizedUnderlyerAmount.div(100);
+
+            let newTotalNormalizedAmount = await getTotalNormalizedBalance(
+              allocationIds
+            );
+            expect(
+              newTotalNormalizedAmount.sub(totalNormalizedBalance).abs()
+            ).to.be.lt(deviation);
+
+            const gaugeLpBalance = await gauge.balanceOf(lpAccount.address);
+            await lpAccount
+              .connect(lpSafe)
+              .unwindStrategy(name, gaugeLpBalance, underlyerIndex);
+
+            newTotalNormalizedAmount = await getTotalNormalizedBalance(
+              allocationIds
+            );
+            expect(
+              newTotalNormalizedAmount.sub(totalNormalizedBalance).abs()
+            ).to.be.lt(deviation);
           });
         });
       });

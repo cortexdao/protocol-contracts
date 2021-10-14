@@ -47,7 +47,7 @@ contract CurveCompoundAllocation is
     {
         IOldStableSwap2 pool = IOldStableSwap2(STABLE_SWAP_ADDRESS);
         CTokenInterface cyToken = CTokenInterface(pool.coins(tokenIndex));
-        return balance.mul(cyToken.exchangeRateStored());
+        return balance.mul(cyToken.exchangeRateStored()).div(10**uint256(18));
     }
 
     function _getTokenData()
