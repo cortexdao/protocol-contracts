@@ -4,7 +4,6 @@ const { ethers, waffle, artifacts } = hre;
 const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
 const {
-  FAKE_ADDRESS,
   bytes32,
   tokenAmountToBigNumber,
   getStablecoinAddress,
@@ -140,10 +139,6 @@ describe("Contract: LpAccount", () => {
     await addressRegistry.mock.oracleAdapterAddress.returns(
       oracleAdapter.address
     );
-
-    // mAPT is never used, but we need to return something as a role
-    // is setup for it in the Erc20Allocation constructor
-    await addressRegistry.mock.mAptAddress.returns(FAKE_ADDRESS);
 
     // deploy and register ERC20 allocation
     const Erc20Allocation = await ethers.getContractFactory("Erc20Allocation");

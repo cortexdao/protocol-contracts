@@ -3,11 +3,11 @@ pragma solidity 0.6.11;
 
 import {INameIdentifier} from "contracts/common/Imports.sol";
 import {
-    Curve3PoolUnderlyerConstants
+    Curve3poolUnderlyerConstants
 } from "contracts/protocols/curve/3pool/Constants.sol";
 
 abstract contract CurveCompoundConstants is
-    Curve3PoolUnderlyerConstants,
+    Curve3poolUnderlyerConstants,
     INameIdentifier
 {
     string public constant override NAME = "curve-compound";

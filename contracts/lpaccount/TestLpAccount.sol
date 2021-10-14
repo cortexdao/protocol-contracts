@@ -6,6 +6,10 @@ import {LpAccount} from "./LpAccount.sol";
 import {TestLpAccountStorage} from "./TestLpAccountStorage.sol";
 
 contract TestLpAccount is TestLpAccountStorage, LpAccount {
+    function testLockOracleAdapter(uint256 lockPeriod) external {
+        _lockOracleAdapter(lockPeriod);
+    }
+
     function _deployCalls() external view returns (uint256[][] memory) {
         return _deploysArray;
     }

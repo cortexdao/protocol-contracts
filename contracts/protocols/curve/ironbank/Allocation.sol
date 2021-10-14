@@ -16,12 +16,12 @@ import {
     CurveAllocationBase
 } from "contracts/protocols/curve/common/Imports.sol";
 
-import {CurveIronBankConstants} from "./Constants.sol";
+import {CurveIronbankConstants} from "./Constants.sol";
 
-contract CurveIronBankAllocation is
+contract CurveIronbankAllocation is
     CurveAllocationBase,
     ImmutableAssetAllocation,
-    CurveIronBankConstants
+    CurveIronbankConstants
 {
     function balanceOf(address account, uint8 tokenIndex)
         public

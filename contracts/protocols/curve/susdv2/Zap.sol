@@ -9,10 +9,10 @@ import {
     IOldStableSwap4 as IStableSwap,
     ILiquidityGauge
 } from "contracts/protocols/curve/common/interfaces/Imports.sol";
-import {CurveSusdV2Constants} from "./Constants.sol";
+import {CurveSusdv2Constants} from "./Constants.sol";
 import {CurveGaugeZapBase} from "contracts/protocols/curve/common/Imports.sol";
 
-contract CurveSusdV2Zap is CurveGaugeZapBase, CurveSusdV2Constants {
+contract CurveSusdv2Zap is CurveGaugeZapBase, CurveSusdv2Constants {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 

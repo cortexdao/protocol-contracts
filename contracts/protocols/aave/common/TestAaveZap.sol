@@ -8,6 +8,8 @@ import {IAssetAllocation} from "contracts/common/Imports.sol";
 import {AaveBasePool} from "./AaveBasePool.sol";
 
 contract TestAaveZap is AaveBasePool {
+    string public constant override NAME = "aave-test";
+
     constructor(address underlyerAddress, address lendingAddress)
         public
         AaveBasePool(underlyerAddress, lendingAddress)
