@@ -94,13 +94,13 @@ const poolTests = [
     ignoreIndexes: [0],
     gaugeAddress: "0x5f626c30EC1215f4EdCc9982265E8b1F411D1352",
   },
-  //{
-  //  name: "curve-saave",
-  //  nCoins: 2,
-  //  decimals: [18, 18],
-  //  ignoreIndexes: [1],
-  //  gaugeAddress: "0x462253b8F74B72304c145DB0e4Eebd326B22ca39",
-  //},
+  {
+    name: "curve-saave",
+    nCoins: 2,
+    decimals: [18, 18],
+    ignoreIndexes: [1],
+    gaugeAddress: "0x462253b8F74B72304c145DB0e4Eebd326B22ca39",
+  },
   {
     name: "curve-susdv2",
     nCoins: 4,
