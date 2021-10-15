@@ -122,6 +122,22 @@ describe("Curve Pool Zaps - LP Account integration", () => {
     return totalNormalizedBalance;
   }
 
+  async function numAllocationIds(zap) {
+    const numErc20s = (await zap.erc20Allocations()).length;
+    const allocationNames = await zap.assetAllocations();
+    let totalNumIds = numErc20s;
+    for (const name of allocationNames) {
+      const allocationAddress = await tvlManager.getAssetAllocation(name);
+      const allocation = await ethers.getContractAt(
+        "ImmutableAssetAllocation",
+        allocationAddress
+      );
+      const numTokens = (await allocation.tokens()).length;
+      totalNumIds += numTokens;
+    }
+    return totalNumIds;
+  }
+
   beforeEach(async () => {
     let snapshot = await timeMachine.takeSnapshot();
     snapshotId = snapshot["result"];
@@ -422,6 +438,8 @@ describe("Curve Pool Zaps - LP Account integration", () => {
 
           it("Allocation picks up deployed balances", async () => {
             const allocationIds = await tvlManager.getAssetAllocationIds();
+            const expectedNumIds = await numAllocationIds(zap);
+            expect(allocationIds.length).to.equal(expectedNumIds);
 
             const totalNormalizedBalance = await getTotalNormalizedBalance(
               allocationIds
