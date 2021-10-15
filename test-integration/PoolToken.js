@@ -1,5 +1,5 @@
 const { assert, expect } = require("chai");
-const { waffle, ethers } = require("hardhat");
+const { ethers } = require("hardhat");
 const { AddressZero: ZERO_ADDRESS, MaxUint256: MAX_UINT256 } = ethers.constants;
 const {
   impersonateAccount,
@@ -17,8 +17,8 @@ const {
   expectEventInTransaction,
   deployAggregator,
   forciblySendEth,
+  generateContractAddress,
 } = require("../utils/helpers");
-const { deployMockContract } = waffle;
 
 const link = (amount) => tokenAmountToBigNumber(amount, "18");
 
@@ -27,11 +27,6 @@ const link = (amount) => tokenAmountToBigNumber(amount, "18");
 /* ************************ */
 console.debugging = false;
 /* ************************ */
-
-async function generateContractAddress(signer) {
-  const contract = await deployMockContract(signer, []);
-  return contract.address;
-}
 
 describe("Contract: PoolToken", () => {
   let deployer;

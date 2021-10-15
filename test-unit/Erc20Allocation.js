@@ -2,16 +2,11 @@ const { expect } = require("chai");
 const hre = require("hardhat");
 const { artifacts, ethers, waffle } = hre;
 const timeMachine = require("ganache-time-traveler");
-const { FAKE_ADDRESS } = require("../utils/helpers");
+const { FAKE_ADDRESS, generateContractAddress } = require("../utils/helpers");
 const { deployMockContract } = waffle;
 
 const IDetailedERC20 = artifacts.readArtifactSync("IDetailedERC20");
 const AddressRegistryV2 = artifacts.readArtifactSync("AddressRegistryV2");
-
-async function generateContractAddress(signer) {
-  const mockContract = await deployMockContract(signer, []);
-  return mockContract.address;
-}
 
 describe("Contract: Erc20Allocation", () => {
   // signers
