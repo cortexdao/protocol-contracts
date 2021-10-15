@@ -26,19 +26,21 @@ describe("Contract: OracleAdapter", () => {
   let adminSafeSigner;
   let lpSafe;
   let mApt;
-  let tvlManager;
   let lpAccount;
+  let tvlManager;
+  let erc20Allocation;
   let randomUser;
 
   // deployed contracts
   let oracleAdapter;
 
-  // mocks and constants
+  // mocks
   let adminSafe;
   let addressRegistry;
   let tvlAggMock;
   let assetAggMock_1;
   let assetAggMock_2;
+  // constants
   const assetAddress_1 = FAKE_ADDRESS;
   const assetAddress_2 = ANOTHER_FAKE_ADDRESS;
   const stalePeriod = 86400;
@@ -128,22 +130,35 @@ describe("Contract: OracleAdapter", () => {
   });
 
   before("Deploy Oracle Adapter", async () => {
-    [, , , mApt, tvlManager, lpAccount, randomUser] = await ethers.getSigners();
-
-    await addressRegistry.mock.mAptAddress.returns(mApt.address);
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("mApt"))
-      .returns(mApt.address);
+    [
+      ,
+      ,
+      ,
+      mApt,
+      lpAccount,
+      tvlManager,
+      erc20Allocation,
+      randomUser,
+    ] = await ethers.getSigners();
 
     await addressRegistry.mock.tvlManagerAddress.returns(tvlManager.address);
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("tvlManager"))
       .returns(tvlManager.address);
 
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("erc20Allocation"))
+      .returns(erc20Allocation.address);
+
     await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("lpAccount"))
       .returns(lpAccount.address);
+
+    await addressRegistry.mock.mAptAddress.returns(mApt.address);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("mApt"))
+      .returns(mApt.address);
 
     tvlAggMock = await deployMockContract(deployer, AggregatorV3Interface.abi);
     assetAggMock_1 = await deployMockContract(
@@ -203,8 +218,9 @@ describe("Contract: OracleAdapter", () => {
     // need some test setup to pass the pre-step checks
     await alphaDeployment.testSetStep(6);
     await alphaDeployment.testSetMapt(mApt.address);
-    await alphaDeployment.testSetTvlManager(tvlManager.address);
     await alphaDeployment.testSetLpAccount(lpAccount.address);
+    await alphaDeployment.testSetTvlManager(tvlManager.address);
+    await alphaDeployment.testSetErc20Allocation(erc20Allocation.address);
     await addressRegistry.mock.owner.returns(adminSafe.address);
 
     await addressRegistry.mock.registerAddress.returns();
@@ -312,16 +328,19 @@ describe("Contract: OracleAdapter", () => {
       ).to.be.true;
     });
 
-    it("Contract role given to TVL Manager and mAPT", async () => {
+    it("Contract role given to TVL Manager, mAPT, LP Account, ERC20 Allocation", async () => {
       const CONTRACT_ROLE = await oracleAdapter.CONTRACT_ROLE();
       const memberCount = await oracleAdapter.getRoleMemberCount(CONTRACT_ROLE);
-      expect(memberCount).to.equal(3);
+      expect(memberCount).to.equal(4);
       expect(await oracleAdapter.hasRole(CONTRACT_ROLE, tvlManager.address)).to
         .be.true;
       expect(await oracleAdapter.hasRole(CONTRACT_ROLE, mApt.address)).to.be
         .true;
       expect(await oracleAdapter.hasRole(CONTRACT_ROLE, lpAccount.address)).to
         .be.true;
+      expect(
+        await oracleAdapter.hasRole(CONTRACT_ROLE, erc20Allocation.address)
+      ).to.be.true;
     });
 
     it("Emergency role given to Emergency Safe", async () => {
@@ -536,6 +555,8 @@ describe("Contract: OracleAdapter", () => {
       await expect(oracleAdapter.connect(mApt).lock()).to.not.be.reverted;
       await expect(oracleAdapter.connect(tvlManager).lock()).to.not.be.reverted;
       await expect(oracleAdapter.connect(lpAccount).lock()).to.not.be.reverted;
+      await expect(oracleAdapter.connect(erc20Allocation).lock()).to.not.be
+        .reverted;
     });
   });
 
@@ -566,6 +587,10 @@ describe("Contract: OracleAdapter", () => {
 
       await expect(oracleAdapter.connect(lpAccount).lockFor(period)).to.not.be
         .reverted;
+      expect(await oracleAdapter.isLocked()).to.be.true;
+
+      await expect(oracleAdapter.connect(erc20Allocation).lockFor(period)).to
+        .not.be.reverted;
       expect(await oracleAdapter.isLocked()).to.be.true;
     });
 

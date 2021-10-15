@@ -278,6 +278,11 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
     const erc20Allocation = await Erc20Allocation.deploy(
       addressRegistry.address
     );
+    await addressRegistry.registerAddress(
+      bytes32("erc20Allocation"),
+      erc20Allocation.address
+    );
+
     const TvlManager = await ethers.getContractFactory("TestTvlManager");
     tvlManager = await TvlManager.deploy(addressRegistry.address);
 

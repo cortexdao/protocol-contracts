@@ -2,13 +2,11 @@
 pragma solidity 0.6.11;
 
 import {Address, SafeMath} from "contracts/libraries/Imports.sol";
-
 import {
     IERC20,
     AccessControl,
     ReentrancyGuard
 } from "contracts/common/Imports.sol";
-
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
 
 import {
@@ -104,11 +102,15 @@ contract OracleAdapter is
         _setDefaultLockPeriod(defaultLockPeriod_);
 
         _setupRole(DEFAULT_ADMIN_ROLE, addressRegistry.emergencySafeAddress());
+        _setupRole(EMERGENCY_ROLE, addressRegistry.emergencySafeAddress());
+        _setupRole(ADMIN_ROLE, addressRegistry.adminSafeAddress());
         _setupRole(CONTRACT_ROLE, addressRegistry.mAptAddress());
         _setupRole(CONTRACT_ROLE, addressRegistry.tvlManagerAddress());
         _setupRole(CONTRACT_ROLE, addressRegistry.lpAccountAddress());
-        _setupRole(ADMIN_ROLE, addressRegistry.adminSafeAddress());
-        _setupRole(EMERGENCY_ROLE, addressRegistry.emergencySafeAddress());
+        _setupRole(
+            CONTRACT_ROLE,
+            addressRegistry.getAddress("erc20Allocation")
+        );
     }
 
     function setDefaultLockPeriod(uint256 newPeriod)
