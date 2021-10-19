@@ -3,7 +3,7 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import {IERC20, IDetailedERC20, Ownable} from "contracts/common/Imports.sol";
-import {Address, SafeMath} from "contracts/libraries/Imports.sol";
+import {Address, SafeMath, SafeERC20} from "contracts/libraries/Imports.sol";
 import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
 import {AggregatorV3Interface} from "contracts/oracle/Imports.sol";
 import {PoolToken} from "contracts/pool/PoolToken.sol";
@@ -24,6 +24,7 @@ import {IGnosisModuleManager, Enum} from "./IGnosisModuleManager.sol";
 /* solhint-disable max-states-count, func-name-mixedcase */
 contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
     using SafeMath for uint256;
+    using SafeERC20 for IERC20;
 
     // TODO: figure out a versioning scheme
     string public constant VERSION = "1.0.0";
@@ -101,10 +102,22 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
 
     /// @notice upgrade from v1 to v2
     /// @dev register mAPT for a contract role
-    function upgrade() external onlyOwner checkSafeRegistrations {
-        // _upgrade(DAI_POOL_PROXY);
+    function upgradeAll() external onlyOwner {
+        upgradeDaiPool();
+        upgradeUsdcPool();
+        upgradeUsdtPool();
+    }
+
+    function upgradeDaiPool() public onlyOwner checkSafeRegistrations {
+        _upgrade(payable(DAI_POOL_PROXY));
+    }
+
+    function upgradeUsdcPool() public onlyOwner checkSafeRegistrations {
         _upgrade(payable(USDC_POOL_PROXY));
-        // _upgrade(USDT_POOL_PROXY);
+    }
+
+    function upgradeUsdtPool() public onlyOwner checkSafeRegistrations {
+        _upgrade(payable(USDT_POOL_PROXY));
     }
 
     function _upgrade(address payable proxy) internal {
@@ -114,14 +127,14 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
         );
         address mApt = addressRegistry.mAptAddress();
 
-        IERC20 underlyer = PoolToken(proxy).underlyer();
+        PoolToken poolV1 = PoolToken(payable(proxy));
+        IERC20 underlyer = poolV1.underlyer();
 
         uint256 underlyerBalance = underlyer.balanceOf(address(this));
-        require(underlyerBalance > 0, "FUND_UPGRADER_WITH_USDC");
+        require(underlyerBalance > 0, "FUND_UPGRADER_WITH_STABLE");
 
-        PoolToken poolV1 = PoolToken(payable(proxy));
-
-        underlyer.approve(address(poolV1), underlyerBalance);
+        underlyer.safeApprove(address(poolV1), 0);
+        underlyer.safeApprove(address(poolV1), underlyerBalance);
         poolV1.addLiquidity(underlyerBalance);
 
         uint256 aptBalance = poolV1.balanceOf(address(this));
@@ -152,7 +165,7 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
         poolV2.redeem(aptBalance);
         // In theory, Tether can charge a fee, so pull balance again
         underlyerBalance = underlyer.balanceOf(address(this));
-        underlyer.transfer(msg.sender, underlyerBalance);
+        underlyer.safeTransfer(msg.sender, underlyerBalance);
 
         require(
             poolV2.addressRegistry() == addressRegistry,
