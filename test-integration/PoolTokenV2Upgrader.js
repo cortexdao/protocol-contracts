@@ -134,9 +134,15 @@ describe.only("Contract: PoolTokenV2Upgrader", () => {
   });
 
   describe("Upgrade", () => {
-    it("Revert if upgrader isn't funded with USDC", async () => {
-      await expect(upgrader.upgrade()).to.be.revertedWith(
-        "FUND_UPGRADER_WITH_USDC"
+    it("Revert if upgrader isn't funded with stable", async () => {
+      await expect(upgrader.upgradeDaiPool()).to.be.revertedWith(
+        "FUND_UPGRADER_WITH_STABLE"
+      );
+      await expect(upgrader.upgradeUsdcPool()).to.be.revertedWith(
+        "FUND_UPGRADER_WITH_STABLE"
+      );
+      await expect(upgrader.upgradeUsdtPool()).to.be.revertedWith(
+        "FUND_UPGRADER_WITH_STABLE"
       );
     });
 
@@ -154,24 +160,27 @@ describe.only("Contract: PoolTokenV2Upgrader", () => {
         deployer.address
       );
 
-      await expect(upgrader.upgrade()).to.be.revertedWith(
+      await expect(upgrader.upgradeUsdcPool()).to.be.revertedWith(
         "Method can only be called from an enabled module"
       );
     });
 
     it("Can upgrade", async () => {
-      // fund upgrader with USDC
-      const usdcToken = await ethers.getContractAt(
-        "IDetailedERC20",
-        getStablecoinAddress("USDC", "MAINNET")
-      );
-      await acquireToken(
-        WHALE_POOLS["USDC"],
-        upgrader.address,
-        usdcToken,
-        tokenAmountToBigNumber("100", 6),
-        deployer.address
-      );
+      // fund upgrader with stables
+      for (const symbol of ["DAI", "USDC", "USDT"]) {
+        const token = await ethers.getContractAt(
+          "IDetailedERC20",
+          getStablecoinAddress(symbol, "MAINNET")
+        );
+        const decimals = await token.decimals();
+        await acquireToken(
+          WHALE_POOLS[symbol],
+          upgrader.address,
+          token,
+          tokenAmountToBigNumber("271.828182", decimals),
+          deployer.address
+        );
+      }
 
       // enable upgrader as module
       const adminSafeSigner = await impersonateAccount(adminSafe);
@@ -182,7 +191,7 @@ describe.only("Contract: PoolTokenV2Upgrader", () => {
       );
       await adminSafe.connect(adminSafeSigner).enableModule(upgrader.address);
 
-      await upgrader.upgrade();
+      await expect(upgrader.upgradeAll()).to.not.be.reverted;
     });
   });
 });
