@@ -1,22 +1,16 @@
 const { expect } = require("chai");
 const hre = require("hardhat");
-const { ethers } = hre;
+const { artifacts, ethers } = hre;
 const {
   bytes32,
   impersonateAccount,
   forciblySendEth,
   tokenAmountToBigNumber,
   getDeployedAddress,
-  FAKE_ADDRESS,
-  ZERO_ADDRESS,
-  getLogicContract,
   getStablecoinAddress,
   acquireToken,
 } = require("../utils/helpers");
-const {
-  AGG_MAP: { MAINNET: AGGS },
-  WHALE_POOLS,
-} = require("../utils/constants");
+const { WHALE_POOLS } = require("../utils/constants");
 const timeMachine = require("ganache-time-traveler");
 const { deployMockContract } = require("@ethereum-waffle/mock-contract");
 
@@ -109,9 +103,15 @@ describe.only("Contract: PoolTokenV2Upgrader", () => {
   });
 
   before("Mock any needed dependencies", async () => {
-    // This is purely to satisfy the initializer for PoolTokenV2,
-    // which requires an mAPT address for contract role.
-    const mApt = await deployMockContract(deployer, []);
+    // In addition to satisfying the initializer for PoolTokenV2,
+    // which requires an mAPT address for contract role, `redeem`
+    // in V2 requires mAPT to provide a deployed value.
+    const mApt = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("MetaPoolToken").abi
+    );
+    await mApt.mock.getDeployedValue.returns(0);
+
     const owner = await addressRegistry.owner();
     const signer = await impersonateAccount(owner);
     await forciblySendEth(
@@ -119,6 +119,7 @@ describe.only("Contract: PoolTokenV2Upgrader", () => {
       tokenAmountToBigNumber(1),
       deployer.address
     );
+
     await addressRegistry
       .connect(signer)
       .registerAddress(bytes32("mApt"), mApt.address);

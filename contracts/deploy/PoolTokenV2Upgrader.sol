@@ -155,14 +155,13 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
         ownerships[0] = POOL_PROXY_ADMIN;
         checkOwnerships(ownerships);
 
-        uint256 usdcDepositAmount =
-            IERC20(USDC_ADDRESS).balanceOf(address(this));
-        require(usdcDepositAmount > 0, "FUND_UPGRADER_WITH_USDC");
+        uint256 usdcBalance = IERC20(USDC_ADDRESS).balanceOf(address(this));
+        require(usdcBalance > 0, "FUND_UPGRADER_WITH_USDC");
 
         PoolToken poolV1 = PoolToken(payable(USDC_POOL_PROXY));
 
-        IERC20(USDC_ADDRESS).approve(address(poolV1), usdcDepositAmount);
-        poolV1.addLiquidity(usdcDepositAmount);
+        IERC20(USDC_ADDRESS).approve(address(poolV1), usdcBalance);
+        poolV1.addLiquidity(usdcBalance);
 
         uint256 aptBalance = poolV1.balanceOf(address(this));
         require(aptBalance > 0, "USE_LARGER_DEPOSIT");
@@ -188,6 +187,11 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
             poolV2.allowance(address(this), msg.sender) == allowance,
             "ALLOWANCES_TEST_FAILED"
         );
+
+        poolV2.redeem(aptBalance);
+        // In theory, Tether can charge a fee
+        usdcBalance = IERC20(USDC_ADDRESS).balanceOf(address(this));
+        IERC20(USDC_ADDRESS).transfer(msg.sender, usdcBalance);
 
         require(
             poolV2.addressRegistry() == addressRegistry,
