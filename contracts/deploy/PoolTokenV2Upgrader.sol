@@ -165,9 +165,10 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
         poolV1.addLiquidity(usdcDepositAmount);
 
         uint256 aptBalance = poolV1.balanceOf(address(this));
-        require(aptBalance > 0, "DEPOSIT_FAILED");
+        require(aptBalance > 0, "USE_LARGER_DEPOSIT");
 
         uint256 allowance = aptBalance.div(2);
+        require(allowance > 0, "USE_LARGER_DEPOSIT");
         poolV1.approve(msg.sender, allowance);
 
         if (poolTokenV2 == address(0)) {
