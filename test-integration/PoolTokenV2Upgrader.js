@@ -18,13 +18,13 @@ const {
   WHALE_POOLS,
 } = require("../utils/constants");
 const timeMachine = require("ganache-time-traveler");
+const { deployMockContract } = require("@ethereum-waffle/mock-contract");
 
 const MAINNET_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
 
 describe.only("Contract: PoolTokenV2Upgrader", () => {
   // signers
   let deployer;
-  let adminSafe;
 
   // contract factories
   let PoolTokenV2Upgrader;
@@ -34,7 +34,11 @@ describe.only("Contract: PoolTokenV2Upgrader", () => {
 
   let poolProxyAdminAddress;
 
+  // deployed contracts
   let upgrader;
+
+  // Mainnet contracts
+  let adminSafe;
   let addressRegistry;
 
   // use EVM snapshots for test isolation
@@ -49,8 +53,16 @@ describe.only("Contract: PoolTokenV2Upgrader", () => {
     await timeMachine.revertToSnapshot(snapshotId);
   });
 
-  before("Attach to Mainnet Address Registry", async () => {
+  before("Get signers", async () => {
     [deployer] = await ethers.getSigners();
+  });
+
+  before("Attach to Mainnet Admin Safe and Address Registry", async () => {
+    const adminSafeAddress = getDeployedAddress("AdminSafe", "MAINNET");
+    adminSafe = await ethers.getContractAt(
+      "IGnosisModuleManager",
+      adminSafeAddress
+    );
 
     addressRegistry = await ethers.getContractAt(
       "AddressRegistryV2",
@@ -58,33 +70,24 @@ describe.only("Contract: PoolTokenV2Upgrader", () => {
     );
   });
 
-  before("Transfer necessary ownerships to Admin Safe", async () => {
-    const adminSafeAddress = getDeployedAddress("AdminSafe", "MAINNET");
-    adminSafe = await ethers.getContractAt(
-      "IGnosisModuleManager",
-      adminSafeAddress
+  before("Deploy factories", async () => {
+    const PoolTokenV2Factory = await ethers.getContractFactory(
+      "PoolTokenV2Factory"
     );
-    const addressRegistryProxyAdminAddress = getDeployedAddress(
-      "AddressRegistryProxyAdmin",
-      "MAINNET"
-    );
-    const addressRegistryProxyAdmin = await ethers.getContractAt(
-      "ProxyAdmin",
-      addressRegistryProxyAdminAddress
-    );
-    const addressRegistryDeployerAddress = await addressRegistryProxyAdmin.owner();
-    const addressRegistryDeployer = await impersonateAccount(
-      addressRegistryDeployerAddress
-    );
-    await forciblySendEth(
-      addressRegistryDeployer.address,
-      tokenAmountToBigNumber(10),
-      deployer.address
-    );
-    await addressRegistryProxyAdmin
-      .connect(addressRegistryDeployer)
-      .transferOwnership(adminSafe.address);
+    poolTokenV2Factory = await PoolTokenV2Factory.deploy();
 
+    PoolTokenV2Upgrader = await ethers.getContractFactory(
+      "PoolTokenV2Upgrader"
+    );
+  });
+
+  before("Deploy upgrader", async () => {
+    upgrader = await PoolTokenV2Upgrader.deploy(
+      poolTokenV2Factory.address // pool token v2 factory
+    );
+  });
+
+  before("Transfer necessary ownerships to Admin Safe", async () => {
     poolProxyAdminAddress = getDeployedAddress(
       "PoolTokenProxyAdmin",
       "MAINNET"
@@ -105,23 +108,20 @@ describe.only("Contract: PoolTokenV2Upgrader", () => {
       .transferOwnership(adminSafe.address);
   });
 
-  before("Deploy factories and mock deployed addresses", async () => {
-    const PoolTokenV2Factory = await ethers.getContractFactory(
-      "PoolTokenV2Factory"
+  before("Mock any needed dependencies", async () => {
+    // This is purely to satisfy the initializer for PoolTokenV2,
+    // which requires an mAPT address for contract role.
+    const mApt = await deployMockContract(deployer, []);
+    const owner = await addressRegistry.owner();
+    const signer = await impersonateAccount(owner);
+    await forciblySendEth(
+      signer.address,
+      tokenAmountToBigNumber(1),
+      deployer.address
     );
-    poolTokenV2Factory = await PoolTokenV2Factory.deploy();
-
-    PoolTokenV2Upgrader = await ethers.getContractFactory(
-      "PoolTokenV2Upgrader"
-    );
-  });
-
-  before("Deploy upgrader", async () => {
-    upgrader = await expect(
-      PoolTokenV2Upgrader.deploy(
-        poolTokenV2Factory.address // pool token v2 factory
-      )
-    ).to.not.be.reverted;
+    await addressRegistry
+      .connect(signer)
+      .registerAddress(bytes32("mApt"), mApt.address);
   });
 
   describe("Defaults", () => {
@@ -158,7 +158,7 @@ describe.only("Contract: PoolTokenV2Upgrader", () => {
       );
     });
 
-    it("", async () => {
+    it("Can upgrade", async () => {
       // fund upgrader with USDC
       const usdcToken = await ethers.getContractAt(
         "IDetailedERC20",
