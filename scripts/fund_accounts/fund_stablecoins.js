@@ -24,7 +24,7 @@ async function main(argv) {
   for (const symbol of ["DAI", "USDC", "USDT"]) {
     const stablecoinAddress = getStablecoinAddress(symbol, network.name);
     stablecoins[symbol] = await ethers.getContractAt(
-      "IDetailedERC20UpgradeSafe",
+      "IDetailedERC20",
       stablecoinAddress
     );
   }
