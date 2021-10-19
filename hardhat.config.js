@@ -15,7 +15,7 @@ module.exports = {
       forking: {
         url: "https://mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
         enabled: process.env.ENABLE_FORKING ? true : false,
-        blockNumber: 13272943,
+        blockNumber: 13449504,
       },
       accounts: {
         // default, include for explicitness
