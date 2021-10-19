@@ -10,9 +10,12 @@ const {
   FAKE_ADDRESS,
   ZERO_ADDRESS,
   getLogicContract,
+  getStablecoinAddress,
+  acquireToken,
 } = require("../utils/helpers");
 const {
   AGG_MAP: { MAINNET: AGGS },
+  WHALE_POOLS,
 } = require("../utils/constants");
 const timeMachine = require("ganache-time-traveler");
 
@@ -126,6 +129,59 @@ describe.only("Contract: PoolTokenV2Upgrader", () => {
       expect(await upgrader.addressRegistry()).to.equal(
         MAINNET_ADDRESS_REGISTRY
       );
+    });
+  });
+
+  describe("Upgrade", () => {
+    it("Revert if upgrader isn't funded with USDC", async () => {
+      await expect(upgrader.upgrade()).to.be.revertedWith(
+        "FUND_UPGRADER_WITH_USDC"
+      );
+    });
+
+    it("Revert if upgrader is not enabled module", async () => {
+      // fund upgrader with USDC
+      const usdcToken = await ethers.getContractAt(
+        "IDetailedERC20",
+        getStablecoinAddress("USDC", "MAINNET")
+      );
+      await acquireToken(
+        WHALE_POOLS["USDC"],
+        upgrader.address,
+        usdcToken,
+        tokenAmountToBigNumber("100", 6),
+        deployer.address
+      );
+
+      await expect(upgrader.upgrade()).to.be.revertedWith(
+        "Method can only be called from an enabled module"
+      );
+    });
+
+    it("", async () => {
+      // fund upgrader with USDC
+      const usdcToken = await ethers.getContractAt(
+        "IDetailedERC20",
+        getStablecoinAddress("USDC", "MAINNET")
+      );
+      await acquireToken(
+        WHALE_POOLS["USDC"],
+        upgrader.address,
+        usdcToken,
+        tokenAmountToBigNumber("100", 6),
+        deployer.address
+      );
+
+      // enable upgrader as module
+      const adminSafeSigner = await impersonateAccount(adminSafe);
+      await forciblySendEth(
+        adminSafe.address,
+        tokenAmountToBigNumber(1),
+        deployer.address
+      );
+      await adminSafe.connect(adminSafeSigner).enableModule(upgrader.address);
+
+      await upgrader.upgrade();
     });
   });
 });

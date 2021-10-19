@@ -133,7 +133,7 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
         poolTokenV2Factory = poolTokenV2Factory_;
     }
 
-    function deployV2Logic() external onlyOwner {
+    function deployV2Logic() public onlyOwner {
         poolTokenV2 = PoolTokenV2Factory(poolTokenV2Factory).create();
 
         // Initialize logic storage to block possible attack vector:
@@ -160,6 +160,8 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
         require(usdcDepositAmount > 0, "FUND_UPGRADER_WITH_USDC");
 
         PoolToken poolV1 = PoolToken(payable(USDC_POOL_PROXY));
+
+        IERC20(USDC_ADDRESS).approve(address(poolV1), usdcDepositAmount);
         poolV1.addLiquidity(usdcDepositAmount);
 
         uint256 aptBalance = poolV1.balanceOf(address(this));
@@ -168,12 +170,10 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
         uint256 allowance = aptBalance.div(2);
         poolV1.approve(msg.sender, allowance);
 
-        bytes memory initData =
-            abi.encodeWithSelector(
-                PoolTokenV2.initializeUpgrade.selector,
-                addressRegistry
-            );
-        _upgradePool(USDC_POOL_PROXY, POOL_PROXY_ADMIN, initData);
+        if (poolTokenV2 == address(0)) {
+            deployV2Logic();
+        }
+        _upgradePool(USDC_POOL_PROXY, poolTokenV2, POOL_PROXY_ADMIN);
 
         PoolTokenV2 poolV2 = PoolTokenV2(USDC_POOL_PROXY);
         // after upgrade, we need to check:
@@ -214,14 +214,19 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
 
     function _upgradePool(
         address proxy,
-        address proxyAdmin,
-        bytes memory initData
+        address logic,
+        address proxyAdmin
     ) internal {
+        bytes memory initData =
+            abi.encodeWithSelector(
+                PoolTokenV2.initializeUpgrade.selector,
+                addressRegistry
+            );
         bytes memory data =
             abi.encodeWithSelector(
                 ProxyAdmin.upgradeAndCall.selector,
                 TransparentUpgradeableProxy(payable(proxy)),
-                poolTokenV2,
+                logic,
                 initData
             );
 
