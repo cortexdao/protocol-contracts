@@ -163,14 +163,15 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
         uint256 usdcDepositAmount =
             IERC20(USDC_ADDRESS).balanceOf(address(this));
         require(usdcDepositAmount > 0, "FUND_UPGRADER_WITH_USDC");
-        PoolTokenV1(USDC_POOL_PROXY).addLiquidity(usdcDepositAmount);
 
-        uint256 aptBalance =
-            PoolTokenV1(USDC_POOL_PROXY).balanceOf(address(this));
+        PoolTokenV1 poolV1 = PoolTokenV1(USDC_POOL_PROXY);
+        poolV1.addLiquidity(usdcDepositAmount);
+
+        uint256 aptBalance = poolV1.balanceOf(address(this));
         require(aptBalance > 0, "DEPOSIT_FAILED");
 
         uint256 allowance = aptBalance.div(2);
-        PoolTokenV1(USDC_POOL_PROXY).approve(msg.sender, allowance);
+        poolV1.approve(msg.sender, allowance);
 
         bytes memory initData =
             abi.encodeWithSelector(
@@ -179,50 +180,38 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
             );
         _upgradePool(USDC_POOL_PROXY, POOL_PROXY_ADMIN, initData);
 
+        PoolTokenV2 poolV2 = PoolTokenV2(USDC_POOL_PROXY);
         // after upgrade, we need to check:
         // 1. balances mapping uses the correct slot
         require(
-            PoolTokenV2(USDC_POOL_PROXY).balanceOf(address(this)) == aptBalance,
+            poolV2.balanceOf(address(this)) == aptBalance,
             "BALANCEOF_TEST_FAILED"
         );
         // 2. allowances mapping uses the correct slot
         require(
-            PoolTokenV2(USDC_POOL_PROXY).allowances(
-                address(this),
-                msg.sender
-            ) == allowance,
+            poolV2.allowances(address(this), msg.sender) == allowance,
             "ALLOWANCES_TEST_FAILED"
         );
 
         require(
-            PoolTokenV2(USDC_POOL_PROXY).addressRegistry() == addressRegistry,
+            poolV2.addressRegistry() == addressRegistry,
             "INCORRECT_ADDRESS_REGISTRY"
         );
 
-        bytes32 DEFAULT_ADMIN_ROLE =
-            PoolTokenV2(USDC_POOL_PROXY).DEFAULT_ADMIN_ROLE();
-        bytes32 EMERGENCY_ROLE = PoolTokenV2(USDC_POOL_PROXY).EMERGENCY_ROLE();
-        bytes32 ADMIN_ROLE = PoolTokenV2(USDC_POOL_PROXY).ADMIN_ROLE();
-        bytes32 CONTRACT_ROLE = PoolTokenV2(USDC_POOL_PROXY).CONTRACT_ROLE();
+        bytes32 DEFAULT_ADMIN_ROLE = poolV2.DEFAULT_ADMIN_ROLE();
+        bytes32 EMERGENCY_ROLE = poolV2.EMERGENCY_ROLE();
+        bytes32 ADMIN_ROLE = poolV2.ADMIN_ROLE();
+        bytes32 CONTRACT_ROLE = poolV2.CONTRACT_ROLE();
         require(
-            PoolTokenV2(USDC_POOL_PROXY).hasRole(
-                DEFAULT_ADMIN_ROLE,
-                emergencySafe
-            ),
+            poolV2.hasRole(DEFAULT_ADMIN_ROLE, emergencySafe),
             "ROLE_TEST_FAILED"
         );
         require(
-            PoolTokenV2(USDC_POOL_PROXY).hasRole(EMERGENCY_ROLE, emergencySafe),
+            poolV2.hasRole(EMERGENCY_ROLE, emergencySafe),
             "ROLE_TEST_FAILED"
         );
-        require(
-            PoolTokenV2(USDC_POOL_PROXY).hasRole(ADMIN_ROLE, adminSafe),
-            "ROLE_TEST_FAILED"
-        );
-        require(
-            PoolTokenV2(USDC_POOL_PROXY).hasRole(CONTRACT_ROLE, mApt),
-            "ROLE_TEST_FAILED"
-        );
+        require(poolV2.hasRole(ADMIN_ROLE, adminSafe), "ROLE_TEST_FAILED");
+        require(poolV2.hasRole(CONTRACT_ROLE, mApt), "ROLE_TEST_FAILED");
 
         // _upgradePool(DAI_POOL_PROXY, POOL_PROXY_ADMIN, initData);
         //_upgradePool(USDT_POOL_PROXY, POOL_PROXY_ADMIN, initData);
