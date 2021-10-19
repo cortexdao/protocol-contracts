@@ -75,53 +75,6 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
         setPoolTokenV2Factory(poolTokenV2Factory_);
     }
 
-    /**
-     * @dev
-     *   Check a contract address from a previous step's deployment
-     *   is registered with expected ID.
-     *
-     * @param registeredIds identifiers for the Address Registry
-     * @param deployedAddresses addresses from previous steps' deploys
-     */
-    function checkRegisteredDependencies(
-        bytes32[] memory registeredIds,
-        address[] memory deployedAddresses
-    ) public view virtual {
-        require(
-            registeredIds.length == deployedAddresses.length,
-            "LENGTH_MISMATCH"
-        );
-
-        for (uint256 i = 0; i < registeredIds.length; i++) {
-            require(
-                addressRegistry.getAddress(registeredIds[i]) ==
-                    deployedAddresses[i],
-                "MISSING_DEPLOYED_ADDRESS"
-            );
-        }
-    }
-
-    /**
-     * @dev
-     *   Check the deployment contract has ownership of necessary
-     *   contracts to perform actions, e.g. register an address or upgrade
-     *   a proxy.
-     *
-     * @param ownedContracts addresses that should be owned by this contract
-     */
-    function checkOwnerships(address[] memory ownedContracts)
-        public
-        view
-        virtual
-    {
-        for (uint256 i = 0; i < ownedContracts.length; i++) {
-            require(
-                Ownable(ownedContracts[i]).owner() == adminSafe,
-                "MISSING_OWNERSHIP"
-            );
-        }
-    }
-
     function setPoolTokenV2Factory(address poolTokenV2Factory_)
         public
         onlyOwner
@@ -149,19 +102,27 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
     /// @notice upgrade from v1 to v2
     /// @dev register mAPT for a contract role
     function upgrade() external onlyOwner checkSafeRegistrations {
+        // _upgrade(DAI_POOL_PROXY);
+        _upgrade(payable(USDC_POOL_PROXY));
+        // _upgrade(USDT_POOL_PROXY);
+    }
+
+    function _upgrade(address payable proxy) internal {
+        require(
+            Ownable(POOL_PROXY_ADMIN).owner() == adminSafe,
+            "MISSING_OWNERSHIP"
+        );
         address mApt = addressRegistry.mAptAddress();
 
-        address[] memory ownerships = new address[](1);
-        ownerships[0] = POOL_PROXY_ADMIN;
-        checkOwnerships(ownerships);
+        IERC20 underlyer = PoolToken(proxy).underlyer();
 
-        uint256 usdcBalance = IERC20(USDC_ADDRESS).balanceOf(address(this));
-        require(usdcBalance > 0, "FUND_UPGRADER_WITH_USDC");
+        uint256 underlyerBalance = underlyer.balanceOf(address(this));
+        require(underlyerBalance > 0, "FUND_UPGRADER_WITH_USDC");
 
-        PoolToken poolV1 = PoolToken(payable(USDC_POOL_PROXY));
+        PoolToken poolV1 = PoolToken(payable(proxy));
 
-        IERC20(USDC_ADDRESS).approve(address(poolV1), usdcBalance);
-        poolV1.addLiquidity(usdcBalance);
+        underlyer.approve(address(poolV1), underlyerBalance);
+        poolV1.addLiquidity(underlyerBalance);
 
         uint256 aptBalance = poolV1.balanceOf(address(this));
         require(aptBalance > 0, "USE_LARGER_DEPOSIT");
@@ -173,9 +134,9 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
         if (poolTokenV2 == address(0)) {
             deployV2Logic();
         }
-        _upgradePool(USDC_POOL_PROXY, poolTokenV2, POOL_PROXY_ADMIN);
+        _executeUpgradeAsModule(proxy, poolTokenV2, POOL_PROXY_ADMIN);
 
-        PoolTokenV2 poolV2 = PoolTokenV2(USDC_POOL_PROXY);
+        PoolTokenV2 poolV2 = PoolTokenV2(proxy);
         // after upgrade, we need to check:
         // 1. _balances mapping uses the correct slot
         require(
@@ -189,9 +150,9 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
         );
 
         poolV2.redeem(aptBalance);
-        // In theory, Tether can charge a fee
-        usdcBalance = IERC20(USDC_ADDRESS).balanceOf(address(this));
-        IERC20(USDC_ADDRESS).transfer(msg.sender, usdcBalance);
+        // In theory, Tether can charge a fee, so pull balance again
+        underlyerBalance = underlyer.balanceOf(address(this));
+        underlyer.transfer(msg.sender, underlyerBalance);
 
         require(
             poolV2.addressRegistry() == addressRegistry,
@@ -212,12 +173,9 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
         );
         require(poolV2.hasRole(ADMIN_ROLE, adminSafe), "ROLE_TEST_FAILED");
         require(poolV2.hasRole(CONTRACT_ROLE, mApt), "ROLE_TEST_FAILED");
-
-        // _upgradePool(DAI_POOL_PROXY, POOL_PROXY_ADMIN, initData);
-        //_upgradePool(USDT_POOL_PROXY, POOL_PROXY_ADMIN, initData);
     }
 
-    function _upgradePool(
+    function _executeUpgradeAsModule(
         address proxy,
         address logic,
         address proxyAdmin
