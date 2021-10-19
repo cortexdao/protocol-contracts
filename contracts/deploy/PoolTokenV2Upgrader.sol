@@ -194,6 +194,36 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
             "ALLOWANCES_TEST_FAILED"
         );
 
+        require(
+            PoolTokenV2(USDC_POOL_PROXY).addressRegistry() == addressRegistry,
+            "INCORRECT_ADDRESS_REGISTRY"
+        );
+
+        bytes32 DEFAULT_ADMIN_ROLE =
+            PoolTokenV2(USDC_POOL_PROXY).DEFAULT_ADMIN_ROLE();
+        bytes32 EMERGENCY_ROLE = PoolTokenV2(USDC_POOL_PROXY).EMERGENCY_ROLE();
+        bytes32 ADMIN_ROLE = PoolTokenV2(USDC_POOL_PROXY).ADMIN_ROLE();
+        bytes32 CONTRACT_ROLE = PoolTokenV2(USDC_POOL_PROXY).CONTRACT_ROLE();
+        require(
+            PoolTokenV2(USDC_POOL_PROXY).hasRole(
+                DEFAULT_ADMIN_ROLE,
+                emergencySafe
+            ),
+            "ROLE_TEST_FAILED"
+        );
+        require(
+            PoolTokenV2(USDC_POOL_PROXY).hasRole(EMERGENCY_ROLE, emergencySafe),
+            "ROLE_TEST_FAILED"
+        );
+        require(
+            PoolTokenV2(USDC_POOL_PROXY).hasRole(ADMIN_ROLE, adminSafe),
+            "ROLE_TEST_FAILED"
+        );
+        require(
+            PoolTokenV2(USDC_POOL_PROXY).hasRole(CONTRACT_ROLE, mApt),
+            "ROLE_TEST_FAILED"
+        );
+
         // _upgradePool(DAI_POOL_PROXY, POOL_PROXY_ADMIN, initData);
         //_upgradePool(USDT_POOL_PROXY, POOL_PROXY_ADMIN, initData);
     }
