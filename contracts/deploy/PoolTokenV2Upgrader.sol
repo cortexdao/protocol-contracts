@@ -186,6 +186,8 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
         );
         require(poolV2.hasRole(ADMIN_ROLE, adminSafe), "ROLE_TEST_FAILED");
         require(poolV2.hasRole(CONTRACT_ROLE, mApt), "ROLE_TEST_FAILED");
+
+        _lockPool(proxy);
     }
 
     function _executeUpgradeAsModule(
@@ -215,6 +217,25 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
             ),
             "SAFE_TX_FAILED"
         );
+    }
+
+    function _lockPool(
+        address proxy
+    ) internal {
+        bytes memory data =
+            abi.encodeWithSelector(
+                PoolTokenV2.emergencyLockAddLiquidity.selector
+            );
+        require(
+            IGnosisModuleManager(emergencySafe).execTransactionFromModule(
+                proxy,
+                0,
+                data,
+                Enum.Operation.Call
+            ),
+            "SAFE_TX_FAILED"
+        );
+    
     }
 }
 /* solhint-enable func-name-mixedcase */

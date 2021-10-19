@@ -15,8 +15,12 @@ const timeMachine = require("ganache-time-traveler");
 const { deployMockContract } = require("@ethereum-waffle/mock-contract");
 
 const MAINNET_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
+const POOL_PROXY_ADMIN = "0x7965283631253dfcb71db63a60c656dedf76234f";
+const DAI_POOL_PROXY = "0x75ce0e501e2e6776fcaaa514f394a88a772a8970";
+const USDC_POOL_PROXY = "0xe18b0365d5d09f394f84ee56ed29dd2d8d6fba5f";
+const USDT_POOL_PROXY = "0xea9c5a2717d5ab75afaac340151e73a7e37d99a7";
 
-describe.only("Contract: PoolTokenV2Upgrader", () => {
+describe("Contract: PoolTokenV2Upgrader", () => {
   // signers
   let deployer;
 
@@ -33,6 +37,7 @@ describe.only("Contract: PoolTokenV2Upgrader", () => {
 
   // Mainnet contracts
   let adminSafe;
+  let emergencySafe;
   let addressRegistry;
 
   // use EVM snapshots for test isolation
@@ -56,6 +61,12 @@ describe.only("Contract: PoolTokenV2Upgrader", () => {
     adminSafe = await ethers.getContractAt(
       "IGnosisModuleManager",
       adminSafeAddress
+    );
+
+    const emergencySafeAddress = getDeployedAddress("EmergencySafe", "MAINNET");
+    emergencySafe = await ethers.getContractAt(
+      "IGnosisModuleManager",
+      emergencySafeAddress
     );
 
     addressRegistry = await ethers.getContractAt(
@@ -190,8 +201,35 @@ describe.only("Contract: PoolTokenV2Upgrader", () => {
         deployer.address
       );
       await adminSafe.connect(adminSafeSigner).enableModule(upgrader.address);
+      const emergencySafeSigner = await impersonateAccount(emergencySafe);
+      await forciblySendEth(
+        emergencySafe.address,
+        tokenAmountToBigNumber(1),
+        deployer.address
+      );
+      await emergencySafe
+        .connect(emergencySafeSigner)
+        .enableModule(upgrader.address);
 
       await expect(upgrader.upgradeAll()).to.not.be.reverted;
+
+      const daiPool = await ethers.getContractAt("PoolTokenV2", DAI_POOL_PROXY);
+      expect(await daiPool.addLiquidityLock()).to.be.true;
+      expect(await daiPool.feePercentage()).to.be.gt(0);
+
+      const usdcPool = await ethers.getContractAt(
+        "PoolTokenV2",
+        USDC_POOL_PROXY
+      );
+      expect(await usdcPool.addLiquidityLock()).to.be.true;
+      expect(await usdcPool.feePercentage()).to.be.gt(0);
+
+      const usdtPool = await ethers.getContractAt(
+        "PoolTokenV2",
+        USDT_POOL_PROXY
+      );
+      expect(await usdtPool.addLiquidityLock()).to.be.true;
+      expect(await usdtPool.feePercentage()).to.be.gt(0);
     });
   });
 });
