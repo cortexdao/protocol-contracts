@@ -2,9 +2,11 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {IDetailedERC20, Ownable} from "contracts/common/Imports.sol";
+import {IERC20, IDetailedERC20, Ownable} from "contracts/common/Imports.sol";
+import {Address, SafeMath} from "contracts/libraries/Imports.sol";
 import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
 import {AggregatorV3Interface} from "contracts/oracle/Imports.sol";
+import {PoolToken} from "contracts/pool/PoolToken.sol";
 import {PoolTokenV2} from "contracts/pool/PoolTokenV2.sol";
 import {LpAccount} from "contracts/lpaccount/LpAccount.sol";
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
@@ -21,6 +23,8 @@ import {IGnosisModuleManager, Enum} from "./IGnosisModuleManager.sol";
 
 /* solhint-disable max-states-count, func-name-mixedcase */
 contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
+    using SafeMath for uint256;
+
     // TODO: figure out a versioning scheme
     string public constant VERSION = "1.0.0";
 
@@ -29,19 +33,13 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
 
     IAddressRegistryV2 public addressRegistry;
 
-    address public immutable poolTokenV2Factory;
+    address public poolTokenV2Factory;
 
     address public immutable emergencySafe;
     address public immutable adminSafe;
     address public immutable lpSafe;
 
     address public poolTokenV2;
-
-    modifier updateStep(uint256 step_) {
-        require(step == step_, "INVALID_STEP");
-        _;
-        step += 1;
-    }
 
     /**
      * @dev Uses `getAddress` in case `AddressRegistry` has not been upgraded
@@ -151,10 +149,7 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
     /// @notice upgrade from v1 to v2
     /// @dev register mAPT for a contract role
     function upgrade() external onlyOwner checkSafeRegistrations {
-        bytes32[] memory registeredIds = new bytes32[](1);
-        address[] memory deployedAddresses = new address[](1);
-        (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
-        checkRegisteredDependencies(registeredIds, deployedAddresses);
+        address mApt = addressRegistry.mAptAddress();
 
         address[] memory ownerships = new address[](1);
         ownerships[0] = POOL_PROXY_ADMIN;
@@ -164,7 +159,7 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
             IERC20(USDC_ADDRESS).balanceOf(address(this));
         require(usdcDepositAmount > 0, "FUND_UPGRADER_WITH_USDC");
 
-        PoolTokenV1 poolV1 = PoolTokenV1(USDC_POOL_PROXY);
+        PoolToken poolV1 = PoolToken(payable(USDC_POOL_PROXY));
         poolV1.addLiquidity(usdcDepositAmount);
 
         uint256 aptBalance = poolV1.balanceOf(address(this));
@@ -182,14 +177,14 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
 
         PoolTokenV2 poolV2 = PoolTokenV2(USDC_POOL_PROXY);
         // after upgrade, we need to check:
-        // 1. balances mapping uses the correct slot
+        // 1. _balances mapping uses the correct slot
         require(
             poolV2.balanceOf(address(this)) == aptBalance,
             "BALANCEOF_TEST_FAILED"
         );
-        // 2. allowances mapping uses the correct slot
+        // 2. _allowances mapping uses the correct slot
         require(
-            poolV2.allowances(address(this), msg.sender) == allowance,
+            poolV2.allowance(address(this), msg.sender) == allowance,
             "ALLOWANCES_TEST_FAILED"
         );
 
