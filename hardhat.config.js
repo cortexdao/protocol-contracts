@@ -34,7 +34,6 @@ module.exports = {
     },
     mainnet: {
       url: "https://mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
-      gasPrice: 72e9,
       accounts: {
         mnemonic: process.env.MNEMONIC || "",
       },
