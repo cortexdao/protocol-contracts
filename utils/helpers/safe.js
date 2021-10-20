@@ -1,3 +1,5 @@
+const axios = require("axios");
+const axiosRetry = require("axios-retry");
 const {
   SafeService,
   SafeEthersSigner,
@@ -10,12 +12,24 @@ const MAINNET_SERVICE_URL = "https://safe-transaction.gnosis.io/";
 const sleep = (duration) =>
   new Promise((resolve) => setTimeout(resolve, duration));
 
+function configureAxiosRetry(axios, retries) {
+  axiosRetry(axios, {
+    retries: retries || 3, // number of retries
+    retryDelay: axiosRetry.exponentialDelay,
+    retryCondition: (error) => {
+      // if retry condition is not specified, by default idempotent requests are retried
+      return 500 <= error.response.status;
+    },
+  });
+}
+
 /*
  * @param safeAddress address of the Gnosis Safe
  * @param owner Ethers signer for an owner of the Safe
  */
 async function getSafeSigner(safeAddress, owner) {
-  const service = new SafeService(MAINNET_SERVICE_URL);
+  configureAxiosRetry(axios);
+  const service = new SafeService(MAINNET_SERVICE_URL, axios);
   const safeSigner = await SafeEthersSigner.create(safeAddress, owner, service);
   return safeSigner;
 }

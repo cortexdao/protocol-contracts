@@ -80,6 +80,8 @@ async function main(argv) {
   const zap = await zapContractFactory
     .connect(safeSigner)
     .deploy({ maxFeePerGas });
+  console.log("Zap address:", zap.address);
+  console.log("");
   await waitForSafeTxDetails(zap.deployTransaction, safeSigner.service);
 
   const zapName = await zap.NAME();

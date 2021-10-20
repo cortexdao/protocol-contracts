@@ -83,6 +83,8 @@ async function main(argv) {
   const allocation = await allocationContractFactory
     .connect(safeSigner)
     .deploy({ maxFeePerGas });
+  console.log("Allocation address:", allocation.address);
+  console.log("");
   await waitForSafeTxDetails(allocation.deployTransaction, safeSigner.service);
 
   const allocationName = await allocation.NAME();
