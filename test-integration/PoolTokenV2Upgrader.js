@@ -14,8 +14,9 @@ const { WHALE_POOLS } = require("../utils/constants");
 const timeMachine = require("ganache-time-traveler");
 const { deployMockContract } = require("@ethereum-waffle/mock-contract");
 
-const MAINNET_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
-const POOL_PROXY_ADMIN = "0x7965283631253dfcb71db63a60c656dedf76234f";
+const ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
+const ADDRESS_REGISTRY_PROXY_ADMIN =
+  "0xFbF6c940c1811C3ebc135A9c4e39E042d02435d1";
 const DAI_POOL_PROXY = "0x75ce0e501e2e6776fcaaa514f394a88a772a8970";
 const USDC_POOL_PROXY = "0xe18b0365d5d09f394f84ee56ed29dd2d8d6fba5f";
 const USDT_POOL_PROXY = "0xea9c5a2717d5ab75afaac340151e73a7e37d99a7";
@@ -23,14 +24,13 @@ const USDT_POOL_PROXY = "0xea9c5a2717d5ab75afaac340151e73a7e37d99a7";
 describe("Contract: PoolTokenV2Upgrader", () => {
   // signers
   let deployer;
+  let adminSafeSigner;
 
   // contract factories
   let PoolTokenV2Upgrader;
 
   // deployed factories
   let poolTokenV2Factory;
-
-  let poolProxyAdminAddress;
 
   // deployed contracts
   let upgrader;
@@ -54,13 +54,20 @@ describe("Contract: PoolTokenV2Upgrader", () => {
 
   before("Get signers", async () => {
     [deployer] = await ethers.getSigners();
+
+    const adminSafeAddress = getDeployedAddress("AdminSafe", "MAINNET");
+    adminSafeSigner = await impersonateAccount(adminSafeAddress);
+    await forciblySendEth(
+      adminSafeSigner.address,
+      tokenAmountToBigNumber(1),
+      deployer.address
+    );
   });
 
   before("Attach to Mainnet Admin Safe and Address Registry", async () => {
-    const adminSafeAddress = getDeployedAddress("AdminSafe", "MAINNET");
     adminSafe = await ethers.getContractAt(
       "IGnosisModuleManager",
-      adminSafeAddress
+      adminSafeSigner.address
     );
 
     const emergencySafeAddress = getDeployedAddress("EmergencySafe", "MAINNET");
@@ -71,8 +78,28 @@ describe("Contract: PoolTokenV2Upgrader", () => {
 
     addressRegistry = await ethers.getContractAt(
       "AddressRegistryV2",
-      MAINNET_ADDRESS_REGISTRY
+      ADDRESS_REGISTRY
     );
+
+    // based on the current pinned block, we need to upgrade
+    // the Address Registry to V2
+    const AddressRegistryV2 = await ethers.getContractFactory(
+      "AddressRegistryV2"
+    );
+    const logic = await AddressRegistryV2.deploy();
+    const proxyAdmin = await ethers.getContractAt(
+      "ProxyAdmin",
+      ADDRESS_REGISTRY_PROXY_ADMIN
+    );
+    const owner = await impersonateAccount(await proxyAdmin.owner());
+    await forciblySendEth(
+      owner.address,
+      tokenAmountToBigNumber(1),
+      deployer.address
+    );
+    await proxyAdmin
+      .connect(owner)
+      .upgrade(addressRegistry.address, logic.address);
   });
 
   before("Deploy factories", async () => {
@@ -93,7 +120,7 @@ describe("Contract: PoolTokenV2Upgrader", () => {
   });
 
   before("Transfer necessary ownerships to Admin Safe", async () => {
-    poolProxyAdminAddress = getDeployedAddress(
+    const poolProxyAdminAddress = getDeployedAddress(
       "PoolTokenProxyAdmin",
       "MAINNET"
     );
@@ -138,9 +165,7 @@ describe("Contract: PoolTokenV2Upgrader", () => {
 
   describe("Defaults", () => {
     it("Address Registry is set", async () => {
-      expect(await upgrader.addressRegistry()).to.equal(
-        MAINNET_ADDRESS_REGISTRY
-      );
+      expect(await upgrader.addressRegistry()).to.equal(ADDRESS_REGISTRY);
     });
   });
 
@@ -194,12 +219,6 @@ describe("Contract: PoolTokenV2Upgrader", () => {
       }
 
       // enable upgrader as module
-      const adminSafeSigner = await impersonateAccount(adminSafe);
-      await forciblySendEth(
-        adminSafe.address,
-        tokenAmountToBigNumber(1),
-        deployer.address
-      );
       await adminSafe.connect(adminSafeSigner).enableModule(upgrader.address);
       const emergencySafeSigner = await impersonateAccount(emergencySafe);
       await forciblySendEth(
