@@ -88,16 +88,14 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
     }
 
     function deployV2Logic() public onlyOwner {
-        poolTokenV2 = PoolTokenV2Factory(poolTokenV2Factory).create();
-
-        // Initialize logic storage to block possible attack vector:
-        // attacker may control and selfdestruct the logic contract
-        // if more powerful functionality is added later
-        PoolTokenV2(poolTokenV2).initialize(
-            POOL_PROXY_ADMIN,
-            IDetailedERC20(DAI_ADDRESS),
-            AggregatorV3Interface(FAKE_AGG_ADDRESS)
-        );
+        bytes memory initData =
+            abi.encodeWithSelector(
+                PoolTokenV2.initialize.selector,
+                POOL_PROXY_ADMIN,
+                IDetailedERC20(DAI_ADDRESS),
+                AggregatorV3Interface(FAKE_AGG_ADDRESS)
+            );
+        poolTokenV2 = PoolTokenV2Factory(poolTokenV2Factory).create(initData);
     }
 
     /// @notice upgrade from v1 to v2
@@ -219,9 +217,7 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
         );
     }
 
-    function _lockPool(
-        address proxy
-    ) internal {
+    function _lockPool(address proxy) internal {
         bytes memory data =
             abi.encodeWithSelector(
                 PoolTokenV2.emergencyLockAddLiquidity.selector
@@ -235,7 +231,6 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
             ),
             "SAFE_TX_FAILED"
         );
-    
     }
 }
 /* solhint-enable func-name-mixedcase */

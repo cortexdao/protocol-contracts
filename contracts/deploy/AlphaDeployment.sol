@@ -258,16 +258,14 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     }
 
     function deploy_2_PoolTokenV2_logic() external onlyOwner updateStep(2) {
-        poolTokenV2 = PoolTokenV2Factory(poolTokenV2Factory).create();
-
-        // Initialize logic storage to block possible attack vector:
-        // attacker may control and selfdestruct the logic contract
-        // if more powerful functionality is added later
-        PoolTokenV2(poolTokenV2).initialize(
-            POOL_PROXY_ADMIN,
-            IDetailedERC20(DAI_ADDRESS),
-            AggregatorV3Interface(0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe)
-        );
+        bytes memory initData =
+            abi.encodeWithSelector(
+                PoolTokenV2.initialize.selector,
+                POOL_PROXY_ADMIN,
+                IDetailedERC20(DAI_ADDRESS),
+                AggregatorV3Interface(FAKE_AGG_ADDRESS)
+            );
+        poolTokenV2 = PoolTokenV2Factory(poolTokenV2Factory).create(initData);
     }
 
     /// @dev complete proxy deploy for the demo pools
