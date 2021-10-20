@@ -24,6 +24,7 @@ const USDT_POOL_PROXY = "0xea9c5a2717d5ab75afaac340151e73a7e37d99a7";
 describe("Contract: PoolTokenV2Upgrader", () => {
   // signers
   let deployer;
+  let randomUser;
   let adminSafeSigner;
 
   // contract factories
@@ -53,7 +54,7 @@ describe("Contract: PoolTokenV2Upgrader", () => {
   });
 
   before("Get signers", async () => {
-    [deployer] = await ethers.getSigners();
+    [deployer, randomUser] = await ethers.getSigners();
 
     const adminSafeAddress = getDeployedAddress("AdminSafe", "MAINNET");
     adminSafeSigner = await impersonateAccount(adminSafeAddress);
@@ -114,9 +115,7 @@ describe("Contract: PoolTokenV2Upgrader", () => {
   });
 
   before("Deploy upgrader", async () => {
-    upgrader = await PoolTokenV2Upgrader.deploy(
-      poolTokenV2Factory.address // pool token v2 factory
-    );
+    upgrader = await PoolTokenV2Upgrader.deploy(poolTokenV2Factory.address);
   });
 
   before("Transfer necessary ownerships to Admin Safe", async () => {
@@ -164,12 +163,60 @@ describe("Contract: PoolTokenV2Upgrader", () => {
   });
 
   describe("Defaults", () => {
+    it("Owner is deployer", async () => {
+      expect(await upgrader.owner()).to.equal(deployer.address);
+    });
+
     it("Address Registry is set", async () => {
       expect(await upgrader.addressRegistry()).to.equal(ADDRESS_REGISTRY);
     });
   });
 
+  describe("setPoolTokenV2Factory", () => {
+    it("Owner can call", async () => {
+      const contract = await deployMockContract(deployer, []);
+      await expect(
+        upgrader.connect(deployer).setPoolTokenV2Factory(contract.address)
+      ).to.not.be.reverted;
+    });
+
+    it("Revert when non-owner attempts call", async () => {
+      const contract = await deployMockContract(deployer, []);
+      await expect(
+        upgrader.connect(randomUser).setPoolTokenV2Factory(contract.address)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
+
+  describe("deployV2Logic", () => {
+    it("Owner can call", async () => {
+      await expect(upgrader.connect(deployer).deployV2Logic()).to.not.be
+        .reverted;
+    });
+
+    it("Revert when non-owner attempts call", async () => {
+      await expect(
+        upgrader.connect(randomUser).deployV2Logic()
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
+
   describe("Upgrade", () => {
+    it("Revert when non-owner attempts call", async () => {
+      await expect(
+        upgrader.connect(randomUser).upgradeAll()
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+      await expect(
+        upgrader.connect(randomUser).upgradeDaiPool()
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+      await expect(
+        upgrader.connect(randomUser).upgradeUsdcPool()
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+      await expect(
+        upgrader.connect(randomUser).upgradeUsdtPool()
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
     it("Revert if upgrader isn't funded with stable", async () => {
       await expect(upgrader.upgradeDaiPool()).to.be.revertedWith(
         "FUND_UPGRADER_WITH_STABLE"
