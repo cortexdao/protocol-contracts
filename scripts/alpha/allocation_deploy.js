@@ -103,8 +103,7 @@ async function main(argv) {
     tvlManagerAddress
   );
   maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
-  // const allocationAddress = allocation.address;
-  const allocationAddress = "0xc8bb690421380c30f273121dcb4e2eb6247dbdc1";
+  const allocationAddress = allocation.address;
   const proposedTx = await tvlManager
     .connect(safeSigner)
     .registerAssetAllocation(allocationAddress, { maxFeePerGas });
