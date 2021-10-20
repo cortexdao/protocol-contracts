@@ -55,7 +55,7 @@ async function waitForSafeTxDetails(
         console.log("Got transaction hash: %s", txHash);
       }
     } catch (e) {
-      console.log(e);
+      logAxiosError(e);
     }
     await sleep(pollingDelay);
   }
@@ -71,11 +71,28 @@ async function waitForSafeTxDetails(
         timeout
       );
     } catch (e) {
-      console.log(e);
+      logAxiosError(e);
     }
     await sleep(pollingDelay);
   }
   return receipt;
+}
+
+function logAxiosError(error) {
+  if (error.response) {
+    // The request was made and the server responded with a status code
+    // that falls out of the range of 2xx
+    const response = error.response;
+    console.log("Status:", response.status, response.statusText);
+  } else if (error.request) {
+    // The request was made but no response was received
+    // `error.request` is an instance of XMLHttpRequest in the browser and an instance of
+    // http.ClientRequest in node.js
+    console.log(error.request);
+  } else {
+    // Something happened in setting up the request that triggered an Error
+    console.log("Error:", error.message);
+  }
 }
 
 module.exports = {

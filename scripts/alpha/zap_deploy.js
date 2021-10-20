@@ -18,6 +18,11 @@ const { argv } = require("yargs")
     type: "number",
     description: "Gas price in gwei; omitting uses default Ethers logic",
   })
+  .option("compile", {
+    type: "boolean",
+    default: true,
+    description: "Compile contract using `compile:one`",
+  })
   .demandOption(["name"]);
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
@@ -60,9 +65,11 @@ async function main(argv) {
   const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
   const safeSigner = await getSafeSigner(adminSafeAddress, owner);
 
-  await hre.run("clean");
-  await hre.run("compile");
-  await hre.run("compile:one", { contractName: zapContractName });
+  if (argv.compile) {
+    await hre.run("clean");
+    await hre.run("compile");
+    await hre.run("compile:one", { contractName: zapContractName });
+  }
 
   let maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
 

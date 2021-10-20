@@ -18,6 +18,11 @@ const { argv } = require("yargs")
     type: "number",
     description: "Gas price in gwei; omitting uses default Ethers logic",
   })
+  .option("compile", {
+    type: "boolean",
+    default: true,
+    description: "Compile contract using `compile:one`",
+  })
   .demandOption(["name"]);
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
@@ -61,9 +66,11 @@ async function main(argv) {
   const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
   const safeSigner = await getSafeSigner(adminSafeAddress, owner);
 
-  await hre.run("clean");
-  await hre.run("compile");
-  await hre.run("compile:one", { contractName: allocationContractName });
+  if (argv.compile) {
+    await hre.run("clean");
+    await hre.run("compile");
+    await hre.run("compile:one", { contractName: allocationContractName });
+  }
 
   let maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
 
@@ -96,7 +103,8 @@ async function main(argv) {
     tvlManagerAddress
   );
   maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
-  const allocationAddress = allocation.address;
+  // const allocationAddress = allocation.address;
+  const allocationAddress = "0xc8bb690421380c30f273121dcb4e2eb6247dbdc1";
   const proposedTx = await tvlManager
     .connect(safeSigner)
     .registerAssetAllocation(allocationAddress, { maxFeePerGas });
