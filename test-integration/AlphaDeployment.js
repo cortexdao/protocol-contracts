@@ -188,9 +188,7 @@ describe("Contract: AlphaDeployment", () => {
         .connect(adminSafeSigner)
         .enableModule(alphaDeployment.address);
 
-      expect(await adminSafe.getModules()).to.deep.equals([
-        alphaDeployment.address,
-      ]);
+      expect(await adminSafe.getModules()).to.include(alphaDeployment.address);
     });
 
     describe("Step 0: Upgrade AddressRegistry", () => {
