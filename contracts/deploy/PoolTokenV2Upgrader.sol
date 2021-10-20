@@ -40,8 +40,6 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
     address public immutable adminSafe;
     address public immutable lpSafe;
 
-    address public poolTokenV2;
-
     /**
      * @dev Uses `getAddress` in case `AddressRegistry` has not been upgraded
      */
@@ -87,7 +85,7 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
         poolTokenV2Factory = poolTokenV2Factory_;
     }
 
-    function deployV2Logic() public onlyOwner {
+    function deployV2Logic() public onlyOwner returns (address) {
         bytes memory initData =
             abi.encodeWithSelector(
                 PoolTokenV2.initialize.selector,
@@ -95,7 +93,8 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
                 IDetailedERC20(DAI_ADDRESS),
                 AggregatorV3Interface(FAKE_AGG_ADDRESS)
             );
-        poolTokenV2 = PoolTokenV2Factory(poolTokenV2Factory).create(initData);
+        address logic = PoolTokenV2Factory(poolTokenV2Factory).create(initData);
+        return logic;
     }
 
     /// @notice upgrade from v1 to v2
@@ -142,10 +141,8 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
         require(allowance > 0, "USE_LARGER_DEPOSIT");
         poolV1.approve(msg.sender, allowance);
 
-        if (poolTokenV2 == address(0)) {
-            deployV2Logic();
-        }
-        _executeUpgradeAsModule(proxy, poolTokenV2, POOL_PROXY_ADMIN);
+        address logicV2 = deployV2Logic();
+        _executeUpgradeAsModule(proxy, logicV2, POOL_PROXY_ADMIN);
 
         PoolTokenV2 poolV2 = PoolTokenV2(proxy);
         // after upgrade, we need to check:
