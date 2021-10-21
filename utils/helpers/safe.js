@@ -52,9 +52,9 @@ async function waitForSafeTxDetails(
     "USER ACTION REQUIRED: Use the Gnosis Safe UI to confirm transaction"
   );
 
-  confirmations = confirmations || 1;
+  confirmations = confirmations || 0;
   pollingDelay = (pollingDelay || 5) * 1000; // convert to milliseconds
-  timeout = (timeout || 15) * 1000; // convert to milliseconds
+  timeout = (timeout || 5) * 1000; // convert to milliseconds
 
   console.log("Waiting for transaction details ...");
   let txHash;
