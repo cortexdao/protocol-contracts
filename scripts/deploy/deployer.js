@@ -132,6 +132,7 @@ async function deployAllocations(tvlManager, adminSafe) {
     "CurveIronbankAllocation",
     "CurveSaaveAllocation",
     "CurveSusdv2Allocation",
+    "CurveUsdtAllocation",
   ];
 
   const curve3PoolAllocationContract = "Curve3poolAllocation";
@@ -200,6 +201,7 @@ async function deployZaps(lpAccount, erc20Allocation, adminSafe) {
     "CurveSusdv2Zap",
     "CurveUsdnZap",
     "CurveUsdpZap",
+    "CurveUsdtZap",
     "CurveUstZap",
   ];
 

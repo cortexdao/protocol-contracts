@@ -123,6 +123,13 @@ const poolTests = [
     gaugeAddress: "0x055be5DDB7A925BfEF3417FC157f53CA77cA7222",
   },
   {
+    name: "curve-usdt",
+    nCoins: 3,
+    decimals: [18, 6, 6],
+    ignoreIndexes: [],
+    gaugeAddress: "0xBC89cd85491d81C6AD2954E6d0362Ee29fCa8F53",
+  },
+  {
     name: "curve-ust",
     nCoins: 4,
     decimals: [18, 18, 6, 6],
