@@ -30,10 +30,7 @@ contract CurveUsdtAllocation is
             IERC20(LP_TOKEN_ADDRESS),
             tokenIndex
         );
-        if (tokenIndex != 2) {
-            // token order: cDAI, cUSDC, USDT
-            balance = unwrapBalance(balance, tokenIndex);
-        }
+        balance = unwrapBalance(balance, tokenIndex);
         return balance;
     }
 
@@ -42,6 +39,14 @@ contract CurveUsdtAllocation is
         view
         returns (uint256)
     {
+        // Testing becomes trickier if we need to call `unwrapBalance`
+        // on some underlyers but not others, so we make it a "no-op"
+        // for non-wrapped tokens.
+        //
+        // token order: cDAI, cUSDC, USDT
+        if (tokenIndex == 2) {
+            return balance;
+        }
         IOldStableSwap3 pool = IOldStableSwap3(STABLE_SWAP_ADDRESS);
         CTokenInterface cyToken = CTokenInterface(pool.coins(tokenIndex));
         return balance.mul(cyToken.exchangeRateStored()).div(10**uint256(18));
@@ -53,9 +58,10 @@ contract CurveUsdtAllocation is
         override
         returns (TokenData[] memory)
     {
-        TokenData[] memory tokens = new TokenData[](2);
+        TokenData[] memory tokens = new TokenData[](3);
         tokens[0] = TokenData(DAI_ADDRESS, "DAI", 18);
         tokens[1] = TokenData(USDC_ADDRESS, "USDC", 6);
+        tokens[2] = TokenData(USDT_ADDRESS, "USDT", 6);
         return tokens;
     }
 }
