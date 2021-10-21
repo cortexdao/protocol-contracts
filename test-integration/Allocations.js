@@ -81,6 +81,20 @@ const CurvePoolAllocations = [
     },
     unwrap: true,
   },
+  {
+    contractName: "CurveUsdtAllocation",
+    poolName: "USDT",
+    // using the Curve pool itself as the "whale":
+    // should be ok since the pool's external balances (vs the pool's
+    // internal balances) are only used for admin balances and determining
+    // deposit amounts for "fee" assets.
+    whaleAddress: "0x52EA46506B9CC5Ef470C5bf89f17Dc28bB35D85C",
+    numberOfCoins: 3,
+    interfaceOverride: {
+      IStableSwap: "IOldStableSwap3",
+    },
+    unwrap: true,
+  },
 ];
 
 const CurveMetaPoolAllocations = [
@@ -100,8 +114,7 @@ const CurveMetaPoolAllocations = [
     // using the Curve pool itself as the "whale":
     // should be ok since the pool's external balances (vs the pool's
     // internal balances) are only used for admin balances and determining
-    // deposit amounts for "fee" assets.  For this metapool, only
-    // Tether is a fee asset.
+    // deposit amounts for "fee" assets.
     whaleAddress: "0x0f9cb53Ebe405d49A0bbdBD291A65Ff571bC83e1",
   },
   {
@@ -166,7 +179,7 @@ async function getContractAt(
   return contract;
 }
 
-describe("Allocations", () => {
+describe.only("Allocations", () => {
   /* signers */
   let deployer;
   let emergencySafe;
@@ -193,13 +206,8 @@ describe("Allocations", () => {
   });
 
   before(async () => {
-    [
-      deployer,
-      emergencySafe,
-      adminSafe,
-      mApt,
-      lpAccount,
-    ] = await ethers.getSigners();
+    [deployer, emergencySafe, adminSafe, mApt, lpAccount] =
+      await ethers.getSigners();
 
     const addressRegistry = await deployMockContract(
       deployer,
@@ -357,7 +365,8 @@ describe("Allocations", () => {
           lpAccount
         );
 
-        const LIQUIDITY_GAUGE_ADDRESS = await allocation.LIQUIDITY_GAUGE_ADDRESS();
+        const LIQUIDITY_GAUGE_ADDRESS =
+          await allocation.LIQUIDITY_GAUGE_ADDRESS();
         gauge = await getContractAt(
           "ILiquidityGauge",
           LIQUIDITY_GAUGE_ADDRESS,
@@ -591,7 +600,8 @@ describe("Allocations", () => {
         );
 
         // 3pool
-        const BASE_POOL_ADDRESS = await curve3poolAllocation.STABLE_SWAP_ADDRESS();
+        const BASE_POOL_ADDRESS =
+          await curve3poolAllocation.STABLE_SWAP_ADDRESS();
         basePool = await getContractAt(
           "IStableSwap",
           BASE_POOL_ADDRESS,
@@ -599,7 +609,8 @@ describe("Allocations", () => {
           lpAccount
         );
 
-        const BASE_LP_TOKEN_ADDRESS = await curve3poolAllocation.LP_TOKEN_ADDRESS();
+        const BASE_LP_TOKEN_ADDRESS =
+          await curve3poolAllocation.LP_TOKEN_ADDRESS();
         baseLpToken = await getContractAt(
           "IDetailedERC20",
           BASE_LP_TOKEN_ADDRESS,
@@ -620,7 +631,8 @@ describe("Allocations", () => {
           let sender = WHALE_POOLS["DAI"];
           await acquireToken(sender, lpAccount, daiToken, amount, deployer);
 
-          const PRIMARY_UNDERLYER_ADDRESS = await allocation.PRIMARY_UNDERLYER();
+          const PRIMARY_UNDERLYER_ADDRESS =
+            await allocation.PRIMARY_UNDERLYER();
           primaryToken = await ethers.getContractAt(
             "IDetailedERC20",
             PRIMARY_UNDERLYER_ADDRESS
