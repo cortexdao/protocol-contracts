@@ -1,3 +1,4 @@
+const readline = require("readline");
 const axios = require("axios");
 const axiosRetry = require("axios-retry");
 const {
@@ -21,6 +22,20 @@ function configureAxiosRetry(axios, retries) {
       return 500 <= error.response.status;
     },
   });
+}
+
+function promptUser(promptText) {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) =>
+    rl.question(promptText, (ans) => {
+      rl.close();
+      resolve(ans);
+    })
+  );
 }
 
 /*
@@ -55,6 +70,9 @@ async function waitForSafeTxDetails(
   confirmations = confirmations || 0;
   pollingDelay = (pollingDelay || 5) * 1000; // convert to milliseconds
   timeout = (timeout || 5) * 1000; // convert to milliseconds
+
+  const answer = await promptUser("Continue? (y/n)");
+  if (answer.toLowerCase().charAt(0) == "n") return;
 
   console.log("Waiting for transaction details ...");
   let txHash;
