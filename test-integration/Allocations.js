@@ -194,15 +194,25 @@ describe("Allocations", () => {
   let tvlManager;
 
   // use EVM snapshots for test isolation
-  let snapshotId;
+  let suiteSnapshotId;
+  let testSnapshotId;
+
+  before(async () => {
+    let snapshot = await timeMachine.takeSnapshot();
+    suiteSnapshotId = snapshot["result"];
+  });
+
+  after(async () => {
+    await timeMachine.revertToSnapshot(suiteSnapshotId);
+  });
 
   beforeEach(async () => {
     let snapshot = await timeMachine.takeSnapshot();
-    snapshotId = snapshot["result"];
+    testSnapshotId = snapshot["result"];
   });
 
   afterEach(async () => {
-    await timeMachine.revertToSnapshot(snapshotId);
+    await timeMachine.revertToSnapshot(testSnapshotId);
   });
 
   before(async () => {
