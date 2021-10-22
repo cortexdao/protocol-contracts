@@ -19,38 +19,52 @@ export function getEthUsdAggregator(network: string): AggregatorV3Interface {
     return ethUsdAgg;
 }
 
-const symbolToAggAddress = {
-    mainnet: {
-        dai: "0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9",
-        usdc: "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6",
-        usdt: "0x3E7d1eAB13ad0104d2750B8863b489D65364e32D",
-    },
-    kovan: {
-        dai: "0x777A68032a88E5A84678A77Af2CD65A7b3c0775a",
-        usdc: "0x9211c6b3BF41A10F78539810Cf5c64e1BB78Ec60",
-        usdt: "0x2ca5A90D34cA333661083F89D831f757A9A50148",
-    },
-};
-
 export function getStableUsdAggregator(
     network: string,
     symbol: string
 ): AggregatorV3Interface {
-    network = network.toLowerCase();
-    symbol = symbol.toLowerCase();
-    if (!["mainnet", "kovan"].includes(network)) {
+    let aggAddress: Address;
+    if (network == "mainnet") {
+        if (symbol == "DAI") {
+            aggAddress = Address.fromString(
+                "0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9"
+            );
+        } else if (symbol == "USDC") {
+            aggAddress = Address.fromString(
+                "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6"
+            );
+        } else if (symbol == "USDT") {
+            aggAddress = Address.fromString(
+                "0x3E7d1eAB13ad0104d2750B8863b489D65364e32D"
+            );
+        } else {
+            throw new Error(
+                "Symbol not recognized: must be 'DAI', 'USDC', or 'USDT'."
+            );
+        }
+    } else if (network == "kovan") {
+        if (symbol == "DAI") {
+            aggAddress = Address.fromString(
+                "0x777A68032a88E5A84678A77Af2CD65A7b3c0775a"
+            );
+        } else if (symbol == "USDC") {
+            aggAddress = Address.fromString(
+                "0x9211c6b3BF41A10F78539810Cf5c64e1BB78Ec60"
+            );
+        } else if (symbol == "USDT") {
+            aggAddress = Address.fromString(
+                "0x2ca5A90D34cA333661083F89D831f757A9A50148"
+            );
+        } else {
+            throw new Error(
+                "Symbol not recognized: must be 'DAI', 'USDC', or 'USDT'."
+            );
+        }
+    } else {
         throw new Error(
             "Network not recognized: must be 'mainnet' or 'kovan'."
         );
     }
-    if (!["dai", "usdc", "usdt"].includes(symbol)) {
-        throw new Error(
-            "Symbol not recognized: must be 'dai', 'usdc', or 'usdt'."
-        );
-    }
-    const aggAddress: Address = Address.fromString(
-        symbolToAggAddress[network][symbol]
-    );
     const stableUsdAgg: AggregatorV3Interface =
         AggregatorV3Interface.bind(aggAddress);
     return stableUsdAgg;
