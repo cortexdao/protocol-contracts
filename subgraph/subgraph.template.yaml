@@ -24,9 +24,9 @@ dataSources:
         - Pool
       abis:
         - name: PoolTokenV2
-          file: ../artifacts/contracts/PoolTokenV2.sol/PoolTokenV2.json
+          file: ../artifacts/contracts/pool/PoolTokenV2.sol/PoolTokenV2.json
         - name: IDetailedERC20
-          file: ../artifacts/contracts/interfaces/IDetailedERC20.sol/IDetailedERC20.json
+          file: ../artifacts/contracts/common/IDetailedERC20.sol/IDetailedERC20.json
         - name: AggregatorV3Interface
           file: ../artifacts/@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.json
       eventHandlers:
@@ -57,9 +57,9 @@ dataSources:
         - Pool
       abis:
         - name: PoolTokenV2
-          file: ../artifacts/contracts/PoolTokenV2.sol/PoolTokenV2.json
+          file: ../artifacts/contracts/pool/PoolTokenV2.sol/PoolTokenV2.json
         - name: IDetailedERC20
-          file: ../artifacts/contracts/interfaces/IDetailedERC20.sol/IDetailedERC20.json
+          file: ../artifacts/contracts/common/IDetailedERC20.sol/IDetailedERC20.json
         - name: AggregatorV3Interface
           file: ../artifacts/@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.json
       eventHandlers:
@@ -90,9 +90,9 @@ dataSources:
         - Pool
       abis:
         - name: PoolTokenV2
-          file: ../artifacts/contracts/PoolTokenV2.sol/PoolTokenV2.json
+          file: ../artifacts/contracts/pool/PoolTokenV2.sol/PoolTokenV2.json
         - name: IDetailedERC20
-          file: ../artifacts/contracts/interfaces/IDetailedERC20.sol/IDetailedERC20.json
+          file: ../artifacts/contracts/common/IDetailedERC20.sol/IDetailedERC20.json
         - name: AggregatorV3Interface
           file: ../artifacts/@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.json
       eventHandlers:
@@ -118,7 +118,7 @@ dataSources:
         - AccountClaim
       abis:
         - name: RewardDistributor
-          file: ../artifacts/contracts/RewardDistributor.sol/RewardDistributor.json
+          file: ../artifacts/contracts/rewards/RewardDistributor.sol/RewardDistributor.json
       eventHandlers:
         - event: Claimed(uint256,address,uint256)
           handler: handleClaimed
