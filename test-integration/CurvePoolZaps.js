@@ -106,6 +106,17 @@ describe("Curve Pool Zaps - LP Account integration", () => {
       whaleAddress: WHALE_POOLS["DAI"],
       rewardToken: "0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F",
     },
+    {
+      contractName: "CurveUsdtZap",
+      swapAddress: "0x52EA46506B9CC5Ef470C5bf89f17Dc28bB35D85C",
+      swapInterface: "IDepositZap3",
+      lpTokenAddress: "0x9fC689CCaDa600B6DF723D9E47D84d76664a1F23",
+      gaugeAddress: "0xBC89cd85491d81C6AD2954E6d0362Ee29fCa8F53",
+      gaugeInterface: "ILiquidityGauge",
+      numberOfCoins: 3,
+      whaleAddress: WHALE_POOLS["DAI"],
+      useUnwrapped: true,
+    },
   ];
 
   async function getTotalNormalizedBalance(allocationIds) {

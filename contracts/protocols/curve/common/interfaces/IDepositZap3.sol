@@ -7,7 +7,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 /**
  * @notice deposit contract used for pools such as Compound and USDT
  */
-interface IDepositZap {
+interface IDepositZap3 {
     // solhint-disable-next-line
     function underlying_coins(int128 coin) external view returns (address);
 
@@ -15,7 +15,7 @@ interface IDepositZap {
      * @dev the number of coins is hard-coded in curve contracts
      */
     // solhint-disable-next-line
-    function add_liquidity(uint256[2] memory amounts, uint256 min_mint_amount)
+    function add_liquidity(uint256[3] memory amounts, uint256 min_mint_amount)
         external;
 
     /**
