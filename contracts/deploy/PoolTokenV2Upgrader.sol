@@ -62,6 +62,32 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
         _;
     }
 
+    modifier checkEnabledModule() {
+        address[] memory adminModules = IGnosisModuleManager(adminSafe)
+            .getModules();
+        bool adminEnabled = false;
+        for (uint256 i = 0; i < adminModules.length; i++) {
+            if (adminModules[i] == address(this)) {
+                adminEnabled = true;
+                break;
+            }
+        }
+        require(adminEnabled, "ENABLE_AS_ADMIN_MODULE");
+
+        address[] memory emergencyModules = IGnosisModuleManager(emergencySafe)
+            .getModules();
+        bool emergencyEnabled = false;
+        for (uint256 i = 0; i < emergencyModules.length; i++) {
+            if (emergencyModules[i] == address(this)) {
+                emergencyEnabled = true;
+                break;
+            }
+        }
+        require(emergencyEnabled, "ENABLE_AS_EMERGENCY_MODULE");
+
+        _;
+    }
+
     constructor(address poolTokenV2Factory_) public {
         addressRegistry = IAddressRegistryV2(ADDRESS_REGISTRY_PROXY);
 
@@ -105,15 +131,30 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
         upgradeUsdtPool();
     }
 
-    function upgradeDaiPool() public onlyOwner checkSafeRegistrations {
+    function upgradeDaiPool()
+        public
+        onlyOwner
+        checkSafeRegistrations
+        checkEnabledModule
+    {
         _upgrade(payable(DAI_POOL_PROXY));
     }
 
-    function upgradeUsdcPool() public onlyOwner checkSafeRegistrations {
+    function upgradeUsdcPool()
+        public
+        onlyOwner
+        checkSafeRegistrations
+        checkEnabledModule
+    {
         _upgrade(payable(USDC_POOL_PROXY));
     }
 
-    function upgradeUsdtPool() public onlyOwner checkSafeRegistrations {
+    function upgradeUsdtPool()
+        public
+        onlyOwner
+        checkSafeRegistrations
+        checkEnabledModule
+    {
         _upgrade(payable(USDT_POOL_PROXY));
     }
 
