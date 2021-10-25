@@ -1,18 +1,11 @@
-type TotalEthValueLocked @entity {
-  id: ID!
-  timestamp: BigInt!
-  sequenceNumber: BigInt!
-  poolAddress: Bytes!
-  totalEthValueLocked: BigInt!
-}
-
-type PoolTotalValue @entity {
+type Apt @entity {
   id: ID!
   poolAddress: Bytes!
   timestamp: BigInt!
-  totalEthValueLocked: BigInt!
-  aptSupply: BigInt!
-  valuePerShare: BigDecimal
+  blockNumber: BigInt!
+  totalValue: BigInt!
+  totalSupply: BigInt!
+  price: BigInt
 }
 
 type Cashflow @entity {
@@ -25,6 +18,7 @@ type Cashflow @entity {
 type CashflowPoint @entity {
   id: ID!
   timestamp: BigInt!
+  blockNumber: BigInt!
   userAddress: Bytes!
   poolAddress: Bytes!
   userAptBalance: BigInt!
@@ -54,6 +48,7 @@ type Pool @entity {
   underlyerSymbol: String!
   underlyerDecimals: Int!
   underlyerBalance: BigInt!
+  totalValue: BigInt!
   aptSupply: BigInt!
 }
 
