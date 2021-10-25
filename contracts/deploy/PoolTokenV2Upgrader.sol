@@ -11,10 +11,7 @@ import {PoolTokenV2} from "contracts/pool/PoolTokenV2.sol";
 import {LpAccount} from "contracts/lpaccount/LpAccount.sol";
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
 import {AddressRegistryV2} from "contracts/registry/AddressRegistryV2.sol";
-import {
-    ProxyAdmin,
-    TransparentUpgradeableProxy
-} from "contracts/proxy/Imports.sol";
+import {ProxyAdmin, TransparentUpgradeableProxy} from "contracts/proxy/Imports.sol";
 import {IAssetAllocationRegistry} from "contracts/tvl/Imports.sol";
 
 import {DeploymentConstants} from "./constants.sol";
@@ -91,36 +88,13 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
     constructor(address poolTokenV2Factory_) public {
         addressRegistry = IAddressRegistryV2(ADDRESS_REGISTRY_PROXY);
 
-        // Simplest to check now that Safes are deployed in order to
-        // avoid repeated preconditions checks later.
+        // The Safe addresses are also checked on each upgrade to ensure
+        // they haven't changed.
         emergencySafe = addressRegistry.getAddress("emergencySafe");
         adminSafe = addressRegistry.getAddress("adminSafe");
         lpSafe = addressRegistry.getAddress("lpSafe");
 
         setPoolTokenV2Factory(poolTokenV2Factory_);
-    }
-
-    function setPoolTokenV2Factory(address poolTokenV2Factory_)
-        public
-        onlyOwner
-    {
-        require(
-            Address.isContract(poolTokenV2Factory_),
-            "INVALID_FACTORY_ADDRESS"
-        );
-        poolTokenV2Factory = poolTokenV2Factory_;
-    }
-
-    function deployV2Logic() public onlyOwner returns (address) {
-        bytes memory initData =
-            abi.encodeWithSelector(
-                PoolTokenV2.initialize.selector,
-                POOL_PROXY_ADMIN,
-                IDetailedERC20(DAI_ADDRESS),
-                AggregatorV3Interface(FAKE_AGG_ADDRESS)
-            );
-        address logic = PoolTokenV2Factory(poolTokenV2Factory).create(initData);
-        return logic;
     }
 
     /// @notice upgrade from v1 to v2
@@ -156,6 +130,28 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
         checkEnabledModule
     {
         _upgrade(payable(USDT_POOL_PROXY));
+    }
+
+    function setPoolTokenV2Factory(address poolTokenV2Factory_)
+        public
+        onlyOwner
+    {
+        require(
+            Address.isContract(poolTokenV2Factory_),
+            "INVALID_FACTORY_ADDRESS"
+        );
+        poolTokenV2Factory = poolTokenV2Factory_;
+    }
+
+    function deployV2Logic() public onlyOwner returns (address) {
+        bytes memory initData = abi.encodeWithSelector(
+            PoolTokenV2.initialize.selector,
+            POOL_PROXY_ADMIN,
+            IDetailedERC20(DAI_ADDRESS),
+            AggregatorV3Interface(FAKE_AGG_ADDRESS)
+        );
+        address logic = PoolTokenV2Factory(poolTokenV2Factory).create(initData);
+        return logic;
     }
 
     function _upgrade(address payable proxy) internal {
@@ -231,18 +227,16 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
         address logic,
         address proxyAdmin
     ) internal {
-        bytes memory initData =
-            abi.encodeWithSelector(
-                PoolTokenV2.initializeUpgrade.selector,
-                addressRegistry
-            );
-        bytes memory data =
-            abi.encodeWithSelector(
-                ProxyAdmin.upgradeAndCall.selector,
-                TransparentUpgradeableProxy(payable(proxy)),
-                logic,
-                initData
-            );
+        bytes memory initData = abi.encodeWithSelector(
+            PoolTokenV2.initializeUpgrade.selector,
+            addressRegistry
+        );
+        bytes memory data = abi.encodeWithSelector(
+            ProxyAdmin.upgradeAndCall.selector,
+            TransparentUpgradeableProxy(payable(proxy)),
+            logic,
+            initData
+        );
 
         require(
             IGnosisModuleManager(adminSafe).execTransactionFromModule(
@@ -256,10 +250,9 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
     }
 
     function _lockPool(address proxy) internal {
-        bytes memory data =
-            abi.encodeWithSelector(
-                PoolTokenV2.emergencyLockAddLiquidity.selector
-            );
+        bytes memory data = abi.encodeWithSelector(
+            PoolTokenV2.emergencyLockAddLiquidity.selector
+        );
         require(
             IGnosisModuleManager(emergencySafe).execTransactionFromModule(
                 proxy,
