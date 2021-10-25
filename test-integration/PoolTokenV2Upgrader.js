@@ -123,7 +123,10 @@ describe("Contract: PoolTokenV2Upgrader", () => {
   });
 
   before("Deploy upgrader", async () => {
-    upgrader = await PoolTokenV2Upgrader.deploy(poolTokenV2Factory.address);
+    // in production, deploy will be via the Admin Safe
+    upgrader = await PoolTokenV2Upgrader.connect(adminSafeSigner).deploy(
+      poolTokenV2Factory.address
+    );
   });
 
   before("Transfer necessary ownerships to Admin Safe", async () => {
@@ -172,7 +175,7 @@ describe("Contract: PoolTokenV2Upgrader", () => {
 
   describe("Defaults", () => {
     it("Owner is deployer", async () => {
-      expect(await upgrader.owner()).to.equal(deployer.address);
+      expect(await upgrader.owner()).to.equal(adminSafeSigner.address);
     });
 
     it("Address Registry is set", async () => {
@@ -184,7 +187,9 @@ describe("Contract: PoolTokenV2Upgrader", () => {
     it("Owner can call", async () => {
       const contract = await deployMockContract(deployer, []);
       await expect(
-        upgrader.connect(deployer).setPoolTokenV2Factory(contract.address)
+        upgrader
+          .connect(adminSafeSigner)
+          .setPoolTokenV2Factory(contract.address)
       ).to.not.be.reverted;
     });
 
@@ -198,7 +203,7 @@ describe("Contract: PoolTokenV2Upgrader", () => {
 
   describe("deployV2Logic", () => {
     it("Owner can call", async () => {
-      await expect(upgrader.connect(deployer).deployV2Logic()).to.not.be
+      await expect(upgrader.connect(adminSafeSigner).deployV2Logic()).to.not.be
         .reverted;
     });
 
