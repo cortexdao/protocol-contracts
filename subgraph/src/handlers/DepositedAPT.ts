@@ -23,12 +23,19 @@ export function handleDepositedAPT(event: DepositedAPT): void {
     const blockNumber: BigInt = event.block.number;
     const poolAddress: Address = event.address;
 
-    const contract = PoolTokenV2.bind(poolAddress);
-    const underlyer = IDetailedERC20.bind(contract.underlyer());
+    let poolToken = PoolTokenV2.bind(poolAddress);
+    const result = poolToken.try_addressRegistry();
+    let version = 2;
+    if (result.reverted) {
+        version = 1;
+    }
+
+    const underlyer = IDetailedERC20.bind(poolToken.underlyer());
     const symbol = underlyer.symbol();
     const underlyerPriceAgg = getStableUsdAggregator(
         dataSource.network(),
-        symbol
+        symbol,
+        version
     );
     const ethUsdAgg: AggregatorV3Interface = getEthUsdAggregator(
         dataSource.network()
@@ -45,7 +52,7 @@ export function handleDepositedAPT(event: DepositedAPT): void {
     cashflowPoint.poolAddress = poolAddress;
     cashflowPoint.timestamp = timestamp;
     cashflowPoint.blockNumber = blockNumber;
-    cashflowPoint.userAptBalance = contract.balanceOf(userAddress);
+    cashflowPoint.userAptBalance = poolToken.balanceOf(userAddress);
 
     let totalValue = event.params.totalEthValueLocked;
     let underlyerPrice = getPriceFromAgg(underlyerPriceAgg);
@@ -71,7 +78,7 @@ export function handleDepositedAPT(event: DepositedAPT): void {
     cashflow.save();
     cashflowPoint.save();
 
-    const totalSupply = contract.totalSupply();
+    const totalSupply = poolToken.totalSupply();
     createAndSaveApt(
         poolAddress,
         timestamp,
