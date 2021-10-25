@@ -26,6 +26,7 @@ describe("Contract: PoolTokenV2Upgrader", () => {
   let deployer;
   let randomUser;
   let adminSafeSigner;
+  let emergencySafeSigner;
 
   // contract factories
   let PoolTokenV2Upgrader;
@@ -60,21 +61,28 @@ describe("Contract: PoolTokenV2Upgrader", () => {
     adminSafeSigner = await impersonateAccount(adminSafeAddress);
     await forciblySendEth(
       adminSafeSigner.address,
-      tokenAmountToBigNumber(1),
+      tokenAmountToBigNumber(5),
+      deployer.address
+    );
+
+    const emergencySafeAddress = getDeployedAddress("EmergencySafe", "MAINNET");
+    emergencySafeSigner = await impersonateAccount(emergencySafeAddress);
+    await forciblySendEth(
+      emergencySafeSigner.address,
+      tokenAmountToBigNumber(5),
       deployer.address
     );
   });
 
-  before("Attach to Mainnet Admin Safe and Address Registry", async () => {
+  before("Attach to Mainnet Safes and Address Registry", async () => {
     adminSafe = await ethers.getContractAt(
       "IGnosisModuleManager",
       adminSafeSigner.address
     );
 
-    const emergencySafeAddress = getDeployedAddress("EmergencySafe", "MAINNET");
     emergencySafe = await ethers.getContractAt(
       "IGnosisModuleManager",
-      emergencySafeAddress
+      emergencySafeSigner.address
     );
 
     addressRegistry = await ethers.getContractAt(
@@ -95,7 +103,7 @@ describe("Contract: PoolTokenV2Upgrader", () => {
     const owner = await impersonateAccount(await proxyAdmin.owner());
     await forciblySendEth(
       owner.address,
-      tokenAmountToBigNumber(1),
+      tokenAmountToBigNumber(5),
       deployer.address
     );
     await proxyAdmin
@@ -217,7 +225,37 @@ describe("Contract: PoolTokenV2Upgrader", () => {
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
+    it("Revert if upgrader is not enabled module", async () => {
+      await expect(upgrader.upgradeDaiPool()).to.be.revertedWith(
+        "ENABLE_AS_ADMIN_MODULE"
+      );
+      await expect(upgrader.upgradeUsdcPool()).to.be.revertedWith(
+        "ENABLE_AS_ADMIN_MODULE"
+      );
+      await expect(upgrader.upgradeUsdtPool()).to.be.revertedWith(
+        "ENABLE_AS_ADMIN_MODULE"
+      );
+
+      await adminSafe.connect(adminSafeSigner).enableModule(upgrader.address);
+
+      await expect(upgrader.upgradeDaiPool()).to.be.revertedWith(
+        "ENABLE_AS_EMERGENCY_MODULE"
+      );
+      await expect(upgrader.upgradeUsdcPool()).to.be.revertedWith(
+        "ENABLE_AS_EMERGENCY_MODULE"
+      );
+      await expect(upgrader.upgradeUsdtPool()).to.be.revertedWith(
+        "ENABLE_AS_EMERGENCY_MODULE"
+      );
+    });
+
     it("Revert if upgrader isn't funded with stable", async () => {
+      // enable upgrader as module
+      await adminSafe.connect(adminSafeSigner).enableModule(upgrader.address);
+      await emergencySafe
+        .connect(emergencySafeSigner)
+        .enableModule(upgrader.address);
+
       await expect(upgrader.upgradeDaiPool()).to.be.revertedWith(
         "FUND_UPGRADER_WITH_STABLE"
       );
@@ -229,26 +267,13 @@ describe("Contract: PoolTokenV2Upgrader", () => {
       );
     });
 
-    it("Revert if upgrader is not enabled module", async () => {
-      // fund upgrader with USDC
-      const usdcToken = await ethers.getContractAt(
-        "IDetailedERC20",
-        getStablecoinAddress("USDC", "MAINNET")
-      );
-      await acquireToken(
-        WHALE_POOLS["USDC"],
-        upgrader.address,
-        usdcToken,
-        tokenAmountToBigNumber("100", 6),
-        deployer.address
-      );
-
-      await expect(upgrader.upgradeUsdcPool()).to.be.revertedWith(
-        "Method can only be called from an enabled module"
-      );
-    });
-
     it("Can upgrade", async () => {
+      // enable upgrader as module
+      await adminSafe.connect(adminSafeSigner).enableModule(upgrader.address);
+      await emergencySafe
+        .connect(emergencySafeSigner)
+        .enableModule(upgrader.address);
+
       // fund upgrader with stables
       for (const symbol of ["DAI", "USDC", "USDT"]) {
         const token = await ethers.getContractAt(
@@ -264,18 +289,6 @@ describe("Contract: PoolTokenV2Upgrader", () => {
           deployer.address
         );
       }
-
-      // enable upgrader as module
-      await adminSafe.connect(adminSafeSigner).enableModule(upgrader.address);
-      const emergencySafeSigner = await impersonateAccount(emergencySafe);
-      await forciblySendEth(
-        emergencySafe.address,
-        tokenAmountToBigNumber(1),
-        deployer.address
-      );
-      await emergencySafe
-        .connect(emergencySafeSigner)
-        .enableModule(upgrader.address);
 
       await expect(upgrader.upgradeAll()).to.not.be.reverted;
 
