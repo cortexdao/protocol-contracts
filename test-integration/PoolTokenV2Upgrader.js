@@ -315,5 +315,39 @@ describe("Contract: PoolTokenV2Upgrader", () => {
       expect(await usdtPool.addLiquidityLock()).to.be.true;
       expect(await usdtPool.feePercentage()).to.be.gt(0);
     });
+
+    it("Revert if balances mapping has wrong slot", async () => {
+      // enable upgrader as module
+      await adminSafe.connect(adminSafeSigner).enableModule(upgrader.address);
+      await emergencySafe
+        .connect(emergencySafeSigner)
+        .enableModule(upgrader.address);
+
+      // fund upgrader with stables
+      for (const symbol of ["DAI", "USDC", "USDT"]) {
+        const token = await ethers.getContractAt(
+          "IDetailedERC20",
+          getStablecoinAddress(symbol, "MAINNET")
+        );
+        const decimals = await token.decimals();
+        await acquireToken(
+          WHALE_POOLS[symbol],
+          upgrader.address,
+          token,
+          tokenAmountToBigNumber("271.828182", decimals),
+          deployer.address
+        );
+      }
+
+      const BrokenPoolTokenV2Factory = await ethers.getContractFactory(
+        "TestBrokenPoolTokenV2Factory"
+      );
+      const brokenPoolTokenV2Factory = await BrokenPoolTokenV2Factory.deploy();
+      await upgrader.setPoolTokenV2Factory(brokenPoolTokenV2Factory.address);
+
+      await expect(upgrader.upgradeAll()).to.be.revertedWith(
+        "BALANCEOF_TEST_FAILED"
+      );
+    });
   });
 });
