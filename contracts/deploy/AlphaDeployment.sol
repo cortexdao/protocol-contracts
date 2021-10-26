@@ -438,34 +438,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         _registerAddress("oracleAdapter", oracleAdapter);
     }
 
-    /// @notice upgrade from v1 to v2
-    /// @dev register mAPT for a contract role
-    function deploy_7_PoolTokenV2_upgrade()
-        external
-        onlyOwner
-        updateStep(7)
-        checkSafeRegistrations
-    {
-        bytes32[] memory registeredIds = new bytes32[](1);
-        address[] memory deployedAddresses = new address[](1);
-        (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
-        checkRegisteredDependencies(registeredIds, deployedAddresses);
-
-        address[] memory ownerships = new address[](1);
-        ownerships[0] = POOL_PROXY_ADMIN;
-        checkOwnerships(ownerships);
-
-        bytes memory initData =
-            abi.encodeWithSelector(
-                PoolTokenV2.initializeUpgrade.selector,
-                addressRegistry
-            );
-
-        _upgradePool(DAI_POOL_PROXY, POOL_PROXY_ADMIN, initData);
-        _upgradePool(USDC_POOL_PROXY, POOL_PROXY_ADMIN, initData);
-        _upgradePool(USDT_POOL_PROXY, POOL_PROXY_ADMIN, initData);
-    }
-
     /**
      * @dev
      *   Check a contract address from a previous step's deployment
@@ -562,30 +534,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         _registerAddress(id, proxy);
 
         return proxy;
-    }
-
-    function _upgradePool(
-        address proxy,
-        address proxyAdmin,
-        bytes memory initData
-    ) internal {
-        bytes memory data =
-            abi.encodeWithSelector(
-                ProxyAdmin.upgradeAndCall.selector,
-                TransparentUpgradeableProxy(payable(proxy)),
-                poolTokenV2,
-                initData
-            );
-
-        require(
-            IGnosisModuleManager(adminSafe).execTransactionFromModule(
-                proxyAdmin,
-                0,
-                data,
-                Enum.Operation.Call
-            ),
-            "SAFE_TX_FAILED"
-        );
     }
 }
 /* solhint-enable func-name-mixedcase */
