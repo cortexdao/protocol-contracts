@@ -186,53 +186,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         lpAccountFactory = lpAccountFactory_;
     }
 
-    /**
-     * @dev
-     *   Check a contract address from a previous step's deployment
-     *   is registered with expected ID.
-     *
-     * @param registeredIds identifiers for the Address Registry
-     * @param deployedAddresses addresses from previous steps' deploys
-     */
-    function checkRegisteredDependencies(
-        bytes32[] memory registeredIds,
-        address[] memory deployedAddresses
-    ) public view virtual {
-        require(
-            registeredIds.length == deployedAddresses.length,
-            "LENGTH_MISMATCH"
-        );
-
-        for (uint256 i = 0; i < registeredIds.length; i++) {
-            require(
-                addressRegistry.getAddress(registeredIds[i]) ==
-                    deployedAddresses[i],
-                "MISSING_DEPLOYED_ADDRESS"
-            );
-        }
-    }
-
-    /**
-     * @dev
-     *   Check the deployment contract has ownership of necessary
-     *   contracts to perform actions, e.g. register an address or upgrade
-     *   a proxy.
-     *
-     * @param ownedContracts addresses that should be owned by this contract
-     */
-    function checkOwnerships(address[] memory ownedContracts)
-        public
-        view
-        virtual
-    {
-        for (uint256 i = 0; i < ownedContracts.length; i++) {
-            require(
-                Ownable(ownedContracts[i]).owner() == adminSafe,
-                "MISSING_OWNERSHIP"
-            );
-        }
-    }
-
     function deploy_0_AddressRegistryV2_upgrade()
         external
         onlyOwner
@@ -513,6 +466,53 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         _upgradePool(DAI_POOL_PROXY, POOL_PROXY_ADMIN, initData);
         _upgradePool(USDC_POOL_PROXY, POOL_PROXY_ADMIN, initData);
         _upgradePool(USDT_POOL_PROXY, POOL_PROXY_ADMIN, initData);
+    }
+
+    /**
+     * @dev
+     *   Check a contract address from a previous step's deployment
+     *   is registered with expected ID.
+     *
+     * @param registeredIds identifiers for the Address Registry
+     * @param deployedAddresses addresses from previous steps' deploys
+     */
+    function checkRegisteredDependencies(
+        bytes32[] memory registeredIds,
+        address[] memory deployedAddresses
+    ) public view virtual {
+        require(
+            registeredIds.length == deployedAddresses.length,
+            "LENGTH_MISMATCH"
+        );
+
+        for (uint256 i = 0; i < registeredIds.length; i++) {
+            require(
+                addressRegistry.getAddress(registeredIds[i]) ==
+                    deployedAddresses[i],
+                "MISSING_DEPLOYED_ADDRESS"
+            );
+        }
+    }
+
+    /**
+     * @dev
+     *   Check the deployment contract has ownership of necessary
+     *   contracts to perform actions, e.g. register an address or upgrade
+     *   a proxy.
+     *
+     * @param ownedContracts addresses that should be owned by this contract
+     */
+    function checkOwnerships(address[] memory ownedContracts)
+        public
+        view
+        virtual
+    {
+        for (uint256 i = 0; i < ownedContracts.length; i++) {
+            require(
+                Ownable(ownedContracts[i]).owner() == adminSafe,
+                "MISSING_OWNERSHIP"
+            );
+        }
     }
 
     function _registerAddress(bytes32 id, address address_) internal {

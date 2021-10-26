@@ -280,10 +280,6 @@ contract OracleAdapter is
         return price;
     }
 
-    function hasTvlOverride() public view override returns (bool) {
-        return block.number < submittedTvlValue.periodEnd;
-    }
-
     function getAssetPrice(address asset)
         external
         view
@@ -302,6 +298,10 @@ contract OracleAdapter is
         require(price > 0, "MISSING_ASSET_VALUE");
 
         return price;
+    }
+
+    function hasTvlOverride() public view override returns (bool) {
+        return block.number < submittedTvlValue.periodEnd;
     }
 
     function hasAssetOverride(address asset)

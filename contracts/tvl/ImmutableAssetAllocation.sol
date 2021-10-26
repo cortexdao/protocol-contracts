@@ -21,13 +21,6 @@ abstract contract ImmutableAssetAllocation is AssetAllocationBase {
     }
 
     /**
-     * @notice Get the immutable array of underlying `TokenData`
-     * @dev Should be implemented in child contracts with a hardcoded array
-     * @return The array of `TokenData`
-     */
-    function _getTokenData() internal pure virtual returns (TokenData[] memory);
-
-    /**
      * @notice Verifies that a `TokenData` array works with the `TvlManager`
      * @dev Reverts when there is invalid `TokenData`
      * @param tokens_ The array of `TokenData`
@@ -51,4 +44,11 @@ abstract contract ImmutableAssetAllocation is AssetAllocationBase {
     function _validateTokenAddress(address token) internal view virtual {
         require(token.isContract(), "INVALID_ADDRESS");
     }
+
+    /**
+     * @notice Get the immutable array of underlying `TokenData`
+     * @dev Should be implemented in child contracts with a hardcoded array
+     * @return The array of `TokenData`
+     */
+    function _getTokenData() internal pure virtual returns (TokenData[] memory);
 }

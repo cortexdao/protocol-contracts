@@ -7,10 +7,6 @@ import {ImmutableAssetAllocation} from "./ImmutableAssetAllocation.sol";
 contract TestImmutableAssetAllocation is ImmutableAssetAllocation {
     string public constant override NAME = "testAllocation";
 
-    function testGetTokenData() external pure returns (TokenData[] memory) {
-        return _getTokenData();
-    }
-
     function balanceOf(address, uint8)
         external
         view
@@ -18,6 +14,14 @@ contract TestImmutableAssetAllocation is ImmutableAssetAllocation {
         returns (uint256)
     {
         return 42;
+    }
+
+    function testGetTokenData() external pure returns (TokenData[] memory) {
+        return _getTokenData();
+    }
+
+    function _validateTokenAddress(address) internal view override {
+        return;
     }
 
     function _getTokenData()
@@ -38,9 +42,5 @@ contract TestImmutableAssetAllocation is ImmutableAssetAllocation {
             8
         );
         return tokens_;
-    }
-
-    function _validateTokenAddress(address) internal view override {
-        return;
     }
 }
