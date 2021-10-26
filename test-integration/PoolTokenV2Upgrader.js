@@ -9,6 +9,7 @@ const {
   getDeployedAddress,
   getStablecoinAddress,
   acquireToken,
+  FAKE_ADDRESS,
 } = require("../utils/helpers");
 const { WHALE_POOLS } = require("../utils/constants");
 const timeMachine = require("ganache-time-traveler");
@@ -74,7 +75,7 @@ describe("Contract: PoolTokenV2Upgrader", () => {
     );
   });
 
-  before("Attach to Mainnet Safes and Address Registry", async () => {
+  before("Attach to Mainnet Safes", async () => {
     adminSafe = await ethers.getContractAt(
       "IGnosisModuleManager",
       adminSafeSigner.address
@@ -84,11 +85,21 @@ describe("Contract: PoolTokenV2Upgrader", () => {
       "IGnosisModuleManager",
       emergencySafeSigner.address
     );
+  });
 
+  before("Upgrade Mainnet Address Registry to V2", async () => {
     addressRegistry = await ethers.getContractAt(
       "AddressRegistryV2",
       ADDRESS_REGISTRY
     );
+    const owner = await addressRegistry.owner();
+    const signer = await impersonateAccount(owner);
+    await forciblySendEth(
+      signer.address,
+      tokenAmountToBigNumber(5),
+      deployer.address
+    );
+    addressRegistry = addressRegistry.connect(signer);
 
     // based on the current pinned block, we need to upgrade
     // the Address Registry to V2
@@ -100,14 +111,14 @@ describe("Contract: PoolTokenV2Upgrader", () => {
       "ProxyAdmin",
       ADDRESS_REGISTRY_PROXY_ADMIN
     );
-    const owner = await impersonateAccount(await proxyAdmin.owner());
+    const proxyAdminOwner = await impersonateAccount(await proxyAdmin.owner());
     await forciblySendEth(
-      owner.address,
+      proxyAdminOwner.address,
       tokenAmountToBigNumber(5),
       deployer.address
     );
     await proxyAdmin
-      .connect(owner)
+      .connect(proxyAdminOwner)
       .upgrade(addressRegistry.address, logic.address);
   });
 
@@ -160,17 +171,7 @@ describe("Contract: PoolTokenV2Upgrader", () => {
     );
     await mApt.mock.getDeployedValue.returns(0);
 
-    const owner = await addressRegistry.owner();
-    const signer = await impersonateAccount(owner);
-    await forciblySendEth(
-      signer.address,
-      tokenAmountToBigNumber(1),
-      deployer.address
-    );
-
-    await addressRegistry
-      .connect(signer)
-      .registerAddress(bytes32("mApt"), mApt.address);
+    await addressRegistry.registerAddress(bytes32("mApt"), mApt.address);
   });
 
   describe("Defaults", () => {
@@ -228,6 +229,23 @@ describe("Contract: PoolTokenV2Upgrader", () => {
       await expect(
         upgrader.connect(randomUser).upgradeUsdtPool()
       ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Revert if Safe address changes", async () => {
+      await addressRegistry.registerAddress(
+        bytes32("emergencySafe"),
+        FAKE_ADDRESS
+      );
+
+      await expect(upgrader.upgradeDaiPool()).to.be.revertedWith(
+        "INVALID_EMERGENCY_SAFE"
+      );
+      await expect(upgrader.upgradeUsdcPool()).to.be.revertedWith(
+        "INVALID_EMERGENCY_SAFE"
+      );
+      await expect(upgrader.upgradeUsdtPool()).to.be.revertedWith(
+        "INVALID_EMERGENCY_SAFE"
+      );
     });
 
     it("Revert if upgrader is not enabled module", async () => {
