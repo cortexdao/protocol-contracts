@@ -6,11 +6,15 @@ import {PoolTokenV2} from "./PoolTokenV2.sol";
 
 /** @dev dummy contract using storage slots */
 contract ExtraStorage {
-    uint256[150] private _gap;
-    // slot 151 must be `true` to allow `initializeUpgrade`
-    // to be called after upgrade, as it is protected
-    // by a re-entrancy guard.
-    bool private _notEntered = true;
+    // The `_notEntered` bool slot used by the re-entrancy guard
+    // must be `true` to allow `initializeUpgrade` to be called
+    // during the upgrade.  This is slot 151 on the original
+    // logic contract.
+    //
+    // By shifting the storage by 105, the slot used by this logic
+    // contract's re-entrancy guard will be 151 + 105 = 256.  This
+    // is the slot used by `_decimals`, which is a non-zero uint8.
+    uint256[105] private _gap;
 }
 
 /**
