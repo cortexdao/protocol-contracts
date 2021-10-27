@@ -238,8 +238,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         ownerships[0] = ADDRESS_REGISTRY_PROXY;
         checkOwnerships(ownerships);
 
-        address proxyAdmin = ProxyAdminFactory(proxyAdminFactory).create();
-
         bytes memory initData =
             abi.encodeWithSelector(
                 MetaPoolToken.initialize.selector,
@@ -248,13 +246,11 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
         mApt = MetaPoolTokenFactory(mAptFactory).create(
             proxyFactory,
-            proxyAdmin,
+            POOL_PROXY_ADMIN,
             initData
         );
 
         _registerAddress("mApt", mApt);
-
-        ProxyAdmin(proxyAdmin).transferOwnership(adminSafe);
     }
 
     function deploy_2_PoolTokenV2_logic() external onlyOwner updateStep(2) {
@@ -285,6 +281,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         ownerships[0] = ADDRESS_REGISTRY_PROXY;
         checkOwnerships(ownerships);
 
+        // Need to create a new proxy admin so we have ownership and can
+        // upgrade through it.
         address proxyAdmin = ProxyAdminFactory(proxyAdminFactory).create();
 
         bytes memory initDataV2 =
@@ -299,12 +297,20 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             proxyAdmin,
             initDataV2
         );
+        ProxyAdmin(proxyAdmin).changeProxyAdmin(
+            TransparentUpgradeableProxy(payable(daiDemoPool)),
+            POOL_PROXY_ADMIN
+        );
 
         usdcDemoPool = _deployDemoPool(
             USDC_ADDRESS,
             "usdcDemoPool",
             proxyAdmin,
             initDataV2
+        );
+        ProxyAdmin(proxyAdmin).changeProxyAdmin(
+            TransparentUpgradeableProxy(payable(usdcDemoPool)),
+            POOL_PROXY_ADMIN
         );
 
         usdtDemoPool = _deployDemoPool(
@@ -313,8 +319,10 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             proxyAdmin,
             initDataV2
         );
-
-        ProxyAdmin(proxyAdmin).transferOwnership(adminSafe);
+        ProxyAdmin(proxyAdmin).changeProxyAdmin(
+            TransparentUpgradeableProxy(payable(usdtDemoPool)),
+            POOL_PROXY_ADMIN
+        );
     }
 
     /// @dev Deploy ERC20 allocation and TVL Manager.
@@ -372,8 +380,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         ownerships[0] = ADDRESS_REGISTRY_PROXY;
         checkOwnerships(ownerships);
 
-        address proxyAdmin = ProxyAdminFactory(proxyAdminFactory).create();
-
         bytes memory initData =
             abi.encodeWithSelector(
                 LpAccount.initialize.selector,
@@ -382,13 +388,11 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
         lpAccount = LpAccountFactory(lpAccountFactory).create(
             proxyFactory,
-            proxyAdmin,
+            POOL_PROXY_ADMIN,
             initData
         );
 
         _registerAddress("lpAccount", lpAccount);
-
-        ProxyAdmin(proxyAdmin).transferOwnership(adminSafe);
     }
 
     /// @dev registers mAPT, TvlManager, LpAccount for contract roles
