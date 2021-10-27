@@ -12,7 +12,6 @@ const {
 } = require("../utils/helpers");
 const { deployMockContract } = waffle;
 
-const MAINNET_POOL_DEPLOYER = "0x6eaf0ab3455787ba10089800db91f11fdf6370be";
 const MAINNET_ADDRESS_REGISTRY_DEPLOYER =
   "0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3";
 const MAINNET_ADDRESS_REGISTRY_PROXY_ADMIN =
@@ -192,17 +191,6 @@ describe("Contract: AlphaDeployment", () => {
   });
 
   it("deploy_1_MetaPoolToken", async () => {
-    const proxyAdminFactory = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("ProxyAdminFactory").abi
-    );
-    const proxyAdmin = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("ProxyAdmin").abi
-    );
-    await proxyAdmin.mock.transferOwnership.returns();
-    proxyAdminFactory.mock.create.returns(proxyAdmin.address);
-
     const mAptAddress = (await deployMockContract(deployer, [])).address;
     const metaPoolTokenFactory = await deployMockContract(
       deployer,
@@ -212,7 +200,7 @@ describe("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        proxyAdminFactory.address, // proxy admin factory
+        FAKE_ADDRESS, // proxy admin factory
         FAKE_ADDRESS, // proxy factory
         FAKE_ADDRESS, // address registry v2 factory
         metaPoolTokenFactory.address, // mAPT factory
@@ -295,7 +283,7 @@ describe("Contract: AlphaDeployment", () => {
       deployer,
       artifacts.readArtifactSync("ProxyAdmin").abi
     );
-    await proxyAdmin.mock.transferOwnership.returns();
+    await proxyAdmin.mock.changeProxyAdmin.returns();
     const proxyAdminFactory = await deployMockContract(
       deployer,
       artifacts.readArtifactSync("ProxyAdminFactory").abi
@@ -485,17 +473,6 @@ describe("Contract: AlphaDeployment", () => {
   });
 
   it("deploy_5_LpAccount", async () => {
-    const proxyAdmin = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("ProxyAdmin").abi
-    );
-    await proxyAdmin.mock.transferOwnership.returns();
-    const proxyAdminFactory = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("ProxyAdminFactory").abi
-    );
-    proxyAdminFactory.mock.create.returns(proxyAdmin.address);
-
     const lpAccountAddress = (await deployMockContract(deployer, [])).address;
     const lpAccountFactory = await deployMockContract(
       deployer,
@@ -505,7 +482,7 @@ describe("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        proxyAdminFactory.address, // proxy admin factory
+        FAKE_ADDRESS, // proxy admin factory
         FAKE_ADDRESS, // proxy factory
         FAKE_ADDRESS, // address registry v2 factory
         FAKE_ADDRESS, // mAPT factory
@@ -629,79 +606,5 @@ describe("Contract: AlphaDeployment", () => {
     expect(await alphaDeployment.oracleAdapter()).to.equal(
       oracleAdapter.address
     );
-  });
-
-  it("deploy_7_PoolTokenV2_upgrade", async () => {
-    const alphaDeployment = await expect(
-      AlphaDeployment.deploy(
-        FAKE_ADDRESS, // proxy admin factory
-        FAKE_ADDRESS, // proxy factory
-        FAKE_ADDRESS, // address registry v2 factory
-        FAKE_ADDRESS, // mAPT factory
-        FAKE_ADDRESS, // pool token v1 factory
-        FAKE_ADDRESS, // pool token v2 factory
-        FAKE_ADDRESS, // tvl manager factory
-        FAKE_ADDRESS, // erc20 allocation factory
-        FAKE_ADDRESS, // oracle adapter factory
-        FAKE_ADDRESS // lp account factory
-      )
-    ).to.not.be.reverted;
-
-    // for step check
-    await alphaDeployment.testSetStep(7);
-
-    // for deployed address check:
-    const mAptAddress = (await deployMockContract(deployer, [])).address;
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("mApt"))
-      .returns(mAptAddress);
-    await alphaDeployment.testSetMapt(mAptAddress);
-    const logicV2 = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("PoolTokenV2").abi
-    );
-    await alphaDeployment.testSetPoolTokenV2(logicV2.address);
-
-    // for ownership checks:
-    const poolDeployer = await impersonateAccount(MAINNET_POOL_DEPLOYER);
-    await forciblySendEth(
-      poolDeployer.address,
-      tokenAmountToBigNumber(1),
-      deployer.address
-    );
-    const proxyAdmin = await deployMockContract(
-      poolDeployer,
-      artifacts.readArtifactSync("ProxyAdmin").abi
-    );
-    // proxy admin was created via the first transaction on Mainnet
-    // of the pool deployer, so this mock contract should have the
-    // same address
-    expect(await alphaDeployment.POOL_PROXY_ADMIN()).to.equal(
-      proxyAdmin.address
-    );
-    await proxyAdmin.mock.owner.returns(adminSafe.address);
-
-    // mock the upgrade calls
-    await proxyAdmin.mock.upgradeAndCall.revertsWithReason("WRONG_ARGS");
-    const PoolTokenV2 = await ethers.getContractFactory("PoolTokenV2");
-    const initData = PoolTokenV2.interface.encodeFunctionData(
-      "initializeUpgrade(address)",
-      [addressRegistry.address]
-    );
-    const DAI_POOL_PROXY = await alphaDeployment.DAI_POOL_PROXY();
-    await proxyAdmin.mock.upgradeAndCall
-      .withArgs(DAI_POOL_PROXY, logicV2.address, initData)
-      .returns();
-    const USDC_POOL_PROXY = await alphaDeployment.USDC_POOL_PROXY();
-    await proxyAdmin.mock.upgradeAndCall
-      .withArgs(USDC_POOL_PROXY, logicV2.address, initData)
-      .returns();
-    const USDT_POOL_PROXY = await alphaDeployment.USDT_POOL_PROXY();
-    await proxyAdmin.mock.upgradeAndCall
-      .withArgs(USDT_POOL_PROXY, logicV2.address, initData)
-      .returns();
-
-    await expect(alphaDeployment.deploy_7_PoolTokenV2_upgrade()).to.not.be
-      .reverted;
   });
 });
