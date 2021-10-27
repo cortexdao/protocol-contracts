@@ -33,6 +33,10 @@ import {
     ISwapRegistry
 } from "./Imports.sol";
 
+import {
+    IStableSwap
+} from "contracts/protocols/curve/common/interfaces/Imports.sol";
+
 import {ILockingOracle} from "contracts/oracle/Imports.sol";
 
 contract LpAccount is
@@ -50,6 +54,8 @@ contract LpAccount is
     using NamedAddressSet for NamedAddressSet.ZapSet;
     using NamedAddressSet for NamedAddressSet.SwapSet;
 
+    address private constant _STABLE_SWAP_ADDRESS =
+        0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
     uint256 private constant _DEFAULT_LOCK_PERIOD = 135;
 
     IAddressRegistryV2 public addressRegistry;
@@ -237,6 +243,22 @@ contract LpAccount is
         _swaps.remove(name);
 
         emit SwapRemoved(name);
+    }
+
+    function stableSwapExchange(
+        int128 inToken,
+        int128 outToken,
+        uint256 amount,
+        uint256 minAmount
+    ) external override nonReentrant onlyLpRole {
+        IStableSwap stableSwap = IStableSwap(_STABLE_SWAP_ADDRESS);
+        IERC20 underlyer = IERC20(stableSwap.coins(uint256(inToken)));
+
+        underlyer.safeApprove(_STABLE_SWAP_ADDRESS, 0);
+        underlyer.safeApprove(_STABLE_SWAP_ADDRESS, amount);
+
+        stableSwap.exchange(inToken, outToken, amount, minAmount);
+        _lockOracleAdapter(lockPeriod);
     }
 
     function claim(string calldata name)

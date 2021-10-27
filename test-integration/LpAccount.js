@@ -75,14 +75,8 @@ describe("Contract: LpAccount", () => {
   });
 
   before("Setup mock address registry", async () => {
-    [
-      deployer,
-      lpSafe,
-      emergencySafe,
-      adminSafe,
-      mApt,
-      randomUser,
-    ] = await ethers.getSigners();
+    [deployer, lpSafe, emergencySafe, adminSafe, mApt, randomUser] =
+      await ethers.getSigners();
 
     addressRegistry = await deployMockContract(
       deployer,
@@ -501,6 +495,112 @@ describe("Contract: LpAccount", () => {
 
       await expect(lpAccount.connect(lpSafe).swap(name, amount, 0)).to.not.be
         .reverted;
+    });
+  });
+
+  describe("stableSwapExchange", () => {
+    const amount = "10000";
+    const minAmount = "9990";
+    const tokens = ["DAI", "USDC", "USDT"];
+
+    before("Fund LP Account with tokens", async () => {
+      await Promise.all(
+        tokens.map(async (symbol) => {
+          const tokenAddress = await getStablecoinAddress(symbol, "MAINNET");
+          const token = await ethers.getContractAt(
+            "IDetailedERC20",
+            tokenAddress
+          );
+
+          await acquireToken(
+            WHALE_POOLS[symbol],
+            lpAccount.address,
+            token,
+            amount,
+            deployer.address
+          );
+        })
+      );
+    });
+
+    it("should be callable by the LP Safe", async () => {
+      const tokenAmount = tokenAmountToBigNumber(amount);
+      await expect(
+        lpAccount.connect(lpSafe).stableSwapExchange(0, 1, tokenAmount, 0)
+      ).to.not.be.reverted;
+    });
+
+    it("should not be callable by other addresses", async () => {
+      const tokenAmount = tokenAmountToBigNumber(amount);
+      await expect(
+        lpAccount.connect(randomUser).stableSwapExchange(0, 1, tokenAmount, 0)
+      ).to.be.revertedWith("NOT_LP_ROLE");
+    });
+
+    tokens.forEach((inTokenSymbol, inIndex) => {
+      tokens.forEach((outTokenSymbol, outIndex) => {
+        if (inTokenSymbol !== outTokenSymbol) {
+          it(`can swap between ${inTokenSymbol} and ${outTokenSymbol}`, async () => {
+            const inTokenAddress = await getStablecoinAddress(
+              inTokenSymbol,
+              "MAINNET"
+            );
+            const inToken = await ethers.getContractAt(
+              "IDetailedERC20",
+              inTokenAddress
+            );
+
+            const inDecimals = await inToken.decimals();
+            const tokenAmount = tokenAmountToBigNumber(amount, inDecimals);
+
+            const outTokenAddress = await getStablecoinAddress(
+              outTokenSymbol,
+              "MAINNET"
+            );
+            const outToken = await ethers.getContractAt(
+              "IDetailedERC20",
+              outTokenAddress
+            );
+
+            const outDecimals = await outToken.decimals();
+            const minTokenAmount = tokenAmountToBigNumber(
+              minAmount,
+              outDecimals
+            );
+
+            const prevInTokenBalance = await inToken.balanceOf(
+              lpAccount.address
+            );
+            const prevOutTokenBalance = await outToken.balanceOf(
+              lpAccount.address
+            );
+
+            await lpAccount
+              .connect(lpSafe)
+              .stableSwapExchange(
+                inIndex,
+                outIndex,
+                tokenAmount,
+                minTokenAmount
+              );
+
+            const newInTokenBalance = await inToken.balanceOf(
+              lpAccount.address
+            );
+            const newOutTokenBalance = await outToken.balanceOf(
+              lpAccount.address
+            );
+
+            expect(prevInTokenBalance.sub(newInTokenBalance)).to.equal(
+              tokenAmount
+            );
+
+            expect(newOutTokenBalance.sub(prevOutTokenBalance)).to.be.gt(
+              minTokenAmount
+            );
+          });
+        }
+      });
     });
   });
 
