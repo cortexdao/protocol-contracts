@@ -65,7 +65,8 @@ describe("Contract: AlphaDeployment", () => {
       "ProxyAdmin",
       addressRegistryProxyAdminAddress
     );
-    const addressRegistryDeployerAddress = await addressRegistryProxyAdmin.owner();
+    const addressRegistryDeployerAddress =
+      await addressRegistryProxyAdmin.owner();
     const addressRegistryDeployer = await impersonateAccount(
       addressRegistryDeployerAddress
     );
@@ -448,33 +449,6 @@ describe("Contract: AlphaDeployment", () => {
           expect(await oracleAdapter.assetSources(priceAgg.token)).to.equal(
             priceAgg.agg
           );
-        });
-      });
-    });
-
-    describe("Step 7: Upgrade user pools", () => {
-      const pools = [
-        "DAI_PoolTokenProxy",
-        "USDC_PoolTokenProxy",
-        "USDC_PoolTokenProxy",
-      ];
-
-      before("Run step 7", async () => {
-        await alphaDeployment.deploy_7_PoolTokenV2_upgrade();
-      });
-
-      it("should update step number", async () => {
-        expect(await alphaDeployment.step()).to.equal(8);
-      });
-
-      pools.forEach((poolProxyName) => {
-        describe(poolProxyName.split("_")[0], async () => {
-          it("should have v2 pool functions and v2 variables initialized", async () => {
-            const poolAddress = getDeployedAddress(poolProxyName, "MAINNET");
-            const pool = await ethers.getContractAt("PoolTokenV2", poolAddress);
-
-            expect(await pool.reservePercentage()).to.equal(5);
-          });
         });
       });
     });
