@@ -498,7 +498,7 @@ describe("Contract: LpAccount", () => {
     });
   });
 
-  describe("stableSwapExchange", () => {
+  describe("swapWith3Pool", () => {
     const amount = "10000";
     const minAmount = "9990";
     const tokens = ["DAI", "USDC", "USDT"];
@@ -540,7 +540,7 @@ describe("Contract: LpAccount", () => {
     tokens.forEach((inTokenSymbol, inIndex) => {
       tokens.forEach((outTokenSymbol, outIndex) => {
         if (inTokenSymbol !== outTokenSymbol) {
-          it(`can swap between ${inTokenSymbol} and ${outTokenSymbol}`, async () => {
+          it(`can swap from ${inTokenSymbol} to ${outTokenSymbol}`, async () => {
             const inTokenAddress = await getStablecoinAddress(
               inTokenSymbol,
               "MAINNET"
