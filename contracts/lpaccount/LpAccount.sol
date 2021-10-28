@@ -263,7 +263,7 @@ contract LpAccount is
         underlyer.safeApprove(address(_STABLE_SWAP_3POOL), 0);
         underlyer.safeApprove(address(_STABLE_SWAP_3POOL), amount);
 
-        stableSwap.exchange(inToken, outToken, amount, minAmount);
+        _STABLE_SWAP_3POOL.exchange(inToken, outToken, amount, minAmount);
         _lockOracleAdapter(lockPeriod);
     }
 
