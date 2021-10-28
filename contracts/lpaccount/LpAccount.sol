@@ -245,12 +245,19 @@ contract LpAccount is
         emit SwapRemoved(name);
     }
 
+    /**
+     * @notice Swap stables with a Curve exchange
+     * @param inToken Token index for the input token
+     * @param outToken Token index for the output token
+     * @param amount The amount of token to swap
+     * @param minAmount The minimum amount of output token to receive
+     */
     function stableSwapExchange(
         int128 inToken,
         int128 outToken,
         uint256 amount,
         uint256 minAmount
-    ) external override nonReentrant onlyLpRole {
+    ) external nonReentrant onlyLpRole {
         IStableSwap stableSwap = IStableSwap(_STABLE_SWAP_ADDRESS);
         IERC20 underlyer = IERC20(stableSwap.coins(uint256(inToken)));
 
