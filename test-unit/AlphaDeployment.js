@@ -1,4 +1,5 @@
 const { expect } = require("chai");
+const { smock } = require("@defi-wonderland/smock");
 const hre = require("hardhat");
 const { ethers, artifacts, waffle } = hre;
 const timeMachine = require("ganache-time-traveler");
@@ -12,6 +13,7 @@ const {
 } = require("../utils/helpers");
 const { deployMockContract } = waffle;
 
+const POOL_PROXY_ADMIN = "0x7965283631253DfCb71Db63a60C656DEDF76234f";
 const MAINNET_ADDRESS_REGISTRY_DEPLOYER =
   "0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3";
 const MAINNET_ADDRESS_REGISTRY_PROXY_ADMIN =
@@ -31,7 +33,7 @@ async function encodeRegisterAddress(contractIdString, contractAddress) {
   return data;
 }
 
-describe("Contract: AlphaDeployment", () => {
+describe.only("Contract: AlphaDeployment", () => {
   // signers
   let deployer;
   let emergencySafe;
@@ -192,11 +194,8 @@ describe("Contract: AlphaDeployment", () => {
 
   it("deploy_1_MetaPoolToken", async () => {
     const mAptAddress = (await deployMockContract(deployer, [])).address;
-    const metaPoolTokenFactory = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("MetaPoolTokenFactory").abi
-    );
-    metaPoolTokenFactory.mock.create.returns(mAptAddress);
+    const metaPoolTokenFactory = await smock.fake("MetaPoolTokenFactory");
+    metaPoolTokenFactory.create.returns(mAptAddress);
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
@@ -235,6 +234,11 @@ describe("Contract: AlphaDeployment", () => {
     expect(await alphaDeployment.mApt()).to.equal(ZERO_ADDRESS);
     await expect(alphaDeployment.deploy_1_MetaPoolToken()).to.not.be.reverted;
     expect(await alphaDeployment.mApt()).to.equal(mAptAddress);
+
+    // check pool proxy admin was used to create mApt
+    expect(metaPoolTokenFactory.create.getCall(0).args.proxyAdmin).to.equal(
+      POOL_PROXY_ADMIN
+    );
   });
 
   it("deploy_2_PoolTokenV2_logic", async () => {
@@ -249,7 +253,7 @@ describe("Contract: AlphaDeployment", () => {
       deployer,
       artifacts.readArtifactSync("PoolTokenV2Factory").abi
     );
-    poolTokenV2Factory.mock.create.returns(logicV2.address);
+    await poolTokenV2Factory.mock.create.returns(logicV2.address);
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
@@ -279,16 +283,13 @@ describe("Contract: AlphaDeployment", () => {
 
   it("deploy_3_DemoPools", async () => {
     // mock the proxy admin create and owner transfer
-    const proxyAdmin = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("ProxyAdmin").abi
-    );
-    await proxyAdmin.mock.changeProxyAdmin.returns();
+    const proxyAdmin = await smock.fake("ProxyAdmin");
+    proxyAdmin.changeProxyAdmin.returns();
     const proxyAdminFactory = await deployMockContract(
       deployer,
       artifacts.readArtifactSync("ProxyAdminFactory").abi
     );
-    proxyAdminFactory.mock.create.returns(proxyAdmin.address);
+    await proxyAdminFactory.mock.create.returns(proxyAdmin.address);
 
     // mock the v1 proxy create
     const demoPoolAddress = (await deployMockContract(deployer, [])).address;
@@ -296,7 +297,7 @@ describe("Contract: AlphaDeployment", () => {
       deployer,
       artifacts.readArtifactSync("PoolTokenV1Factory").abi
     );
-    poolTokenV1Factory.mock.create.returns(demoPoolAddress);
+    await poolTokenV1Factory.mock.create.returns(demoPoolAddress);
 
     // need to mock logic storage init
     const logicV2 = await deployMockContract(
@@ -309,7 +310,7 @@ describe("Contract: AlphaDeployment", () => {
       deployer,
       artifacts.readArtifactSync("PoolTokenV2Factory").abi
     );
-    poolTokenV2Factory.mock.create.returns(logicV2.address);
+    await poolTokenV2Factory.mock.create.returns(logicV2.address);
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
@@ -340,7 +341,7 @@ describe("Contract: AlphaDeployment", () => {
     await addressRegistry.mock.owner.returns(adminSafe.address);
 
     // need to mock the upgrade
-    await proxyAdmin.mock.upgradeAndCall.returns();
+    proxyAdmin.upgradeAndCall.returns();
 
     // check for address registrations
     // DAI
@@ -385,6 +386,17 @@ describe("Contract: AlphaDeployment", () => {
     expect(await alphaDeployment.daiDemoPool()).to.equal(demoPoolAddress);
     expect(await alphaDeployment.usdcDemoPool()).to.equal(demoPoolAddress);
     expect(await alphaDeployment.usdtDemoPool()).to.equal(demoPoolAddress);
+
+    // check pool proxy admin was used to create demo pools
+    expect(proxyAdmin.changeProxyAdmin.getCall(0).args.newAdmin).to.equal(
+      POOL_PROXY_ADMIN
+    );
+    expect(proxyAdmin.changeProxyAdmin.getCall(1).args.newAdmin).to.equal(
+      POOL_PROXY_ADMIN
+    );
+    expect(proxyAdmin.changeProxyAdmin.getCall(2).args.newAdmin).to.equal(
+      POOL_PROXY_ADMIN
+    );
   });
 
   it("deploy_4_TvlManager", async () => {
@@ -474,11 +486,8 @@ describe("Contract: AlphaDeployment", () => {
 
   it("deploy_5_LpAccount", async () => {
     const lpAccountAddress = (await deployMockContract(deployer, [])).address;
-    const lpAccountFactory = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("LpAccountFactory").abi
-    );
-    lpAccountFactory.mock.create.returns(lpAccountAddress);
+    const lpAccountFactory = await smock.fake("LpAccountFactory");
+    lpAccountFactory.create.returns(lpAccountAddress);
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
@@ -524,6 +533,11 @@ describe("Contract: AlphaDeployment", () => {
     expect(await alphaDeployment.lpAccount()).to.equal(ZERO_ADDRESS);
     await expect(alphaDeployment.deploy_5_LpAccount()).to.not.be.reverted;
     expect(await alphaDeployment.lpAccount()).to.equal(lpAccountAddress);
+
+    // check pool proxy admin was used to create mApt
+    expect(lpAccountFactory.create.getCall(0).args.proxyAdmin).to.equal(
+      POOL_PROXY_ADMIN
+    );
   });
 
   it("deploy_6_OracleAdapter", async () => {
