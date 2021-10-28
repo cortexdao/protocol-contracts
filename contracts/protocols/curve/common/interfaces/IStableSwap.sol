@@ -15,6 +15,12 @@ interface IStableSwap {
     // solhint-disable-next-line
     function underlying_coins(uint256 coin) external view returns (address);
 
+    function get_dy(
+        int128 i,
+        int128 j,
+        uint256 dx
+    ) external view returns (uint256);
+
     function exchange(
         int128 i,
         int128 j,

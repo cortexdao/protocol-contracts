@@ -499,9 +499,11 @@ describe("Contract: LpAccount", () => {
   });
 
   describe("swapWith3Pool", () => {
+    const stableSwapAddress = "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7";
     const amount = "10000";
-    const minAmount = "9990";
     const tokens = ["DAI", "USDC", "USDT"];
+
+    let stableSwap;
 
     before("Fund LP Account with tokens", async () => {
       await Promise.all(
@@ -523,17 +525,21 @@ describe("Contract: LpAccount", () => {
       );
     });
 
+    before("Connect to StableSwap contract", async () => {
+      stableSwap = await ethers.getContractAt("IStableSwap", stableSwapAddress);
+    });
+
     it("should be callable by the LP Safe", async () => {
       const inTokenAmount = tokenAmountToBigNumber(amount);
       await expect(
-        lpAccount.connect(lpSafe).stableSwapExchange(0, 1, inTokenAmount, 0)
+        lpAccount.connect(lpSafe).swapWith3Pool(0, 1, inTokenAmount, 0)
       ).to.not.be.reverted;
     });
 
     it("should not be callable by other addresses", async () => {
       const tokenAmount = tokenAmountToBigNumber(amount);
       await expect(
-        lpAccount.connect(randomUser).stableSwapExchange(0, 1, tokenAmount, 0)
+        lpAccount.connect(randomUser).swapWith3Pool(0, 1, tokenAmount, 0)
       ).to.be.revertedWith("NOT_LP_ROLE");
     });
 
@@ -562,12 +568,6 @@ describe("Contract: LpAccount", () => {
               outTokenAddress
             );
 
-            const outDecimals = await outToken.decimals();
-            const minOutTokenAmount = tokenAmountToBigNumber(
-              minAmount,
-              outDecimals
-            );
-
             const prevInTokenBalance = await inToken.balanceOf(
               lpAccount.address
             );
@@ -575,9 +575,17 @@ describe("Contract: LpAccount", () => {
               lpAccount.address
             );
 
+            const dy = await stableSwap.get_dy(
+              inIndex,
+              outIndex,
+              inTokenAmount
+            );
+
+            const minOutTokenAmount = dy.mul(99).div(100);
+
             await lpAccount
               .connect(lpSafe)
-              .stableSwapExchange(
+              .swapWith3Pool(
                 inIndex,
                 outIndex,
                 inTokenAmount,
@@ -598,6 +606,48 @@ describe("Contract: LpAccount", () => {
             expect(newOutTokenBalance.sub(prevOutTokenBalance)).to.be.gt(
               minOutTokenAmount
             );
+          });
+
+          it(`cannot swap from ${inTokenSymbol} to ${outTokenSymbol} when minimum amount is too high`, async () => {
+            const inTokenAddress = await getStablecoinAddress(
+              inTokenSymbol,
+              "MAINNET"
+            );
+            const inToken = await ethers.getContractAt(
+              "IDetailedERC20",
+              inTokenAddress
+            );
+
+            const inDecimals = await inToken.decimals();
+            const inTokenAmount = tokenAmountToBigNumber(amount, inDecimals);
+
+            const outTokenAddress = await getStablecoinAddress(
+              outTokenSymbol,
+              "MAINNET"
+            );
+            const outToken = await ethers.getContractAt(
+              "IDetailedERC20",
+              outTokenAddress
+            );
+
+            const dy = await stableSwap.get_dy(
+              inIndex,
+              outIndex,
+              inTokenAmount
+            );
+
+            const minOutTokenAmount = dy.add(1);
+
+            await expect(
+              lpAccount
+                .connect(lpSafe)
+                .swapWith3Pool(
+                  inIndex,
+                  outIndex,
+                  inTokenAmount,
+                  minOutTokenAmount
+                )
+            ).to.be.reverted;
           });
         }
       });
