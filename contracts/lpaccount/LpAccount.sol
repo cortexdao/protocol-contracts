@@ -54,8 +54,8 @@ contract LpAccount is
     using NamedAddressSet for NamedAddressSet.ZapSet;
     using NamedAddressSet for NamedAddressSet.SwapSet;
 
-    address private constant _STABLE_SWAP_ADDRESS =
-        0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
+    IStableSwap private constant _STABLE_SWAP_3POOL =
+        IStableSwap(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
     uint256 private constant _DEFAULT_LOCK_PERIOD = 135;
 
     IAddressRegistryV2 public addressRegistry;
@@ -258,11 +258,10 @@ contract LpAccount is
         uint256 amount,
         uint256 minAmount
     ) external nonReentrant onlyLpRole {
-        IStableSwap stableSwap = IStableSwap(_STABLE_SWAP_ADDRESS);
-        IERC20 underlyer = IERC20(stableSwap.coins(uint256(inToken)));
+        IERC20 underlyer = IERC20(_STABLE_SWAP_3POOL.coins(uint256(inToken)));
 
-        underlyer.safeApprove(_STABLE_SWAP_ADDRESS, 0);
-        underlyer.safeApprove(_STABLE_SWAP_ADDRESS, amount);
+        underlyer.safeApprove(address(_STABLE_SWAP_3POOL), 0);
+        underlyer.safeApprove(address(_STABLE_SWAP_3POOL), amount);
 
         stableSwap.exchange(inToken, outToken, amount, minAmount);
         _lockOracleAdapter(lockPeriod);
