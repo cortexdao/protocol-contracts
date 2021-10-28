@@ -524,9 +524,9 @@ describe("Contract: LpAccount", () => {
     });
 
     it("should be callable by the LP Safe", async () => {
-      const tokenAmount = tokenAmountToBigNumber(amount);
+      const inTokenAmount = tokenAmountToBigNumber(amount);
       await expect(
-        lpAccount.connect(lpSafe).stableSwapExchange(0, 1, tokenAmount, 0)
+        lpAccount.connect(lpSafe).stableSwapExchange(0, 1, inTokenAmount, 0)
       ).to.not.be.reverted;
     });
 
@@ -551,7 +551,7 @@ describe("Contract: LpAccount", () => {
             );
 
             const inDecimals = await inToken.decimals();
-            const tokenAmount = tokenAmountToBigNumber(amount, inDecimals);
+            const inTokenAmount = tokenAmountToBigNumber(amount, inDecimals);
 
             const outTokenAddress = await getStablecoinAddress(
               outTokenSymbol,
@@ -563,7 +563,7 @@ describe("Contract: LpAccount", () => {
             );
 
             const outDecimals = await outToken.decimals();
-            const minTokenAmount = tokenAmountToBigNumber(
+            const minOutTokenAmount = tokenAmountToBigNumber(
               minAmount,
               outDecimals
             );
@@ -580,8 +580,8 @@ describe("Contract: LpAccount", () => {
               .stableSwapExchange(
                 inIndex,
                 outIndex,
-                tokenAmount,
-                minTokenAmount
+                inTokenAmount,
+                minOutTokenAmount
               );
 
             const newInTokenBalance = await inToken.balanceOf(
@@ -592,11 +592,11 @@ describe("Contract: LpAccount", () => {
             );
 
             expect(prevInTokenBalance.sub(newInTokenBalance)).to.equal(
-              tokenAmount
+              inTokenAmount
             );
 
             expect(newOutTokenBalance.sub(prevOutTokenBalance)).to.be.gt(
-              minTokenAmount
+              minOutTokenAmount
             );
           });
         }
