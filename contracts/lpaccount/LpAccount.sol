@@ -247,23 +247,30 @@ contract LpAccount is
 
     /**
      * @notice Swap stablecoins with the Curve 3pool
-     * @param inToken Token index for the input token
-     * @param outToken Token index for the output token
+     * @param inTokenIndex Token index for the input token
+     * @param outTokenIndex Token index for the output token
      * @param amount The amount of token to swap
      * @param minAmount The minimum amount of output token to receive
      */
     function swapWith3Pool(
-        int128 inToken,
-        int128 outToken,
+        int128 inTokenIndex,
+        int128 outTokenIndex,
         uint256 amount,
         uint256 minAmount
     ) external nonReentrant onlyLpRole {
-        IERC20 underlyer = IERC20(_STABLE_SWAP_3POOL.coins(uint256(inToken)));
+        IERC20 inToken =
+            IERC20(_STABLE_SWAP_3POOL.coins(uint256(inTokenIndex)));
 
-        underlyer.safeApprove(address(_STABLE_SWAP_3POOL), 0);
-        underlyer.safeApprove(address(_STABLE_SWAP_3POOL), amount);
+        inToken.safeApprove(address(_STABLE_SWAP_3POOL), 0);
+        inToken.safeApprove(address(_STABLE_SWAP_3POOL), amount);
 
-        _STABLE_SWAP_3POOL.exchange(inToken, outToken, amount, minAmount);
+        _STABLE_SWAP_3POOL.exchange(
+            inTokenIndex,
+            outTokenIndex,
+            amount,
+            minAmount
+        );
+
         _lockOracleAdapter(lockPeriod);
     }
 
