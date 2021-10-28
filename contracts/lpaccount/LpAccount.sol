@@ -246,13 +246,13 @@ contract LpAccount is
     }
 
     /**
-     * @notice Swap stables with a Curve exchange
+     * @notice Swap stablecoins with the Curve 3pool
      * @param inToken Token index for the input token
      * @param outToken Token index for the output token
      * @param amount The amount of token to swap
      * @param minAmount The minimum amount of output token to receive
      */
-    function stableSwapExchange(
+    function swapWith3Pool(
         int128 inToken,
         int128 outToken,
         uint256 amount,
