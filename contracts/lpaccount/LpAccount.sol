@@ -30,12 +30,9 @@ import {
     ISwap,
     ILpAccount,
     IZapRegistry,
-    ISwapRegistry
+    ISwapRegistry,
+    IStableSwap3Pool
 } from "./Imports.sol";
-
-import {
-    IStableSwap
-} from "contracts/protocols/curve/common/interfaces/Imports.sol";
 
 import {ILockingOracle} from "contracts/oracle/Imports.sol";
 
@@ -54,8 +51,8 @@ contract LpAccount is
     using NamedAddressSet for NamedAddressSet.ZapSet;
     using NamedAddressSet for NamedAddressSet.SwapSet;
 
-    IStableSwap private constant _STABLE_SWAP_3POOL =
-        IStableSwap(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
+    IStableSwap3Pool private constant _STABLE_SWAP_3POOL =
+        IStableSwap3Pool(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
     uint256 private constant _DEFAULT_LOCK_PERIOD = 135;
 
     IAddressRegistryV2 public addressRegistry;

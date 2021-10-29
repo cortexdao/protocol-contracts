@@ -526,7 +526,10 @@ describe("Contract: LpAccount", () => {
     });
 
     before("Connect to StableSwap contract", async () => {
-      stableSwap = await ethers.getContractAt("IStableSwap", stableSwapAddress);
+      stableSwap = await ethers.getContractAt(
+        "IStableSwap3Pool",
+        stableSwapAddress
+      );
     });
 
     it("should be callable by the LP Safe", async () => {

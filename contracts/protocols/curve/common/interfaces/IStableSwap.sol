@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: BUSDL-1.1
 pragma solidity 0.6.11;
 
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 /**
  * @notice the stablecoin pool contract
  */
@@ -14,19 +11,6 @@ interface IStableSwap {
 
     // solhint-disable-next-line
     function underlying_coins(uint256 coin) external view returns (address);
-
-    function get_dy(
-        int128 i,
-        int128 j,
-        uint256 dx
-    ) external view returns (uint256);
-
-    function exchange(
-        int128 i,
-        int128 j,
-        uint256 dx,
-        uint256 min_dy
-    ) external;
 
     /**
      * @dev the number of coins is hard-coded in curve contracts
