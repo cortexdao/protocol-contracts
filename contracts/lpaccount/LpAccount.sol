@@ -30,7 +30,8 @@ import {
     ISwap,
     ILpAccount,
     IZapRegistry,
-    ISwapRegistry
+    ISwapRegistry,
+    IStableSwap3Pool
 } from "./Imports.sol";
 
 import {ILockingOracle} from "contracts/oracle/Imports.sol";
@@ -50,6 +51,8 @@ contract LpAccount is
     using NamedAddressSet for NamedAddressSet.ZapSet;
     using NamedAddressSet for NamedAddressSet.SwapSet;
 
+    IStableSwap3Pool private constant _STABLE_SWAP_3POOL =
+        IStableSwap3Pool(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
     uint256 private constant _DEFAULT_LOCK_PERIOD = 135;
 
     IAddressRegistryV2 public addressRegistry;
@@ -237,6 +240,35 @@ contract LpAccount is
         _swaps.remove(name);
 
         emit SwapRemoved(name);
+    }
+
+    /**
+     * @notice Swap stablecoins with the Curve 3pool
+     * @param inTokenIndex Token index for the input token
+     * @param outTokenIndex Token index for the output token
+     * @param amount The amount of token to swap
+     * @param minAmount The minimum amount of output token to receive
+     */
+    function swapWith3Pool(
+        int128 inTokenIndex,
+        int128 outTokenIndex,
+        uint256 amount,
+        uint256 minAmount
+    ) external nonReentrant onlyLpRole {
+        IERC20 inToken =
+            IERC20(_STABLE_SWAP_3POOL.coins(uint256(inTokenIndex)));
+
+        inToken.safeApprove(address(_STABLE_SWAP_3POOL), 0);
+        inToken.safeApprove(address(_STABLE_SWAP_3POOL), amount);
+
+        _STABLE_SWAP_3POOL.exchange(
+            inTokenIndex,
+            outTokenIndex,
+            amount,
+            minAmount
+        );
+
+        _lockOracleAdapter(lockPeriod);
     }
 
     function claim(string calldata name)
