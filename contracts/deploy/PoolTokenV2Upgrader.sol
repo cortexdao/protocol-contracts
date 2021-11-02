@@ -11,7 +11,10 @@ import {PoolTokenV2} from "contracts/pool/PoolTokenV2.sol";
 import {LpAccount} from "contracts/lpaccount/LpAccount.sol";
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
 import {AddressRegistryV2} from "contracts/registry/AddressRegistryV2.sol";
-import {ProxyAdmin, TransparentUpgradeableProxy} from "contracts/proxy/Imports.sol";
+import {
+    ProxyAdmin,
+    TransparentUpgradeableProxy
+} from "contracts/proxy/Imports.sol";
 import {IAssetAllocationRegistry} from "contracts/tvl/Imports.sol";
 
 import {DeploymentConstants} from "./constants.sol";
@@ -60,19 +63,8 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
     }
 
     modifier checkEnabledModule() {
-        address[] memory adminModules = IGnosisModuleManager(adminSafe)
-            .getModules();
-        bool adminEnabled = false;
-        for (uint256 i = 0; i < adminModules.length; i++) {
-            if (adminModules[i] == address(this)) {
-                adminEnabled = true;
-                break;
-            }
-        }
-        require(adminEnabled, "ENABLE_AS_ADMIN_MODULE");
-
-        address[] memory emergencyModules = IGnosisModuleManager(emergencySafe)
-            .getModules();
+        address[] memory emergencyModules =
+            IGnosisModuleManager(emergencySafe).getModules();
         bool emergencyEnabled = false;
         for (uint256 i = 0; i < emergencyModules.length; i++) {
             if (emergencyModules[i] == address(this)) {
@@ -144,19 +136,20 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
     }
 
     function deployV2Logic() public onlyOwner returns (address) {
-        bytes memory initData = abi.encodeWithSelector(
-            PoolTokenV2.initialize.selector,
-            POOL_PROXY_ADMIN,
-            IDetailedERC20(DAI_ADDRESS),
-            AggregatorV3Interface(FAKE_AGG_ADDRESS)
-        );
+        bytes memory initData =
+            abi.encodeWithSelector(
+                PoolTokenV2.initialize.selector,
+                POOL_PROXY_ADMIN,
+                IDetailedERC20(DAI_ADDRESS),
+                AggregatorV3Interface(FAKE_AGG_ADDRESS)
+            );
         address logic = PoolTokenV2Factory(poolTokenV2Factory).create(initData);
         return logic;
     }
 
     function _upgrade(address payable proxy) internal {
         require(
-            Ownable(POOL_PROXY_ADMIN).owner() == adminSafe,
+            Ownable(POOL_PROXY_ADMIN).owner() == emergencySafe,
             "MISSING_OWNERSHIP"
         );
         address mApt = addressRegistry.mAptAddress();
@@ -227,19 +220,21 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
         address logic,
         address proxyAdmin
     ) internal {
-        bytes memory initData = abi.encodeWithSelector(
-            PoolTokenV2.initializeUpgrade.selector,
-            addressRegistry
-        );
-        bytes memory data = abi.encodeWithSelector(
-            ProxyAdmin.upgradeAndCall.selector,
-            TransparentUpgradeableProxy(payable(proxy)),
-            logic,
-            initData
-        );
+        bytes memory initData =
+            abi.encodeWithSelector(
+                PoolTokenV2.initializeUpgrade.selector,
+                addressRegistry
+            );
+        bytes memory data =
+            abi.encodeWithSelector(
+                ProxyAdmin.upgradeAndCall.selector,
+                TransparentUpgradeableProxy(payable(proxy)),
+                logic,
+                initData
+            );
 
         require(
-            IGnosisModuleManager(adminSafe).execTransactionFromModule(
+            IGnosisModuleManager(emergencySafe).execTransactionFromModule(
                 proxyAdmin,
                 0,
                 data,
@@ -250,9 +245,10 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
     }
 
     function _lockPool(address proxy) internal {
-        bytes memory data = abi.encodeWithSelector(
-            PoolTokenV2.emergencyLockAddLiquidity.selector
-        );
+        bytes memory data =
+            abi.encodeWithSelector(
+                PoolTokenV2.emergencyLockAddLiquidity.selector
+            );
         require(
             IGnosisModuleManager(emergencySafe).execTransactionFromModule(
                 proxy,
