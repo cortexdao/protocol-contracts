@@ -21,7 +21,7 @@ const DAI_POOL_PROXY = "0x75ce0e501e2e6776fcaaa514f394a88a772a8970";
 const USDC_POOL_PROXY = "0xe18b0365d5d09f394f84ee56ed29dd2d8d6fba5f";
 const USDT_POOL_PROXY = "0xea9c5a2717d5ab75afaac340151e73a7e37d99a7";
 
-describe.only("Contract: PoolTokenV2Upgrader", () => {
+describe("Contract: PoolTokenV2Upgrader", () => {
   // signers
   let deployer;
   let randomUser;
