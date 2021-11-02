@@ -344,21 +344,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             address(addressRegistry)
         );
 
-        bytes memory data =
-            abi.encodeWithSelector(
-                IAssetAllocationRegistry.registerAssetAllocation.selector,
-                erc20Allocation
-            );
-        require(
-            IGnosisModuleManager(adminSafe).execTransactionFromModule(
-                tvlManager,
-                0,
-                data,
-                Enum.Operation.Call
-            ),
-            "SAFE_TX_FAILED"
-        );
-
         _registerAddress("erc20Allocation", erc20Allocation);
     }
 
@@ -438,6 +423,23 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         );
 
         _registerAddress("oracleAdapter", oracleAdapter);
+
+        // Must register the ERC20 Allocation after the Oracle Adapter deploy
+        // since registration will lock the Adapter.
+        bytes memory data =
+            abi.encodeWithSelector(
+                IAssetAllocationRegistry.registerAssetAllocation.selector,
+                erc20Allocation
+            );
+        require(
+            IGnosisModuleManager(adminSafe).execTransactionFromModule(
+                tvlManager,
+                0,
+                data,
+                Enum.Operation.Call
+            ),
+            "SAFE_TX_FAILED"
+        );
     }
 
     /**

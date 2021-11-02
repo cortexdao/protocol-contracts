@@ -22,6 +22,7 @@ const MAINNET_POOL_PROXY_ADMIN = "0x7965283631253DfCb71Db63a60C656DEDF76234f";
 describe("Contract: AlphaDeployment", () => {
   // signers
   let deployer;
+  let emergencySafe;
   let adminSafe;
 
   // contract factories
@@ -39,8 +40,6 @@ describe("Contract: AlphaDeployment", () => {
   let oracleAdapterFactory;
   let lpAccountFactory;
 
-  let poolProxyAdminAddress;
-
   let alphaDeployment;
   let addressRegistry;
 
@@ -53,52 +52,17 @@ describe("Contract: AlphaDeployment", () => {
     );
   });
 
-  before("Transfer necessary ownerships to Admin Safe", async () => {
+  before("Attach to Safes", async () => {
+    const emergencySafeAddress = getDeployedAddress("EmergencySafe", "MAINNET");
+    emergencySafe = await ethers.getContractAt(
+      "IGnosisModuleManager",
+      emergencySafeAddress
+    );
     const adminSafeAddress = getDeployedAddress("AdminSafe", "MAINNET");
     adminSafe = await ethers.getContractAt(
       "IGnosisModuleManager",
       adminSafeAddress
     );
-    const addressRegistryProxyAdminAddress = getDeployedAddress(
-      "AddressRegistryProxyAdmin",
-      "MAINNET"
-    );
-    const addressRegistryProxyAdmin = await ethers.getContractAt(
-      "ProxyAdmin",
-      addressRegistryProxyAdminAddress
-    );
-    const addressRegistryDeployerAddress =
-      await addressRegistryProxyAdmin.owner();
-    const addressRegistryDeployer = await impersonateAccount(
-      addressRegistryDeployerAddress
-    );
-    await forciblySendEth(
-      addressRegistryDeployer.address,
-      tokenAmountToBigNumber(10),
-      deployer.address
-    );
-    await addressRegistryProxyAdmin
-      .connect(addressRegistryDeployer)
-      .transferOwnership(adminSafe.address);
-
-    poolProxyAdminAddress = getDeployedAddress(
-      "PoolTokenProxyAdmin",
-      "MAINNET"
-    );
-    const poolProxyAdmin = await ethers.getContractAt(
-      "ProxyAdmin",
-      poolProxyAdminAddress
-    );
-    const poolDeployerAddress = await poolProxyAdmin.owner();
-    const poolDeployer = await impersonateAccount(poolDeployerAddress);
-    await forciblySendEth(
-      poolDeployer.address,
-      tokenAmountToBigNumber(10),
-      deployer.address
-    );
-    await poolProxyAdmin
-      .connect(poolDeployer)
-      .transferOwnership(adminSafe.address);
   });
 
   before("Deploy factories and mock deployed addresses", async () => {
@@ -179,7 +143,24 @@ describe("Contract: AlphaDeployment", () => {
   });
 
   describe("Deployment steps", () => {
-    before("Register deployer module", async () => {
+    before("Enable as module for Emergency and Admin Safes", async () => {
+      await forciblySendEth(
+        emergencySafe.address,
+        tokenAmountToBigNumber(10),
+        deployer.address
+      );
+
+      const emergencySafeSigner = await impersonateAccount(
+        emergencySafe.address
+      );
+      await emergencySafe
+        .connect(emergencySafeSigner)
+        .enableModule(alphaDeployment.address);
+
+      expect(await emergencySafe.getModules()).to.include(
+        alphaDeployment.address
+      );
+
       await forciblySendEth(
         adminSafe.address,
         tokenAmountToBigNumber(10),
@@ -195,10 +176,6 @@ describe("Contract: AlphaDeployment", () => {
     });
 
     describe("Step 0: Upgrade AddressRegistry", () => {
-      it("new addresses should not be registered before upgrade", async () => {
-        await expect(addressRegistry.emergencySafeAddress()).to.be.reverted;
-      });
-
       it("should update step number", async () => {
         await alphaDeployment.deploy_0_AddressRegistryV2_upgrade();
         expect(await alphaDeployment.step()).to.equal(1);
