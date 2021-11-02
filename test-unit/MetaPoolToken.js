@@ -76,10 +76,12 @@ describe("Contract: MetaPoolToken", () => {
   before("Setup mocks with MAINNET addresses", async () => {
     [deployer] = await ethers.getSigners();
 
-    const owner = await impersonateAccount(MAINNET_ADDRESS_REGISTRY_DEPLOYER);
+    const registryDeployer = await impersonateAccount(
+      MAINNET_ADDRESS_REGISTRY_DEPLOYER
+    );
     await forciblySendEth(
-      owner.address,
-      tokenAmountToBigNumber(10),
+      registryDeployer.address,
+      tokenAmountToBigNumber(5),
       deployer.address
     );
     // Set the nonce to 3 before deploying the mock contract with the
@@ -90,7 +92,7 @@ describe("Contract: MetaPoolToken", () => {
       "0x3",
     ]);
     addressRegistry = await deployMockContract(
-      owner,
+      registryDeployer,
       artifacts.readArtifactSync("AddressRegistryV2").abi
     );
     expect(addressRegistry.address).to.equal(MAINNET_ADDRESS_REGISTRY);
@@ -172,11 +174,6 @@ describe("Contract: MetaPoolToken", () => {
   });
 
   async function deployMetaPoolToken(addressRegistry) {
-    const ProxyAdminFactory = await ethers.getContractFactory(
-      "ProxyAdminFactory"
-    );
-    const proxyAdminFactory = await ProxyAdminFactory.deploy();
-
     const ProxyFactory = await ethers.getContractFactory("ProxyFactory");
     const proxyFactory = await ProxyFactory.deploy();
 
@@ -189,7 +186,7 @@ describe("Contract: MetaPoolToken", () => {
       "TestAlphaDeployment"
     );
     const alphaDeployment = await AlphaDeployment.deploy(
-      proxyAdminFactory.address,
+      FAKE_ADDRESS, // proxy admin factory
       proxyFactory.address,
       FAKE_ADDRESS, // address registry v2 factory
       mAptFactory.address, // mAPT factory
@@ -203,8 +200,6 @@ describe("Contract: MetaPoolToken", () => {
 
     await addressRegistry.mock.owner.returns(emergencySafe.address);
     await alphaDeployment.testSetStep(1);
-
-    await addressRegistry.mock.registerAddress.returns();
 
     await alphaDeployment.deploy_1_MetaPoolToken();
 
