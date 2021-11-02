@@ -85,7 +85,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
     IAddressRegistryV2 public addressRegistry;
 
-    address public immutable proxyAdminFactory;
     address public immutable proxyFactory;
     address public immutable addressRegistryV2Factory;
     address public immutable mAptFactory;
@@ -155,7 +154,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     }
 
     constructor(
-        address proxyAdminFactory_,
         address proxyFactory_,
         address addressRegistryV2Factory_,
         address mAptFactory_,
@@ -174,7 +172,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         adminSafe = addressRegistry.getAddress("adminSafe");
         lpSafe = addressRegistry.getAddress("lpSafe");
 
-        proxyAdminFactory = proxyAdminFactory_;
         proxyFactory = proxyFactory_;
         addressRegistryV2Factory = addressRegistryV2Factory_;
         mAptFactory = mAptFactory_;
@@ -275,52 +272,16 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
         checkRegisteredDependencies(registeredIds, deployedAddresses);
 
-        address[] memory ownerships = new address[](1);
+        address[] memory ownerships = new address[](2);
         ownerships[0] = ADDRESS_REGISTRY_PROXY;
+        ownerships[1] = POOL_PROXY_ADMIN;
         checkOwnerships(ownerships);
 
-        // Need to create a new proxy admin so we have ownership and can
-        // upgrade through it.
-        address proxyAdmin = ProxyAdminFactory(proxyAdminFactory).create();
+        daiDemoPool = _deployDemoPool(DAI_ADDRESS, "daiDemoPool");
 
-        bytes memory initDataV2 =
-            abi.encodeWithSelector(
-                PoolTokenV2.initializeUpgrade.selector,
-                address(addressRegistry)
-            );
+        usdcDemoPool = _deployDemoPool(USDC_ADDRESS, "usdcDemoPool");
 
-        daiDemoPool = _deployDemoPool(
-            DAI_ADDRESS,
-            "daiDemoPool",
-            proxyAdmin,
-            initDataV2
-        );
-        ProxyAdmin(proxyAdmin).changeProxyAdmin(
-            TransparentUpgradeableProxy(payable(daiDemoPool)),
-            POOL_PROXY_ADMIN
-        );
-
-        usdcDemoPool = _deployDemoPool(
-            USDC_ADDRESS,
-            "usdcDemoPool",
-            proxyAdmin,
-            initDataV2
-        );
-        ProxyAdmin(proxyAdmin).changeProxyAdmin(
-            TransparentUpgradeableProxy(payable(usdcDemoPool)),
-            POOL_PROXY_ADMIN
-        );
-
-        usdtDemoPool = _deployDemoPool(
-            USDT_ADDRESS,
-            "usdtDemoPool",
-            proxyAdmin,
-            initDataV2
-        );
-        ProxyAdmin(proxyAdmin).changeProxyAdmin(
-            TransparentUpgradeableProxy(payable(usdtDemoPool)),
-            POOL_PROXY_ADMIN
-        );
+        usdtDemoPool = _deployDemoPool(USDT_ADDRESS, "usdtDemoPool");
     }
 
     /// @dev Deploy ERC20 allocation and TVL Manager.
@@ -378,7 +339,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         _registerAddress("lpAccount", lpAccount);
     }
 
-    /// @dev registers mAPT, TvlManager, LpAccount for contract roles
+    /// @dev registers mAPT, TvlManager, Erc20Allocation, LpAccount for contract roles
     function deploy_6_OracleAdapter()
         external
         onlyOwner
@@ -508,16 +469,14 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         );
     }
 
-    function _deployDemoPool(
-        address token,
-        bytes32 id,
-        address proxyAdmin,
-        bytes memory initData
-    ) internal returns (address) {
-        bytes memory data =
+    function _deployDemoPool(address token, bytes32 id)
+        internal
+        returns (address)
+    {
+        bytes memory initData =
             abi.encodeWithSelector(
                 PoolTokenV2.initialize.selector,
-                proxyAdmin,
+                POOL_PROXY_ADMIN,
                 token,
                 FAKE_AGG_ADDRESS
             );
@@ -525,14 +484,30 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         address proxy =
             PoolTokenV1Factory(poolTokenV1Factory).create(
                 proxyFactory,
-                proxyAdmin,
-                data
+                POOL_PROXY_ADMIN,
+                initData
             );
 
-        ProxyAdmin(proxyAdmin).upgradeAndCall(
-            TransparentUpgradeableProxy(payable(proxy)),
-            poolTokenV2,
-            initData
+        bytes memory v2initData =
+            abi.encodeWithSelector(
+                PoolTokenV2.initializeUpgrade.selector,
+                address(addressRegistry)
+            );
+        bytes memory execData =
+            abi.encodeWithSelector(
+                ProxyAdmin.upgradeAndCall.selector,
+                proxy,
+                poolTokenV2,
+                v2initData
+            );
+        require(
+            IGnosisModuleManager(emergencySafe).execTransactionFromModule(
+                POOL_PROXY_ADMIN,
+                0, // value
+                execData,
+                Enum.Operation.Call
+            ),
+            "SAFE_TX_FAILED"
         );
 
         _registerAddress(id, proxy);
