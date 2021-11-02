@@ -225,8 +225,6 @@ describe("Contract: OracleAdapter", () => {
     await alphaDeployment.testSetErc20Allocation(erc20Allocation.address);
     await addressRegistry.mock.owner.returns(emergencySafe.address);
 
-    await addressRegistry.mock.registerAddress.returns();
-
     await alphaDeployment.deploy_6_OracleAdapter();
 
     const oracleAdapterAddress = await alphaDeployment.oracleAdapter();

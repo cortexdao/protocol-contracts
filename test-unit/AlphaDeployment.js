@@ -211,7 +211,7 @@ describe("Contract: AlphaDeployment", () => {
       deployer,
       artifacts.readArtifactSync("MetaPoolTokenFactory").abi
     );
-    metaPoolTokenFactory.mock.create.returns(mAptAddress);
+    await metaPoolTokenFactory.mock.create.returns(mAptAddress);
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
@@ -264,7 +264,7 @@ describe("Contract: AlphaDeployment", () => {
       deployer,
       artifacts.readArtifactSync("PoolTokenV2Factory").abi
     );
-    poolTokenV2Factory.mock.create.returns(logicV2.address);
+    await poolTokenV2Factory.mock.create.returns(logicV2.address);
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
@@ -303,7 +303,7 @@ describe("Contract: AlphaDeployment", () => {
       deployer,
       artifacts.readArtifactSync("ProxyAdminFactory").abi
     );
-    proxyAdminFactory.mock.create.returns(proxyAdmin.address);
+    await proxyAdminFactory.mock.create.returns(proxyAdmin.address);
 
     // mock the v1 proxy create
     const demoPoolAddress = (await deployMockContract(deployer, [])).address;
@@ -311,7 +311,7 @@ describe("Contract: AlphaDeployment", () => {
       deployer,
       artifacts.readArtifactSync("PoolTokenV1Factory").abi
     );
-    poolTokenV1Factory.mock.create.returns(demoPoolAddress);
+    await poolTokenV1Factory.mock.create.returns(demoPoolAddress);
 
     // need to mock logic storage init
     const logicV2 = await deployMockContract(
@@ -324,7 +324,7 @@ describe("Contract: AlphaDeployment", () => {
       deployer,
       artifacts.readArtifactSync("PoolTokenV2Factory").abi
     );
-    poolTokenV2Factory.mock.create.returns(logicV2.address);
+    await poolTokenV2Factory.mock.create.returns(logicV2.address);
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
@@ -481,10 +481,14 @@ describe("Contract: AlphaDeployment", () => {
       .withArgs(addressRegistry.address, 0, data, CALL)
       .returns(true);
 
-    // check TVL Manager address set properly
+    // check TVL Manager and ERC20 Alloction addresses set properly
     expect(await alphaDeployment.tvlManager()).to.equal(ZERO_ADDRESS);
+    expect(await alphaDeployment.erc20Allocation()).to.equal(ZERO_ADDRESS);
     await expect(alphaDeployment.deploy_4_TvlManager()).to.not.be.reverted;
     expect(await alphaDeployment.tvlManager()).to.equal(tvlManager.address);
+    expect(await alphaDeployment.erc20Allocation()).to.equal(
+      erc20Allocation.address
+    );
   });
 
   it("deploy_5_LpAccount", async () => {
@@ -493,7 +497,7 @@ describe("Contract: AlphaDeployment", () => {
       deployer,
       artifacts.readArtifactSync("LpAccountFactory").abi
     );
-    lpAccountFactory.mock.create.returns(lpAccountAddress);
+    await lpAccountFactory.mock.create.returns(lpAccountAddress);
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
@@ -613,6 +617,22 @@ describe("Contract: AlphaDeployment", () => {
     );
     await emergencySafe.mock.execTransactionFromModule
       .withArgs(addressRegistry.address, 0, data, CALL)
+      .returns(true);
+
+    // check ERC20 Allocation registered with TVL Manager
+    const TvlManager = await ethers.getContractFactory("TvlManager");
+    const encodedRegisterAllocation = TvlManager.interface.encodeFunctionData(
+      "registerAssetAllocation(address)",
+      [erc20AllocationAddress]
+    );
+    await adminSafe.mock.execTransactionFromModule
+      .withArgs(tvlManagerAddress, 0, encodedRegisterAllocation, CALL)
+      .revertsWithReason("ERC20_ALLOCATION_REGISTERED");
+    await expect(alphaDeployment.deploy_6_OracleAdapter()).to.be.revertedWith(
+      "ERC20_ALLOCATION_REGISTERED"
+    );
+    await adminSafe.mock.execTransactionFromModule
+      .withArgs(tvlManagerAddress, 0, encodedRegisterAllocation, CALL)
       .returns(true);
 
     // check Oracle Adapter address set properly

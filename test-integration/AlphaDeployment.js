@@ -429,6 +429,17 @@ describe("Contract: AlphaDeployment", () => {
           );
         });
       });
+
+      it("should register ERC20 Allocation with TvlManager", async () => {
+        const tvlManagerAddress = await alphaDeployment.tvlManager();
+        const tvlManager = await ethers.getContractAt(
+          "TvlManager",
+          tvlManagerAddress
+        );
+        expect(
+          await tvlManager.isAssetAllocationRegistered(["erc20Allocation"])
+        ).to.be.true;
+      });
     });
   });
 });
