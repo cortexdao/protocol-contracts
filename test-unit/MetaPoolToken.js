@@ -25,7 +25,7 @@ const DUMMY_ADDRESS = web3.utils.toChecksumAddress(
 const usdc = (amount) => tokenAmountToBigNumber(amount, "6");
 const ether = (amount) => tokenAmountToBigNumber(amount, "18");
 
-describe("Contract: MetaPoolToken", () => {
+describe.only("Contract: MetaPoolToken", () => {
   // signers
   let deployer;
   let emergencySafe;
@@ -33,6 +33,7 @@ describe("Contract: MetaPoolToken", () => {
   let lpAccount;
   let randomUser;
   let anotherUser;
+  let emergencySafeSigner;
   let adminSafeSigner;
 
   // deployed contracts
@@ -94,32 +95,42 @@ describe("Contract: MetaPoolToken", () => {
   });
 
   before("Register Safes", async () => {
-    [, emergencySafe, lpSafe] = await ethers.getSigners();
-
-    await addressRegistry.mock.emergencySafeAddress.returns(
-      emergencySafe.address
-    );
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("emergencySafe"))
-      .returns(emergencySafe.address);
+    [, lpSafe] = await ethers.getSigners();
 
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("lpSafe"))
       .returns(lpSafe.address);
 
-    // mock the Admin Safe to allow module function calls
+    // mock Emergency and Admin Safe to allow module function calls
+    emergencySafe = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("IGnosisModuleManager").abi
+    );
+    await emergencySafe.mock.execTransactionFromModule.returns(true);
     adminSafe = await deployMockContract(
       deployer,
       artifacts.readArtifactSync("IGnosisModuleManager").abi
     );
     await adminSafe.mock.execTransactionFromModule.returns(true);
     // register the address
+    await addressRegistry.mock.emergencySafeAddress.returns(
+      emergencySafe.address
+    );
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("emergencySafe"))
+      .returns(emergencySafe.address);
     await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("adminSafe"))
       .returns(adminSafe.address);
     // create signer for few cases where we need to connect with Admin Safe
+    emergencySafeSigner = await impersonateAccount(emergencySafe.address);
+    await forciblySendEth(
+      emergencySafe.address,
+      tokenAmountToBigNumber(1),
+      deployer.address
+    );
     adminSafeSigner = await impersonateAccount(adminSafe.address);
     await forciblySendEth(
       adminSafe.address,
@@ -314,7 +325,7 @@ describe("Contract: MetaPoolToken", () => {
 
     it("Proxy Admin owner is Admin Safe", async () => {
       const proxyAdmin = await getProxyAdmin(mApt.address);
-      expect(await proxyAdmin.owner()).to.equal(adminSafe.address);
+      expect(await proxyAdmin.owner()).to.equal(emergencySafe.address);
     });
 
     it.skip("Proxy implementation is set to logic contract", async () => {
@@ -331,7 +342,9 @@ describe("Contract: MetaPoolToken", () => {
     it("getProxyAdmin() on Proxy Admin returns correct address", async () => {
       const proxyAdmin = await getProxyAdmin(mApt.address);
       expect(
-        await proxyAdmin.connect(adminSafeSigner).getProxyAdmin(mApt.address)
+        await proxyAdmin
+          .connect(emergencySafeSigner)
+          .getProxyAdmin(mApt.address)
       ).to.equal(proxyAdmin.address);
     });
   });
@@ -340,7 +353,7 @@ describe("Contract: MetaPoolToken", () => {
     it("Emergency Safe can set to valid address", async () => {
       const contractAddress = (await deployMockContract(deployer, [])).address;
       await mApt
-        .connect(emergencySafe)
+        .connect(emergencySafeSigner)
         .emergencySetAddressRegistry(contractAddress);
       expect(await mApt.addressRegistry()).to.equal(contractAddress);
     });
@@ -354,7 +367,9 @@ describe("Contract: MetaPoolToken", () => {
 
     it("Cannot set to non-contract address", async () => {
       await expect(
-        mApt.connect(emergencySafe).emergencySetAddressRegistry(FAKE_ADDRESS)
+        mApt
+          .connect(emergencySafeSigner)
+          .emergencySetAddressRegistry(FAKE_ADDRESS)
       ).to.be.revertedWith("INVALID_ADDRESS");
     });
   });
