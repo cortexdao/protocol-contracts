@@ -194,7 +194,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     {
         address[] memory ownerships = new address[](2);
         ownerships[0] = ADDRESS_REGISTRY_PROXY;
-        ownerships[1] = ADDRESS_REGISTRY_PROXY_ADMIN;
+        ownerships[1] = POOL_PROXY_ADMIN;
         checkOwnerships(ownerships);
 
         addressRegistryV2 = AddressRegistryV2Factory(addressRegistryV2Factory)
@@ -207,8 +207,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             );
 
         require(
-            IGnosisModuleManager(adminSafe).execTransactionFromModule(
-                ADDRESS_REGISTRY_PROXY_ADMIN,
+            IGnosisModuleManager(emergencySafe).execTransactionFromModule(
+                POOL_PROXY_ADMIN,
                 0, // value
                 data,
                 Enum.Operation.Call
@@ -221,9 +221,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         // Initialize logic storage to block possible attack vector:
         // attacker may control and selfdestruct the logic contract
         // if more powerful functionality is added later
-        AddressRegistryV2(addressRegistryV2).initialize(
-            ADDRESS_REGISTRY_PROXY_ADMIN
-        );
+        AddressRegistryV2(addressRegistryV2).initialize(POOL_PROXY_ADMIN);
     }
 
     /// @dev Deploy the mAPT proxy and its proxy admin.
@@ -483,7 +481,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     {
         for (uint256 i = 0; i < ownedContracts.length; i++) {
             require(
-                Ownable(ownedContracts[i]).owner() == adminSafe,
+                Ownable(ownedContracts[i]).owner() == emergencySafe,
                 "MISSING_OWNERSHIP"
             );
         }
@@ -498,7 +496,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             );
 
         require(
-            IGnosisModuleManager(adminSafe).execTransactionFromModule(
+            IGnosisModuleManager(emergencySafe).execTransactionFromModule(
                 address(addressRegistry),
                 0,
                 data,
