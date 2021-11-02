@@ -16,17 +16,15 @@ const timeMachine = require("ganache-time-traveler");
 const { deployMockContract } = require("@ethereum-waffle/mock-contract");
 
 const ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
-const ADDRESS_REGISTRY_PROXY_ADMIN =
-  "0xFbF6c940c1811C3ebc135A9c4e39E042d02435d1";
+const POOL_PROXY_ADMIN = "0x7965283631253DfCb71Db63a60C656DEDF76234f";
 const DAI_POOL_PROXY = "0x75ce0e501e2e6776fcaaa514f394a88a772a8970";
 const USDC_POOL_PROXY = "0xe18b0365d5d09f394f84ee56ed29dd2d8d6fba5f";
 const USDT_POOL_PROXY = "0xea9c5a2717d5ab75afaac340151e73a7e37d99a7";
 
-describe("Contract: PoolTokenV2Upgrader", () => {
+describe.only("Contract: PoolTokenV2Upgrader", () => {
   // signers
   let deployer;
   let randomUser;
-  let adminSafeSigner;
   let emergencySafeSigner;
 
   // contract factories
@@ -39,7 +37,6 @@ describe("Contract: PoolTokenV2Upgrader", () => {
   let upgrader;
 
   // Mainnet contracts
-  let adminSafe;
   let emergencySafe;
   let addressRegistry;
 
@@ -58,14 +55,6 @@ describe("Contract: PoolTokenV2Upgrader", () => {
   before("Get signers", async () => {
     [deployer, randomUser] = await ethers.getSigners();
 
-    const adminSafeAddress = getDeployedAddress("AdminSafe", "MAINNET");
-    adminSafeSigner = await impersonateAccount(adminSafeAddress);
-    await forciblySendEth(
-      adminSafeSigner.address,
-      tokenAmountToBigNumber(5),
-      deployer.address
-    );
-
     const emergencySafeAddress = getDeployedAddress("EmergencySafe", "MAINNET");
     emergencySafeSigner = await impersonateAccount(emergencySafeAddress);
     await forciblySendEth(
@@ -76,11 +65,9 @@ describe("Contract: PoolTokenV2Upgrader", () => {
   });
 
   before("Attach to Mainnet Safes", async () => {
-    adminSafe = await ethers.getContractAt(
-      "IGnosisModuleManager",
-      adminSafeSigner.address
-    );
-
+    // Only the Emergency Safe is needed for the pool v2 upgrades.
+    // It owns the pool proxy admin and the address registry and its
+    // proxy admin.
     emergencySafe = await ethers.getContractAt(
       "IGnosisModuleManager",
       emergencySafeSigner.address
@@ -90,36 +77,23 @@ describe("Contract: PoolTokenV2Upgrader", () => {
   before("Upgrade Mainnet Address Registry to V2", async () => {
     addressRegistry = await ethers.getContractAt(
       "AddressRegistryV2",
-      ADDRESS_REGISTRY
+      ADDRESS_REGISTRY,
+      emergencySafeSigner
     );
-    const owner = await addressRegistry.owner();
-    const signer = await impersonateAccount(owner);
-    await forciblySendEth(
-      signer.address,
-      tokenAmountToBigNumber(5),
-      deployer.address
-    );
-    addressRegistry = addressRegistry.connect(signer);
 
-    // based on the current pinned block, we need to upgrade
-    // the Address Registry to V2
+    // Even though Address Registry is upgraded to V2 on Mainnet,
+    // it's best to upgrade again here, just in case there are any
+    // updates made before final alpha deployment.
     const AddressRegistryV2 = await ethers.getContractFactory(
       "AddressRegistryV2"
     );
     const logic = await AddressRegistryV2.deploy();
     const proxyAdmin = await ethers.getContractAt(
       "ProxyAdmin",
-      ADDRESS_REGISTRY_PROXY_ADMIN
+      POOL_PROXY_ADMIN,
+      emergencySafeSigner
     );
-    const proxyAdminOwner = await impersonateAccount(await proxyAdmin.owner());
-    await forciblySendEth(
-      proxyAdminOwner.address,
-      tokenAmountToBigNumber(5),
-      deployer.address
-    );
-    await proxyAdmin
-      .connect(proxyAdminOwner)
-      .upgrade(addressRegistry.address, logic.address);
+    await proxyAdmin.upgrade(addressRegistry.address, logic.address);
   });
 
   before("Deploy factories", async () => {
@@ -135,30 +109,9 @@ describe("Contract: PoolTokenV2Upgrader", () => {
 
   before("Deploy upgrader", async () => {
     // in production, deploy will be via the Admin Safe
-    upgrader = await PoolTokenV2Upgrader.connect(adminSafeSigner).deploy(
+    upgrader = await PoolTokenV2Upgrader.connect(emergencySafeSigner).deploy(
       poolTokenV2Factory.address
     );
-  });
-
-  before("Transfer necessary ownerships to Admin Safe", async () => {
-    const poolProxyAdminAddress = getDeployedAddress(
-      "PoolTokenProxyAdmin",
-      "MAINNET"
-    );
-    const poolProxyAdmin = await ethers.getContractAt(
-      "ProxyAdmin",
-      poolProxyAdminAddress
-    );
-    const poolDeployerAddress = await poolProxyAdmin.owner();
-    const poolDeployer = await impersonateAccount(poolDeployerAddress);
-    await forciblySendEth(
-      poolDeployer.address,
-      tokenAmountToBigNumber(10),
-      deployer.address
-    );
-    await poolProxyAdmin
-      .connect(poolDeployer)
-      .transferOwnership(adminSafe.address);
   });
 
   before("Mock any needed dependencies", async () => {
@@ -176,7 +129,7 @@ describe("Contract: PoolTokenV2Upgrader", () => {
 
   describe("Defaults", () => {
     it("Owner is deployer", async () => {
-      expect(await upgrader.owner()).to.equal(adminSafeSigner.address);
+      expect(await upgrader.owner()).to.equal(emergencySafeSigner.address);
     });
 
     it("Address Registry is set", async () => {
@@ -189,7 +142,7 @@ describe("Contract: PoolTokenV2Upgrader", () => {
       const contract = await deployMockContract(deployer, []);
       await expect(
         upgrader
-          .connect(adminSafeSigner)
+          .connect(emergencySafeSigner)
           .setPoolTokenV2Factory(contract.address)
       ).to.not.be.reverted;
     });
@@ -204,8 +157,8 @@ describe("Contract: PoolTokenV2Upgrader", () => {
 
   describe("deployV2Logic", () => {
     it("Owner can call", async () => {
-      await expect(upgrader.connect(adminSafeSigner).deployV2Logic()).to.not.be
-        .reverted;
+      await expect(upgrader.connect(emergencySafeSigner).deployV2Logic()).to.not
+        .be.reverted;
     });
 
     it("Revert when non-owner attempts call", async () => {
@@ -250,31 +203,33 @@ describe("Contract: PoolTokenV2Upgrader", () => {
 
     it("Revert if upgrader is not enabled module", async () => {
       await expect(upgrader.upgradeDaiPool()).to.be.revertedWith(
-        "ENABLE_AS_ADMIN_MODULE"
+        "ENABLE_AS_EMERGENCY_MODULE"
       );
       await expect(upgrader.upgradeUsdcPool()).to.be.revertedWith(
-        "ENABLE_AS_ADMIN_MODULE"
+        "ENABLE_AS_EMERGENCY_MODULE"
       );
       await expect(upgrader.upgradeUsdtPool()).to.be.revertedWith(
-        "ENABLE_AS_ADMIN_MODULE"
+        "ENABLE_AS_EMERGENCY_MODULE"
       );
 
-      await adminSafe.connect(adminSafeSigner).enableModule(upgrader.address);
+      // enable upgrader as module
+      await emergencySafe
+        .connect(emergencySafeSigner)
+        .enableModule(upgrader.address);
 
       await expect(upgrader.upgradeDaiPool()).to.be.revertedWith(
-        "ENABLE_AS_EMERGENCY_MODULE"
+        "FUND_UPGRADER_WITH_STABLE"
       );
       await expect(upgrader.upgradeUsdcPool()).to.be.revertedWith(
-        "ENABLE_AS_EMERGENCY_MODULE"
+        "FUND_UPGRADER_WITH_STABLE"
       );
       await expect(upgrader.upgradeUsdtPool()).to.be.revertedWith(
-        "ENABLE_AS_EMERGENCY_MODULE"
+        "FUND_UPGRADER_WITH_STABLE"
       );
     });
 
     it("Revert if upgrader isn't funded with stable", async () => {
       // enable upgrader as module
-      await adminSafe.connect(adminSafeSigner).enableModule(upgrader.address);
       await emergencySafe
         .connect(emergencySafeSigner)
         .enableModule(upgrader.address);
@@ -292,7 +247,6 @@ describe("Contract: PoolTokenV2Upgrader", () => {
 
     it("Can upgrade", async () => {
       // enable upgrader as module
-      await adminSafe.connect(adminSafeSigner).enableModule(upgrader.address);
       await emergencySafe
         .connect(emergencySafeSigner)
         .enableModule(upgrader.address);
@@ -336,7 +290,6 @@ describe("Contract: PoolTokenV2Upgrader", () => {
 
     it("Revert if balances mapping has wrong slot", async () => {
       // enable upgrader as module
-      await adminSafe.connect(adminSafeSigner).enableModule(upgrader.address);
       await emergencySafe
         .connect(emergencySafeSigner)
         .enableModule(upgrader.address);
