@@ -23,7 +23,7 @@ describe("Contract: OracleAdapter", () => {
   // signers
   let deployer;
   let emergencySafeSigner;
-  let adminSafe;
+  let adminSafeSigner;
   let lpSafe;
   let mApt;
   let lpAccount;
@@ -36,6 +36,7 @@ describe("Contract: OracleAdapter", () => {
 
   // mocks
   let emergencySafe;
+  let adminSafe;
   let addressRegistry;
   let tvlAggMock;
   let assetAggMock_1;
@@ -94,7 +95,28 @@ describe("Contract: OracleAdapter", () => {
   });
 
   before("Register Safes", async () => {
-    [, adminSafe, lpSafe] = await ethers.getSigners();
+    [, lpSafe] = await ethers.getSigners();
+
+    // mock the Emergency and Admin Safe to allow module function calls
+    emergencySafe = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("IGnosisModuleManager").abi
+    );
+    await emergencySafe.mock.execTransactionFromModule.returns(true);
+
+    adminSafe = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("IGnosisModuleManager").abi
+    );
+    await adminSafe.mock.execTransactionFromModule.returns(true);
+
+    // register the addresses
+    await addressRegistry.mock.emergencySafeAddress.returns(
+      emergencySafe.address
+    );
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("emergencySafe"))
+      .returns(emergencySafe.address);
 
     await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
     await addressRegistry.mock.getAddress
@@ -106,23 +128,17 @@ describe("Contract: OracleAdapter", () => {
       .withArgs(bytes32("lpSafe"))
       .returns(lpSafe.address);
 
-    // mock the Emergency Safe to allow module function calls
-    emergencySafe = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("IGnosisModuleManager").abi
-    );
-    await emergencySafe.mock.execTransactionFromModule.returns(true);
-    // register the address
-    await addressRegistry.mock.emergencySafeAddress.returns(
-      emergencySafe.address
-    );
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("emergencySafe"))
-      .returns(emergencySafe.address);
     // setup a signer
     emergencySafeSigner = await impersonateAccount(emergencySafe.address);
     await forciblySendEth(
       emergencySafeSigner.address,
+      tokenAmountToBigNumber(5),
+      deployer.address
+    );
+
+    adminSafeSigner = await impersonateAccount(adminSafe.address);
+    await forciblySendEth(
+      adminSafeSigner.address,
       tokenAmountToBigNumber(5),
       deployer.address
     );
@@ -497,13 +513,15 @@ describe("Contract: OracleAdapter", () => {
   describe("setChainlinkStalePeriod", () => {
     it("Cannot set to 0", async () => {
       await expect(
-        oracleAdapter.connect(adminSafe).setChainlinkStalePeriod(0)
+        oracleAdapter.connect(adminSafeSigner).setChainlinkStalePeriod(0)
       ).to.be.revertedWith("INVALID_STALE_PERIOD");
     });
 
     it("Admin role can set", async () => {
       const period = 100;
-      await oracleAdapter.connect(adminSafe).setChainlinkStalePeriod(period);
+      await oracleAdapter
+        .connect(adminSafeSigner)
+        .setChainlinkStalePeriod(period);
     });
 
     it("Revert when unpermissioned calls", async () => {
@@ -524,7 +542,7 @@ describe("Contract: OracleAdapter", () => {
     it("Admin role can call", async () => {
       const period = 100;
       await expect(
-        oracleAdapter.connect(adminSafe).setDefaultLockPeriod(period)
+        oracleAdapter.connect(adminSafeSigner).setDefaultLockPeriod(period)
       ).to.not.be.reverted;
       expect(await oracleAdapter.defaultLockPeriod()).to.equal(period);
     });
