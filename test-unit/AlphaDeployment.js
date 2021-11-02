@@ -7,9 +7,7 @@ const { ethers } = hre;
 const timeMachine = require("ganache-time-traveler");
 const { FAKE_ADDRESS, ZERO_ADDRESS, bytes32 } = require("../utils/helpers");
 
-const POOL_PROXY_ADMIN = "0x7965283631253DfCb71Db63a60C656DEDF76234f";
-const MAINNET_ADDRESS_REGISTRY_PROXY_ADMIN =
-  "0xFbF6c940c1811C3ebc135A9c4e39E042d02435d1";
+const MAINNET_POOL_PROXY_ADMIN = "0x7965283631253DfCb71Db63a60C656DEDF76234f";
 const MAINNET_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
 
 const CALL = 0;
@@ -66,10 +64,10 @@ describe("Contract: AlphaDeployment", () => {
 
   before("Setup mocks with Mainnet addresses", async () => {
     addressRegistryProxyAdmin = await smock.fake("ProxyAdmin", {
-      address: MAINNET_ADDRESS_REGISTRY_PROXY_ADMIN,
+      address: MAINNET_POOL_PROXY_ADMIN,
     });
     expect(addressRegistryProxyAdmin.address).to.equal(
-      MAINNET_ADDRESS_REGISTRY_PROXY_ADMIN
+      MAINNET_POOL_PROXY_ADMIN
     );
     addressRegistry = await smock.fake("AddressRegistryV2", {
       address: MAINNET_ADDRESS_REGISTRY,
@@ -198,7 +196,7 @@ describe("Contract: AlphaDeployment", () => {
 
     // check pool proxy admin was used to create mApt
     expect(metaPoolTokenFactory.create.getCall(0).args.proxyAdmin).to.equal(
-      POOL_PROXY_ADMIN
+      MAINNET_POOL_PROXY_ADMIN
     );
   });
 
@@ -326,13 +324,13 @@ describe("Contract: AlphaDeployment", () => {
 
     // check pool proxy admin was used to create demo pools
     expect(proxyAdmin.changeProxyAdmin.getCall(0).args.newAdmin).to.equal(
-      POOL_PROXY_ADMIN
+      MAINNET_POOL_PROXY_ADMIN
     );
     expect(proxyAdmin.changeProxyAdmin.getCall(1).args.newAdmin).to.equal(
-      POOL_PROXY_ADMIN
+      MAINNET_POOL_PROXY_ADMIN
     );
     expect(proxyAdmin.changeProxyAdmin.getCall(2).args.newAdmin).to.equal(
-      POOL_PROXY_ADMIN
+      MAINNET_POOL_PROXY_ADMIN
     );
   });
 
@@ -456,7 +454,7 @@ describe("Contract: AlphaDeployment", () => {
 
     // check pool proxy admin was used to create mApt
     expect(lpAccountFactory.create.getCall(0).args.proxyAdmin).to.equal(
-      POOL_PROXY_ADMIN
+      MAINNET_POOL_PROXY_ADMIN
     );
   });
 

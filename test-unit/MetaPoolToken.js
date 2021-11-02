@@ -18,6 +18,10 @@ const OracleAdapter = artifacts.readArtifactSync("OracleAdapter");
 const PoolTokenV2 = artifacts.readArtifactSync("PoolTokenV2");
 const IDetailedERC20 = artifacts.readArtifactSync("IDetailedERC20");
 
+const MAINNET_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
+const MAINNET_ADDRESS_REGISTRY_DEPLOYER =
+  "0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3";
+
 const DUMMY_ADDRESS = web3.utils.toChecksumAddress(
   "0xCAFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
 );
@@ -25,7 +29,7 @@ const DUMMY_ADDRESS = web3.utils.toChecksumAddress(
 const usdc = (amount) => tokenAmountToBigNumber(amount, "6");
 const ether = (amount) => tokenAmountToBigNumber(amount, "18");
 
-describe.only("Contract: MetaPoolToken", () => {
+describe("Contract: MetaPoolToken", () => {
   // signers
   let deployer;
   let emergencySafe;
@@ -34,7 +38,6 @@ describe.only("Contract: MetaPoolToken", () => {
   let randomUser;
   let anotherUser;
   let emergencySafeSigner;
-  let adminSafeSigner;
 
   // deployed contracts
   let mApt;
@@ -70,11 +73,9 @@ describe.only("Contract: MetaPoolToken", () => {
     await timeMachine.revertToSnapshot(suiteSnapshotId);
   });
 
-  before("Setup mock Address Registry with Mainnet address", async () => {
+  before("Setup mocks with MAINNET addresses", async () => {
     [deployer] = await ethers.getSigners();
 
-    const MAINNET_ADDRESS_REGISTRY_DEPLOYER =
-      "0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3";
     const owner = await impersonateAccount(MAINNET_ADDRESS_REGISTRY_DEPLOYER);
     await forciblySendEth(
       owner.address,
@@ -92,48 +93,40 @@ describe.only("Contract: MetaPoolToken", () => {
       owner,
       artifacts.readArtifactSync("AddressRegistryV2").abi
     );
+    expect(addressRegistry.address).to.equal(MAINNET_ADDRESS_REGISTRY);
   });
 
   before("Register Safes", async () => {
-    [, lpSafe] = await ethers.getSigners();
+    [, adminSafe, lpSafe] = await ethers.getSigners();
+
+    // mock Emergency Safe to allow module function calls
+    emergencySafe = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("IGnosisModuleManager").abi
+    );
+    await emergencySafe.mock.execTransactionFromModule.returns(true);
 
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("lpSafe"))
       .returns(lpSafe.address);
 
-    // mock Emergency and Admin Safe to allow module function calls
-    emergencySafe = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("IGnosisModuleManager").abi
-    );
-    await emergencySafe.mock.execTransactionFromModule.returns(true);
-    adminSafe = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("IGnosisModuleManager").abi
-    );
-    await adminSafe.mock.execTransactionFromModule.returns(true);
-    // register the address
     await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("emergencySafe"))
       .returns(emergencySafe.address);
+
     await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("adminSafe"))
       .returns(adminSafe.address);
-    // create signer for few cases where we need to connect with Admin Safe
+
+    // create signer for few cases where we need to connect with Emergency Safe
     emergencySafeSigner = await impersonateAccount(emergencySafe.address);
     await forciblySendEth(
       emergencySafe.address,
-      tokenAmountToBigNumber(1),
-      deployer.address
-    );
-    adminSafeSigner = await impersonateAccount(adminSafe.address);
-    await forciblySendEth(
-      adminSafe.address,
       tokenAmountToBigNumber(1),
       deployer.address
     );
@@ -208,7 +201,7 @@ describe.only("Contract: MetaPoolToken", () => {
       FAKE_ADDRESS // lp account factory
     );
 
-    await addressRegistry.mock.owner.returns(adminSafe.address);
+    await addressRegistry.mock.owner.returns(emergencySafe.address);
     await alphaDeployment.testSetStep(1);
 
     await addressRegistry.mock.registerAddress.returns();
@@ -257,7 +250,7 @@ describe.only("Contract: MetaPoolToken", () => {
       const proxyAdmin = await getProxyAdmin(mApt.address);
       await expect(
         proxyAdmin
-          .connect(adminSafeSigner)
+          .connect(emergencySafeSigner)
           .upgradeAndCall(mApt.address, logic.address, initData)
       ).to.not.be.reverted;
     });
@@ -321,31 +314,6 @@ describe.only("Contract: MetaPoolToken", () => {
       // grab the proxy admin using EIP-1967 slot
       const proxyAdmin = await getProxyAdmin(mApt.address);
       expect(await mApt.proxyAdmin()).to.equal(proxyAdmin.address);
-    });
-
-    it("Proxy Admin owner is Admin Safe", async () => {
-      const proxyAdmin = await getProxyAdmin(mApt.address);
-      expect(await proxyAdmin.owner()).to.equal(emergencySafe.address);
-    });
-
-    it.skip("Proxy implementation is set to logic contract", async () => {
-      // FIXME: need to grab the deployed logic address somehow
-      const proxyAdmin = await getProxyAdmin(mApt.address);
-      expect(
-        await proxyAdmin
-          .connect(adminSafeSigner)
-          .getProxyImplementation(mApt.address)
-      ).to.equal(logic.address); // eslint-disable-line no-undef
-    });
-
-    // possibly very redundant
-    it("getProxyAdmin() on Proxy Admin returns correct address", async () => {
-      const proxyAdmin = await getProxyAdmin(mApt.address);
-      expect(
-        await proxyAdmin
-          .connect(emergencySafeSigner)
-          .getProxyAdmin(mApt.address)
-      ).to.equal(proxyAdmin.address);
     });
   });
 
