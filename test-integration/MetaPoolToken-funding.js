@@ -93,13 +93,8 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
   // });
 
   before("Main deployments and upgrades", async () => {
-    [
-      deployer,
-      emergencySafe,
-      adminSafe,
-      lpSafe,
-      randomUser,
-    ] = await ethers.getSigners();
+    [deployer, emergencySafe, adminSafe, lpSafe, randomUser] =
+      await ethers.getSigners();
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
 
@@ -117,9 +112,9 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
     const ProxyConstructorArg = await ethers.getContractFactory(
       "ProxyConstructorArg"
     );
-    const encodedArg = await (await ProxyConstructorArg.deploy()).getEncodedArg(
-      addressRegistryAdmin.address
-    );
+    const encodedArg = await (
+      await ProxyConstructorArg.deploy()
+    ).getEncodedArg(addressRegistryAdmin.address);
     const TransparentUpgradeableProxy = await ethers.getContractFactory(
       "TransparentUpgradeableProxy"
     );
@@ -961,25 +956,22 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
         const allowedDeviation = 2;
         // DAI
         const newDaiMaptBalance = await mApt.balanceOf(daiPool.address);
-        const expectedDaiMaptBalance = prevDaiMaptBalance.sub(
-          daiPoolBurnAmount
-        );
+        const expectedDaiMaptBalance =
+          prevDaiMaptBalance.sub(daiPoolBurnAmount);
         expect(newDaiMaptBalance.sub(expectedDaiMaptBalance).abs()).lt(
           allowedDeviation
         );
         // USDC
         const newUsdcMaptBalance = await mApt.balanceOf(usdcPool.address);
-        const expectedUsdcMaptBalance = prevUsdcMaptBalance.sub(
-          usdcPoolBurnAmount
-        );
+        const expectedUsdcMaptBalance =
+          prevUsdcMaptBalance.sub(usdcPoolBurnAmount);
         expect(newUsdcMaptBalance.sub(expectedUsdcMaptBalance).abs()).lt(
           allowedDeviation
         );
         // USDT
         const newUsdtMaptBalance = await mApt.balanceOf(usdtPool.address);
-        const expectedUsdtMaptBalance = prevUsdtMaptBalance.sub(
-          usdtPoolBurnAmount
-        );
+        const expectedUsdtMaptBalance =
+          prevUsdtMaptBalance.sub(usdtPoolBurnAmount);
         expect(newUsdtMaptBalance.sub(expectedUsdtMaptBalance).abs()).lt(
           allowedDeviation
         );
@@ -1320,9 +1312,8 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
         const redeemedUsdcAfterFee = redeemedUsdcAmount
           .mul(BigNumber.from(100).sub(reservePercentage))
           .div(100);
-        const usdcBalanceAfterRedeem = originalUsdcBalance.sub(
-          redeemedUsdcAfterFee
-        );
+        const usdcBalanceAfterRedeem =
+          originalUsdcBalance.sub(redeemedUsdcAfterFee);
         const expectedUnderlyerAmount = usdcBalanceAfterRedeem
           .add(depositAmount)
           .mul(redeemPercentage)
@@ -1333,9 +1324,11 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
         await expect(usdcPool.redeem(redeemableAptBalance)).to.not.be.reverted;
 
         const newUnderlyerBalance = await usdcToken.balanceOf(deployer.address);
-        expect(newUnderlyerBalance.sub(prevUnderlyerBalance)).to.equal(
-          expectedUnderlyerAmountAfterFee
-        );
+        const underlyerAmount = newUnderlyerBalance.sub(prevUnderlyerBalance);
+        // allow a few wei deviation
+        expect(
+          underlyerAmount.sub(expectedUnderlyerAmountAfterFee).abs()
+        ).to.be.lt(3);
       });
 
       it("Increase in TVL should increase value of APT holdings", async () => {
