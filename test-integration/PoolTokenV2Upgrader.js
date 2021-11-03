@@ -41,15 +41,25 @@ describe("Contract: PoolTokenV2Upgrader", () => {
   let addressRegistry;
 
   // use EVM snapshots for test isolation
-  let snapshotId;
+  let testSnapshotId;
+  let suiteSnapshotId;
 
   beforeEach(async () => {
-    let snapshot = await timeMachine.takeSnapshot();
-    snapshotId = snapshot["result"];
+    const snapshot = await timeMachine.takeSnapshot();
+    testSnapshotId = snapshot["result"];
   });
 
   afterEach(async () => {
-    await timeMachine.revertToSnapshot(snapshotId);
+    await timeMachine.revertToSnapshot(testSnapshotId);
+  });
+
+  before(async () => {
+    const snapshot = await timeMachine.takeSnapshot();
+    suiteSnapshotId = snapshot["result"];
+  });
+
+  after(async () => {
+    await timeMachine.revertToSnapshot(suiteSnapshotId);
   });
 
   before("Get signers", async () => {
@@ -125,6 +135,20 @@ describe("Contract: PoolTokenV2Upgrader", () => {
     await mApt.mock.getDeployedValue.returns(0);
 
     await addressRegistry.registerAddress(bytes32("mApt"), mApt.address);
+
+    // `redeem` in V2 also hits the Oracle Adapter for underlyer price
+    const oracleAdapter = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("OracleAdapter").abi
+    );
+    await oracleAdapter.mock.getAssetPrice.returns(
+      tokenAmountToBigNumber(1, 8)
+    );
+
+    await addressRegistry.registerAddress(
+      bytes32("oracleAdapter"),
+      oracleAdapter.address
+    );
   });
 
   describe("Defaults", () => {
