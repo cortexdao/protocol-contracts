@@ -186,7 +186,6 @@ describe("Contract: MetaPoolToken", () => {
       "TestAlphaDeployment"
     );
     const alphaDeployment = await AlphaDeployment.deploy(
-      FAKE_ADDRESS, // proxy admin factory
       proxyFactory.address,
       FAKE_ADDRESS, // address registry v2 factory
       mAptFactory.address, // mAPT factory

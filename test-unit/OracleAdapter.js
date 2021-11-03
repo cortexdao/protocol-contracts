@@ -205,7 +205,6 @@ describe("Contract: OracleAdapter", () => {
       "TestAlphaDeployment"
     );
     const alphaDeployment = await AlphaDeployment.deploy(
-      FAKE_ADDRESS, // proxy admin factory
       proxyFactory.address,
       FAKE_ADDRESS, // address registry v2 factory
       FAKE_ADDRESS, // mAPT factory

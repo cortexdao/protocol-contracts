@@ -152,7 +152,6 @@ describe("Contract: AlphaDeployment", () => {
   it("constructor", async () => {
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        FAKE_ADDRESS, // proxy admin factory
         FAKE_ADDRESS, // proxy factory
         FAKE_ADDRESS, // address registry v2 factory
         FAKE_ADDRESS, // mAPT factory
@@ -185,7 +184,6 @@ describe("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        FAKE_ADDRESS, // proxy admin factory
         FAKE_ADDRESS, // proxy factory
         addressRegistryV2Factory.address, // address registry v2 factory
         FAKE_ADDRESS, // mAPT factory
@@ -215,7 +213,6 @@ describe("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        FAKE_ADDRESS, // proxy admin factory
         FAKE_ADDRESS, // proxy factory
         FAKE_ADDRESS, // address registry v2 factory
         metaPoolTokenFactory.address, // mAPT factory
@@ -268,7 +265,6 @@ describe("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        FAKE_ADDRESS, // proxy admin factory
         FAKE_ADDRESS, // proxy factory
         FAKE_ADDRESS, // address registry v2 factory
         FAKE_ADDRESS, // mAPT factory
@@ -293,18 +289,6 @@ describe("Contract: AlphaDeployment", () => {
   });
 
   it("deploy_3_DemoPools", async () => {
-    // mock the proxy admin create and owner transfer
-    const proxyAdmin = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("ProxyAdmin").abi
-    );
-    await proxyAdmin.mock.changeProxyAdmin.returns();
-    const proxyAdminFactory = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("ProxyAdminFactory").abi
-    );
-    await proxyAdminFactory.mock.create.returns(proxyAdmin.address);
-
     // mock the v1 proxy create
     const demoPoolAddress = (await deployMockContract(deployer, [])).address;
     const poolTokenV1Factory = await deployMockContract(
@@ -328,7 +312,6 @@ describe("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        proxyAdminFactory.address, // proxy admin factory
         FAKE_ADDRESS, // proxy factory
         FAKE_ADDRESS, // address registry v2 factory
         FAKE_ADDRESS, // mAPT factory
@@ -353,9 +336,7 @@ describe("Contract: AlphaDeployment", () => {
 
     // for ownership check
     await addressRegistry.mock.owner.returns(emergencySafe.address);
-
-    // need to mock the upgrade
-    await proxyAdmin.mock.upgradeAndCall.returns();
+    await addressRegistryProxyAdmin.mock.owner.returns(emergencySafe.address);
 
     // check for address registrations
     // DAI
@@ -435,7 +416,6 @@ describe("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        FAKE_ADDRESS, // proxy admin factory
         FAKE_ADDRESS, // proxy factory
         FAKE_ADDRESS, // address registry v2 factory
         FAKE_ADDRESS, // mAPT factory
@@ -501,7 +481,6 @@ describe("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        FAKE_ADDRESS, // proxy admin factory
         FAKE_ADDRESS, // proxy factory
         FAKE_ADDRESS, // address registry v2 factory
         FAKE_ADDRESS, // mAPT factory
@@ -558,7 +537,6 @@ describe("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        FAKE_ADDRESS, // proxy admin factory
         FAKE_ADDRESS, // proxy factory
         FAKE_ADDRESS, // address registry v2 factory
         FAKE_ADDRESS, // mAPT factory
