@@ -35,9 +35,9 @@ contract("AddressRegistry", async (accounts) => {
   before(async () => {
     proxyAdmin = await ProxyAdmin.new({ from: deployer });
     const logic = await AddressRegistry.new({ from: deployer });
-    const encodedArg = await (await ProxyConstructorArg.new()).getEncodedArg(
-      proxyAdmin.address
-    );
+    const encodedArg = await (
+      await ProxyConstructorArg.new()
+    ).getEncodedArg(proxyAdmin.address);
     const proxy = await TransparentUpgradeableProxy.new(
       logic.address,
       proxyAdmin.address,
@@ -221,6 +221,12 @@ contract("AddressRegistry", async (accounts) => {
     const oracleAdapterAddress = web3.utils.toChecksumAddress(
       "0x9AFECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
     );
+    const mAptAddress = web3.utils.toChecksumAddress(
+      "0x10FECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+    );
+    const erc20AllocationAddress = web3.utils.toChecksumAddress(
+      "0x10FECAFECAFECAFECAFECAFECAFECAFECAFECAFE"
+    );
     beforeEach("Prep addresses", async () => {
       const names = [
         DUMMY_NAME,
@@ -233,6 +239,8 @@ contract("AddressRegistry", async (accounts) => {
         bytes32("usdcPool"),
         bytes32("usdtPool"),
         bytes32("oracleAdapter"),
+        bytes32("mApt"),
+        bytes32("erc20Allocation"),
       ];
       const addresses = [
         DUMMY_ADDRESS,
@@ -245,6 +253,8 @@ contract("AddressRegistry", async (accounts) => {
         usdcPoolAddress,
         usdtPoolAddress,
         oracleAdapterAddress,
+        mAptAddress,
+        erc20AllocationAddress,
       ];
       await registry.registerMultipleAddresses(names, addresses);
     });
@@ -261,6 +271,8 @@ contract("AddressRegistry", async (accounts) => {
         bytes32("usdcPool"),
         bytes32("usdtPool"),
         bytes32("oracleAdapter"),
+        bytes32("mApt"),
+        bytes32("erc20Allocation"),
       ]);
     });
 
@@ -280,10 +292,38 @@ contract("AddressRegistry", async (accounts) => {
       );
     });
 
-    it("User can retrieve tvl manager", async () => {
+    it("User can retrieve Chainlink Registry", async () => {
       assert.equal(
-        await registry.tvlManagerAddress({ from: randomUser }),
+        await registry.chainlinkRegistryAddress({ from: randomUser }),
         tvlManagerAddress
+      );
+    });
+
+    it("User can retrieve DAI Pool", async () => {
+      assert.equal(
+        await registry.daiPoolAddress({ from: randomUser }),
+        daiPoolAddress
+      );
+    });
+
+    it("User can retrieve USDC Pool", async () => {
+      assert.equal(
+        await registry.usdcPoolAddress({ from: randomUser }),
+        usdcPoolAddress
+      );
+    });
+
+    it("User can retrieve USDT Pool", async () => {
+      assert.equal(
+        await registry.usdtPoolAddress({ from: randomUser }),
+        usdtPoolAddress
+      );
+    });
+
+    it("User can retrieve mAPT", async () => {
+      assert.equal(
+        await registry.mAptAddress({ from: randomUser }),
+        mAptAddress
       );
     });
 
@@ -315,38 +355,24 @@ contract("AddressRegistry", async (accounts) => {
       );
     });
 
-    it("User can retrieve Chainlink registry", async () => {
-      assert.equal(
-        await registry.chainlinkRegistryAddress({ from: randomUser }),
-        tvlManagerAddress
-      );
-    });
-
-    it("User can retrieve DAI pool", async () => {
-      assert.equal(
-        await registry.daiPoolAddress({ from: randomUser }),
-        daiPoolAddress
-      );
-    });
-
-    it("User can retrieve USDC pool", async () => {
-      assert.equal(
-        await registry.usdcPoolAddress({ from: randomUser }),
-        usdcPoolAddress
-      );
-    });
-
-    it("User can retrieve USDT pool", async () => {
-      assert.equal(
-        await registry.usdtPoolAddress({ from: randomUser }),
-        usdtPoolAddress
-      );
-    });
-
-    it("User can retrieve oracle adapter", async () => {
+    it("User can retrieve Oracle Adapter", async () => {
       assert.equal(
         await registry.oracleAdapterAddress({ from: randomUser }),
         oracleAdapterAddress
+      );
+    });
+
+    it("User can retrieve ERC20 Allocation", async () => {
+      assert.equal(
+        await registry.erc20AllocationAddress({ from: randomUser }),
+        erc20AllocationAddress
+      );
+    });
+
+    it("User can retrieve Tvl Manager", async () => {
+      assert.equal(
+        await registry.tvlManagerAddress({ from: randomUser }),
+        tvlManagerAddress
       );
     });
   });

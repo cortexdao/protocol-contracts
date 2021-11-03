@@ -133,6 +133,10 @@ contract AddressRegistryV2 is
         return getAddress("oracleAdapter");
     }
 
+    function erc20AllocationAddress() external view override returns (address) {
+        return getAddress("erc20Allocation");
+    }
+
     function registerAddress(bytes32 id, address address_)
         public
         override
