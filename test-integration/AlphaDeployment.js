@@ -29,7 +29,6 @@ describe("Contract: AlphaDeployment", () => {
   let AlphaDeployment;
 
   // deployed factories
-  let proxyAdminFactory;
   let proxyFactory;
   let addressRegistryV2Factory;
   let metaPoolTokenFactory;
@@ -66,11 +65,6 @@ describe("Contract: AlphaDeployment", () => {
   });
 
   before("Deploy factories and mock deployed addresses", async () => {
-    const ProxyAdminFactory = await ethers.getContractFactory(
-      "ProxyAdminFactory"
-    );
-    proxyAdminFactory = await ProxyAdminFactory.deploy();
-
     const ProxyFactory = await ethers.getContractFactory("ProxyFactory");
     proxyFactory = await ProxyFactory.deploy();
 
@@ -127,7 +121,6 @@ describe("Contract: AlphaDeployment", () => {
   it("constructor", async () => {
     alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        proxyAdminFactory.address, // proxy admin factory
         proxyFactory.address, // proxy factory
         addressRegistryV2Factory.address, // address registry v2 factory
         metaPoolTokenFactory.address, // mAPT factory
