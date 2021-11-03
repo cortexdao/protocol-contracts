@@ -83,15 +83,6 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
     await timeMachine.revertToSnapshot(suiteSnapshotId);
   });
 
-  // beforeEach(async () => {
-  //   const snapshot = await timeMachine.takeSnapshot();
-  //   testSnapshotId = snapshot["result"];
-  // });
-
-  // afterEach(async () => {
-  //   await timeMachine.revertToSnapshot(testSnapshotId);
-  // });
-
   before("Main deployments and upgrades", async () => {
     [deployer, emergencySafe, adminSafe, lpSafe, randomUser] =
       await ethers.getSigners();
