@@ -116,7 +116,7 @@ describe("Contract: AlphaDeployment", () => {
   before("Register Safes", async () => {
     [, lpSafe] = await ethers.getSigners();
 
-    // mock the Admin Safe to allow module function calls
+    // mock the Emergency and Admin Safes to allow module function calls
     emergencySafe = await deployMockContract(
       deployer,
       artifacts.readArtifactSync("IGnosisModuleManager").abi
