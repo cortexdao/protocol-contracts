@@ -241,14 +241,14 @@ describe("Contract: PoolTokenV2Upgrader", () => {
         .connect(emergencySafeSigner)
         .enableModule(upgrader.address);
 
-      await expect(upgrader.upgradeDaiPool()).to.be.revertedWith(
-        "FUND_UPGRADER_WITH_STABLE"
+      await expect(upgrader.upgradeDaiPool()).to.not.be.revertedWith(
+        "ENABLE_AS_EMERGENCY_MODULE"
       );
-      await expect(upgrader.upgradeUsdcPool()).to.be.revertedWith(
-        "FUND_UPGRADER_WITH_STABLE"
+      await expect(upgrader.upgradeUsdcPool()).to.not.be.revertedWith(
+        "ENABLE_AS_EMERGENCY_MODULE"
       );
-      await expect(upgrader.upgradeUsdtPool()).to.be.revertedWith(
-        "FUND_UPGRADER_WITH_STABLE"
+      await expect(upgrader.upgradeUsdtPool()).to.not.be.revertedWith(
+        "ENABLE_AS_EMERGENCY_MODULE"
       );
     });
 
