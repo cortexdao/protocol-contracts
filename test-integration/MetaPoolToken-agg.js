@@ -47,26 +47,30 @@ describe("Contract: MetaPoolToken - TVL aggregator integration", () => {
   let tvlAgg;
 
   // use EVM snapshots for test isolation
-  let snapshotId;
+  let testSnapshotId;
+  let suiteSnapshotId;
 
   beforeEach(async () => {
     const snapshot = await timeMachine.takeSnapshot();
-    snapshotId = snapshot["result"];
+    testSnapshotId = snapshot["result"];
   });
 
   afterEach(async () => {
-    await timeMachine.revertToSnapshot(snapshotId);
+    await timeMachine.revertToSnapshot(testSnapshotId);
   });
 
   before(async () => {
-    [
-      deployer,
-      emergencySafe,
-      lpSafe,
-      adminSafe,
-      oracle,
-      randomUser,
-    ] = await ethers.getSigners();
+    const snapshot = await timeMachine.takeSnapshot();
+    suiteSnapshotId = snapshot["result"];
+  });
+
+  after(async () => {
+    await timeMachine.revertToSnapshot(suiteSnapshotId);
+  });
+
+  before(async () => {
+    [deployer, emergencySafe, lpSafe, adminSafe, oracle, randomUser] =
+      await ethers.getSigners();
 
     const paymentAmount = link("1");
     const maxSubmissionValue = tokenAmountToBigNumber("1", "20");

@@ -2,9 +2,9 @@
 pragma solidity 0.6.11;
 
 import {Address} from "contracts/libraries/Imports.sol";
-import {PoolTokenV2} from "contracts/pool/PoolTokenV2.sol";
+import {TestBrokenPoolTokenV2} from "contracts/pool/TestBrokenPoolTokenV2.sol";
 
-contract PoolTokenV2Factory {
+contract TestBrokenPoolTokenV2Factory {
     using Address for address;
 
     address private _logic;
@@ -19,7 +19,7 @@ contract PoolTokenV2Factory {
         if (_logic != address(0)) {
             return _logic;
         }
-        PoolTokenV2 logic = new PoolTokenV2();
+        TestBrokenPoolTokenV2 logic = new TestBrokenPoolTokenV2();
         _logic = address(logic);
         _logic.functionCall(initData);
         return _logic;

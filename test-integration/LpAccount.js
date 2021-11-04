@@ -63,15 +63,28 @@ describe("Contract: LpAccount", () => {
   let addressRegistry;
 
   // use EVM snapshots for test isolation
-  let snapshotId;
+  let testSnapshotId;
+  let suiteSnapshotId;
 
   beforeEach(async () => {
     const snapshot = await timeMachine.takeSnapshot();
-    snapshotId = snapshot["result"];
+    testSnapshotId = snapshot["result"];
   });
 
   afterEach(async () => {
-    await timeMachine.revertToSnapshot(snapshotId);
+    await timeMachine.revertToSnapshot(testSnapshotId);
+  });
+
+  before(async () => {
+    const snapshot = await timeMachine.takeSnapshot();
+    suiteSnapshotId = snapshot["result"];
+  });
+
+  after(async () => {
+    // In particular, we need to reset the Mainnet accounts, otherwise
+    // this will cause leakage into other test suites.  Doing a `beforeEach`
+    // instead is viable but makes tests noticeably slower.
+    await timeMachine.revertToSnapshot(suiteSnapshotId);
   });
 
   before("Setup mock address registry", async () => {

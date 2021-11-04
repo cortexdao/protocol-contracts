@@ -108,13 +108,13 @@ const poolTests = [
     ignoreIndexes: [3],
     gaugeAddress: "0xA90996896660DEcC6E997655E065b23788857849",
   },
-  {
-    name: "curve-usdn",
-    nCoins: 4,
-    decimals: [18, 18, 6, 6],
-    ignoreIndexes: [0],
-    gaugeAddress: "0xF98450B5602fa59CC66e1379DFfB6FDDc724CfC4",
-  },
+  // {
+  //   name: "curve-usdn",
+  //   nCoins: 4,
+  //   decimals: [18, 18, 6, 6],
+  //   ignoreIndexes: [0],
+  //   gaugeAddress: "0xF98450B5602fa59CC66e1379DFfB6FDDc724CfC4",
+  // },
   {
     name: "curve-usdp",
     nCoins: 4,

@@ -85,7 +85,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
     IAddressRegistryV2 public addressRegistry;
 
-    address public immutable proxyAdminFactory;
     address public immutable proxyFactory;
     address public immutable addressRegistryV2Factory;
     address public immutable mAptFactory;
@@ -155,7 +154,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     }
 
     constructor(
-        address proxyAdminFactory_,
         address proxyFactory_,
         address addressRegistryV2Factory_,
         address mAptFactory_,
@@ -174,7 +172,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         adminSafe = addressRegistry.getAddress("adminSafe");
         lpSafe = addressRegistry.getAddress("lpSafe");
 
-        proxyAdminFactory = proxyAdminFactory_;
         proxyFactory = proxyFactory_;
         addressRegistryV2Factory = addressRegistryV2Factory_;
         mAptFactory = mAptFactory_;
@@ -194,7 +191,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     {
         address[] memory ownerships = new address[](2);
         ownerships[0] = ADDRESS_REGISTRY_PROXY;
-        ownerships[1] = ADDRESS_REGISTRY_PROXY_ADMIN;
+        ownerships[1] = POOL_PROXY_ADMIN;
         checkOwnerships(ownerships);
 
         addressRegistryV2 = AddressRegistryV2Factory(addressRegistryV2Factory)
@@ -207,8 +204,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             );
 
         require(
-            IGnosisModuleManager(adminSafe).execTransactionFromModule(
-                ADDRESS_REGISTRY_PROXY_ADMIN,
+            IGnosisModuleManager(emergencySafe).execTransactionFromModule(
+                POOL_PROXY_ADMIN,
                 0, // value
                 data,
                 Enum.Operation.Call
@@ -221,9 +218,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         // Initialize logic storage to block possible attack vector:
         // attacker may control and selfdestruct the logic contract
         // if more powerful functionality is added later
-        AddressRegistryV2(addressRegistryV2).initialize(
-            ADDRESS_REGISTRY_PROXY_ADMIN
-        );
+        AddressRegistryV2(addressRegistryV2).initialize(POOL_PROXY_ADMIN);
     }
 
     /// @dev Deploy the mAPT proxy and its proxy admin.
@@ -238,8 +233,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         ownerships[0] = ADDRESS_REGISTRY_PROXY;
         checkOwnerships(ownerships);
 
-        address proxyAdmin = ProxyAdminFactory(proxyAdminFactory).create();
-
         bytes memory initData =
             abi.encodeWithSelector(
                 MetaPoolToken.initialize.selector,
@@ -248,26 +241,22 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
         mApt = MetaPoolTokenFactory(mAptFactory).create(
             proxyFactory,
-            proxyAdmin,
+            POOL_PROXY_ADMIN,
             initData
         );
 
         _registerAddress("mApt", mApt);
-
-        ProxyAdmin(proxyAdmin).transferOwnership(adminSafe);
     }
 
     function deploy_2_PoolTokenV2_logic() external onlyOwner updateStep(2) {
-        poolTokenV2 = PoolTokenV2Factory(poolTokenV2Factory).create();
-
-        // Initialize logic storage to block possible attack vector:
-        // attacker may control and selfdestruct the logic contract
-        // if more powerful functionality is added later
-        PoolTokenV2(poolTokenV2).initialize(
-            POOL_PROXY_ADMIN,
-            IDetailedERC20(DAI_ADDRESS),
-            AggregatorV3Interface(0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe)
-        );
+        bytes memory initData =
+            abi.encodeWithSelector(
+                PoolTokenV2.initialize.selector,
+                POOL_PROXY_ADMIN,
+                IDetailedERC20(DAI_ADDRESS),
+                AggregatorV3Interface(FAKE_AGG_ADDRESS)
+            );
+        poolTokenV2 = PoolTokenV2Factory(poolTokenV2Factory).create(initData);
     }
 
     /// @dev complete proxy deploy for the demo pools
@@ -283,40 +272,16 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
         checkRegisteredDependencies(registeredIds, deployedAddresses);
 
-        address[] memory ownerships = new address[](1);
+        address[] memory ownerships = new address[](2);
         ownerships[0] = ADDRESS_REGISTRY_PROXY;
+        ownerships[1] = POOL_PROXY_ADMIN;
         checkOwnerships(ownerships);
 
-        address proxyAdmin = ProxyAdminFactory(proxyAdminFactory).create();
+        daiDemoPool = _deployDemoPool(DAI_ADDRESS, "daiDemoPool");
 
-        bytes memory initDataV2 =
-            abi.encodeWithSelector(
-                PoolTokenV2.initializeUpgrade.selector,
-                address(addressRegistry)
-            );
+        usdcDemoPool = _deployDemoPool(USDC_ADDRESS, "usdcDemoPool");
 
-        daiDemoPool = _deployDemoPool(
-            DAI_ADDRESS,
-            "daiDemoPool",
-            proxyAdmin,
-            initDataV2
-        );
-
-        usdcDemoPool = _deployDemoPool(
-            USDC_ADDRESS,
-            "usdcDemoPool",
-            proxyAdmin,
-            initDataV2
-        );
-
-        usdtDemoPool = _deployDemoPool(
-            USDT_ADDRESS,
-            "usdtDemoPool",
-            proxyAdmin,
-            initDataV2
-        );
-
-        ProxyAdmin(proxyAdmin).transferOwnership(adminSafe);
+        usdtDemoPool = _deployDemoPool(USDT_ADDRESS, "usdtDemoPool");
     }
 
     /// @dev Deploy ERC20 allocation and TVL Manager.
@@ -340,21 +305,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             address(addressRegistry)
         );
 
-        bytes memory data =
-            abi.encodeWithSelector(
-                IAssetAllocationRegistry.registerAssetAllocation.selector,
-                erc20Allocation
-            );
-        require(
-            IGnosisModuleManager(adminSafe).execTransactionFromModule(
-                tvlManager,
-                0,
-                data,
-                Enum.Operation.Call
-            ),
-            "SAFE_TX_FAILED"
-        );
-
         _registerAddress("erc20Allocation", erc20Allocation);
     }
 
@@ -374,8 +324,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         ownerships[0] = ADDRESS_REGISTRY_PROXY;
         checkOwnerships(ownerships);
 
-        address proxyAdmin = ProxyAdminFactory(proxyAdminFactory).create();
-
         bytes memory initData =
             abi.encodeWithSelector(
                 LpAccount.initialize.selector,
@@ -384,16 +332,14 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
         lpAccount = LpAccountFactory(lpAccountFactory).create(
             proxyFactory,
-            proxyAdmin,
+            POOL_PROXY_ADMIN,
             initData
         );
 
         _registerAddress("lpAccount", lpAccount);
-
-        ProxyAdmin(proxyAdmin).transferOwnership(adminSafe);
     }
 
-    /// @dev registers mAPT, TvlManager, LpAccount for contract roles
+    /// @dev registers mAPT, TvlManager, Erc20Allocation, LpAccount for contract roles
     function deploy_6_OracleAdapter()
         external
         onlyOwner
@@ -438,34 +384,23 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         );
 
         _registerAddress("oracleAdapter", oracleAdapter);
-    }
 
-    /// @notice upgrade from v1 to v2
-    /// @dev register mAPT for a contract role
-    function deploy_7_PoolTokenV2_upgrade()
-        external
-        onlyOwner
-        updateStep(7)
-        checkSafeRegistrations
-    {
-        bytes32[] memory registeredIds = new bytes32[](1);
-        address[] memory deployedAddresses = new address[](1);
-        (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
-        checkRegisteredDependencies(registeredIds, deployedAddresses);
-
-        address[] memory ownerships = new address[](1);
-        ownerships[0] = POOL_PROXY_ADMIN;
-        checkOwnerships(ownerships);
-
-        bytes memory initData =
+        // Must register the ERC20 Allocation after the Oracle Adapter deploy
+        // since registration will lock the Adapter.
+        bytes memory data =
             abi.encodeWithSelector(
-                PoolTokenV2.initializeUpgrade.selector,
-                addressRegistry
+                IAssetAllocationRegistry.registerAssetAllocation.selector,
+                erc20Allocation
             );
-
-        _upgradePool(DAI_POOL_PROXY, POOL_PROXY_ADMIN, initData);
-        _upgradePool(USDC_POOL_PROXY, POOL_PROXY_ADMIN, initData);
-        _upgradePool(USDT_POOL_PROXY, POOL_PROXY_ADMIN, initData);
+        require(
+            IGnosisModuleManager(adminSafe).execTransactionFromModule(
+                tvlManager,
+                0,
+                data,
+                Enum.Operation.Call
+            ),
+            "SAFE_TX_FAILED"
+        );
     }
 
     /**
@@ -509,7 +444,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     {
         for (uint256 i = 0; i < ownedContracts.length; i++) {
             require(
-                Ownable(ownedContracts[i]).owner() == adminSafe,
+                Ownable(ownedContracts[i]).owner() == emergencySafe,
                 "MISSING_OWNERSHIP"
             );
         }
@@ -524,7 +459,7 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             );
 
         require(
-            IGnosisModuleManager(adminSafe).execTransactionFromModule(
+            IGnosisModuleManager(emergencySafe).execTransactionFromModule(
                 address(addressRegistry),
                 0,
                 data,
@@ -534,16 +469,14 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         );
     }
 
-    function _deployDemoPool(
-        address token,
-        bytes32 id,
-        address proxyAdmin,
-        bytes memory initData
-    ) internal returns (address) {
-        bytes memory data =
+    function _deployDemoPool(address token, bytes32 id)
+        internal
+        returns (address)
+    {
+        bytes memory initData =
             abi.encodeWithSelector(
                 PoolTokenV2.initialize.selector,
-                proxyAdmin,
+                POOL_PROXY_ADMIN,
                 token,
                 FAKE_AGG_ADDRESS
             );
@@ -551,43 +484,35 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         address proxy =
             PoolTokenV1Factory(poolTokenV1Factory).create(
                 proxyFactory,
-                proxyAdmin,
-                data
+                POOL_PROXY_ADMIN,
+                initData
             );
 
-        ProxyAdmin(proxyAdmin).upgradeAndCall(
-            TransparentUpgradeableProxy(payable(proxy)),
-            poolTokenV2,
-            initData
+        bytes memory v2initData =
+            abi.encodeWithSelector(
+                PoolTokenV2.initializeUpgrade.selector,
+                address(addressRegistry)
+            );
+        bytes memory execData =
+            abi.encodeWithSelector(
+                ProxyAdmin.upgradeAndCall.selector,
+                proxy,
+                poolTokenV2,
+                v2initData
+            );
+        require(
+            IGnosisModuleManager(emergencySafe).execTransactionFromModule(
+                POOL_PROXY_ADMIN,
+                0, // value
+                execData,
+                Enum.Operation.Call
+            ),
+            "SAFE_TX_FAILED"
         );
 
         _registerAddress(id, proxy);
 
         return proxy;
-    }
-
-    function _upgradePool(
-        address proxy,
-        address proxyAdmin,
-        bytes memory initData
-    ) internal {
-        bytes memory data =
-            abi.encodeWithSelector(
-                ProxyAdmin.upgradeAndCall.selector,
-                TransparentUpgradeableProxy(payable(proxy)),
-                poolTokenV2,
-                initData
-            );
-
-        require(
-            IGnosisModuleManager(adminSafe).execTransactionFromModule(
-                proxyAdmin,
-                0,
-                data,
-                Enum.Operation.Call
-            ),
-            "SAFE_TX_FAILED"
-        );
     }
 }
 /* solhint-enable func-name-mixedcase */

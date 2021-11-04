@@ -10,23 +10,25 @@ const {
   FAKE_ADDRESS,
   ZERO_ADDRESS,
   getLogicContract,
+  getProxyAdmin,
 } = require("../utils/helpers");
 const {
   AGG_MAP: { MAINNET: AGGS },
 } = require("../utils/constants");
 
 const MAINNET_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
+const MAINNET_POOL_PROXY_ADMIN = "0x7965283631253DfCb71Db63a60C656DEDF76234f";
 
 describe("Contract: AlphaDeployment", () => {
   // signers
   let deployer;
+  let emergencySafe;
   let adminSafe;
 
   // contract factories
   let AlphaDeployment;
 
   // deployed factories
-  let proxyAdminFactory;
   let proxyFactory;
   let addressRegistryV2Factory;
   let metaPoolTokenFactory;
@@ -36,8 +38,6 @@ describe("Contract: AlphaDeployment", () => {
   let erc20AllocationFactory;
   let oracleAdapterFactory;
   let lpAccountFactory;
-
-  let poolProxyAdminAddress;
 
   let alphaDeployment;
   let addressRegistry;
@@ -51,59 +51,20 @@ describe("Contract: AlphaDeployment", () => {
     );
   });
 
-  before("Transfer necessary ownerships to Admin Safe", async () => {
+  before("Attach to Safes", async () => {
+    const emergencySafeAddress = getDeployedAddress("EmergencySafe", "MAINNET");
+    emergencySafe = await ethers.getContractAt(
+      "IGnosisModuleManager",
+      emergencySafeAddress
+    );
     const adminSafeAddress = getDeployedAddress("AdminSafe", "MAINNET");
     adminSafe = await ethers.getContractAt(
       "IGnosisModuleManager",
       adminSafeAddress
     );
-    const addressRegistryProxyAdminAddress = getDeployedAddress(
-      "AddressRegistryProxyAdmin",
-      "MAINNET"
-    );
-    const addressRegistryProxyAdmin = await ethers.getContractAt(
-      "ProxyAdmin",
-      addressRegistryProxyAdminAddress
-    );
-    const addressRegistryDeployerAddress = await addressRegistryProxyAdmin.owner();
-    const addressRegistryDeployer = await impersonateAccount(
-      addressRegistryDeployerAddress
-    );
-    await forciblySendEth(
-      addressRegistryDeployer.address,
-      tokenAmountToBigNumber(10),
-      deployer.address
-    );
-    await addressRegistryProxyAdmin
-      .connect(addressRegistryDeployer)
-      .transferOwnership(adminSafe.address);
-
-    poolProxyAdminAddress = getDeployedAddress(
-      "PoolTokenProxyAdmin",
-      "MAINNET"
-    );
-    const poolProxyAdmin = await ethers.getContractAt(
-      "ProxyAdmin",
-      poolProxyAdminAddress
-    );
-    const poolDeployerAddress = await poolProxyAdmin.owner();
-    const poolDeployer = await impersonateAccount(poolDeployerAddress);
-    await forciblySendEth(
-      poolDeployer.address,
-      tokenAmountToBigNumber(10),
-      deployer.address
-    );
-    await poolProxyAdmin
-      .connect(poolDeployer)
-      .transferOwnership(adminSafe.address);
   });
 
   before("Deploy factories and mock deployed addresses", async () => {
-    const ProxyAdminFactory = await ethers.getContractFactory(
-      "ProxyAdminFactory"
-    );
-    proxyAdminFactory = await ProxyAdminFactory.deploy();
-
     const ProxyFactory = await ethers.getContractFactory("ProxyFactory");
     proxyFactory = await ProxyFactory.deploy();
 
@@ -160,7 +121,6 @@ describe("Contract: AlphaDeployment", () => {
   it("constructor", async () => {
     alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        proxyAdminFactory.address, // proxy admin factory
         proxyFactory.address, // proxy factory
         addressRegistryV2Factory.address, // address registry v2 factory
         metaPoolTokenFactory.address, // mAPT factory
@@ -176,7 +136,24 @@ describe("Contract: AlphaDeployment", () => {
   });
 
   describe("Deployment steps", () => {
-    before("Register deployer module", async () => {
+    before("Enable as module for Emergency and Admin Safes", async () => {
+      await forciblySendEth(
+        emergencySafe.address,
+        tokenAmountToBigNumber(10),
+        deployer.address
+      );
+
+      const emergencySafeSigner = await impersonateAccount(
+        emergencySafe.address
+      );
+      await emergencySafe
+        .connect(emergencySafeSigner)
+        .enableModule(alphaDeployment.address);
+
+      expect(await emergencySafe.getModules()).to.include(
+        alphaDeployment.address
+      );
+
       await forciblySendEth(
         adminSafe.address,
         tokenAmountToBigNumber(10),
@@ -188,16 +165,10 @@ describe("Contract: AlphaDeployment", () => {
         .connect(adminSafeSigner)
         .enableModule(alphaDeployment.address);
 
-      expect(await adminSafe.getModules()).to.deep.equals([
-        alphaDeployment.address,
-      ]);
+      expect(await adminSafe.getModules()).to.include(alphaDeployment.address);
     });
 
     describe("Step 0: Upgrade AddressRegistry", () => {
-      it("new addresses should not be registered before upgrade", async () => {
-        await expect(addressRegistry.emergencySafeAddress()).to.be.reverted;
-      });
-
       it("should update step number", async () => {
         await alphaDeployment.deploy_0_AddressRegistryV2_upgrade();
         expect(await alphaDeployment.step()).to.equal(1);
@@ -242,6 +213,13 @@ describe("Contract: AlphaDeployment", () => {
         await expect(
           logic.initialize(addressRegistry.address)
         ).to.be.revertedWith("Contract instance has already been initialized");
+      });
+
+      it("should use pool proxy admin", async () => {
+        const mAptAddress = await alphaDeployment.mApt();
+        const proxyAdmin = await getProxyAdmin(mAptAddress);
+
+        expect(proxyAdmin.address).to.equal(MAINNET_POOL_PROXY_ADMIN);
       });
     });
 
@@ -316,29 +294,26 @@ describe("Contract: AlphaDeployment", () => {
 
       demoPoolAddresses.forEach((poolData) => {
         describe(poolData.addressId, async () => {
-          let addressFromRegistry;
+          let registeredAddress;
           let demoPool;
 
-          it("should register the pool with the address registry", async () => {
-            addressFromRegistry = await addressRegistry.getAddress(
+          before(async () => {
+            registeredAddress = await addressRegistry.getAddress(
               bytes32(poolData.addressId)
             );
-            expect(addressFromRegistry).to.equal(
+            demoPool = await ethers.getContractAt(
+              "PoolTokenV2",
               await alphaDeployment[poolData.variable]()
             );
           });
 
-          it("should transfer the proxy admin owner to the Admin Safe", async () => {
-            demoPool = await ethers.getContractAt(
-              "PoolTokenV2",
-              addressFromRegistry
-            );
+          it("should register the pool with the address registry", async () => {
+            expect(registeredAddress).to.equal(demoPool.address);
+          });
 
-            const poolProxyAdmin = await ethers.getContractAt(
-              "ProxyAdmin",
-              await demoPool.proxyAdmin()
-            );
-            expect(await poolProxyAdmin.owner()).to.equal(adminSafe.address);
+          it("should use pool proxy admin", async () => {
+            const proxyAdmin = await getProxyAdmin(demoPool.address);
+            expect(proxyAdmin.address).to.equal(MAINNET_POOL_PROXY_ADMIN);
           });
 
           it("should have v2 pool functions and v2 variables initialized", async () => {
@@ -366,12 +341,10 @@ describe("Contract: AlphaDeployment", () => {
 
     describe("Step 5: Deploy LpAccount", () => {
       let lpAccountAddress;
-      let lpAccount;
 
       before("Run step 5", async () => {
         await alphaDeployment.deploy_5_LpAccount();
         lpAccountAddress = await alphaDeployment.lpAccount();
-        lpAccount = await ethers.getContractAt("LpAccount", lpAccountAddress);
       });
 
       it("should update step number", async () => {
@@ -384,12 +357,9 @@ describe("Contract: AlphaDeployment", () => {
         );
       });
 
-      it("should transfer the proxy admin owner to the Admin Safe", async () => {
-        const poolProxyAdmin = await ethers.getContractAt(
-          "ProxyAdmin",
-          await lpAccount.proxyAdmin()
-        );
-        expect(await poolProxyAdmin.owner()).to.equal(adminSafe.address);
+      it("should use pool proxy admin", async () => {
+        const proxyAdmin = await getProxyAdmin(lpAccountAddress);
+        expect(proxyAdmin.address).to.equal(MAINNET_POOL_PROXY_ADMIN);
       });
 
       it("should call initialize directly on logic contract", async () => {
@@ -452,32 +422,16 @@ describe("Contract: AlphaDeployment", () => {
           );
         });
       });
-    });
 
-    describe("Step 7: Upgrade user pools", () => {
-      const pools = [
-        "DAI_PoolTokenProxy",
-        "USDC_PoolTokenProxy",
-        "USDC_PoolTokenProxy",
-      ];
-
-      before("Run step 7", async () => {
-        await alphaDeployment.deploy_7_PoolTokenV2_upgrade();
-      });
-
-      it("should update step number", async () => {
-        expect(await alphaDeployment.step()).to.equal(8);
-      });
-
-      pools.forEach((poolProxyName) => {
-        describe(poolProxyName.split("_")[0], async () => {
-          it("should have v2 pool functions and v2 variables initialized", async () => {
-            const poolAddress = getDeployedAddress(poolProxyName, "MAINNET");
-            const pool = await ethers.getContractAt("PoolTokenV2", poolAddress);
-
-            expect(await pool.reservePercentage()).to.equal(5);
-          });
-        });
+      it("should register ERC20 Allocation with TvlManager", async () => {
+        const tvlManagerAddress = await alphaDeployment.tvlManager();
+        const tvlManager = await ethers.getContractAt(
+          "TvlManager",
+          tvlManagerAddress
+        );
+        expect(
+          await tvlManager.isAssetAllocationRegistered(["erc20Allocation"])
+        ).to.be.true;
       });
     });
   });

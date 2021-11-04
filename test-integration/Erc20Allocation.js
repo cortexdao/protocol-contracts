@@ -42,25 +42,30 @@ describe("Contract: Erc20Allocation", () => {
   let tvlManager;
 
   // use EVM snapshots for test isolation
-  let snapshotId;
+  let testSnapshotId;
+  let suiteSnapshotId;
 
   beforeEach(async () => {
-    let snapshot = await timeMachine.takeSnapshot();
-    snapshotId = snapshot["result"];
+    const snapshot = await timeMachine.takeSnapshot();
+    testSnapshotId = snapshot["result"];
   });
 
   afterEach(async () => {
-    await timeMachine.revertToSnapshot(snapshotId);
+    await timeMachine.revertToSnapshot(testSnapshotId);
   });
 
   before(async () => {
-    [
-      deployer,
-      emergencySafe,
-      adminSafe,
-      mApt,
-      lpAccount,
-    ] = await ethers.getSigners();
+    const snapshot = await timeMachine.takeSnapshot();
+    suiteSnapshotId = snapshot["result"];
+  });
+
+  after(async () => {
+    await timeMachine.revertToSnapshot(suiteSnapshotId);
+  });
+
+  before(async () => {
+    [deployer, emergencySafe, adminSafe, mApt, lpAccount] =
+      await ethers.getSigners();
 
     const addressRegistry = await deployMockContract(
       deployer,

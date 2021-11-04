@@ -424,12 +424,6 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
 
         address proxyAdmin = proxyAdminFactory.create();
 
-        bytes memory upgradeData =
-            abi.encodeWithSelector(
-                PoolTokenV2.initializeUpgrade.selector,
-                address(addressRegistryV2)
-            );
-
         bytes memory initData =
             abi.encodeWithSelector(
                 PoolTokenV2.initialize.selector,
@@ -445,8 +439,13 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
                 initData
             );
 
-        address logic = poolTokenV2Factory.create();
-        logic.functionCall(initData);
+        address logic = poolTokenV2Factory.create(initData);
+
+        bytes memory upgradeData =
+            abi.encodeWithSelector(
+                PoolTokenV2.initializeUpgrade.selector,
+                address(addressRegistryV2)
+            );
 
         ProxyAdmin(proxyAdmin).upgradeAndCall(
             TransparentUpgradeableProxy(payable(proxy)),
