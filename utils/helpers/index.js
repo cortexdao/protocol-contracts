@@ -1,7 +1,7 @@
 const hre = require("hardhat");
 const { ethers, web3 } = hre;
 const { AddressZero: ZERO_ADDRESS, MaxUint256: MAX_UINT256 } = ethers.constants;
-const { getAddress, impersonateAccount } = require("./account.js");
+const { getAddress, impersonateAccount, setBalance } = require("./account.js");
 const {
   getDeployedAddress,
   getStablecoinAddress,
@@ -61,6 +61,7 @@ module.exports = {
   console,
   getAddress,
   impersonateAccount,
+  setBalance,
   updateDeployJsons,
   getDeployedAddress,
   getStablecoinAddress,
