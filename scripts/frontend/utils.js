@@ -38,6 +38,7 @@ async function getRegisteredContract(contractId, signer) {
     daiDemoPool: "PoolTokenV2",
     usdcDemoPool: "PoolTokenV2",
     usdtDemoPool: "PoolTokenV2",
+    lpAccount: "LpAccount",
     mApt: "MetaPoolToken",
     oracleAdapter: "OracleAdapter",
     tvlManager: "TvlManager",
