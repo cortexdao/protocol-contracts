@@ -147,4 +147,11 @@ interface IAddressRegistryV2 {
      * @return Oracle Adapter Address
      */
     function oracleAdapterAddress() external view returns (address);
+
+    /**
+     * @notice Returns the ERC20 Allocation Address
+     * @dev Not just a helper function, this makes explicit a key ID for the system
+     * @return ERC20 Allocation Address
+     */
+    function erc20AllocationAddress() external view returns (address);
 }
