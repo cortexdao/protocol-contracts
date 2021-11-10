@@ -19,7 +19,7 @@ const {
 const MAINNET_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
 const MAINNET_POOL_PROXY_ADMIN = "0x7965283631253DfCb71Db63a60C656DEDF76234f";
 
-describe("Contract: AlphaDeployment", () => {
+describe.only("Contract: AlphaDeployment", () => {
   // signers
   let deployer;
   let emergencySafe;
@@ -268,64 +268,9 @@ describe("Contract: AlphaDeployment", () => {
       });
     });
 
-    describe("Step 3: Deploy demo pools", async () => {
-      const demoPoolAddresses = [
-        {
-          variable: "daiDemoPool",
-          addressId: "daiDemoPool",
-        },
-        {
-          variable: "usdcDemoPool",
-          addressId: "usdcDemoPool",
-        },
-        {
-          variable: "usdtDemoPool",
-          addressId: "usdtDemoPool",
-        },
-      ];
-
+    describe("Step 3: Deploy TvlManager", () => {
       before("Run step 3", async () => {
-        await alphaDeployment.deploy_3_DemoPools();
-      });
-
-      it("should update step number", async () => {
-        expect(await alphaDeployment.step()).to.equal(4);
-      });
-
-      demoPoolAddresses.forEach((poolData) => {
-        describe(poolData.addressId, async () => {
-          let registeredAddress;
-          let demoPool;
-
-          before(async () => {
-            registeredAddress = await addressRegistry.getAddress(
-              bytes32(poolData.addressId)
-            );
-            demoPool = await ethers.getContractAt(
-              "PoolTokenV2",
-              await alphaDeployment[poolData.variable]()
-            );
-          });
-
-          it("should register the pool with the address registry", async () => {
-            expect(registeredAddress).to.equal(demoPool.address);
-          });
-
-          it("should use pool proxy admin", async () => {
-            const proxyAdmin = await getProxyAdmin(demoPool.address);
-            expect(proxyAdmin.address).to.equal(MAINNET_POOL_PROXY_ADMIN);
-          });
-
-          it("should have v2 pool functions and v2 variables initialized", async () => {
-            expect(await demoPool.reservePercentage()).to.equal(5);
-          });
-        });
-      });
-    });
-
-    describe("Step 4: Deploy TvlManager", () => {
-      before("Run step 4", async () => {
-        await alphaDeployment.deploy_4_TvlManager();
+        await alphaDeployment.deploy_3_TvlManager();
       });
 
       it("should update step number", async () => {
@@ -339,11 +284,11 @@ describe("Contract: AlphaDeployment", () => {
       });
     });
 
-    describe("Step 5: Deploy LpAccount", () => {
+    describe("Step 4: Deploy LpAccount", () => {
       let lpAccountAddress;
 
-      before("Run step 5", async () => {
-        await alphaDeployment.deploy_5_LpAccount();
+      before("Run step 4", async () => {
+        await alphaDeployment.deploy_4_LpAccount();
         lpAccountAddress = await alphaDeployment.lpAccount();
       });
 
@@ -371,7 +316,7 @@ describe("Contract: AlphaDeployment", () => {
       });
     });
 
-    describe("Step 6: Deploy OracleAdapter", () => {
+    describe("Step 5: Deploy OracleAdapter", () => {
       let oracleAdapterAddress;
       let oracleAdapter;
       const priceAggs = [
@@ -392,8 +337,8 @@ describe("Contract: AlphaDeployment", () => {
         },
       ];
 
-      before("Run step 6", async () => {
-        await alphaDeployment.deploy_6_OracleAdapter();
+      before("Run step 5", async () => {
+        await alphaDeployment.deploy_5_OracleAdapter();
         oracleAdapterAddress = await alphaDeployment.oracleAdapter();
         oracleAdapter = await ethers.getContractAt(
           "OracleAdapter",
@@ -432,6 +377,61 @@ describe("Contract: AlphaDeployment", () => {
         expect(
           await tvlManager.isAssetAllocationRegistered(["erc20Allocation"])
         ).to.be.true;
+      });
+    });
+  });
+
+  describe("Step 6: Deploy demo pools", async () => {
+    const demoPoolAddresses = [
+      {
+        variable: "daiDemoPool",
+        addressId: "daiDemoPool",
+      },
+      {
+        variable: "usdcDemoPool",
+        addressId: "usdcDemoPool",
+      },
+      {
+        variable: "usdtDemoPool",
+        addressId: "usdtDemoPool",
+      },
+    ];
+
+    before("Run step 6", async () => {
+      await alphaDeployment.deploy_6_DemoPools();
+    });
+
+    it("should update step number", async () => {
+      expect(await alphaDeployment.step()).to.equal(4);
+    });
+
+    demoPoolAddresses.forEach((poolData) => {
+      describe(poolData.addressId, async () => {
+        let registeredAddress;
+        let demoPool;
+
+        before(async () => {
+          registeredAddress = await addressRegistry.getAddress(
+            bytes32(poolData.addressId)
+          );
+          demoPool = await ethers.getContractAt(
+            "PoolTokenV2",
+            await alphaDeployment[poolData.variable]()
+          );
+        });
+
+        it("should register the pool with the address registry", async () => {
+          expect(registeredAddress).to.equal(demoPool.address);
+        });
+
+        it("should use pool proxy admin", async () => {
+          const proxyAdmin = await getProxyAdmin(demoPool.address);
+          expect(proxyAdmin.address).to.equal(MAINNET_POOL_PROXY_ADMIN);
+        });
+
+        it("should have v2 pool functions and v2 variables initialized", async () => {
+          expect(await demoPool.reservePercentage()).to.equal(5);
+        });
       });
     });
   });

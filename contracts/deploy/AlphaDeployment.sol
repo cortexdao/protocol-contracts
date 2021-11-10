@@ -6,7 +6,7 @@ import {IDetailedERC20, Ownable} from "contracts/common/Imports.sol";
 import {Address} from "contracts/libraries/Imports.sol";
 import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
 import {AggregatorV3Interface} from "contracts/oracle/Imports.sol";
-import {PoolTokenV2} from "contracts/pool/PoolTokenV2.sol";
+import {PoolToken} from "contracts/pool/PoolToken.sol";
 import {LpAccount} from "contracts/lpaccount/LpAccount.sol";
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
 import {AddressRegistryV2} from "contracts/registry/AddressRegistryV2.sol";
@@ -248,23 +248,12 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         _registerAddress("mApt", mApt);
     }
 
-    function deploy_2_PoolTokenV2_logic() external onlyOwner updateStep(2) {
-        bytes memory initData =
-            abi.encodeWithSelector(
-                PoolTokenV2.initialize.selector,
-                POOL_PROXY_ADMIN,
-                IDetailedERC20(DAI_ADDRESS),
-                AggregatorV3Interface(FAKE_AGG_ADDRESS)
-            );
-        poolTokenV2 = PoolTokenV2Factory(poolTokenV2Factory).create(initData);
-    }
-
     /// @dev Deploy ERC20 allocation and TVL Manager.
     ///      Does not register any roles for contracts.
-    function deploy_3_TvlManager()
+    function deploy_2_TvlManager()
         external
         onlyOwner
-        updateStep(3)
+        updateStep(2)
         checkSafeRegistrations
     {
         address[] memory ownerships = new address[](1);
@@ -284,10 +273,10 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     }
 
     /// @dev register mAPT for a contract role
-    function deploy_4_LpAccount()
+    function deploy_3_LpAccount()
         external
         onlyOwner
-        updateStep(4)
+        updateStep(3)
         checkSafeRegistrations
     {
         bytes32[] memory registeredIds = new bytes32[](1);
@@ -315,10 +304,10 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     }
 
     /// @dev registers mAPT, TvlManager, Erc20Allocation, LpAccount for contract roles
-    function deploy_5_OracleAdapter()
+    function deploy_4_OracleAdapter()
         external
         onlyOwner
-        updateStep(5)
+        updateStep(4)
         checkSafeRegistrations
     {
         bytes32[] memory registeredIds = new bytes32[](4);
@@ -380,10 +369,10 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
     /// @dev complete proxy deploy for the demo pools
     ///      Registers mAPT for a contract role.
-    function deploy_6_DemoPools()
+    function deploy_5_DemoPools()
         external
         onlyOwner
-        updateStep(6)
+        updateStep(5)
         checkSafeRegistrations
     {
         bytes32[] memory registeredIds = new bytes32[](1);
@@ -550,13 +539,17 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         );
     }
 
+    /**
+     * @dev Deploys only the V1 pool.  Pool upgrader should be used
+     * to upgrade to V2.
+     */
     function _deployDemoPool(address token, bytes32 id)
         internal
         returns (address)
     {
         bytes memory initData =
             abi.encodeWithSelector(
-                PoolTokenV2.initialize.selector,
+                PoolToken.initialize.selector,
                 POOL_PROXY_ADMIN,
                 token,
                 FAKE_AGG_ADDRESS
@@ -568,28 +561,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 POOL_PROXY_ADMIN,
                 initData
             );
-
-        bytes memory v2initData =
-            abi.encodeWithSelector(
-                PoolTokenV2.initializeUpgrade.selector,
-                address(addressRegistry)
-            );
-        bytes memory execData =
-            abi.encodeWithSelector(
-                ProxyAdmin.upgradeAndCall.selector,
-                proxy,
-                poolTokenV2,
-                v2initData
-            );
-        require(
-            IGnosisModuleManager(emergencySafe).execTransactionFromModule(
-                POOL_PROXY_ADMIN,
-                0, // value
-                execData,
-                Enum.Operation.Call
-            ),
-            "SAFE_TX_FAILED"
-        );
 
         _registerAddress(id, proxy);
 
