@@ -201,19 +201,22 @@ describe("Contract: OracleAdapter", () => {
     const ProxyFactory = await ethers.getContractFactory("ProxyFactory");
     const proxyFactory = await ProxyFactory.deploy();
 
+    const MOCK_CONTRACT_ADDRESS = (await deployMockContract(deployer, []))
+      .address;
+
     const AlphaDeployment = await ethers.getContractFactory(
       "TestAlphaDeployment"
     );
     const alphaDeployment = await AlphaDeployment.deploy(
       proxyFactory.address,
-      FAKE_ADDRESS, // address registry v2 factory
-      FAKE_ADDRESS, // mAPT factory
-      FAKE_ADDRESS, // pool token v1 factory
-      FAKE_ADDRESS, // pool token v2 factory
-      FAKE_ADDRESS, // tvl manager factory
-      FAKE_ADDRESS, // erc20 allocation factory
+      MOCK_CONTRACT_ADDRESS, // address registry v2 factory
+      MOCK_CONTRACT_ADDRESS, // mAPT factory
+      MOCK_CONTRACT_ADDRESS, // pool token v1 factory
+      MOCK_CONTRACT_ADDRESS, // pool token v2 factory
+      MOCK_CONTRACT_ADDRESS, // tvl manager factory
+      MOCK_CONTRACT_ADDRESS, // erc20 allocation factory
       oracleAdapterFactory.address, // oracle adapter factory
-      FAKE_ADDRESS // lp account factory
+      MOCK_CONTRACT_ADDRESS // lp account factory
     );
 
     // need some test setup to pass the pre-step checks

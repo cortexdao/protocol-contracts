@@ -182,19 +182,22 @@ describe("Contract: MetaPoolToken", () => {
     );
     const mAptFactory = await MetaPoolTokenFactory.deploy();
 
+    const MOCK_CONTRACT_ADDRESS = (await deployMockContract(deployer, []))
+      .address;
+
     const AlphaDeployment = await ethers.getContractFactory(
       "TestAlphaDeployment"
     );
     const alphaDeployment = await AlphaDeployment.deploy(
       proxyFactory.address,
-      FAKE_ADDRESS, // address registry v2 factory
+      MOCK_CONTRACT_ADDRESS, // address registry v2 factory
       mAptFactory.address, // mAPT factory
-      FAKE_ADDRESS, // pool token v1 factory
-      FAKE_ADDRESS, // pool token v2 factory
-      FAKE_ADDRESS, // tvl manager factory
-      FAKE_ADDRESS, // erc20 allocation factory
-      FAKE_ADDRESS, // oracle adapter factory
-      FAKE_ADDRESS // lp account factory
+      MOCK_CONTRACT_ADDRESS, // pool token v1 factory
+      MOCK_CONTRACT_ADDRESS, // pool token v2 factory
+      MOCK_CONTRACT_ADDRESS, // tvl manager factory
+      MOCK_CONTRACT_ADDRESS, // erc20 allocation factory
+      MOCK_CONTRACT_ADDRESS, // oracle adapter factory
+      MOCK_CONTRACT_ADDRESS // lp account factory
     );
 
     await addressRegistry.mock.owner.returns(emergencySafe.address);

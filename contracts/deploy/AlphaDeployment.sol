@@ -3,6 +3,7 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import {IDetailedERC20, Ownable} from "contracts/common/Imports.sol";
+import {Address} from "contracts/libraries/Imports.sol";
 import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
 import {AggregatorV3Interface} from "contracts/oracle/Imports.sol";
 import {PoolTokenV2} from "contracts/pool/PoolTokenV2.sol";
@@ -22,7 +23,6 @@ import {
     LpAccountFactory,
     MetaPoolTokenFactory,
     OracleAdapterFactory,
-    ProxyAdminFactory,
     PoolTokenV1Factory,
     PoolTokenV2Factory,
     TvlManagerFactory
@@ -85,15 +85,15 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
 
     IAddressRegistryV2 public addressRegistry;
 
-    address public immutable proxyFactory;
-    address public immutable addressRegistryV2Factory;
-    address public immutable mAptFactory;
-    address public immutable poolTokenV1Factory;
-    address public immutable poolTokenV2Factory;
-    address public immutable tvlManagerFactory;
-    address public immutable erc20AllocationFactory;
-    address public immutable oracleAdapterFactory;
-    address public immutable lpAccountFactory;
+    address public proxyFactory;
+    address public addressRegistryV2Factory;
+    address public mAptFactory;
+    address public poolTokenV1Factory;
+    address public poolTokenV2Factory;
+    address public tvlManagerFactory;
+    address public erc20AllocationFactory;
+    address public oracleAdapterFactory;
+    address public lpAccountFactory;
 
     uint256 public step;
 
@@ -172,15 +172,15 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         adminSafe = addressRegistry.getAddress("adminSafe");
         lpSafe = addressRegistry.getAddress("lpSafe");
 
-        proxyFactory = proxyFactory_;
-        addressRegistryV2Factory = addressRegistryV2Factory_;
-        mAptFactory = mAptFactory_;
-        poolTokenV1Factory = poolTokenV1Factory_;
-        poolTokenV2Factory = poolTokenV2Factory_;
-        tvlManagerFactory = tvlManagerFactory_;
-        erc20AllocationFactory = erc20AllocationFactory_;
-        oracleAdapterFactory = oracleAdapterFactory_;
-        lpAccountFactory = lpAccountFactory_;
+        setProxyFactory(proxyFactory_);
+        setAddressRegistryV2Factory(addressRegistryV2Factory_);
+        setMetaPoolTokenFactory(mAptFactory_);
+        setPoolTokenV1Factory(poolTokenV1Factory_);
+        setPoolTokenV2Factory(poolTokenV2Factory_);
+        setTvlManagerFactory(tvlManagerFactory_);
+        setErc20AllocationFactory(erc20AllocationFactory_);
+        setOracleAdapterFactory(oracleAdapterFactory_);
+        setLpAccountFactory(lpAccountFactory_);
     }
 
     function deploy_0_AddressRegistryV2_upgrade()
@@ -401,6 +401,87 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             ),
             "SAFE_TX_FAILED"
         );
+    }
+
+    function setProxyFactory(address proxyFactory_) public onlyOwner {
+        require(Address.isContract(proxyFactory_), "INVALID_FACTORY_ADDRESS");
+        proxyFactory = proxyFactory_;
+    }
+
+    function setAddressRegistryV2Factory(address addressRegistryV2Factory_)
+        public
+        onlyOwner
+    {
+        require(
+            Address.isContract(addressRegistryV2Factory_),
+            "INVALID_FACTORY_ADDRESS"
+        );
+        addressRegistryV2Factory = addressRegistryV2Factory_;
+    }
+
+    function setErc20AllocationFactory(address erc20AllocationFactory_)
+        public
+        onlyOwner
+    {
+        require(
+            Address.isContract(erc20AllocationFactory_),
+            "INVALID_FACTORY_ADDRESS"
+        );
+        erc20AllocationFactory = erc20AllocationFactory_;
+    }
+
+    function setLpAccountFactory(address lpAccountFactory_) public onlyOwner {
+        require(
+            Address.isContract(lpAccountFactory_),
+            "INVALID_FACTORY_ADDRESS"
+        );
+        lpAccountFactory = lpAccountFactory_;
+    }
+
+    function setMetaPoolTokenFactory(address mAptFactory_) public onlyOwner {
+        require(Address.isContract(mAptFactory_), "INVALID_FACTORY_ADDRESS");
+        mAptFactory = mAptFactory_;
+    }
+
+    function setOracleAdapterFactory(address oracleAdapterFactory_)
+        public
+        onlyOwner
+    {
+        require(
+            Address.isContract(oracleAdapterFactory_),
+            "INVALID_FACTORY_ADDRESS"
+        );
+        oracleAdapterFactory = oracleAdapterFactory_;
+    }
+
+    function setTvlManagerFactory(address tvlManagerFactory_) public onlyOwner {
+        require(
+            Address.isContract(tvlManagerFactory_),
+            "INVALID_FACTORY_ADDRESS"
+        );
+        tvlManagerFactory = tvlManagerFactory_;
+    }
+
+    function setPoolTokenV1Factory(address poolTokenV1Factory_)
+        public
+        onlyOwner
+    {
+        require(
+            Address.isContract(poolTokenV1Factory_),
+            "INVALID_FACTORY_ADDRESS"
+        );
+        poolTokenV1Factory = poolTokenV1Factory_;
+    }
+
+    function setPoolTokenV2Factory(address poolTokenV2Factory_)
+        public
+        onlyOwner
+    {
+        require(
+            Address.isContract(poolTokenV2Factory_),
+            "INVALID_FACTORY_ADDRESS"
+        );
+        poolTokenV2Factory = poolTokenV2Factory_;
     }
 
     /**

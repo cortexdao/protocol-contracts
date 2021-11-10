@@ -3,7 +3,6 @@ const hre = require("hardhat");
 const { ethers, artifacts, waffle } = hre;
 const timeMachine = require("ganache-time-traveler");
 const {
-  FAKE_ADDRESS,
   ZERO_ADDRESS,
   bytes32,
   impersonateAccount,
@@ -34,16 +33,19 @@ async function encodeRegisterAddress(contractIdString, contractAddress) {
 describe("Contract: AlphaDeployment", () => {
   // signers
   let deployer;
-  let emergencySafe;
+  let randomUser;
   let lpSafe;
 
   // contract factories
   let AlphaDeployment;
 
   // mocked contracts
+  let emergencySafe;
   let adminSafe;
   let addressRegistry;
   let addressRegistryProxyAdmin;
+
+  let MOCK_CONTRACT_ADDRESS;
 
   // use EVM snapshots for test isolation
   let testSnapshotId;
@@ -70,9 +72,15 @@ describe("Contract: AlphaDeployment", () => {
     await timeMachine.revertToSnapshot(suiteSnapshotId);
   });
 
-  before("Setup mocks with Mainnet addresses", async () => {
-    [deployer] = await ethers.getSigners();
+  before(async () => {
+    [deployer, randomUser] = await ethers.getSigners();
 
+    AlphaDeployment = await ethers.getContractFactory("TestAlphaDeployment");
+
+    MOCK_CONTRACT_ADDRESS = (await deployMockContract(deployer, [])).address;
+  });
+
+  before("Setup mocks with Mainnet addresses", async () => {
     const poolDeployer = await impersonateAccount(MAINNET_POOL_DEPLOYER);
     await forciblySendEth(
       poolDeployer.address,
@@ -114,7 +122,7 @@ describe("Contract: AlphaDeployment", () => {
   });
 
   before("Register Safes", async () => {
-    [, lpSafe] = await ethers.getSigners();
+    [, , lpSafe] = await ethers.getSigners();
 
     // mock the Emergency and Admin Safes to allow module function calls
     emergencySafe = await deployMockContract(
@@ -145,22 +153,20 @@ describe("Contract: AlphaDeployment", () => {
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("lpSafe"))
       .returns(lpSafe.address);
-
-    AlphaDeployment = await ethers.getContractFactory("TestAlphaDeployment");
   });
 
   it("constructor", async () => {
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        FAKE_ADDRESS, // proxy factory
-        FAKE_ADDRESS, // address registry v2 factory
-        FAKE_ADDRESS, // mAPT factory
-        FAKE_ADDRESS, // pool token v1 factory
-        FAKE_ADDRESS, // pool token v2 factory
-        FAKE_ADDRESS, // tvl manager factory
-        FAKE_ADDRESS, // erc20 allocation factory
-        FAKE_ADDRESS, // oracle adapter factory
-        FAKE_ADDRESS // lp account factory
+        MOCK_CONTRACT_ADDRESS, // proxy factory
+        MOCK_CONTRACT_ADDRESS, // address registry v2 factory
+        MOCK_CONTRACT_ADDRESS, // mAPT factory
+        MOCK_CONTRACT_ADDRESS, // pool token v1 factory
+        MOCK_CONTRACT_ADDRESS, // pool token v2 factory
+        MOCK_CONTRACT_ADDRESS, // tvl manager factory
+        MOCK_CONTRACT_ADDRESS, // erc20 allocation factory
+        MOCK_CONTRACT_ADDRESS, // oracle adapter factory
+        MOCK_CONTRACT_ADDRESS // lp account factory
       )
     ).to.not.be.reverted;
     expect(await alphaDeployment.step()).to.equal(0);
@@ -184,15 +190,15 @@ describe("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        FAKE_ADDRESS, // proxy factory
+        MOCK_CONTRACT_ADDRESS, // proxy factory
         addressRegistryV2Factory.address, // address registry v2 factory
-        FAKE_ADDRESS, // mAPT factory
-        FAKE_ADDRESS, // pool token v1 factory
-        FAKE_ADDRESS, // pool token v2 factory
-        FAKE_ADDRESS, // tvl manager factory
-        FAKE_ADDRESS, // erc20 allocation factory
-        FAKE_ADDRESS, // oracle adapter factory
-        FAKE_ADDRESS // lp account factory
+        MOCK_CONTRACT_ADDRESS, // mAPT factory
+        MOCK_CONTRACT_ADDRESS, // pool token v1 factory
+        MOCK_CONTRACT_ADDRESS, // pool token v2 factory
+        MOCK_CONTRACT_ADDRESS, // tvl manager factory
+        MOCK_CONTRACT_ADDRESS, // erc20 allocation factory
+        MOCK_CONTRACT_ADDRESS, // oracle adapter factory
+        MOCK_CONTRACT_ADDRESS // lp account factory
       )
     ).to.not.be.reverted;
 
@@ -213,15 +219,15 @@ describe("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        FAKE_ADDRESS, // proxy factory
-        FAKE_ADDRESS, // address registry v2 factory
+        MOCK_CONTRACT_ADDRESS, // proxy factory
+        MOCK_CONTRACT_ADDRESS, // address registry v2 factory
         metaPoolTokenFactory.address, // mAPT factory
-        FAKE_ADDRESS, // pool token v1 factory
-        FAKE_ADDRESS, // pool token v2 factory
-        FAKE_ADDRESS, // tvl manager factory
-        FAKE_ADDRESS, // erc20 allocation factory
-        FAKE_ADDRESS, // oracle adapter factory
-        FAKE_ADDRESS // lp account factory
+        MOCK_CONTRACT_ADDRESS, // pool token v1 factory
+        MOCK_CONTRACT_ADDRESS, // pool token v2 factory
+        MOCK_CONTRACT_ADDRESS, // tvl manager factory
+        MOCK_CONTRACT_ADDRESS, // erc20 allocation factory
+        MOCK_CONTRACT_ADDRESS, // oracle adapter factory
+        MOCK_CONTRACT_ADDRESS // lp account factory
       )
     ).to.not.be.reverted;
 
@@ -265,15 +271,15 @@ describe("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        FAKE_ADDRESS, // proxy factory
-        FAKE_ADDRESS, // address registry v2 factory
-        FAKE_ADDRESS, // mAPT factory
-        FAKE_ADDRESS, // pool token v1 factory
+        MOCK_CONTRACT_ADDRESS, // proxy factory
+        MOCK_CONTRACT_ADDRESS, // address registry v2 factory
+        MOCK_CONTRACT_ADDRESS, // mAPT factory
+        MOCK_CONTRACT_ADDRESS, // pool token v1 factory
         poolTokenV2Factory.address, // pool token v2 factory
-        FAKE_ADDRESS, // tvl manager factory
-        FAKE_ADDRESS, // erc20 allocation factory
-        FAKE_ADDRESS, // oracle adapter factory
-        FAKE_ADDRESS // lp account factory
+        MOCK_CONTRACT_ADDRESS, // tvl manager factory
+        MOCK_CONTRACT_ADDRESS, // erc20 allocation factory
+        MOCK_CONTRACT_ADDRESS, // oracle adapter factory
+        MOCK_CONTRACT_ADDRESS // lp account factory
       )
     ).to.not.be.reverted;
 
@@ -312,15 +318,15 @@ describe("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        FAKE_ADDRESS, // proxy factory
-        FAKE_ADDRESS, // address registry v2 factory
-        FAKE_ADDRESS, // mAPT factory
+        MOCK_CONTRACT_ADDRESS, // proxy factory
+        MOCK_CONTRACT_ADDRESS, // address registry v2 factory
+        MOCK_CONTRACT_ADDRESS, // mAPT factory
         poolTokenV1Factory.address, // pool token v1 factory
         poolTokenV2Factory.address, // pool token v2 factory
-        FAKE_ADDRESS, // tvl manager factory
-        FAKE_ADDRESS, // erc20 allocation factory
-        FAKE_ADDRESS, // oracle adapter factory
-        FAKE_ADDRESS // lp account factory
+        MOCK_CONTRACT_ADDRESS, // tvl manager factory
+        MOCK_CONTRACT_ADDRESS, // erc20 allocation factory
+        MOCK_CONTRACT_ADDRESS, // oracle adapter factory
+        MOCK_CONTRACT_ADDRESS // lp account factory
       )
     ).to.not.be.reverted;
 
@@ -416,15 +422,15 @@ describe("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        FAKE_ADDRESS, // proxy factory
-        FAKE_ADDRESS, // address registry v2 factory
-        FAKE_ADDRESS, // mAPT factory
-        FAKE_ADDRESS, // pool token v1 factory
-        FAKE_ADDRESS, // pool token v2 factory
+        MOCK_CONTRACT_ADDRESS, // proxy factory
+        MOCK_CONTRACT_ADDRESS, // address registry v2 factory
+        MOCK_CONTRACT_ADDRESS, // mAPT factory
+        MOCK_CONTRACT_ADDRESS, // pool token v1 factory
+        MOCK_CONTRACT_ADDRESS, // pool token v2 factory
         tvlManagerFactory.address, // tvl manager factory
         erc20AllocationFactory.address, // erc20 allocation factory
-        FAKE_ADDRESS, // oracle adapter factory
-        FAKE_ADDRESS // lp account factory
+        MOCK_CONTRACT_ADDRESS, // oracle adapter factory
+        MOCK_CONTRACT_ADDRESS // lp account factory
       )
     ).to.not.be.reverted;
 
@@ -481,14 +487,14 @@ describe("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        FAKE_ADDRESS, // proxy factory
-        FAKE_ADDRESS, // address registry v2 factory
-        FAKE_ADDRESS, // mAPT factory
-        FAKE_ADDRESS, // pool token v1 factory
-        FAKE_ADDRESS, // pool token v2 factory
-        FAKE_ADDRESS, // tvl manager factory
-        FAKE_ADDRESS, // erc20 allocation factory
-        FAKE_ADDRESS, // oracle adapter factory
+        MOCK_CONTRACT_ADDRESS, // proxy factory
+        MOCK_CONTRACT_ADDRESS, // address registry v2 factory
+        MOCK_CONTRACT_ADDRESS, // mAPT factory
+        MOCK_CONTRACT_ADDRESS, // pool token v1 factory
+        MOCK_CONTRACT_ADDRESS, // pool token v2 factory
+        MOCK_CONTRACT_ADDRESS, // tvl manager factory
+        MOCK_CONTRACT_ADDRESS, // erc20 allocation factory
+        MOCK_CONTRACT_ADDRESS, // oracle adapter factory
         lpAccountFactory.address // lp account factory
       )
     ).to.not.be.reverted;
@@ -537,15 +543,15 @@ describe("Contract: AlphaDeployment", () => {
 
     const alphaDeployment = await expect(
       AlphaDeployment.deploy(
-        FAKE_ADDRESS, // proxy factory
-        FAKE_ADDRESS, // address registry v2 factory
-        FAKE_ADDRESS, // mAPT factory
-        FAKE_ADDRESS, // pool token v1 factory
-        FAKE_ADDRESS, // pool token v2 factory
-        FAKE_ADDRESS, // tvl manager factory
-        FAKE_ADDRESS, // erc20 allocation factory
+        MOCK_CONTRACT_ADDRESS, // proxy factory
+        MOCK_CONTRACT_ADDRESS, // address registry v2 factory
+        MOCK_CONTRACT_ADDRESS, // mAPT factory
+        MOCK_CONTRACT_ADDRESS, // pool token v1 factory
+        MOCK_CONTRACT_ADDRESS, // pool token v2 factory
+        MOCK_CONTRACT_ADDRESS, // tvl manager factory
+        MOCK_CONTRACT_ADDRESS, // erc20 allocation factory
         oracleAdapterFactory.address, // oracle adapter factory
-        FAKE_ADDRESS // lp account factory
+        MOCK_CONTRACT_ADDRESS // lp account factory
       )
     ).to.not.be.reverted;
 
@@ -619,5 +625,62 @@ describe("Contract: AlphaDeployment", () => {
     expect(await alphaDeployment.oracleAdapter()).to.equal(
       oracleAdapter.address
     );
+  });
+
+  describe("Factory setters", async () => {
+    let alphaDeployment;
+
+    before("Deploy", async () => {
+      alphaDeployment = await expect(
+        AlphaDeployment.deploy(
+          MOCK_CONTRACT_ADDRESS, // proxy factory
+          MOCK_CONTRACT_ADDRESS, // address registry v2 factory
+          MOCK_CONTRACT_ADDRESS, // mAPT factory
+          MOCK_CONTRACT_ADDRESS, // pool token v1 factory
+          MOCK_CONTRACT_ADDRESS, // pool token v2 factory
+          MOCK_CONTRACT_ADDRESS, // tvl manager factory
+          MOCK_CONTRACT_ADDRESS, // erc20 allocation factory
+          MOCK_CONTRACT_ADDRESS, // oracle adapter factory
+          MOCK_CONTRACT_ADDRESS // lp account factory
+        )
+      ).to.not.be.reverted;
+    });
+
+    it("deployer is owner", async () => {
+      expect(await alphaDeployment.owner()).to.equal(deployer.address);
+    });
+
+    [
+      "ProxyFactory",
+      "AddressRegistryV2Factory",
+      "MetaPoolTokenFactory",
+      "PoolTokenV1Factory",
+      "PoolTokenV2Factory",
+      "TvlManagerFactory",
+      "Erc20AllocationFactory",
+      "OracleAdapterFactory",
+      "LpAccountFactory",
+    ].forEach((factoryName) => {
+      const factorySetterName = "set" + factoryName;
+      describe(factorySetterName, () => {
+        it("Owner can call", async () => {
+          const contract = await deployMockContract(deployer, []);
+          await expect(
+            alphaDeployment
+              .connect(deployer)
+              [factorySetterName](contract.address)
+          ).to.not.be.reverted;
+        });
+
+        it("Revert when non-owner attempts call", async () => {
+          const contract = await deployMockContract(deployer, []);
+          await expect(
+            alphaDeployment
+              .connect(randomUser)
+              [factorySetterName](contract.address)
+          ).to.be.revertedWith("Ownable: caller is not the owner");
+        });
+      });
+    });
   });
 });
