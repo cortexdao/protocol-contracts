@@ -11,6 +11,7 @@ const {
   acquireToken,
   FAKE_ADDRESS,
   ZERO_ADDRESS,
+  getAggregatorAddress,
 } = require("../utils/helpers");
 const { WHALE_POOLS } = require("../utils/constants");
 const timeMachine = require("ganache-time-traveler");
@@ -36,6 +37,7 @@ describe("Contract: PoolTokenV2Upgrader", () => {
 
   // deployed contracts
   let upgrader;
+  let v1Pool;
 
   // Mainnet contracts
   let emergencySafe;
@@ -123,6 +125,26 @@ describe("Contract: PoolTokenV2Upgrader", () => {
     upgrader = await PoolTokenV2Upgrader.connect(emergencySafeSigner).deploy(
       poolTokenV2Factory.address
     );
+  });
+
+  before("Deploy a V1 pool", async () => {
+    const PoolToken = await ethers.getContractFactory("PoolToken");
+    const logic = await PoolToken.deploy();
+    const TransparentUpgradeableProxy = await ethers.getContractFactory(
+      "TransparentUpgradeableProxy"
+    );
+    const USDC_TOKEN = getStablecoinAddress("USDC", "MAINNET");
+    const USDC_ETH_AGG = getAggregatorAddress("USDC-ETH", "MAINNET");
+    const initData = PoolToken.interface.encodeFunctionData(
+      "initialize(address,address,address)",
+      [POOL_PROXY_ADMIN, USDC_TOKEN, USDC_ETH_AGG]
+    );
+    const proxy = await TransparentUpgradeableProxy.deploy(
+      logic.address,
+      POOL_PROXY_ADMIN,
+      initData
+    );
+    v1Pool = PoolToken.attach(proxy.address);
   });
 
   before("Mock any needed dependencies", async () => {
@@ -246,6 +268,9 @@ describe("Contract: PoolTokenV2Upgrader", () => {
       await expect(
         upgrader.connect(randomUser).upgradeUsdtPool()
       ).to.be.revertedWith("Ownable: caller is not the owner");
+      await expect(
+        upgrader.connect(randomUser).upgrade(v1Pool.address)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
     it("Revert if Safe address changes", async () => {
@@ -263,6 +288,9 @@ describe("Contract: PoolTokenV2Upgrader", () => {
       await expect(upgrader.upgradeUsdtPool()).to.be.revertedWith(
         "INVALID_EMERGENCY_SAFE"
       );
+      await expect(upgrader.upgrade(v1Pool.address)).to.be.revertedWith(
+        "INVALID_EMERGENCY_SAFE"
+      );
     });
 
     it("Revert if upgrader is not enabled module", async () => {
@@ -273,6 +301,9 @@ describe("Contract: PoolTokenV2Upgrader", () => {
         "ENABLE_AS_EMERGENCY_MODULE"
       );
       await expect(upgrader.upgradeUsdtPool()).to.be.revertedWith(
+        "ENABLE_AS_EMERGENCY_MODULE"
+      );
+      await expect(upgrader.upgrade(v1Pool.address)).to.be.revertedWith(
         "ENABLE_AS_EMERGENCY_MODULE"
       );
 
@@ -290,6 +321,9 @@ describe("Contract: PoolTokenV2Upgrader", () => {
       await expect(upgrader.upgradeUsdtPool()).to.not.be.revertedWith(
         "ENABLE_AS_EMERGENCY_MODULE"
       );
+      await expect(upgrader.upgrade(v1Pool.address)).to.not.be.revertedWith(
+        "ENABLE_AS_EMERGENCY_MODULE"
+      );
     });
 
     it("Revert if upgrader isn't funded with stable", async () => {
@@ -305,6 +339,9 @@ describe("Contract: PoolTokenV2Upgrader", () => {
         "FUND_UPGRADER_WITH_STABLE"
       );
       await expect(upgrader.upgradeUsdtPool()).to.be.revertedWith(
+        "FUND_UPGRADER_WITH_STABLE"
+      );
+      await expect(upgrader.upgrade(v1Pool.address)).to.be.revertedWith(
         "FUND_UPGRADER_WITH_STABLE"
       );
     });
@@ -350,6 +387,35 @@ describe("Contract: PoolTokenV2Upgrader", () => {
       );
       expect(await usdtPool.addLiquidityLock()).to.be.true;
       expect(await usdtPool.feePercentage()).to.be.gt(0);
+    });
+
+    // this test is more like a sanity check
+    it("Can upgrade freshly deployed V1 pool", async () => {
+      // enable upgrader as module
+      await emergencySafe
+        .connect(emergencySafeSigner)
+        .enableModule(upgrader.address);
+
+      // fund upgrader with stables
+      const usdcToken = await ethers.getContractAt(
+        "IDetailedERC20",
+        getStablecoinAddress("USDC", "MAINNET")
+      );
+      const decimals = await usdcToken.decimals();
+      await acquireToken(
+        WHALE_POOLS["USDC"],
+        upgrader.address,
+        usdcToken,
+        tokenAmountToBigNumber("271.828182", decimals),
+        deployer.address
+      );
+
+      // await expect(upgrader.upgrade(v1Pool.address)).to.not.be.reverted;
+      await upgrader.upgrade(v1Pool.address);
+
+      const v2Pool = await ethers.getContractAt("PoolTokenV2", v1Pool.address);
+      expect(await v2Pool.addLiquidityLock()).to.be.true;
+      expect(await v2Pool.feePercentage()).to.be.gt(0);
     });
 
     it("Revert if balances mapping has wrong slot", async () => {
