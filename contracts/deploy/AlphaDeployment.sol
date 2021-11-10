@@ -259,37 +259,12 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         poolTokenV2 = PoolTokenV2Factory(poolTokenV2Factory).create(initData);
     }
 
-    /// @dev complete proxy deploy for the demo pools
-    ///      Registers mAPT for a contract role.
-    function deploy_3_DemoPools()
+    /// @dev Deploy ERC20 allocation and TVL Manager.
+    ///      Does not register any roles for contracts.
+    function deploy_3_TvlManager()
         external
         onlyOwner
         updateStep(3)
-        checkSafeRegistrations
-    {
-        bytes32[] memory registeredIds = new bytes32[](1);
-        address[] memory deployedAddresses = new address[](1);
-        (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
-        checkRegisteredDependencies(registeredIds, deployedAddresses);
-
-        address[] memory ownerships = new address[](2);
-        ownerships[0] = ADDRESS_REGISTRY_PROXY;
-        ownerships[1] = POOL_PROXY_ADMIN;
-        checkOwnerships(ownerships);
-
-        daiDemoPool = _deployDemoPool(DAI_ADDRESS, "daiDemoPool");
-
-        usdcDemoPool = _deployDemoPool(USDC_ADDRESS, "usdcDemoPool");
-
-        usdtDemoPool = _deployDemoPool(USDT_ADDRESS, "usdtDemoPool");
-    }
-
-    /// @dev Deploy ERC20 allocation and TVL Manager.
-    ///      Does not register any roles for contracts.
-    function deploy_4_TvlManager()
-        external
-        onlyOwner
-        updateStep(4)
         checkSafeRegistrations
     {
         address[] memory ownerships = new address[](1);
@@ -309,10 +284,10 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     }
 
     /// @dev register mAPT for a contract role
-    function deploy_5_LpAccount()
+    function deploy_4_LpAccount()
         external
         onlyOwner
-        updateStep(5)
+        updateStep(4)
         checkSafeRegistrations
     {
         bytes32[] memory registeredIds = new bytes32[](1);
@@ -340,10 +315,10 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     }
 
     /// @dev registers mAPT, TvlManager, Erc20Allocation, LpAccount for contract roles
-    function deploy_6_OracleAdapter()
+    function deploy_5_OracleAdapter()
         external
         onlyOwner
-        updateStep(6)
+        updateStep(5)
         checkSafeRegistrations
     {
         bytes32[] memory registeredIds = new bytes32[](4);
@@ -401,6 +376,31 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
             ),
             "SAFE_TX_FAILED"
         );
+    }
+
+    /// @dev complete proxy deploy for the demo pools
+    ///      Registers mAPT for a contract role.
+    function deploy_6_DemoPools()
+        external
+        onlyOwner
+        updateStep(6)
+        checkSafeRegistrations
+    {
+        bytes32[] memory registeredIds = new bytes32[](1);
+        address[] memory deployedAddresses = new address[](1);
+        (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
+        checkRegisteredDependencies(registeredIds, deployedAddresses);
+
+        address[] memory ownerships = new address[](2);
+        ownerships[0] = ADDRESS_REGISTRY_PROXY;
+        ownerships[1] = POOL_PROXY_ADMIN;
+        checkOwnerships(ownerships);
+
+        daiDemoPool = _deployDemoPool(DAI_ADDRESS, "daiDemoPool");
+
+        usdcDemoPool = _deployDemoPool(USDC_ADDRESS, "usdcDemoPool");
+
+        usdtDemoPool = _deployDemoPool(USDT_ADDRESS, "usdtDemoPool");
     }
 
     function setProxyFactory(address proxyFactory_) public onlyOwner {
