@@ -650,179 +650,36 @@ describe("Contract: AlphaDeployment", () => {
       expect(await alphaDeployment.owner()).to.equal(deployer.address);
     });
 
-    describe("setProxyFactory", () => {
-      it("Owner can call", async () => {
-        const contract = await deployMockContract(deployer, []);
-        await expect(
-          alphaDeployment.connect(deployer).setProxyFactory(contract.address)
-        ).to.not.be.reverted;
-      });
+    [
+      "ProxyFactory",
+      "AddressRegistryV2Factory",
+      "MetaPoolTokenFactory",
+      "PoolTokenV1Factory",
+      "PoolTokenV2Factory",
+      "TvlManagerFactory",
+      "Erc20AllocationFactory",
+      "OracleAdapterFactory",
+      "LpAccountFactory",
+    ].forEach((factoryName) => {
+      const factorySetterName = "set" + factoryName;
+      describe(factorySetterName, () => {
+        it("Owner can call", async () => {
+          const contract = await deployMockContract(deployer, []);
+          await expect(
+            alphaDeployment
+              .connect(deployer)
+              [factorySetterName](contract.address)
+          ).to.not.be.reverted;
+        });
 
-      it("Revert when non-owner attempts call", async () => {
-        const contract = await deployMockContract(deployer, []);
-        await expect(
-          alphaDeployment.connect(randomUser).setProxyFactory(contract.address)
-        ).to.be.revertedWith("Ownable: caller is not the owner");
-      });
-    });
-
-    describe("setAddressRegistryV2Factory", () => {
-      it("Owner can call", async () => {
-        const contract = await deployMockContract(deployer, []);
-        await expect(
-          alphaDeployment
-            .connect(deployer)
-            .setAddressRegistryV2Factory(contract.address)
-        ).to.not.be.reverted;
-      });
-
-      it("Revert when non-owner attempts call", async () => {
-        const contract = await deployMockContract(deployer, []);
-        await expect(
-          alphaDeployment
-            .connect(randomUser)
-            .setAddressRegistryV2Factory(contract.address)
-        ).to.be.revertedWith("Ownable: caller is not the owner");
-      });
-    });
-
-    describe("setMetaPoolTokenFactory", () => {
-      it("Owner can call", async () => {
-        const contract = await deployMockContract(deployer, []);
-        await expect(
-          alphaDeployment
-            .connect(deployer)
-            .setMetaPoolTokenFactory(contract.address)
-        ).to.not.be.reverted;
-      });
-
-      it("Revert when non-owner attempts call", async () => {
-        const contract = await deployMockContract(deployer, []);
-        await expect(
-          alphaDeployment
-            .connect(randomUser)
-            .setMetaPoolTokenFactory(contract.address)
-        ).to.be.revertedWith("Ownable: caller is not the owner");
-      });
-    });
-
-    describe("setPoolTokenV1Factory", () => {
-      it("Owner can call", async () => {
-        const contract = await deployMockContract(deployer, []);
-        await expect(
-          alphaDeployment
-            .connect(deployer)
-            .setPoolTokenV1Factory(contract.address)
-        ).to.not.be.reverted;
-      });
-
-      it("Revert when non-owner attempts call", async () => {
-        const contract = await deployMockContract(deployer, []);
-        await expect(
-          alphaDeployment
-            .connect(randomUser)
-            .setPoolTokenV1Factory(contract.address)
-        ).to.be.revertedWith("Ownable: caller is not the owner");
-      });
-    });
-
-    describe("setPoolTokenV2Factory", () => {
-      it("Owner can call", async () => {
-        const contract = await deployMockContract(deployer, []);
-        await expect(
-          alphaDeployment
-            .connect(deployer)
-            .setPoolTokenV2Factory(contract.address)
-        ).to.not.be.reverted;
-      });
-
-      it("Revert when non-owner attempts call", async () => {
-        const contract = await deployMockContract(deployer, []);
-        await expect(
-          alphaDeployment
-            .connect(randomUser)
-            .setPoolTokenV2Factory(contract.address)
-        ).to.be.revertedWith("Ownable: caller is not the owner");
-      });
-    });
-
-    describe("setTvlManagerFactory", () => {
-      it("Owner can call", async () => {
-        const contract = await deployMockContract(deployer, []);
-        await expect(
-          alphaDeployment
-            .connect(deployer)
-            .setTvlManagerFactory(contract.address)
-        ).to.not.be.reverted;
-      });
-
-      it("Revert when non-owner attempts call", async () => {
-        const contract = await deployMockContract(deployer, []);
-        await expect(
-          alphaDeployment
-            .connect(randomUser)
-            .setTvlManagerFactory(contract.address)
-        ).to.be.revertedWith("Ownable: caller is not the owner");
-      });
-    });
-
-    describe("setErc20AllocationFactory", () => {
-      it("Owner can call", async () => {
-        const contract = await deployMockContract(deployer, []);
-        await expect(
-          alphaDeployment
-            .connect(deployer)
-            .setErc20AllocationFactory(contract.address)
-        ).to.not.be.reverted;
-      });
-
-      it("Revert when non-owner attempts call", async () => {
-        const contract = await deployMockContract(deployer, []);
-        await expect(
-          alphaDeployment
-            .connect(randomUser)
-            .setErc20AllocationFactory(contract.address)
-        ).to.be.revertedWith("Ownable: caller is not the owner");
-      });
-    });
-
-    describe("setOracleAdapterFactory", () => {
-      it("Owner can call", async () => {
-        const contract = await deployMockContract(deployer, []);
-        await expect(
-          alphaDeployment
-            .connect(deployer)
-            .setOracleAdapterFactory(contract.address)
-        ).to.not.be.reverted;
-      });
-
-      it("Revert when non-owner attempts call", async () => {
-        const contract = await deployMockContract(deployer, []);
-        await expect(
-          alphaDeployment
-            .connect(randomUser)
-            .setOracleAdapterFactory(contract.address)
-        ).to.be.revertedWith("Ownable: caller is not the owner");
-      });
-    });
-
-    describe("setLpAccountFactory", () => {
-      it("Owner can call", async () => {
-        const contract = await deployMockContract(deployer, []);
-        await expect(
-          alphaDeployment
-            .connect(deployer)
-            .setLpAccountFactory(contract.address)
-        ).to.not.be.reverted;
-      });
-
-      it("Revert when non-owner attempts call", async () => {
-        const contract = await deployMockContract(deployer, []);
-        await expect(
-          alphaDeployment
-            .connect(randomUser)
-            .setLpAccountFactory(contract.address)
-        ).to.be.revertedWith("Ownable: caller is not the owner");
+        it("Revert when non-owner attempts call", async () => {
+          const contract = await deployMockContract(deployer, []);
+          await expect(
+            alphaDeployment
+              .connect(randomUser)
+              [factorySetterName](contract.address)
+          ).to.be.revertedWith("Ownable: caller is not the owner");
+        });
       });
     });
   });
