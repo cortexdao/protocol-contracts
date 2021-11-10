@@ -97,31 +97,16 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
         upgradeUsdtPool();
     }
 
-    function upgradeDaiPool()
-        public
-        onlyOwner
-        checkSafeRegistrations
-        checkEnabledModule
-    {
-        _upgrade(payable(DAI_POOL_PROXY));
+    function upgradeDaiPool() public onlyOwner {
+        upgrade(payable(DAI_POOL_PROXY));
     }
 
-    function upgradeUsdcPool()
-        public
-        onlyOwner
-        checkSafeRegistrations
-        checkEnabledModule
-    {
-        _upgrade(payable(USDC_POOL_PROXY));
+    function upgradeUsdcPool() public onlyOwner {
+        upgrade(payable(USDC_POOL_PROXY));
     }
 
-    function upgradeUsdtPool()
-        public
-        onlyOwner
-        checkSafeRegistrations
-        checkEnabledModule
-    {
-        _upgrade(payable(USDT_POOL_PROXY));
+    function upgradeUsdtPool() public onlyOwner {
+        upgrade(payable(USDT_POOL_PROXY));
     }
 
     function setPoolTokenV2Factory(address poolTokenV2Factory_)
@@ -147,7 +132,13 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
         return logic;
     }
 
-    function _upgrade(address payable proxy) internal {
+    /// @dev register mAPT for a contract role
+    function upgrade(address payable proxy)
+        public
+        onlyOwner
+        checkSafeRegistrations
+        checkEnabledModule
+    {
         require(
             Ownable(POOL_PROXY_ADMIN).owner() == emergencySafe,
             "MISSING_OWNERSHIP"
