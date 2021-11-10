@@ -8,7 +8,6 @@ const {
   tokenAmountToBigNumber,
   getDeployedAddress,
   FAKE_ADDRESS,
-  ZERO_ADDRESS,
   getLogicContract,
   getProxyAdmin,
 } = require("../utils/helpers");
@@ -19,7 +18,7 @@ const {
 const MAINNET_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
 const MAINNET_POOL_PROXY_ADMIN = "0x7965283631253DfCb71Db63a60C656DEDF76234f";
 
-describe.only("Contract: AlphaDeployment", () => {
+describe("Contract: AlphaDeployment", () => {
   // signers
   let deployer;
   let emergencySafe;
@@ -223,58 +222,13 @@ describe.only("Contract: AlphaDeployment", () => {
       });
     });
 
-    describe("Step 2: Deploy PoolTokenV2 logic contract", () => {
+    describe("Step 2: Deploy TvlManager", () => {
       before("Run step 2", async () => {
-        await alphaDeployment.deploy_2_PoolTokenV2_logic();
+        await alphaDeployment.deploy_2_TvlManager();
       });
 
       it("should update step number", async () => {
         expect(await alphaDeployment.step()).to.equal(3);
-      });
-
-      // See comment on next test;
-      // essentially there is no longer a need to do this, but
-      // we continue initializing the logic separately as a matter
-      // of best practice.
-      it("should call initialize directly on logic contract", async () => {
-        const poolTokenV2Logic = await ethers.getContractAt(
-          "PoolTokenV2",
-          await alphaDeployment.poolTokenV2()
-        );
-
-        await expect(
-          poolTokenV2Logic.initialize(FAKE_ADDRESS, FAKE_ADDRESS, FAKE_ADDRESS)
-        ).to.be.revertedWith("Contract instance has already been initialized");
-      });
-
-      // Normally `initialize` would be responsible for ownership/access
-      // control of the contract, but in PoolTokenV2, now that all happens
-      // in `initializeUpgrade`; `initialize` has been stripped of any
-      // controls setting.  Thus to protect the contract, it suffices to
-      // check that nobody can call `initializeUpgrade`.
-      it("should revert on `initializeUpgrade`", async () => {
-        const poolTokenV2Logic = await ethers.getContractAt(
-          "PoolTokenV2",
-          await alphaDeployment.poolTokenV2()
-        );
-
-        // EIP-1967 slot for proxy admin won't be set on logic contract
-        expect(await poolTokenV2Logic.proxyAdmin()).to.equal(ZERO_ADDRESS);
-
-        // nobody should be able to call this
-        await expect(
-          poolTokenV2Logic.initializeUpgrade(addressRegistry.address)
-        ).to.be.revertedWith("PROXY_ADMIN_ONLY");
-      });
-    });
-
-    describe("Step 3: Deploy TvlManager", () => {
-      before("Run step 3", async () => {
-        await alphaDeployment.deploy_3_TvlManager();
-      });
-
-      it("should update step number", async () => {
-        expect(await alphaDeployment.step()).to.equal(5);
       });
 
       it("should register the TvlManager address", async () => {
@@ -284,16 +238,16 @@ describe.only("Contract: AlphaDeployment", () => {
       });
     });
 
-    describe("Step 4: Deploy LpAccount", () => {
+    describe("Step 3: Deploy LpAccount", () => {
       let lpAccountAddress;
 
-      before("Run step 4", async () => {
-        await alphaDeployment.deploy_4_LpAccount();
+      before("Run step 3", async () => {
+        await alphaDeployment.deploy_3_LpAccount();
         lpAccountAddress = await alphaDeployment.lpAccount();
       });
 
       it("should update step number", async () => {
-        expect(await alphaDeployment.step()).to.equal(6);
+        expect(await alphaDeployment.step()).to.equal(4);
       });
 
       it("should register the LpAccount address", async () => {
@@ -316,7 +270,7 @@ describe.only("Contract: AlphaDeployment", () => {
       });
     });
 
-    describe("Step 5: Deploy OracleAdapter", () => {
+    describe("Step 4: Deploy OracleAdapter", () => {
       let oracleAdapterAddress;
       let oracleAdapter;
       const priceAggs = [
@@ -337,8 +291,8 @@ describe.only("Contract: AlphaDeployment", () => {
         },
       ];
 
-      before("Run step 5", async () => {
-        await alphaDeployment.deploy_5_OracleAdapter();
+      before("Run step 4", async () => {
+        await alphaDeployment.deploy_4_OracleAdapter();
         oracleAdapterAddress = await alphaDeployment.oracleAdapter();
         oracleAdapter = await ethers.getContractAt(
           "OracleAdapter",
@@ -347,7 +301,7 @@ describe.only("Contract: AlphaDeployment", () => {
       });
 
       it("should update step number", async () => {
-        expect(await alphaDeployment.step()).to.equal(7);
+        expect(await alphaDeployment.step()).to.equal(5);
       });
 
       it("should register the OracleAdapter address", async () => {
@@ -381,7 +335,7 @@ describe.only("Contract: AlphaDeployment", () => {
     });
   });
 
-  describe("Step 6: Deploy demo pools", async () => {
+  describe("Step 5: Deploy demo pools", async () => {
     const demoPoolAddresses = [
       {
         variable: "daiDemoPool",
@@ -397,12 +351,12 @@ describe.only("Contract: AlphaDeployment", () => {
       },
     ];
 
-    before("Run step 6", async () => {
-      await alphaDeployment.deploy_6_DemoPools();
+    before("Run step 5", async () => {
+      await alphaDeployment.deploy_5_DemoPools();
     });
 
     it("should update step number", async () => {
-      expect(await alphaDeployment.step()).to.equal(4);
+      expect(await alphaDeployment.step()).to.equal(6);
     });
 
     demoPoolAddresses.forEach((poolData) => {
@@ -427,10 +381,6 @@ describe.only("Contract: AlphaDeployment", () => {
         it("should use pool proxy admin", async () => {
           const proxyAdmin = await getProxyAdmin(demoPool.address);
           expect(proxyAdmin.address).to.equal(MAINNET_POOL_PROXY_ADMIN);
-        });
-
-        it("should have v2 pool functions and v2 variables initialized", async () => {
-          expect(await demoPool.reservePercentage()).to.equal(5);
         });
       });
     });

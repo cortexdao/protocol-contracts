@@ -10,6 +10,7 @@ const {
   getStablecoinAddress,
   acquireToken,
   FAKE_ADDRESS,
+  ZERO_ADDRESS,
 } = require("../utils/helpers");
 const { WHALE_POOLS } = require("../utils/constants");
 const timeMachine = require("ganache-time-traveler");
@@ -189,6 +190,45 @@ describe("Contract: PoolTokenV2Upgrader", () => {
       await expect(
         upgrader.connect(randomUser).deployV2Logic()
       ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    describe("Logic contract safeguards", () => {
+      let poolTokenV2Logic;
+
+      before("deploy", async () => {
+        const logicV2Address = await upgrader.callStatic.deployV2Logic();
+        await upgrader.deployV2Logic();
+
+        poolTokenV2Logic = await ethers.getContractAt(
+          "PoolTokenV2",
+          logicV2Address
+        );
+      });
+
+      // See comment on next test;
+      // essentially there is no longer a need to do this, but
+      // we continue initializing the logic separately as a matter
+      // of best practice.
+      it("should call initialize directly on logic contract", async () => {
+        await expect(
+          poolTokenV2Logic.initialize(FAKE_ADDRESS, FAKE_ADDRESS, FAKE_ADDRESS)
+        ).to.be.revertedWith("Contract instance has already been initialized");
+      });
+
+      // Normally `initialize` would be responsible for ownership/access
+      // control of the contract, but in PoolTokenV2, now that all happens
+      // in `initializeUpgrade`; `initialize` has been stripped of any
+      // controls setting.  Thus to protect the contract, it suffices to
+      // check that nobody can call `initializeUpgrade`.
+      it("should revert on `initializeUpgrade`", async () => {
+        // EIP-1967 slot for proxy admin won't be set on logic contract
+        expect(await poolTokenV2Logic.proxyAdmin()).to.equal(ZERO_ADDRESS);
+
+        // nobody should be able to call this
+        await expect(
+          poolTokenV2Logic.initializeUpgrade(addressRegistry.address)
+        ).to.be.revertedWith("PROXY_ADMIN_ONLY");
+      });
     });
   });
 
