@@ -367,8 +367,12 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         );
     }
 
-    /// @dev complete proxy deploy for the demo pools
-    ///      Registers mAPT for a contract role.
+    /**
+     * @dev V1 proxy deploy for the demo pools.  V2 upgrade will be done
+     * through the pool upgrader.
+     * @dev V2 will register mAPT for a contract role so we pre-emptively
+     * check it here.
+     */
     function deploy_5_DemoPools()
         external
         onlyOwner
@@ -380,9 +384,8 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
         checkRegisteredDependencies(registeredIds, deployedAddresses);
 
-        address[] memory ownerships = new address[](2);
+        address[] memory ownerships = new address[](1);
         ownerships[0] = ADDRESS_REGISTRY_PROXY;
-        ownerships[1] = POOL_PROXY_ADMIN;
         checkOwnerships(ownerships);
 
         daiDemoPool = _deployDemoPool(DAI_ADDRESS, "daiDemoPool");

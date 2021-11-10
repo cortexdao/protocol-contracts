@@ -541,7 +541,6 @@ describe("Contract: AlphaDeployment", () => {
 
     // for ownership check
     await addressRegistry.mock.owner.returns(emergencySafe.address);
-    await addressRegistryProxyAdmin.mock.owner.returns(emergencySafe.address);
 
     // check for address registrations
     // DAI
