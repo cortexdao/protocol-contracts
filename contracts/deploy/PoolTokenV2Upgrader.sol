@@ -54,6 +54,12 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
 
     /// @notice upgrade from v1 to v2
     /// @dev register mAPT for a contract role
+    function upgrade(address payable proxy) external onlyOwner {
+        _upgrade(proxy);
+    }
+
+    /// @notice upgrade from v1 to v2
+    /// @dev register mAPT for a contract role
     function upgradeAll() external onlyOwner {
         upgradeDaiPool();
         upgradeUsdcPool();
@@ -61,15 +67,15 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
     }
 
     function upgradeDaiPool() public onlyOwner {
-        upgrade(payable(DAI_POOL_PROXY));
+        _upgrade(payable(DAI_POOL_PROXY));
     }
 
     function upgradeUsdcPool() public onlyOwner {
-        upgrade(payable(USDC_POOL_PROXY));
+        _upgrade(payable(USDC_POOL_PROXY));
     }
 
     function upgradeUsdtPool() public onlyOwner {
-        upgrade(payable(USDT_POOL_PROXY));
+        _upgrade(payable(USDT_POOL_PROXY));
     }
 
     function setPoolTokenV2Factory(address poolTokenV2Factory_)
@@ -96,7 +102,7 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
     }
 
     /// @dev register mAPT for a contract role
-    function upgrade(address payable proxy) public onlyOwner {
+    function _upgrade(address payable proxy) internal {
         _checkSafeRegistrations();
         _checkEnabledModule();
         _checkOwnerships();
