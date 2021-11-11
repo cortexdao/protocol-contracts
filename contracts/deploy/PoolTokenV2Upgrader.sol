@@ -40,43 +40,6 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
     address public immutable adminSafe;
     address public immutable lpSafe;
 
-    /**
-     * @dev Uses `getAddress` in case `AddressRegistry` has not been upgraded
-     */
-    modifier checkSafeRegistrations() {
-        require(
-            addressRegistry.getAddress("emergencySafe") == emergencySafe,
-            "INVALID_EMERGENCY_SAFE"
-        );
-
-        require(
-            addressRegistry.getAddress("adminSafe") == adminSafe,
-            "INVALID_ADMIN_SAFE"
-        );
-
-        require(
-            addressRegistry.getAddress("lpSafe") == lpSafe,
-            "INVALID_LP_SAFE"
-        );
-
-        _;
-    }
-
-    modifier checkEnabledModule() {
-        address[] memory emergencyModules =
-            IGnosisModuleManager(emergencySafe).getModules();
-        bool emergencyEnabled = false;
-        for (uint256 i = 0; i < emergencyModules.length; i++) {
-            if (emergencyModules[i] == address(this)) {
-                emergencyEnabled = true;
-                break;
-            }
-        }
-        require(emergencyEnabled, "ENABLE_AS_EMERGENCY_MODULE");
-
-        _;
-    }
-
     constructor(address poolTokenV2Factory_) public {
         addressRegistry = IAddressRegistryV2(ADDRESS_REGISTRY_PROXY);
 
@@ -133,16 +96,11 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
     }
 
     /// @dev register mAPT for a contract role
-    function upgrade(address payable proxy)
-        public
-        onlyOwner
-        checkSafeRegistrations
-        checkEnabledModule
-    {
-        require(
-            Ownable(POOL_PROXY_ADMIN).owner() == emergencySafe,
-            "MISSING_OWNERSHIP"
-        );
+    function upgrade(address payable proxy) public onlyOwner {
+        _checkSafeRegistrations();
+        _checkEnabledModule();
+        _checkOwnerships();
+
         address mApt = addressRegistry.mAptAddress();
 
         PoolToken poolV1 = PoolToken(payable(proxy));
@@ -248,6 +206,46 @@ contract PoolTokenV2Upgrader is Ownable, DeploymentConstants {
                 Enum.Operation.Call
             ),
             "SAFE_TX_FAILED"
+        );
+    }
+
+    /**
+     * @dev Uses `getAddress` in case `AddressRegistry` has not been upgraded
+     */
+    function _checkSafeRegistrations() internal view {
+        require(
+            addressRegistry.getAddress("emergencySafe") == emergencySafe,
+            "INVALID_EMERGENCY_SAFE"
+        );
+
+        require(
+            addressRegistry.getAddress("adminSafe") == adminSafe,
+            "INVALID_ADMIN_SAFE"
+        );
+
+        require(
+            addressRegistry.getAddress("lpSafe") == lpSafe,
+            "INVALID_LP_SAFE"
+        );
+    }
+
+    function _checkEnabledModule() internal view {
+        address[] memory emergencyModules =
+            IGnosisModuleManager(emergencySafe).getModules();
+        bool emergencyEnabled = false;
+        for (uint256 i = 0; i < emergencyModules.length; i++) {
+            if (emergencyModules[i] == address(this)) {
+                emergencyEnabled = true;
+                break;
+            }
+        }
+        require(emergencyEnabled, "ENABLE_AS_EMERGENCY_MODULE");
+    }
+
+    function _checkOwnerships() internal view {
+        require(
+            Ownable(POOL_PROXY_ADMIN).owner() == emergencySafe,
+            "MISSING_OWNERSHIP"
         );
     }
 }
