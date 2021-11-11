@@ -2,9 +2,10 @@
 pragma solidity 0.6.11;
 
 abstract contract DeploymentConstants {
-    address public constant ADDRESS_REGISTRY_PROXY_ADMIN = 
+    address public constant ADDRESS_REGISTRY_PROXY_ADMIN =
         0xFbF6c940c1811C3ebc135A9c4e39E042d02435d1;
-    address public constant ADDRESS_REGISTRY_PROXY = 0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303;
+    address public constant ADDRESS_REGISTRY_PROXY =
+        0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303;
 
     address public constant DAI_ADDRESS =
         0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -24,6 +25,12 @@ abstract contract DeploymentConstants {
 
     address public constant TVL_AGG_ADDRESS =
         0xDb299D394817D8e7bBe297E84AFfF7106CF92F5f;
+    address public constant DAI_ETH_AGG_ADDRESS =
+        0x773616E4d11A78F511299002da57A0a94577F1f4;
+    address public constant USDC_ETH_AGG_ADDRESS =
+        0x986b5E1e1755e3C2440e960477f25201B0a8bbD4;
+    address public constant USDT_ETH_AGG_ADDRESS =
+        0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46;
     address public constant DAI_USD_AGG_ADDRESS =
         0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9;
     address public constant USDC_USD_AGG_ADDRESS =

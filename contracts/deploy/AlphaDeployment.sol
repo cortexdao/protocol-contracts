@@ -6,7 +6,7 @@ import {IDetailedERC20, Ownable} from "contracts/common/Imports.sol";
 import {Address} from "contracts/libraries/Imports.sol";
 import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
 import {AggregatorV3Interface} from "contracts/oracle/Imports.sol";
-import {PoolTokenV2} from "contracts/pool/PoolTokenV2.sol";
+import {PoolToken} from "contracts/pool/PoolToken.sol";
 import {LpAccount} from "contracts/lpaccount/LpAccount.sol";
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
 import {AddressRegistryV2} from "contracts/registry/AddressRegistryV2.sol";
@@ -24,7 +24,6 @@ import {
     MetaPoolTokenFactory,
     OracleAdapterFactory,
     PoolTokenV1Factory,
-    PoolTokenV2Factory,
     TvlManagerFactory
 } from "./factories/Imports.sol";
 import {IGnosisModuleManager, Enum} from "./IGnosisModuleManager.sol";
@@ -248,48 +247,12 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         _registerAddress("mApt", mApt);
     }
 
-    function deploy_2_PoolTokenV2_logic() external onlyOwner updateStep(2) {
-        bytes memory initData =
-            abi.encodeWithSelector(
-                PoolTokenV2.initialize.selector,
-                POOL_PROXY_ADMIN,
-                IDetailedERC20(DAI_ADDRESS),
-                AggregatorV3Interface(FAKE_AGG_ADDRESS)
-            );
-        poolTokenV2 = PoolTokenV2Factory(poolTokenV2Factory).create(initData);
-    }
-
-    /// @dev complete proxy deploy for the demo pools
-    ///      Registers mAPT for a contract role.
-    function deploy_3_DemoPools()
-        external
-        onlyOwner
-        updateStep(3)
-        checkSafeRegistrations
-    {
-        bytes32[] memory registeredIds = new bytes32[](1);
-        address[] memory deployedAddresses = new address[](1);
-        (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
-        checkRegisteredDependencies(registeredIds, deployedAddresses);
-
-        address[] memory ownerships = new address[](2);
-        ownerships[0] = ADDRESS_REGISTRY_PROXY;
-        ownerships[1] = POOL_PROXY_ADMIN;
-        checkOwnerships(ownerships);
-
-        daiDemoPool = _deployDemoPool(DAI_ADDRESS, "daiDemoPool");
-
-        usdcDemoPool = _deployDemoPool(USDC_ADDRESS, "usdcDemoPool");
-
-        usdtDemoPool = _deployDemoPool(USDT_ADDRESS, "usdtDemoPool");
-    }
-
     /// @dev Deploy ERC20 allocation and TVL Manager.
     ///      Does not register any roles for contracts.
-    function deploy_4_TvlManager()
+    function deploy_2_TvlManager()
         external
         onlyOwner
-        updateStep(4)
+        updateStep(2)
         checkSafeRegistrations
     {
         address[] memory ownerships = new address[](1);
@@ -309,10 +272,10 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     }
 
     /// @dev register mAPT for a contract role
-    function deploy_5_LpAccount()
+    function deploy_3_LpAccount()
         external
         onlyOwner
-        updateStep(5)
+        updateStep(3)
         checkSafeRegistrations
     {
         bytes32[] memory registeredIds = new bytes32[](1);
@@ -340,10 +303,10 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
     }
 
     /// @dev registers mAPT, TvlManager, Erc20Allocation, LpAccount for contract roles
-    function deploy_6_OracleAdapter()
+    function deploy_4_OracleAdapter()
         external
         onlyOwner
-        updateStep(6)
+        updateStep(4)
         checkSafeRegistrations
     {
         bytes32[] memory registeredIds = new bytes32[](4);
@@ -400,6 +363,46 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 Enum.Operation.Call
             ),
             "SAFE_TX_FAILED"
+        );
+    }
+
+    /**
+     * @dev V1 proxy deploy for the demo pools.  V2 upgrade will be done
+     * through the pool upgrader.
+     * @dev V2 will register mAPT for a contract role so we pre-emptively
+     * check it here.
+     */
+    function deploy_5_DemoPools()
+        external
+        onlyOwner
+        updateStep(5)
+        checkSafeRegistrations
+    {
+        bytes32[] memory registeredIds = new bytes32[](1);
+        address[] memory deployedAddresses = new address[](1);
+        (registeredIds[0], deployedAddresses[0]) = ("mApt", mApt);
+        checkRegisteredDependencies(registeredIds, deployedAddresses);
+
+        address[] memory ownerships = new address[](1);
+        ownerships[0] = ADDRESS_REGISTRY_PROXY;
+        checkOwnerships(ownerships);
+
+        daiDemoPool = _deployDemoPool(
+            "daiDemoPool",
+            DAI_ADDRESS,
+            DAI_ETH_AGG_ADDRESS
+        );
+
+        usdcDemoPool = _deployDemoPool(
+            "usdcDemoPool",
+            USDC_ADDRESS,
+            USDC_ETH_AGG_ADDRESS
+        );
+
+        usdtDemoPool = _deployDemoPool(
+            "usdtDemoPool",
+            USDT_ADDRESS,
+            USDT_ETH_AGG_ADDRESS
         );
     }
 
@@ -550,16 +553,21 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         );
     }
 
-    function _deployDemoPool(address token, bytes32 id)
-        internal
-        returns (address)
-    {
+    /**
+     * @dev Deploys only the V1 pool.  Pool upgrader should be used
+     * to upgrade to V2.
+     */
+    function _deployDemoPool(
+        bytes32 id,
+        address token,
+        address agg
+    ) internal returns (address) {
         bytes memory initData =
             abi.encodeWithSelector(
-                PoolTokenV2.initialize.selector,
+                PoolToken.initialize.selector,
                 POOL_PROXY_ADMIN,
                 token,
-                FAKE_AGG_ADDRESS
+                agg
             );
 
         address proxy =
@@ -568,28 +576,6 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
                 POOL_PROXY_ADMIN,
                 initData
             );
-
-        bytes memory v2initData =
-            abi.encodeWithSelector(
-                PoolTokenV2.initializeUpgrade.selector,
-                address(addressRegistry)
-            );
-        bytes memory execData =
-            abi.encodeWithSelector(
-                ProxyAdmin.upgradeAndCall.selector,
-                proxy,
-                poolTokenV2,
-                v2initData
-            );
-        require(
-            IGnosisModuleManager(emergencySafe).execTransactionFromModule(
-                POOL_PROXY_ADMIN,
-                0, // value
-                execData,
-                Enum.Operation.Call
-            ),
-            "SAFE_TX_FAILED"
-        );
 
         _registerAddress(id, proxy);
 

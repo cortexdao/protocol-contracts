@@ -220,14 +220,14 @@ describe("Contract: OracleAdapter", () => {
     );
 
     // need some test setup to pass the pre-step checks
-    await alphaDeployment.testSetStep(6);
+    await alphaDeployment.testSetStep(4);
     await alphaDeployment.testSetMapt(mApt.address);
     await alphaDeployment.testSetLpAccount(lpAccount.address);
     await alphaDeployment.testSetTvlManager(tvlManager.address);
     await alphaDeployment.testSetErc20Allocation(erc20Allocation.address);
     await addressRegistry.mock.owner.returns(emergencySafe.address);
 
-    await alphaDeployment.deploy_6_OracleAdapter();
+    await alphaDeployment.deploy_4_OracleAdapter();
 
     const oracleAdapterAddress = await alphaDeployment.oracleAdapter();
     const oracleAdapter = await ethers.getContractAt(

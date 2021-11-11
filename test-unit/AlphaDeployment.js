@@ -255,141 +255,7 @@ describe("Contract: AlphaDeployment", () => {
     expect(await alphaDeployment.mApt()).to.equal(mAptAddress);
   });
 
-  it("deploy_2_PoolTokenV2_logic", async () => {
-    // need to mock logic storage init
-    const logicV2 = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("PoolTokenV2").abi
-    );
-    await logicV2.mock.initialize.returns();
-    // mock the v2 logic create
-    const poolTokenV2Factory = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("PoolTokenV2Factory").abi
-    );
-    await poolTokenV2Factory.mock.create.returns(logicV2.address);
-
-    const alphaDeployment = await expect(
-      AlphaDeployment.deploy(
-        MOCK_CONTRACT_ADDRESS, // proxy factory
-        MOCK_CONTRACT_ADDRESS, // address registry v2 factory
-        MOCK_CONTRACT_ADDRESS, // mAPT factory
-        MOCK_CONTRACT_ADDRESS, // pool token v1 factory
-        poolTokenV2Factory.address, // pool token v2 factory
-        MOCK_CONTRACT_ADDRESS, // tvl manager factory
-        MOCK_CONTRACT_ADDRESS, // erc20 allocation factory
-        MOCK_CONTRACT_ADDRESS, // oracle adapter factory
-        MOCK_CONTRACT_ADDRESS // lp account factory
-      )
-    ).to.not.be.reverted;
-
-    // for step check
-    await alphaDeployment.testSetStep(2);
-
-    // check address set properly
-    expect(await alphaDeployment.poolTokenV2()).to.equal(ZERO_ADDRESS);
-    // await expect(alphaDeployment.deploy_2_PoolTokenV2_logic()).to.not.be
-    //   .reverted;
-    await alphaDeployment.deploy_2_PoolTokenV2_logic();
-    expect(await alphaDeployment.poolTokenV2()).to.equal(logicV2.address);
-  });
-
-  it("deploy_3_DemoPools", async () => {
-    // mock the v1 proxy create
-    const demoPoolAddress = (await deployMockContract(deployer, [])).address;
-    const poolTokenV1Factory = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("PoolTokenV1Factory").abi
-    );
-    await poolTokenV1Factory.mock.create.returns(demoPoolAddress);
-
-    // need to mock logic storage init
-    const logicV2 = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("PoolTokenV2").abi
-    );
-    await logicV2.mock.initialize.returns();
-    // mock the v2 logic create
-    const poolTokenV2Factory = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("PoolTokenV2Factory").abi
-    );
-    await poolTokenV2Factory.mock.create.returns(logicV2.address);
-
-    const alphaDeployment = await expect(
-      AlphaDeployment.deploy(
-        MOCK_CONTRACT_ADDRESS, // proxy factory
-        MOCK_CONTRACT_ADDRESS, // address registry v2 factory
-        MOCK_CONTRACT_ADDRESS, // mAPT factory
-        poolTokenV1Factory.address, // pool token v1 factory
-        poolTokenV2Factory.address, // pool token v2 factory
-        MOCK_CONTRACT_ADDRESS, // tvl manager factory
-        MOCK_CONTRACT_ADDRESS, // erc20 allocation factory
-        MOCK_CONTRACT_ADDRESS, // oracle adapter factory
-        MOCK_CONTRACT_ADDRESS // lp account factory
-      )
-    ).to.not.be.reverted;
-
-    // for step check
-    await alphaDeployment.testSetStep(3);
-
-    // for deployed address check
-    const mAptAddress = (await deployMockContract(deployer, [])).address;
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("mApt"))
-      .returns(mAptAddress);
-    await alphaDeployment.testSetMapt(mAptAddress);
-
-    // for ownership check
-    await addressRegistry.mock.owner.returns(emergencySafe.address);
-    await addressRegistryProxyAdmin.mock.owner.returns(emergencySafe.address);
-
-    // check for address registrations
-    // DAI
-    let data = await encodeRegisterAddress("daiDemoPool", demoPoolAddress);
-    await emergencySafe.mock.execTransactionFromModule
-      .withArgs(addressRegistry.address, 0, data, CALL)
-      .revertsWithReason("ADDRESS_REGISTERED");
-    await expect(alphaDeployment.deploy_3_DemoPools()).to.be.revertedWith(
-      "ADDRESS_REGISTERED"
-    );
-    await emergencySafe.mock.execTransactionFromModule
-      .withArgs(addressRegistry.address, 0, data, CALL)
-      .returns(true);
-    // USDC
-    data = await encodeRegisterAddress("usdcDemoPool", demoPoolAddress);
-    await emergencySafe.mock.execTransactionFromModule
-      .withArgs(addressRegistry.address, 0, data, CALL)
-      .revertsWithReason("ADDRESS_REGISTERED");
-    await expect(alphaDeployment.deploy_3_DemoPools()).to.be.revertedWith(
-      "ADDRESS_REGISTERED"
-    );
-    await emergencySafe.mock.execTransactionFromModule
-      .withArgs(addressRegistry.address, 0, data, CALL)
-      .returns(true);
-    // USDT
-    data = await encodeRegisterAddress("usdtDemoPool", demoPoolAddress);
-    await emergencySafe.mock.execTransactionFromModule
-      .withArgs(addressRegistry.address, 0, data, CALL)
-      .revertsWithReason("ADDRESS_REGISTERED");
-    await expect(alphaDeployment.deploy_3_DemoPools()).to.be.revertedWith(
-      "ADDRESS_REGISTERED"
-    );
-    await emergencySafe.mock.execTransactionFromModule
-      .withArgs(addressRegistry.address, 0, data, CALL)
-      .returns(true);
-
-    // check address set properly
-    expect(await alphaDeployment.daiDemoPool()).to.equal(ZERO_ADDRESS);
-    expect(await alphaDeployment.usdcDemoPool()).to.equal(ZERO_ADDRESS);
-    expect(await alphaDeployment.usdtDemoPool()).to.equal(ZERO_ADDRESS);
-    await expect(alphaDeployment.deploy_3_DemoPools()).to.not.be.reverted;
-    expect(await alphaDeployment.daiDemoPool()).to.equal(demoPoolAddress);
-    expect(await alphaDeployment.usdcDemoPool()).to.equal(demoPoolAddress);
-    expect(await alphaDeployment.usdtDemoPool()).to.equal(demoPoolAddress);
-  });
-
-  it("deploy_4_TvlManager", async () => {
+  it("deploy_2_TvlManager", async () => {
     // mock erc20 allocation
     const erc20AllocationFactory = await deployMockContract(
       deployer,
@@ -435,7 +301,7 @@ describe("Contract: AlphaDeployment", () => {
     ).to.not.be.reverted;
 
     // for step check
-    await alphaDeployment.testSetStep(4);
+    await alphaDeployment.testSetStep(2);
 
     // for ownership check
     await addressRegistry.mock.owner.returns(emergencySafe.address);
@@ -446,7 +312,7 @@ describe("Contract: AlphaDeployment", () => {
     await emergencySafe.mock.execTransactionFromModule
       .withArgs(addressRegistry.address, 0, data, CALL)
       .revertsWithReason("ADDRESS_REGISTERED");
-    await expect(alphaDeployment.deploy_4_TvlManager()).to.be.revertedWith(
+    await expect(alphaDeployment.deploy_2_TvlManager()).to.be.revertedWith(
       "ADDRESS_REGISTERED"
     );
     await emergencySafe.mock.execTransactionFromModule
@@ -460,7 +326,7 @@ describe("Contract: AlphaDeployment", () => {
     await emergencySafe.mock.execTransactionFromModule
       .withArgs(addressRegistry.address, 0, data, CALL)
       .revertsWithReason("ADDRESS_REGISTERED");
-    await expect(alphaDeployment.deploy_4_TvlManager()).to.be.revertedWith(
+    await expect(alphaDeployment.deploy_2_TvlManager()).to.be.revertedWith(
       "ADDRESS_REGISTERED"
     );
     await emergencySafe.mock.execTransactionFromModule
@@ -470,14 +336,14 @@ describe("Contract: AlphaDeployment", () => {
     // check TVL Manager and ERC20 Alloction addresses set properly
     expect(await alphaDeployment.tvlManager()).to.equal(ZERO_ADDRESS);
     expect(await alphaDeployment.erc20Allocation()).to.equal(ZERO_ADDRESS);
-    await expect(alphaDeployment.deploy_4_TvlManager()).to.not.be.reverted;
+    await expect(alphaDeployment.deploy_2_TvlManager()).to.not.be.reverted;
     expect(await alphaDeployment.tvlManager()).to.equal(tvlManager.address);
     expect(await alphaDeployment.erc20Allocation()).to.equal(
       erc20Allocation.address
     );
   });
 
-  it("deploy_5_LpAccount", async () => {
+  it("deploy_3_LpAccount", async () => {
     const lpAccountAddress = (await deployMockContract(deployer, [])).address;
     const lpAccountFactory = await deployMockContract(
       deployer,
@@ -500,7 +366,7 @@ describe("Contract: AlphaDeployment", () => {
     ).to.not.be.reverted;
 
     // for step check
-    await alphaDeployment.testSetStep(5);
+    await alphaDeployment.testSetStep(3);
 
     // for deployed address check:
     const mAptAddress = (await deployMockContract(deployer, [])).address;
@@ -517,7 +383,7 @@ describe("Contract: AlphaDeployment", () => {
     await emergencySafe.mock.execTransactionFromModule
       .withArgs(addressRegistry.address, 0, data, CALL)
       .revertsWithReason("ADDRESS_REGISTERED");
-    await expect(alphaDeployment.deploy_5_LpAccount()).to.be.revertedWith(
+    await expect(alphaDeployment.deploy_3_LpAccount()).to.be.revertedWith(
       "ADDRESS_REGISTERED"
     );
     await emergencySafe.mock.execTransactionFromModule
@@ -526,11 +392,11 @@ describe("Contract: AlphaDeployment", () => {
 
     // check address set properly
     expect(await alphaDeployment.lpAccount()).to.equal(ZERO_ADDRESS);
-    await expect(alphaDeployment.deploy_5_LpAccount()).to.not.be.reverted;
+    await expect(alphaDeployment.deploy_3_LpAccount()).to.not.be.reverted;
     expect(await alphaDeployment.lpAccount()).to.equal(lpAccountAddress);
   });
 
-  it("deploy_6_OracleAdapter", async () => {
+  it("deploy_4_OracleAdapter", async () => {
     const oracleAdapterFactory = await deployMockContract(
       deployer,
       artifacts.readArtifactSync("OracleAdapterFactory").abi
@@ -556,7 +422,7 @@ describe("Contract: AlphaDeployment", () => {
     ).to.not.be.reverted;
 
     // for step check
-    await alphaDeployment.testSetStep(6);
+    await alphaDeployment.testSetStep(4);
 
     // for deployed address check:
     // 1. deploy and register mock mAPT
@@ -596,7 +462,7 @@ describe("Contract: AlphaDeployment", () => {
     await emergencySafe.mock.execTransactionFromModule
       .withArgs(addressRegistry.address, 0, data, CALL)
       .revertsWithReason("ADDRESS_REGISTERED");
-    await expect(alphaDeployment.deploy_6_OracleAdapter()).to.be.revertedWith(
+    await expect(alphaDeployment.deploy_4_OracleAdapter()).to.be.revertedWith(
       "ADDRESS_REGISTERED"
     );
     await emergencySafe.mock.execTransactionFromModule
@@ -612,7 +478,7 @@ describe("Contract: AlphaDeployment", () => {
     await adminSafe.mock.execTransactionFromModule
       .withArgs(tvlManagerAddress, 0, encodedRegisterAllocation, CALL)
       .revertsWithReason("ERC20_ALLOCATION_REGISTERED");
-    await expect(alphaDeployment.deploy_6_OracleAdapter()).to.be.revertedWith(
+    await expect(alphaDeployment.deploy_4_OracleAdapter()).to.be.revertedWith(
       "ERC20_ALLOCATION_REGISTERED"
     );
     await adminSafe.mock.execTransactionFromModule
@@ -621,10 +487,104 @@ describe("Contract: AlphaDeployment", () => {
 
     // check Oracle Adapter address set properly
     expect(await alphaDeployment.oracleAdapter()).to.equal(ZERO_ADDRESS);
-    await expect(alphaDeployment.deploy_6_OracleAdapter()).to.not.be.reverted;
+    await expect(alphaDeployment.deploy_4_OracleAdapter()).to.not.be.reverted;
     expect(await alphaDeployment.oracleAdapter()).to.equal(
       oracleAdapter.address
     );
+  });
+
+  it("deploy_5_DemoPools", async () => {
+    // mock the v1 proxy create
+    const demoPoolAddress = (await deployMockContract(deployer, [])).address;
+    const poolTokenV1Factory = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("PoolTokenV1Factory").abi
+    );
+    await poolTokenV1Factory.mock.create.returns(demoPoolAddress);
+
+    // need to mock logic storage init
+    const logicV2 = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("PoolTokenV2").abi
+    );
+    await logicV2.mock.initialize.returns();
+    // mock the v2 logic create
+    const poolTokenV2Factory = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("PoolTokenV2Factory").abi
+    );
+    await poolTokenV2Factory.mock.create.returns(logicV2.address);
+
+    const alphaDeployment = await expect(
+      AlphaDeployment.deploy(
+        MOCK_CONTRACT_ADDRESS, // proxy factory
+        MOCK_CONTRACT_ADDRESS, // address registry v2 factory
+        MOCK_CONTRACT_ADDRESS, // mAPT factory
+        poolTokenV1Factory.address, // pool token v1 factory
+        poolTokenV2Factory.address, // pool token v2 factory
+        MOCK_CONTRACT_ADDRESS, // tvl manager factory
+        MOCK_CONTRACT_ADDRESS, // erc20 allocation factory
+        MOCK_CONTRACT_ADDRESS, // oracle adapter factory
+        MOCK_CONTRACT_ADDRESS // lp account factory
+      )
+    ).to.not.be.reverted;
+
+    // for step check
+    await alphaDeployment.testSetStep(5);
+
+    // for deployed address check
+    const mAptAddress = (await deployMockContract(deployer, [])).address;
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("mApt"))
+      .returns(mAptAddress);
+    await alphaDeployment.testSetMapt(mAptAddress);
+
+    // for ownership check
+    await addressRegistry.mock.owner.returns(emergencySafe.address);
+
+    // check for address registrations
+    // DAI
+    let data = await encodeRegisterAddress("daiDemoPool", demoPoolAddress);
+    await emergencySafe.mock.execTransactionFromModule
+      .withArgs(addressRegistry.address, 0, data, CALL)
+      .revertsWithReason("ADDRESS_REGISTERED");
+    await expect(alphaDeployment.deploy_5_DemoPools()).to.be.revertedWith(
+      "ADDRESS_REGISTERED"
+    );
+    await emergencySafe.mock.execTransactionFromModule
+      .withArgs(addressRegistry.address, 0, data, CALL)
+      .returns(true);
+    // USDC
+    data = await encodeRegisterAddress("usdcDemoPool", demoPoolAddress);
+    await emergencySafe.mock.execTransactionFromModule
+      .withArgs(addressRegistry.address, 0, data, CALL)
+      .revertsWithReason("ADDRESS_REGISTERED");
+    await expect(alphaDeployment.deploy_5_DemoPools()).to.be.revertedWith(
+      "ADDRESS_REGISTERED"
+    );
+    await emergencySafe.mock.execTransactionFromModule
+      .withArgs(addressRegistry.address, 0, data, CALL)
+      .returns(true);
+    // USDT
+    data = await encodeRegisterAddress("usdtDemoPool", demoPoolAddress);
+    await emergencySafe.mock.execTransactionFromModule
+      .withArgs(addressRegistry.address, 0, data, CALL)
+      .revertsWithReason("ADDRESS_REGISTERED");
+    await expect(alphaDeployment.deploy_5_DemoPools()).to.be.revertedWith(
+      "ADDRESS_REGISTERED"
+    );
+    await emergencySafe.mock.execTransactionFromModule
+      .withArgs(addressRegistry.address, 0, data, CALL)
+      .returns(true);
+
+    // check address set properly
+    expect(await alphaDeployment.daiDemoPool()).to.equal(ZERO_ADDRESS);
+    expect(await alphaDeployment.usdcDemoPool()).to.equal(ZERO_ADDRESS);
+    expect(await alphaDeployment.usdtDemoPool()).to.equal(ZERO_ADDRESS);
+    await expect(alphaDeployment.deploy_5_DemoPools()).to.not.be.reverted;
+    expect(await alphaDeployment.daiDemoPool()).to.equal(demoPoolAddress);
+    expect(await alphaDeployment.usdcDemoPool()).to.equal(demoPoolAddress);
+    expect(await alphaDeployment.usdtDemoPool()).to.equal(demoPoolAddress);
   });
 
   describe("Factory setters", async () => {
