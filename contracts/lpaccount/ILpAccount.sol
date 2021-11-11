@@ -27,9 +27,16 @@ interface ILpAccount {
         uint8 index
     ) external;
 
+    /**
+     * @notice Unwind liquidity with a registered `IZap`
+     * @dev The index should match the order of `IZap.sortedSymbols`
+     * @param name The name of the `IZap`
+     * @param portion The portion of the amount of the LP token balance to unwind
+     * @param index The index of the token to unwind
+     */
     function unwindStrategyPercent(
         string calldata name,
-        uint256 percent,
+        uint256 portion,
         uint8 index
     ) external;
 
