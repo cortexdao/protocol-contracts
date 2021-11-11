@@ -1373,6 +1373,64 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
           mApt.withdrawFromLpAccount([usdcPoolId])
         ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
       });
+
+      it("Can withdraw the full TVL by setting high reserve pool size", async () => {
+        const amount = "1500";
+
+        const daiDecimals = 18;
+        const daiDeposit = tokenAmountToBigNumber(amount, daiDecimals);
+        await daiToken.approve(daiPool.address, daiDeposit);
+        await daiPool.addLiquidity(daiDeposit);
+        const daiTopUp = await daiPool.getReserveTopUpValue();
+
+        const usdcDecimals = 6;
+        const usdcDeposit = tokenAmountToBigNumber(amount, usdcDecimals);
+        await usdcToken.approve(usdcPool.address, usdcDeposit);
+        await usdcPool.addLiquidity(usdcDeposit);
+        const usdcTopUp = await usdcPool.getReserveTopUpValue();
+
+        const usdtDecimals = 6;
+        const usdtDeposit = tokenAmountToBigNumber(amount, usdtDecimals);
+        await usdtToken.approve(usdtPool.address, usdtDeposit);
+        await usdtPool.addLiquidity(usdtDeposit);
+        const usdtTopUp = await usdtPool.getReserveTopUpValue();
+
+        await mApt.fundLpAccount([daiPoolId, usdcPoolId, tetherPoolId]);
+
+        const reservePoolSize = ethers.BigNumber.from("1000000000000000000");
+
+        await updateTvlAfterTransfer(daiPool, daiTopUp);
+        const prevLpDaiBalance = await daiToken.balanceOf(lpAccount.address);
+        await daiPool.connect(adminSafe).setReservePercentage(reservePoolSize);
+        expect(prevLpDaiBalance).to.equal(daiTopUp.abs());
+
+        await updateTvlAfterTransfer(usdcPool, usdcTopUp);
+        const prevLpUsdcBalance = await usdcToken.balanceOf(lpAccount.address);
+        await usdcPool.connect(adminSafe).setReservePercentage(reservePoolSize);
+        expect(prevLpUsdcBalance).to.equal(usdcTopUp.abs());
+
+        await updateTvlAfterTransfer(usdtPool, usdtTopUp);
+        const prevLpUsdtBalance = await usdtToken.balanceOf(lpAccount.address);
+        await usdtPool.connect(adminSafe).setReservePercentage(reservePoolSize);
+        expect(prevLpUsdtBalance).to.equal(usdtTopUp.abs());
+
+        await mApt.withdrawFromLpAccount([daiPoolId, usdcPoolId, tetherPoolId]);
+
+        const newLpDaiBalance = await daiToken.balanceOf(lpAccount.address);
+        expect(newLpDaiBalance).to.be.lte(
+          tokenAmountToBigNumber("0.0000001", daiDecimals)
+        );
+
+        const newLpUsdcBalance = await usdcToken.balanceOf(lpAccount.address);
+        expect(newLpUsdcBalance).to.be.lte(
+          tokenAmountToBigNumber("0.000001", usdcDecimals)
+        );
+
+        const newLpUsdtBalance = await usdtToken.balanceOf(lpAccount.address);
+        expect(newLpUsdtBalance).to.be.lte(
+          tokenAmountToBigNumber("0.000001", usdtDecimals)
+        );
+      });
     });
   });
 });
