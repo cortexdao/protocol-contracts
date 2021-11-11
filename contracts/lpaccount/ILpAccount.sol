@@ -27,6 +27,12 @@ interface ILpAccount {
         uint8 index
     ) external;
 
+    function unwindStrategyPercent(
+        string calldata name,
+        uint256 percent,
+        uint8 index
+    ) external;
+
     /**
      * @notice Return liquidity to a pool
      * @notice Typically used to refill a liquidity pool's reserve

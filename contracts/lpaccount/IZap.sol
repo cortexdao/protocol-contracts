@@ -33,6 +33,8 @@ interface IZap is INameIdentifier {
      */
     function claim() external;
 
+    function getLpTokenBalance() external view returns (uint256);
+
     /**
      * @notice Order of tokens for deploy `amounts` and unwind `index`
      * @dev Implementation should use human readable symbols

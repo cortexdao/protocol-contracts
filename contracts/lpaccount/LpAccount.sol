@@ -10,7 +10,8 @@ import {
 import {
     Address,
     NamedAddressSet,
-    SafeERC20
+    SafeERC20,
+    SafeMath
 } from "contracts/libraries/Imports.sol";
 import {
     Initializable,
@@ -50,6 +51,7 @@ contract LpAccount is
     using SafeERC20 for IERC20;
     using NamedAddressSet for NamedAddressSet.ZapSet;
     using NamedAddressSet for NamedAddressSet.SwapSet;
+    using SafeMath for uint256;
 
     IStableSwap3Pool private constant _STABLE_SWAP_3POOL =
         IStableSwap3Pool(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
@@ -166,6 +168,25 @@ contract LpAccount is
         zap.functionDelegateCall(
             abi.encodeWithSelector(IZap.unwindLiquidity.selector, amount, index)
         );
+        _lockOracleAdapter(lockPeriod);
+    }
+
+    function unwindStrategyPercent(
+        string calldata name,
+        uint256 portion,
+        uint8 index
+    ) external override nonReentrant onlyLpRole {
+        uint256 _WHOLE = 10**18;
+        address zap = address(_zaps.get(name));
+        require(zap != address(0), "INVALID_NAME");
+        require(portion <= _WHOLE, "INVALID_PERCENT");
+
+        uint256 amount = IZap(zap).getLpTokenBalance().mul(portion).div(_WHOLE);
+
+        zap.functionDelegateCall(
+            abi.encodeWithSelector(IZap.unwindLiquidity.selector, amount, index)
+        );
+
         _lockOracleAdapter(lockPeriod);
     }
 

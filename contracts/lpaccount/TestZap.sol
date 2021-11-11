@@ -40,6 +40,10 @@ contract TestZap is IZap, TestLpAccountStorage {
         return _sortedSymbols;
     }
 
+    function getLpTokenBalance() external view override returns (uint256) {
+        return 444;
+    }
+
     function assetAllocations()
         external
         view
