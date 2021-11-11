@@ -388,11 +388,23 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
         ownerships[0] = ADDRESS_REGISTRY_PROXY;
         checkOwnerships(ownerships);
 
-        daiDemoPool = _deployDemoPool(DAI_ADDRESS, "daiDemoPool");
+        daiDemoPool = _deployDemoPool(
+            "daiDemoPool",
+            DAI_ADDRESS,
+            DAI_ETH_AGG_ADDRESS
+        );
 
-        usdcDemoPool = _deployDemoPool(USDC_ADDRESS, "usdcDemoPool");
+        usdcDemoPool = _deployDemoPool(
+            "usdcDemoPool",
+            USDC_ADDRESS,
+            USDC_ETH_AGG_ADDRESS
+        );
 
-        usdtDemoPool = _deployDemoPool(USDT_ADDRESS, "usdtDemoPool");
+        usdtDemoPool = _deployDemoPool(
+            "usdtDemoPool",
+            USDT_ADDRESS,
+            USDT_ETH_AGG_ADDRESS
+        );
     }
 
     function setProxyFactory(address proxyFactory_) public onlyOwner {
@@ -546,16 +558,17 @@ contract AlphaDeployment is Ownable, DeploymentConstants {
      * @dev Deploys only the V1 pool.  Pool upgrader should be used
      * to upgrade to V2.
      */
-    function _deployDemoPool(address token, bytes32 id)
-        internal
-        returns (address)
-    {
+    function _deployDemoPool(
+        bytes32 id,
+        address token,
+        address agg
+    ) internal returns (address) {
         bytes memory initData =
             abi.encodeWithSelector(
                 PoolToken.initialize.selector,
                 POOL_PROXY_ADMIN,
                 token,
-                FAKE_AGG_ADDRESS
+                agg
             );
 
         address proxy =
