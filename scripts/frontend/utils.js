@@ -66,6 +66,10 @@ function getDemoPoolIds() {
   ];
 }
 
+function getPoolIds() {
+  return [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")];
+}
+
 async function getStablecoin(symbol) {
   const NETWORK = "MAINNET";
   const address = getStablecoinAddress(symbol, NETWORK);
@@ -90,6 +94,7 @@ module.exports = {
   getAddressRegistry,
   getRegisteredContract,
   getDemoPoolIds,
+  getPoolIds,
   getStablecoin,
   unlockOracleAdapter,
 };

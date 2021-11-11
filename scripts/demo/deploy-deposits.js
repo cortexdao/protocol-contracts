@@ -1,13 +1,20 @@
 const _ = require("lodash");
+const { argv } = require("yargs").option("production", {
+  type: "boolean",
+  default: false,
+  description:
+    "Set to true to the production pools, false to use the demo pools",
+});
 const {
   impersonateLpSafe,
   getRegisteredContract,
   getDemoPoolIds,
+  getPoolIds,
   getStablecoin,
   unlockOracleAdapter,
 } = require("../frontend/utils");
 
-async function main() {
+async function main(argv) {
   const oracleAdapter = await getRegisteredContract("oracleAdapter");
   const isLocked = await oracleAdapter.isLocked();
 
@@ -19,7 +26,14 @@ async function main() {
   const lpSafe = await impersonateLpSafe();
   const mapt = await getRegisteredContract("mApt", lpSafe);
 
-  const poolIds = getDemoPoolIds();
+  let poolIds;
+  if (argv.production) {
+    poolIds = getPoolIds();
+  } else {
+    poolIds = getDemoPoolIds();
+  }
+
+  console.log("Funding LP Account...");
   await mapt.fundLpAccount(poolIds);
 
   // This won't be necessary when the LpAccount is updated to handle shortened locks
@@ -30,41 +44,63 @@ async function main() {
 
   const strategyNames = [
     "curve-aave",
-    //"curve-saave", // Doesn't support USDC
+    "curve-saave",
     "curve-susdv2",
     "curve-usdt",
     "curve-compound",
     "curve-frax",
   ];
 
+  const dai = await getStablecoin("DAI");
+  const daiBalance = await dai.balanceOf(lpAccount.address);
+  const daiAmount = daiBalance.div(strategyNames.length);
+
   const usdc = await getStablecoin("USDC");
   const usdcBalance = await usdc.balanceOf(lpAccount.address);
-  const amount = usdcBalance.div(strategyNames.length);
+  const usdcAmount = usdcBalance.div(strategyNames.length - 1);
+
+  const usdt = await getStablecoin("USDT");
+  const usdtBalance = await usdt.balanceOf(lpAccount.address);
+  const usdtAmount = usdtBalance.div(strategyNames.length - 2);
 
   const strategyAmounts = [
-    [0, amount, 0],
-    //"curve-saave", // Doesn't support USDC
-    [0, amount, 0, 0],
-    [0, amount, 0],
-    [0, amount],
-    [0, 0, amount, 0],
+    [daiAmount, usdcAmount, usdtAmount],
+    [daiAmount, 0],
+    [daiAmount, usdcAmount, usdtAmount, 0],
+    [daiAmount, usdcAmount, usdtAmount],
+    [daiAmount, usdcAmount],
+    [0, daiAmount, usdcAmount, usdtAmount],
   ];
 
   const strategies = _.zip(strategyNames, strategyAmounts);
 
-  await Promise.all(
-    strategies.map(async ([name, amounts]) => {
-      console.log(`Deploying ${amount.toString()} to ${name}...`);
+  if (argv.production) {
+    for (const i in strategies) {
+      const [name, amounts] = strategies[i];
+      console.log(
+        `Deploying ${amounts.map((a) => a.toString()).toString()} to ${name}...`
+      );
       await lpAccount.deployStrategy(name, amounts);
-    })
-  );
+    }
+  } else {
+    await Promise.all(
+      strategies.map(async ([name, amounts]) => {
+        console.log(
+          `Deploying ${amounts
+            .map((a) => a.toString())
+            .toString()} to ${name}...`
+        );
+        await lpAccount.deployStrategy(name, amounts);
+      })
+    );
+  }
 
   console.log("Unlocking the oracle adapter after deploy...");
   await unlockOracleAdapter();
 }
 
 if (!module.parent) {
-  main()
+  main(argv)
     .then(() => {
       console.log("");
       console.log("New deposits are deployed.");
