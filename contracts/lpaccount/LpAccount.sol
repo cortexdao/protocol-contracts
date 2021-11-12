@@ -162,7 +162,7 @@ contract LpAccount is
         uint256 amount,
         uint8 index
     ) external override nonReentrant onlyLpRole {
-        _unwindStrategy(name, amount, index);
+        _unwindStrategy(address(_zaps.get(name)), amount, index);
     }
 
     function unwindStrategyPercent(
@@ -172,8 +172,9 @@ contract LpAccount is
     ) external override nonReentrant onlyLpRole {
         uint256 _WHOLE = 10**18;
         require(portion <= _WHOLE, "INVALID_PERCENT");
+        address zap = address(_zaps.get(name));
         uint256 amount = IZap(zap).getLpTokenBalance().mul(portion).div(_WHOLE);
-        _unwindStrategy(name, amount, index);
+        _unwindStrategy(zap, amount, index);
     }
 
     function registerZap(IZap zap)
@@ -339,24 +340,22 @@ contract LpAccount is
         // solhint-enable no-empty-blocks
     }
 
-    function _setAddressRegistry(address addressRegistry_) internal {
-        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistryV2(addressRegistry_);
-        emit AddressRegistryChanged(addressRegistry_);
-    }
-
     function _unwindStrategy(
-        string calldata name,
+        address zap,
         uint256 amount,
         uint8 index
     ) internal {
-        address zap = address(_zaps.get(name));
         require(zap != address(0), "INVALID_NAME");
-
         zap.functionDelegateCall(
             abi.encodeWithSelector(IZap.unwindLiquidity.selector, amount, index)
         );
         _lockOracleAdapter(lockPeriod);
+    }
+
+    function _setAddressRegistry(address addressRegistry_) internal {
+        require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
+        addressRegistry = IAddressRegistryV2(addressRegistry_);
+        emit AddressRegistryChanged(addressRegistry_);
     }
 
     /**
