@@ -38,7 +38,7 @@ const usdcPoolId = bytes32("usdcPool");
 const tetherPoolId = bytes32("usdtPool");
 const ids = [daiPoolId, usdcPoolId, tetherPoolId];
 
-describe("Contract: MetaPoolToken - funding and withdrawing", () => {
+describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
   // to-be-deployed contracts
   let tvlManager;
   let mApt;
@@ -1375,44 +1375,57 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
       });
 
       it("Can withdraw the full TVL by setting high reserve pool size", async () => {
+        await timeMachine.revertToSnapshot(snapshotId);
+
         const amount = "1500";
 
         const daiDecimals = 18;
         const daiDeposit = tokenAmountToBigNumber(amount, daiDecimals);
         await daiToken.approve(daiPool.address, daiDeposit);
         await daiPool.addLiquidity(daiDeposit);
-        const daiTopUp = await daiPool.getReserveTopUpValue();
+        const startLpDaiBalance = await daiToken.balanceOf(lpAccount.address);
 
         const usdcDecimals = 6;
         const usdcDeposit = tokenAmountToBigNumber(amount, usdcDecimals);
         await usdcToken.approve(usdcPool.address, usdcDeposit);
         await usdcPool.addLiquidity(usdcDeposit);
-        const usdcTopUp = await usdcPool.getReserveTopUpValue();
+        const startLpUsdcBalance = await usdcToken.balanceOf(lpAccount.address);
 
         const usdtDecimals = 6;
         const usdtDeposit = tokenAmountToBigNumber(amount, usdtDecimals);
         await usdtToken.approve(usdtPool.address, usdtDeposit);
         await usdtPool.addLiquidity(usdtDeposit);
-        const usdtTopUp = await usdtPool.getReserveTopUpValue();
+        const startLpUsdtBalance = await usdtToken.balanceOf(lpAccount.address);
 
-        await mApt.fundLpAccount([daiPoolId, usdcPoolId, tetherPoolId]);
+        const poolIds = [daiPoolId, usdcPoolId, tetherPoolId];
+
+        const [, [daiTopUp, usdcTopUp, usdtTopUp]] =
+          await mApt.getRebalanceAmounts(poolIds);
+
+        await mApt.fundLpAccount(poolIds);
 
         const reservePoolSize = ethers.BigNumber.from("1000000000000000000");
 
-        await updateTvlAfterTransfer(daiPool, daiTopUp);
         const prevLpDaiBalance = await daiToken.balanceOf(lpAccount.address);
+        expect(prevLpDaiBalance.sub(startLpDaiBalance)).to.equal(
+          daiTopUp.abs()
+        );
+        await updateTvlAfterTransfer(daiPool, daiTopUp);
         await daiPool.connect(adminSafe).setReservePercentage(reservePoolSize);
-        expect(prevLpDaiBalance).to.equal(daiTopUp.abs());
 
-        await updateTvlAfterTransfer(usdcPool, usdcTopUp);
         const prevLpUsdcBalance = await usdcToken.balanceOf(lpAccount.address);
+        expect(prevLpUsdcBalance.sub(startLpUsdcBalance)).to.equal(
+          usdcTopUp.abs()
+        );
+        await updateTvlAfterTransfer(usdcPool, usdcTopUp);
         await usdcPool.connect(adminSafe).setReservePercentage(reservePoolSize);
-        expect(prevLpUsdcBalance).to.equal(usdcTopUp.abs());
 
-        await updateTvlAfterTransfer(usdtPool, usdtTopUp);
         const prevLpUsdtBalance = await usdtToken.balanceOf(lpAccount.address);
+        expect(prevLpUsdtBalance.sub(startLpUsdtBalance)).to.equal(
+          usdtTopUp.abs()
+        );
+        await updateTvlAfterTransfer(usdtPool, usdtTopUp);
         await usdtPool.connect(adminSafe).setReservePercentage(reservePoolSize);
-        expect(prevLpUsdtBalance).to.equal(usdtTopUp.abs());
 
         await mApt.withdrawFromLpAccount([daiPoolId, usdcPoolId, tetherPoolId]);
 
