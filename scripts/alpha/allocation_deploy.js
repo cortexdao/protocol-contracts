@@ -23,6 +23,11 @@ const { argv } = require("yargs")
     default: true,
     description: "Compile contract using `compile:one`",
   })
+  .option("metapool", {
+    type: "boolean",
+    default: false,
+    description: "Use metapool allocation deploy",
+  })
   .demandOption(["name"]);
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
@@ -74,23 +79,6 @@ async function main(argv) {
 
   let maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
 
-  console.log("Deploying allocation ... ");
-  console.log("");
-
-  const allocationContractFactory = await ethers.getContractFactory(
-    allocationContractName
-  );
-  const allocation = await allocationContractFactory
-    .connect(safeSigner)
-    .deploy({ maxFeePerGas });
-  console.log("Allocation address:", allocation.address);
-  console.log("");
-  await waitForSafeTxDetails(allocation.deployTransaction, safeSigner.service);
-
-  const allocationName = await allocation.NAME();
-  console.log("Registering %s", allocationName);
-  console.log("");
-
   const addressRegistryAddress = getDeployedAddress(
     "AddressRegistryProxy",
     networkName
@@ -104,6 +92,38 @@ async function main(argv) {
     "TvlManager",
     tvlManagerAddress
   );
+
+  console.log("Deploying allocation ... ");
+  console.log("");
+
+  const allocationContractFactory = await ethers.getContractFactory(
+    allocationContractName
+  );
+  const curve3poolAllocationAddress = await tvlManager.getAssetAllocation(
+    "curve-3pool"
+  );
+  let allocation;
+  if (argv.metapool) {
+    allocation = await allocationContractFactory
+      .connect(safeSigner)
+      .deploy(curve3poolAllocationAddress, { maxFeePerGas });
+  } else {
+    allocation = await allocationContractFactory
+      .connect(safeSigner)
+      .deploy({ maxFeePerGas });
+  }
+  console.log("Allocation address:", allocation.address);
+  console.log("");
+  await waitForSafeTxDetails(
+    allocation.deployTransaction,
+    safeSigner.service,
+    5
+  );
+
+  const allocationName = await allocation.NAME();
+  console.log("Registering %s", allocationName);
+  console.log("");
+
   maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
   const allocationAddress = allocation.address;
   const proposedTx = await tvlManager
@@ -112,9 +132,16 @@ async function main(argv) {
   await waitForSafeTxDetails(proposedTx, safeSigner.service, 5);
 
   console.log("Verifying on Etherscan ...");
-  await hre.run("verify:verify", {
-    address: allocationAddress,
-  });
+  if (argv.metapool) {
+    await hre.run("verify:verify", {
+      address: allocationAddress,
+      constructorArguments: [curve3poolAllocationAddress],
+    });
+  } else {
+    await hre.run("verify:verify", {
+      address: allocationAddress,
+    });
+  }
 }
 
 if (!module.parent) {
