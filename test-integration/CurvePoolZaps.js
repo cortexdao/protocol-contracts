@@ -394,6 +394,25 @@ describe("Curve Pool Zaps - LP Account integration", () => {
             expect(afterGaugeLpBalance).to.equal(0);
           });
 
+          it("Get LP token Balance", async () => {
+            const amounts = new Array(numberOfCoins).fill("0");
+            // deposit 1% of the starting amount
+            const underlyerAmount = tokenAmountToBigNumber(
+              startingTokens * 0.01,
+              await underlyerToken.decimals()
+            );
+            amounts[underlyerIndex] = underlyerAmount;
+
+            const name = await zap.NAME();
+            expect(await gauge.balanceOf(lpAccount.address)).to.equal(
+              await lpAccount.getLpTokenBalance(name)
+            );
+            await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
+            expect(await gauge.balanceOf(lpAccount.address)).to.equal(
+              await lpAccount.getLpTokenBalance(name)
+            );
+          });
+
           it("Claim", async () => {
             const erc20s = await zap.erc20Allocations();
 

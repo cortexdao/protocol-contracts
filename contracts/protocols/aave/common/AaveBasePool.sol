@@ -56,6 +56,16 @@ abstract contract AaveBasePool is IZap, AaveConstants {
         controller.claimRewards(assets, amount, address(this));
     }
 
+    function getLpTokenBalance(address account)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        address aTokenAddress = _getATokenAddress(UNDERLYER_ADDRESS);
+        return IERC20(aTokenAddress).balanceOf(account);
+    }
+
     function sortedSymbols() public view override returns (string[] memory) {
         // so we have to hardcode the number here
         string[] memory symbols = new string[](1);

@@ -10,7 +10,8 @@ import {
 import {
     Address,
     NamedAddressSet,
-    SafeERC20
+    SafeERC20,
+    SafeMath
 } from "contracts/libraries/Imports.sol";
 import {
     Initializable,
@@ -50,6 +51,7 @@ contract LpAccount is
     using SafeERC20 for IERC20;
     using NamedAddressSet for NamedAddressSet.ZapSet;
     using NamedAddressSet for NamedAddressSet.SwapSet;
+    using SafeMath for uint256;
 
     IStableSwap3Pool private constant _STABLE_SWAP_3POOL =
         IStableSwap3Pool(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
@@ -162,7 +164,6 @@ contract LpAccount is
     ) external override nonReentrant onlyLpRole {
         address zap = address(_zaps.get(name));
         require(zap != address(0), "INVALID_NAME");
-
         zap.functionDelegateCall(
             abi.encodeWithSelector(IZap.unwindLiquidity.selector, amount, index)
         );
@@ -297,6 +298,26 @@ contract LpAccount is
         token_.safeTransfer(emergencySafe, balance);
 
         emit EmergencyExit(emergencySafe, token_, balance);
+    }
+
+    function getLpTokenBalance(string calldata name)
+        external
+        view
+        returns (uint256 value)
+    {
+        address zap = address(_zaps.get(name));
+        require(zap != address(0), "INVALID_NAME");
+        bytes memory data =
+            zap.functionStaticCall(
+                abi.encodeWithSelector(
+                    IZap.getLpTokenBalance.selector,
+                    address(this)
+                )
+            );
+        // Convert bytes to uint256
+        assembly {
+            value := mload(add(data, 0x20))
+        }
     }
 
     function zapNames() external view override returns (string[] memory) {

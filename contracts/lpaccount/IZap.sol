@@ -34,6 +34,11 @@ interface IZap is INameIdentifier {
     function claim() external;
 
     /**
+     * @notice Retrieves the LP token balance
+     */
+    function getLpTokenBalance(address account) external view returns (uint256);
+
+    /**
      * @notice Order of tokens for deploy `amounts` and unwind `index`
      * @dev Implementation should use human readable symbols
      * @dev Order should be the same for deploy and unwind

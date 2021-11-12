@@ -40,6 +40,15 @@ abstract contract CurveGaugeZapBase is IZap, CurveZapBase {
         GAUGE_ADDRESS = gaugeAddress;
     }
 
+    function getLpTokenBalance(address account)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        return ILiquidityGauge(GAUGE_ADDRESS).balanceOf(account);
+    }
+
     function _depositToGauge() internal override {
         ILiquidityGauge liquidityGauge = ILiquidityGauge(GAUGE_ADDRESS);
         uint256 lpBalance = IERC20(LP_ADDRESS).balanceOf(address(this));
