@@ -57,7 +57,8 @@ abstract contract AaveBasePool is IZap, AaveConstants {
     }
 
     function getLpTokenBalance() external view override returns (uint256) {
-        return IERC20(UNDERLYER_ADDRESS).balanceOf(address(this));
+        address aTokenAddress = _getATokenAddress(UNDERLYER_ADDRESS);
+        return IERC20(aTokenAddress).balanceOf(address(this));
     }
 
     function sortedSymbols() public view override returns (string[] memory) {
