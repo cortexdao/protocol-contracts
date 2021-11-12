@@ -38,7 +38,7 @@ const usdcPoolId = bytes32("usdcPool");
 const tetherPoolId = bytes32("usdtPool");
 const ids = [daiPoolId, usdcPoolId, tetherPoolId];
 
-describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
+describe("Contract: MetaPoolToken - funding and withdrawing", () => {
   // to-be-deployed contracts
   let tvlManager;
   let mApt;
