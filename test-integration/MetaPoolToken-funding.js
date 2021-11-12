@@ -38,7 +38,7 @@ const usdcPoolId = bytes32("usdcPool");
 const tetherPoolId = bytes32("usdtPool");
 const ids = [daiPoolId, usdcPoolId, tetherPoolId];
 
-describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
+describe("Contract: MetaPoolToken - funding and withdrawing", () => {
   // to-be-deployed contracts
   let tvlManager;
   let mApt;
@@ -1378,6 +1378,27 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
         await oracleAdapter.connect(emergencySafe).emergencySetTvl(prevTvl, 50);
       });
 
+      async function setTvlToLpAccountValue() {
+        await oracleAdapter.connect(emergencySafe).emergencyUnlock();
+
+        const startLpDaiBalance = await daiToken.balanceOf(lpAccount.address);
+        const daiUsdValue = await daiPool.getValueFromUnderlyerAmount(
+          startLpDaiBalance
+        );
+        const startLpUsdcBalance = await usdcToken.balanceOf(lpAccount.address);
+        const usdcUsdValue = await usdcPool.getValueFromUnderlyerAmount(
+          startLpUsdcBalance
+        );
+        const startLpUsdtBalance = await usdtToken.balanceOf(lpAccount.address);
+        const usdtUsdValue = await usdtPool.getValueFromUnderlyerAmount(
+          startLpUsdtBalance
+        );
+        const totalUsdValue = daiUsdValue.add(usdcUsdValue).add(usdtUsdValue);
+        await oracleAdapter
+          .connect(emergencySafe)
+          .emergencySetTvl(totalUsdValue, 50);
+      }
+
       it("Can withdraw the full TVL by setting high reserve pool size", async () => {
         // Reset TVL to the actual USD value of LP Account balances to
         // undo previous TVL manipulations.
@@ -1397,8 +1418,14 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
         await oracleAdapter
           .connect(emergencySafe)
           .emergencySetTvl(totalUsdValue, 50);
+        console.log("DAI balance: %s", startLpDaiBalance);
+        console.log("USD value: %s", daiUsdValue);
+        console.log("USDC balance: %s", startLpUsdcBalance);
+        console.log("USD value: %s", usdcUsdValue);
+        console.log("Tether balance: %s", startLpUsdtBalance);
+        console.log("USD value: %s", usdtUsdValue);
 
-        const amount = "1000";
+        const amount = "1500";
 
         const daiDecimals = 18;
         const daiDeposit = tokenAmountToBigNumber(amount, daiDecimals);
@@ -1458,9 +1485,35 @@ describe.only("Contract: MetaPoolToken - funding and withdrawing", () => {
         console.log("Dai top up: %s", daiTopUp);
         console.log("Dai LP balance: %s", prevLpDaiBalance);
         expect(usdcTopUp).to.be.gt(0);
+        console.log("USDC top up: %s", usdcTopUp);
+        console.log("USDC LP balance: %s", prevLpUsdcBalance);
         expect(usdtTopUp).to.be.gt(0);
+        console.log("USDT top up: %s", usdtTopUp);
+        console.log("USDT LP balance: %s", prevLpUsdtBalance);
 
-        await mApt.withdrawFromLpAccount([daiPoolId, usdcPoolId, tetherPoolId]);
+        await oracleAdapter.connect(emergencySafe).emergencyUnlock();
+        await lpAccount
+          .connect(lpSafe)
+          .swapWith3Pool(1, 0, prevLpUsdcBalance, 0);
+        await setTvlToLpAccountValue();
+        await mApt.withdrawFromLpAccount([daiPoolId]);
+        await setTvlToLpAccountValue();
+
+        const currentDaiBalance = await daiToken.balanceOf(lpAccount.address);
+        await lpAccount
+          .connect(lpSafe)
+          .swapWith3Pool(0, 1, currentDaiBalance, 0);
+        await setTvlToLpAccountValue();
+        await mApt.withdrawFromLpAccount([usdcPoolId]);
+        await setTvlToLpAccountValue();
+
+        const currentUsdcBalance = await usdcToken.balanceOf(lpAccount.address);
+        await lpAccount
+          .connect(lpSafe)
+          .swapWith3Pool(1, 2, currentUsdcBalance, 0);
+        await setTvlToLpAccountValue();
+        await mApt.withdrawFromLpAccount([tetherPoolId]);
+        await setTvlToLpAccountValue();
 
         const newLpDaiBalance = await daiToken.balanceOf(lpAccount.address);
         expect(newLpDaiBalance).to.be.lte(
