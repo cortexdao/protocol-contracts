@@ -353,18 +353,6 @@ contract LpAccount is
         // solhint-enable no-empty-blocks
     }
 
-    function _unwindStrategy(
-        address zap,
-        uint256 amount,
-        uint8 index
-    ) internal {
-        require(zap != address(0), "INVALID_NAME");
-        zap.functionDelegateCall(
-            abi.encodeWithSelector(IZap.unwindLiquidity.selector, amount, index)
-        );
-        _lockOracleAdapter(lockPeriod);
-    }
-
     function _setAddressRegistry(address addressRegistry_) internal {
         require(Address.isContract(addressRegistry_), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
