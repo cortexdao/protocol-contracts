@@ -1418,12 +1418,6 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
         await oracleAdapter
           .connect(emergencySafe)
           .emergencySetTvl(totalUsdValue, 50);
-        console.log("DAI balance: %s", startLpDaiBalance);
-        console.log("USD value: %s", daiUsdValue);
-        console.log("USDC balance: %s", startLpUsdcBalance);
-        console.log("USD value: %s", usdcUsdValue);
-        console.log("Tether balance: %s", startLpUsdtBalance);
-        console.log("USD value: %s", usdtUsdValue);
 
         const amount = "1500";
 
@@ -1482,14 +1476,8 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
         );
         // check that fund will move capital from LP Account to pools
         expect(daiTopUp).to.be.gt(0);
-        console.log("Dai top up: %s", daiTopUp);
-        console.log("Dai LP balance: %s", prevLpDaiBalance);
         expect(usdcTopUp).to.be.gt(0);
-        console.log("USDC top up: %s", usdcTopUp);
-        console.log("USDC LP balance: %s", prevLpUsdcBalance);
         expect(usdtTopUp).to.be.gt(0);
-        console.log("USDT top up: %s", usdtTopUp);
-        console.log("USDT LP balance: %s", prevLpUsdtBalance);
 
         await oracleAdapter.connect(emergencySafe).emergencyUnlock();
         await lpAccount
