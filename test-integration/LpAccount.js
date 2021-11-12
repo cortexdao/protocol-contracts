@@ -637,15 +637,6 @@ describe("Contract: LpAccount", () => {
             const inDecimals = await inToken.decimals();
             const inTokenAmount = tokenAmountToBigNumber(amount, inDecimals);
 
-            const outTokenAddress = await getStablecoinAddress(
-              outTokenSymbol,
-              "MAINNET"
-            );
-            const outToken = await ethers.getContractAt(
-              "IDetailedERC20",
-              outTokenAddress
-            );
-
             const dy = await stableSwap.get_dy(
               inIndex,
               outIndex,

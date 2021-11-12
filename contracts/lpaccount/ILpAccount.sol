@@ -28,19 +28,6 @@ interface ILpAccount {
     ) external;
 
     /**
-     * @notice Unwind liquidity with a registered `IZap`
-     * @dev The index should match the order of `IZap.sortedSymbols`
-     * @param name The name of the `IZap`
-     * @param portion The portion of the amount of the LP token balance to unwind
-     * @param index The index of the token to unwind into
-     */
-    function unwindStrategyPercent(
-        string calldata name,
-        uint256 portion,
-        uint8 index
-    ) external;
-
-    /**
      * @notice Return liquidity to a pool
      * @notice Typically used to refill a liquidity pool's reserve
      * @dev This should only be callable by the `MetaPoolToken`

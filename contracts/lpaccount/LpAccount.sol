@@ -162,19 +162,12 @@ contract LpAccount is
         uint256 amount,
         uint8 index
     ) external override nonReentrant onlyLpRole {
-        _unwindStrategy(address(_zaps.get(name)), amount, index);
-    }
-
-    function unwindStrategyPercent(
-        string calldata name,
-        uint256 portion,
-        uint8 index
-    ) external override nonReentrant onlyLpRole {
-        uint256 _WHOLE = 10**18;
-        require(portion <= _WHOLE, "INVALID_PERCENT");
         address zap = address(_zaps.get(name));
-        uint256 amount = IZap(zap).getLpTokenBalance().mul(portion).div(_WHOLE);
-        _unwindStrategy(zap, amount, index);
+        require(zap != address(0), "INVALID_NAME");
+        zap.functionDelegateCall(
+            abi.encodeWithSelector(IZap.unwindLiquidity.selector, amount, index)
+        );
+        _lockOracleAdapter(lockPeriod);
     }
 
     function registerZap(IZap zap)
@@ -305,6 +298,26 @@ contract LpAccount is
         token_.safeTransfer(emergencySafe, balance);
 
         emit EmergencyExit(emergencySafe, token_, balance);
+    }
+
+    function getLpTokenBalance(string calldata name)
+        external
+        view
+        returns (uint256 value)
+    {
+        address zap = address(_zaps.get(name));
+        require(zap != address(0), "INVALID_NAME");
+        bytes memory data =
+            zap.functionStaticCall(
+                abi.encodeWithSelector(
+                    IZap.getLpTokenBalance.selector,
+                    address(this)
+                )
+            );
+        // Convert bytes to uint256
+        assembly {
+            value := mload(add(data, 0x20))
+        }
     }
 
     function zapNames() external view override returns (string[] memory) {

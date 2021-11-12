@@ -143,12 +143,8 @@ describe("Aave Zaps", () => {
   });
 
   aTokenZaps.forEach((params) => {
-    const {
-      contractName,
-      underlyerAddress,
-      aTokenAddress,
-      whaleAddress,
-    } = params;
+    const { contractName, underlyerAddress, aTokenAddress, whaleAddress } =
+      params;
 
     describe(contractName, () => {
       let zap;
@@ -263,6 +259,21 @@ describe("Aave Zaps", () => {
           underlyerBalance
         );
         expect(await aToken.balanceOf(lpAccount.address)).lt(aTokenBalance);
+      });
+
+      it("Get LP Token Balance", async () => {
+        const underlyerAmount = tokenAmountToBigNumber(
+          1000,
+          await underlyerToken.decimals()
+        );
+        const amounts = [underlyerAmount];
+        expect(await aToken.balanceOf(lpAccount.address)).to.equal(
+          await lpAccount.getLpTokenBalance(zapName)
+        );
+        await lpAccount.connect(lpSafe).deployStrategy(zapName, amounts);
+        expect(await aToken.balanceOf(lpAccount.address)).to.equal(
+          await lpAccount.getLpTokenBalance(zapName)
+        );
       });
 
       it("Claim rewards", async () => {

@@ -36,7 +36,7 @@ interface IZap is INameIdentifier {
     /**
      * @notice Retrieves the LP token balance
      */
-    function getLpTokenBalance() external view returns (uint256);
+    function getLpTokenBalance(address account) external view returns (uint256);
 
     /**
      * @notice Order of tokens for deploy `amounts` and unwind `index`
