@@ -41,7 +41,7 @@ abstract contract CurveGaugeZapBase is IZap, CurveZapBase {
     }
 
     function getLpTokenBalance() external view override returns (uint256) {
-        return IERC20(LP_ADDRESS).balanceOf(address(this));
+        return ILiquidityGauge(GAUGE_ADDRESS).balanceOf(address(this));
     }
 
     function _depositToGauge() internal override {
