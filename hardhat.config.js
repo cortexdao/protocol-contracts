@@ -45,6 +45,12 @@ module.exports = {
         mnemonic: process.env.MNEMONIC || "",
       },
     },
+    rinkeby: {
+      url: "https://rinkeby.infura.io/v3/" + process.env.INFURA_API_KEY,
+      accounts: {
+        mnemonic: process.env.MNEMONIC || "",
+      },
+    },
     testnet: {
       url: "http://34.138.217.77:8545",
     },
