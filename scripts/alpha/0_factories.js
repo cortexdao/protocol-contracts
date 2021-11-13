@@ -81,8 +81,8 @@ async function main(argv) {
   const addressesFilename = "scripts/alpha/deployment-factory-addresses.json";
   let gasUsed = BigNumber.from("0");
 
-  // await hre.run("clean");
-  // await hre.run("compile");
+  await hre.run("clean");
+  await hre.run("compile");
 
   for (const name of factoryNames) {
     console.log(chalk.green(name));
