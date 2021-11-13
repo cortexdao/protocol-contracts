@@ -4,7 +4,6 @@ const { ethers, waffle, artifacts } = hre;
 const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
 const {
-  FAKE_ADDRESS,
   bytes32,
   tokenAmountToBigNumber,
   getStablecoinAddress,
@@ -64,26 +63,33 @@ describe("Contract: LpAccount", () => {
   let addressRegistry;
 
   // use EVM snapshots for test isolation
-  let snapshotId;
+  let testSnapshotId;
+  let suiteSnapshotId;
 
   beforeEach(async () => {
     const snapshot = await timeMachine.takeSnapshot();
-    snapshotId = snapshot["result"];
+    testSnapshotId = snapshot["result"];
   });
 
   afterEach(async () => {
-    await timeMachine.revertToSnapshot(snapshotId);
+    await timeMachine.revertToSnapshot(testSnapshotId);
+  });
+
+  before(async () => {
+    const snapshot = await timeMachine.takeSnapshot();
+    suiteSnapshotId = snapshot["result"];
+  });
+
+  after(async () => {
+    // In particular, we need to reset the Mainnet accounts, otherwise
+    // this will cause leakage into other test suites.  Doing a `beforeEach`
+    // instead is viable but makes tests noticeably slower.
+    await timeMachine.revertToSnapshot(suiteSnapshotId);
   });
 
   before("Setup mock address registry", async () => {
-    [
-      deployer,
-      lpSafe,
-      emergencySafe,
-      adminSafe,
-      mApt,
-      randomUser,
-    ] = await ethers.getSigners();
+    [deployer, lpSafe, emergencySafe, adminSafe, mApt, randomUser] =
+      await ethers.getSigners();
 
     addressRegistry = await deployMockContract(
       deployer,
@@ -140,10 +146,6 @@ describe("Contract: LpAccount", () => {
     await addressRegistry.mock.oracleAdapterAddress.returns(
       oracleAdapter.address
     );
-
-    // mAPT is never used, but we need to return something as a role
-    // is setup for it in the Erc20Allocation constructor
-    await addressRegistry.mock.mAptAddress.returns(FAKE_ADDRESS);
 
     // deploy and register ERC20 allocation
     const Erc20Allocation = await ethers.getContractFactory("Erc20Allocation");
@@ -506,6 +508,156 @@ describe("Contract: LpAccount", () => {
 
       await expect(lpAccount.connect(lpSafe).swap(name, amount, 0)).to.not.be
         .reverted;
+    });
+  });
+
+  describe("swapWith3Pool", () => {
+    const stableSwapAddress = "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7";
+    const amount = "10000";
+    const tokens = ["DAI", "USDC", "USDT"];
+
+    let stableSwap;
+
+    before("Fund LP Account with tokens", async () => {
+      await Promise.all(
+        tokens.map(async (symbol) => {
+          const tokenAddress = await getStablecoinAddress(symbol, "MAINNET");
+          const token = await ethers.getContractAt(
+            "IDetailedERC20",
+            tokenAddress
+          );
+
+          await acquireToken(
+            WHALE_POOLS[symbol],
+            lpAccount.address,
+            token,
+            amount,
+            deployer.address
+          );
+        })
+      );
+    });
+
+    before("Connect to StableSwap contract", async () => {
+      stableSwap = await ethers.getContractAt(
+        "IStableSwap3Pool",
+        stableSwapAddress
+      );
+    });
+
+    it("should be callable by the LP Safe", async () => {
+      const inTokenAmount = tokenAmountToBigNumber(amount);
+      await expect(
+        lpAccount.connect(lpSafe).swapWith3Pool(0, 1, inTokenAmount, 0)
+      ).to.not.be.reverted;
+    });
+
+    it("should not be callable by other addresses", async () => {
+      const tokenAmount = tokenAmountToBigNumber(amount);
+      await expect(
+        lpAccount.connect(randomUser).swapWith3Pool(0, 1, tokenAmount, 0)
+      ).to.be.revertedWith("NOT_LP_ROLE");
+    });
+
+    tokens.forEach((inTokenSymbol, inIndex) => {
+      tokens.forEach((outTokenSymbol, outIndex) => {
+        if (inTokenSymbol !== outTokenSymbol) {
+          it(`can swap from ${inTokenSymbol} to ${outTokenSymbol}`, async () => {
+            const inTokenAddress = await getStablecoinAddress(
+              inTokenSymbol,
+              "MAINNET"
+            );
+            const inToken = await ethers.getContractAt(
+              "IDetailedERC20",
+              inTokenAddress
+            );
+
+            const inDecimals = await inToken.decimals();
+            const inTokenAmount = tokenAmountToBigNumber(amount, inDecimals);
+
+            const outTokenAddress = await getStablecoinAddress(
+              outTokenSymbol,
+              "MAINNET"
+            );
+            const outToken = await ethers.getContractAt(
+              "IDetailedERC20",
+              outTokenAddress
+            );
+
+            const prevInTokenBalance = await inToken.balanceOf(
+              lpAccount.address
+            );
+            const prevOutTokenBalance = await outToken.balanceOf(
+              lpAccount.address
+            );
+
+            const dy = await stableSwap.get_dy(
+              inIndex,
+              outIndex,
+              inTokenAmount
+            );
+
+            const minOutTokenAmount = dy.mul(99).div(100);
+
+            await lpAccount
+              .connect(lpSafe)
+              .swapWith3Pool(
+                inIndex,
+                outIndex,
+                inTokenAmount,
+                minOutTokenAmount
+              );
+
+            const newInTokenBalance = await inToken.balanceOf(
+              lpAccount.address
+            );
+            const newOutTokenBalance = await outToken.balanceOf(
+              lpAccount.address
+            );
+
+            expect(prevInTokenBalance.sub(newInTokenBalance)).to.equal(
+              inTokenAmount
+            );
+
+            expect(newOutTokenBalance.sub(prevOutTokenBalance)).to.be.gt(
+              minOutTokenAmount
+            );
+          });
+
+          it(`cannot swap from ${inTokenSymbol} to ${outTokenSymbol} when minimum amount is too high`, async () => {
+            const inTokenAddress = await getStablecoinAddress(
+              inTokenSymbol,
+              "MAINNET"
+            );
+            const inToken = await ethers.getContractAt(
+              "IDetailedERC20",
+              inTokenAddress
+            );
+
+            const inDecimals = await inToken.decimals();
+            const inTokenAmount = tokenAmountToBigNumber(amount, inDecimals);
+
+            const dy = await stableSwap.get_dy(
+              inIndex,
+              outIndex,
+              inTokenAmount
+            );
+
+            const minOutTokenAmount = dy.add(1);
+
+            await expect(
+              lpAccount
+                .connect(lpSafe)
+                .swapWith3Pool(
+                  inIndex,
+                  outIndex,
+                  inTokenAmount,
+                  minOutTokenAmount
+                )
+            ).to.be.reverted;
+          });
+        }
+      });
     });
   });
 

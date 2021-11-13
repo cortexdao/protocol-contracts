@@ -9,6 +9,8 @@ const {
   acquireToken,
   impersonateAccount,
   forciblySendEth,
+  FAKE_ADDRESS,
+  bytes32,
 } = require("../utils/helpers");
 const { WHALE_POOLS } = require("../utils/constants");
 
@@ -26,13 +28,15 @@ describe("Aave Zaps", () => {
   let deployer;
   let emergencySafe;
   let adminSafe;
-  let mApt;
-
-  /* contract factories */
-  let TvlManager;
+  let lpSafe;
 
   /* deployed contracts */
+  let lpAccount;
   let tvlManager;
+  let erc20Allocation;
+
+  /* mocks */
+  let addressRegistry;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -67,72 +71,100 @@ describe("Aave Zaps", () => {
     await timeMachine.revertToSnapshot(snapshotId);
   });
 
-  before(async () => {
-    [deployer, emergencySafe, adminSafe, mApt] = await ethers.getSigners();
+  before("Setup mock address registry", async () => {
+    [deployer, lpSafe, emergencySafe, adminSafe] = await ethers.getSigners();
 
-    const addressRegistry = await deployMockContract(
+    addressRegistry = await deployMockContract(
       deployer,
-      artifacts.require("IAddressRegistryV2").abi
+      artifacts.readArtifactSync("IAddressRegistryV2").abi
     );
 
+    // These registered addresses are setup for roles in the
+    // constructor for LpAccount
+    await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
+    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
+    await addressRegistry.mock.emergencySafeAddress.returns(
+      emergencySafe.address
+    );
+    // mAPT is never used, but we need to return something as a role
+    // is setup for it in the Erc20Allocation constructor
+    await addressRegistry.mock.mAptAddress.returns(FAKE_ADDRESS);
+  });
+
+  before("Deploy LP Account", async () => {
+    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+    const proxyAdmin = await ProxyAdmin.deploy();
+
+    const LpAccount = await ethers.getContractFactory("LpAccount");
+    const logic = await LpAccount.deploy();
+
+    const initData = LpAccount.interface.encodeFunctionData(
+      "initialize(address)",
+      [addressRegistry.address]
+    );
+
+    const TransparentUpgradeableProxy = await ethers.getContractFactory(
+      "TransparentUpgradeableProxy"
+    );
+    const proxy = await TransparentUpgradeableProxy.deploy(
+      logic.address,
+      proxyAdmin.address,
+      initData
+    );
+
+    lpAccount = await LpAccount.attach(proxy.address);
+  });
+
+  before("Prepare TVL Manager and ERC20 Allocation", async () => {
+    // deploy and register TVL Manager
+    const TvlManager = await ethers.getContractFactory("TvlManager", adminSafe);
+    tvlManager = await TvlManager.deploy(addressRegistry.address);
+
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("tvlManager"))
+      .returns(tvlManager.address);
+
+    // Oracle Adapter is locked after adding/removing allocations
     const oracleAdapter = await deployMockContract(
       deployer,
-      artifacts.require("ILockingOracle").abi
+      artifacts.readArtifactSync("OracleAdapter").abi
     );
     await oracleAdapter.mock.lock.returns();
+    await oracleAdapter.mock.lockFor.returns();
     await addressRegistry.mock.oracleAdapterAddress.returns(
       oracleAdapter.address
     );
 
-    /* These registered addresses are setup for roles in the
-     * constructor for Erc20Allocation:
-     * - emergencySafe (default admin role)
-     * - adminSafe (admin role)
-     * - mApt (contract role)
-     */
-    await addressRegistry.mock.emergencySafeAddress.returns(
-      emergencySafe.address
-    );
-    await addressRegistry.mock.mAptAddress.returns(mApt.address);
-    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
-
+    // deploy and register ERC20 allocation
     const Erc20Allocation = await ethers.getContractFactory("Erc20Allocation");
-    const erc20Allocation = await Erc20Allocation.deploy(
-      addressRegistry.address
-    );
+    erc20Allocation = await Erc20Allocation.deploy(addressRegistry.address);
 
-    /* These registered addresses are setup for roles in the
-     * constructor for TvlManager
-     * - emergencySafe (emergency role, default admin role)
-     * - adminSafe (admin role)
-     */
-    TvlManager = await ethers.getContractFactory("TvlManager");
-    tvlManager = await TvlManager.deploy(addressRegistry.address);
-    await tvlManager
-      .connect(adminSafe)
-      .registerAssetAllocation(erc20Allocation.address);
+    await tvlManager.registerAssetAllocation(erc20Allocation.address);
   });
 
   aTokenZaps.forEach((params) => {
-    const {
-      contractName,
-      underlyerAddress,
-      aTokenAddress,
-      whaleAddress,
-    } = params;
+    const { contractName, underlyerAddress, aTokenAddress, whaleAddress } =
+      params;
 
     describe(contractName, () => {
       let zap;
+      let zapName;
+
       let underlyerToken;
       let aToken;
       let stkAaveToken;
 
-      before("Deploy Zap", async () => {
+      before("Deploy zap", async () => {
         const zapFactory = await ethers.getContractFactory(
           contractName,
           adminSafe
         );
         zap = await zapFactory.deploy();
+        zapName = await zap.NAME();
+      });
+
+      before("Register zap with LP Account", async () => {
+        await lpAccount.connect(adminSafe).registerZap(zap.address);
       });
 
       before("Attach to Mainnet Curve contracts", async () => {
@@ -147,6 +179,41 @@ describe("Aave Zaps", () => {
         );
       });
 
+      before("Register allocations with TVL Manager", async () => {
+        const allocationNames = await zap.assetAllocations();
+        for (let name of allocationNames) {
+          const isRegistered = await tvlManager.isAssetAllocationRegistered([
+            name,
+          ]);
+          if (isRegistered) continue;
+
+          name = name
+            .split("-")
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join("");
+          if (name === "Aave") {
+            name = "AaveStableCoin";
+          }
+          const allocationContractName = name + "Allocation";
+          const allocationFactory = await ethers.getContractFactory(
+            allocationContractName
+          );
+          const allocation = await allocationFactory.deploy();
+          await tvlManager
+            .connect(adminSafe)
+            .registerAssetAllocation(allocation.address);
+        }
+      });
+
+      before("Register tokens with ERC20 Allocation", async () => {
+        const erc20s = await zap.erc20Allocations();
+        for (const token of erc20s) {
+          await erc20Allocation
+            .connect(adminSafe)
+            ["registerErc20Token(address)"](token);
+        }
+      });
+
       before("Fund Zap with Pool Underlyer", async () => {
         underlyerToken = await ethers.getContractAt(
           "IDetailedERC20",
@@ -159,7 +226,7 @@ describe("Aave Zaps", () => {
 
         await acquireToken(
           whaleAddress,
-          zap.address,
+          lpAccount.address,
           underlyerToken,
           amount,
           deployer
@@ -173,21 +240,40 @@ describe("Aave Zaps", () => {
         );
         const amounts = [underlyerAmount];
 
-        expect(await aToken.balanceOf(zap.address)).to.equal(0);
+        expect(await aToken.balanceOf(lpAccount.address)).to.equal(0);
 
-        await zap.deployLiquidity(amounts);
+        await lpAccount.connect(lpSafe).deployStrategy(zapName, amounts);
 
-        const aTokenBalance = await aToken.balanceOf(zap.address);
+        const aTokenBalance = await aToken.balanceOf(lpAccount.address);
         expect(aTokenBalance).gt(0);
 
-        const underlyerBalance = await underlyerToken.balanceOf(zap.address);
+        const underlyerBalance = await underlyerToken.balanceOf(
+          lpAccount.address
+        );
 
-        await zap.unwindLiquidity(aTokenBalance, 0);
+        await lpAccount
+          .connect(lpSafe)
+          .unwindStrategy(zapName, aTokenBalance, 0);
 
-        expect(await underlyerToken.balanceOf(zap.address)).gt(
+        expect(await underlyerToken.balanceOf(lpAccount.address)).gt(
           underlyerBalance
         );
-        expect(await aToken.balanceOf(zap.address)).lt(aTokenBalance);
+        expect(await aToken.balanceOf(lpAccount.address)).lt(aTokenBalance);
+      });
+
+      it("Get LP Token Balance", async () => {
+        const underlyerAmount = tokenAmountToBigNumber(
+          1000,
+          await underlyerToken.decimals()
+        );
+        const amounts = [underlyerAmount];
+        expect(await aToken.balanceOf(lpAccount.address)).to.equal(
+          await lpAccount.getLpTokenBalance(zapName)
+        );
+        await lpAccount.connect(lpSafe).deployStrategy(zapName, amounts);
+        expect(await aToken.balanceOf(lpAccount.address)).to.equal(
+          await lpAccount.getLpTokenBalance(zapName)
+        );
       });
 
       it("Claim rewards", async () => {
@@ -197,21 +283,26 @@ describe("Aave Zaps", () => {
         );
         const amounts = [underlyerAmount];
 
-        await zap.deployLiquidity(amounts);
+        await lpAccount.connect(lpSafe).deployStrategy(zapName, amounts);
 
-        expect(await stkAaveToken.balanceOf(zap.address)).to.equal(0);
+        expect(await stkAaveToken.balanceOf(lpAccount.address)).to.equal(0);
 
-        await zap.claim();
+        await lpAccount.connect(lpSafe).claim(zapName);
 
-        expect(await stkAaveToken.balanceOf(zap.address)).to.be.gt(0);
+        expect(await stkAaveToken.balanceOf(lpAccount.address)).to.be.gt(0);
       });
     });
   });
 
   describe("StakedAaveZap", () => {
     let zap;
+    let zapName;
+    // LP Account as StakedAaveZap instance
+    let lpAccountAsZap;
+
     let aaveToken;
     let stkAaveToken;
+
     let whaleAddress = WHALE_POOLS["AAVE"];
 
     before("Deploy Zap", async () => {
@@ -220,6 +311,15 @@ describe("Aave Zaps", () => {
         adminSafe
       );
       zap = await StakedAaveZap.deploy();
+      zapName = await zap.NAME();
+      lpAccountAsZap = await ethers.getContractAt(
+        "StakedAaveZap",
+        lpAccount.address
+      );
+    });
+
+    before("Register zap with LP Account", async () => {
+      await lpAccount.connect(adminSafe).registerZap(zap.address);
     });
 
     before("Attach to Mainnet Curve contracts", async () => {
@@ -230,12 +330,25 @@ describe("Aave Zaps", () => {
       );
     });
 
+    before("Register tokens with ERC20 Allocation", async () => {
+      // currently this is only AAVE; we do not track Staked AAVE
+      const erc20s = await zap.erc20Allocations();
+      expect(erc20s).to.have.lengthOf(1);
+      expect(erc20s[0]).to.equal(aaveToken.address);
+
+      for (const token of erc20s) {
+        await erc20Allocation
+          .connect(adminSafe)
+          ["registerErc20Token(address)"](token);
+      }
+    });
+
     before("Fund Zap with AAVE", async () => {
       const amount = tokenAmountToBigNumber(100000, await aaveToken.decimals());
 
       await acquireToken(
         whaleAddress,
-        zap.address,
+        lpAccount.address,
         aaveToken,
         amount,
         deployer
@@ -249,55 +362,60 @@ describe("Aave Zaps", () => {
       );
       const amounts = [underlyerAmount];
 
-      expect(await stkAaveToken.balanceOf(zap.address)).to.equal(0);
+      expect(await stkAaveToken.balanceOf(lpAccount.address)).to.equal(0);
 
-      await expect(zap.deployLiquidity(amounts)).to.not.be.reverted;
+      await expect(lpAccount.connect(lpSafe).deployStrategy(zapName, amounts))
+        .to.not.be.reverted;
 
-      expect(await stkAaveToken.balanceOf(zap.address)).to.be.gt(0);
+      expect(await stkAaveToken.balanceOf(lpAccount.address)).to.be.gt(0);
     });
 
     it("Can claim rewards", async () => {
-      const aaveBalance = await aaveToken.balanceOf(zap.address);
+      const aaveBalance = await aaveToken.balanceOf(lpAccount.address);
 
-      await expect(zap.claim()).to.not.be.reverted;
-      expect(await aaveToken.balanceOf(zap.address)).to.be.gt(aaveBalance);
+      await expect(lpAccount.connect(lpSafe).claim(zapName)).to.not.be.reverted;
+      expect(await aaveToken.balanceOf(lpAccount.address)).to.be.gt(
+        aaveBalance
+      );
     });
 
     it("Cannot redeem without cooldown", async () => {
-      const stakedBalance = await stkAaveToken.balanceOf(zap.address);
-      const txPromise = zap.unwindLiquidity(stakedBalance, 0);
+      const stakedBalance = await stkAaveToken.balanceOf(lpAccount.address);
+      const txPromise = lpAccount
+        .connect(lpSafe)
+        .unwindStrategy(zapName, stakedBalance, 0);
 
       await expect(txPromise).to.not.be.reverted;
 
       const currentTimestamp = (await ethers.provider.getBlock()).timestamp;
       await expect(txPromise)
-        .to.emit(zap, "CooldownFromWithdrawFail")
+        .to.emit(lpAccountAsZap, "CooldownFromWithdrawFail")
         .withArgs(currentTimestamp);
     });
 
     it("Cannot redeem with active cooldown", async () => {
-      const zapSigner = await impersonateAccount(zap.address);
+      const lpAccountSigner = await impersonateAccount(lpAccount.address);
       await forciblySendEth(
-        zapSigner.address,
+        lpAccountSigner.address,
         tokenAmountToBigNumber(1),
         deployer.address
       );
-      await stkAaveToken.connect(zapSigner).cooldown();
+      await stkAaveToken.connect(lpAccountSigner).cooldown();
 
-      const stakedBalance = await stkAaveToken.balanceOf(zap.address);
-      await expect(zap.unwindLiquidity(stakedBalance, 0)).to.be.revertedWith(
-        "INSUFFICIENT_COOLDOWN"
-      );
+      const stakedBalance = await stkAaveToken.balanceOf(lpAccount.address);
+      await expect(
+        lpAccount.connect(lpSafe).unwindStrategy(zapName, stakedBalance, 0)
+      ).to.be.revertedWith("INSUFFICIENT_COOLDOWN");
     });
 
     it("cannot redeem beyond unstake window", async () => {
-      const zapSigner = await impersonateAccount(zap.address);
+      const lpAccountSigner = await impersonateAccount(lpAccount.address);
       await forciblySendEth(
-        zapSigner.address,
+        lpAccountSigner.address,
         tokenAmountToBigNumber(1),
         deployer.address
       );
-      await stkAaveToken.connect(zapSigner).cooldown();
+      await stkAaveToken.connect(lpAccountSigner).cooldown();
 
       const cooldownSeconds = 60 * 60 * 24 * 10;
       const unstakeWindowSeconds = 60 * 60 * 24 * 2;
@@ -306,25 +424,27 @@ describe("Aave Zaps", () => {
       ]);
       await hre.network.provider.send("evm_mine");
 
-      const stakedBalance = await stkAaveToken.balanceOf(zap.address);
-      const txPromise = zap.unwindLiquidity(stakedBalance, 0);
+      const stakedBalance = await stkAaveToken.balanceOf(lpAccount.address);
+      const txPromise = lpAccount
+        .connect(lpSafe)
+        .unwindStrategy(zapName, stakedBalance, 0);
 
       await expect(txPromise).to.not.be.reverted;
 
       const currentTimestamp = (await ethers.provider.getBlock()).timestamp;
       await expect(txPromise)
-        .to.emit(zap, "CooldownFromWithdrawFail")
+        .to.emit(lpAccountAsZap, "CooldownFromWithdrawFail")
         .withArgs(currentTimestamp);
     });
 
     it("Can redeem within unstake window", async () => {
-      const zapSigner = await impersonateAccount(zap.address);
+      const lpAccountSigner = await impersonateAccount(lpAccount.address);
       await forciblySendEth(
-        zapSigner.address,
+        lpAccountSigner.address,
         tokenAmountToBigNumber(1),
         deployer.address
       );
-      await stkAaveToken.connect(zapSigner).cooldown();
+      await stkAaveToken.connect(lpAccountSigner).cooldown();
 
       const cooldownSeconds = 60 * 60 * 24 * 10;
       const unstakeWindowSeconds = 60 * 60 * 24 * 2;
@@ -333,17 +453,19 @@ describe("Aave Zaps", () => {
       ]);
       await hre.network.provider.send("evm_mine");
 
-      const aaveBalance = await aaveToken.balanceOf(zap.address);
-      const stakedBalance = await stkAaveToken.balanceOf(zap.address);
+      const aaveBalance = await aaveToken.balanceOf(lpAccount.address);
+      const stakedBalance = await stkAaveToken.balanceOf(lpAccount.address);
 
-      const txPromise = zap.unwindLiquidity(stakedBalance, 0);
+      const txPromise = lpAccount
+        .connect(lpSafe)
+        .unwindStrategy(zapName, stakedBalance, 0);
       await expect(txPromise).to.not.be.reverted;
 
-      expect(await aaveToken.balanceOf(zap.address)).to.be.equal(
+      expect(await aaveToken.balanceOf(lpAccount.address)).to.be.equal(
         aaveBalance.add(stakedBalance)
       );
       await expect(txPromise)
-        .to.emit(zap, "WithdrawSucceeded")
+        .to.emit(lpAccountAsZap, "WithdrawSucceeded")
         .withArgs(stakedBalance);
     });
   });

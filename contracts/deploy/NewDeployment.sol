@@ -308,6 +308,8 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
         erc20Allocation = erc20AllocationFactory.create(
             address(addressRegistryV2)
         );
+
+        _registerAddress("erc20Allocation", erc20Allocation);
     }
 
     function deploy7LpAccount()
@@ -349,10 +351,11 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
         checkAddressRegistryOwnership
         checkSafeRegistrations
     {
-        Dependency[] memory dependencies = new Dependency[](3);
+        Dependency[] memory dependencies = new Dependency[](4);
         dependencies[0] = Dependency("mApt", mApt);
-        dependencies[1] = Dependency("tvlManager", tvlManager);
-        dependencies[2] = Dependency("lpAccount", lpAccount);
+        dependencies[1] = Dependency("lpAccount", lpAccount);
+        dependencies[2] = Dependency("tvlManager", tvlManager);
+        dependencies[3] = Dependency("erc20Allocation", erc20Allocation);
         _checkRegisteredDependencies(dependencies);
 
         address[] memory assets = new address[](3);
@@ -421,12 +424,6 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
 
         address proxyAdmin = proxyAdminFactory.create();
 
-        bytes memory upgradeData =
-            abi.encodeWithSelector(
-                PoolTokenV2.initializeUpgrade.selector,
-                address(addressRegistryV2)
-            );
-
         bytes memory initData =
             abi.encodeWithSelector(
                 PoolTokenV2.initialize.selector,
@@ -442,8 +439,13 @@ contract NewDeployment is Ownable, ReentrancyGuard, DeploymentConstants {
                 initData
             );
 
-        address logic = poolTokenV2Factory.create();
-        logic.functionCall(initData);
+        address logic = poolTokenV2Factory.create(initData);
+
+        bytes memory upgradeData =
+            abi.encodeWithSelector(
+                PoolTokenV2.initializeUpgrade.selector,
+                address(addressRegistryV2)
+            );
 
         ProxyAdmin(proxyAdmin).upgradeAndCall(
             TransparentUpgradeableProxy(payable(proxy)),

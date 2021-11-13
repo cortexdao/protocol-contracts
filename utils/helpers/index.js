@@ -1,7 +1,7 @@
 const hre = require("hardhat");
 const { ethers, web3 } = hre;
 const { AddressZero: ZERO_ADDRESS, MaxUint256: MAX_UINT256 } = ethers.constants;
-const { getAddress, impersonateAccount } = require("./account.js");
+const { getAddress, impersonateAccount, setBalance } = require("./account.js");
 const {
   getDeployedAddress,
   getStablecoinAddress,
@@ -23,11 +23,14 @@ const {
   dai,
   erc20,
   tokenAmountToBigNumber,
-  undoErc20,
   commify,
   formatUnits,
 } = require("./unit");
-const { deepEqual, updateTvlAfterTransfer } = require("./test-helper");
+const {
+  deepEqual,
+  updateTvlAfterTransfer,
+  generateContractAddress,
+} = require("./test-helper");
 const { getSafeSigner, waitForSafeTxDetails } = require("./safe");
 const {
   getEip1967Addresses,
@@ -55,10 +58,10 @@ module.exports = {
   erc20,
   transferERC20Tokens,
   getERC20Balance,
-  undoErc20,
   console,
   getAddress,
   impersonateAccount,
+  setBalance,
   updateDeployJsons,
   getDeployedAddress,
   getStablecoinAddress,
@@ -78,11 +81,11 @@ module.exports = {
   ANOTHER_FAKE_ADDRESS,
   deepEqual,
   updateTvlAfterTransfer,
+  generateContractAddress,
   getSafeSigner,
   waitForSafeTxDetails,
   getMaxFee,
   getMaxPriorityFee,
-
   getEip1967Addresses,
   getProxyAdmin,
   getLogicContract,

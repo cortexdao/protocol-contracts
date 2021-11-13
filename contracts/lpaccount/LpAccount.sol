@@ -10,7 +10,8 @@ import {
 import {
     Address,
     NamedAddressSet,
-    SafeERC20
+    SafeERC20,
+    SafeMath
 } from "contracts/libraries/Imports.sol";
 import {
     Initializable,
@@ -30,7 +31,8 @@ import {
     ISwap,
     ILpAccount,
     IZapRegistry,
-    ISwapRegistry
+    ISwapRegistry,
+    IStableSwap3Pool
 } from "./Imports.sol";
 
 import {ILockingOracle} from "contracts/oracle/Imports.sol";
@@ -49,7 +51,10 @@ contract LpAccount is
     using SafeERC20 for IERC20;
     using NamedAddressSet for NamedAddressSet.ZapSet;
     using NamedAddressSet for NamedAddressSet.SwapSet;
+    using SafeMath for uint256;
 
+    IStableSwap3Pool private constant _STABLE_SWAP_3POOL =
+        IStableSwap3Pool(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
     uint256 private constant _DEFAULT_LOCK_PERIOD = 135;
 
     IAddressRegistryV2 public addressRegistry;
@@ -159,7 +164,6 @@ contract LpAccount is
     ) external override nonReentrant onlyLpRole {
         address zap = address(_zaps.get(name));
         require(zap != address(0), "INVALID_NAME");
-
         zap.functionDelegateCall(
             abi.encodeWithSelector(IZap.unwindLiquidity.selector, amount, index)
         );
@@ -239,6 +243,35 @@ contract LpAccount is
         emit SwapRemoved(name);
     }
 
+    /**
+     * @notice Swap stablecoins with the Curve 3pool
+     * @param inTokenIndex Token index for the input token
+     * @param outTokenIndex Token index for the output token
+     * @param amount The amount of token to swap
+     * @param minAmount The minimum amount of output token to receive
+     */
+    function swapWith3Pool(
+        int128 inTokenIndex,
+        int128 outTokenIndex,
+        uint256 amount,
+        uint256 minAmount
+    ) external nonReentrant onlyLpRole {
+        IERC20 inToken =
+            IERC20(_STABLE_SWAP_3POOL.coins(uint256(inTokenIndex)));
+
+        inToken.safeApprove(address(_STABLE_SWAP_3POOL), 0);
+        inToken.safeApprove(address(_STABLE_SWAP_3POOL), amount);
+
+        _STABLE_SWAP_3POOL.exchange(
+            inTokenIndex,
+            outTokenIndex,
+            amount,
+            minAmount
+        );
+
+        _lockOracleAdapter(lockPeriod);
+    }
+
     function claim(string calldata name)
         external
         override
@@ -267,6 +300,26 @@ contract LpAccount is
         emit EmergencyExit(emergencySafe, token_, balance);
     }
 
+    function getLpTokenBalance(string calldata name)
+        external
+        view
+        returns (uint256 value)
+    {
+        address zap = address(_zaps.get(name));
+        require(zap != address(0), "INVALID_NAME");
+        bytes memory data =
+            zap.functionStaticCall(
+                abi.encodeWithSelector(
+                    IZap.getLpTokenBalance.selector,
+                    address(this)
+                )
+            );
+        // Convert bytes to uint256
+        assembly {
+            value := mload(add(data, 0x20))
+        }
+    }
+
     function zapNames() external view override returns (string[] memory) {
         return _zaps.names();
     }
@@ -282,7 +335,22 @@ contract LpAccount is
     function _lockOracleAdapter(uint256 lockPeriod_) internal {
         ILockingOracle oracleAdapter =
             ILockingOracle(addressRegistry.oracleAdapterAddress());
-        oracleAdapter.lockFor(lockPeriod_);
+        // solhint-disable no-empty-blocks
+        try oracleAdapter.lockFor(lockPeriod_) {} catch Error(
+            string memory reason
+        ) {
+            // Silence the revert in the case when Oracle Adapter is already
+            // locked but with longer period.  In other cases, bubble
+            // up the revert.
+            require(
+                keccak256(bytes(reason)) ==
+                    keccak256(bytes("CANNOT_SHORTEN_LOCK")),
+                reason
+            );
+        } catch (bytes memory) {
+            revert("UNKNOWN_REASON");
+        }
+        // solhint-enable no-empty-blocks
     }
 
     function _setAddressRegistry(address addressRegistry_) internal {

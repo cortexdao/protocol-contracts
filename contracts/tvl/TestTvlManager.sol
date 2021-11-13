@@ -8,21 +8,6 @@ import {TvlManager} from "./TvlManager.sol";
 contract TestTvlManager is TvlManager {
     constructor(address addressRegistry_) public TvlManager(addressRegistry_) {} // solhint-disable-line no-empty-blocks
 
-    function testEncodeAssetAllocationId(
-        address assetAllocation,
-        uint8 tokenIndex
-    ) external pure returns (bytes32) {
-        return _encodeAssetAllocationId(assetAllocation, tokenIndex);
-    }
-
-    function testDecodeAssetAllocationId(bytes32 id)
-        external
-        pure
-        returns (address, uint8)
-    {
-        return _decodeAssetAllocationId(id);
-    }
-
     function testGetAssetAllocationIdCount(
         IAssetAllocation[] memory allocations
     ) external view returns (uint256) {
@@ -43,5 +28,20 @@ contract TestTvlManager is TvlManager {
         returns (IAssetAllocation[] memory)
     {
         return _getAssetAllocations();
+    }
+
+    function testDecodeAssetAllocationId(bytes32 id)
+        external
+        pure
+        returns (address, uint8)
+    {
+        return _decodeAssetAllocationId(id);
+    }
+
+    function testEncodeAssetAllocationId(
+        address assetAllocation,
+        uint8 tokenIndex
+    ) external pure returns (bytes32) {
+        return _encodeAssetAllocationId(assetAllocation, tokenIndex);
     }
 }

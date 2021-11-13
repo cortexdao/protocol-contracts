@@ -13,11 +13,11 @@ async function main(argv) {
   await hre.run("compile");
   console.log("Acquire staking pool tokens for testing ...");
   const bpt = await ethers.getContractAt(
-    "IDetailedERC20UpgradeSafe",
+    "IDetailedERC20",
     BALANCER_POOL_ADDRESS
   );
   const uniV2 = await ethers.getContractAt(
-    "IDetailedERC20UpgradeSafe",
+    "IDetailedERC20",
     UNISWAP_POOL_ADDRESS
   );
 

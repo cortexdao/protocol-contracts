@@ -6,7 +6,6 @@ import {AlphaDeployment} from "./AlphaDeployment.sol";
 
 contract TestAlphaDeployment is AlphaDeployment {
     constructor(
-        address proxyAdminFactory_,
         address proxyFactory_,
         address addressRegistryV2Factory,
         address mAptFactory_,
@@ -19,7 +18,6 @@ contract TestAlphaDeployment is AlphaDeployment {
     )
         public
         AlphaDeployment(
-            proxyAdminFactory_,
             proxyFactory_,
             addressRegistryV2Factory,
             mAptFactory_,
@@ -50,5 +48,9 @@ contract TestAlphaDeployment is AlphaDeployment {
 
     function testSetLpAccount(address lpAccount_) public {
         lpAccount = lpAccount_;
+    }
+
+    function testSetErc20Allocation(address erc20Allocation_) public {
+        erc20Allocation = erc20Allocation_;
     }
 }

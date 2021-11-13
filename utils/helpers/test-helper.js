@@ -1,6 +1,7 @@
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
 const _ = require("lodash");
+const { expect } = require("chai");
+const { ethers, waffle } = require("hardhat");
+const { deployMockContract } = waffle;
 
 const deepEqual = (expected, actual) => {
   const zipped = _.zip(_.flatMapDeep(expected), _.flatMapDeep(actual));
@@ -54,7 +55,13 @@ async function updateTvl(usdValue, oracleAdapter, emergencySafe) {
   await oracleAdapter.connect(emergencySafe).emergencySetTvl(newTvl, 50);
 }
 
+async function generateContractAddress(signer) {
+  const contract = await deployMockContract(signer, []);
+  return contract.address;
+}
+
 module.exports = {
   deepEqual,
   updateTvlAfterTransfer,
+  generateContractAddress,
 };

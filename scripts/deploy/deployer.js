@@ -129,16 +129,17 @@ async function deployAllocations(tvlManager, adminSafe) {
     "AaveStableCoinAllocation",
     "CurveAaveAllocation",
     "CurveCompoundAllocation",
-    "CurveIronBankAllocation",
+    "CurveIronbankAllocation",
     "CurveSaaveAllocation",
-    "CurveSusdV2Allocation",
+    "CurveSusdv2Allocation",
+    "CurveUsdtAllocation",
   ];
 
-  const curve3PoolAllocationContract = "Curve3PoolAllocation";
+  const curve3PoolAllocationContract = "Curve3poolAllocation";
 
   const curveMetaPoolContracts = [
     "CurveAlusdAllocation",
-    "CurveBusdV2Allocation",
+    "CurveBusdv2Allocation",
     "CurveFraxAllocation",
     "CurveLusdAllocation",
     "CurveMusdAllocation",
@@ -187,19 +188,20 @@ async function deployZaps(lpAccount, erc20Allocation, adminSafe) {
     //"AaveUsdcZap",
     //"AaveUsdtZap",
     "StakedAaveZap",
-    "Curve3PoolZap",
+    "Curve3poolZap",
     "CurveAaveZap",
     "CurveAlusdZap",
-    "CurveBusdV2Zap",
+    "CurveBusdv2Zap",
     "CurveCompoundZap",
     "CurveFraxZap",
-    "CurveIronBankZap",
+    "CurveIronbankZap",
     "CurveLusdZap",
     "CurveMusdZap",
     "CurveSaaveZap",
-    "CurveSusdV2Zap",
+    "CurveSusdv2Zap",
     "CurveUsdnZap",
     "CurveUsdpZap",
+    "CurveUsdtZap",
     "CurveUstZap",
   ];
 
@@ -220,6 +222,34 @@ async function deployZaps(lpAccount, erc20Allocation, adminSafe) {
   );
 
   return zaps;
+}
+
+async function deploySwaps(lpAccount, erc20Allocation, adminSafe) {
+  const contracts = [
+    "AaveToDaiSwap",
+    "AaveToUsdcSwap",
+    "AaveToUsdtSwap",
+    "CrvToDaiSwap",
+    "CrvToUsdcSwap",
+    "CrvToUsdtSwap",
+  ];
+
+  const swaps = await Promise.all(
+    contracts.map(async (contract) => {
+      const Swap = await ethers.getContractFactory(contract);
+      return await Swap.deploy();
+    })
+  );
+
+  await Promise.all(
+    swaps.map(async (swap) => {
+      await lpAccount.connect(adminSafe).registerSwap(swap.address);
+      const erc20s = await swap.erc20Allocations();
+      await registerErc20Allocations(erc20Allocation, erc20s, adminSafe);
+    })
+  );
+
+  return swaps;
 }
 
 async function registerErc20Allocations(erc20Allocation, erc20s, adminSafe) {
@@ -268,6 +298,8 @@ async function deploy() {
   await deployAllocations(tvlManager, safes.adminSafe);
 
   await deployZaps(lpAccount, erc20Allocation, safes.adminSafe);
+
+  await deploySwaps(lpAccount, erc20Allocation, safes.adminSafe);
 
   return {
     ...safes,

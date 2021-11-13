@@ -15,12 +15,12 @@ import {
     CurveAllocationBase
 } from "contracts/protocols/curve/common/Imports.sol";
 
-import {Curve3PoolConstants} from "./Constants.sol";
+import {Curve3poolConstants} from "./Constants.sol";
 
-contract Curve3PoolAllocation is
+contract Curve3poolAllocation is
     CurveAllocationBase,
     ImmutableAssetAllocation,
-    Curve3PoolConstants
+    Curve3poolConstants
 {
     function balanceOf(address account, uint8 tokenIndex)
         public

@@ -22,23 +22,26 @@ const MAINNET_ADDRESS_REGISTRY_DEPLOYER =
 describe("Contract: OracleAdapter", () => {
   // signers
   let deployer;
-  let emergencySafe;
+  let emergencySafeSigner;
   let adminSafeSigner;
   let lpSafe;
   let mApt;
-  let tvlManager;
   let lpAccount;
+  let tvlManager;
+  let erc20Allocation;
   let randomUser;
 
   // deployed contracts
   let oracleAdapter;
 
-  // mocks and constants
+  // mocks
+  let emergencySafe;
   let adminSafe;
   let addressRegistry;
   let tvlAggMock;
   let assetAggMock_1;
   let assetAggMock_2;
+  // constants
   const assetAddress_1 = FAKE_ADDRESS;
   const assetAddress_2 = ANOTHER_FAKE_ADDRESS;
   const stalePeriod = 86400;
@@ -92,8 +95,22 @@ describe("Contract: OracleAdapter", () => {
   });
 
   before("Register Safes", async () => {
-    [, emergencySafe, lpSafe] = await ethers.getSigners();
+    [, lpSafe] = await ethers.getSigners();
 
+    // mock the Emergency and Admin Safe to allow module function calls
+    emergencySafe = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("IGnosisModuleManager").abi
+    );
+    await emergencySafe.mock.execTransactionFromModule.returns(true);
+
+    adminSafe = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("IGnosisModuleManager").abi
+    );
+    await adminSafe.mock.execTransactionFromModule.returns(true);
+
+    // register the addresses
     await addressRegistry.mock.emergencySafeAddress.returns(
       emergencySafe.address
     );
@@ -101,49 +118,54 @@ describe("Contract: OracleAdapter", () => {
       .withArgs(bytes32("emergencySafe"))
       .returns(emergencySafe.address);
 
+    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("adminSafe"))
+      .returns(adminSafe.address);
+
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("lpSafe"))
       .returns(lpSafe.address);
 
-    // mock the Admin Safe to allow module function calls
-    adminSafe = await deployMockContract(
-      deployer,
-      artifacts.readArtifactSync("IGnosisModuleManager").abi
+    // setup a signer
+    emergencySafeSigner = await impersonateAccount(emergencySafe.address);
+    await forciblySendEth(
+      emergencySafeSigner.address,
+      tokenAmountToBigNumber(5),
+      deployer.address
     );
-    await adminSafe.mock.execTransactionFromModule.returns(true);
-    // register the address
-    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("adminSafe"))
-      .returns(adminSafe.address);
-    // create a signer
-    adminSafeSigner = await impersonateAccount(adminSafe.address);
 
+    adminSafeSigner = await impersonateAccount(adminSafe.address);
     await forciblySendEth(
       adminSafeSigner.address,
-      tokenAmountToBigNumber(10),
+      tokenAmountToBigNumber(5),
       deployer.address
     );
   });
 
   before("Deploy Oracle Adapter", async () => {
-    [, , , mApt, tvlManager, lpAccount, randomUser] = await ethers.getSigners();
-
-    await addressRegistry.mock.mAptAddress.returns(mApt.address);
-    await addressRegistry.mock.getAddress
-      .withArgs(bytes32("mApt"))
-      .returns(mApt.address);
+    [, , , mApt, lpAccount, tvlManager, erc20Allocation, randomUser] =
+      await ethers.getSigners();
 
     await addressRegistry.mock.tvlManagerAddress.returns(tvlManager.address);
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("tvlManager"))
       .returns(tvlManager.address);
 
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("erc20Allocation"))
+      .returns(erc20Allocation.address);
+
     await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("lpAccount"))
       .returns(lpAccount.address);
+
+    await addressRegistry.mock.mAptAddress.returns(mApt.address);
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("mApt"))
+      .returns(mApt.address);
 
     tvlAggMock = await deployMockContract(deployer, AggregatorV3Interface.abi);
     assetAggMock_1 = await deployMockContract(
@@ -176,40 +198,36 @@ describe("Contract: OracleAdapter", () => {
   });
 
   async function deployOracleAdapter(addressRegistry, oracleAdapterFactory) {
-    const ProxyAdminFactory = await ethers.getContractFactory(
-      "ProxyAdminFactory"
-    );
-    const proxyAdminFactory = await ProxyAdminFactory.deploy();
-
     const ProxyFactory = await ethers.getContractFactory("ProxyFactory");
     const proxyFactory = await ProxyFactory.deploy();
+
+    const MOCK_CONTRACT_ADDRESS = (await deployMockContract(deployer, []))
+      .address;
 
     const AlphaDeployment = await ethers.getContractFactory(
       "TestAlphaDeployment"
     );
     const alphaDeployment = await AlphaDeployment.deploy(
-      proxyAdminFactory.address,
       proxyFactory.address,
-      FAKE_ADDRESS, // address registry v2 factory
-      FAKE_ADDRESS, // mAPT factory
-      FAKE_ADDRESS, // pool token v1 factory
-      FAKE_ADDRESS, // pool token v2 factory
-      FAKE_ADDRESS, // tvl manager factory
-      FAKE_ADDRESS, // erc20 allocation factory
+      MOCK_CONTRACT_ADDRESS, // address registry v2 factory
+      MOCK_CONTRACT_ADDRESS, // mAPT factory
+      MOCK_CONTRACT_ADDRESS, // pool token v1 factory
+      MOCK_CONTRACT_ADDRESS, // pool token v2 factory
+      MOCK_CONTRACT_ADDRESS, // tvl manager factory
+      MOCK_CONTRACT_ADDRESS, // erc20 allocation factory
       oracleAdapterFactory.address, // oracle adapter factory
-      FAKE_ADDRESS // lp account factory
+      MOCK_CONTRACT_ADDRESS // lp account factory
     );
 
     // need some test setup to pass the pre-step checks
-    await alphaDeployment.testSetStep(6);
+    await alphaDeployment.testSetStep(4);
     await alphaDeployment.testSetMapt(mApt.address);
-    await alphaDeployment.testSetTvlManager(tvlManager.address);
     await alphaDeployment.testSetLpAccount(lpAccount.address);
-    await addressRegistry.mock.owner.returns(adminSafe.address);
+    await alphaDeployment.testSetTvlManager(tvlManager.address);
+    await alphaDeployment.testSetErc20Allocation(erc20Allocation.address);
+    await addressRegistry.mock.owner.returns(emergencySafe.address);
 
-    await addressRegistry.mock.registerAddress.returns();
-
-    await alphaDeployment.deploy_6_OracleAdapter();
+    await alphaDeployment.deploy_4_OracleAdapter();
 
     const oracleAdapterAddress = await alphaDeployment.oracleAdapter();
     const oracleAdapter = await ethers.getContractAt(
@@ -312,16 +330,19 @@ describe("Contract: OracleAdapter", () => {
       ).to.be.true;
     });
 
-    it("Contract role given to TVL Manager and mAPT", async () => {
+    it("Contract role given to TVL Manager, mAPT, LP Account, ERC20 Allocation", async () => {
       const CONTRACT_ROLE = await oracleAdapter.CONTRACT_ROLE();
       const memberCount = await oracleAdapter.getRoleMemberCount(CONTRACT_ROLE);
-      expect(memberCount).to.equal(3);
+      expect(memberCount).to.equal(4);
       expect(await oracleAdapter.hasRole(CONTRACT_ROLE, tvlManager.address)).to
         .be.true;
       expect(await oracleAdapter.hasRole(CONTRACT_ROLE, mApt.address)).to.be
         .true;
       expect(await oracleAdapter.hasRole(CONTRACT_ROLE, lpAccount.address)).to
         .be.true;
+      expect(
+        await oracleAdapter.hasRole(CONTRACT_ROLE, erc20Allocation.address)
+      ).to.be.true;
     });
 
     it("Emergency role given to Emergency Safe", async () => {
@@ -365,7 +386,7 @@ describe("Contract: OracleAdapter", () => {
     it("Cannot set to non-contract address", async () => {
       await expect(
         oracleAdapter
-          .connect(emergencySafe)
+          .connect(emergencySafeSigner)
           .emergencySetAddressRegistry(FAKE_ADDRESS)
       ).to.be.revertedWith("INVALID_ADDRESS");
     });
@@ -373,7 +394,7 @@ describe("Contract: OracleAdapter", () => {
     it("Emergency role can set", async () => {
       const dummyContract = await deployMockContract(deployer, []);
       await oracleAdapter
-        .connect(emergencySafe)
+        .connect(emergencySafeSigner)
         .emergencySetAddressRegistry(dummyContract.address);
       expect(await oracleAdapter.addressRegistry()).to.equal(
         dummyContract.address
@@ -393,14 +414,16 @@ describe("Contract: OracleAdapter", () => {
   describe("emergencySetTvlSource", () => {
     it("Cannot set to non-contract address", async () => {
       await expect(
-        oracleAdapter.connect(emergencySafe).emergencySetTvlSource(FAKE_ADDRESS)
+        oracleAdapter
+          .connect(emergencySafeSigner)
+          .emergencySetTvlSource(FAKE_ADDRESS)
       ).to.be.revertedWith("INVALID_SOURCE");
     });
 
     it("Emergency role can set", async () => {
       const dummyContract = await deployMockContract(deployer, []);
       await oracleAdapter
-        .connect(emergencySafe)
+        .connect(emergencySafeSigner)
         .emergencySetTvlSource(dummyContract.address);
       expect(await oracleAdapter.tvlSource()).to.equal(dummyContract.address);
     });
@@ -421,7 +444,7 @@ describe("Contract: OracleAdapter", () => {
       const source = ANOTHER_FAKE_ADDRESS;
       await expect(
         oracleAdapter
-          .connect(emergencySafe)
+          .connect(emergencySafeSigner)
           .emergencySetAssetSource(asset, source)
       ).to.be.revertedWith("INVALID_SOURCE");
     });
@@ -432,7 +455,7 @@ describe("Contract: OracleAdapter", () => {
       const source = dummyContract.address;
 
       await oracleAdapter
-        .connect(emergencySafe)
+        .connect(emergencySafeSigner)
         .emergencySetAssetSource(asset, source);
       expect(await oracleAdapter.assetSources(FAKE_ADDRESS)).to.equal(
         dummyContract.address
@@ -456,7 +479,7 @@ describe("Contract: OracleAdapter", () => {
       const sources = [ANOTHER_FAKE_ADDRESS];
       await expect(
         oracleAdapter
-          .connect(emergencySafe)
+          .connect(emergencySafeSigner)
           .emergencySetAssetSources(assets, sources)
       ).to.be.revertedWith("INVALID_SOURCE");
     });
@@ -467,7 +490,7 @@ describe("Contract: OracleAdapter", () => {
       const sources = [dummyContract.address];
 
       await oracleAdapter
-        .connect(emergencySafe)
+        .connect(emergencySafeSigner)
         .emergencySetAssetSources(assets, sources);
       expect(await oracleAdapter.assetSources(FAKE_ADDRESS)).to.equal(
         dummyContract.address
@@ -536,6 +559,8 @@ describe("Contract: OracleAdapter", () => {
       await expect(oracleAdapter.connect(mApt).lock()).to.not.be.reverted;
       await expect(oracleAdapter.connect(tvlManager).lock()).to.not.be.reverted;
       await expect(oracleAdapter.connect(lpAccount).lock()).to.not.be.reverted;
+      await expect(oracleAdapter.connect(erc20Allocation).lock()).to.not.be
+        .reverted;
     });
   });
 
@@ -547,8 +572,8 @@ describe("Contract: OracleAdapter", () => {
     });
 
     it("Emergency role can call", async () => {
-      await expect(oracleAdapter.connect(emergencySafe).emergencyUnlock()).to
-        .not.be.reverted;
+      await expect(oracleAdapter.connect(emergencySafeSigner).emergencyUnlock())
+        .to.not.be.reverted;
     });
   });
 
@@ -566,6 +591,10 @@ describe("Contract: OracleAdapter", () => {
 
       await expect(oracleAdapter.connect(lpAccount).lockFor(period)).to.not.be
         .reverted;
+      expect(await oracleAdapter.isLocked()).to.be.true;
+
+      await expect(oracleAdapter.connect(erc20Allocation).lockFor(period)).to
+        .not.be.reverted;
       expect(await oracleAdapter.isLocked()).to.be.true;
     });
 
@@ -588,7 +617,9 @@ describe("Contract: OracleAdapter", () => {
       const value = 1;
       const period = 5;
       await expect(
-        oracleAdapter.connect(emergencySafe).emergencySetTvl(value, period)
+        oracleAdapter
+          .connect(emergencySafeSigner)
+          .emergencySetTvl(value, period)
       ).to.not.be.reverted;
     });
 
@@ -604,24 +635,30 @@ describe("Contract: OracleAdapter", () => {
   describe("emergencyUnsetTvl", () => {
     it("Revert when TVL has not been set", async () => {
       expect(await oracleAdapter.hasTvlOverride()).to.be.false;
-      await expect(oracleAdapter.connect(emergencySafe).emergencyUnsetTvl()).to
-        .be.reverted;
+      await expect(
+        oracleAdapter.connect(emergencySafeSigner).emergencyUnsetTvl()
+      ).to.be.reverted;
     });
 
     it("Emergency role can unset", async () => {
       const value = 1;
       const period = 5;
-      await oracleAdapter.connect(emergencySafe).emergencySetTvl(value, period);
+      await oracleAdapter
+        .connect(emergencySafeSigner)
+        .emergencySetTvl(value, period);
       expect(await oracleAdapter.hasTvlOverride()).to.be.true;
 
-      await expect(oracleAdapter.connect(emergencySafe).emergencyUnsetTvl()).to
-        .not.be.reverted;
+      await expect(
+        oracleAdapter.connect(emergencySafeSigner).emergencyUnsetTvl()
+      ).to.not.be.reverted;
     });
 
     it("Revert when unpermissioned calls", async () => {
       const value = 1;
       const period = 5;
-      await oracleAdapter.connect(emergencySafe).emergencySetTvl(value, period);
+      await oracleAdapter
+        .connect(emergencySafeSigner)
+        .emergencySetTvl(value, period);
       await expect(
         oracleAdapter.connect(randomUser).emergencyUnsetTvl()
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
@@ -634,7 +671,7 @@ describe("Contract: OracleAdapter", () => {
       const period = 5;
       await expect(
         oracleAdapter
-          .connect(emergencySafe)
+          .connect(emergencySafeSigner)
           .emergencySetAssetValue(assetAddress_1, value, period)
       ).to.not.be.reverted;
     });
@@ -662,13 +699,13 @@ describe("Contract: OracleAdapter", () => {
       const value = 1;
       const period = 5;
       await oracleAdapter
-        .connect(emergencySafe)
+        .connect(emergencySafeSigner)
         .emergencySetAssetValue(assetAddress_1, value, period);
       expect(await oracleAdapter.hasAssetOverride(assetAddress_1)).to.be.true;
 
       await expect(
         oracleAdapter
-          .connect(emergencySafe)
+          .connect(emergencySafeSigner)
           .emergencyUnsetAssetValue(assetAddress_1)
       ).to.not.be.reverted;
       expect(await oracleAdapter.hasAssetOverride(assetAddress_1)).to.be.false;
@@ -678,7 +715,7 @@ describe("Contract: OracleAdapter", () => {
       const value = 1;
       const period = 5;
       await oracleAdapter
-        .connect(emergencySafe)
+        .connect(emergencySafeSigner)
         .emergencySetAssetValue(assetAddress_1, value, period);
       await expect(
         oracleAdapter
@@ -778,7 +815,7 @@ describe("Contract: OracleAdapter", () => {
 
       await expect(oracleAdapter.getTvl()).to.be.revertedWith("ORACLE_LOCKED");
 
-      await oracleAdapter.connect(emergencySafe).emergencyUnlock();
+      await oracleAdapter.connect(emergencySafeSigner).emergencyUnlock();
       await expect(oracleAdapter.getTvl()).to.not.be.reverted;
     });
 
@@ -800,13 +837,13 @@ describe("Contract: OracleAdapter", () => {
       await oracleAdapter.connect(mApt).lockFor(5);
       const activePeriod = 2;
       await oracleAdapter
-        .connect(emergencySafe)
+        .connect(emergencySafeSigner)
         .emergencySetTvl(manualValue, activePeriod); // advances 1 block
 
       // TVL lock takes precedence over manual submission
       await expect(oracleAdapter.getTvl()).to.be.reverted;
 
-      await oracleAdapter.connect(emergencySafe).emergencyUnlock(); // advances 1 block
+      await oracleAdapter.connect(emergencySafeSigner).emergencyUnlock(); // advances 1 block
       // Manual submission takes precedence over Chainlink
       expect(await oracleAdapter.getTvl()).to.equal(manualValue);
 
@@ -918,7 +955,7 @@ describe("Contract: OracleAdapter", () => {
         oracleAdapter.getAssetPrice(assetAddress_1)
       ).to.be.revertedWith("ORACLE_LOCKED");
 
-      await oracleAdapter.connect(emergencySafe).emergencyUnlock();
+      await oracleAdapter.connect(emergencySafeSigner).emergencyUnlock();
       await expect(oracleAdapter.getAssetPrice(assetAddress_1)).to.not.be
         .reverted;
     });
@@ -943,13 +980,13 @@ describe("Contract: OracleAdapter", () => {
       await oracleAdapter.connect(mApt).lockFor(5);
       const activePeriod = 2;
       await oracleAdapter
-        .connect(emergencySafe)
+        .connect(emergencySafeSigner)
         .emergencySetAssetValue(assetAddress_1, manualValue, activePeriod); // advances 1 block
 
       // TVL lock takes precedence over manual submission
       await expect(oracleAdapter.getAssetPrice(assetAddress_1)).to.be.reverted;
 
-      await oracleAdapter.connect(emergencySafe).emergencyUnlock(); // advances 1 block
+      await oracleAdapter.connect(emergencySafeSigner).emergencyUnlock(); // advances 1 block
       // Manual submission takes precedence over Chainlink
       expect(await oracleAdapter.getAssetPrice(assetAddress_1)).to.equal(
         manualValue

@@ -354,6 +354,34 @@ contract PoolTokenV2 is
         return _calculateMintAmount(depositValue, poolTotalValue);
     }
 
+    function getAPTValue(uint256 aptAmount)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
+        return aptAmount.mul(getPoolTotalValue()).div(totalSupply());
+    }
+
+    function getReserveTopUpValue() external view override returns (int256) {
+        int256 topUpValue = _getReserveTopUpValue();
+        if (topUpValue == 0) {
+            return 0;
+        }
+
+        // Should never revert because the OracleAdapter converts from int256
+        uint256 price = getUnderlyerPrice();
+        require(price <= uint256(type(int256).max), "INVALID_PRICE");
+
+        int256 topUpAmount =
+            topUpValue.mul(int256(10**uint256(underlyer.decimals()))).div(
+                int256(getUnderlyerPrice())
+            );
+
+        return topUpAmount;
+    }
+
     /**
      * @dev To check if fee will be applied, use `isEarlyRedeem`.
      */
@@ -417,16 +445,6 @@ contract PoolTokenV2 is
         return underlyerValue.add(mAptValue);
     }
 
-    function getAPTValue(uint256 aptAmount)
-        external
-        view
-        override
-        returns (uint256)
-    {
-        require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        return aptAmount.mul(getPoolTotalValue()).div(totalSupply());
-    }
-
     function getValueFromUnderlyerAmount(uint256 underlyerAmount)
         public
         view
@@ -444,24 +462,6 @@ contract PoolTokenV2 is
         IOracleAdapter oracleAdapter =
             IOracleAdapter(addressRegistry.oracleAdapterAddress());
         return oracleAdapter.getAssetPrice(address(underlyer));
-    }
-
-    function getReserveTopUpValue() external view override returns (int256) {
-        int256 topUpValue = _getReserveTopUpValue();
-        if (topUpValue == 0) {
-            return 0;
-        }
-
-        // Should never revert because the OracleAdapter converts from int256
-        uint256 price = getUnderlyerPrice();
-        require(price <= uint256(type(int256).max), "INVALID_PRICE");
-
-        int256 topUpAmount =
-            topUpValue.mul(int256(10**uint256(underlyer.decimals()))).div(
-                int256(getUnderlyerPrice())
-            );
-
-        return topUpAmount;
     }
 
     function _setAddressRegistry(address addressRegistry_) internal {

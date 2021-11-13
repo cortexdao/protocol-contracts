@@ -15,12 +15,12 @@ import {
     OldCurveAllocationBase4
 } from "contracts/protocols/curve/common/Imports.sol";
 
-import {CurveSusdV2Constants} from "./Constants.sol";
+import {CurveSusdv2Constants} from "./Constants.sol";
 
-contract CurveSusdV2Allocation is
+contract CurveSusdv2Allocation is
     OldCurveAllocationBase4,
     ImmutableAssetAllocation,
-    CurveSusdV2Constants
+    CurveSusdv2Constants
 {
     function balanceOf(address account, uint8 tokenIndex)
         public

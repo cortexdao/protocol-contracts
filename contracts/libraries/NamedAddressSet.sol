@@ -13,6 +13,7 @@ import {IZap, ISwap} from "contracts/lpaccount/Imports.sol";
  * @notice Useful for keeping track of unique deployed contracts
  * @dev Each address must be a contract with a `NAME` constant for lookup
  */
+// solhint-disable ordering
 library NamedAddressSet {
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -233,3 +234,4 @@ library NamedAddressSet {
         return _names(set._inner);
     }
 }
+// solhint-enable ordering

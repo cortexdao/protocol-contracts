@@ -56,14 +56,14 @@ describe("Contract: MetaPoolAllocationBase", () => {
 
   before(async () => {
     [deployer, lpSafe] = await ethers.getSigners();
-    const Curve3PoolAllocation = await ethers.getContractFactory(
-      "Curve3PoolAllocation"
+    const Curve3poolAllocation = await ethers.getContractFactory(
+      "Curve3poolAllocation"
     );
-    const curve3PoolAllocation = await Curve3PoolAllocation.deploy();
+    const curve3poolAllocation = await Curve3poolAllocation.deploy();
     MetaPoolAllocationBase = await ethers.getContractFactory(
       "CurveUstAllocation"
     );
-    curve = await MetaPoolAllocationBase.deploy(curve3PoolAllocation.address);
+    curve = await MetaPoolAllocationBase.deploy(curve3poolAllocation.address);
     await curve.deployed();
   });
 

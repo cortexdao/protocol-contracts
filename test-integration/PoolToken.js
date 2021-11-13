@@ -17,6 +17,7 @@ const {
   expectEventInTransaction,
   deployAggregator,
   forciblySendEth,
+  generateContractAddress,
 } = require("../utils/helpers");
 
 const link = (amount) => tokenAmountToBigNumber(amount, "18");
@@ -30,26 +31,14 @@ console.debugging = false;
 describe("Contract: PoolToken", () => {
   let deployer;
   let oracle;
-  let lpAccount;
-  let tvlManager;
-  let lpSafe;
   let adminSafe;
   let emergencySafe;
   let randomUser;
   let anotherUser;
 
   before(async () => {
-    [
-      deployer,
-      oracle,
-      lpAccount,
-      tvlManager,
-      lpSafe,
-      adminSafe,
-      emergencySafe,
-      randomUser,
-      anotherUser,
-    ] = await ethers.getSigners();
+    [deployer, oracle, adminSafe, emergencySafe, randomUser, anotherUser] =
+      await ethers.getSigners();
   });
 
   const NETWORK = "MAINNET";
@@ -64,15 +53,25 @@ describe("Contract: PoolToken", () => {
   });
 
   // use EVM snapshots for test isolation
-  let snapshotId;
+  let testSnapshotId;
+  let suiteSnapshotId;
 
   beforeEach(async () => {
-    let snapshot = await timeMachine.takeSnapshot();
-    snapshotId = snapshot["result"];
+    const snapshot = await timeMachine.takeSnapshot();
+    testSnapshotId = snapshot["result"];
   });
 
   afterEach(async () => {
-    await timeMachine.revertToSnapshot(snapshotId);
+    await timeMachine.revertToSnapshot(testSnapshotId);
+  });
+
+  before(async () => {
+    const snapshot = await timeMachine.takeSnapshot();
+    suiteSnapshotId = snapshot["result"];
+  });
+
+  after(async () => {
+    await timeMachine.revertToSnapshot(suiteSnapshotId);
   });
 
   tokenParams.forEach(function (params) {
@@ -136,14 +135,22 @@ describe("Contract: PoolToken", () => {
           addressRegistryProxy.address
         );
 
+        const erc20AllocationAddress = await generateContractAddress(deployer);
         await addressRegistry.registerAddress(
-          bytes32("tvlManager"),
-          tvlManager.address
+          bytes32("erc20Allocation"),
+          erc20AllocationAddress
         );
 
+        const tvlManagerAddress = await generateContractAddress(deployer);
+        await addressRegistry.registerAddress(
+          bytes32("tvlManager"),
+          tvlManagerAddress
+        );
+
+        const lpAccountAddress = await generateContractAddress(deployer);
         await addressRegistry.registerAddress(
           bytes32("lpAccount"),
-          lpAccount.address
+          lpAccountAddress
         );
 
         await addressRegistry.registerAddress(
@@ -156,10 +163,8 @@ describe("Contract: PoolToken", () => {
           emergencySafe.address
         );
 
-        await addressRegistry.registerAddress(
-          bytes32("lpSafe"),
-          lpSafe.address
-        );
+        const lpSafeAddress = await generateContractAddress(deployer);
+        await addressRegistry.registerAddress(bytes32("lpSafe"), lpSafeAddress);
 
         const proxyAdmin = await ProxyAdmin.deploy();
         await proxyAdmin.deployed();
@@ -625,9 +630,8 @@ describe("Contract: PoolToken", () => {
               let underlyerBalance = await underlyer.balanceOf(
                 poolToken.address
               );
-              let expectedUnderlyerValue = await poolToken.getValueFromUnderlyerAmount(
-                underlyerBalance
-              );
+              let expectedUnderlyerValue =
+                await poolToken.getValueFromUnderlyerAmount(underlyerBalance);
               expect(await poolToken.testGetPoolUnderlyerValue()).to.equal(
                 expectedUnderlyerValue
               );
@@ -641,9 +645,8 @@ describe("Contract: PoolToken", () => {
                 .transfer(poolToken.address, underlyerAmount);
 
               underlyerBalance = await underlyer.balanceOf(poolToken.address);
-              expectedUnderlyerValue = await poolToken.getValueFromUnderlyerAmount(
-                underlyerBalance
-              );
+              expectedUnderlyerValue =
+                await poolToken.getValueFromUnderlyerAmount(underlyerBalance);
               expect(await poolToken.testGetPoolUnderlyerValue()).to.equal(
                 expectedUnderlyerValue
               );
@@ -693,7 +696,8 @@ describe("Contract: PoolToken", () => {
                 expect(topUpValue).to.be.gt(0);
               }
 
-              const poolUnderlyerValue = await poolToken.testGetPoolUnderlyerValue();
+              const poolUnderlyerValue =
+                await poolToken.testGetPoolUnderlyerValue();
               // assuming we unwind the top-up value from the pool's deployed
               // capital, the reserve percentage of resulting deployed value
               // is what we are targeting
@@ -826,9 +830,10 @@ describe("Contract: PoolToken", () => {
 
               // calculate slightly more than APT amount corresponding to the reserve
               const extraAmount = tokenAmountToBigNumber("1", decimals);
-              const reserveAptAmountPlusExtra = await poolToken.calculateMintAmount(
-                reserveBalance.add(extraAmount)
-              );
+              const reserveAptAmountPlusExtra =
+                await poolToken.calculateMintAmount(
+                  reserveBalance.add(extraAmount)
+                );
 
               // "transfer" slightly more than reserve's APT amount to the user
               // (direct transfer between users is blocked)
@@ -891,9 +896,8 @@ describe("Contract: PoolToken", () => {
               let underlyerBalanceAfter = await underlyer.balanceOf(
                 randomUser.address
               );
-              const underlyerTransferAmount = underlyerBalanceAfter.sub(
-                underlyerBalance
-              );
+              const underlyerTransferAmount =
+                underlyerBalanceAfter.sub(underlyerBalance);
               expect(underlyerTransferAmount).to.equal(underlyerAmount);
               expect(await underlyer.balanceOf(poolToken.address)).to.equal(
                 reserveBalance.sub(underlyerAmount)

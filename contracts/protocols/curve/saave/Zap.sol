@@ -34,7 +34,8 @@ contract CurveSaaveZap is CurveGaugeZapBase, CurveSaaveConstants {
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
-        IERC20[] memory allocations = _createErc20AllocationArray(0);
+        IERC20[] memory allocations = _createErc20AllocationArray(1);
+        allocations[4] = IERC20(SUSD_ADDRESS);
         return allocations;
     }
 
@@ -48,7 +49,7 @@ contract CurveSaaveZap is CurveGaugeZapBase, CurveSaaveConstants {
         override
         returns (address)
     {
-        return IStableSwap(SWAP_ADDRESS).coins(i);
+        return IStableSwap(SWAP_ADDRESS).underlying_coins(i);
     }
 
     function _addLiquidity(uint256[] calldata amounts, uint256 minAmount)
@@ -57,7 +58,8 @@ contract CurveSaaveZap is CurveGaugeZapBase, CurveSaaveConstants {
     {
         IStableSwap(SWAP_ADDRESS).add_liquidity(
             [amounts[0], amounts[1]],
-            minAmount
+            minAmount,
+            true
         );
     }
 
@@ -70,7 +72,8 @@ contract CurveSaaveZap is CurveGaugeZapBase, CurveSaaveConstants {
         IStableSwap(SWAP_ADDRESS).remove_liquidity_one_coin(
             lpBalance,
             index,
-            minAmount
+            minAmount,
+            true
         );
     }
 

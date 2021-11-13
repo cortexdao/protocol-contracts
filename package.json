@@ -1,6 +1,6 @@
 {
   "name": "@apy-finance/apy-core",
-  "version": "8.1.0",
+  "version": "8.5.0",
   "description": "",
   "keywords": [
     "ethereum",
@@ -22,7 +22,8 @@
     "test:e2e": "ENABLE_FORKING=true hardhat test test-e2e/*",
     "lint": "solhint contracts/**/*.sol contracts/*.sol",
     "coverage": "yarn clean; ENABLE_FORKING=true hardhat coverage --testfiles \"test-{unit,integration}/**/*.js\"",
-    "dot-only": "yarn dot-only-hunter test-unit && yarn dot-only-hunter test-integration"
+    "dot-only": "yarn dot-only-hunter test-unit && yarn dot-only-hunter test-integration",
+    "fork_mainnet": "ENABLE_FORKING=true yarn hardhat node --hostname 0.0.0.0"
   },
   "husky": {
     "hooks": {
@@ -60,15 +61,15 @@
     "dotenv": "^8.2.0",
     "eslint": "^7.11.0",
     "eslint-config-prettier": "^6.14.0",
-    "ethereum-waffle": "^3.0.0",
-    "ethers": "^5.4.7",
+    "ethereum-waffle": "~3.4.0",
+    "ethers": "~5.4.7",
     "ganache-time-traveler": "^1.0.15",
-    "hardhat": "^2.5.0",
+    "hardhat": "2.6.6",
     "hardhat-contract-sizer": "^2.1.1",
     "husky": "4.0.10",
     "lint-staged": "^10.2.11",
-    "prettier": "2.1.2",
-    "prettier-plugin-solidity": "^1.0.0-beta.8",
+    "prettier": "2.3.0",
+    "prettier-plugin-solidity": "1.0.0-beta.11",
     "solhint": "^3.2.0",
     "solidity-coverage": "^0.7.10"
   },
@@ -79,6 +80,7 @@
     "@openzeppelin/contracts-ethereum-package": "3.0.0",
     "abdk-libraries-solidity": "2.4.0",
     "axios": "^0.21.1",
+    "axios-retry": "^3.2.3",
     "bignumber.js": "^9.0.1",
     "chalk": "^4.1.0",
     "commander": "^6.2.0",

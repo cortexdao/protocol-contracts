@@ -8,10 +8,10 @@ import {
     IStableSwap,
     ILiquidityGauge
 } from "contracts/protocols/curve/common/interfaces/Imports.sol";
-import {CurveIronBankConstants} from "./Constants.sol";
+import {CurveIronbankConstants} from "./Constants.sol";
 import {CurveGaugeZapBase} from "contracts/protocols/curve/common/Imports.sol";
 
-contract CurveIronBankZap is CurveGaugeZapBase, CurveIronBankConstants {
+contract CurveIronbankZap is CurveGaugeZapBase, CurveIronbankConstants {
     constructor()
         public
         CurveGaugeZapBase(

@@ -19,7 +19,7 @@ interface ILpAccount {
      * @dev The index should match the order of `IZap.sortedSymbols`
      * @param name The name of the `IZap`
      * @param amount The amount of the token to unwind
-     * @param index The index of the token to unwind
+     * @param index The index of the token to unwind into
      */
     function unwindStrategy(
         string calldata name,

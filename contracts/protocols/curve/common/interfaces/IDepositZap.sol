@@ -5,10 +5,9 @@ import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
- * @notice the stablecoin pool contract
+ * @notice deposit contract used for pools such as Compound and USDT
  */
 interface IDepositZap {
-    // this method only exists on the DepositCompound Contract
     // solhint-disable-next-line
     function underlying_coins(int128 coin) external view returns (address);
 

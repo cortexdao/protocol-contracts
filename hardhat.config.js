@@ -15,7 +15,7 @@ module.exports = {
       forking: {
         url: "https://mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
         enabled: process.env.ENABLE_FORKING ? true : false,
-        blockNumber: 13272943,
+        blockNumber: 13534790,
       },
       accounts: {
         // default, include for explicitness
@@ -34,7 +34,6 @@ module.exports = {
     },
     mainnet: {
       url: "https://mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
-      gasPrice: 72e9,
       accounts: {
         mnemonic: process.env.MNEMONIC || "",
       },

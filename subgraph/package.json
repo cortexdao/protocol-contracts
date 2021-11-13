@@ -13,13 +13,18 @@
     "deploy:mainnet": "graph deploy apy-finance/apy-finance --ipfs https://api.thegraph.com/ipfs/ --node https://api.thegraph.com/deploy/",
     "deploy:staging": "graph deploy apy-finance/apy-finance-staging --ipfs https://api.thegraph.com/ipfs/ --node https://api.thegraph.com/deploy/",
     "deploy:kovan": "graph deploy apy-finance/apy-finance-kovan --ipfs https://api.thegraph.com/ipfs/ --node https://api.thegraph.com/deploy/",
+    "deploy:v2-staging": "graph deploy apy-finance/apy-finance-v2-staging --ipfs https://api.thegraph.com/ipfs/ --node https://api.thegraph.com/deploy/",
+    "deploy:v2-mainnet": "graph deploy apy-finance/apy-finance-v2 --ipfs https://api.thegraph.com/ipfs/ --node https://api.thegraph.com/deploy/",
     "prepare:development": "mustache config/development.json subgraph.template.yaml > subgraph.yaml",
     "prepare:mainnet": "mustache config/mainnet.json subgraph.template.yaml > subgraph.yaml",
     "prepare:kovan": "mustache config/kovan.json subgraph.template.yaml > subgraph.yaml"
   },
   "devDependencies": {
     "@graphprotocol/graph-cli": "^0.18.0",
-    "@graphprotocol/graph-ts": "^0.18.0"
+    "@graphprotocol/graph-ts": "^0.18.0",
+    "eslint-config-prettier": "^8.1.0",
+    "prettier": "2.1.2",
+    "typescript": "^4.2.3"
   },
   "dependencies": {
     "@types/node": "^14.11.5",

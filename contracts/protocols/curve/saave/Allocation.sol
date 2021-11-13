@@ -49,7 +49,7 @@ contract CurveSaaveAllocation is
     {
         TokenData[] memory tokens = new TokenData[](2);
         tokens[0] = TokenData(DAI_ADDRESS, "DAI", 18);
-        tokens[1] = TokenData(USDC_ADDRESS, "sUSD", 18);
+        tokens[1] = TokenData(SUSD_ADDRESS, "sUSD", 18);
         return tokens;
     }
 }

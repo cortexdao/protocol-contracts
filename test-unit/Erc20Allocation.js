@@ -2,6 +2,7 @@ const { expect } = require("chai");
 const hre = require("hardhat");
 const { artifacts, ethers, waffle } = hre;
 const timeMachine = require("ganache-time-traveler");
+const { FAKE_ADDRESS, generateContractAddress } = require("../utils/helpers");
 const { deployMockContract } = waffle;
 
 const IDetailedERC20 = artifacts.readArtifactSync("IDetailedERC20");
@@ -22,6 +23,10 @@ describe("Contract: Erc20Allocation", () => {
 
   // deployed contracts
   let erc20Allocation;
+
+  // mocks
+  let addressRegistry;
+  let oracleAdapter;
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -49,7 +54,7 @@ describe("Contract: Erc20Allocation", () => {
     await timeMachine.revertToSnapshot(snapshotId);
   });
 
-  before(async () => {
+  before("Setup signers", async () => {
     [
       deployer,
       emergencySafe,
@@ -59,23 +64,27 @@ describe("Contract: Erc20Allocation", () => {
       user,
       anotherUser,
     ] = await ethers.getSigners();
+  });
+
+  before("Mock Address Registry and register Safes", async () => {
+    addressRegistry = await deployMockContract(deployer, AddressRegistryV2.abi);
+    await addressRegistry.mock.emergencySafeAddress.returns(
+      emergencySafe.address
+    );
+    await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
+    await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
+    await addressRegistry.mock.mAptAddress.returns(mApt.address);
+  });
+
+  before("Deploy ERC20 allocation", async () => {
     Erc20Allocation = await ethers.getContractFactory(
       "Erc20Allocation",
       adminSafe
     );
-    const addressRegistryMock = await deployMockContract(
-      deployer,
-      AddressRegistryV2.abi
-    );
-    await addressRegistryMock.mock.emergencySafeAddress.returns(
-      emergencySafe.address
-    );
-    await addressRegistryMock.mock.adminSafeAddress.returns(adminSafe.address);
-    await addressRegistryMock.mock.lpAccountAddress.returns(lpAccount.address);
-    await addressRegistryMock.mock.mAptAddress.returns(mApt.address);
-    erc20Allocation = await Erc20Allocation.deploy(addressRegistryMock.address);
+    erc20Allocation = await Erc20Allocation.deploy(addressRegistry.address);
+  });
 
-    // setup each mock ERC20 token
+  before("Mock ERC20 tokens", async () => {
     tokenMock_0 = await deployMockContract(deployer, IDetailedERC20.abi);
     token_0.token = tokenMock_0.address;
     await tokenMock_0.mock.symbol.returns(token_0.symbol);
@@ -94,6 +103,17 @@ describe("Contract: Erc20Allocation", () => {
       .returns(anotherUserBalance);
   });
 
+  before("Mock oracle adapter", async () => {
+    oracleAdapter = await deployMockContract(
+      deployer,
+      artifacts.readArtifactSync("OracleAdapter").abi
+    );
+    await addressRegistry.mock.oracleAdapterAddress.returns(
+      oracleAdapter.address
+    );
+    await oracleAdapter.mock.lock.returns();
+  });
+
   describe("Defaults", () => {
     it("Default admin role given to Emergency Safe", async () => {
       const DEFAULT_ADMIN_ROLE = await erc20Allocation.DEFAULT_ADMIN_ROLE();
@@ -106,6 +126,25 @@ describe("Contract: Erc20Allocation", () => {
       ).to.be.true;
     });
 
+    it("Emergency role given to Emergency Safe", async () => {
+      const EMERGENCY_ROLE = await erc20Allocation.EMERGENCY_ROLE();
+      const memberCount = await erc20Allocation.getRoleMemberCount(
+        EMERGENCY_ROLE
+      );
+      expect(memberCount).to.equal(1);
+      expect(
+        await erc20Allocation.hasRole(EMERGENCY_ROLE, emergencySafe.address)
+      ).to.be.true;
+    });
+
+    it("Admin role given to Admin Safe", async () => {
+      const ADMIN_ROLE = await erc20Allocation.ADMIN_ROLE();
+      const memberCount = await erc20Allocation.getRoleMemberCount(ADMIN_ROLE);
+      expect(memberCount).to.equal(1);
+      expect(await erc20Allocation.hasRole(ADMIN_ROLE, adminSafe.address)).to.be
+        .true;
+    });
+
     it("Contract role given to mAPT", async () => {
       const CONTRACT_ROLE = await erc20Allocation.CONTRACT_ROLE();
       const memberCount = await erc20Allocation.getRoleMemberCount(
@@ -116,12 +155,48 @@ describe("Contract: Erc20Allocation", () => {
         .true;
     });
 
-    it("Admin role given to Admin Safe", async () => {
-      const ADMIN_ROLE = await erc20Allocation.ADMIN_ROLE();
-      const memberCount = await erc20Allocation.getRoleMemberCount(ADMIN_ROLE);
-      expect(memberCount).to.equal(1);
-      expect(await erc20Allocation.hasRole(ADMIN_ROLE, adminSafe.address)).to.be
-        .true;
+    it("Address registry is set", async () => {
+      expect(await erc20Allocation.addressRegistry()).to.equal(
+        addressRegistry.address
+      );
+    });
+  });
+
+  describe("emergencySetAddressRegistry", () => {
+    it("Emergency Safe can call", async () => {
+      const someContractAddress = await generateContractAddress(deployer);
+      await expect(
+        erc20Allocation
+          .connect(emergencySafe)
+          .emergencySetAddressRegistry(someContractAddress)
+      ).to.not.be.reverted;
+    });
+
+    it("Unpermissioned cannot call", async () => {
+      const someContractAddress = await generateContractAddress(deployer);
+      await expect(
+        erc20Allocation
+          .connect(anotherUser)
+          .emergencySetAddressRegistry(someContractAddress)
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
+    });
+
+    it("Address can be set", async () => {
+      const someContractAddress = await generateContractAddress(deployer);
+      await erc20Allocation
+        .connect(emergencySafe)
+        .emergencySetAddressRegistry(someContractAddress);
+      expect(await erc20Allocation.addressRegistry()).to.equal(
+        someContractAddress
+      );
+    });
+
+    it("Cannot set to non-contract address", async () => {
+      await expect(
+        erc20Allocation
+          .connect(emergencySafe)
+          .emergencySetAddressRegistry(FAKE_ADDRESS)
+      ).to.be.revertedWith("INVALID_ADDRESS");
     });
   });
 
@@ -202,6 +277,33 @@ describe("Contract: Erc20Allocation", () => {
         ).to.be.revertedWith("NOT_ADMIN_OR_CONTRACT_ROLE");
       });
 
+      it("Calls lock on oracle adapter", async () => {
+        await oracleAdapter.mock.lock.revertsWithReason("CALLED_LOCK");
+
+        await expect(
+          erc20Allocation
+            .connect(adminSafe)
+            ["registerErc20Token(address,string,uint8)"](
+              token_0.token,
+              token_0.symbol,
+              token_0.decimals
+            )
+        ).to.be.revertedWith("CALLED_LOCK");
+        await expect(
+          erc20Allocation
+            .connect(adminSafe)
+            ["registerErc20Token(address,string)"](
+              token_0.token,
+              token_0.symbol
+            )
+        ).to.be.revertedWith("CALLED_LOCK");
+        await expect(
+          erc20Allocation
+            .connect(adminSafe)
+            ["registerErc20Token(address)"](token_0.token)
+        ).to.be.revertedWith("CALLED_LOCK");
+      });
+
       it("registerErc20Token populates tokens correctly", async () => {
         await erc20Allocation["registerErc20Token(address,string,uint8)"](
           token_0.token,
@@ -241,6 +343,15 @@ describe("Contract: Erc20Allocation", () => {
             .connect(user)
             ["removeErc20Token(address)"](token_0.token)
         ).to.be.revertedWith("NOT_ADMIN_ROLE");
+      });
+
+      it("Calls lock on oracle adapter", async () => {
+        await oracleAdapter.mock.lock.revertsWithReason("CALLED_LOCK");
+        await expect(
+          erc20Allocation
+            .connect(adminSafe)
+            ["removeErc20Token(address)"](token_0.token)
+        ).to.be.revertedWith("CALLED_LOCK");
       });
 
       it("removeErc20Token", async () => {

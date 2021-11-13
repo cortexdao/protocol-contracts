@@ -6,10 +6,10 @@ pragma solidity 0.6.11;
  * that reject ETH transfers.
  */
 contract EthSender {
+    // solhint-disable-next-line no-empty-blocks
+    receive() external payable {}
+
     function send(address payable recipient) external {
         selfdestruct(recipient);
     }
-
-    // solhint-disable-next-line no-empty-blocks
-    receive() external payable {}
 }

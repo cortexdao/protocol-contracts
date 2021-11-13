@@ -16,12 +16,12 @@ import {
     CurveAllocationBase
 } from "contracts/protocols/curve/common/Imports.sol";
 
-import {CurveIronBankConstants} from "./Constants.sol";
+import {CurveIronbankConstants} from "./Constants.sol";
 
-contract CurveIronBankAllocation is
+contract CurveIronbankAllocation is
     CurveAllocationBase,
     ImmutableAssetAllocation,
-    CurveIronBankConstants
+    CurveIronbankConstants
 {
     function balanceOf(address account, uint8 tokenIndex)
         public
@@ -47,7 +47,7 @@ contract CurveIronBankAllocation is
     {
         IStableSwap pool = IStableSwap(STABLE_SWAP_ADDRESS);
         CTokenInterface cyToken = CTokenInterface(pool.coins(tokenIndex));
-        return balance.mul(cyToken.exchangeRateStored());
+        return balance.mul(cyToken.exchangeRateStored()).div(10**uint256(18));
     }
 
     function _getTokenData()

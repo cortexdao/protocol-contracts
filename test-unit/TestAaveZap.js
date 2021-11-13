@@ -8,11 +8,8 @@ describe("Contract: TestAaveZap", () => {
   // signers
   let deployer;
 
-  // contract factories
-  let AavePoolFactory;
-
   // deployed contracts
-  let aavePool;
+  let aaveZap;
   let underlyer;
   let lendingPool;
 
@@ -44,24 +41,17 @@ describe("Contract: TestAaveZap", () => {
     await underlyer.mock.allowance.returns(0);
     await underlyer.mock.approve.returns(true);
 
-    AavePoolFactory = await ethers.getContractFactory("TestAaveZap");
-    aavePool = await AavePoolFactory.deploy(
-      underlyer.address,
-      lendingPool.address
-    );
+    const TestAaveZap = await ethers.getContractFactory("TestAaveZap");
+    aaveZap = await TestAaveZap.deploy(underlyer.address, lendingPool.address);
   });
 
   describe("Constructor", () => {
     it("Test Inherited Contract Variables are set corretly", async () => {
-      const name = await aavePool.connect(deployer).NAME();
-      const underlyerAddress = await aavePool
-        .connect(deployer)
-        .getUnderlyerAddress();
-      const lendingPoolAddress = await aavePool
-        .connect(deployer)
-        .getLendingAddress();
+      const name = await aaveZap.NAME();
+      const underlyerAddress = await aaveZap.getUnderlyerAddress();
+      const lendingPoolAddress = await aaveZap.getLendingAddress();
 
-      expect(name).to.equals("aave");
+      expect(name).to.equals("aave-test");
       expect(underlyerAddress).to.equals(underlyer.address);
       expect(lendingPoolAddress).to.equals(lendingPool.address);
     });
@@ -70,12 +60,12 @@ describe("Contract: TestAaveZap", () => {
   describe("deployLiquidity", () => {
     it("does not revert with the correct number of amounts", async () => {
       const amounts = [1];
-      await expect(aavePool.deployLiquidity(amounts)).to.not.be.reverted;
+      await expect(aaveZap.deployLiquidity(amounts)).to.not.be.reverted;
     });
 
     it("reverts with an incorrect number of amounts", async () => {
       const amounts = [1, 2, 3];
-      await expect(aavePool.deployLiquidity(amounts)).to.be.revertedWith(
+      await expect(aaveZap.deployLiquidity(amounts)).to.be.revertedWith(
         "INVALID_AMOUNTS"
       );
     });
@@ -85,13 +75,13 @@ describe("Contract: TestAaveZap", () => {
     it("does not revert with a correct token index", async () => {
       const amount = 1;
       const index = 0;
-      await expect(aavePool.unwindLiquidity(amount, index)).to.not.be.reverted;
+      await expect(aaveZap.unwindLiquidity(amount, index)).to.not.be.reverted;
     });
 
     it("reverts with an incorrect token index", async () => {
       const amount = 1;
       const index = 1;
-      await expect(aavePool.unwindLiquidity(amount, index)).to.be.revertedWith(
+      await expect(aaveZap.unwindLiquidity(amount, index)).to.be.revertedWith(
         "INVALID_INDEX"
       );
     });
