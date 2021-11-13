@@ -62,7 +62,7 @@ async function main(argv) {
 
   await hre.run("clean");
   await hre.run("compile");
-  await hre.run("compile:one", { contractName: "AlphaDeployment" });
+  await hre.run("compile:one", { contractName: "PoolTokenV2Upgrader" });
   const poolTokenV2FactoryAddress =
     "0xBb460e8269908BfD399141723b67838fE91D9324";
   const upgrader = await PoolTokenV2Upgrader.connect(safeSigner).deploy(
