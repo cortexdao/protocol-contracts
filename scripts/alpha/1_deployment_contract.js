@@ -106,13 +106,13 @@ async function main(argv) {
       maxPriorityFeePerGas,
     }
   );
-  await waitForSafeTxDetails(
+  const receipt = await waitForSafeTxDetails(
     alphaDeployment.deployTransaction,
     safeSigner.service,
     5
   );
 
-  deploy_data["AlphaDeployment"] = alphaDeployment.address;
+  deploy_data["AlphaDeployment"] = receipt.contractAddress;
   updateDeployJsons(networkName, deploy_data);
 
   if (["KOVAN", "MAINNET"].includes(networkName)) {
@@ -122,7 +122,7 @@ async function main(argv) {
       5
     ); // wait for Etherscan to catch up
     await hre.run("verify:verify", {
-      address: alphaDeployment.address,
+      address: receipt.contractAddress,
       constructorArguments: factoryAddresses,
     });
     console.log("");
