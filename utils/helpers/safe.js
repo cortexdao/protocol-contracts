@@ -8,7 +8,10 @@ const {
 const hre = require("hardhat");
 const { ethers } = hre;
 
-const MAINNET_SERVICE_URL = "https://safe-transaction.gnosis.io/";
+const SERVICE_URLS = {
+  MAINNET: "https://safe-transaction.gnosis.io/",
+  RINKEBY: "https://safe-transaction.rinkeby.gnosis.io/",
+};
 
 const sleep = (duration) =>
   new Promise((resolve) => setTimeout(resolve, duration));
@@ -42,9 +45,10 @@ function promptUser(promptText) {
  * @param safeAddress address of the Gnosis Safe
  * @param owner Ethers signer for an owner of the Safe
  */
-async function getSafeSigner(safeAddress, owner) {
+async function getSafeSigner(safeAddress, owner, networkName) {
   configureAxiosRetry(axios);
-  const service = new SafeService(MAINNET_SERVICE_URL, axios);
+  const serviceUrl = SERVICE_URLS[networkName.toUpperCase()];
+  const service = new SafeService(serviceUrl, axios);
   const safeSigner = await SafeEthersSigner.create(safeAddress, owner, service);
   return safeSigner;
 }

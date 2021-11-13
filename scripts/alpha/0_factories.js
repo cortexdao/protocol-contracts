@@ -9,15 +9,29 @@
  * $ HARDHAT_NETWORK=<network name> node scripts/<script filename> --arg1=val1 --arg2=val2
  */
 require("dotenv").config();
-const { argv } = require("yargs").option("gasPrice", {
-  type: "number",
-  description: "Gas price in gwei; omitting uses GasNow value",
-});
+const { argv } = require("yargs")
+  .option("maxFeePerGas", {
+    type: "number",
+    description: "Gas price in gwei; omitting uses default Ethers logic",
+  })
+  .option("maxPriorityFeePerGas", {
+    type: "number",
+    description: "Gas price in gwei; omitting uses default Ethers logic",
+  })
+  .option("compile", {
+    type: "boolean",
+    default: true,
+    description: "Compile contract using `compile:one`",
+  });
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
 const { BigNumber } = ethers;
 const chalk = require("chalk");
-const { getGasPrice } = require("../../utils/helpers");
+const {
+  getMaxFee,
+  getSafeSigner,
+  waitForSafeTxDetails,
+} = require("../../utils/helpers");
 const fs = require("fs");
 
 // eslint-disable-next-line no-unused-vars
@@ -30,18 +44,24 @@ async function main(argv) {
 
   const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
-
-  const balance =
-    (await ethers.provider.getBalance(deployer.address)).toString() / 1e18;
-  console.log("ETH balance:", balance.toString());
   console.log("");
+
+  if (!process.env.SAFE_OWNER_KEY) {
+    throw new Error("Must set SAFE_OWNER_KEY env var.");
+  }
+  const owner = new ethers.Wallet(process.env.SAFE_OWNER_KEY, ethers.provider);
+  console.log("Safe owner: %s", owner.address);
+  console.log("");
+
+  // const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
+  const adminSafeAddress = "0xacC66a1bD538cfCBB801FC047f41A3FC0AECf87a"; // Rinkeby Safe
+  const safeSigner = await getSafeSigner(adminSafeAddress, owner, networkName);
 
   console.log("");
   console.log("Deploying ...");
   console.log("");
 
   const factoryNames = [
-    "ProxyAdminFactory",
     "ProxyFactory",
     "AddressRegistryV2Factory",
     "MetaPoolTokenFactory",
@@ -52,26 +72,48 @@ async function main(argv) {
     "OracleAdapterFactory",
     "LpAccountFactory",
   ];
+
+  const deployed = {
+    ProxyFactory: "0x2FA1A3E783A97218DAb9a1ab4C4eeBb727C928b5",
+    PoolTokenV1Factory: "0x803434B221EDa8Dea447b83465869a7Df8fA1b6A",
+  };
   const factoryAddresses = [];
   const addressesFilename = "scripts/alpha/deployment-factory-addresses.json";
   let gasUsed = BigNumber.from("0");
 
+  // await hre.run("clean");
+  // await hre.run("compile");
+
   for (const name of factoryNames) {
     console.log(chalk.green(name));
-    const contractFactory = await ethers.getContractFactory(name, deployer);
-    const maxFeePerGas = await getGasPrice(argv.gasPrice);
-    const maxPriorityFeePerGas = parseInt(2e9);
-    const contract = await contractFactory.deploy({
-      maxFeePerGas,
-      maxPriorityFeePerGas,
-    });
-    console.log(`https://etherscan.io/tx/${contract.deployTransaction.hash}`);
-    const receipt = await contract.deployTransaction.wait();
-    gasUsed = gasUsed.add(receipt.gasUsed);
-    console.log("  ... done.");
-    console.log("");
+    let deployedAddress;
+    if (deployed[name]) {
+      deployedAddress = deployed[name];
+    } else {
+      const contractFactory = await ethers.getContractFactory(name, deployer);
 
-    factoryAddresses.push(contract.address);
+      await hre.run("compile:one", { contractName: name });
+
+      const maxFeePerGas = await getMaxFee(argv.gasPrice);
+      const maxPriorityFeePerGas = parseInt(2e9);
+      const contract = await contractFactory.connect(safeSigner).deploy({
+        maxFeePerGas,
+        maxPriorityFeePerGas,
+      });
+      console.log(`https://etherscan.io/tx/${contract.deployTransaction.hash}`);
+      // const receipt = await contract.deployTransaction.wait();
+      await waitForSafeTxDetails(
+        contract.deployTransaction,
+        safeSigner.service,
+        5
+      );
+      console.log("  ... done.");
+      console.log("");
+
+      deployedAddress = contract.address;
+    }
+
+    factoryAddresses.push(deployedAddress);
 
     // rewrite file on each iteration to safeguard against failed deployment
     const addressesJson = JSON.stringify(factoryAddresses, null, "  ");
