@@ -9,25 +9,31 @@
  * $ HARDHAT_NETWORK=<network name> node scripts/<script filename> --arg1=val1 --arg2=val2
  */
 require("dotenv").config();
-const { argv } = require("yargs").option("gasPrice", {
-  type: "number",
-  description: "Gas price in gwei; omitting uses GasNow value",
-});
+const { argv } = require("yargs")
+  .option("maxFeePerGas", {
+    type: "number",
+    description: "Gas price in gwei; omitting uses default Ethers logic",
+  })
+  .option("maxPriorityFeePerGas", {
+    type: "number",
+    description: "Gas price in gwei; omitting uses default Ethers logic",
+  })
+  .option("compile", {
+    type: "boolean",
+    default: true,
+    description: "Compile contract using `compile:one`",
+  });
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
 const {
-  getGasPrice,
+  getMaxFee,
   updateDeployJsons,
   bytes32,
   getDeployedAddress,
+  getSafeSigner,
+  waitForSafeTxDetails,
 } = require("../../utils/helpers");
 const fs = require("fs");
-const {
-  SafeService,
-  SafeEthersSigner,
-} = require("@gnosis.pm/safe-ethers-adapters");
-
-const MAINNET_SERVICE_URL = "https://safe-transaction.gnosis.io/";
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -43,26 +49,12 @@ async function main(argv) {
   if (!process.env.SAFE_OWNER_KEY) {
     throw new Error("Must set SAFE_OWNER_KEY env var.");
   }
-  const signer = new ethers.Wallet(process.env.SAFE_OWNER_KEY, ethers.provider);
-  console.log("Safe owner: %s", signer.address);
-  console.log("");
-
-  let balance =
-    (await ethers.provider.getBalance(deployer.address)).toString() / 1e18;
-  console.log("ETH balance (deployer): %s", balance);
-  console.log("");
-  balance =
-    (await ethers.provider.getBalance(signer.address)).toString() / 1e18;
-  console.log("ETH balance (Safe signer): %s", balance);
+  const owner = new ethers.Wallet(process.env.SAFE_OWNER_KEY, ethers.provider);
+  console.log("Safe owner: %s", owner.address);
   console.log("");
 
   const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
-  const service = new SafeService(MAINNET_SERVICE_URL);
-  const safeSigner = await SafeEthersSigner.create(
-    adminSafeAddress,
-    signer,
-    service
-  );
+  const safeSigner = await getSafeSigner(adminSafeAddress, owner, networkName);
 
   console.log("");
   console.log("Deploying ...");
@@ -74,7 +66,7 @@ async function main(argv) {
   );
 
   const deploy_data = {};
-  const maxFeePerGas = await getGasPrice(argv.gasPrice);
+  const maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
   const maxPriorityFeePerGas = parseInt(2e9);
 
   const addressesFilename = "scripts/alpha/deployment-factory-addresses.json";
@@ -87,7 +79,7 @@ async function main(argv) {
     networkName
   );
   const addressRegistry = await ethers.getContractAt(
-    "AddressRegistry",
+    "AddressRegistryV2",
     addressRegistryAddress
   );
   console.log(
@@ -104,6 +96,9 @@ async function main(argv) {
   );
   console.log("");
 
+  await hre.run("clean");
+  await hre.run("compile");
+  await hre.run("compile:one", { contractName: "AlphaDeployment" });
   const alphaDeployment = await AlphaDeployment.connect(safeSigner).deploy(
     ...factoryAddresses,
     {
@@ -111,16 +106,11 @@ async function main(argv) {
       maxPriorityFeePerGas,
     }
   );
-  console.log("USER ACTION REQUIRED");
-  console.log("Go to the Gnosis Safe Web App to confirm the transaction");
-  console.log(
-    `https://etherscan.io/tx/${alphaDeployment.deployTransaction.hash}`
+  await waitForSafeTxDetails(
+    alphaDeployment.deployTransaction,
+    safeSigner.service,
+    5
   );
-  const receipt = await alphaDeployment.deployTransaction.wait();
-
-  console.log("");
-  console.log("Gas used: %s", receipt.gasUsed.toString());
-  console.log("");
 
   deploy_data["AlphaDeployment"] = alphaDeployment.address;
   updateDeployJsons(networkName, deploy_data);
