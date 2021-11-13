@@ -28,6 +28,7 @@ const { ethers, network } = require("hardhat");
 const { BigNumber } = ethers;
 const chalk = require("chalk");
 const {
+  getDeployedAddress,
   getMaxFee,
   getSafeSigner,
   waitForSafeTxDetails,
@@ -53,8 +54,7 @@ async function main(argv) {
   console.log("Safe owner: %s", owner.address);
   console.log("");
 
-  // const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
-  const adminSafeAddress = "0xacC66a1bD538cfCBB801FC047f41A3FC0AECf87a"; // Rinkeby Safe
+  const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
   const safeSigner = await getSafeSigner(adminSafeAddress, owner, networkName);
 
   console.log("");
