@@ -5,6 +5,8 @@ const {
   SafeService,
   SafeEthersSigner,
 } = require("@gnosis.pm/safe-ethers-adapters");
+const { createLibAddress } = require("@gnosis.pm/safe-ethers-adapters/utils");
+
 const hre = require("hardhat");
 const { ethers } = hre;
 
@@ -71,7 +73,7 @@ async function waitForSafeTxDetails(
     "USER ACTION REQUIRED: Use the Gnosis Safe UI to confirm transaction"
   );
 
-  confirmations = confirmations || 0;
+  confirmations = confirmations || 5;
   pollingDelay = (pollingDelay || 5) * 1000; // convert to milliseconds
   timeout = (timeout || 5) * 1000; // convert to milliseconds
 
@@ -110,6 +112,18 @@ async function waitForSafeTxDetails(
       logAxiosError(e);
     }
     await sleep(pollingDelay);
+  }
+  if (proposedTx.to.toLowerCase() === createLibAddress.toLowerCase()) {
+    // Search for ContractCreation event (see https://github.com/gnosis/safe-contracts/blob/v1.3.0/contracts/libraries/CreateCall.sol#L7)
+    const creationLog = receipt.logs.find(
+      (log) =>
+        log.topics[0] ===
+        "0x4db17dd5e4732fb6da34a148104a592783ca119a1e7bb8829eba6cbadef0b511"
+    );
+    if (creationLog)
+      receipt.contractAddress = ethers.utils.getAddress(
+        "0x" + creationLog.data.slice(creationLog.data.length - 40)
+      );
   }
   return receipt;
 }

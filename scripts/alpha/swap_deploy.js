@@ -10,22 +10,14 @@ const { argv } = require("yargs")
     type: "string",
     description: "Swap contract name",
   })
-  .option("maxFeePerGas", {
-    type: "number",
-    description: "Gas price in gwei; omitting uses default Ethers logic",
-  })
-  .option("maxPriorityFeePerGas", {
-    type: "number",
-    description: "Gas price in gwei; omitting uses default Ethers logic",
-  })
   .demandOption(["name"]);
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const { getMaxFee, getDeployedAddress } = require("../../utils/helpers");
 const {
+  getDeployedAddress,
   waitForSafeTxDetails,
   getSafeSigner,
-} = require("../../utils/helpers/safe");
+} = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -64,16 +56,20 @@ async function main(argv) {
   await hre.run("compile");
   await hre.run("compile:one", { contractName: swapContractName });
 
-  let maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
-
   console.log("Deploying swap ... ");
   console.log("");
 
   const swapContractFactory = await ethers.getContractFactory(swapContractName);
-  const swap = await swapContractFactory
-    .connect(safeSigner)
-    .deploy({ maxFeePerGas });
-  await waitForSafeTxDetails(swap.deployTransaction, safeSigner.service, 5);
+  const swap = await swapContractFactory.connect(safeSigner).deploy();
+  const receipt = await waitForSafeTxDetails(
+    swap.deployTransaction,
+    safeSigner.service
+  );
+  const swapAddress = receipt.contractAddress;
+  if (!swapAddress) {
+    throw new Error("Swap address is missing.");
+  }
+  console.log("Swap address: %s", swapAddress);
 
   const swapName = await swap.NAME();
   console.log("Registering %s", swapName);
@@ -89,12 +85,10 @@ async function main(argv) {
   );
   const lpAccountAddress = await addressRegistry.lpAccountAddress();
   const lpAccount = await ethers.getContractAt("LpAccount", lpAccountAddress);
-  maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
-  const swapAddress = swap.address;
   const proposedTx = await lpAccount
     .connect(safeSigner)
-    .registerSwap(swapAddress, { maxFeePerGas });
-  await waitForSafeTxDetails(proposedTx, safeSigner.service, 5);
+    .registerSwap(swapAddress);
+  await waitForSafeTxDetails(proposedTx, safeSigner.service);
 
   console.log("Verifying on Etherscan ...");
   await hre.run("verify:verify", {
