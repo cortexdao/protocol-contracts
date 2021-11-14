@@ -64,7 +64,7 @@ async function main(argv) {
   console.log("");
 
   const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
-  const safeSigner = await getSafeSigner(adminSafeAddress, owner);
+  const safeSigner = await getSafeSigner(adminSafeAddress, owner, networkName);
 
   if (argv.compile) {
     await hre.run("clean");
