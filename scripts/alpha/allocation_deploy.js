@@ -103,8 +103,6 @@ async function main(argv) {
   } else {
     allocation = await allocationContractFactory.connect(safeSigner).deploy();
   }
-  console.log("Allocation address:", allocation.address);
-  console.log("");
   const receipt = await waitForSafeTxDetails(
     allocation.deployTransaction,
     safeSigner.service
