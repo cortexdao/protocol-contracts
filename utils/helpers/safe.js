@@ -5,7 +5,11 @@ const {
   SafeService,
   SafeEthersSigner,
 } = require("@gnosis.pm/safe-ethers-adapters");
-const { createLibAddress } = require("@gnosis.pm/safe-ethers-adapters/utils");
+const { getCreateCallDeployment } = require("@gnosis.pm/safe-deployments");
+
+const createLibDeployment = getCreateCallDeployment();
+const createLibAddress = createLibDeployment.defaultAddress;
+if (!createLibAddress) throw new Error("Bad import");
 
 const hre = require("hardhat");
 const { ethers } = hre;
