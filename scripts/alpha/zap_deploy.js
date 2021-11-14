@@ -72,7 +72,7 @@ async function main(argv) {
   console.log("");
 
   const zapContractFactory = await ethers.getContractFactory(zapContractName);
-  const zap = await zapContractFactory.connect(safeSigner).deploy();
+  let zap = await zapContractFactory.connect(safeSigner).deploy();
   console.log("Zap address:", zap.address);
   console.log("");
   const receipt = await waitForSafeTxDetails(
@@ -85,6 +85,7 @@ async function main(argv) {
   }
   console.log("Zap address: %s", zapAddress);
 
+  zap = await ethers.getContractAt(zapContractName, zapAddress);
   const zapName = await zap.NAME();
   console.log("Registering %s", zapName);
   console.log("");

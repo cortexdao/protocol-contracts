@@ -110,6 +110,10 @@ async function main(argv) {
     safeSigner.service
   );
 
+  allocation = await ethers.getContractAt(
+    allocationContractName,
+    allocationAddress
+  );
   const allocationName = await allocation.NAME();
   console.log("Registering %s", allocationName);
   console.log("");

@@ -65,7 +65,7 @@ async function main(argv) {
   console.log("");
 
   const swapContractFactory = await ethers.getContractFactory(swapContractName);
-  const swap = await swapContractFactory.connect(safeSigner).deploy();
+  let swap = await swapContractFactory.connect(safeSigner).deploy();
   const receipt = await waitForSafeTxDetails(
     swap.deployTransaction,
     safeSigner.service
@@ -76,6 +76,7 @@ async function main(argv) {
   }
   console.log("Swap address: %s", swapAddress);
 
+  swap = await ethers.getContractAt(swapContractName, swapAddress);
   const swapName = await swap.NAME();
   console.log("Registering %s", swapName);
   console.log("");
