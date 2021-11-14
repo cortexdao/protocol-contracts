@@ -8,15 +8,18 @@
  *
  * $ HARDHAT_NETWORK=<network name> node scripts/<script filename> --arg1=val1 --arg2=val2
  */
-const { argv } = require("yargs").option("maxFeePerGas", {
-  type: "number",
-  description: "Gas price in gwei; omitting uses default Ethers logic",
-});
+const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
+const {
+  waitForSafeTxDetails,
+  getDeployedAddress,
+  getSafeSigner,
+} = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
+  await hre.run("compile");
   const networkName = network.name.toUpperCase();
   if (!["KOVAN", "MAINNET"].includes(networkName)) return;
 
@@ -24,34 +27,29 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  await hre.run("clean");
-  await hre.run("compile");
-  await hre.run("compile:one", { contractName: "LpAccount" });
+  if (!process.env.SAFE_OWNER_KEY) {
+    throw new Error("Must set SAFE_OWNER_KEY env var.");
+  }
+  const owner = new ethers.Wallet(process.env.SAFE_OWNER_KEY, ethers.provider);
+  console.log("Safe owner: %s", owner.address);
+  console.log("");
+
+  const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
+  const safeSigner = await getSafeSigner(adminSafeAddress, owner, networkName);
+
   console.log("Deploying ...");
-  const LpAccount = await ethers.getContractFactory("LpAccount");
+  const LpAccountTempStorageFix = await ethers.getContractFactory(
+    "LpAccountTempStorageFix"
+  );
 
-  let maxFeePerGas;
-  if (argv.maxFeePerGas) {
-    maxFeePerGas = ethers.BigNumber.from(argv.maxFeePerGas * 1e9);
-  } else {
-    maxFeePerGas = (await ethers.provider.getFeeData()).maxFeePerGas;
-    maxFeePerGas = maxFeePerGas.mul(85).div(100);
-  }
-  const lpAccount = await LpAccount.deploy({ maxFeePerGas });
-  await lpAccount.deployed();
+  const lpAccount = await LpAccountTempStorageFix.connect(safeSigner).deploy();
+  const receipt = await waitForSafeTxDetails(
+    lpAccount.deployTransaction,
+    safeSigner.service
+  );
+
   console.log("Deployed.");
-
-  if (["KOVAN", "MAINNET"].includes(networkName)) {
-    console.log("Verifying on Etherscan ...");
-    await ethers.provider.waitForTransaction(
-      lpAccount.deployTransaction.hash,
-      5
-    ); // wait for Etherscan to catch up
-    await hre.run("verify:verify", {
-      address: lpAccount.address,
-    });
-    console.log("");
-  }
+  console.log("Address: %s", receipt.contractAddress);
 }
 
 if (!module.parent) {
