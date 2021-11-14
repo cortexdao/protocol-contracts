@@ -31,7 +31,12 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  const zapContractName = argv.name;
+  const name = argv.name;
+  let zapContractName = name
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("");
+  zapContractName += "Zap";
   console.log("Zap contract name: %s", zapContractName);
   console.log("");
 

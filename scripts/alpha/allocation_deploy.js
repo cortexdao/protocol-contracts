@@ -36,9 +36,13 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  const allocationContractName = argv.name;
+  const name = argv.name;
+  let allocationContractName = name
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("");
+  allocationContractName += "Allocation";
   console.log("Allocation contract name: %s", allocationContractName);
-  console.log("");
 
   const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
