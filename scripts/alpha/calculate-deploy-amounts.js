@@ -76,7 +76,7 @@ async function main() {
 
         amountDeployed = amountDeployed.add(amount);
 
-        if (name === "usdc" || name === "usdt") {
+        if (underlyer === "usdc" || underlyer === "usdt") {
           amounts[underlyer] = amount.div(10 ** 12);
         } else {
           amounts[underlyer] = amount;
@@ -90,9 +90,14 @@ async function main() {
   );
 
   const totalCheck = _.reduce(
-    Object.values(strategyAmounts).map((a) =>
-      _.reduce(Object.values(a), (b, c) => b.add(c))
-    ),
+    Object.values(strategyAmounts).map((a) => {
+      const normalized = Object.keys(a).map((underlyer) =>
+        underlyer === "usdc" || underlyer === "usdt"
+          ? a[underlyer].mul(10 ** 12)
+          : a[underlyer]
+      );
+      return _.reduce(normalized, (b, c) => b.add(c));
+    }),
     (i, j) => i.add(j)
   );
   console.log(`Total Check: ${totalCheck}`);
