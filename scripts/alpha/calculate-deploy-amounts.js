@@ -14,26 +14,30 @@ async function main() {
   const lpAccount = await ethers.getContractAt("LpAccount", lpAccountAddress);
 
   let balances = {};
+  let normalizedBalances = {};
 
   const dai = await getStablecoin("DAI");
   balances["dai"] = await dai.balanceOf(lpAccount.address);
+  normalizedBalances["dai"] = balances["dai"];
 
   const usdc = await getStablecoin("USDC");
   balances["usdc"] = await usdc.balanceOf(lpAccount.address);
+  normalizedBalances["usdc"] = balances["usdc"].mul(10 ** 12);
 
   const usdt = await getStablecoin("USDT");
   balances["usdt"] = await usdt.balanceOf(lpAccount.address);
+  normalizedBalances["usdt"] = balances["usdt"].mul(10 ** 12);
 
-  const totalBalance = _.reduce(balances, (a, b) => a.add(b));
+  const totalBalance = _.reduce(normalizedBalances, (a, b) => a.add(b));
   console.log(`Total Balance: ${totalBalance}`);
 
   const strategies = {
     "curve-saave": ["dai"],
     "curve-compound": ["dai", "usdc"],
-    "curve-aave": ["dai", "usdc", "usdt"],
-    "curve-usdt": ["dai", "usdc", "usdt"],
     "curve-susdv2": ["dai", "usdc", "usdt"],
     "curve-frax": ["dai", "usdc", "usdt"],
+    "curve-aave": ["dai", "usdc", "usdt"],
+    "curve-usdt": ["dai", "usdc", "usdt"],
   };
 
   let deployedBalances = {
@@ -46,7 +50,7 @@ async function main() {
     Object.keys(strategies),
     Object.keys(strategies).map((name) => {
       const underlyers = strategies[name].sort((a, b) =>
-        balances[a].lt(balances[b]) ? -1 : 1
+        normalizedBalances[a].lt(normalizedBalances[b]) ? -1 : 1
       );
       const idealTotalAmount = totalBalance.mul(3).div(18);
       const idealUnderlyerAmount = idealTotalAmount.div(underlyers.length);
@@ -57,7 +61,7 @@ async function main() {
         const underlyer = underlyers[i];
         let amount = idealUnderlyerAmount;
 
-        const remainingBalance = balances[underlyer].sub(
+        const remainingBalance = normalizedBalances[underlyer].sub(
           deployedBalances[underlyer]
         );
 
@@ -71,7 +75,13 @@ async function main() {
         }
 
         amountDeployed = amountDeployed.add(amount);
-        amounts[underlyer] = amount;
+
+        if (name === "usdc" || name === "usdt") {
+          amounts[underlyer] = amount.div(10 ** 12);
+        } else {
+          amounts[underlyer] = amount;
+        }
+
         deployedBalances[underlyer] = amount.add(deployedBalances[underlyer]);
       }
 
