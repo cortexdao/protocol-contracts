@@ -14,9 +14,9 @@ const { argv } = require("yargs")
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
 const {
-  getDeployedAddress,
-  waitForSafeTxDetails,
-  getSafeSigner,
+  waitForSafeTxReceipt,
+  getAdminSafeSigner,
+  getRegisteredContract,
 } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
@@ -54,8 +54,7 @@ async function main(argv) {
   console.log("ETH balance (Safe owner): %s", balance);
   console.log("");
 
-  const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
-  const safeSigner = await getSafeSigner(adminSafeAddress, owner, networkName);
+  const safeSigner = await getAdminSafeSigner(networkName);
 
   await hre.run("clean");
   await hre.run("compile");
@@ -66,7 +65,7 @@ async function main(argv) {
 
   const swapContractFactory = await ethers.getContractFactory(swapContractName);
   let swap = await swapContractFactory.connect(safeSigner).deploy();
-  const receipt = await waitForSafeTxDetails(
+  const receipt = await waitForSafeTxReceipt(
     swap.deployTransaction,
     safeSigner.service
   );
@@ -81,20 +80,11 @@ async function main(argv) {
   console.log("Registering %s", swapName);
   console.log("");
 
-  const addressRegistryAddress = getDeployedAddress(
-    "AddressRegistryProxy",
-    networkName
-  );
-  const addressRegistry = await ethers.getContractAt(
-    "AddressRegistryV2",
-    addressRegistryAddress
-  );
-  const lpAccountAddress = await addressRegistry.lpAccountAddress();
-  const lpAccount = await ethers.getContractAt("LpAccount", lpAccountAddress);
+  const lpAccount = await getRegisteredContract("lpAccount");
   const proposedTx = await lpAccount
     .connect(safeSigner)
     .registerSwap(swapAddress);
-  await waitForSafeTxDetails(proposedTx, safeSigner.service);
+  await waitForSafeTxReceipt(proposedTx, safeSigner.service);
 
   console.log("Verifying on Etherscan ...");
   await hre.run("verify:verify", {

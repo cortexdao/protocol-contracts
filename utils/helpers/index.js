@@ -31,12 +31,19 @@ const {
   updateTvlAfterTransfer,
   generateContractAddress,
 } = require("./test-helper");
-const { getSafeSigner, waitForSafeTxDetails } = require("./safe");
+const {
+  getSafeSigner,
+  getAdminSafeSigner,
+  getLpSafeSigner,
+  getEmergencySafeSigner,
+  waitForSafeTxReceipt,
+} = require("./safe");
 const {
   getEip1967Addresses,
   getProxyAdmin,
   getLogicContract,
 } = require("./proxy");
+const { getAddressRegistry, getRegisteredContract } = require("./registry");
 
 console.debug = function () {
   if (!console.debugging) return;
@@ -83,10 +90,15 @@ module.exports = {
   updateTvlAfterTransfer,
   generateContractAddress,
   getSafeSigner,
-  waitForSafeTxDetails,
+  getAdminSafeSigner,
+  getEmergencySafeSigner,
+  getLpSafeSigner,
+  waitForSafeTxReceipt,
   getMaxFee,
   getMaxPriorityFee,
   getEip1967Addresses,
   getProxyAdmin,
   getLogicContract,
+  getAddressRegistry,
+  getRegisteredContract,
 };

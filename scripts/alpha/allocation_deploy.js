@@ -24,10 +24,10 @@ const { argv } = require("yargs")
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
 const {
-  getDeployedAddress,
-  getSafeSigner,
+  getAdminSafeSigner,
   waitForSafeTxDetails,
   ZERO_ADDRESS,
+  getRegisteredContract,
 } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
@@ -64,8 +64,7 @@ async function main(argv) {
   console.log("ETH balance (Safe owner): %s", balance);
   console.log("");
 
-  const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
-  const safeSigner = await getSafeSigner(adminSafeAddress, owner, networkName);
+  const safeSigner = await getAdminSafeSigner(networkName);
 
   if (argv.compile) {
     await hre.run("clean");
@@ -73,19 +72,7 @@ async function main(argv) {
     await hre.run("compile:one", { contractName: allocationContractName });
   }
 
-  const addressRegistryAddress = getDeployedAddress(
-    "AddressRegistryProxy",
-    networkName
-  );
-  const addressRegistry = await ethers.getContractAt(
-    "AddressRegistryV2",
-    addressRegistryAddress
-  );
-  const tvlManagerAddress = await addressRegistry.tvlManagerAddress();
-  const tvlManager = await ethers.getContractAt(
-    "TvlManager",
-    tvlManagerAddress
-  );
+  const tvlManager = await getRegisteredContract("tvlManager");
 
   console.log("Deploying allocation ... ");
   console.log("");
