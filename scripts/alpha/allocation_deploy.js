@@ -27,6 +27,7 @@ const {
   getDeployedAddress,
   getSafeSigner,
   waitForSafeTxDetails,
+  ZERO_ADDRESS,
 } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
@@ -95,8 +96,15 @@ async function main(argv) {
   const curve3poolAllocationAddress = await tvlManager.getAssetAllocation(
     "curve-3pool"
   );
+  if (curve3poolAllocationAddress == ZERO_ADDRESS) {
+    throw new Error("3poolAllocation address is missing.");
+  }
   let allocation;
   if (argv.metapool) {
+    console.log(
+      "Constructor arg (3pool allocation): %s",
+      curve3poolAllocationAddress
+    );
     allocation = await allocationContractFactory
       .connect(safeSigner)
       .deploy(curve3poolAllocationAddress);
@@ -107,6 +115,11 @@ async function main(argv) {
     allocation.deployTransaction,
     safeSigner.service
   );
+  const allocationAddress = receipt.contractAddress;
+  if (!allocationAddress) {
+    throw new Error("Allocation address is missing.");
+  }
+  console.log("Allocation address: %s", allocationAddress);
 
   allocation = await ethers.getContractAt(
     allocationContractName,
@@ -116,11 +129,6 @@ async function main(argv) {
   console.log("Registering %s", allocationName);
   console.log("");
 
-  const allocationAddress = receipt.contractAddress;
-  if (!allocationAddress) {
-    throw new Error("Allocation address is missing.");
-  }
-  console.log("Allocation address: %s", allocationAddress);
   const proposedTx = await tvlManager
     .connect(safeSigner)
     .registerAssetAllocation(allocationAddress);
