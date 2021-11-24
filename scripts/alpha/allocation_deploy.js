@@ -25,7 +25,7 @@ const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
 const {
   getAdminSafeSigner,
-  waitForSafeTxDetails,
+  waitForSafeTxReceipt,
   ZERO_ADDRESS,
   getRegisteredContract,
 } = require("../../utils/helpers");
@@ -98,7 +98,7 @@ async function main(argv) {
   } else {
     allocation = await allocationContractFactory.connect(safeSigner).deploy();
   }
-  const receipt = await waitForSafeTxDetails(
+  const receipt = await waitForSafeTxReceipt(
     allocation.deployTransaction,
     safeSigner.service
   );
@@ -119,7 +119,7 @@ async function main(argv) {
   const proposedTx = await tvlManager
     .connect(safeSigner)
     .registerAssetAllocation(allocationAddress);
-  await waitForSafeTxDetails(proposedTx, safeSigner.service);
+  await waitForSafeTxReceipt(proposedTx, safeSigner.service);
 
   console.log("Verifying on Etherscan ...");
   if (argv.metapool) {
