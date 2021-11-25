@@ -146,6 +146,12 @@ const CurveMetaPoolAllocations = [
     // using the Curve pool itself as the "whale": see prior note
     whaleAddress: "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
   },
+  {
+    contractName: "CurveMimAllocation",
+    primaryUnderlyerSymbol: "MIM",
+    // using the Curve pool itself as the "whale": see prior note
+    whaleAddress: "0x5a6A4D54456819380173272A5E8E9B9904BdF41B",
+  },
 ];
 
 async function getContractAt(
