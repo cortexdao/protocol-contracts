@@ -131,6 +131,7 @@ describe("Curve MetaPool Zaps - LP Account integration", () => {
       gaugeInterface: "ILiquidityGauge",
       numberOfCoins: 4,
       whaleAddress: WHALE_POOLS["MIM"],
+      rewardToken: "0x090185f2135308BaD17527004364eBcC2D37e5F6",
     },
   ];
 
