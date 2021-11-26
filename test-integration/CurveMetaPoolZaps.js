@@ -21,7 +21,7 @@ const CRV_ADDRESS = "0xD533a949740bb3306d119CC777fa900bA034cd52";
 console.debugging = false;
 /* ************************ */
 
-describe("Curve MetaPool Zaps - LP Account integration", () => {
+describe.only("Curve MetaPool Zaps - LP Account integration", () => {
   /* signers */
   let deployer;
   let emergencySafe;
@@ -91,6 +91,17 @@ describe("Curve MetaPool Zaps - LP Account integration", () => {
       gaugeInterface: "ILiquidityGauge",
       numberOfCoins: 4,
       whaleAddress: WHALE_POOLS["MUSD"],
+    },
+    {
+      contractName: "CurveOusdZap",
+      swapAddress: "0x87650D7bbfC3A9F10587d7778206671719d9910D",
+      swapInterface: "IMetaPool",
+      lpTokenAddress: "0x87650D7bbfC3A9F10587d7778206671719d9910D",
+      gaugeAddress: "0x25f0cE4E2F8dbA112D9b115710AC297F816087CD",
+      gaugeInterface: "ILiquidityGauge",
+      numberOfCoins: 4,
+      whaleAddress: WHALE_POOLS["OUSD"],
+      rewardToken: "0x8207c1FfC5B6804F6024322CcF34F29c3541Ae26",
     },
     // {
     //   contractName: "CurveUsdnZap",
