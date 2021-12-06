@@ -36,6 +36,6 @@ contract CurveMimAllocation is MetaPoolAllocationBase, CurveMimConstants {
         override
         returns (TokenData[] memory)
     {
-        return _getBasePoolTokenData(address(PRIMARY_UNDERLYER), "FRAX", 18);
+        return _getBasePoolTokenData(address(PRIMARY_UNDERLYER), "MIM", 18);
     }
 }
