@@ -18,18 +18,15 @@ import {CurveZapBase} from "contracts/protocols/curve/common/CurveZapBase.sol";
 abstract contract ConvexZapBase is IZap, CurveZapBase {
     using SafeERC20 for IERC20;
 
-    address internal constant MINTER_ADDRESS =
-        0xd061D61a4d941c39E5453435B6345Dc261C2fcE0;
+    address internal constant BOOSTER_ADDRESS =
+        0xF403C135812408BFbE8713b5A23a04b3D48AAE31;
 
     address internal immutable LP_ADDRESS;
-    address internal immutable BOOSTER_ADDRESS;
-
     uint256 internal immutable PID;
 
     constructor(
         address swapAddress,
         address lpAddress,
-        address boosterAddress,
         uint256 pid,
         uint256 denominator,
         uint256 slippage,
@@ -40,7 +37,6 @@ abstract contract ConvexZapBase is IZap, CurveZapBase {
     // solhint-disable-next-line no-empty-blocks
     {
         LP_ADDRESS = lpAddress;
-        BOOSTER_ADDRESS = boosterAddress;
         PID = pid;
     }
 
@@ -50,9 +46,9 @@ abstract contract ConvexZapBase is IZap, CurveZapBase {
         override
         returns (uint256 lpBalance)
     {
-        address rewardContract = poolInfo[PID].crvRewards;
+        IBaseRewardPool rewardContract = _getRewardContract();
         // Convex's staking token is issued 1:1 for deposited LP tokens
-        lpBalance = IBaseRewardPool(rewardContract).balanceOf(account);
+        lpBalance = rewardContract.balanceOf(account);
     }
 
     /// @dev deposit LP tokens in Convex's Booster contract
@@ -69,18 +65,21 @@ abstract contract ConvexZapBase is IZap, CurveZapBase {
         override
         returns (uint256)
     {
-        address rewardContract = poolInfo[PID].crvRewards;
-        IBaseRewardPool(rewardContract).withdrawAndUnwrap(amount, true);
+        IBaseRewardPool rewardContract = _getRewardContract();
+        rewardContract.withdrawAndUnwrap(amount, true);
         //lpBalance
         return IERC20(LP_ADDRESS).balanceOf(address(this));
     }
 
     function _claim() internal override {
         // this will claim CRV and extra rewards
-        address rewardContract = poolInfo[PID].crvRewards;
-        IBaseRewardPool(rewardContract).getReward();
+        IBaseRewardPool rewardContract = _getRewardContract();
+        rewardContract.getReward();
     }
 
-    // solhint-disable-next-line no-empty-blocks
-    function _claimRewards() internal virtual {}
+    function _getRewardContract() internal view returns (IBaseRewardPool) {
+        IBooster booster = IBooster(BOOSTER_ADDRESS);
+        IBooster.PoolInfo memory poolInfo = booster.poolInfo(PID);
+        return IBaseRewardPool(poolInfo.crvRewards);
+    }
 }

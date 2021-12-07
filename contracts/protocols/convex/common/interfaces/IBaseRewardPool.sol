@@ -2,9 +2,6 @@
 pragma solidity 0.6.11;
 
 interface IRewardPool {
-    /// @notice get balance of an address
-    function balanceOf(address _account) external returns (uint256);
-
     /// @notice withdraw to a convex tokenized deposit
     function withdraw(uint256 _amount, bool _claim) external returns (bool);
 
@@ -16,6 +13,9 @@ interface IRewardPool {
 
     /// @notice Return how much rewards an address will receive if they claim their rewards now.
     function earned(address account) external view returns (uint256);
+
+    /// @notice get balance of an address
+    function balanceOf(address _account) external view returns (uint256);
 }
 
 interface IBaseRewardPool is IRewardPool {
