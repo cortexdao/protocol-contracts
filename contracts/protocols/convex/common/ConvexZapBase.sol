@@ -30,6 +30,7 @@ abstract contract ConvexZapBase is IZap, CurveZapBase {
         address swapAddress,
         address lpAddress,
         address boosterAddress,
+        uint256 pid,
         uint256 denominator,
         uint256 slippage,
         uint256 nCoins
@@ -40,6 +41,7 @@ abstract contract ConvexZapBase is IZap, CurveZapBase {
     {
         LP_ADDRESS = lpAddress;
         BOOSTER_ADDRESS = boosterAddress;
+        PID = pid;
     }
 
     function getLpTokenBalance(address account)
