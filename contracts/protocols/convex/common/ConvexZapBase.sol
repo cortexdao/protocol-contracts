@@ -57,18 +57,20 @@ abstract contract ConvexZapBase is IZap, CurveZapBase {
         uint256 lpBalance = IERC20(LP_ADDRESS).balanceOf(address(this));
         IERC20(LP_ADDRESS).safeApprove(BOOSTER_ADDRESS, 0);
         IERC20(LP_ADDRESS).safeApprove(BOOSTER_ADDRESS, lpBalance);
+        // deposit and mint staking tokens 1:1; bool is to stake
         booster.deposit(PID, lpBalance, true);
     }
 
     function _withdrawFromGauge(uint256 amount)
         internal
         override
-        returns (uint256)
+        returns (uint256 lpBalance)
     {
         IBaseRewardPool rewardContract = _getRewardContract();
+        // withdraw staked tokens and unwrap to LP tokens;
+        // bool is for claiming rewards at the same time
         rewardContract.withdrawAndUnwrap(amount, true);
-        //lpBalance
-        return IERC20(LP_ADDRESS).balanceOf(address(this));
+        lpBalance = IERC20(LP_ADDRESS).balanceOf(address(this));
     }
 
     function _claim() internal override {
