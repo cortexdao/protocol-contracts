@@ -122,6 +122,17 @@ describe("Curve MetaPool Zaps - LP Account integration", () => {
       numberOfCoins: 4,
       whaleAddress: WHALE_POOLS["UST"],
     },
+    {
+      contractName: "CurveMimZap",
+      swapAddress: "0x5a6A4D54456819380173272A5E8E9B9904BdF41B",
+      swapInterface: "IMetaPool",
+      lpTokenAddress: "0x5a6A4D54456819380173272A5E8E9B9904BdF41B",
+      gaugeAddress: "0xd8b712d29381748dB89c36BCa0138d7c75866ddF",
+      gaugeInterface: "ILiquidityGauge",
+      numberOfCoins: 4,
+      whaleAddress: WHALE_POOLS["MIM"],
+      rewardToken: "0x090185f2135308BaD17527004364eBcC2D37e5F6",
+    },
   ];
 
   async function getTotalNormalizedBalance(allocationIds) {
