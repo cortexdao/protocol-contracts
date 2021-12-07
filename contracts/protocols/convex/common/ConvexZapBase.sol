@@ -21,8 +21,8 @@ abstract contract ConvexZapBase is IZap, CurveZapBase {
     address internal constant BOOSTER_ADDRESS =
         0xF403C135812408BFbE8713b5A23a04b3D48AAE31;
 
-    address internal immutable LP_ADDRESS;
-    uint256 internal immutable PID;
+    address internal immutable _LP_ADDRESS;
+    uint256 internal immutable _PID;
 
     constructor(
         address swapAddress,
@@ -36,8 +36,8 @@ abstract contract ConvexZapBase is IZap, CurveZapBase {
         CurveZapBase(swapAddress, denominator, slippage, nCoins)
     // solhint-disable-next-line no-empty-blocks
     {
-        LP_ADDRESS = lpAddress;
-        PID = pid;
+        _LP_ADDRESS = lpAddress;
+        _PID = pid;
     }
 
     function getLpTokenBalance(address account)
@@ -54,11 +54,11 @@ abstract contract ConvexZapBase is IZap, CurveZapBase {
     /// @dev deposit LP tokens in Convex's Booster contract
     function _depositToGauge() internal override {
         IBooster booster = IBooster(BOOSTER_ADDRESS);
-        uint256 lpBalance = IERC20(LP_ADDRESS).balanceOf(address(this));
-        IERC20(LP_ADDRESS).safeApprove(BOOSTER_ADDRESS, 0);
-        IERC20(LP_ADDRESS).safeApprove(BOOSTER_ADDRESS, lpBalance);
+        uint256 lpBalance = IERC20(_LP_ADDRESS).balanceOf(address(this));
+        IERC20(_LP_ADDRESS).safeApprove(BOOSTER_ADDRESS, 0);
+        IERC20(_LP_ADDRESS).safeApprove(BOOSTER_ADDRESS, lpBalance);
         // deposit and mint staking tokens 1:1; bool is to stake
-        booster.deposit(PID, lpBalance, true);
+        booster.deposit(_PID, lpBalance, true);
     }
 
     function _withdrawFromGauge(uint256 amount)
@@ -70,7 +70,7 @@ abstract contract ConvexZapBase is IZap, CurveZapBase {
         // withdraw staked tokens and unwrap to LP tokens;
         // bool is for claiming rewards at the same time
         rewardContract.withdrawAndUnwrap(amount, true);
-        lpBalance = IERC20(LP_ADDRESS).balanceOf(address(this));
+        lpBalance = IERC20(_LP_ADDRESS).balanceOf(address(this));
     }
 
     function _claim() internal override {
@@ -81,7 +81,7 @@ abstract contract ConvexZapBase is IZap, CurveZapBase {
 
     function _getRewardContract() internal view returns (IBaseRewardPool) {
         IBooster booster = IBooster(BOOSTER_ADDRESS);
-        IBooster.PoolInfo memory poolInfo = booster.poolInfo(PID);
+        IBooster.PoolInfo memory poolInfo = booster.poolInfo(_PID);
         return IBaseRewardPool(poolInfo.crvRewards);
     }
 }
