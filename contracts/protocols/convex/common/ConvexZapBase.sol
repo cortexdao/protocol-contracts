@@ -11,7 +11,7 @@ import {
 import {SafeERC20} from "contracts/libraries/Imports.sol";
 import {
     IBooster,
-    ITokenMinter
+    IRewardPool
 } from "contracts/protocols/convex/common/interfaces/Imports.sol";
 import {CurveZapBase} from "contracts/protocols/curve/common/CurveZapBase.sol";
 
@@ -50,7 +50,7 @@ abstract contract ConvexZapBase is IZap, CurveZapBase {
     {
         address rewardContract = poolInfo[PID].crvRewards;
         // Convex's staking token is issued 1:1 for deposited LP tokens
-        lpBalance = IReward(rewardContract).balanceOf(account);
+        lpBalance = IRewardPool(rewardContract).balanceOf(account);
     }
 
     /// @dev deposit LP tokens in Convex's Booster contract
@@ -68,7 +68,7 @@ abstract contract ConvexZapBase is IZap, CurveZapBase {
         returns (uint256)
     {
         address rewardContract = poolInfo[PID].crvRewards;
-        IReward(rewardContract).withdrawAndUnwrap(amount, true);
+        IRewardPool(rewardContract).withdrawAndUnwrap(amount, true);
         //lpBalance
         return IERC20(LP_ADDRESS).balanceOf(address(this));
     }
@@ -76,7 +76,7 @@ abstract contract ConvexZapBase is IZap, CurveZapBase {
     function _claim() internal override {
         // this will claim CRV and extra rewards
         address rewardContract = poolInfo[PID].crvRewards;
-        IReward(rewardContract).getReward();
+        IRewardPool(rewardContract).getReward();
     }
 
     // solhint-disable-next-line no-empty-blocks
