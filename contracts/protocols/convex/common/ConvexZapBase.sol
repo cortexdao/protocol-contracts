@@ -31,11 +31,7 @@ abstract contract ConvexZapBase is IZap, CurveZapBase {
         uint256 denominator,
         uint256 slippage,
         uint256 nCoins
-    )
-        public
-        CurveZapBase(swapAddress, denominator, slippage, nCoins)
-    // solhint-disable-next-line no-empty-blocks
-    {
+    ) public CurveZapBase(swapAddress, denominator, slippage, nCoins) {
         _LP_ADDRESS = lpAddress;
         _PID = pid;
     }

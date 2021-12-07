@@ -2,3 +2,4 @@
 pragma solidity 0.6.11;
 
 import {ConvexZapBase} from "./ConvexZapBase.sol";
+import {ConvexAllocationBase} from "./ConvexAllocationBase.sol";
