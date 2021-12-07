@@ -46,8 +46,6 @@ describe.only("Convex Zaps - LP Account integration", () => {
       swapAddress: "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7",
       swapInterface: "IStableSwap",
       lpTokenAddress: "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490",
-      gaugeAddress: "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A",
-      gaugeInterface: "ILiquidityGauge",
       rewardContractAddress: "0x689440f2Ff927E1f24c72F1087E1FAF471eCe1c8",
       rewardContractInterface: "IBaseRewardPool",
       numberOfCoins: 3,
@@ -173,8 +171,8 @@ describe.only("Convex Zaps - LP Account integration", () => {
       swapAddress,
       swapInterface,
       lpTokenAddress,
-      gaugeAddress,
-      gaugeInterface,
+      rewardContractAddress,
+      rewardContractInterface,
       numberOfCoins,
       whaleAddress,
       rewardToken,
@@ -185,8 +183,6 @@ describe.only("Convex Zaps - LP Account integration", () => {
       let zap;
       let stableSwap;
       let lpToken;
-      let gauge;
-      let booster;
       let rewardContract;
 
       let underlyerToken;
@@ -226,12 +222,6 @@ describe.only("Convex Zaps - LP Account integration", () => {
           lpTokenAddress,
           adminSafe
         );
-        gauge = await ethers.getContractAt(
-          gaugeInterface,
-          gaugeAddress,
-          adminSafe
-        );
-        booster = await ethers.getContractAt(boosterInterface, BOOSTER_ADDRESS);
         rewardContract = await ethers.getContractAt(
           rewardContractInterface,
           rewardContractAddress
@@ -318,12 +308,14 @@ describe.only("Convex Zaps - LP Account integration", () => {
             expect(prevUnderlyerBalance).gt(0);
             const prevLpBalance = await lpToken.balanceOf(lpAccount.address);
             expect(prevLpBalance).to.equal(0);
-            const prevGaugeLpBalance = await gauge.balanceOf(lpAccount.address);
-            expect(prevGaugeLpBalance).gt(0);
+            const prevRewardContractBalance = await rewardContract.balanceOf(
+              lpAccount.address
+            );
+            expect(prevRewardContractBalance).gt(0);
 
             await lpAccount
               .connect(lpSafe)
-              .unwindStrategy(name, prevGaugeLpBalance, underlyerIndex);
+              .unwindStrategy(name, prevRewardContractBalance, underlyerIndex);
 
             const afterUnderlyerBalance = await underlyerToken.balanceOf(
               lpAccount.address
@@ -331,10 +323,10 @@ describe.only("Convex Zaps - LP Account integration", () => {
             expect(afterUnderlyerBalance).gt(prevUnderlyerBalance);
             const afterLpBalance = await lpToken.balanceOf(lpAccount.address);
             expect(afterLpBalance).to.equal(0);
-            const afterGaugeLpBalance = await gauge.balanceOf(
+            const afterRewardContractBalance = await rewardContract.balanceOf(
               lpAccount.address
             );
-            expect(afterGaugeLpBalance).to.equal(0);
+            expect(afterRewardContractBalance).to.equal(0);
           });
 
           it("Get LP token Balance", async () => {
@@ -347,11 +339,11 @@ describe.only("Convex Zaps - LP Account integration", () => {
             amounts[underlyerIndex] = underlyerAmount;
 
             const name = await zap.NAME();
-            expect(await gauge.balanceOf(lpAccount.address)).to.equal(
+            expect(await rewardContract.balanceOf(lpAccount.address)).to.equal(
               await lpAccount.getLpTokenBalance(name)
             );
             await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
-            expect(await gauge.balanceOf(lpAccount.address)).to.equal(
+            expect(await rewardContract.balanceOf(lpAccount.address)).to.equal(
               await lpAccount.getLpTokenBalance(name)
             );
           });
@@ -443,7 +435,9 @@ describe.only("Convex Zaps - LP Account integration", () => {
               newTotalNormalizedAmount.sub(totalNormalizedBalance).abs()
             ).to.be.lt(deviation);
 
-            const gaugeLpBalance = await gauge.balanceOf(lpAccount.address);
+            const gaugeLpBalance = await rewardContract.balanceOf(
+              lpAccount.address
+            );
             await lpAccount
               .connect(lpSafe)
               .unwindStrategy(name, gaugeLpBalance, underlyerIndex);
