@@ -14,14 +14,12 @@ contract Convex3poolZap is ConvexZapBase, Convex3poolConstants {
     constructor()
         public
         ConvexZapBase(STABLE_SWAP_ADDRESS, LP_TOKEN_ADDRESS, PID, 10000, 100, 3)
-    {}
+    {} // solhint-disable no-empty-blocks
 
     function assetAllocations() public view override returns (string[] memory) {
-        // Remove for now, to test zap
-        // string[] memory allocationNames = new string[](1);
-        // allocationNames[0] = NAME;
-        // return allocationNames;
-        return new string[](0);
+        string[] memory allocationNames = new string[](1);
+        allocationNames[0] = NAME;
+        return allocationNames;
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {

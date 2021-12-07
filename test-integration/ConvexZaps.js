@@ -228,26 +228,26 @@ describe.only("Convex Zaps - LP Account integration", () => {
         );
       });
 
-      // before("Register allocations with TVL Manager", async () => {
-      //   const allocationNames = await zap.assetAllocations();
-      //   for (let name of allocationNames) {
-      //     name = name
-      //       .split("-")
-      //       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      //       .join("");
-      //     if (name === "Aave") {
-      //       name = "AaveStableCoin";
-      //     }
-      //     const allocationContractName = name + "Allocation";
-      //     const allocationFactory = await ethers.getContractFactory(
-      //       allocationContractName
-      //     );
-      //     const allocation = await allocationFactory.deploy();
-      //     await tvlManager
-      //       .connect(adminSafe)
-      //       .registerAssetAllocation(allocation.address);
-      //   }
-      // });
+      before("Register allocations with TVL Manager", async () => {
+        const allocationNames = await zap.assetAllocations();
+        for (let name of allocationNames) {
+          name = name
+            .split("-")
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join("");
+          if (name === "Aave") {
+            name = "AaveStableCoin";
+          }
+          const allocationContractName = name + "Allocation";
+          const allocationFactory = await ethers.getContractFactory(
+            allocationContractName
+          );
+          const allocation = await allocationFactory.deploy();
+          await tvlManager
+            .connect(adminSafe)
+            .registerAssetAllocation(allocation.address);
+        }
+      });
 
       before("Register tokens with ERC20 Allocation", async () => {
         const erc20s = await zap.erc20Allocations();
