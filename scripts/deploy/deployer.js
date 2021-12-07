@@ -146,6 +146,7 @@ async function deployAllocations(tvlManager, adminSafe) {
     "CurveUsdnAllocation",
     "CurveUsdpAllocation",
     "CurveUstAllocation",
+    "CurveMimAllocation",
   ];
 
   const regularAllocations = await Promise.all(
@@ -203,6 +204,7 @@ async function deployZaps(lpAccount, erc20Allocation, adminSafe) {
     "CurveUsdpZap",
     "CurveUsdtZap",
     "CurveUstZap",
+    "CurveMimZap",
   ];
 
   const zaps = await Promise.all(

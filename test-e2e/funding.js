@@ -136,6 +136,13 @@ const poolTests = [
     ignoreIndexes: [0],
     gaugeAddress: "0x3B7020743Bc2A4ca9EaF9D0722d42E20d6935855",
   },
+  {
+    name: "curve-mim",
+    nCoins: 4,
+    decimals: [18, 18, 6, 6],
+    ignoreIndexes: [0],
+    gaugeAddress: "0xd8b712d29381748dB89c36BCa0138d7c75866ddF",
+  },
 ];
 
 const swapTests = [
