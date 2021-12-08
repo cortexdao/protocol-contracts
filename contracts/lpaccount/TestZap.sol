@@ -40,8 +40,7 @@ contract TestZap is IZap, TestLpAccountStorage {
         return _sortedSymbols;
     }
 
-    // solhint-disable-next-line no-unused-vars
-    function getLpTokenBalance(address account)
+    function getLpTokenBalance(address)
         external
         view
         override
