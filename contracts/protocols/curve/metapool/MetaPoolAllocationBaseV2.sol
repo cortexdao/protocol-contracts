@@ -20,11 +20,12 @@ import {
 } from "contracts/protocols/curve/3pool/Constants.sol";
 
 interface IStableSwap {
+    // solhint-disable-next-line func-name-mixedcase
     function get_dy(
         int128 i,
         int128 j,
         uint256 dx
-    ) external returns (uint256);
+    ) external view returns (uint256);
 
     function balances(uint256 coin) external view returns (uint256);
 }
@@ -67,10 +68,6 @@ abstract contract MetaPoolAllocationBaseV2 is
         require(address(metaPool) != address(0), "INVALID_POOL");
         require(address(gauge) != address(0), "INVALID_GAUGE");
         require(address(lpToken) != address(0), "INVALID_LP_TOKEN");
-
-        uint256 poolBalance = getPoolBalance(metaPool, coin);
-
-        require(address(metaPool) != address(0), "INVALID_POOL");
         require(coin < 256, "INVALID_COIN");
 
         // since we swap out of primary underlyer, we effectively
@@ -82,7 +79,7 @@ abstract contract MetaPoolAllocationBaseV2 is
         coin -= 1;
 
         // metaPool values
-        uint256 totalSupply = lpToken.totalSupply();
+        uint256 lpTokenSupply = lpToken.totalSupply();
         uint256 accountLpTokenBalance = lpToken.balanceOf(account);
         accountLpTokenBalance = accountLpTokenBalance.add(
             gauge.balanceOf(account)
@@ -116,10 +113,9 @@ abstract contract MetaPoolAllocationBaseV2 is
         // get account's share of 3Pool underlyer
         uint256 basePoolUnderlyerBalance =
             IStableSwap(CURVE_3POOL_ADDRESS).balances(coin);
-        uint256 balance =
-            account3CrvBalance.mul(basePoolUnderlyerBalance).div(
-                totalSupplyFor3Crv
-            );
+        balance = account3CrvBalance.mul(basePoolUnderlyerBalance).div(
+            totalSupplyFor3Crv
+        );
     }
 
     function _getBasePoolTokenData(
