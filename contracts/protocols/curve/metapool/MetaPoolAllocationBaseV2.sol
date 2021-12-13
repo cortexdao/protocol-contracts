@@ -5,7 +5,8 @@ import {SafeMath} from "contracts/libraries/Imports.sol";
 import {IERC20} from "contracts/common/Imports.sol";
 
 import {
-    ILiquidityGauge
+    ILiquidityGauge,
+    IStableSwap
 } from "contracts/protocols/curve/common/interfaces/Imports.sol";
 
 import {IMetaPool} from "./IMetaPool.sol";
@@ -18,17 +19,6 @@ import {ImmutableAssetAllocation} from "contracts/tvl/Imports.sol";
 import {
     Curve3poolUnderlyerConstants
 } from "contracts/protocols/curve/3pool/Constants.sol";
-
-interface IStableSwap {
-    // solhint-disable-next-line func-name-mixedcase
-    function get_dy(
-        int128 i,
-        int128 j,
-        uint256 dx
-    ) external view returns (uint256);
-
-    function balances(uint256 coin) external view returns (uint256);
-}
 
 /**
  * @title Periphery Contract for a Curve metapool
