@@ -205,7 +205,7 @@ describe("Contract: MetaPoolAllocationBaseV2", () => {
       // update LP Safe's base pool LP balance after swapping
       // primary underlyer for more base pool LP token
       const metaPoolPrimaryBalance = await metaPool.balances(0);
-      const primaryAmount = lpBalance
+      const primaryAmount = gaugeLpBalance
         .mul(metaPoolPrimaryBalance)
         .div(lpTotalSupply);
       const swap3CrvOutput = await metaPool.get_dy(0, 1, primaryAmount);
