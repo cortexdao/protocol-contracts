@@ -31,7 +31,7 @@ const UST_ADDRESS = "0xa47c8bf37f92aBed4A126BDA807A7b7498661acD";
 // uniswap MIR_UST pool
 const UST_WHALE_ADDRESS = "0x87dA823B6fC8EB8575a235A824690fda94674c88";
 
-describe.only("Contract: MetaPoolAllocationBaseV2", () => {
+describe("Contract: MetaPoolAllocationBaseV2", () => {
   // signers
   let deployer;
   let lpSafe;
@@ -307,13 +307,6 @@ describe.only("Contract: MetaPoolAllocationBaseV2", () => {
         .connect(lpSafe)
         ["add_liquidity(uint256[2],uint256)"]([ustAmount, "0"], minAmount);
 
-      const metaPoolUstBalance = await metaPool.balances(ustIndex);
-      const lpBalance = await lpToken.balanceOf(lpSafe.address);
-      const lpTotalSupply = await lpToken.totalSupply();
-      const expectedBalance = lpBalance
-        .mul(metaPoolUstBalance)
-        .div(lpTotalSupply);
-
       const balance = await curve.getUnderlyerBalance(
         lpSafe.address,
         metaPool.address,
@@ -321,8 +314,7 @@ describe.only("Contract: MetaPoolAllocationBaseV2", () => {
         lpToken.address,
         ustIndex
       );
-      // allow a few wei deviation
-      expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
+      expect(balance).to.equal(0);
     });
 
     it("Get UST balance from gauge holding", async () => {
@@ -336,19 +328,12 @@ describe.only("Contract: MetaPoolAllocationBaseV2", () => {
         .connect(lpSafe)
         ["add_liquidity(uint256[2],uint256)"]([ustAmount, "0"], minAmount);
 
-      const metaPoolUstBalance = await metaPool.balances(ustIndex);
-
       await lpToken.connect(lpSafe).approve(gauge.address, MAX_UINT256);
       const lpBalance = await lpToken.balanceOf(lpSafe.address);
       await gauge.connect(lpSafe)["deposit(uint256)"](lpBalance);
       expect(await lpToken.balanceOf(lpSafe.address)).to.equal(0);
       const gaugeLpBalance = await gauge.balanceOf(lpSafe.address);
       expect(gaugeLpBalance).to.equal(lpBalance);
-
-      const lpTotalSupply = await lpToken.totalSupply();
-      const expectedBalance = gaugeLpBalance
-        .mul(metaPoolUstBalance)
-        .div(lpTotalSupply);
 
       const balance = await curve.getUnderlyerBalance(
         lpSafe.address,
@@ -357,8 +342,7 @@ describe.only("Contract: MetaPoolAllocationBaseV2", () => {
         lpToken.address,
         ustIndex
       );
-      // allow a few wei deviation
-      expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
+      expect(balance).to.equal(0);
     });
 
     it("Get UST balance from combined holdings", async () => {
@@ -387,13 +371,6 @@ describe.only("Contract: MetaPoolAllocationBaseV2", () => {
       );
       expect(await gauge.balanceOf(lpSafe.address)).to.equal(gaugeLpBalance);
 
-      const metaPoolUstBalance = await metaPool.balances(ustIndex);
-      const lpTotalSupply = await lpToken.totalSupply();
-
-      const expectedBalance = totalLpBalance
-        .mul(metaPoolUstBalance)
-        .div(lpTotalSupply);
-
       const balance = await curve.getUnderlyerBalance(
         lpSafe.address,
         metaPool.address,
@@ -401,8 +378,7 @@ describe.only("Contract: MetaPoolAllocationBaseV2", () => {
         lpToken.address,
         ustIndex
       );
-      // allow a few wei deviation
-      expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
+      expect(balance).to.equal(0);
     });
   });
 });
