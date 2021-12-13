@@ -91,12 +91,7 @@ abstract contract MetaPoolAllocationBaseV2 is
                 lpTokenSupply
             );
         // expected output of swapping primary underlyer amount for 3Crv tokens
-        uint256 swap3CrvOutput =
-            IStableSwap(CURVE_3POOL_ADDRESS).get_dy(
-                0,
-                1,
-                accountPrimaryBalance
-            );
+        uint256 swap3CrvOutput = metaPool.get_dy(0, 1, accountPrimaryBalance);
         // total amount of 3Crv tokens account owns after swapping out of primary underlyer
         account3CrvBalance = account3CrvBalance.add(swap3CrvOutput);
 

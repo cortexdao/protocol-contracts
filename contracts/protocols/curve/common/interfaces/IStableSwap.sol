@@ -50,13 +50,6 @@ interface IStableSwap {
 
     // solhint-disable-next-line
     function get_virtual_price() external view returns (uint256);
-
-    // solhint-disable-next-line func-name-mixedcase
-    function get_dy(
-        int128 i,
-        int128 j,
-        uint256 dx
-    ) external view returns (uint256);
 }
 
 // solhint-disable-next-line no-empty-blocks
