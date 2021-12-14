@@ -8,7 +8,7 @@ import {
 
 import {ConvexUstConstants} from "./Constants.sol";
 
-contract ConvexUstAllocationV2 is MetaPoolAllocationBaseV2, ConvexUstConstants {
+contract ConvexUstAllocation is MetaPoolAllocationBaseV2, ConvexUstConstants {
     function balanceOf(address account, uint8 tokenIndex)
         public
         view

@@ -8,8 +8,10 @@ import {
     ILiquidityGauge,
     IStableSwap
 } from "contracts/protocols/curve/common/interfaces/Imports.sol";
-
-import {IMetaPool} from "./IMetaPool.sol";
+import {IMetaPool} from "contracts/protocols/curve/metapool/Imports.sol";
+import {
+    IBaseRewardPool
+} from "contracts/protocols/convex/common/interfaces/Imports.sol";
 
 import {ImmutableAssetAllocation} from "contracts/tvl/Imports.sol";
 import {
