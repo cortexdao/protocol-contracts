@@ -90,10 +90,14 @@ abstract contract MetaPoolAllocationBaseV2 is
             accountLpTokenBalance.mul(metaPoolPrimaryBalance).div(
                 lpTokenSupply
             );
-        // expected output of swapping primary underlyer amount for 3Crv tokens
-        uint256 swap3CrvOutput = metaPool.get_dy(0, 1, accountPrimaryBalance);
-        // total amount of 3Crv tokens account owns after swapping out of primary underlyer
-        account3CrvBalance = account3CrvBalance.add(swap3CrvOutput);
+        // `metaPool.get_dy` can revert on dx = 0, so we skip the call in that case
+        if (accountPrimaryBalance > 0) {
+            // expected output of swapping primary underlyer amount for 3Crv tokens
+            uint256 swap3CrvOutput =
+                metaPool.get_dy(0, 1, accountPrimaryBalance);
+            // total amount of 3Crv tokens account owns after swapping out of primary underlyer
+            account3CrvBalance = account3CrvBalance.add(swap3CrvOutput);
+        }
 
         // get account's share of 3Pool underlyer
         uint256 basePoolUnderlyerBalance =

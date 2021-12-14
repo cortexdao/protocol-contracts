@@ -598,6 +598,7 @@ describe.only("Allocations", () => {
               minAmount
             );
 
+            // deposit metapool token into booster
             await lpToken
               .connect(lpAccount)
               .approve(booster.address, MAX_UINT256);
@@ -635,7 +636,6 @@ describe.only("Allocations", () => {
             expect(expectedBalance).to.be.gt(0);
 
             const balance = await tvlManager.balanceOf(lookupId);
-            console.log("Balance: %s", balance);
             // allow a few wei deviation
             expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
           });
