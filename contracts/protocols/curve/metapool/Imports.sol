@@ -6,5 +6,6 @@ import {IOldDepositor} from "./IOldDepositor.sol";
 import {IDepositor} from "./IDepositor.sol";
 import {DepositorConstants} from "./Constants.sol";
 import {MetaPoolAllocationBase} from "./MetaPoolAllocationBase.sol";
+import {MetaPoolAllocationBaseV2} from "./MetaPoolAllocationBaseV2.sol";
 import {MetaPoolOldDepositorZap} from "./MetaPoolOldDepositorZap.sol";
 import {MetaPoolDepositorZap} from "./MetaPoolDepositorZap.sol";
