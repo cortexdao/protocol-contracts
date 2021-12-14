@@ -23,6 +23,16 @@ const CurveMetaPoolAllocationV2s = [
     primaryUnderlyerSymbol: "UST",
     whaleAddress: "0x87dA823B6fC8EB8575a235A824690fda94674c88",
   },
+  {
+    contractName: "CurveMusdAllocationV2",
+    primaryUnderlyerSymbol: "mUSD",
+    whaleAddress: "0x8474DdbE98F5aA3179B3B3F5942D724aFcdec9f6",
+  },
+  {
+    contractName: "CurveOusdAllocationV2",
+    primaryUnderlyerSymbol: "OUSD",
+    whaleAddress: "0x87650D7bbfC3A9F10587d7778206671719d9910D",
+  },
 ];
 
 async function getContractAt(
@@ -242,7 +252,6 @@ describe("Curve MetaPool Allocation V2", () => {
 
         it("Get primary underlyer balance from account holding", async () => {
           const primaryAmount = tokenAmountToBigNumber("1000", 18);
-          const primaryIndex = 0;
           const minAmount = 0;
 
           // deposit primary underlyer into metapool
@@ -260,7 +269,6 @@ describe("Curve MetaPool Allocation V2", () => {
 
         it("Get primary underlyer balance from gauge holding", async () => {
           const primaryAmount = tokenAmountToBigNumber("1000", 18);
-          const primaryIndex = 0;
           const minAmount = 0;
 
           // deposit primary underlyer into metapool
@@ -285,7 +293,6 @@ describe("Curve MetaPool Allocation V2", () => {
 
         it("Get primary underlyer balance from combined holdings", async () => {
           const primaryAmount = tokenAmountToBigNumber("1000", 18);
-          const primaryIndex = 0;
           const minAmount = 0;
 
           // deposit primary underlyer into metapool
