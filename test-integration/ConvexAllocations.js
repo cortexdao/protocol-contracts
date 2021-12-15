@@ -451,7 +451,12 @@ describe.only("Allocations", () => {
           await acquireToken(sender, lpAccount, primaryToken, amount, deployer);
         });
 
-        it("Allocation should show zero primary underlyer balance by LP Account", async () => {
+        it("Should show zero primary underlyer balance if no holdings", async () => {
+          const balance = await tvlManager.balanceOf(primaryAllocationId);
+          expect(balance).to.equal(0);
+        });
+
+        it("Should show zero primary underlyer balance if only LP Account holding", async () => {
           const primaryAmount = tokenAmountToBigNumber("1000", 18);
           const minAmount = 0;
 
@@ -471,7 +476,7 @@ describe.only("Allocations", () => {
           expect(balance).to.equal(0);
         });
 
-        it("Get primary underlyer balance from gauge holding", async () => {
+        it("Get primary underlyer balance held by reward contract", async () => {
           const primaryAmount = tokenAmountToBigNumber("1000", 18);
           const minAmount = 0;
 
@@ -537,7 +542,12 @@ describe.only("Allocations", () => {
             );
           });
 
-          it("Allocation should show zero 3Pool underlyer balance by LP Account", async () => {
+          it("Should show zero 3Pool underlyer balance if no holdings", async () => {
+            const balance = await tvlManager.balanceOf(lookupId);
+            expect(balance).to.equal(0);
+          });
+
+          it("Should show zero 3Pool underlyer balance if only LP Account holding", async () => {
             const amounts = ["0", "0", "0"];
             amounts[basePoolIndex] = tokenAmountToBigNumber(
               "1000",
