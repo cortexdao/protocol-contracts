@@ -4,11 +4,13 @@ pragma experimental ABIEncoderV2;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAssetAllocation} from "contracts/common/Imports.sol";
-import {IMetaPool} from "./IMetaPool.sol";
-import {IOldDepositor} from "./IOldDepositor.sol";
-import {CurveGaugeZapBase} from "contracts/protocols/curve/common/Imports.sol";
+import {
+    IOldDepositor,
+    IMetaPool
+} from "contracts/protocols/curve/metapool/Imports.sol";
+import {ConvexZapBase} from "contracts/protocols/convex/common/Imports.sol";
 
-abstract contract MetaPoolOldDepositorZap is CurveGaugeZapBase {
+abstract contract MetaPoolOldDepositorZap is ConvexZapBase {
     IOldDepositor internal immutable _DEPOSITOR;
     IMetaPool internal immutable _META_POOL;
 
@@ -16,15 +18,15 @@ abstract contract MetaPoolOldDepositorZap is CurveGaugeZapBase {
         IOldDepositor depositor,
         IMetaPool metapool,
         address lpAddress,
-        address gaugeAddress,
+        uint256 pid,
         uint256 denominator,
         uint256 slippage
     )
         public
-        CurveGaugeZapBase(
+        ConvexZapBase(
             address(depositor),
             lpAddress,
-            gaugeAddress,
+            pid,
             denominator,
             slippage,
             4
@@ -49,8 +51,8 @@ abstract contract MetaPoolOldDepositorZap is CurveGaugeZapBase {
         uint8 index,
         uint256 minAmount
     ) internal override {
-        IERC20(LP_ADDRESS).safeApprove(address(_DEPOSITOR), 0);
-        IERC20(LP_ADDRESS).safeApprove(address(_DEPOSITOR), lpBalance);
+        IERC20(_LP_ADDRESS).safeApprove(address(_DEPOSITOR), 0);
+        IERC20(_LP_ADDRESS).safeApprove(address(_DEPOSITOR), lpBalance);
         _DEPOSITOR.remove_liquidity_one_coin(lpBalance, index, minAmount);
     }
 

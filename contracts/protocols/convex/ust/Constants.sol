@@ -11,7 +11,7 @@ import {
 } from "contracts/protocols/curve/metapool/Imports.sol";
 
 abstract contract ConvexUstConstants is INameIdentifier {
-    string public constant override NAME = "curve-ust";
+    string public constant override NAME = "convex-ust";
 
     uint256 public constant PID = 21;
 
