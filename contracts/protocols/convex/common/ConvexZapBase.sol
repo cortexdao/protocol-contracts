@@ -65,7 +65,7 @@ abstract contract ConvexZapBase is IZap, CurveZapBase {
         IBaseRewardPool rewardContract = _getRewardContract();
         // withdraw staked tokens and unwrap to LP tokens;
         // bool is for claiming rewards at the same time
-        rewardContract.withdrawAndUnwrap(amount, true);
+        rewardContract.withdrawAndUnwrap(amount, false);
         lpBalance = IERC20(_LP_ADDRESS).balanceOf(address(this));
     }
 
