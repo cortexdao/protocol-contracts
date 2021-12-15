@@ -76,7 +76,7 @@ async function getContractAt(
   return contract;
 }
 
-describe.only("Allocations", () => {
+describe("Allocations", () => {
   /* signers */
   let deployer;
   let emergencySafe;
