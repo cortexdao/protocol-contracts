@@ -44,6 +44,12 @@ const ConvexMetaPoolAllocations = [
     pid: 21,
     whaleAddress: "0x87dA823B6fC8EB8575a235A824690fda94674c88",
   },
+  {
+    contractName: "ConvexFraxAllocation",
+    primaryUnderlyerSymbol: "FRAX",
+    pid: 32,
+    whaleAddress: "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B",
+  },
 ];
 
 async function getContractAt(
@@ -76,7 +82,7 @@ async function getContractAt(
   return contract;
 }
 
-describe("Allocations", () => {
+describe("Convex Allocations", () => {
   /* signers */
   let deployer;
   let emergencySafe;

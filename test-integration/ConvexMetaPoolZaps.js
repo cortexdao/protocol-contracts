@@ -21,7 +21,7 @@ const CRV_ADDRESS = "0xD533a949740bb3306d119CC777fa900bA034cd52";
 console.debugging = false;
 /* ************************ */
 
-describe.only("Convex MetaPool Zaps - LP Account integration", () => {
+describe("Convex MetaPool Zaps - LP Account integration", () => {
   /* signers */
   let deployer;
   let emergencySafe;
@@ -40,15 +40,26 @@ describe.only("Convex MetaPool Zaps - LP Account integration", () => {
   let snapshotId;
 
   const ConvexMetaPoolZaps = [
+    // {
+    //   contractName: "ConvexUstZap",
+    //   swapAddress: "0x890f4e345B1dAED0367A877a1612f86A1f86985f",
+    //   swapInterface: "IMetaPool",
+    //   lpTokenAddress: "0x94e131324b6054c0D789b190b2dAC504e4361b53",
+    //   gaugeAddress: "0xd4Be1911F8a0df178d6e7fF5cE39919c273E2B7B",
+    //   gaugeInterface: "IBaseRewardPool",
+    //   numberOfCoins: 4,
+    //   whaleAddress: WHALE_POOLS["UST"],
+    // },
     {
-      contractName: "ConvexUstZap",
-      swapAddress: "0x890f4e345B1dAED0367A877a1612f86A1f86985f",
+      contractName: "ConvexFraxZap",
+      swapAddress: "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B",
       swapInterface: "IMetaPool",
-      lpTokenAddress: "0x94e131324b6054c0D789b190b2dAC504e4361b53",
-      gaugeAddress: "0xd4Be1911F8a0df178d6e7fF5cE39919c273E2B7B",
+      lpTokenAddress: "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B",
+      gaugeAddress: "0xB900EF131301B307dB5eFcbed9DBb50A3e209B2e",
       gaugeInterface: "IBaseRewardPool",
       numberOfCoins: 4,
-      whaleAddress: WHALE_POOLS["UST"],
+      whaleAddress: WHALE_POOLS["FRAX"],
+      rewardToken: "0x3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0",
     },
   ];
 
