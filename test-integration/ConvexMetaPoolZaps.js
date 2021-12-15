@@ -40,6 +40,7 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
   let snapshotId;
 
   const ConvexMetaPoolZaps = [
+    // UST pool reward period ends right before our pinned block
     // {
     //   contractName: "ConvexUstZap",
     //   swapAddress: "0x890f4e345B1dAED0367A877a1612f86A1f86985f",
@@ -387,6 +388,12 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
 
             const name = await zap.NAME();
             await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
+
+            console.debug("periodFinish: %s", await gauge.periodFinish());
+            console.debug(
+              "Deploy strategy time: %s",
+              (await ethers.provider.getBlock()).timestamp
+            );
 
             // allows rewards to accumulate:
             // CRV rewards accumulate within a block, but other rewards, like
