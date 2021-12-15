@@ -113,6 +113,18 @@ describe("Contract: MetaPoolAllocationBaseV2", () => {
       await acquireToken(sender, lpSafe, token, amount, deployer);
     });
 
+    it("Get zero 3Pool underlyer balance when no holdings", async () => {
+      const daiIndex = 1;
+      const balance = await curve.getUnderlyerBalance(
+        lpSafe.address,
+        metaPool.address,
+        gauge.address,
+        lpToken.address,
+        daiIndex
+      );
+      expect(balance).to.equal(0);
+    });
+
     it("Get 3Pool underlyer balance from account holding", async () => {
       const daiAmount = tokenAmountToBigNumber("1000", 18);
       const daiIndex = 1;
@@ -294,6 +306,18 @@ describe("Contract: MetaPoolAllocationBaseV2", () => {
       );
       // allow a few wei deviation
       expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
+    });
+
+    it("Get zero UST balance when no holdings", async () => {
+      const ustIndex = 0;
+      const balance = await curve.getUnderlyerBalance(
+        lpSafe.address,
+        metaPool.address,
+        gauge.address,
+        lpToken.address,
+        ustIndex
+      );
+      expect(balance).to.equal(0);
     });
 
     it("Get UST balance from account holding", async () => {
