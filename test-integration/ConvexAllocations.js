@@ -23,6 +23,7 @@ const ConvexPoolAllocations = [
   {
     contractName: "Convex3poolAllocation",
     poolName: "3Pool",
+    pid: 9,
     // using the Curve pool itself as the "whale":
     // should be ok since the pool's external balances (vs the pool's
     // internal balances) are only used for admin balances and determining
@@ -37,11 +38,18 @@ const ConvexPoolAllocations = [
 ];
 
 const ConvexMetaPoolAllocations = [
-  // {
-  //   contractName: "CurveUstAllocation",
-  //   primaryUnderlyerSymbol: "UST",
-  //   whaleAddress: "0x87dA823B6fC8EB8575a235A824690fda94674c88",
-  // },
+  {
+    contractName: "ConvexUstAllocation",
+    primaryUnderlyerSymbol: "UST",
+    pid: 21,
+    whaleAddress: "0x87dA823B6fC8EB8575a235A824690fda94674c88",
+  },
+  {
+    contractName: "ConvexFraxAllocation",
+    primaryUnderlyerSymbol: "FRAX",
+    pid: 32,
+    whaleAddress: "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B",
+  },
 ];
 
 async function getContractAt(
@@ -74,7 +82,7 @@ async function getContractAt(
   return contract;
 }
 
-describe("Allocations", () => {
+describe("Convex Allocations", () => {
   /* signers */
   let deployer;
   let emergencySafe;
@@ -154,6 +162,7 @@ describe("Allocations", () => {
     const {
       contractName,
       poolName,
+      pid,
       whaleAddress,
       numberOfCoins,
       unwrap,
@@ -299,7 +308,7 @@ describe("Allocations", () => {
             const strategyLpBalance = await lpToken.balanceOf(
               lpAccount.address
             );
-            await booster.deposit(9, strategyLpBalance, true);
+            await booster.deposit(pid, strategyLpBalance, true);
             expect(await lpToken.balanceOf(lpAccount.address)).to.equal(0);
             const rewardContractLpBalance = await rewardContract.balanceOf(
               lpAccount.address
@@ -333,6 +342,7 @@ describe("Allocations", () => {
     const {
       contractName,
       primaryUnderlyerSymbol,
+      pid,
       whaleAddress,
       interfaceOverride,
     } = allocationData;
@@ -357,9 +367,7 @@ describe("Allocations", () => {
         );
         convex3poolAllocation = await Convex3poolAllocation.deploy();
         const ConvexAllocation = await ethers.getContractFactory(contractName);
-        allocation = await ConvexAllocation.deploy(
-          convex3poolAllocation.address
-        );
+        allocation = await ConvexAllocation.deploy();
       });
 
       before("Register asset allocation", async () => {
@@ -413,10 +421,9 @@ describe("Allocations", () => {
           interfaceOverride,
           lpAccount
         );
-        const REWARD_CONTRACT_ADDRESS =
-          await allocation.REWARD_CONTRACT_ADDRESS();
+        const REWARD_CONTRACT_ADDRESS = await allocation.REWARD_CONTRACT();
         rewardContract = await getContractAt(
-          "ILiquidityGauge",
+          "IBaseRewardPool",
           REWARD_CONTRACT_ADDRESS,
           interfaceOverride,
           lpAccount
@@ -450,7 +457,12 @@ describe("Allocations", () => {
           await acquireToken(sender, lpAccount, primaryToken, amount, deployer);
         });
 
-        it("Allocation should show zero primary underlyer balance by LP Account", async () => {
+        it("Should show zero primary underlyer balance if no holdings", async () => {
+          const balance = await tvlManager.balanceOf(primaryAllocationId);
+          expect(balance).to.equal(0);
+        });
+
+        it("Should show zero primary underlyer balance if only LP Account holding", async () => {
           const primaryAmount = tokenAmountToBigNumber("1000", 18);
           const minAmount = 0;
 
@@ -470,9 +482,8 @@ describe("Allocations", () => {
           expect(balance).to.equal(0);
         });
 
-        it("Get primary underlyer balance from gauge holding", async () => {
+        it("Get primary underlyer balance held by reward contract", async () => {
           const primaryAmount = tokenAmountToBigNumber("1000", 18);
-          const primaryIndex = 0;
           const minAmount = 0;
 
           // deposit primary underlyer into metapool
@@ -484,27 +495,19 @@ describe("Allocations", () => {
             minAmount
           );
 
-          const metaPoolPrimaryBalance = await metaPool.balances(primaryIndex);
-
           await lpToken
             .connect(lpAccount)
             .approve(booster.address, MAX_UINT256);
           const lpBalance = await lpToken.balanceOf(lpAccount.address);
-          await booster.deposit(9, lpBalance, true);
+          await booster.deposit(pid, lpBalance, true);
           expect(await lpToken.balanceOf(lpAccount.address)).to.equal(0);
           const gaugeLpBalance = await rewardContract.balanceOf(
             lpAccount.address
           );
           expect(gaugeLpBalance).to.equal(lpBalance);
 
-          const lpTotalSupply = await lpToken.totalSupply();
-          const expectedBalance = gaugeLpBalance
-            .mul(metaPoolPrimaryBalance)
-            .div(lpTotalSupply);
-
           const balance = await tvlManager.balanceOf(primaryAllocationId);
-          // allow a few wei deviation
-          expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
+          expect(balance).to.equal(0);
         });
       });
 
@@ -545,7 +548,12 @@ describe("Allocations", () => {
             );
           });
 
-          it("Allocation should show zero 3Pool underlyer balance by LP Account", async () => {
+          it("Should show zero 3Pool underlyer balance if no holdings", async () => {
+            const balance = await tvlManager.balanceOf(lookupId);
+            expect(balance).to.equal(0);
+          });
+
+          it("Should show zero 3Pool underlyer balance if only LP Account holding", async () => {
             const amounts = ["0", "0", "0"];
             amounts[basePoolIndex] = tokenAmountToBigNumber(
               "1000",
@@ -579,7 +587,7 @@ describe("Allocations", () => {
             expect(balance).to.equal(0);
           });
 
-          it("Get 3Pool underlyer balance from gauge holding", async () => {
+          it("Get 3Pool underlyer balance held by reward contract", async () => {
             const amounts = ["0", "0", "0"];
             amounts[basePoolIndex] = tokenAmountToBigNumber(
               "1000",
@@ -606,16 +614,17 @@ describe("Allocations", () => {
               minAmount
             );
 
+            // deposit metapool token into booster
             await lpToken
               .connect(lpAccount)
               .approve(booster.address, MAX_UINT256);
             const lpBalance = await lpToken.balanceOf(lpAccount.address);
-            await booster.deposit(9, lpBalance, true);
+            await booster.deposit(pid, lpBalance, true);
             expect(await lpToken.balanceOf(lpAccount.address)).to.equal(0);
-            const gaugeLpBalance = await rewardContract.balanceOf(
+            const rewardContractLpBalance = await rewardContract.balanceOf(
               lpAccount.address
             );
-            expect(gaugeLpBalance).to.equal(lpBalance);
+            expect(rewardContractLpBalance).to.equal(lpBalance);
 
             const basePoolDaiBalance = await basePool.balances(basePoolIndex);
             const basePoolLpTotalSupply = await baseLpToken.totalSupply();
@@ -624,9 +633,18 @@ describe("Allocations", () => {
             // into the metapool, which will swap for some primary underlyer
             const metaPoolBaseLpBalance = await metaPool.balances(1);
             const lpTotalSupply = await lpToken.totalSupply();
-            baseLpBalance = gaugeLpBalance
+            baseLpBalance = rewardContractLpBalance
               .mul(metaPoolBaseLpBalance)
               .div(lpTotalSupply);
+
+            // update LP Safe's base pool LP balance after swapping
+            // primary underlyer for more base pool LP token
+            const metaPoolPrimaryBalance = await metaPool.balances(0);
+            const primaryAmount = rewardContractLpBalance
+              .mul(metaPoolPrimaryBalance)
+              .div(lpTotalSupply);
+            const swap3CrvOutput = await metaPool.get_dy(0, 1, primaryAmount);
+            baseLpBalance = baseLpBalance.add(swap3CrvOutput);
 
             const expectedBalance = baseLpBalance
               .mul(basePoolDaiBalance)

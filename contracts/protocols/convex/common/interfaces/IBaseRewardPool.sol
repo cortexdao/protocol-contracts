@@ -16,6 +16,11 @@ interface IRewardPool {
 
     /// @notice get balance of an address
     function balanceOf(address _account) external view returns (uint256);
+
+    /// @notice get reward period end time
+    /// @dev since this is based on the unipool contract, `notifyRewardAmount`
+    /// must be called in order for a new period to begin.
+    function periodFinish() external view returns (uint256);
 }
 
 interface IBaseRewardPool is IRewardPool {

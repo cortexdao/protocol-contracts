@@ -21,7 +21,7 @@ const CRV_ADDRESS = "0xD533a949740bb3306d119CC777fa900bA034cd52";
 console.debugging = false;
 /* ************************ */
 
-describe("Convex Zaps - LP Account integration", () => {
+describe("Convex MetaPool Zaps - LP Account integration", () => {
   /* signers */
   let deployer;
   let emergencySafe;
@@ -39,17 +39,28 @@ describe("Convex Zaps - LP Account integration", () => {
   // use EVM snapshots for test isolation
   let snapshotId;
 
-  // "regular" pools; meta pools should be added in `ConvexMetaPoolZaps`
-  const ConvexZaps = [
+  const ConvexMetaPoolZaps = [
+    // UST pool reward period ends right before our pinned block
+    // {
+    //   contractName: "ConvexUstZap",
+    //   swapAddress: "0x890f4e345B1dAED0367A877a1612f86A1f86985f",
+    //   swapInterface: "IMetaPool",
+    //   lpTokenAddress: "0x94e131324b6054c0D789b190b2dAC504e4361b53",
+    //   gaugeAddress: "0xd4Be1911F8a0df178d6e7fF5cE39919c273E2B7B",
+    //   gaugeInterface: "IBaseRewardPool",
+    //   numberOfCoins: 4,
+    //   whaleAddress: WHALE_POOLS["UST"],
+    // },
     {
-      contractName: "Convex3poolZap",
-      swapAddress: "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7",
-      swapInterface: "IStableSwap",
-      lpTokenAddress: "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490",
-      rewardContractAddress: "0x689440f2Ff927E1f24c72F1087E1FAF471eCe1c8",
-      rewardContractInterface: "IBaseRewardPool",
-      numberOfCoins: 3,
-      whaleAddress: WHALE_POOLS["DAI"],
+      contractName: "ConvexFraxZap",
+      swapAddress: "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B",
+      swapInterface: "IMetaPool",
+      lpTokenAddress: "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B",
+      gaugeAddress: "0xB900EF131301B307dB5eFcbed9DBb50A3e209B2e",
+      gaugeInterface: "IBaseRewardPool",
+      numberOfCoins: 4,
+      whaleAddress: WHALE_POOLS["FRAX"],
+      rewardToken: "0x3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0",
     },
   ];
 
@@ -165,25 +176,27 @@ describe("Convex Zaps - LP Account integration", () => {
     await tvlManager.registerAssetAllocation(erc20Allocation.address);
   });
 
-  ConvexZaps.forEach((curveConstants) => {
+  ConvexMetaPoolZaps.forEach((curveConstants) => {
     const {
       contractName,
       swapAddress,
       swapInterface,
       lpTokenAddress,
-      rewardContractAddress,
-      rewardContractInterface,
+      gaugeAddress,
+      gaugeInterface,
       numberOfCoins,
-      whaleAddress,
       rewardToken,
-      useUnwrapped,
     } = curveConstants;
+    let { whaleAddress } = curveConstants;
 
     describe(contractName, () => {
       let zap;
-      let stableSwap;
+      let metaPool;
       let lpToken;
-      let rewardContract;
+      let gauge;
+      let basePool;
+
+      let curve3poolAllocation;
 
       let underlyerToken;
       const underlyerIndices = Array.from(Array(numberOfCoins).keys());
@@ -199,7 +212,7 @@ describe("Convex Zaps - LP Account integration", () => {
         await timeMachine.revertToSnapshot(subSuiteSnapshotId);
       });
 
-      before("Deploy zap", async () => {
+      before("Deploy Zap", async () => {
         const zapFactory = await ethers.getContractFactory(
           contractName,
           adminSafe
@@ -211,8 +224,8 @@ describe("Convex Zaps - LP Account integration", () => {
         await lpAccount.connect(adminSafe).registerZap(zap.address);
       });
 
-      before("Attach to Mainnet Curve contracts", async () => {
-        stableSwap = await ethers.getContractAt(
+      before("Attach to Mainnet contracts", async () => {
+        metaPool = await ethers.getContractAt(
           swapInterface,
           swapAddress,
           adminSafe
@@ -222,10 +235,24 @@ describe("Convex Zaps - LP Account integration", () => {
           lpTokenAddress,
           adminSafe
         );
-        rewardContract = await ethers.getContractAt(
-          rewardContractInterface,
-          rewardContractAddress
+        gauge = await ethers.getContractAt(
+          gaugeInterface,
+          gaugeAddress,
+          adminSafe
         );
+
+        // 3pool
+        basePool = await ethers.getContractAt(
+          "IStableSwap",
+          "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7"
+        );
+      });
+
+      before("Deploy 3pool allocation", async () => {
+        const Curve3poolAllocation = await ethers.getContractFactory(
+          "Curve3poolAllocation"
+        );
+        curve3poolAllocation = await Curve3poolAllocation.deploy();
       });
 
       before("Register allocations with TVL Manager", async () => {
@@ -242,7 +269,15 @@ describe("Convex Zaps - LP Account integration", () => {
           const allocationFactory = await ethers.getContractFactory(
             allocationContractName
           );
-          const allocation = await allocationFactory.deploy();
+          let allocation;
+          if (allocationContractName.startsWith("Curve")) {
+            allocation = await allocationFactory.deploy(
+              curve3poolAllocation.address
+            );
+          } else {
+            // Convex metapool allocations have zero constructor args
+            allocation = await allocationFactory.deploy();
+          }
           await tvlManager
             .connect(adminSafe)
             .registerAssetAllocation(allocation.address);
@@ -262,14 +297,13 @@ describe("Convex Zaps - LP Account integration", () => {
         const startingTokens = 100000;
 
         describe(`Underlyer index: ${underlyerIndex}`, () => {
-          beforeEach("Fund LP Account with pool underlyer", async () => {
+          beforeEach("Fund LP Account with Pool Underlyer", async () => {
             let underlyerAddress;
-            if (useUnwrapped) {
-              underlyerAddress = await stableSwap.underlying_coins(
-                underlyerIndex
-              );
+            if (underlyerIndex == 0) {
+              underlyerAddress = await metaPool.coins(underlyerIndex);
             } else {
-              underlyerAddress = await stableSwap.coins(underlyerIndex);
+              underlyerAddress = await basePool.coins(underlyerIndex - 1);
+              whaleAddress = basePool.address;
             }
 
             underlyerToken = await ethers.getContractAt(
@@ -277,7 +311,7 @@ describe("Convex Zaps - LP Account integration", () => {
               underlyerAddress
             );
             const amount = tokenAmountToBigNumber(
-              startingTokens,
+              100000,
               await underlyerToken.decimals()
             );
 
@@ -292,9 +326,8 @@ describe("Convex Zaps - LP Account integration", () => {
 
           it("Deploy and unwind", async () => {
             const amounts = new Array(numberOfCoins).fill("0");
-            // deposit 1% of the starting amount
             const underlyerAmount = tokenAmountToBigNumber(
-              startingTokens * 0.01,
+              1000,
               await underlyerToken.decimals()
             );
             amounts[underlyerIndex] = underlyerAmount;
@@ -308,14 +341,12 @@ describe("Convex Zaps - LP Account integration", () => {
             expect(prevUnderlyerBalance).gt(0);
             const prevLpBalance = await lpToken.balanceOf(lpAccount.address);
             expect(prevLpBalance).to.equal(0);
-            const prevRewardContractBalance = await rewardContract.balanceOf(
-              lpAccount.address
-            );
-            expect(prevRewardContractBalance).gt(0);
+            const prevGaugeLpBalance = await gauge.balanceOf(lpAccount.address);
+            expect(prevGaugeLpBalance).gt(0);
 
             await lpAccount
               .connect(lpSafe)
-              .unwindStrategy(name, prevRewardContractBalance, underlyerIndex);
+              .unwindStrategy(name, prevGaugeLpBalance, underlyerIndex);
 
             const afterUnderlyerBalance = await underlyerToken.balanceOf(
               lpAccount.address
@@ -323,29 +354,10 @@ describe("Convex Zaps - LP Account integration", () => {
             expect(afterUnderlyerBalance).gt(prevUnderlyerBalance);
             const afterLpBalance = await lpToken.balanceOf(lpAccount.address);
             expect(afterLpBalance).to.equal(0);
-            const afterRewardContractBalance = await rewardContract.balanceOf(
+            const afterGaugeLpBalance = await gauge.balanceOf(
               lpAccount.address
             );
-            expect(afterRewardContractBalance).to.equal(0);
-          });
-
-          it("Get LP token Balance", async () => {
-            const amounts = new Array(numberOfCoins).fill("0");
-            // deposit 1% of the starting amount
-            const underlyerAmount = tokenAmountToBigNumber(
-              startingTokens * 0.01,
-              await underlyerToken.decimals()
-            );
-            amounts[underlyerIndex] = underlyerAmount;
-
-            const name = await zap.NAME();
-            expect(await rewardContract.balanceOf(lpAccount.address)).to.equal(
-              await lpAccount.getLpTokenBalance(name)
-            );
-            await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
-            expect(await rewardContract.balanceOf(lpAccount.address)).to.equal(
-              await lpAccount.getLpTokenBalance(name)
-            );
+            expect(afterGaugeLpBalance).to.equal(0);
           });
 
           it("Claim", async () => {
@@ -368,15 +380,20 @@ describe("Convex Zaps - LP Account integration", () => {
             }
 
             const amounts = new Array(numberOfCoins).fill("0");
-            // deposit 1% of the starting amount
             const underlyerAmount = tokenAmountToBigNumber(
-              startingTokens * 0.01,
+              100000,
               await underlyerToken.decimals()
             );
             amounts[underlyerIndex] = underlyerAmount;
 
             const name = await zap.NAME();
             await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
+
+            console.debug("periodFinish: %s", await gauge.periodFinish());
+            console.debug(
+              "Deploy strategy time: %s",
+              (await ethers.provider.getBlock()).timestamp
+            );
 
             // allows rewards to accumulate:
             // CRV rewards accumulate within a block, but other rewards, like
@@ -435,9 +452,7 @@ describe("Convex Zaps - LP Account integration", () => {
               newTotalNormalizedAmount.sub(totalNormalizedBalance).abs()
             ).to.be.lt(deviation);
 
-            const gaugeLpBalance = await rewardContract.balanceOf(
-              lpAccount.address
-            );
+            const gaugeLpBalance = await gauge.balanceOf(lpAccount.address);
             await lpAccount
               .connect(lpSafe)
               .unwindStrategy(name, gaugeLpBalance, underlyerIndex);
