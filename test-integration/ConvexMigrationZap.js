@@ -26,6 +26,14 @@ const CurvePool = [
     lpTokenWhaleAddress: "0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c",
     pid: 9,
   },
+  {
+    poolName: "Frax",
+    lpTokenAddress: "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B",
+    gaugeAddress: "0x72E158d38dbd50A483501c24f792bDAAA3e7D55C",
+    rewardContractAddress: "0xB900EF131301B307dB5eFcbed9DBb50A3e209B2e",
+    lpTokenWhaleAddress: "0xB4AdA607B9d6b2c9Ee07A275e9616B84AC560139",
+    pid: 32,
+  },
 ];
 
 describe("Convex Migration Zap", () => {
@@ -173,7 +181,6 @@ describe("Convex Migration Zap", () => {
 
       before("Stake LP tokens into Curve gauge", async () => {
         const lpBalance = await lpToken.balanceOf(lpAccount.address);
-        console.log("LP Balance: %s", lpBalance);
         await lpToken
           .connect(lpAccountSigner)
           .approve(gauge.address, lpBalance);
