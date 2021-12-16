@@ -17,6 +17,10 @@ const {
 console.debugging = false;
 /* ************************ */
 
+const pinnedBlock = 13818110;
+const defaultPinnedBlock = hre.config.networks.hardhat.forking.blockNumber;
+const forkingUrl = hre.config.networks.hardhat.forking.url;
+
 const CurvePool = [
   {
     poolName: "3Pool",
@@ -86,8 +90,8 @@ const CurvePool = [
     poolName: "Ousd",
     lpTokenAddress: "0x87650D7bbfC3A9F10587d7778206671719d9910D",
     gaugeAddress: "0x25f0cE4E2F8dbA112D9b115710AC297F816087CD",
-    rewardContractAddress: "0x7D536a737C13561e0D2Decf1152a653B4e615158",
-    lpTokenWhaleAddress: "0x80457B0753B4ccf7b611BcFCcDCaFB0942748521",
+    rewardContractAddress: "0x7D536a737C13561e0D2Decf1152a653B4e615158", // doesn't exist in default pinned block
+    lpTokenWhaleAddress: "0x25f0cE4E2F8dbA112D9b115710AC297F816087CD",
     pid: 56,
   },
   {
@@ -95,7 +99,7 @@ const CurvePool = [
     lpTokenAddress: "0x02d341CcB60fAaf662bC0554d13778015d1b285C",
     gaugeAddress: "0x462253b8F74B72304c145DB0e4Eebd326B22ca39",
     rewardContractAddress: "0xF86AE6790654b70727dbE58BF1a863B270317fD0",
-    lpTokenWhaleAddress: "0x33BC28C01365c4Abe70dF06483ba407e15717521",
+    lpTokenWhaleAddress: "0x462253b8F74B72304c145DB0e4Eebd326B22ca39",
     pid: 26,
   },
   {
@@ -116,7 +120,7 @@ const CurvePool = [
   },
 ];
 
-describe.only("Convex Migration Zap", () => {
+describe("Convex Migration Zap", () => {
   /* signers */
   let deployer;
   let emergencySafe;
@@ -140,6 +144,28 @@ describe.only("Convex Migration Zap", () => {
 
   afterEach(async () => {
     await timeMachine.revertToSnapshot(snapshotId);
+  });
+
+  before("Use newer pinned block for recently deployed contracts", async () => {
+    await hre.network.provider.send("hardhat_reset", [
+      {
+        forking: {
+          jsonRpcUrl: forkingUrl,
+          blockNumber: pinnedBlock,
+        },
+      },
+    ]);
+  });
+
+  after("Reset pinned block to default", async () => {
+    await hre.network.provider.send("hardhat_reset", [
+      {
+        forking: {
+          jsonRpcUrl: forkingUrl,
+          blockNumber: defaultPinnedBlock,
+        },
+      },
+    ]);
   });
 
   before("Setup mock Address Registry", async () => {
