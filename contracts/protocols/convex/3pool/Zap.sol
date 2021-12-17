@@ -24,7 +24,9 @@ contract Convex3poolZap is ConvexZapBase, Convex3poolConstants {
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
-        return _createErc20AllocationArray(0);
+        IERC20[] memory allocations = _createErc20AllocationArray(1);
+        allocations[4] = IERC20(CVX_ADDRESS);
+        return allocations;
     }
 
     function _addLiquidity(uint256[] calldata amounts, uint256 minAmount)
