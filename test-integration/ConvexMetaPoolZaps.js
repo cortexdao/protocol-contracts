@@ -15,6 +15,10 @@ const { WHALE_POOLS } = require("../utils/constants");
 
 const CRV_ADDRESS = "0xD533a949740bb3306d119CC777fa900bA034cd52";
 
+const pinnedBlock = 13755900;
+const defaultPinnedBlock = hre.config.networks.hardhat.forking.blockNumber;
+const forkingUrl = hre.config.networks.hardhat.forking.url;
+
 /* ************************ */
 /* set DEBUG log level here */
 /* ************************ */
@@ -40,6 +44,71 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
   let snapshotId;
 
   const ConvexMetaPoolZaps = [
+    {
+      contractName: "ConvexAlusdZap",
+      swapAddress: "0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c",
+      swapInterface: "IMetaPool",
+      lpTokenAddress: "0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c",
+      gaugeAddress: "0x02E2151D4F351881017ABdF2DD2b51150841d5B3",
+      gaugeInterface: "IBaseRewardPool",
+      numberOfCoins: 4,
+      whaleAddress: WHALE_POOLS["ALUSD"],
+      rewardToken: "0xdBdb4d16EdA451D0503b854CF79D55697F90c8DF",
+    },
+    {
+      contractName: "ConvexFraxZap",
+      swapAddress: "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B",
+      swapInterface: "IMetaPool",
+      lpTokenAddress: "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B",
+      gaugeAddress: "0xB900EF131301B307dB5eFcbed9DBb50A3e209B2e",
+      gaugeInterface: "IBaseRewardPool",
+      numberOfCoins: 4,
+      whaleAddress: WHALE_POOLS["FRAX"],
+      // rewards shut off?
+      // rewardToken: "0x3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0",
+    },
+    {
+      contractName: "ConvexLusdZap",
+      swapAddress: "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
+      swapInterface: "IMetaPool",
+      lpTokenAddress: "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
+      gaugeAddress: "0x2ad92A7aE036a038ff02B96c88de868ddf3f8190",
+      gaugeInterface: "IBaseRewardPool",
+      numberOfCoins: 4,
+      whaleAddress: WHALE_POOLS["LUSD"],
+    },
+    {
+      contractName: "ConvexMimZap",
+      swapAddress: "0x5a6A4D54456819380173272A5E8E9B9904BdF41B",
+      swapInterface: "IMetaPool",
+      lpTokenAddress: "0x5a6A4D54456819380173272A5E8E9B9904BdF41B",
+      gaugeAddress: "0xFd5AbF66b003881b88567EB9Ed9c651F14Dc4771",
+      gaugeInterface: "IBaseRewardPool",
+      numberOfCoins: 4,
+      whaleAddress: WHALE_POOLS["MIM"],
+      rewardToken: "0x090185f2135308BaD17527004364eBcC2D37e5F6",
+    },
+    {
+      contractName: "ConvexMusdZap",
+      swapAddress: "0x8474DdbE98F5aA3179B3B3F5942D724aFcdec9f6",
+      swapInterface: "IMetaPool",
+      lpTokenAddress: "0x1AEf73d49Dedc4b1778d0706583995958Dc862e6",
+      gaugeAddress: "0xDBFa6187C79f4fE4Cda20609E75760C5AaE88e52",
+      gaugeInterface: "IBaseRewardPool",
+      numberOfCoins: 4,
+      whaleAddress: WHALE_POOLS["MUSD"],
+    },
+    {
+      contractName: "ConvexOusdZap",
+      swapAddress: "0x87650D7bbfC3A9F10587d7778206671719d9910D",
+      swapInterface: "IMetaPool",
+      lpTokenAddress: "0x87650D7bbfC3A9F10587d7778206671719d9910D",
+      gaugeAddress: "0x7D536a737C13561e0D2Decf1152a653B4e615158",
+      gaugeInterface: "IBaseRewardPool",
+      numberOfCoins: 4,
+      whaleAddress: WHALE_POOLS["OUSD"],
+      rewardToken: "0x8207c1FfC5B6804F6024322CcF34F29c3541Ae26",
+    },
     // UST pool reward period ends right before our pinned block
     // {
     //   contractName: "ConvexUstZap",
@@ -51,17 +120,6 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
     //   numberOfCoins: 4,
     //   whaleAddress: WHALE_POOLS["UST"],
     // },
-    {
-      contractName: "ConvexFraxZap",
-      swapAddress: "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B",
-      swapInterface: "IMetaPool",
-      lpTokenAddress: "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B",
-      gaugeAddress: "0xB900EF131301B307dB5eFcbed9DBb50A3e209B2e",
-      gaugeInterface: "IBaseRewardPool",
-      numberOfCoins: 4,
-      whaleAddress: WHALE_POOLS["FRAX"],
-      rewardToken: "0x3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0",
-    },
   ];
 
   async function getTotalNormalizedBalance(allocationIds) {
@@ -101,6 +159,28 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
 
   afterEach(async () => {
     await timeMachine.revertToSnapshot(snapshotId);
+  });
+
+  before("Use pinned block for new zaps", async () => {
+    await hre.network.provider.send("hardhat_reset", [
+      {
+        forking: {
+          jsonRpcUrl: forkingUrl,
+          blockNumber: pinnedBlock,
+        },
+      },
+    ]);
+  });
+
+  after("Reset pinned block", async () => {
+    await hre.network.provider.send("hardhat_reset", [
+      {
+        forking: {
+          jsonRpcUrl: forkingUrl,
+          blockNumber: defaultPinnedBlock,
+        },
+      },
+    ]);
   });
 
   before("Setup mock address registry", async () => {
