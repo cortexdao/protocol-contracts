@@ -17,6 +17,10 @@ const { WHALE_POOLS } = require("../utils/constants");
 console.debugging = false;
 /* ************************ */
 
+const pinnedBlock = 13818110;
+const defaultPinnedBlock = hre.config.networks.hardhat.forking.blockNumber;
+const forkingUrl = hre.config.networks.hardhat.forking.url;
+
 const BOOSTER_ADDRESS = "0xF403C135812408BFbE8713b5A23a04b3D48AAE31";
 
 const ConvexPoolAllocations = [
@@ -35,12 +39,71 @@ const ConvexPoolAllocations = [
     },
     unwrap: false,
   },
+  {
+    contractName: "ConvexSaaveAllocation",
+    poolName: "Saave",
+    pid: 26,
+    whaleAddress: "0xEB16Ae0052ed37f479f7fe63849198Df1765a733",
+    numberOfCoins: 2,
+    interfaceOverride: {
+      IStableSwap: "IStableSwap2",
+    },
+    unwrap: false,
+  },
+  {
+    contractName: "ConvexAaveAllocation",
+    poolName: "Aave",
+    pid: 24,
+    whaleAddress: "0xDeBF20617708857ebe4F679508E7b7863a8A8EeE",
+    numberOfCoins: 3,
+    interfaceOverride: {
+      IStableSwap: "IStableSwap3",
+    },
+    unwrap: false,
+  },
+  {
+    contractName: "ConvexSusdv2Allocation",
+    poolName: "Susdv2",
+    pid: 4,
+    whaleAddress: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD",
+    numberOfCoins: 4,
+    interfaceOverride: {
+      IStableSwap: "IOldStableSwap4",
+    },
+    unwrap: false,
+  },
+  {
+    contractName: "ConvexCompoundAllocation",
+    poolName: "Compound",
+    pid: 0,
+    whaleAddress: "0xA2B47E3D5c44877cca798226B7B8118F9BFb7A56",
+    numberOfCoins: 2,
+    interfaceOverride: {
+      IStableSwap: "IOldStableSwap2",
+    },
+    unwrap: true,
+  },
+  {
+    contractName: "ConvexUsdtAllocation",
+    poolName: "Usdt",
+    pid: 1,
+    whaleAddress: "0x52EA46506B9CC5Ef470C5bf89f17Dc28bB35D85C",
+    numberOfCoins: 3,
+    interfaceOverride: {
+      IStableSwap: "IOldStableSwap3",
+    },
+    unwrap: true,
+  },
 ];
 
 const ConvexMetaPoolAllocations = [
   {
     contractName: "ConvexUstAllocation",
     primaryUnderlyerSymbol: "UST",
+    // using the Curve pool itself as the "whale":
+    // should be ok since the pool's external balances (vs the pool's
+    // internal balances) are only used for admin balances and determining
+    // deposit amounts for "fee" assets.
     pid: 21,
     whaleAddress: "0x87dA823B6fC8EB8575a235A824690fda94674c88",
   },
@@ -48,7 +111,43 @@ const ConvexMetaPoolAllocations = [
     contractName: "ConvexFraxAllocation",
     primaryUnderlyerSymbol: "FRAX",
     pid: 32,
+    // using the Curve pool itself as the "whale": see prior note
     whaleAddress: "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B",
+  },
+  {
+    contractName: "ConvexAlusdAllocation",
+    primaryUnderlyerSymbol: "alUSD",
+    pid: 36,
+    // using the Curve pool itself as the "whale": see prior note
+    whaleAddress: "0xAB8e74017a8Cc7c15FFcCd726603790d26d7DeCa",
+  },
+  {
+    contractName: "ConvexMusdAllocation",
+    primaryUnderlyerSymbol: "mUSD",
+    pid: 14,
+    // using the Curve pool itself as the "whale": see prior note
+    whaleAddress: "0x8474DdbE98F5aA3179B3B3F5942D724aFcdec9f6",
+  },
+  {
+    contractName: "ConvexOusdAllocation",
+    primaryUnderlyerSymbol: "OUSD",
+    pid: 56,
+    // using the Curve pool itself as the "whale": see prior note
+    whaleAddress: "0x87650D7bbfC3A9F10587d7778206671719d9910D",
+  },
+  {
+    contractName: "ConvexLusdAllocation",
+    primaryUnderlyerSymbol: "LUSD",
+    pid: 33,
+    // using the Curve pool itself as the "whale": see prior note
+    whaleAddress: "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
+  },
+  {
+    contractName: "ConvexMimAllocation",
+    primaryUnderlyerSymbol: "MIM",
+    pid: 40,
+    // using the Curve pool itself as the "whale": see prior note
+    whaleAddress: "0x5a6A4D54456819380173272A5E8E9B9904BdF41B",
   },
 ];
 
@@ -97,16 +196,28 @@ describe("Convex Allocations", () => {
   let tvlManager;
 
   // use EVM snapshots for test isolation
-  let suiteSnapshotId;
   let testSnapshotId;
 
-  before(async () => {
-    let snapshot = await timeMachine.takeSnapshot();
-    suiteSnapshotId = snapshot["result"];
+  before("Use newer pinned block for recently deployed contracts", async () => {
+    await hre.network.provider.send("hardhat_reset", [
+      {
+        forking: {
+          jsonRpcUrl: forkingUrl,
+          blockNumber: pinnedBlock,
+        },
+      },
+    ]);
   });
 
-  after(async () => {
-    await timeMachine.revertToSnapshot(suiteSnapshotId);
+  after("Reset pinned block to default", async () => {
+    await hre.network.provider.send("hardhat_reset", [
+      {
+        forking: {
+          jsonRpcUrl: forkingUrl,
+          blockNumber: defaultPinnedBlock,
+        },
+      },
+    ]);
   });
 
   beforeEach(async () => {
