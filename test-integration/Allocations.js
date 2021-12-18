@@ -129,6 +129,12 @@ const CurveMetaPoolAllocations = [
     whaleAddress: "0x8474DdbE98F5aA3179B3B3F5942D724aFcdec9f6",
   },
   {
+    contractName: "CurveOusdAllocation",
+    primaryUnderlyerSymbol: "OUSD",
+    // using the Curve pool itself as the "whale": see prior note
+    whaleAddress: "0x87650D7bbfC3A9F10587d7778206671719d9910D",
+  },
+  {
     contractName: "CurveFraxAllocation",
     primaryUnderlyerSymbol: "FRAX",
     // using the Curve pool itself as the "whale": see prior note
