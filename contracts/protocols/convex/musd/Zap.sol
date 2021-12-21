@@ -4,12 +4,12 @@ pragma experimental ABIEncoderV2;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAssetAllocation} from "contracts/common/Imports.sol";
-import {ConvexUstConstants} from "./Constants.sol";
+import {ConvexMusdConstants} from "./Constants.sol";
 import {
     MetaPoolOldDepositorZap
 } from "contracts/protocols/convex/metapool/Imports.sol";
 
-contract ConvexUstZap is MetaPoolOldDepositorZap, ConvexUstConstants {
+contract ConvexMusdZap is MetaPoolOldDepositorZap, ConvexMusdConstants {
     constructor()
         public
         MetaPoolOldDepositorZap(
@@ -24,7 +24,7 @@ contract ConvexUstZap is MetaPoolOldDepositorZap, ConvexUstConstants {
 
     function assetAllocations() public view override returns (string[] memory) {
         string[] memory allocationNames = new string[](2);
-        allocationNames[0] = "curve-ust";
+        allocationNames[0] = "curve-musd";
         allocationNames[1] = NAME;
         return allocationNames;
     }

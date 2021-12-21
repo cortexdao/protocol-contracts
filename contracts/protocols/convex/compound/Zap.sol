@@ -3,38 +3,41 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    IStableSwap,
-    ILiquidityGauge
-} from "contracts/protocols/curve/common/interfaces/Imports.sol";
 import {ConvexZapBase} from "../common/Imports.sol";
-import {Convex3poolConstants} from "./Constants.sol";
+import {ConvexCompoundConstants} from "./Constants.sol";
 
-contract Convex3poolZap is ConvexZapBase, Convex3poolConstants {
+import {SafeERC20, SafeMath} from "contracts/libraries/Imports.sol";
+import {
+    IOldStableSwap2 as IStableSwap,
+    IDepositZap
+} from "contracts/protocols/curve/common/interfaces/Imports.sol";
+
+contract ConvexCompoundZap is ConvexZapBase, ConvexCompoundConstants {
+    using SafeMath for uint256;
+    using SafeERC20 for IERC20;
+
     constructor()
         public
-        ConvexZapBase(STABLE_SWAP_ADDRESS, LP_TOKEN_ADDRESS, PID, 10000, 100, 3)
+        ConvexZapBase(DEPOSIT_ZAP_ADDRESS, LP_TOKEN_ADDRESS, PID, 10000, 100, 2)
     {} // solhint-disable no-empty-blocks
 
     function assetAllocations() public view override returns (string[] memory) {
         string[] memory allocationNames = new string[](2);
-        allocationNames[0] = "curve-3pool";
+        allocationNames[0] = "curve-compound";
         allocationNames[1] = NAME;
         return allocationNames;
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
-        IERC20[] memory allocations = _createErc20AllocationArray(1);
-        allocations[4] = IERC20(CVX_ADDRESS);
-        return allocations;
+        return _createErc20AllocationArray(0);
     }
 
     function _addLiquidity(uint256[] calldata amounts, uint256 minAmount)
         internal
         override
     {
-        IStableSwap(SWAP_ADDRESS).add_liquidity(
-            [amounts[0], amounts[1], amounts[2]],
+        IDepositZap(SWAP_ADDRESS).add_liquidity(
+            [amounts[0], amounts[1]],
             minAmount
         );
     }
@@ -44,8 +47,9 @@ contract Convex3poolZap is ConvexZapBase, Convex3poolConstants {
         uint8 index,
         uint256 minAmount
     ) internal override {
-        require(index < 3, "INVALID_INDEX");
-        IStableSwap(SWAP_ADDRESS).remove_liquidity_one_coin(
+        IERC20(LP_TOKEN_ADDRESS).safeApprove(SWAP_ADDRESS, 0);
+        IERC20(LP_TOKEN_ADDRESS).safeApprove(SWAP_ADDRESS, lpBalance);
+        IDepositZap(SWAP_ADDRESS).remove_liquidity_one_coin(
             lpBalance,
             index,
             minAmount
@@ -53,7 +57,8 @@ contract Convex3poolZap is ConvexZapBase, Convex3poolConstants {
     }
 
     function _getVirtualPrice() internal view override returns (uint256) {
-        return IStableSwap(SWAP_ADDRESS).get_virtual_price();
+        address stableSwap = IDepositZap(SWAP_ADDRESS).curve();
+        return IStableSwap(stableSwap).get_virtual_price();
     }
 
     function _getCoinAtIndex(uint256 i)
@@ -62,6 +67,6 @@ contract Convex3poolZap is ConvexZapBase, Convex3poolConstants {
         override
         returns (address)
     {
-        return IStableSwap(SWAP_ADDRESS).coins(i);
+        return IDepositZap(SWAP_ADDRESS).underlying_coins(int128(i));
     }
 }

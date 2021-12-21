@@ -8,25 +8,26 @@ import {
     ILiquidityGauge
 } from "contracts/protocols/curve/common/interfaces/Imports.sol";
 import {ConvexZapBase} from "../common/Imports.sol";
-import {Convex3poolConstants} from "./Constants.sol";
+import {ConvexAaveConstants} from "./Constants.sol";
 
-contract Convex3poolZap is ConvexZapBase, Convex3poolConstants {
+contract ConvexAaveZap is ConvexZapBase, ConvexAaveConstants {
+    string internal constant AAVE_ALLOCATION = "aave";
+
     constructor()
         public
         ConvexZapBase(STABLE_SWAP_ADDRESS, LP_TOKEN_ADDRESS, PID, 10000, 100, 3)
     {} // solhint-disable no-empty-blocks
 
     function assetAllocations() public view override returns (string[] memory) {
-        string[] memory allocationNames = new string[](2);
-        allocationNames[0] = "curve-3pool";
+        string[] memory allocationNames = new string[](3);
+        allocationNames[0] = "curve-aave";
         allocationNames[1] = NAME;
+        allocationNames[2] = AAVE_ALLOCATION;
         return allocationNames;
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
-        IERC20[] memory allocations = _createErc20AllocationArray(1);
-        allocations[4] = IERC20(CVX_ADDRESS);
-        return allocations;
+        return _createErc20AllocationArray(0);
     }
 
     function _addLiquidity(uint256[] calldata amounts, uint256 minAmount)
@@ -35,7 +36,8 @@ contract Convex3poolZap is ConvexZapBase, Convex3poolConstants {
     {
         IStableSwap(SWAP_ADDRESS).add_liquidity(
             [amounts[0], amounts[1], amounts[2]],
-            minAmount
+            minAmount,
+            true
         );
     }
 
@@ -48,7 +50,8 @@ contract Convex3poolZap is ConvexZapBase, Convex3poolConstants {
         IStableSwap(SWAP_ADDRESS).remove_liquidity_one_coin(
             lpBalance,
             index,
-            minAmount
+            minAmount,
+            true
         );
     }
 
@@ -62,6 +65,6 @@ contract Convex3poolZap is ConvexZapBase, Convex3poolConstants {
         override
         returns (address)
     {
-        return IStableSwap(SWAP_ADDRESS).coins(i);
+        return IStableSwap(SWAP_ADDRESS).underlying_coins(i);
     }
 }

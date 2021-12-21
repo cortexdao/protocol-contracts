@@ -21,6 +21,10 @@ const CRV_ADDRESS = "0xD533a949740bb3306d119CC777fa900bA034cd52";
 console.debugging = false;
 /* ************************ */
 
+const pinnedBlock = 13616400;
+const defaultPinnedBlock = hre.config.networks.hardhat.forking.blockNumber;
+const forkingUrl = hre.config.networks.hardhat.forking.url;
+
 describe("Convex Zaps - LP Account integration", () => {
   /* signers */
   let deployer;
@@ -50,6 +54,61 @@ describe("Convex Zaps - LP Account integration", () => {
       rewardContractInterface: "IBaseRewardPool",
       numberOfCoins: 3,
       whaleAddress: WHALE_POOLS["DAI"],
+    },
+    {
+      contractName: "ConvexAaveZap",
+      swapAddress: "0xDeBF20617708857ebe4F679508E7b7863a8A8EeE",
+      swapInterface: "IStableSwap",
+      lpTokenAddress: "0xFd2a8fA60Abd58Efe3EeE34dd494cD491dC14900",
+      rewardContractAddress: "0xE82c1eB4BC6F92f85BF7EB6421ab3b882C3F5a7B",
+      rewardContractInterface: "IBaseRewardPool",
+      numberOfCoins: 3,
+      whaleAddress: WHALE_POOLS["DAI"],
+      useUnwrapped: true,
+    },
+    {
+      contractName: "ConvexSaaveZap",
+      swapAddress: "0xEB16Ae0052ed37f479f7fe63849198Df1765a733",
+      swapInterface: "IStableSwap",
+      lpTokenAddress: "0x02d341CcB60fAaf662bC0554d13778015d1b285C",
+      rewardContractAddress: "0xF86AE6790654b70727dbE58BF1a863B270317fD0",
+      rewardContractInterface: "IBaseRewardPool",
+      numberOfCoins: 2,
+      whaleAddress: WHALE_POOLS["DAI"],
+      useUnwrapped: true,
+    },
+    {
+      contractName: "ConvexCompoundZap",
+      swapAddress: "0xeB21209ae4C2c9FF2a86ACA31E123764A3B6Bc06",
+      swapInterface: "IDepositZap",
+      lpTokenAddress: "0x845838DF265Dcd2c412A1Dc9e959c7d08537f8a2",
+      rewardContractAddress: "0xf34DFF761145FF0B05e917811d488B441F33a968",
+      rewardContractInterface: "IBaseRewardPool",
+      numberOfCoins: 2,
+      whaleAddress: WHALE_POOLS["DAI"],
+      useUnwrapped: true,
+    },
+    {
+      contractName: "ConvexSusdv2Zap",
+      swapAddress: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD",
+      swapInterface: "IOldStableSwap4",
+      lpTokenAddress: "0xC25a3A3b969415c80451098fa907EC722572917F",
+      rewardContractAddress: "0x22eE18aca7F3Ee920D01F25dA85840D12d98E8Ca",
+      rewardContractInterface: "IBaseRewardPool",
+      numberOfCoins: 4,
+      whaleAddress: WHALE_POOLS["DAI"],
+      rewardToken: "0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F",
+    },
+    {
+      contractName: "ConvexUsdtZap",
+      swapAddress: "0x52EA46506B9CC5Ef470C5bf89f17Dc28bB35D85C",
+      swapInterface: "IDepositZap3",
+      lpTokenAddress: "0x9fC689CCaDa600B6DF723D9E47D84d76664a1F23",
+      rewardContractAddress: "0x8B55351ea358e5Eda371575B031ee24F462d503e",
+      rewardContractInterface: "IBaseRewardPool",
+      numberOfCoins: 3,
+      whaleAddress: WHALE_POOLS["DAI"],
+      useUnwrapped: true,
     },
   ];
 
@@ -90,6 +149,28 @@ describe("Convex Zaps - LP Account integration", () => {
 
   afterEach(async () => {
     await timeMachine.revertToSnapshot(snapshotId);
+  });
+
+  before("Use pinned block for new zaps", async () => {
+    await hre.network.provider.send("hardhat_reset", [
+      {
+        forking: {
+          jsonRpcUrl: forkingUrl,
+          blockNumber: pinnedBlock,
+        },
+      },
+    ]);
+  });
+
+  after("Reset pinned block", async () => {
+    await hre.network.provider.send("hardhat_reset", [
+      {
+        forking: {
+          jsonRpcUrl: forkingUrl,
+          blockNumber: defaultPinnedBlock,
+        },
+      },
+    ]);
   });
 
   before("Setup mock address registry", async () => {
@@ -377,6 +458,15 @@ describe("Convex Zaps - LP Account integration", () => {
 
             const name = await zap.NAME();
             await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
+
+            console.debug(
+              "periodFinish: %s",
+              await rewardContract.periodFinish()
+            );
+            console.debug(
+              "Deploy strategy time: %s",
+              (await ethers.provider.getBlock()).timestamp
+            );
 
             // allows rewards to accumulate:
             // CRV rewards accumulate within a block, but other rewards, like

@@ -4,28 +4,30 @@ pragma experimental ABIEncoderV2;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
-    IStableSwap,
-    ILiquidityGauge
+    IStableSwap2 as IStableSwap
 } from "contracts/protocols/curve/common/interfaces/Imports.sol";
 import {ConvexZapBase} from "../common/Imports.sol";
-import {Convex3poolConstants} from "./Constants.sol";
+import {ConvexSaaveConstants} from "./Constants.sol";
 
-contract Convex3poolZap is ConvexZapBase, Convex3poolConstants {
+contract ConvexSaaveZap is ConvexZapBase, ConvexSaaveConstants {
+    string internal constant AAVE_ALLOCATION = "aave";
+
     constructor()
         public
-        ConvexZapBase(STABLE_SWAP_ADDRESS, LP_TOKEN_ADDRESS, PID, 10000, 100, 3)
+        ConvexZapBase(STABLE_SWAP_ADDRESS, LP_TOKEN_ADDRESS, PID, 10000, 100, 2)
     {} // solhint-disable no-empty-blocks
 
     function assetAllocations() public view override returns (string[] memory) {
-        string[] memory allocationNames = new string[](2);
-        allocationNames[0] = "curve-3pool";
+        string[] memory allocationNames = new string[](3);
+        allocationNames[0] = "curve-saave";
         allocationNames[1] = NAME;
+        allocationNames[2] = AAVE_ALLOCATION;
         return allocationNames;
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
         IERC20[] memory allocations = _createErc20AllocationArray(1);
-        allocations[4] = IERC20(CVX_ADDRESS);
+        allocations[4] = IERC20(SUSD_ADDRESS);
         return allocations;
     }
 
@@ -34,8 +36,9 @@ contract Convex3poolZap is ConvexZapBase, Convex3poolConstants {
         override
     {
         IStableSwap(SWAP_ADDRESS).add_liquidity(
-            [amounts[0], amounts[1], amounts[2]],
-            minAmount
+            [amounts[0], amounts[1]],
+            minAmount,
+            true
         );
     }
 
@@ -44,11 +47,12 @@ contract Convex3poolZap is ConvexZapBase, Convex3poolConstants {
         uint8 index,
         uint256 minAmount
     ) internal override {
-        require(index < 3, "INVALID_INDEX");
+        require(index < 2, "INVALID_INDEX");
         IStableSwap(SWAP_ADDRESS).remove_liquidity_one_coin(
             lpBalance,
             index,
-            minAmount
+            minAmount,
+            true
         );
     }
 
@@ -62,6 +66,6 @@ contract Convex3poolZap is ConvexZapBase, Convex3poolConstants {
         override
         returns (address)
     {
-        return IStableSwap(SWAP_ADDRESS).coins(i);
+        return IStableSwap(SWAP_ADDRESS).underlying_coins(i);
     }
 }
