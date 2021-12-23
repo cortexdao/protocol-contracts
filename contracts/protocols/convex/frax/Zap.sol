@@ -23,10 +23,8 @@ contract ConvexFraxZap is MetaPoolDepositorZap, ConvexFraxConstants {
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
-        IERC20[] memory allocations = _createErc20AllocationArray(3);
-        allocations[4] = IERC20(CVX_ADDRESS);
-        allocations[5] = FXS;
-        allocations[6] = PRIMARY_UNDERLYER;
+        IERC20[] memory allocations = _createErc20AllocationArray(1);
+        allocations[4] = PRIMARY_UNDERLYER;
         return allocations;
     }
 }

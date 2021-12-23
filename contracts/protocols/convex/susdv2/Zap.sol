@@ -27,9 +27,8 @@ contract ConvexSusdv2Zap is ConvexZapBase, ConvexSusdv2Constants {
     }
 
     function erc20Allocations() public view override returns (IERC20[] memory) {
-        IERC20[] memory allocations = _createErc20AllocationArray(2);
-        allocations[4] = IERC20(SNX_ADDRESS);
-        allocations[5] = IERC20(SUSD_ADDRESS);
+        IERC20[] memory allocations = _createErc20AllocationArray(1);
+        allocations[4] = IERC20(SUSD_ADDRESS);
         return allocations;
     }
 
