@@ -432,6 +432,8 @@ describe("Convex Zaps - LP Account integration", () => {
           it("Claim", async () => {
             const erc20s = await zap.erc20Allocations();
 
+            // may remove CRV from erc20 allocations in the future, like with
+            // other reward tokens, to avoid impacting TVL with slippage
             expect(erc20s).to.include(ethers.utils.getAddress(CRV_ADDRESS));
             const crv = await ethers.getContractAt(
               "IDetailedERC20",
@@ -440,7 +442,6 @@ describe("Convex Zaps - LP Account integration", () => {
             expect(await crv.balanceOf(lpAccount.address)).to.equal(0);
 
             if (typeof rewardToken !== "undefined") {
-              expect(erc20s).to.include(ethers.utils.getAddress(rewardToken));
               const token = await ethers.getContractAt(
                 "IDetailedERC20",
                 rewardToken
