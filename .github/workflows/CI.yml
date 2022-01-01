@@ -65,9 +65,9 @@ jobs:
       id: hardhat-cache
       with:
         path: ./cache/hardhat-network-fork
-        key: ${{ runner.os }}-hardhat
+        key: ${{ runner.os }}-hardhat-${{ hashFiles('test-integration/*.js') }}
         restore-keys: |
-          ${{ runner.os }}-hardhat
+          ${{ runner.os }}-hardhat-
     - name: Unit tests
       run: yarn test:unit
     - name: Integration tests
