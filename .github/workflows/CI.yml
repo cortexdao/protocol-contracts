@@ -60,6 +60,14 @@ jobs:
         yarn config set script-shell /bin/bash
         yarn clean
         yarn compile
+    - name: Cache hardhat pinned fork requests
+      uses: actions/cache@v2
+      id: hardhat-cache
+      with:
+        path: ./cache/hardhat-network-fork
+        key: ${{ runner.os }}-hardhat
+        restore-keys: |
+          ${{ runner.os }}-hardhat
     - name: Unit tests
       run: yarn test:unit
     - name: Integration tests
