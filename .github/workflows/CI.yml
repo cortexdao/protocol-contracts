@@ -56,10 +56,7 @@ jobs:
     - name: Lint smart contracts
       run: yarn lint
     - name: Compile smart contracts
-      run: |
-        yarn config set script-shell /bin/bash
-        yarn clean
-        yarn compile
+      run: yarn compile
     - name: Cache hardhat pinned fork requests
       uses: actions/cache@v2
       id: hardhat-cache
