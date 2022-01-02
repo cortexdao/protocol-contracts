@@ -25,7 +25,7 @@ const forkingUrl = hre.config.networks.hardhat.forking.url;
 console.debugging = false;
 /* ************************ */
 
-describe("Convex MetaPool Zaps - LP Account integration", () => {
+describe.only("Convex MetaPool Zaps - LP Account integration", () => {
   /* signers */
   let deployer;
   let emergencySafe;
