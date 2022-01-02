@@ -1,8 +1,9 @@
 # NPM packages
 node_modules/
 
-# Buidler files
-cache/
+# Hardhat files
+# cache/
+cache/solidity-files-cache.json
 artifacts/*
 
 # Solidity coverage files
