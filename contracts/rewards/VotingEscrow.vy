@@ -154,7 +154,7 @@ def shutdown():
     """
     @notice Disable deposits but allow withdrawals regardless of lock
     """
-    assert msg.sender == self.admin  # dev: admin only
+    assert msg.sender == self.admin, "Admin only"  # dev: admin only
     self.is_shutdown = True
     log Shutdown()
 
