@@ -58,6 +58,9 @@ INCREASE_LOCK_AMOUNT: constant(int128) = 2
 INCREASE_UNLOCK_TIME: constant(int128) = 3
 
 
+event Shutdown:
+    pass
+
 event CommitOwnership:
     admin: address
 
@@ -113,6 +116,11 @@ smart_wallet_checker: public(address)
 admin: public(address)  # Can and will be a smart contract
 future_admin: public(address)
 
+# Functionality added by APY.Finance to allow complete
+# shutdown of this contract while allowing users to
+# withdraw their locked deposits
+is_shutdown: public(bool)
+
 
 @external
 def __init__(token_addr: address, _name: String[64], _symbol: String[32], _version: String[32]):
@@ -137,6 +145,18 @@ def __init__(token_addr: address, _name: String[64], _symbol: String[32], _versi
     self.name = _name
     self.symbol = _symbol
     self.version = _version
+
+    self.is_shutdown = False
+
+
+@external
+def shutdown():
+    """
+    @notice Disable deposits but allow withdrawals regardless of lock
+    """
+    assert msg.sender == self.admin  # dev: admin only
+    self.is_shutdown = True
+    log Shutdown()
 
 
 @external
@@ -419,6 +439,7 @@ def create_lock(_value: uint256, _unlock_time: uint256):
     unlock_time: uint256 = (_unlock_time / WEEK) * WEEK  # Locktime is rounded down to weeks
     _locked: LockedBalance = self.locked[msg.sender]
 
+    assert not self.is_shutdown, "Contract is shutdown"
     assert _value > 0  # dev: need non-zero value
     assert _locked.amount == 0, "Withdraw old tokens first"
     assert unlock_time > block.timestamp, "Can only lock until time in the future"
@@ -472,7 +493,7 @@ def withdraw():
     @dev Only possible if the lock has expired
     """
     _locked: LockedBalance = self.locked[msg.sender]
-    assert block.timestamp >= _locked.end, "The lock didn't expire"
+    assert block.timestamp >= _locked.end or self.is_shutdown, "The lock didn't expire"
     value: uint256 = convert(_locked.amount, uint256)
 
     old_locked: LockedBalance = _locked
@@ -485,7 +506,8 @@ def withdraw():
     # old_locked can have either expired <= timestamp or zero end
     # _locked has only 0 end
     # Both can have >= 0 amount
-    self._checkpoint(msg.sender, old_locked, _locked)
+    if not self.is_shutdown:
+        self._checkpoint(msg.sender, old_locked, _locked)
 
     assert ERC20(self.token).transfer(msg.sender, value)
 
