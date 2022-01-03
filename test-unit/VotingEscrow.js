@@ -106,6 +106,21 @@ describe.only("Contract: VotingEscrow", () => {
     );
   });
 
+  it("Is not shutdown", async () => {
+    expect(await blApy.is_shutdown()).to.be.false;
+  });
+
+  it("Admin can shutdown", async () => {
+    await expect(blApy.connect(deployer).shutdown()).to.not.be.reverted;
+    expect(await blApy.is_shutdown()).to.be.true;
+  });
+
+  it("User cannot shutdown", async () => {
+    await expect(blApy.connect(user).shutdown()).to.be.revertedWith(
+      "Admin only"
+    );
+  });
+
   it("Can lock APY", async () => {
     const currentTime = (await ethers.provider.getBlock()).timestamp;
     const unlockTime = BigNumber.from(currentTime + 86400 * 30 * 6); // lock for 6 months
