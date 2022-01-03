@@ -110,6 +110,9 @@ module.exports = {
       },
     },
   },
+  vyper: {
+    version: "0.2.4",
+  },
   mocha: {
     timeout: 1000000,
   },
