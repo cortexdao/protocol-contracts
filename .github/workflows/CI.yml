@@ -65,8 +65,8 @@ jobs:
     #     key: ${{ runner.os }}-hardhat-${{ hashFiles('test-integration/*.js') }}
     #     restore-keys: |
     #       ${{ runner.os }}-hardhat-
-    - name: Unit tests
-      run: yarn test:unit
+    # - name: Unit tests
+    #   run: yarn test:unit
     - name: Integration tests
       run: |
         yarn test:integration
