@@ -62,7 +62,7 @@ jobs:
       id: hardhat-cache
       with:
         path: ./cache/hardhat-network-fork
-        key: ${{ runner.os }}-hardhat-${{ hashFiles('test-integration/*.js') }}
+        key: ${{ runner.os }}-hardhat-${{ hashFiles('test-integration/*.js', 'test-e2e/*.js') }}
         restore-keys: |
           ${{ runner.os }}-hardhat-
     # - name: Unit tests
