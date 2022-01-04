@@ -126,13 +126,67 @@ describe.only("Contract: VotingEscrow", () => {
     const unlockTime = BigNumber.from(currentTime + 86400 * 30 * 6); // lock for 6 months
     const lockAmount = tokenAmountToBigNumber("15");
 
+    const apyBalance = await apy.balanceOf(user.address);
+
     await apy.connect(user).approve(blApy.address, lockAmount);
     await blApy.connect(user).create_lock(lockAmount, unlockTime);
 
-    expect(await blApy["balanceOf(address)"](user.address)).to.be.gt(
-      tokenAmountToBigNumber("15")
-        .mul(86400 * 29 * 6)
-        .div(86400 * 365 * 4)
+    expect(await apy.balanceOf(user.address)).to.equal(
+      apyBalance.sub(lockAmount)
     );
+
+    expect(await blApy["balanceOf(address)"](user.address)).to.be.gt(
+      lockAmount.mul(86400 * 29 * 6).div(86400 * 365 * 4)
+    );
+  });
+
+  it("Cannot lock APY if shutdown", async () => {
+    const currentTime = (await ethers.provider.getBlock()).timestamp;
+    const unlockTime = BigNumber.from(currentTime + 86400 * 30 * 6); // lock for 6 months
+    const lockAmount = tokenAmountToBigNumber("15");
+
+    await blApy.connect(deployer).shutdown();
+
+    await apy.connect(user).approve(blApy.address, lockAmount);
+    await expect(
+      blApy.connect(user).create_lock(lockAmount, unlockTime)
+    ).to.be.revertedWith("Contract is shutdown");
+  });
+
+  it("Cannot unlock if lock isn't expired", async () => {
+    const currentTime = (await ethers.provider.getBlock()).timestamp;
+    const unlockTime = BigNumber.from(currentTime + 86400 * 30 * 6); // lock for 6 months
+    const lockAmount = tokenAmountToBigNumber("15");
+
+    await apy.connect(user).approve(blApy.address, lockAmount);
+    await blApy.connect(user).create_lock(lockAmount, unlockTime);
+
+    await expect(blApy.connect(user).withdraw()).to.be.revertedWith(
+      "The lock didn't expire"
+    );
+  });
+
+  it("Can unlock with non-expired lock if shutdown", async () => {
+    const currentTime = (await ethers.provider.getBlock()).timestamp;
+    const unlockTime = BigNumber.from(currentTime + 86400 * 30 * 6); // lock for 6 months
+    const lockAmount = tokenAmountToBigNumber("15");
+
+    const apyBalance = await apy.balanceOf(user.address);
+
+    await apy.connect(user).approve(blApy.address, lockAmount);
+    await blApy.connect(user).create_lock(lockAmount, unlockTime);
+
+    expect(await apy.balanceOf(user.address)).to.equal(
+      apyBalance.sub(lockAmount)
+    );
+
+    await expect(blApy.connect(user).withdraw()).to.be.revertedWith(
+      "The lock didn't expire"
+    );
+
+    await blApy.connect(deployer).shutdown();
+
+    await expect(blApy.connect(user).withdraw()).to.not.be.reverted;
+    expect(await apy.balanceOf(user.address)).to.equal(apyBalance);
   });
 });
