@@ -8,12 +8,21 @@ require("@nomiclabs/hardhat-etherscan");
 require("hardhat-contract-sizer");
 require("./tasks");
 
+function getNetworkUrl(networkName) {
+  const alchemyKey = process.env.ALCHEMY_API_KEY;
+  if (!alchemyKey) {
+    throw new Error("ALCHEMY_API_KEY env var is missing.");
+  }
+  const url = `https://eth-${networkName}.alchemyapi.io/v2/` + alchemyKey;
+  return url;
+}
+
 module.exports = {
   networks: {
     hardhat: {
       chainId: 1,
       forking: {
-        url: "https://mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
+        url: getNetworkUrl("mainnet"),
         enabled: process.env.ENABLE_FORKING ? true : false,
         blockNumber: 13534790,
       },
@@ -33,20 +42,20 @@ module.exports = {
       timeout: 1000000,
     },
     mainnet: {
-      url: "https://mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
+      url: getNetworkUrl("mainnet"),
       accounts: {
         mnemonic: process.env.MNEMONIC || "",
       },
       timeout: 1000000,
     },
     kovan: {
-      url: "https://kovan.infura.io/v3/" + process.env.INFURA_API_KEY,
+      url: getNetworkUrl("kovan"),
       accounts: {
         mnemonic: process.env.MNEMONIC || "",
       },
     },
     rinkeby: {
-      url: "https://rinkeby.infura.io/v3/" + process.env.INFURA_API_KEY,
+      url: getNetworkUrl("rinkeby"),
       accounts: {
         mnemonic: process.env.MNEMONIC || "",
       },
