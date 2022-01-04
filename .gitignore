@@ -2,9 +2,8 @@
 node_modules/
 
 # Hardhat files
-# cache/
-cache/solidity-files-cache.json
-artifacts/*
+/cache
+/artifacts
 
 # Solidity coverage files
 coverage.json
