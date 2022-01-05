@@ -3,7 +3,11 @@ const hre = require("hardhat");
 const { artifacts, ethers, waffle } = hre;
 const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
-const { ZERO_ADDRESS, tokenAmountToBigNumber } = require("../utils/helpers");
+const {
+  ZERO_ADDRESS,
+  tokenAmountToBigNumber,
+  FAKE_ADDRESS,
+} = require("../utils/helpers");
 const { BigNumber } = ethers;
 
 describe.only("VotingEscrow deployment", () => {
@@ -150,6 +154,30 @@ describe.only("Contract: VotingEscrow", () => {
     await apy.connect(user).approve(blApy.address, lockAmount);
     await expect(
       blApy.connect(user).create_lock(lockAmount, unlockTime)
+    ).to.be.revertedWith("Contract is shutdown");
+  });
+
+  it("Cannot deposit for another if shutdown", async () => {
+    await blApy.connect(deployer).shutdown();
+
+    await expect(
+      blApy.connect(user).deposit_for(FAKE_ADDRESS, 100)
+    ).to.be.revertedWith("Contract is shutdown");
+  });
+
+  it("Cannot increase locked amount if shutdown", async () => {
+    await blApy.connect(deployer).shutdown();
+
+    await expect(
+      blApy.connect(user).increase_amount(tokenAmountToBigNumber(100))
+    ).to.be.revertedWith("Contract is shutdown");
+  });
+
+  it("Cannot increase unlock time if shutdown", async () => {
+    await blApy.connect(deployer).shutdown();
+
+    await expect(
+      blApy.connect(user).increase_unlock_time(86400 * 30)
     ).to.be.revertedWith("Contract is shutdown");
   });
 
