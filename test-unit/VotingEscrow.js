@@ -137,107 +137,85 @@ describe.only("Contract: VotingEscrow", () => {
     });
   });
 
-  it("Admin can shutdown", async () => {
-    await expect(blApy.connect(deployer).shutdown()).to.not.be.reverted;
-    expect(await blApy.is_shutdown()).to.be.true;
+  describe("Shutdown privileges", () => {
+    it("Admin can shutdown", async () => {
+      await expect(blApy.connect(deployer).shutdown()).to.not.be.reverted;
+      expect(await blApy.is_shutdown()).to.be.true;
+    });
+
+    it("User cannot shutdown", async () => {
+      await expect(blApy.connect(user).shutdown()).to.be.revertedWith(
+        "Admin only"
+      );
+    });
   });
 
-  it("User cannot shutdown", async () => {
-    await expect(blApy.connect(user).shutdown()).to.be.revertedWith(
-      "Admin only"
-    );
+  describe("Block all updates, except withdraw, when shutdown", () => {
+    it("Cannot create lock if shutdown", async () => {
+      const currentTime = (await ethers.provider.getBlock()).timestamp;
+      const unlockTime = BigNumber.from(currentTime + 86400 * 30 * 6); // lock for 6 months
+      const lockAmount = tokenAmountToBigNumber("15");
+
+      await blApy.connect(deployer).shutdown();
+
+      await apy.connect(user).approve(blApy.address, lockAmount);
+      await expect(
+        blApy.connect(user).create_lock(lockAmount, unlockTime)
+      ).to.be.revertedWith("Contract is shutdown");
+    });
+
+    it("Cannot deposit for another if shutdown", async () => {
+      await blApy.connect(deployer).shutdown();
+
+      await expect(
+        blApy.connect(user).deposit_for(FAKE_ADDRESS, 100)
+      ).to.be.revertedWith("Contract is shutdown");
+    });
+
+    it("Cannot increase locked amount if shutdown", async () => {
+      await blApy.connect(deployer).shutdown();
+
+      await expect(
+        blApy.connect(user).increase_amount(tokenAmountToBigNumber(100))
+      ).to.be.revertedWith("Contract is shutdown");
+    });
+
+    it("Cannot increase unlock time if shutdown", async () => {
+      await blApy.connect(deployer).shutdown();
+
+      await expect(
+        blApy.connect(user).increase_unlock_time(86400 * 30)
+      ).to.be.revertedWith("Contract is shutdown");
+    });
   });
 
-  it("Can lock APY", async () => {
-    const currentTime = (await ethers.provider.getBlock()).timestamp;
-    const unlockTime = BigNumber.from(currentTime + 86400 * 30 * 6); // lock for 6 months
-    const lockAmount = tokenAmountToBigNumber("15");
+  describe("withdraw when shutdown", () => {
+    it("Can withdraw with non-expired lock if shutdown", async () => {
+      const currentTime = (await ethers.provider.getBlock()).timestamp;
+      const unlockTime = BigNumber.from(currentTime + 86400 * 30 * 6); // lock for 6 months
+      const lockAmount = tokenAmountToBigNumber("15");
 
-    const apyBalance = await apy.balanceOf(user.address);
+      const apyBalance = await apy.balanceOf(user.address);
 
-    await apy.connect(user).approve(blApy.address, lockAmount);
-    await blApy.connect(user).create_lock(lockAmount, unlockTime);
+      await apy.connect(user).approve(blApy.address, lockAmount);
+      await blApy.connect(user).create_lock(lockAmount, unlockTime);
 
-    expect(await apy.balanceOf(user.address)).to.equal(
-      apyBalance.sub(lockAmount)
-    );
+      expect(await apy.balanceOf(user.address)).to.equal(
+        apyBalance.sub(lockAmount)
+      );
 
-    expect(await blApy["balanceOf(address)"](user.address)).to.be.gt(
-      lockAmount.mul(86400 * 29 * 6).div(86400 * 365 * 4)
-    );
-  });
+      expect(await blApy["balanceOf(address)"](user.address)).to.be.gt(
+        lockAmount.mul(86400 * 29 * 6).div(86400 * 365 * 4)
+      );
 
-  it("Cannot lock APY if shutdown", async () => {
-    const currentTime = (await ethers.provider.getBlock()).timestamp;
-    const unlockTime = BigNumber.from(currentTime + 86400 * 30 * 6); // lock for 6 months
-    const lockAmount = tokenAmountToBigNumber("15");
+      await expect(blApy.connect(user).withdraw()).to.be.revertedWith(
+        "The lock didn't expire"
+      );
 
-    await blApy.connect(deployer).shutdown();
+      await blApy.connect(deployer).shutdown();
 
-    await apy.connect(user).approve(blApy.address, lockAmount);
-    await expect(
-      blApy.connect(user).create_lock(lockAmount, unlockTime)
-    ).to.be.revertedWith("Contract is shutdown");
-  });
-
-  it("Cannot deposit for another if shutdown", async () => {
-    await blApy.connect(deployer).shutdown();
-
-    await expect(
-      blApy.connect(user).deposit_for(FAKE_ADDRESS, 100)
-    ).to.be.revertedWith("Contract is shutdown");
-  });
-
-  it("Cannot increase locked amount if shutdown", async () => {
-    await blApy.connect(deployer).shutdown();
-
-    await expect(
-      blApy.connect(user).increase_amount(tokenAmountToBigNumber(100))
-    ).to.be.revertedWith("Contract is shutdown");
-  });
-
-  it("Cannot increase unlock time if shutdown", async () => {
-    await blApy.connect(deployer).shutdown();
-
-    await expect(
-      blApy.connect(user).increase_unlock_time(86400 * 30)
-    ).to.be.revertedWith("Contract is shutdown");
-  });
-
-  it("Cannot unlock if lock isn't expired", async () => {
-    const currentTime = (await ethers.provider.getBlock()).timestamp;
-    const unlockTime = BigNumber.from(currentTime + 86400 * 30 * 6); // lock for 6 months
-    const lockAmount = tokenAmountToBigNumber("15");
-
-    await apy.connect(user).approve(blApy.address, lockAmount);
-    await blApy.connect(user).create_lock(lockAmount, unlockTime);
-
-    await expect(blApy.connect(user).withdraw()).to.be.revertedWith(
-      "The lock didn't expire"
-    );
-  });
-
-  it("Can unlock with non-expired lock if shutdown", async () => {
-    const currentTime = (await ethers.provider.getBlock()).timestamp;
-    const unlockTime = BigNumber.from(currentTime + 86400 * 30 * 6); // lock for 6 months
-    const lockAmount = tokenAmountToBigNumber("15");
-
-    const apyBalance = await apy.balanceOf(user.address);
-
-    await apy.connect(user).approve(blApy.address, lockAmount);
-    await blApy.connect(user).create_lock(lockAmount, unlockTime);
-
-    expect(await apy.balanceOf(user.address)).to.equal(
-      apyBalance.sub(lockAmount)
-    );
-
-    await expect(blApy.connect(user).withdraw()).to.be.revertedWith(
-      "The lock didn't expire"
-    );
-
-    await blApy.connect(deployer).shutdown();
-
-    await expect(blApy.connect(user).withdraw()).to.not.be.reverted;
-    expect(await apy.balanceOf(user.address)).to.equal(apyBalance);
+      await expect(blApy.connect(user).withdraw()).to.not.be.reverted;
+      expect(await apy.balanceOf(user.address)).to.equal(apyBalance);
+    });
   });
 });
