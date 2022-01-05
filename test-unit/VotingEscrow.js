@@ -65,6 +65,7 @@ describe.only("Contract: VotingEscrow", () => {
   // signers
   let deployer;
   let user;
+  let anotherUser;
 
   // contract factories
   let VotingEscrow;
@@ -86,7 +87,7 @@ describe.only("Contract: VotingEscrow", () => {
   });
 
   before("get signers", async () => {
-    [deployer, user] = await ethers.getSigners();
+    [deployer, user, anotherUser] = await ethers.getSigners();
   });
 
   before("deploy APY and transfer tokens to user", async () => {
@@ -104,14 +105,36 @@ describe.only("Contract: VotingEscrow", () => {
     VotingEscrow = await ethers.getContractFactory("VotingEscrow");
     blApy = await VotingEscrow.deploy(
       apy.address,
-      "Boost-locked APY Governance Token", // name
+      "Boost-locked APY", // name
       "blAPY", // symbol
       "1.0.0" // version
     );
   });
 
-  it("Is not shutdown", async () => {
-    expect(await blApy.is_shutdown()).to.be.false;
+  describe("Defaults", () => {
+    it("Symbol", async () => {
+      expect(await blApy.symbol()).to.equal("blAPY");
+    });
+
+    it("Name", async () => {
+      expect(await blApy.name()).to.equal("Boost-locked APY");
+    });
+
+    it("Version", async () => {
+      expect(await blApy.version()).to.equal("1.0.0");
+    });
+
+    it("Decimals", async () => {
+      expect(await blApy.decimals()).to.equal(await apy.decimals());
+    });
+
+    it("Not shutdown", async () => {
+      expect(await blApy.is_shutdown()).to.be.false;
+    });
+
+    it("Deployer is admin", async () => {
+      expect(await blApy.admin()).to.equal(deployer.address);
+    });
   });
 
   it("Admin can shutdown", async () => {
