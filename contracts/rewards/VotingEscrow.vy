@@ -420,6 +420,7 @@ def deposit_for(_addr: address, _value: uint256):
     """
     _locked: LockedBalance = self.locked[_addr]
 
+    assert not self.is_shutdown, "Contract is shutdown"
     assert _value > 0  # dev: need non-zero value
     assert _locked.amount > 0, "No existing lock found"
     assert _locked.end > block.timestamp, "Cannot add to expired lock. Withdraw"
@@ -459,6 +460,7 @@ def increase_amount(_value: uint256):
     self.assert_not_contract(msg.sender)
     _locked: LockedBalance = self.locked[msg.sender]
 
+    assert not self.is_shutdown, "Contract is shutdown"
     assert _value > 0  # dev: need non-zero value
     assert _locked.amount > 0, "No existing lock found"
     assert _locked.end > block.timestamp, "Cannot add to expired lock. Withdraw"
@@ -477,6 +479,7 @@ def increase_unlock_time(_unlock_time: uint256):
     _locked: LockedBalance = self.locked[msg.sender]
     unlock_time: uint256 = (_unlock_time / WEEK) * WEEK  # Locktime is rounded down to weeks
 
+    assert not self.is_shutdown, "Contract is shutdown"
     assert _locked.end > block.timestamp, "Lock expired"
     assert _locked.amount > 0, "Nothing is locked"
     assert unlock_time > _locked.end, "Can only increase lock duration"
