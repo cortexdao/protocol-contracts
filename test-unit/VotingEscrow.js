@@ -10,6 +10,11 @@ const {
 } = require("../utils/helpers");
 const { BigNumber } = ethers;
 
+const DAY = 86400; // day in seconds
+const MONTH = 86400 * 30;
+const YEAR = 86400 * 365;
+const MAXTIME = 4 * YEAR;
+
 describe.only("VotingEscrow deployment", () => {
   // signers
   let deployer;
@@ -86,11 +91,11 @@ describe.only("Contract: VotingEscrow", () => {
     await timeMachine.revertToSnapshot(snapshotId);
   });
 
-  before("get signers", async () => {
+  before("Get signers", async () => {
     [deployer, user, anotherUser] = await ethers.getSigners();
   });
 
-  before("deploy APY and transfer tokens to user", async () => {
+  before("Deploy APY and transfer tokens to user", async () => {
     const GovernanceToken = await ethers.getContractFactory("GovernanceToken");
     apy = await GovernanceToken.deploy();
     await apy.initialize(deployer.address, tokenAmountToBigNumber(100e6));
@@ -101,7 +106,7 @@ describe.only("Contract: VotingEscrow", () => {
     );
   });
 
-  before("deploy Voting Escrow", async () => {
+  before("Deploy Voting Escrow", async () => {
     VotingEscrow = await ethers.getContractFactory("VotingEscrow");
     blApy = await VotingEscrow.deploy(
       apy.address,
@@ -189,7 +194,14 @@ describe.only("Contract: VotingEscrow", () => {
     });
   });
 
-  describe("withdraw when shutdown", () => {
+  describe("Withdraw when shutdown", () => {
+    before("Transfer tokens to another user", async () => {
+      await apy.transfer(anotherUser.address, tokenAmountToBigNumber("100"));
+      expect(await apy.balanceOf(anotherUser.address)).to.equal(
+        tokenAmountToBigNumber("100")
+      );
+    });
+
     it("Can withdraw with non-expired lock if shutdown", async () => {
       const currentTime = (await ethers.provider.getBlock()).timestamp;
       const unlockTime = BigNumber.from(currentTime + 86400 * 30 * 6); // lock for 6 months
@@ -216,6 +228,59 @@ describe.only("Contract: VotingEscrow", () => {
 
       await expect(blApy.connect(user).withdraw()).to.not.be.reverted;
       expect(await apy.balanceOf(user.address)).to.equal(apyBalance);
+    });
+
+    it("`balanceOf` and `totalSupply` should be frozen after shutdown", async () => {
+      const currentTime = (await ethers.provider.getBlock()).timestamp;
+
+      // user 1 creates lock
+      const userUnlockTime = BigNumber.from(currentTime + 6 * MONTH); // lock for 6 months
+      const userLockAmount = tokenAmountToBigNumber("15");
+      const userApyBalance = await apy.balanceOf(user.address);
+
+      await apy.connect(user).approve(blApy.address, userLockAmount);
+      await blApy.connect(user).create_lock(userLockAmount, userUnlockTime);
+
+      // ... and extends lock
+      await blApy
+        .connect(user)
+        .increase_unlock_time(userUnlockTime.add(7 * DAY));
+
+      // user 2 creates lock
+      const anotherUnlockTime = BigNumber.from(currentTime + 1 * MONTH); // lock for 1 month
+      const anotherLockAmount = tokenAmountToBigNumber("88");
+      const anotherApyBalance = await apy.balanceOf(anotherUser.address);
+
+      await apy.connect(anotherUser).approve(blApy.address, anotherLockAmount);
+      await blApy
+        .connect(anotherUser)
+        .create_lock(anotherLockAmount, anotherUnlockTime);
+
+      // ... and extends amount
+      // await blApy
+      //   .connect(anotherUser)
+      //   .increase_amount(tokenAmountToBigNumber("5"));
+
+      const userBlappies = await blApy["balanceOf(address)"](user.address);
+      const anotherUserBlappies = await blApy["balanceOf(address)"](
+        anotherUser.address
+      );
+      const totalSupply = await blApy["totalSupply()"]();
+
+      // shutdown and user 1 withdraws
+      await blApy.connect(deployer).shutdown();
+      await blApy.connect(user).withdraw();
+
+      // blAPY state should remain the same for all users
+      expect(await blApy["balanceOf(address)"](user.address)).to.be.gt(
+        userBlappies.sub(userLockAmount.mul(DAY).div(MAXTIME))
+      );
+      expect(await blApy["balanceOf(address)"](anotherUser.address)).to.be.gt(
+        anotherUserBlappies.sub(anotherLockAmount.mul(DAY).div(MAXTIME))
+      );
+      // expect(await blApy["totalSupply()"]()).to.equal(
+      //   totalSupply.sub(totalSupply.mul(DAY).div(MAXTIME))
+      // );
     });
   });
 });
