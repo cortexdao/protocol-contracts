@@ -81,6 +81,7 @@ async function getSafeOwner(safeOwnerKey) {
 
 const ADMIN_SAFES = {
   MAINNET: ADMIN_SAFE,
+  RINKEBY: "0xacC66a1bD538cfCBB801FC047f41A3FC0AECf87a",
 };
 
 async function getAdminSafeSigner(networkName, owner) {
