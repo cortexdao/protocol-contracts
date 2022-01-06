@@ -16,7 +16,7 @@ const MONTH = DAY * 30;
 const YEAR = DAY * 365;
 const MAXTIME = 4 * YEAR;
 
-describe.only("VotingEscrow deployment", () => {
+describe("VotingEscrow deployment", () => {
   // signers
   let deployer;
 
@@ -67,7 +67,7 @@ describe.only("VotingEscrow deployment", () => {
   });
 });
 
-describe.only("Contract: VotingEscrow", () => {
+describe("Contract: VotingEscrow", () => {
   // signers
   let deployer;
   let user;
