@@ -6,7 +6,9 @@ require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-truffle5");
 require("@nomiclabs/hardhat-etherscan");
 require("hardhat-contract-sizer");
-require("@nomiclabs/hardhat-vyper");
+if (process.env.CI) {
+  require("@nomiclabs/hardhat-vyper");
+}
 require("./tasks");
 
 module.exports = {
