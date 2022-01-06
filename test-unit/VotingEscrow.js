@@ -262,7 +262,6 @@ describe.only("Contract: VotingEscrow", () => {
       // user 1 creates lock
       const userUnlockTime = BigNumber.from(currentTime + 6 * MONTH); // lock for 6 months
       const userLockAmount = tokenAmountToBigNumber("15");
-      const userApyBalance = await apy.balanceOf(user.address);
 
       await apy.connect(user).approve(blApy.address, userLockAmount);
       await blApy.connect(user).create_lock(userLockAmount, userUnlockTime);
@@ -273,7 +272,6 @@ describe.only("Contract: VotingEscrow", () => {
       // user 2 creates lock
       const anotherUnlockTime = BigNumber.from(currentTime + 1 * MONTH); // lock for 1 month
       let anotherLockAmount = tokenAmountToBigNumber("88");
-      const anotherApyBalance = await apy.balanceOf(anotherUser.address);
 
       await apy.connect(anotherUser).approve(blApy.address, anotherLockAmount);
       await blApy
@@ -303,9 +301,9 @@ describe.only("Contract: VotingEscrow", () => {
       expect(await blApy["balanceOf(address)"](anotherUser.address)).to.be.gt(
         anotherUserBlappies.sub(anotherLockAmount.mul(DAY).div(MAXTIME))
       );
-      // expect(await blApy["totalSupply()"]()).to.equal(
-      //   totalSupply.sub(totalSupply.mul(DAY).div(MAXTIME))
-      // );
+      expect(await blApy["totalSupply()"]()).to.be.gt(
+        totalSupply.sub(totalSupply.mul(DAY).div(MAXTIME))
+      );
     });
   });
 });
