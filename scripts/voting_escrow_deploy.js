@@ -23,7 +23,7 @@ const {
   getAdminSafeSigner,
 } = require("../../utils/helpers");
 
-const APY_ADDRESS = "0x95a4411";
+const APY_ADDRESS = "0x95a4492F028aa1fd432Ea71146b433E7B4446611";
 const NAME = "Boost-Locked APY";
 const SYMBOL = "blAPY";
 const VERSION = "1.0.0";
