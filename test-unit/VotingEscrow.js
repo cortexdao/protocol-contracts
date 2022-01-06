@@ -246,7 +246,6 @@ describe.only("Contract: VotingEscrow", () => {
       await blApy.connect(anotherUser).withdraw();
 
       expect(await blApy.supply()).to.equal(lockAmount);
-      const [resultAmount, resultTime] = await blApy.locked(user.address);
       expect(await blApy.locked(user.address)).to.deep.equal([
         lockAmount,
         unlockTime.div(WEEK).mul(WEEK),
@@ -269,13 +268,11 @@ describe.only("Contract: VotingEscrow", () => {
       await blApy.connect(user).create_lock(userLockAmount, userUnlockTime);
 
       // ... and extends lock
-      await blApy
-        .connect(user)
-        .increase_unlock_time(userUnlockTime.add(7 * DAY));
+      await blApy.connect(user).increase_unlock_time(userUnlockTime.add(WEEK));
 
       // user 2 creates lock
       const anotherUnlockTime = BigNumber.from(currentTime + 1 * MONTH); // lock for 1 month
-      const anotherLockAmount = tokenAmountToBigNumber("88");
+      let anotherLockAmount = tokenAmountToBigNumber("88");
       const anotherApyBalance = await apy.balanceOf(anotherUser.address);
 
       await apy.connect(anotherUser).approve(blApy.address, anotherLockAmount);
@@ -284,9 +281,10 @@ describe.only("Contract: VotingEscrow", () => {
         .create_lock(anotherLockAmount, anotherUnlockTime);
 
       // ... and extends amount
-      // await blApy
-      //   .connect(anotherUser)
-      //   .increase_amount(tokenAmountToBigNumber("5"));
+      const extraLockAmount = tokenAmountToBigNumber("5");
+      anotherLockAmount = anotherLockAmount.add(extraLockAmount);
+      await apy.connect(anotherUser).approve(blApy.address, extraLockAmount);
+      await blApy.connect(anotherUser).increase_amount(extraLockAmount);
 
       const userBlappies = await blApy["balanceOf(address)"](user.address);
       const anotherUserBlappies = await blApy["balanceOf(address)"](
