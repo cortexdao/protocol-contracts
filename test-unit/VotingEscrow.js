@@ -34,12 +34,6 @@ describe("VotingEscrow deployment", () => {
   // use EVM snapshots for test isolation
   let snapshotId;
 
-  before(function () {
-    if (!process.env.CI) {
-      this.skip();
-    }
-  });
-
   beforeEach(async () => {
     let snapshot = await timeMachine.takeSnapshot();
     snapshotId = snapshot["result"];
