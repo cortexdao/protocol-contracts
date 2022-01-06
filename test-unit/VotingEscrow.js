@@ -11,8 +11,9 @@ const {
 const { BigNumber } = ethers;
 
 const DAY = 86400; // day in seconds
-const MONTH = 86400 * 30;
-const YEAR = 86400 * 365;
+const WEEK = 7 * DAY;
+const MONTH = DAY * 30;
+const YEAR = DAY * 365;
 const MAXTIME = 4 * YEAR;
 
 describe.only("VotingEscrow deployment", () => {
@@ -202,7 +203,7 @@ describe.only("Contract: VotingEscrow", () => {
       );
     });
 
-    it("Can withdraw with non-expired lock if shutdown", async () => {
+    it("Can withdraw with non-expired lock", async () => {
       const currentTime = (await ethers.provider.getBlock()).timestamp;
       const unlockTime = BigNumber.from(currentTime + 86400 * 30 * 6); // lock for 6 months
       const lockAmount = tokenAmountToBigNumber("15");
@@ -230,7 +231,33 @@ describe.only("Contract: VotingEscrow", () => {
       expect(await apy.balanceOf(user.address)).to.equal(apyBalance);
     });
 
-    it("`balanceOf` and `totalSupply` should be frozen after shutdown", async () => {
+    it("Withdraw properly updates user locked and supply", async () => {
+      const currentTime = (await ethers.provider.getBlock()).timestamp;
+      const unlockTime = BigNumber.from(currentTime + 86400 * 30 * 6); // lock for 6 months
+      const lockAmount = tokenAmountToBigNumber("15");
+
+      await apy.connect(user).approve(blApy.address, lockAmount);
+      await blApy.connect(user).create_lock(lockAmount, unlockTime);
+
+      await apy.connect(anotherUser).approve(blApy.address, lockAmount);
+      await blApy.connect(anotherUser).create_lock(lockAmount, unlockTime);
+
+      await blApy.connect(deployer).shutdown();
+      await blApy.connect(anotherUser).withdraw();
+
+      expect(await blApy.supply()).to.equal(lockAmount);
+      const [resultAmount, resultTime] = await blApy.locked(user.address);
+      expect(await blApy.locked(user.address)).to.deep.equal([
+        lockAmount,
+        unlockTime.div(WEEK).mul(WEEK),
+      ]);
+      expect(await blApy.locked(anotherUser.address)).to.deep.equal([
+        BigNumber.from(0),
+        BigNumber.from(0),
+      ]);
+    });
+
+    it("`balanceOf` and `totalSupply` should be frozen", async () => {
       const currentTime = (await ethers.provider.getBlock()).timestamp;
 
       // user 1 creates lock
