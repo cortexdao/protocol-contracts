@@ -16,6 +16,11 @@ const MONTH = DAY * 30;
 const YEAR = DAY * 365;
 const MAXTIME = 4 * YEAR;
 
+if (!process.env.CI) {
+  // eslint-disable-next-line no-global-assign
+  describe = describe.skip;
+}
+
 describe("VotingEscrow deployment", () => {
   // signers
   let deployer;
@@ -28,6 +33,12 @@ describe("VotingEscrow deployment", () => {
 
   // use EVM snapshots for test isolation
   let snapshotId;
+
+  before(function () {
+    if (!process.env.CI) {
+      this.skip();
+    }
+  });
 
   beforeEach(async () => {
     let snapshot = await timeMachine.takeSnapshot();
