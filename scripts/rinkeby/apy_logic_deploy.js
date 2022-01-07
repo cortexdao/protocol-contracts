@@ -5,28 +5,17 @@
  * $ HARDHAT_NETWORK=<network name> node scripts/<script filename> --arg1=val1 --arg2=val2
  */
 require("dotenv").config();
-const { argv } = require("yargs")
-  .option("name", {
-    type: "string",
-    description: "Zap contract name",
-  })
-  .option("compile", {
-    type: "boolean",
-    default: true,
-    description: "Compile contract using `compile:one`",
-  })
-  .demandOption(["name"]);
+const { argv } = require("yargs").option("compile", {
+  type: "boolean",
+  default: true,
+  description: "Compile contract using `compile:one`",
+});
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
 const {
   waitForSafeTxReceipt,
   getAdminSafeSigner,
-} = require("../../utils/helpers");
-
-const APY_ADDRESS = "0x95a4492F028aa1fd432Ea71146b433E7B4446611";
-const NAME = "Boost-Locked APY";
-const SYMBOL = "blAPY";
-const VERSION = "1.0.0";
+} = require("../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -40,7 +29,7 @@ async function main(argv) {
   }
   const safeSigner = await getAdminSafeSigner(networkName);
 
-  const contractName = "VotingEscrow";
+  const contractName = "GovernanceToken";
   console.log(`${contractName} deploy`);
   console.log("");
 
@@ -54,11 +43,9 @@ async function main(argv) {
   console.log("");
 
   const contractFactory = await ethers.getContractFactory(contractName);
-  let votingEscrow = await contractFactory
-    .connect(safeSigner)
-    .deploy(APY_ADDRESS, NAME, SYMBOL, VERSION);
+  let apy = await contractFactory.connect(safeSigner).deploy();
   const receipt = await waitForSafeTxReceipt(
-    votingEscrow.deployTransaction,
+    apy.deployTransaction,
     safeSigner.service
   );
   const contractAddress = receipt.contractAddress;
@@ -70,7 +57,6 @@ async function main(argv) {
   console.log("Verifying on Etherscan ...");
   await hre.run("verify:verify", {
     address: contractAddress,
-    constructorArguments: [APY_ADDRESS, NAME, SYMBOL, VERSION],
   });
 }
 
