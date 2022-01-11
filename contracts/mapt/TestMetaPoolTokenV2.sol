@@ -95,11 +95,10 @@ contract TestMetaPoolTokenV2 is MetaPoolTokenV2 {
         return _getFundAmounts(amounts);
     }
 
-    function testGetWithdrawAmounts(int256[] memory amounts)
-        public
-        pure
-        returns (uint256[] memory)
-    {
-        return _getWithdrawAmounts(amounts);
+    function testGetWithdrawAmounts(
+        int256[] memory topupAmounts,
+        uint256[] memory availableAmounts
+    ) public pure returns (uint256[] memory) {
+        return _getWithdrawAmounts(topupAmounts, availableAmounts);
     }
 }

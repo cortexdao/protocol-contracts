@@ -162,10 +162,12 @@ contract MetaPoolTokenV2 is
         nonReentrant
         onlyLpRole
     {
-        (IReservePool[] memory pools, int256[] memory amounts) =
+        (IReservePool[] memory pools, int256[] memory topupAmounts) =
             getRebalanceAmounts(poolIds);
 
-        uint256[] memory withdrawAmounts = _getWithdrawAmounts(amounts);
+        uint256[] memory availableAmounts = getAvailableAmounts(poolIds);
+        uint256[] memory withdrawAmounts =
+            _getWithdrawAmounts(topupAmounts, availableAmounts);
 
         _withdrawFromLpAccount(pools, withdrawAmounts);
         emit WithdrawFromLpAccount(poolIds, withdrawAmounts);
@@ -210,6 +212,27 @@ contract MetaPoolTokenV2 is
         }
 
         return (pools, rebalanceAmounts);
+    }
+
+    function getAvailableAmounts(bytes32[] memory poolIds)
+        public
+        view
+        returns (uint256[] memory)
+    {
+        address lpAccountAddress = addressRegistry.lpAccountAddress();
+        require(lpAccountAddress != address(0), "INVALID_LP_ACCOUNT"); // defensive check -- should never happen
+
+        uint256[] memory availableAmounts = new uint256[](poolIds.length);
+
+        for (uint256 i = 0; i < poolIds.length; i++) {
+            IReservePool pool =
+                IReservePool(addressRegistry.getAddress(poolIds[i]));
+            IDetailedERC20 underlyer = IDetailedERC20(pool.underlyer());
+
+            availableAmounts[i] = underlyer.balanceOf(lpAccountAddress);
+        }
+
+        return availableAmounts;
     }
 
     function _setAddressRegistry(address addressRegistry_) internal {
@@ -438,17 +461,19 @@ contract MetaPoolTokenV2 is
         return fundAmounts;
     }
 
-    function _getWithdrawAmounts(int256[] memory amounts)
-        internal
-        pure
-        returns (uint256[] memory)
-    {
-        uint256[] memory withdrawAmounts = new uint256[](amounts.length);
+    function _getWithdrawAmounts(
+        int256[] memory topupAmounts,
+        uint256[] memory availableAmounts
+    ) internal pure returns (uint256[] memory) {
+        uint256[] memory withdrawAmounts = new uint256[](topupAmounts.length);
+        for (uint256 i = 0; i < topupAmounts.length; i++) {
+            int256 topupAmount = topupAmounts[i];
 
-        for (uint256 i = 0; i < amounts.length; i++) {
-            int256 amount = amounts[i];
-
-            withdrawAmounts[i] = amount > 0 ? uint256(amount) : 0;
+            uint256 withdrawAmount = topupAmount > 0 ? uint256(topupAmount) : 0;
+            uint256 availableAmount = availableAmounts[i];
+            withdrawAmounts[i] = withdrawAmount > availableAmount
+                ? availableAmount
+                : withdrawAmount;
         }
 
         return withdrawAmounts;
