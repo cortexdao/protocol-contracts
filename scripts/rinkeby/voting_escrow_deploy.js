@@ -8,12 +8,7 @@ require("dotenv").config();
 const { argv } = require("yargs");
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const {
-  waitForSafeTxReceipt,
-  getAdminSafeSigner,
-} = require("../../utils/helpers");
 
-// const APY_ADDRESS = "0x95a4492F028aa1fd432Ea71146b433E7B4446611";
 const APY_ADDRESS = "0xA41d3d461B8a9f1E9F92d2B040495cE21CfED548";
 const NAME = "Boost-Locked APY";
 const SYMBOL = "blAPY";
@@ -28,10 +23,17 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  if (!process.env.SAFE_OWNER_KEY) {
-    throw new Error("Must set SAFE_OWNER_KEY env var.");
-  }
-  const safeSigner = await getAdminSafeSigner(networkName);
+  const deployer = new ethers.Wallet(
+    process.env.SAFE_OWNER_KEY,
+    ethers.provider
+  );
+  console.log("Deployer address:", deployer.address);
+  console.log("");
+
+  let balance =
+    (await ethers.provider.getBalance(deployer.address)).toString() / 1e18;
+  console.log("ETH balance (deployer): %s", balance);
+  console.log("");
 
   const contractName = "VotingEscrow";
   console.log(`${contractName} deploy`);
@@ -40,23 +42,26 @@ async function main(argv) {
   console.log("Deploying ... ");
   console.log("");
 
-  const contractFactory = await ethers.getContractFactory(contractName);
-  let votingEscrow = await contractFactory
-    .connect(safeSigner)
-    .deploy(APY_ADDRESS, NAME, SYMBOL, VERSION);
-  const receipt = await waitForSafeTxReceipt(
-    votingEscrow.deployTransaction,
-    safeSigner.service
+  const contractFactory = await ethers.getContractFactory(
+    contractName,
+    deployer
   );
-  const contractAddress = receipt.contractAddress;
-  if (!contractAddress) {
-    throw new Error("Contract address is missing.");
-  }
-  console.log("Contract address: %s", contractAddress);
+  let votingEscrow = await contractFactory.deploy(
+    APY_ADDRESS,
+    NAME,
+    SYMBOL,
+    VERSION
+  );
+  console.log("Contract address: %s", votingEscrow.address);
 
+  console.log("Waiting for 5 confirmations ...");
+  await ethers.provider.waitForTransaction(
+    votingEscrow.deployTransaction.hash,
+    5
+  );
   console.log("Verifying on Etherscan ...");
   await hre.run("verify:verify", {
-    address: contractAddress,
+    address: votingEscrow.address,
     constructorArguments: [APY_ADDRESS, NAME, SYMBOL, VERSION],
   });
 }
