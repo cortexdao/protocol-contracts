@@ -206,7 +206,21 @@ describe("Contract: MetaPoolToken", () => {
     await alphaDeployment.deploy_1_MetaPoolToken();
 
     const proxyAddress = await alphaDeployment.mApt();
-    const mApt = await ethers.getContractAt("TestMetaPoolToken", proxyAddress);
+
+    const MetaPoolTokenV2 = await ethers.getContractFactory(
+      "TestMetaPoolTokenV2"
+    );
+    const logicV2 = await MetaPoolTokenV2.deploy();
+
+    const proxyAdmin = await getProxyAdmin(proxyAddress);
+    await proxyAdmin
+      .connect(emergencySafeSigner)
+      .upgrade(proxyAddress, logicV2.address);
+
+    const mApt = await ethers.getContractAt(
+      "TestMetaPoolTokenV2",
+      proxyAddress
+    );
 
     return mApt;
   }
@@ -953,23 +967,27 @@ describe("Contract: MetaPoolToken", () => {
 
   describe("_getWithdrawAmounts", () => {
     it("Returns empty array given empty array", async () => {
-      const result = await mApt.testGetWithdrawAmounts([]);
+      const result = await mApt.testGetWithdrawAmounts([], []);
       expect(result).to.be.empty;
     });
 
     it("Replaces negatives with zeros", async () => {
-      let amounts = [
+      let topupAmounts = [
         tokenAmountToBigNumber("159"),
         tokenAmountToBigNumber("1777"),
         tokenAmountToBigNumber("11"),
         tokenAmountToBigNumber("122334"),
       ];
-      let expectedResult = amounts;
-      let result = await mApt.testGetWithdrawAmounts(amounts);
+      let availableAmounts = topupAmounts;
+      let expectedResult = topupAmounts;
+      let result = await mApt.testGetWithdrawAmounts(
+        topupAmounts,
+        availableAmounts
+      );
 
       deepEqual(expectedResult, result);
 
-      amounts = [
+      topupAmounts = [
         tokenAmountToBigNumber("159"),
         tokenAmountToBigNumber("0"),
         tokenAmountToBigNumber("-1777"),
@@ -985,7 +1003,86 @@ describe("Contract: MetaPoolToken", () => {
         tokenAmountToBigNumber("122334"),
         tokenAmountToBigNumber("0"),
       ];
-      result = await mApt.testGetWithdrawAmounts(amounts);
+      availableAmounts = expectedResult;
+      result = await mApt.testGetWithdrawAmounts(
+        topupAmounts,
+        availableAmounts
+      );
+      deepEqual(expectedResult, result);
+    });
+
+    it("Uses minimum of topup and available amounts", async () => {
+      let topupAmounts = [
+        tokenAmountToBigNumber("159"),
+        tokenAmountToBigNumber("1777"),
+        tokenAmountToBigNumber("11"),
+        tokenAmountToBigNumber("122334"),
+      ];
+      let availableAmounts = [
+        tokenAmountToBigNumber("122334"),
+        tokenAmountToBigNumber("122334"),
+        tokenAmountToBigNumber("122334"),
+        tokenAmountToBigNumber("122334"),
+      ];
+      let expectedResult = topupAmounts;
+      let result = await mApt.testGetWithdrawAmounts(
+        topupAmounts,
+        availableAmounts
+      );
+      deepEqual(expectedResult, result);
+
+      topupAmounts = [
+        tokenAmountToBigNumber("159"),
+        tokenAmountToBigNumber("1777"),
+        tokenAmountToBigNumber("11"),
+        tokenAmountToBigNumber("122334"),
+      ];
+      availableAmounts = [
+        tokenAmountToBigNumber("1000"),
+        tokenAmountToBigNumber("1000"),
+        tokenAmountToBigNumber("1000"),
+        tokenAmountToBigNumber("1000"),
+      ];
+      expectedResult = [
+        tokenAmountToBigNumber("159"),
+        tokenAmountToBigNumber("1000"),
+        tokenAmountToBigNumber("11"),
+        tokenAmountToBigNumber("1000"),
+      ];
+      result = await mApt.testGetWithdrawAmounts(
+        topupAmounts,
+        availableAmounts
+      );
+      deepEqual(expectedResult, result);
+
+      topupAmounts = [
+        tokenAmountToBigNumber("159"),
+        tokenAmountToBigNumber("0"),
+        tokenAmountToBigNumber("-1777"),
+        tokenAmountToBigNumber("-11"),
+        tokenAmountToBigNumber("122334"),
+        tokenAmountToBigNumber("0"),
+      ];
+      availableAmounts = [
+        tokenAmountToBigNumber("1000"),
+        tokenAmountToBigNumber("1"),
+        tokenAmountToBigNumber("100"),
+        tokenAmountToBigNumber("0"),
+        tokenAmountToBigNumber("10000"),
+        tokenAmountToBigNumber("10"),
+      ];
+      expectedResult = [
+        tokenAmountToBigNumber("159"),
+        tokenAmountToBigNumber("0"),
+        tokenAmountToBigNumber("0"),
+        tokenAmountToBigNumber("0"),
+        tokenAmountToBigNumber("10000"),
+        tokenAmountToBigNumber("0"),
+      ];
+      result = await mApt.testGetWithdrawAmounts(
+        topupAmounts,
+        availableAmounts
+      );
       deepEqual(expectedResult, result);
     });
   });
