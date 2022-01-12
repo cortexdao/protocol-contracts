@@ -9,10 +9,7 @@ require("hardhat-contract-sizer");
 require("./tasks");
 
 function getNetworkUrl(networkName) {
-  const alchemyKey = process.env.ALCHEMY_API_KEY;
-  if (!alchemyKey) {
-    throw new Error("ALCHEMY_API_KEY env var is missing.");
-  }
+  const alchemyKey = process.env.ALCHEMY_API_KEY || "";
   const url = `https://eth-${networkName}.alchemyapi.io/v2/` + alchemyKey;
   return url;
 }
