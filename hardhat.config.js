@@ -6,6 +6,9 @@ require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-truffle5");
 require("@nomiclabs/hardhat-etherscan");
 require("hardhat-contract-sizer");
+if (process.env.CI) {
+  require("@nomiclabs/hardhat-vyper");
+}
 require("./tasks");
 
 function getNetworkUrl(networkName) {
@@ -114,6 +117,9 @@ module.exports = {
         },
       },
     },
+  },
+  vyper: {
+    version: "0.2.4",
   },
   mocha: {
     timeout: 1000000,
