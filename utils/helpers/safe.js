@@ -5,8 +5,14 @@ const {
   SafeService,
   SafeEthersSigner,
 } = require("@gnosis.pm/safe-ethers-adapters");
+const { getCreateCallDeployment } = require("@gnosis.pm/safe-deployments");
 const hre = require("hardhat");
+const { ADMIN_SAFE, EMERGENCY_SAFE, LP_SAFE } = require("../constants");
 const { ethers } = hre;
+
+const createLibDeployment = getCreateCallDeployment();
+const createLibAddress = createLibDeployment.defaultAddress;
+if (!createLibAddress) throw new Error("Bad import");
 
 const SERVICE_URLS = {
   MAINNET: "https://safe-transaction.gnosis.io/",
@@ -45,11 +51,69 @@ function promptUser(promptText) {
  * @param safeAddress address of the Gnosis Safe
  * @param owner Ethers signer for an owner of the Safe
  */
-async function getSafeSigner(safeAddress, owner, networkName) {
+async function getSafeSigner(networkName, safeAddress, owner) {
   configureAxiosRetry(axios);
+  if (!owner) {
+    owner = await getSafeOwner();
+  }
   const serviceUrl = SERVICE_URLS[networkName.toUpperCase()];
   const service = new SafeService(serviceUrl, axios);
   const safeSigner = await SafeEthersSigner.create(safeAddress, owner, service);
+  return safeSigner;
+}
+
+async function getSafeOwner(safeOwnerKey) {
+  safeOwnerKey = safeOwnerKey || process.env.SAFE_OWNER_KEY;
+  if (!safeOwnerKey) {
+    throw new Error("Must set SAFE_OWNER_KEY env var or pass it in as arg.");
+  }
+  const owner = new ethers.Wallet(safeOwnerKey, ethers.provider);
+  console.log("Safe owner: %s", owner.address);
+  console.log("");
+
+  const balance =
+    (await ethers.provider.getBalance(owner.address)).toString() / 1e18;
+  console.log("ETH balance (Safe owner): %s", balance);
+  console.log("");
+
+  return owner;
+}
+
+const ADMIN_SAFES = {
+  MAINNET: ADMIN_SAFE,
+  RINKEBY: "0xacC66a1bD538cfCBB801FC047f41A3FC0AECf87a",
+};
+
+async function getAdminSafeSigner(networkName, owner) {
+  return _getSafeSignerForSafeType(networkName, owner, ADMIN_SAFES);
+}
+
+const EMERGENCY_SAFES = {
+  MAINNET: EMERGENCY_SAFE,
+};
+
+async function getEmergencySafeSigner(networkName, owner) {
+  return _getSafeSignerForSafeType(networkName, owner, EMERGENCY_SAFES);
+}
+
+const LP_SAFES = {
+  MAINNET: LP_SAFE,
+};
+
+async function getLpSafeSigner(networkName, owner) {
+  return _getSafeSignerForSafeType(networkName, owner, LP_SAFES);
+}
+
+async function _getSafeSignerForSafeType(networkName, owner, safeMap) {
+  if (!owner) {
+    owner = await getSafeOwner();
+  }
+  const safeSigner = await getSafeSigner(
+    networkName,
+    safeMap[networkName.toUpperCase()],
+    owner
+  );
+
   return safeSigner;
 }
 
@@ -60,7 +124,7 @@ async function getSafeSigner(safeAddress, owner, networkName) {
  * @param pollingDelay seconds to wait before making another request
  * @param timeout seconds to wait before giving up on current request
  */
-async function waitForSafeTxDetails(
+async function waitForSafeTxReceipt(
   proposedTx,
   safeService,
   confirmations,
@@ -71,7 +135,7 @@ async function waitForSafeTxDetails(
     "USER ACTION REQUIRED: Use the Gnosis Safe UI to confirm transaction"
   );
 
-  confirmations = confirmations || 0;
+  confirmations = confirmations || 5;
   pollingDelay = (pollingDelay || 5) * 1000; // convert to milliseconds
   timeout = (timeout || 5) * 1000; // convert to milliseconds
 
@@ -111,6 +175,18 @@ async function waitForSafeTxDetails(
     }
     await sleep(pollingDelay);
   }
+  if (proposedTx.to.toLowerCase() === createLibAddress.toLowerCase()) {
+    // Search for ContractCreation event (see https://github.com/gnosis/safe-contracts/blob/v1.3.0/contracts/libraries/CreateCall.sol#L7)
+    const creationLog = receipt.logs.find(
+      (log) =>
+        log.topics[0] ===
+        "0x4db17dd5e4732fb6da34a148104a592783ca119a1e7bb8829eba6cbadef0b511"
+    );
+    if (creationLog)
+      receipt.contractAddress = ethers.utils.getAddress(
+        "0x" + creationLog.data.slice(creationLog.data.length - 40)
+      );
+  }
   return receipt;
 }
 
@@ -133,5 +209,8 @@ function logAxiosError(error) {
 
 module.exports = {
   getSafeSigner,
-  waitForSafeTxDetails,
+  getAdminSafeSigner,
+  getEmergencySafeSigner,
+  getLpSafeSigner,
+  waitForSafeTxReceipt,
 };

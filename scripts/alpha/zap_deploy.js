@@ -10,14 +10,6 @@ const { argv } = require("yargs")
     type: "string",
     description: "Zap contract name",
   })
-  .option("maxFeePerGas", {
-    type: "number",
-    description: "Gas price in gwei; omitting uses default Ethers logic",
-  })
-  .option("maxPriorityFeePerGas", {
-    type: "number",
-    description: "Gas price in gwei; omitting uses default Ethers logic",
-  })
   .option("compile", {
     type: "boolean",
     default: true,
@@ -26,11 +18,11 @@ const { argv } = require("yargs")
   .demandOption(["name"]);
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
-const { getMaxFee, getDeployedAddress } = require("../../utils/helpers");
 const {
-  waitForSafeTxDetails,
-  getSafeSigner,
-} = require("../../utils/helpers/safe");
+  waitForSafeTxReceipt,
+  getAdminSafeSigner,
+  getRegisteredContract,
+} = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -39,7 +31,12 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  const zapContractName = argv.name;
+  const name = argv.name;
+  let zapContractName = name
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("");
+  zapContractName += "Zap";
   console.log("Zap contract name: %s", zapContractName);
   console.log("");
 
@@ -62,8 +59,7 @@ async function main(argv) {
   console.log("ETH balance (Safe owner): %s", balance);
   console.log("");
 
-  const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
-  const safeSigner = await getSafeSigner(adminSafeAddress, owner);
+  const safeSigner = await getAdminSafeSigner(networkName);
 
   if (argv.compile) {
     await hre.run("clean");
@@ -71,39 +67,31 @@ async function main(argv) {
     await hre.run("compile:one", { contractName: zapContractName });
   }
 
-  let maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
-
   console.log("Deploying zap ... ");
   console.log("");
 
   const zapContractFactory = await ethers.getContractFactory(zapContractName);
-  const zap = await zapContractFactory
-    .connect(safeSigner)
-    .deploy({ maxFeePerGas });
-  console.log("Zap address:", zap.address);
-  console.log("");
-  await waitForSafeTxDetails(zap.deployTransaction, safeSigner.service);
+  let zap = await zapContractFactory.connect(safeSigner).deploy();
+  const receipt = await waitForSafeTxReceipt(
+    zap.deployTransaction,
+    safeSigner.service
+  );
+  const zapAddress = receipt.contractAddress;
+  if (!zapAddress) {
+    throw new Error("Zap address is missing.");
+  }
+  console.log("Zap address: %s", zapAddress);
 
+  zap = await ethers.getContractAt(zapContractName, zapAddress);
   const zapName = await zap.NAME();
   console.log("Registering %s", zapName);
   console.log("");
 
-  const addressRegistryAddress = getDeployedAddress(
-    "AddressRegistryProxy",
-    networkName
-  );
-  const addressRegistry = await ethers.getContractAt(
-    "AddressRegistryV2",
-    addressRegistryAddress
-  );
-  const lpAccountAddress = await addressRegistry.lpAccountAddress();
-  const lpAccount = await ethers.getContractAt("LpAccount", lpAccountAddress);
-  maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
-  const zapAddress = zap.address;
+  const lpAccount = await getRegisteredContract("lpAccount");
   const proposedTx = await lpAccount
     .connect(safeSigner)
-    .registerZap(zapAddress, { maxFeePerGas });
-  await waitForSafeTxDetails(proposedTx, safeSigner.service, 5);
+    .registerZap(zapAddress);
+  await waitForSafeTxReceipt(proposedTx, safeSigner.service);
 
   console.log("Verifying on Etherscan ...");
   await hre.run("verify:verify", {

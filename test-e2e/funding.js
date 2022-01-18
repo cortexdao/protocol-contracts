@@ -95,6 +95,13 @@ const poolTests = [
     gaugeAddress: "0x5f626c30EC1215f4EdCc9982265E8b1F411D1352",
   },
   {
+    name: "curve-ousd",
+    nCoins: 4,
+    decimals: [18, 18, 6, 6],
+    ignoreIndexes: [0],
+    gaugeAddress: "0x25f0cE4E2F8dbA112D9b115710AC297F816087CD",
+  },
+  {
     name: "curve-saave",
     nCoins: 2,
     decimals: [18, 18],
@@ -135,6 +142,13 @@ const poolTests = [
     decimals: [18, 18, 6, 6],
     ignoreIndexes: [0],
     gaugeAddress: "0x3B7020743Bc2A4ca9EaF9D0722d42E20d6935855",
+  },
+  {
+    name: "curve-mim",
+    nCoins: 4,
+    decimals: [18, 18, 6, 6],
+    ignoreIndexes: [0],
+    gaugeAddress: "0xd8b712d29381748dB89c36BCa0138d7c75866ddF",
   },
 ];
 

@@ -10,14 +10,6 @@ const { argv } = require("yargs")
     type: "string",
     description: "Allocation contract name",
   })
-  .option("maxFeePerGas", {
-    type: "number",
-    description: "Gas price in gwei; omitting uses default Ethers logic",
-  })
-  .option("maxPriorityFeePerGas", {
-    type: "number",
-    description: "Gas price in gwei; omitting uses default Ethers logic",
-  })
   .option("compile", {
     type: "boolean",
     default: true,
@@ -32,10 +24,10 @@ const { argv } = require("yargs")
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
 const {
-  getDeployedAddress,
-  getSafeSigner,
-  waitForSafeTxDetails,
-  getMaxFee,
+  getAdminSafeSigner,
+  waitForSafeTxReceipt,
+  ZERO_ADDRESS,
+  getRegisteredContract,
 } = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
@@ -45,9 +37,13 @@ async function main(argv) {
   console.log(`${networkName} selected`);
   console.log("");
 
-  const allocationContractName = argv.name;
+  const name = argv.name;
+  let allocationContractName = name
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("");
+  allocationContractName += "Allocation";
   console.log("Allocation contract name: %s", allocationContractName);
-  console.log("");
 
   const [deployer] = await ethers.getSigners();
   console.log("Deployer address:", deployer.address);
@@ -68,8 +64,7 @@ async function main(argv) {
   console.log("ETH balance (Safe owner): %s", balance);
   console.log("");
 
-  const adminSafeAddress = getDeployedAddress("AdminSafe", networkName);
-  const safeSigner = await getSafeSigner(adminSafeAddress, owner);
+  const safeSigner = await getAdminSafeSigner(networkName);
 
   if (argv.compile) {
     await hre.run("clean");
@@ -77,21 +72,7 @@ async function main(argv) {
     await hre.run("compile:one", { contractName: allocationContractName });
   }
 
-  let maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
-
-  const addressRegistryAddress = getDeployedAddress(
-    "AddressRegistryProxy",
-    networkName
-  );
-  const addressRegistry = await ethers.getContractAt(
-    "AddressRegistryV2",
-    addressRegistryAddress
-  );
-  const tvlManagerAddress = await addressRegistry.tvlManagerAddress();
-  const tvlManager = await ethers.getContractAt(
-    "TvlManager",
-    tvlManagerAddress
-  );
+  const tvlManager = await getRegisteredContract("tvlManager");
 
   console.log("Deploying allocation ... ");
   console.log("");
@@ -102,34 +83,43 @@ async function main(argv) {
   const curve3poolAllocationAddress = await tvlManager.getAssetAllocation(
     "curve-3pool"
   );
+  if (curve3poolAllocationAddress == ZERO_ADDRESS) {
+    throw new Error("3poolAllocation address is missing.");
+  }
   let allocation;
   if (argv.metapool) {
+    console.log(
+      "Constructor arg (3pool allocation): %s",
+      curve3poolAllocationAddress
+    );
     allocation = await allocationContractFactory
       .connect(safeSigner)
-      .deploy(curve3poolAllocationAddress, { maxFeePerGas });
+      .deploy(curve3poolAllocationAddress);
   } else {
-    allocation = await allocationContractFactory
-      .connect(safeSigner)
-      .deploy({ maxFeePerGas });
+    allocation = await allocationContractFactory.connect(safeSigner).deploy();
   }
-  console.log("Allocation address:", allocation.address);
-  console.log("");
-  await waitForSafeTxDetails(
+  const receipt = await waitForSafeTxReceipt(
     allocation.deployTransaction,
-    safeSigner.service,
-    5
+    safeSigner.service
   );
+  const allocationAddress = receipt.contractAddress;
+  if (!allocationAddress) {
+    throw new Error("Allocation address is missing.");
+  }
+  console.log("Allocation address: %s", allocationAddress);
 
+  allocation = await ethers.getContractAt(
+    allocationContractName,
+    allocationAddress
+  );
   const allocationName = await allocation.NAME();
   console.log("Registering %s", allocationName);
   console.log("");
 
-  maxFeePerGas = await getMaxFee(argv.maxFeePerGas);
-  const allocationAddress = allocation.address;
   const proposedTx = await tvlManager
     .connect(safeSigner)
-    .registerAssetAllocation(allocationAddress, { maxFeePerGas });
-  await waitForSafeTxDetails(proposedTx, safeSigner.service, 5);
+    .registerAssetAllocation(allocationAddress);
+  await waitForSafeTxReceipt(proposedTx, safeSigner.service);
 
   console.log("Verifying on Etherscan ...");
   if (argv.metapool) {

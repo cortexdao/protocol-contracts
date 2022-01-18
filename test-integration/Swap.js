@@ -36,6 +36,11 @@ const swapParams = [
     outTokenSymbol: "USDT",
   },
   {
+    swapContractName: "CvxToUsdcSwap",
+    inTokenSymbol: "CVX",
+    outTokenSymbol: "USDC",
+  },
+  {
     swapContractName: "AaveToDaiSwap",
     inTokenSymbol: "AAVE",
     outTokenSymbol: "DAI",

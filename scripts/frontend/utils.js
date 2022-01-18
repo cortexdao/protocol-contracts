@@ -1,6 +1,10 @@
 const hre = require("hardhat");
 const { ethers } = hre;
-const { impersonateAccount, bytes32 } = require("../../utils/helpers");
+const {
+  impersonateAccount,
+  getStablecoinAddress,
+  bytes32,
+} = require("../../utils/helpers");
 
 const MAINNET_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
 const EMERGENCY_SAFE = "0xEf17933d32e07a5b789405Bd197F02D6BB393147";
@@ -54,6 +58,26 @@ async function getRegisteredContract(contractId, signer) {
   return contract;
 }
 
+function getDemoPoolIds() {
+  return [
+    bytes32("daiDemoPool"),
+    bytes32("usdcDemoPool"),
+    bytes32("usdtDemoPool"),
+  ];
+}
+
+function getPoolIds() {
+  return [bytes32("daiPool"), bytes32("usdcPool"), bytes32("usdtPool")];
+}
+
+async function getStablecoin(symbol) {
+  const NETWORK = "MAINNET";
+  const address = getStablecoinAddress(symbol, NETWORK);
+  const stablecoin = await ethers.getContractAt("IDetailedERC20", address);
+
+  return stablecoin;
+}
+
 async function unlockOracleAdapter() {
   const emergencySafe = await impersonateEmergencySafe();
   const oracleAdapter = await getRegisteredContract(
@@ -69,5 +93,8 @@ module.exports = {
   impersonateLpSafe,
   getAddressRegistry,
   getRegisteredContract,
+  getDemoPoolIds,
+  getPoolIds,
+  getStablecoin,
   unlockOracleAdapter,
 };
