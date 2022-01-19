@@ -2,7 +2,6 @@
 pragma solidity 0.6.11;
 
 import {IReservePool} from "contracts/pool/Imports.sol";
-
 import {MetaPoolToken} from "./MetaPoolToken.sol";
 
 /**
@@ -96,11 +95,10 @@ contract TestMetaPoolToken is MetaPoolToken {
         return _getFundAmounts(amounts);
     }
 
-    function testGetWithdrawAmounts(int256[] memory amounts)
-        public
-        pure
-        returns (uint256[] memory)
-    {
-        return _getWithdrawAmounts(amounts);
+    function testCalculateAmountsToWithdraw(
+        int256[] memory topupAmounts,
+        uint256[] memory lpAccountBalances
+    ) public pure returns (uint256[] memory) {
+        return _calculateAmountsToWithdraw(topupAmounts, lpAccountBalances);
     }
 }
