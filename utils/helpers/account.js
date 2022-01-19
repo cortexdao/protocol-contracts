@@ -60,7 +60,7 @@ async function getAddress(object) {
  */
 async function setBalance(account, ethBalance) {
   const address = await getAddress(account);
-  ethBalance = ethBalance || 5;
+  ethBalance = ethBalance || 20;
   const newBalance = tokenAmountToBigNumber(ethBalance);
 
   // This is necessary because hex quantities with leading zeros are not valid at the JSON-RPC layer
