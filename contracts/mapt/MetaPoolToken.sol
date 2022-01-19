@@ -165,9 +165,9 @@ contract MetaPoolToken is
         (IReservePool[] memory pools, int256[] memory topupAmounts) =
             getRebalanceAmounts(poolIds);
 
-        uint256[] memory availableAmounts = getAvailableAmounts(poolIds);
+        uint256[] memory lpAccountBalances = getLpAccountBalances(poolIds);
         uint256[] memory withdrawAmounts =
-            _getWithdrawAmounts(topupAmounts, availableAmounts);
+            _calculateAmountsToWithdraw(topupAmounts, lpAccountBalances);
 
         _withdrawFromLpAccount(pools, withdrawAmounts);
         emit WithdrawFromLpAccount(poolIds, withdrawAmounts);
@@ -214,7 +214,7 @@ contract MetaPoolToken is
         return (pools, rebalanceAmounts);
     }
 
-    function getAvailableAmounts(bytes32[] memory poolIds)
+    function getLpAccountBalances(bytes32[] memory poolIds)
         public
         view
         returns (uint256[] memory)
@@ -288,6 +288,10 @@ contract MetaPoolToken is
         emit Mint(address(pool), mintAmount);
     }
 
+    /**
+     * @dev Transfer the specified amounts to pools, doing mAPT burns,
+     * and checking the transferred tokens have been registered.
+     */
     function _withdrawFromLpAccount(
         IReservePool[] memory pools,
         uint256[] memory amounts
@@ -461,7 +465,11 @@ contract MetaPoolToken is
         return fundAmounts;
     }
 
-    function _getWithdrawAmounts(
+    /**
+     * @dev Calculate amounts used for topup, taking into
+     * account the available LP Account balances.
+     */
+    function _calculateAmountsToWithdraw(
         int256[] memory topupAmounts,
         uint256[] memory availableAmounts
     ) internal pure returns (uint256[] memory) {
