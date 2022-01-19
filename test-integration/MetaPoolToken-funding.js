@@ -120,9 +120,7 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
       addressRegistryLogicV2.address
     );
 
-    addressRegistry = await AddressRegistryV2.attach(
-      addressRegistryProxy.address
-    );
+    addressRegistry = AddressRegistryV2.attach(addressRegistryProxy.address);
     /* The address registry needs multiple addresses registered
      * to setup the roles for access control in the contract
      * constructors:
@@ -183,7 +181,7 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
       initData
     );
 
-    mApt = await MetaPoolToken.attach(mAptProxy.address).connect(lpSafe);
+    mApt = MetaPoolToken.attach(mAptProxy.address).connect(lpSafe);
     await addressRegistry.registerAddress(bytes32("mApt"), mApt.address);
 
     /*****************************/
@@ -205,7 +203,7 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
       lpAccountInitData
     );
 
-    lpAccount = await LpAccount.attach(lpAccountProxy.address);
+    lpAccount = LpAccount.attach(lpAccountProxy.address);
     await addressRegistry.registerAddress(
       bytes32("lpAccount"),
       lpAccount.address
@@ -246,7 +244,7 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
         poolLogicV2.address,
         poolTokenV2InitData
       );
-      const pool = await PoolTokenV2.attach(poolProxy.address);
+      const pool = PoolTokenV2.attach(poolProxy.address);
 
       const poolId = bytes32(symbol.toLowerCase() + "Pool");
       await addressRegistry.registerAddress(poolId, pool.address);
