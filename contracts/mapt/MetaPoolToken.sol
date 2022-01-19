@@ -222,17 +222,17 @@ contract MetaPoolToken is
         address lpAccountAddress = addressRegistry.lpAccountAddress();
         require(lpAccountAddress != address(0), "INVALID_LP_ACCOUNT"); // defensive check -- should never happen
 
-        uint256[] memory availableAmounts = new uint256[](poolIds.length);
+        uint256[] memory lpAccountBalances = new uint256[](poolIds.length);
 
         for (uint256 i = 0; i < poolIds.length; i++) {
             IReservePool pool =
                 IReservePool(addressRegistry.getAddress(poolIds[i]));
             IDetailedERC20 underlyer = IDetailedERC20(pool.underlyer());
 
-            availableAmounts[i] = underlyer.balanceOf(lpAccountAddress);
+            lpAccountBalances[i] = underlyer.balanceOf(lpAccountAddress);
         }
 
-        return availableAmounts;
+        return lpAccountBalances;
     }
 
     function _setAddressRegistry(address addressRegistry_) internal {
@@ -471,16 +471,16 @@ contract MetaPoolToken is
      */
     function _calculateAmountsToWithdraw(
         int256[] memory topupAmounts,
-        uint256[] memory availableAmounts
+        uint256[] memory lpAccountBalances
     ) internal pure returns (uint256[] memory) {
         uint256[] memory withdrawAmounts = new uint256[](topupAmounts.length);
         for (uint256 i = 0; i < topupAmounts.length; i++) {
             int256 topupAmount = topupAmounts[i];
 
             uint256 withdrawAmount = topupAmount > 0 ? uint256(topupAmount) : 0;
-            uint256 availableAmount = availableAmounts[i];
-            withdrawAmounts[i] = withdrawAmount > availableAmount
-                ? availableAmount
+            uint256 lpAccountBalance = lpAccountBalances[i];
+            withdrawAmounts[i] = withdrawAmount > lpAccountBalance
+                ? lpAccountBalance
                 : withdrawAmount;
         }
 
