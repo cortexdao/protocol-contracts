@@ -814,6 +814,35 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
     });
 
     describe("_withdrawFromLpAccount", () => {
+      it("Withdrawing zero amount skips burn and transfer", async () => {
+        // pre-conditions
+        expect(await daiToken.balanceOf(lpAccount.address)).to.equal(0);
+        expect(await mApt.totalSupply()).to.equal(0);
+
+        const zeroAmount = tokenAmountToBigNumber(0, 18);
+        await expect(
+          mApt.testWithdrawFromLpAccount([daiPool.address], [zeroAmount])
+        ).to.not.emit(mApt, "Burn");
+
+        await oracleAdapter.connect(emergencySafe).emergencyUnlock();
+
+        // test zero withdrawal again but with mAPT supply and other values non-zero
+        const transferAmount = tokenAmountToBigNumber("10", 18);
+        await mApt.testFundLpAccount([daiPool.address], [transferAmount]);
+
+        // adjust the TVL appropriately, as there is no Chainlink to update it
+        await oracleAdapter.connect(emergencySafe).emergencyUnlock(); // needed to get value
+        const tvl = await daiPool.getValueFromUnderlyerAmount(transferAmount);
+        await oracleAdapter.connect(emergencySafe).emergencySetTvl(tvl, 100);
+
+        await expect(
+          mApt.testWithdrawFromLpAccount(
+            [daiPool.address],
+            [tokenAmountToBigNumber(0, 18)]
+          )
+        ).to.not.emit(mApt, "Burn");
+      });
+
       it("Withdrawal updates balances correctly (single pool)", async () => {
         const transferAmount = tokenAmountToBigNumber("10", 18);
         await mApt.testFundLpAccount([daiPool.address], [transferAmount]);
