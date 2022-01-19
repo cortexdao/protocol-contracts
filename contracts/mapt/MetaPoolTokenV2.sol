@@ -165,9 +165,9 @@ contract MetaPoolTokenV2 is
         (IReservePool[] memory pools, int256[] memory topupAmounts) =
             getRebalanceAmounts(poolIds);
 
-        uint256[] memory availableAmounts = getAvailableAmounts(poolIds);
+        uint256[] memory lpAccountBalances = getLpAccountBalances(poolIds);
         uint256[] memory withdrawAmounts =
-            _getWithdrawAmounts(topupAmounts, availableAmounts);
+            _calculateAmountsToWithdraw(topupAmounts, lpAccountBalances);
 
         _withdrawFromLpAccount(pools, withdrawAmounts);
         emit WithdrawFromLpAccount(poolIds, withdrawAmounts);
@@ -214,7 +214,7 @@ contract MetaPoolTokenV2 is
         return (pools, rebalanceAmounts);
     }
 
-    function getAvailableAmounts(bytes32[] memory poolIds)
+    function getLpAccountBalances(bytes32[] memory poolIds)
         public
         view
         returns (uint256[] memory)
@@ -461,7 +461,7 @@ contract MetaPoolTokenV2 is
         return fundAmounts;
     }
 
-    function _getWithdrawAmounts(
+    function _calculateAmountsToWithdraw(
         int256[] memory topupAmounts,
         uint256[] memory availableAmounts
     ) internal pure returns (uint256[] memory) {
