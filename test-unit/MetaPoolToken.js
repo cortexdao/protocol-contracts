@@ -895,9 +895,9 @@ describe("Contract: MetaPoolToken", () => {
     });
   });
 
-  describe("getAvailableAmounts", () => {
+  describe("getLpAccountBalances", () => {
     it("Return empty array when given an empty array", async () => {
-      const result = await mApt.getAvailableAmounts([]);
+      const result = await mApt.getLpAccountBalances([]);
       expect(result).to.deep.equal([]);
     });
 
@@ -926,7 +926,7 @@ describe("Contract: MetaPoolToken", () => {
         .withArgs(bytes32("usdcPool"))
         .returns(usdcPool.address);
 
-      const result = await mApt.getAvailableAmounts([
+      const result = await mApt.getLpAccountBalances([
         bytes32("daiPool"),
         bytes32("usdcPool"),
       ]);
@@ -992,7 +992,7 @@ describe("Contract: MetaPoolToken", () => {
 
   describe("_getWithdrawAmounts", () => {
     it("Returns empty array given empty array", async () => {
-      const result = await mApt.testGetWithdrawAmounts([], []);
+      const result = await mApt.testCalculateAmountsToWithdraw([], []);
       expect(result).to.be.empty;
     });
 
@@ -1005,7 +1005,7 @@ describe("Contract: MetaPoolToken", () => {
       ];
       let availableAmounts = topupAmounts;
       let expectedResult = topupAmounts;
-      let result = await mApt.testGetWithdrawAmounts(
+      let result = await mApt.testCalculateAmountsToWithdraw(
         topupAmounts,
         availableAmounts
       );
@@ -1029,7 +1029,7 @@ describe("Contract: MetaPoolToken", () => {
         tokenAmountToBigNumber("0"),
       ];
       availableAmounts = expectedResult;
-      result = await mApt.testGetWithdrawAmounts(
+      result = await mApt.testCalculateAmountsToWithdraw(
         topupAmounts,
         availableAmounts
       );
@@ -1050,7 +1050,7 @@ describe("Contract: MetaPoolToken", () => {
         tokenAmountToBigNumber("122334"),
       ];
       let expectedResult = topupAmounts;
-      let result = await mApt.testGetWithdrawAmounts(
+      let result = await mApt.testCalculateAmountsToWithdraw(
         topupAmounts,
         availableAmounts
       );
@@ -1074,7 +1074,7 @@ describe("Contract: MetaPoolToken", () => {
         tokenAmountToBigNumber("11"),
         tokenAmountToBigNumber("1000"),
       ];
-      result = await mApt.testGetWithdrawAmounts(
+      result = await mApt.testCalculateAmountsToWithdraw(
         topupAmounts,
         availableAmounts
       );
@@ -1104,7 +1104,7 @@ describe("Contract: MetaPoolToken", () => {
         tokenAmountToBigNumber("10000"),
         tokenAmountToBigNumber("0"),
       ];
-      result = await mApt.testGetWithdrawAmounts(
+      result = await mApt.testCalculateAmountsToWithdraw(
         topupAmounts,
         availableAmounts
       );

@@ -1393,7 +1393,7 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
         const tvl = prevTvl.mul(1000);
         await oracleAdapter.connect(emergencySafe).emergencySetTvl(tvl, 50);
 
-        const [usdcAvailableAmount] = await mApt.getAvailableAmounts([
+        const [usdcAvailableAmount] = await mApt.getLpAccountBalances([
           usdcPoolId,
         ]);
         console.debug("Available amount (USDC): %s", usdcAvailableAmount);
