@@ -210,7 +210,10 @@ describe("Contract: VotingEscrow", () => {
 
     it("Can withdraw with non-expired lock", async () => {
       const currentTime = (await ethers.provider.getBlock()).timestamp;
-      const unlockTime = BigNumber.from(currentTime + 86400 * 30 * 6); // lock for 6 months
+      // lock for ~ 6 months
+      const unlockTime = BigNumber.from(currentTime + 6 * MONTH)
+        .div(WEEK)
+        .mul(WEEK);
       const lockAmount = tokenAmountToBigNumber("15");
 
       const apyBalance = await apy.balanceOf(user.address);
@@ -223,7 +226,7 @@ describe("Contract: VotingEscrow", () => {
       );
 
       expect(await blApy["balanceOf(address)"](user.address)).to.be.gt(
-        lockAmount.mul(86400 * 29 * 6).div(86400 * 365 * 4)
+        lockAmount.mul(86400 * (30 * 6 - 7)).div(86400 * 365 * 4)
       );
 
       await expect(blApy.connect(user).withdraw()).to.be.revertedWith(
@@ -238,7 +241,10 @@ describe("Contract: VotingEscrow", () => {
 
     it("Withdraw properly updates user locked and supply", async () => {
       const currentTime = (await ethers.provider.getBlock()).timestamp;
-      const unlockTime = BigNumber.from(currentTime + 86400 * 30 * 6); // lock for 6 months
+      // lock for ~ 6 months
+      const unlockTime = BigNumber.from(currentTime + 6 * MONTH)
+        .div(WEEK)
+        .mul(WEEK);
       const lockAmount = tokenAmountToBigNumber("15");
 
       await apy.connect(user).approve(blApy.address, lockAmount);
@@ -253,7 +259,7 @@ describe("Contract: VotingEscrow", () => {
       expect(await blApy.supply()).to.equal(lockAmount);
       expect(await blApy.locked(user.address)).to.deep.equal([
         lockAmount,
-        unlockTime.div(WEEK).mul(WEEK),
+        unlockTime,
       ]);
       expect(await blApy.locked(anotherUser.address)).to.deep.equal([
         BigNumber.from(0),
