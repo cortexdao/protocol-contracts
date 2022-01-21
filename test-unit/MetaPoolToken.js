@@ -9,7 +9,6 @@ const {
   tokenAmountToBigNumber,
   bytes32,
   impersonateAccount,
-  forciblySendEth,
   deepEqual,
   getProxyAdmin,
 } = require("../utils/helpers");
@@ -18,6 +17,8 @@ const OracleAdapter = artifacts.readArtifactSync("OracleAdapter");
 const PoolTokenV2 = artifacts.readArtifactSync("PoolTokenV2");
 const IDetailedERC20 = artifacts.readArtifactSync("IDetailedERC20");
 
+const MAINNET_PROXY_ADMIN = "0x7965283631253DfCb71Db63a60C656DEDF76234f";
+const MAINNET_POOL_DEPLOYER = "0x6EAF0ab3455787bA10089800dB91F11fDf6370BE";
 const MAINNET_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
 const MAINNET_ADDRESS_REGISTRY_DEPLOYER =
   "0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3";
@@ -41,6 +42,7 @@ describe("Contract: MetaPoolToken", () => {
 
   // deployed contracts
   let mApt;
+  let proxyAdmin;
 
   // mocks
   let adminSafe;
@@ -73,16 +75,21 @@ describe("Contract: MetaPoolToken", () => {
     await timeMachine.revertToSnapshot(suiteSnapshotId);
   });
 
-  before("Setup mocks with MAINNET addresses", async () => {
+  before("Setup contracts with MAINNET addresses", async () => {
     [deployer] = await ethers.getSigners();
+
+    // Deploying the proxy admin with the pool deployer at nonce 0
+    // will create the same Mainnet address as the real proxy admin
+    const poolDeployer = await impersonateAccount(MAINNET_POOL_DEPLOYER);
+    const ProxyAdmin = await ethers.getContractFactory(
+      "ProxyAdmin",
+      poolDeployer
+    );
+    proxyAdmin = await ProxyAdmin.deploy();
+    expect(proxyAdmin.address).to.equal(MAINNET_PROXY_ADMIN);
 
     const registryDeployer = await impersonateAccount(
       MAINNET_ADDRESS_REGISTRY_DEPLOYER
-    );
-    await forciblySendEth(
-      registryDeployer.address,
-      tokenAmountToBigNumber(5),
-      deployer.address
     );
     // Set the nonce to 3 before deploying the mock contract with the
     // Mainnet registry deployer; this will ensure the mock address
@@ -127,11 +134,6 @@ describe("Contract: MetaPoolToken", () => {
 
     // create signer for few cases where we need to connect with Emergency Safe
     emergencySafeSigner = await impersonateAccount(emergencySafe.address);
-    await forciblySendEth(
-      emergencySafe.address,
-      tokenAmountToBigNumber(1),
-      deployer.address
-    );
   });
 
   before("Deploy mAPT", async () => {
@@ -206,7 +208,18 @@ describe("Contract: MetaPoolToken", () => {
     await alphaDeployment.deploy_1_MetaPoolToken();
 
     const proxyAddress = await alphaDeployment.mApt();
-    const mApt = await ethers.getContractAt("TestMetaPoolToken", proxyAddress);
+
+    const MetaPoolTokenV2 = await ethers.getContractFactory(
+      "TestMetaPoolTokenV2"
+    );
+    const logicV2 = await MetaPoolTokenV2.deploy();
+
+    await proxyAdmin.upgrade(proxyAddress, logicV2.address);
+
+    const mApt = await ethers.getContractAt(
+      "TestMetaPoolTokenV2",
+      proxyAddress
+    );
 
     return mApt;
   }
@@ -244,11 +257,8 @@ describe("Contract: MetaPoolToken", () => {
         "initializeUpgrade()",
         []
       );
-      const proxyAdmin = await getProxyAdmin(mApt.address);
       await expect(
-        proxyAdmin
-          .connect(emergencySafeSigner)
-          .upgradeAndCall(mApt.address, logic.address, initData)
+        proxyAdmin.upgradeAndCall(mApt.address, logic.address, initData)
       ).to.not.be.reverted;
     });
 
@@ -895,6 +905,45 @@ describe("Contract: MetaPoolToken", () => {
     });
   });
 
+  describe("getLpAccountBalances", () => {
+    it("Return empty array when given an empty array", async () => {
+      const result = await mApt.getLpAccountBalances([]);
+      expect(result).to.deep.equal([]);
+    });
+
+    it("Return array of available stablecoin balances of LP Account", async () => {
+      const daiToken = await deployMockContract(deployer, IDetailedERC20.abi);
+      const daiAvailableAmount = tokenAmountToBigNumber("15325", "18");
+      await daiToken.mock.balanceOf
+        .withArgs(lpAccount.address)
+        .returns(daiAvailableAmount);
+
+      const daiPool = await deployMockContract(deployer, PoolTokenV2.abi);
+      await daiPool.mock.underlyer.returns(daiToken.address);
+      await addressRegistry.mock.getAddress
+        .withArgs(bytes32("daiPool"))
+        .returns(daiPool.address);
+
+      const usdcToken = await deployMockContract(deployer, IDetailedERC20.abi);
+      const usdcAvailableAmount = tokenAmountToBigNumber("110200", "6");
+      await usdcToken.mock.balanceOf
+        .withArgs(lpAccount.address)
+        .returns(usdcAvailableAmount);
+
+      const usdcPool = await deployMockContract(deployer, PoolTokenV2.abi);
+      await usdcPool.mock.underlyer.returns(usdcToken.address);
+      await addressRegistry.mock.getAddress
+        .withArgs(bytes32("usdcPool"))
+        .returns(usdcPool.address);
+
+      const result = await mApt.getLpAccountBalances([
+        bytes32("daiPool"),
+        bytes32("usdcPool"),
+      ]);
+      deepEqual(result, [daiAvailableAmount, usdcAvailableAmount]);
+    });
+  });
+
   describe("_getFundAmounts", () => {
     it("Returns empty array given empty array", async () => {
       const result = await mApt.testGetFundAmounts([]);
@@ -951,25 +1000,29 @@ describe("Contract: MetaPoolToken", () => {
     });
   });
 
-  describe("_getWithdrawAmounts", () => {
+  describe("_calculateAmountsToWithdraw", () => {
     it("Returns empty array given empty array", async () => {
-      const result = await mApt.testGetWithdrawAmounts([]);
+      const result = await mApt.testCalculateAmountsToWithdraw([], []);
       expect(result).to.be.empty;
     });
 
     it("Replaces negatives with zeros", async () => {
-      let amounts = [
+      let topupAmounts = [
         tokenAmountToBigNumber("159"),
         tokenAmountToBigNumber("1777"),
         tokenAmountToBigNumber("11"),
         tokenAmountToBigNumber("122334"),
       ];
-      let expectedResult = amounts;
-      let result = await mApt.testGetWithdrawAmounts(amounts);
+      let availableAmounts = topupAmounts;
+      let expectedResult = topupAmounts;
+      let result = await mApt.testCalculateAmountsToWithdraw(
+        topupAmounts,
+        availableAmounts
+      );
 
       deepEqual(expectedResult, result);
 
-      amounts = [
+      topupAmounts = [
         tokenAmountToBigNumber("159"),
         tokenAmountToBigNumber("0"),
         tokenAmountToBigNumber("-1777"),
@@ -985,7 +1038,86 @@ describe("Contract: MetaPoolToken", () => {
         tokenAmountToBigNumber("122334"),
         tokenAmountToBigNumber("0"),
       ];
-      result = await mApt.testGetWithdrawAmounts(amounts);
+      availableAmounts = expectedResult;
+      result = await mApt.testCalculateAmountsToWithdraw(
+        topupAmounts,
+        availableAmounts
+      );
+      deepEqual(expectedResult, result);
+    });
+
+    it("Uses minimum of topup and available amounts", async () => {
+      let topupAmounts = [
+        tokenAmountToBigNumber("159"),
+        tokenAmountToBigNumber("1777"),
+        tokenAmountToBigNumber("11"),
+        tokenAmountToBigNumber("122334"),
+      ];
+      let availableAmounts = [
+        tokenAmountToBigNumber("122334"),
+        tokenAmountToBigNumber("122334"),
+        tokenAmountToBigNumber("122334"),
+        tokenAmountToBigNumber("122334"),
+      ];
+      let expectedResult = topupAmounts;
+      let result = await mApt.testCalculateAmountsToWithdraw(
+        topupAmounts,
+        availableAmounts
+      );
+      deepEqual(expectedResult, result);
+
+      topupAmounts = [
+        tokenAmountToBigNumber("159"),
+        tokenAmountToBigNumber("1777"),
+        tokenAmountToBigNumber("11"),
+        tokenAmountToBigNumber("122334"),
+      ];
+      availableAmounts = [
+        tokenAmountToBigNumber("1000"),
+        tokenAmountToBigNumber("1000"),
+        tokenAmountToBigNumber("1000"),
+        tokenAmountToBigNumber("1000"),
+      ];
+      expectedResult = [
+        tokenAmountToBigNumber("159"),
+        tokenAmountToBigNumber("1000"),
+        tokenAmountToBigNumber("11"),
+        tokenAmountToBigNumber("1000"),
+      ];
+      result = await mApt.testCalculateAmountsToWithdraw(
+        topupAmounts,
+        availableAmounts
+      );
+      deepEqual(expectedResult, result);
+
+      topupAmounts = [
+        tokenAmountToBigNumber("159"),
+        tokenAmountToBigNumber("0"),
+        tokenAmountToBigNumber("-1777"),
+        tokenAmountToBigNumber("-11"),
+        tokenAmountToBigNumber("122334"),
+        tokenAmountToBigNumber("0"),
+      ];
+      availableAmounts = [
+        tokenAmountToBigNumber("1000"),
+        tokenAmountToBigNumber("1"),
+        tokenAmountToBigNumber("100"),
+        tokenAmountToBigNumber("0"),
+        tokenAmountToBigNumber("10000"),
+        tokenAmountToBigNumber("10"),
+      ];
+      expectedResult = [
+        tokenAmountToBigNumber("159"),
+        tokenAmountToBigNumber("0"),
+        tokenAmountToBigNumber("0"),
+        tokenAmountToBigNumber("0"),
+        tokenAmountToBigNumber("10000"),
+        tokenAmountToBigNumber("0"),
+      ];
+      result = await mApt.testCalculateAmountsToWithdraw(
+        topupAmounts,
+        availableAmounts
+      );
       deepEqual(expectedResult, result);
     });
   });

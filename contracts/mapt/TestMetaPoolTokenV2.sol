@@ -2,13 +2,13 @@
 pragma solidity 0.6.11;
 
 import {IReservePool} from "contracts/pool/Imports.sol";
-import {MetaPoolToken} from "./MetaPoolToken.sol";
+import {MetaPoolTokenV2} from "./MetaPoolTokenV2.sol";
 
 /**
  * @dev Proxy contract to test internal variables and functions
  * Should not be used other than in test files!
  */
-contract TestMetaPoolToken is MetaPoolToken {
+contract TestMetaPoolTokenV2 is MetaPoolTokenV2 {
     /// @dev useful for changing supply during calc tests
     function testMint(address account, uint256 amount) public {
         _mint(account, amount);
@@ -95,11 +95,10 @@ contract TestMetaPoolToken is MetaPoolToken {
         return _getFundAmounts(amounts);
     }
 
-    function testGetWithdrawAmounts(int256[] memory amounts)
-        public
-        pure
-        returns (uint256[] memory)
-    {
-        return _getWithdrawAmounts(amounts);
+    function testCalculateAmountsToWithdraw(
+        int256[] memory topupAmounts,
+        uint256[] memory lpAccountBalances
+    ) public pure returns (uint256[] memory) {
+        return _calculateAmountsToWithdraw(topupAmounts, lpAccountBalances);
     }
 }
