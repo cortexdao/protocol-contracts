@@ -162,12 +162,10 @@ contract MetaPoolToken is
         nonReentrant
         onlyLpRole
     {
-        (IReservePool[] memory pools, int256[] memory topupAmounts) =
+        (IReservePool[] memory pools, int256[] memory amounts) =
             getRebalanceAmounts(poolIds);
 
-        uint256[] memory lpAccountBalances = getLpAccountBalances(poolIds);
-        uint256[] memory withdrawAmounts =
-            _calculateAmountsToWithdraw(topupAmounts, lpAccountBalances);
+        uint256[] memory withdrawAmounts = _getWithdrawAmounts(amounts);
 
         _withdrawFromLpAccount(pools, withdrawAmounts);
         emit WithdrawFromLpAccount(poolIds, withdrawAmounts);
@@ -212,27 +210,6 @@ contract MetaPoolToken is
         }
 
         return (pools, rebalanceAmounts);
-    }
-
-    function getLpAccountBalances(bytes32[] memory poolIds)
-        public
-        view
-        returns (uint256[] memory)
-    {
-        address lpAccountAddress = addressRegistry.lpAccountAddress();
-        require(lpAccountAddress != address(0), "INVALID_LP_ACCOUNT"); // defensive check -- should never happen
-
-        uint256[] memory lpAccountBalances = new uint256[](poolIds.length);
-
-        for (uint256 i = 0; i < poolIds.length; i++) {
-            IReservePool pool =
-                IReservePool(addressRegistry.getAddress(poolIds[i]));
-            IDetailedERC20 underlyer = IDetailedERC20(pool.underlyer());
-
-            lpAccountBalances[i] = underlyer.balanceOf(lpAccountAddress);
-        }
-
-        return lpAccountBalances;
     }
 
     function _setAddressRegistry(address addressRegistry_) internal {
@@ -288,10 +265,6 @@ contract MetaPoolToken is
         emit Mint(address(pool), mintAmount);
     }
 
-    /**
-     * @dev Transfer the specified amounts to pools, doing mAPT burns,
-     * and checking the transferred tokens have been registered.
-     */
     function _withdrawFromLpAccount(
         IReservePool[] memory pools,
         uint256[] memory amounts
@@ -465,23 +438,17 @@ contract MetaPoolToken is
         return fundAmounts;
     }
 
-    /**
-     * @dev Calculate amounts used for topup, taking into
-     * account the available LP Account balances.
-     */
-    function _calculateAmountsToWithdraw(
-        int256[] memory topupAmounts,
-        uint256[] memory lpAccountBalances
-    ) internal pure returns (uint256[] memory) {
-        uint256[] memory withdrawAmounts = new uint256[](topupAmounts.length);
-        for (uint256 i = 0; i < topupAmounts.length; i++) {
-            int256 topupAmount = topupAmounts[i];
+    function _getWithdrawAmounts(int256[] memory amounts)
+        internal
+        pure
+        returns (uint256[] memory)
+    {
+        uint256[] memory withdrawAmounts = new uint256[](amounts.length);
 
-            uint256 withdrawAmount = topupAmount > 0 ? uint256(topupAmount) : 0;
-            uint256 lpAccountBalance = lpAccountBalances[i];
-            withdrawAmounts[i] = withdrawAmount > lpAccountBalance
-                ? lpAccountBalance
-                : withdrawAmount;
+        for (uint256 i = 0; i < amounts.length; i++) {
+            int256 amount = amounts[i];
+
+            withdrawAmounts[i] = amount > 0 ? uint256(amount) : 0;
         }
 
         return withdrawAmounts;

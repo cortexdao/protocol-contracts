@@ -120,7 +120,9 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
       addressRegistryLogicV2.address
     );
 
-    addressRegistry = AddressRegistryV2.attach(addressRegistryProxy.address);
+    addressRegistry = await AddressRegistryV2.attach(
+      addressRegistryProxy.address
+    );
     /* The address registry needs multiple addresses registered
      * to setup the roles for access control in the contract
      * constructors:
@@ -181,7 +183,7 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
       initData
     );
 
-    mApt = MetaPoolToken.attach(mAptProxy.address).connect(lpSafe);
+    mApt = await MetaPoolToken.attach(mAptProxy.address).connect(lpSafe);
     await addressRegistry.registerAddress(bytes32("mApt"), mApt.address);
 
     /*****************************/
@@ -203,7 +205,7 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
       lpAccountInitData
     );
 
-    lpAccount = LpAccount.attach(lpAccountProxy.address);
+    lpAccount = await LpAccount.attach(lpAccountProxy.address);
     await addressRegistry.registerAddress(
       bytes32("lpAccount"),
       lpAccount.address
@@ -244,7 +246,7 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
         poolLogicV2.address,
         poolTokenV2InitData
       );
-      const pool = PoolTokenV2.attach(poolProxy.address);
+      const pool = await PoolTokenV2.attach(poolProxy.address);
 
       const poolId = bytes32(symbol.toLowerCase() + "Pool");
       await addressRegistry.registerAddress(poolId, pool.address);
@@ -814,35 +816,6 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
     });
 
     describe("_withdrawFromLpAccount", () => {
-      it("Withdrawing zero amount skips burn and transfer", async () => {
-        // pre-conditions
-        expect(await daiToken.balanceOf(lpAccount.address)).to.equal(0);
-        expect(await mApt.totalSupply()).to.equal(0);
-
-        const zeroAmount = tokenAmountToBigNumber(0, 18);
-        await expect(
-          mApt.testWithdrawFromLpAccount([daiPool.address], [zeroAmount])
-        ).to.not.emit(mApt, "Burn");
-
-        await oracleAdapter.connect(emergencySafe).emergencyUnlock();
-
-        // test zero withdrawal again but with mAPT supply and other values non-zero
-        const transferAmount = tokenAmountToBigNumber("10", 18);
-        await mApt.testFundLpAccount([daiPool.address], [transferAmount]);
-
-        // adjust the TVL appropriately, as there is no Chainlink to update it
-        await oracleAdapter.connect(emergencySafe).emergencyUnlock(); // needed to get value
-        const tvl = await daiPool.getValueFromUnderlyerAmount(transferAmount);
-        await oracleAdapter.connect(emergencySafe).emergencySetTvl(tvl, 100);
-
-        await expect(
-          mApt.testWithdrawFromLpAccount(
-            [daiPool.address],
-            [tokenAmountToBigNumber(0, 18)]
-          )
-        ).to.not.emit(mApt, "Burn");
-      });
-
       it("Withdrawal updates balances correctly (single pool)", async () => {
         const transferAmount = tokenAmountToBigNumber("10", 18);
         await mApt.testFundLpAccount([daiPool.address], [transferAmount]);
@@ -1219,27 +1192,6 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
         await timeMachine.revertToSnapshot(snapshotId);
       });
 
-      async function setTvlToLpAccountValue() {
-        await oracleAdapter.connect(emergencySafe).emergencyUnlock();
-
-        const startLpDaiBalance = await daiToken.balanceOf(lpAccount.address);
-        const daiUsdValue = await daiPool.getValueFromUnderlyerAmount(
-          startLpDaiBalance
-        );
-        const startLpUsdcBalance = await usdcToken.balanceOf(lpAccount.address);
-        const usdcUsdValue = await usdcPool.getValueFromUnderlyerAmount(
-          startLpUsdcBalance
-        );
-        const startLpUsdtBalance = await usdtToken.balanceOf(lpAccount.address);
-        const usdtUsdValue = await usdtPool.getValueFromUnderlyerAmount(
-          startLpUsdtBalance
-        );
-        const totalUsdValue = daiUsdValue.add(usdcUsdValue).add(usdtUsdValue);
-        await oracleAdapter
-          .connect(emergencySafe)
-          .emergencySetTvl(totalUsdValue, 50);
-      }
-
       it("Seed LP Account with funds", async () => {
         for (const [id, pool, underlyer] of _.zip(ids, pools, underlyers)) {
           // FIXME: the test setup assumes each pool will have the same
@@ -1413,40 +1365,59 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
         expect(poolBalance.sub(expectedPoolBalance).abs()).to.be.lt(3);
       });
 
-      it("Can withdraw to pool when top-up is more than available", async () => {
-        // Increase TVL so that the top-up amount is much larger than
-        // the LP Account balance
+      it("Revert when erroneous TVL is humongous", async () => {
         const prevTvl = await oracleAdapter.getTvl();
-        const tvl = prevTvl.mul(1000);
+        const tvl = prevTvl.mul(2000);
         await oracleAdapter.connect(emergencySafe).emergencySetTvl(tvl, 50);
 
-        const [usdcAvailableAmount] = await mApt.getLpAccountBalances([
-          usdcPoolId,
-        ]);
-        console.debug("Available amount (USDC): %s", usdcAvailableAmount);
-        const [, rebalanceAmounts] = await mApt.getRebalanceAmounts([
-          usdcPoolId,
-        ]);
-        console.debug("Rebalance amount (USDC): %s", rebalanceAmounts[0]);
-        expect(usdcAvailableAmount).to.be.lt(rebalanceAmounts[0]);
+        await expect(
+          mApt.withdrawFromLpAccount([usdcPoolId])
+        ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
 
-        const poolBalance = await usdcToken.balanceOf(usdcPool.address);
-        await mApt.withdrawFromLpAccount([usdcPoolId]);
-        expect(await usdcToken.balanceOf(usdcPool.address)).to.equal(
-          poolBalance.add(usdcAvailableAmount)
-        );
-
-        await setTvlToLpAccountValue();
+        // reset TVL to "normal" value
+        await oracleAdapter.connect(emergencySafe).emergencySetTvl(prevTvl, 50);
       });
+
+      async function setTvlToLpAccountValue() {
+        await oracleAdapter.connect(emergencySafe).emergencyUnlock();
+
+        const startLpDaiBalance = await daiToken.balanceOf(lpAccount.address);
+        const daiUsdValue = await daiPool.getValueFromUnderlyerAmount(
+          startLpDaiBalance
+        );
+        const startLpUsdcBalance = await usdcToken.balanceOf(lpAccount.address);
+        const usdcUsdValue = await usdcPool.getValueFromUnderlyerAmount(
+          startLpUsdcBalance
+        );
+        const startLpUsdtBalance = await usdtToken.balanceOf(lpAccount.address);
+        const usdtUsdValue = await usdtPool.getValueFromUnderlyerAmount(
+          startLpUsdtBalance
+        );
+        const totalUsdValue = daiUsdValue.add(usdcUsdValue).add(usdtUsdValue);
+        await oracleAdapter
+          .connect(emergencySafe)
+          .emergencySetTvl(totalUsdValue, 50);
+      }
 
       it("Can withdraw the full TVL by setting high reserve pool size", async () => {
         // Reset TVL to the actual USD value of LP Account balances to
         // undo previous TVL manipulations.
-        await setTvlToLpAccountValue();
-
         const startLpDaiBalance = await daiToken.balanceOf(lpAccount.address);
+        const daiUsdValue = await daiPool.getValueFromUnderlyerAmount(
+          startLpDaiBalance
+        );
         const startLpUsdcBalance = await usdcToken.balanceOf(lpAccount.address);
+        const usdcUsdValue = await usdcPool.getValueFromUnderlyerAmount(
+          startLpUsdcBalance
+        );
         const startLpUsdtBalance = await usdtToken.balanceOf(lpAccount.address);
+        const usdtUsdValue = await usdtPool.getValueFromUnderlyerAmount(
+          startLpUsdtBalance
+        );
+        const totalUsdValue = daiUsdValue.add(usdcUsdValue).add(usdtUsdValue);
+        await oracleAdapter
+          .connect(emergencySafe)
+          .emergencySetTvl(totalUsdValue, 50);
 
         const amount = "1500";
 
@@ -1507,34 +1478,15 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
         expect(daiTopUp).to.be.gt(0);
         expect(usdcTopUp).to.be.gt(0);
         expect(usdtTopUp).to.be.gt(0);
-        console.debug("DAI topup: %s", daiTopUp);
-        console.debug("DAI balance: %s", prevLpDaiBalance);
-        console.debug("USDC topup: %s", usdcTopUp);
-        console.debug("USDC balance: %s", prevLpUsdcBalance);
-        console.debug("Tether topup: %s", usdtTopUp);
-        console.debug("Tether balance: %s", prevLpUsdtBalance);
 
         await oracleAdapter.connect(emergencySafe).emergencyUnlock();
-
-        // Swap all stables to DAI and top-up DAI pool.
-        //
-        // A prior version of `withdrawFromLpAccount` used to
-        // revert if the available DAI balance for the LP account
-        // was less than the top-up amount.
-        //
-        // Since the revert no longer happens, we need to do the
-        // swaps to ensure we do the full top-up.
         await lpAccount
           .connect(lpSafe)
           .swapWith3Pool(1, 0, prevLpUsdcBalance, 0);
-        await lpAccount
-          .connect(lpSafe)
-          .swapWith3Pool(2, 0, prevLpUsdtBalance, 0);
         await setTvlToLpAccountValue();
         await mApt.withdrawFromLpAccount([daiPoolId]);
         await setTvlToLpAccountValue();
 
-        // Swap DAI to USDC and top-up USDC pool.
         const currentDaiBalance = await daiToken.balanceOf(lpAccount.address);
         await lpAccount
           .connect(lpSafe)
@@ -1543,7 +1495,6 @@ describe("Contract: MetaPoolToken - funding and withdrawing", () => {
         await mApt.withdrawFromLpAccount([usdcPoolId]);
         await setTvlToLpAccountValue();
 
-        // Swap USDC to Tether and top-up Tether pool.
         const currentUsdcBalance = await usdcToken.balanceOf(lpAccount.address);
         await lpAccount
           .connect(lpSafe)
