@@ -9,7 +9,6 @@ const {
   tokenAmountToBigNumber,
   bytes32,
   impersonateAccount,
-  forciblySendEth,
   deepEqual,
   getProxyAdmin,
 } = require("../utils/helpers");
@@ -18,6 +17,8 @@ const OracleAdapter = artifacts.readArtifactSync("OracleAdapter");
 const PoolTokenV2 = artifacts.readArtifactSync("PoolTokenV2");
 const IDetailedERC20 = artifacts.readArtifactSync("IDetailedERC20");
 
+const MAINNET_PROXY_ADMIN = "0x7965283631253DfCb71Db63a60C656DEDF76234f";
+const MAINNET_POOL_DEPLOYER = "0x6EAF0ab3455787bA10089800dB91F11fDf6370BE";
 const MAINNET_ADDRESS_REGISTRY = "0x7EC81B7035e91f8435BdEb2787DCBd51116Ad303";
 const MAINNET_ADDRESS_REGISTRY_DEPLOYER =
   "0x720edBE8Bb4C3EA38F370bFEB429D715b48801e3";
@@ -41,6 +42,7 @@ describe("Contract: MetaPoolToken", () => {
 
   // deployed contracts
   let mApt;
+  let proxyAdmin;
 
   // mocks
   let adminSafe;
@@ -73,16 +75,21 @@ describe("Contract: MetaPoolToken", () => {
     await timeMachine.revertToSnapshot(suiteSnapshotId);
   });
 
-  before("Setup mocks with MAINNET addresses", async () => {
+  before("Setup contracts with MAINNET addresses", async () => {
     [deployer] = await ethers.getSigners();
+
+    // Deploying the proxy admin with the pool deployer at nonce 0
+    // will create the same Mainnet address as the real proxy admin
+    const poolDeployer = await impersonateAccount(MAINNET_POOL_DEPLOYER);
+    const ProxyAdmin = await ethers.getContractFactory(
+      "ProxyAdmin",
+      poolDeployer
+    );
+    proxyAdmin = await ProxyAdmin.deploy();
+    expect(proxyAdmin.address).to.equal(MAINNET_PROXY_ADMIN);
 
     const registryDeployer = await impersonateAccount(
       MAINNET_ADDRESS_REGISTRY_DEPLOYER
-    );
-    await forciblySendEth(
-      registryDeployer.address,
-      tokenAmountToBigNumber(5),
-      deployer.address
     );
     // Set the nonce to 3 before deploying the mock contract with the
     // Mainnet registry deployer; this will ensure the mock address
@@ -127,11 +134,6 @@ describe("Contract: MetaPoolToken", () => {
 
     // create signer for few cases where we need to connect with Emergency Safe
     emergencySafeSigner = await impersonateAccount(emergencySafe.address);
-    await forciblySendEth(
-      emergencySafe.address,
-      tokenAmountToBigNumber(1),
-      deployer.address
-    );
   });
 
   before("Deploy mAPT", async () => {
@@ -212,10 +214,7 @@ describe("Contract: MetaPoolToken", () => {
     );
     const logicV2 = await MetaPoolTokenV2.deploy();
 
-    const proxyAdmin = await getProxyAdmin(proxyAddress);
-    await proxyAdmin
-      .connect(emergencySafeSigner)
-      .upgrade(proxyAddress, logicV2.address);
+    await proxyAdmin.upgrade(proxyAddress, logicV2.address);
 
     const mApt = await ethers.getContractAt(
       "TestMetaPoolTokenV2",
@@ -258,11 +257,8 @@ describe("Contract: MetaPoolToken", () => {
         "initializeUpgrade()",
         []
       );
-      const proxyAdmin = await getProxyAdmin(mApt.address);
       await expect(
-        proxyAdmin
-          .connect(emergencySafeSigner)
-          .upgradeAndCall(mApt.address, logic.address, initData)
+        proxyAdmin.upgradeAndCall(mApt.address, logic.address, initData)
       ).to.not.be.reverted;
     });
 
