@@ -1004,7 +1004,7 @@ describe("Contract: MetaPoolToken", () => {
     });
   });
 
-  describe("_getWithdrawAmounts", () => {
+  describe("_calculateAmountsToWithdraw", () => {
     it("Returns empty array given empty array", async () => {
       const result = await mApt.testCalculateAmountsToWithdraw([], []);
       expect(result).to.be.empty;
