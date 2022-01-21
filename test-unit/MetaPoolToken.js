@@ -909,6 +909,45 @@ describe("Contract: MetaPoolToken", () => {
     });
   });
 
+  describe("getLpAccountBalances", () => {
+    it("Return empty array when given an empty array", async () => {
+      const result = await mApt.getLpAccountBalances([]);
+      expect(result).to.deep.equal([]);
+    });
+
+    it("Return array of available stablecoin balances of LP Account", async () => {
+      const daiToken = await deployMockContract(deployer, IDetailedERC20.abi);
+      const daiAvailableAmount = tokenAmountToBigNumber("15325", "18");
+      await daiToken.mock.balanceOf
+        .withArgs(lpAccount.address)
+        .returns(daiAvailableAmount);
+
+      const daiPool = await deployMockContract(deployer, PoolTokenV2.abi);
+      await daiPool.mock.underlyer.returns(daiToken.address);
+      await addressRegistry.mock.getAddress
+        .withArgs(bytes32("daiPool"))
+        .returns(daiPool.address);
+
+      const usdcToken = await deployMockContract(deployer, IDetailedERC20.abi);
+      const usdcAvailableAmount = tokenAmountToBigNumber("110200", "6");
+      await usdcToken.mock.balanceOf
+        .withArgs(lpAccount.address)
+        .returns(usdcAvailableAmount);
+
+      const usdcPool = await deployMockContract(deployer, PoolTokenV2.abi);
+      await usdcPool.mock.underlyer.returns(usdcToken.address);
+      await addressRegistry.mock.getAddress
+        .withArgs(bytes32("usdcPool"))
+        .returns(usdcPool.address);
+
+      const result = await mApt.getLpAccountBalances([
+        bytes32("daiPool"),
+        bytes32("usdcPool"),
+      ]);
+      deepEqual(result, [daiAvailableAmount, usdcAvailableAmount]);
+    });
+  });
+
   describe("_getFundAmounts", () => {
     it("Returns empty array given empty array", async () => {
       const result = await mApt.testGetFundAmounts([]);
@@ -967,7 +1006,7 @@ describe("Contract: MetaPoolToken", () => {
 
   describe("_getWithdrawAmounts", () => {
     it("Returns empty array given empty array", async () => {
-      const result = await mApt.testGetWithdrawAmounts([], []);
+      const result = await mApt.testCalculateAmountsToWithdraw([], []);
       expect(result).to.be.empty;
     });
 
@@ -980,7 +1019,7 @@ describe("Contract: MetaPoolToken", () => {
       ];
       let availableAmounts = topupAmounts;
       let expectedResult = topupAmounts;
-      let result = await mApt.testGetWithdrawAmounts(
+      let result = await mApt.testCalculateAmountsToWithdraw(
         topupAmounts,
         availableAmounts
       );
@@ -1004,7 +1043,7 @@ describe("Contract: MetaPoolToken", () => {
         tokenAmountToBigNumber("0"),
       ];
       availableAmounts = expectedResult;
-      result = await mApt.testGetWithdrawAmounts(
+      result = await mApt.testCalculateAmountsToWithdraw(
         topupAmounts,
         availableAmounts
       );
@@ -1025,7 +1064,7 @@ describe("Contract: MetaPoolToken", () => {
         tokenAmountToBigNumber("122334"),
       ];
       let expectedResult = topupAmounts;
-      let result = await mApt.testGetWithdrawAmounts(
+      let result = await mApt.testCalculateAmountsToWithdraw(
         topupAmounts,
         availableAmounts
       );
@@ -1049,7 +1088,7 @@ describe("Contract: MetaPoolToken", () => {
         tokenAmountToBigNumber("11"),
         tokenAmountToBigNumber("1000"),
       ];
-      result = await mApt.testGetWithdrawAmounts(
+      result = await mApt.testCalculateAmountsToWithdraw(
         topupAmounts,
         availableAmounts
       );
@@ -1079,7 +1118,7 @@ describe("Contract: MetaPoolToken", () => {
         tokenAmountToBigNumber("10000"),
         tokenAmountToBigNumber("0"),
       ];
-      result = await mApt.testGetWithdrawAmounts(
+      result = await mApt.testCalculateAmountsToWithdraw(
         topupAmounts,
         availableAmounts
       );

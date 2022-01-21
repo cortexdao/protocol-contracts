@@ -288,6 +288,10 @@ contract MetaPoolTokenV2 is
         emit Mint(address(pool), mintAmount);
     }
 
+    /**
+     * @dev Transfer the specified amounts to pools, doing mAPT burns,
+     * and checking the transferred tokens have been registered.
+     */
     function _withdrawFromLpAccount(
         IReservePool[] memory pools,
         uint256[] memory amounts

@@ -2,7 +2,6 @@
 pragma solidity 0.6.11;
 
 import {IReservePool} from "contracts/pool/Imports.sol";
-
 import {MetaPoolToken} from "./MetaPoolToken.sol";
 
 /**
