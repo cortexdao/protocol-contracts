@@ -23,6 +23,9 @@ const PROXY_ADMIN_ADDRESS = "0x3221dB7344A6DBc07414F342F6A65d6Af70045aE";
 const USDC_ADDRESS = "0xeb8f08a975Ab53E34D8a0330E0D34de942C95926";
 const USDC_ETH_AGG_ADDRESS = "0xdCA36F27cbC4E38aE16C4E9f99D39b42337F6dcf";
 
+const DAI_ADDRESS = "0xc3dbf84Abb494ce5199D5d4D815b10EC29529ff8";
+const DAI_ETH_AGG_ADDRESS = "0x74825DbC8BF76CC4e9494d0ecB210f676Efa001D";
+
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
   const networkName = network.name.toUpperCase();
@@ -54,8 +57,8 @@ async function main(argv) {
     .deploy(
       LOGIC_ADDRESS,
       PROXY_ADMIN_ADDRESS,
-      USDC_ADDRESS,
-      USDC_ETH_AGG_ADDRESS
+      DAI_ADDRESS,
+      DAI_ETH_AGG_ADDRESS
     );
   const receipt = await waitForSafeTxReceipt(
     apy.deployTransaction,
@@ -73,8 +76,8 @@ async function main(argv) {
     constructorArguments: [
       LOGIC_ADDRESS,
       PROXY_ADMIN_ADDRESS,
-      USDC_ADDRESS,
-      USDC_ETH_AGG_ADDRESS,
+      DAI_ADDRESS,
+      DAI_ETH_AGG_ADDRESS,
     ],
   });
 }
