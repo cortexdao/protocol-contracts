@@ -312,11 +312,11 @@ contract LpAccountV2 is
         balances = new uint256[](_rewardTokens.length());
         for (uint256 i = 0; i < _rewardTokens.length(); i++) {
             address tokenAddress = _rewardTokens.at(i);
-            balances[i] = IDetailedERC20(tokenAddress).balanceOf(address(this));
+            balances[i] = IERC20(tokenAddress).balanceOf(address(this));
         }
     }
 
-    function _getRewardsFees(uint256[] preClaimRewardsBalances)
+    function _getRewardsFees(uint256[] memory preClaimRewardsBalances)
         internal
         view
         returns (uint256[] memory rewardsFees)
@@ -325,8 +325,8 @@ contract LpAccountV2 is
         for (uint256 i = 0; i < _rewardTokens.length(); i++) {
             address tokenAddress = _rewardTokens.at(i);
             uint256 postClaimBalance =
-                IDetailedERC20(tokenAddress).balanceOf(address(this));
-            uin256 balanceDelta =
+                IERC20(tokenAddress).balanceOf(address(this));
+            uint256 balanceDelta =
                 postClaimBalance.sub(preClaimRewardsBalances[i]);
             if (balanceDelta > 0) {
                 uint256 fee = _rewardFee[tokenAddress];
@@ -341,7 +341,7 @@ contract LpAccountV2 is
         for (uint256 i = 0; i < _rewardTokens.length(); i++) {
             if (rewardsFees[i] > 0) {
                 address tokenAddress = _rewardTokens.at(i);
-                IDetailedERC20(tokenAddress).transfer(
+                IERC20(tokenAddress).safeTransfer(
                     treasurySafeAddress,
                     rewardsFees[i]
                 );
