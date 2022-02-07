@@ -64,15 +64,8 @@ describe("Contract: LpAccount", () => {
   });
 
   before(async () => {
-    [
-      deployer,
-      lpAccount,
-      lpSafe,
-      emergencySafe,
-      adminSafe,
-      mApt,
-      randomUser,
-    ] = await ethers.getSigners();
+    [deployer, lpAccount, lpSafe, emergencySafe, adminSafe, mApt, randomUser] =
+      await ethers.getSigners();
 
     addressRegistry = await deployMockContract(
       deployer,
@@ -143,11 +136,11 @@ describe("Contract: LpAccount", () => {
         "initializeUpgrade()",
         []
       );
-      // await expect(
-      await proxyAdmin
-        .connect(deployer)
-        .upgradeAndCall(lpAccount.address, logic.address, initData);
-      // ).to.not.be.reverted;
+      await expect(
+        await proxyAdmin
+          .connect(deployer)
+          .upgradeAndCall(lpAccount.address, logic.address, initData)
+      ).to.not.be.reverted;
     });
 
     it("Revert when non-admin attempts `initializeUpgrade`", async () => {
@@ -597,6 +590,69 @@ describe("Contract: LpAccount", () => {
           await expect(
             lpAccount.connect(lpSafe).claim(name)
           ).to.be.revertedWith("MISSING_ERC20_ALLOCATIONS");
+        });
+      });
+
+      describe("Fee deduction from claiming", () => {
+        it("can register reward token with fee", async () => {
+          //
+        });
+
+        it("can register reward token without fee (default fee)", async () => {
+          //
+        });
+
+        it("deducts fee from registered reward token", async () => {
+          const TestRewardZap = await ethers.getContractFactory(
+            "TestRewardZap"
+          );
+          const name = "mockZap";
+          const zap = await TestRewardZap.deploy(name);
+          await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+          const treasurySafeAddress = await generateContractAddress();
+          await lpAccount.setTreasurySafeAddress(treasurySafeAddress);
+
+          const TestErc20 = await ethers.getContractFactory("TestErc20");
+          const testToken_1 = await TestErc20.deploy(
+            "Test ERC20 Token 1",
+            "TET1"
+          );
+          const testToken_2 = await TestErc20.deploy(
+            "Test ERC20 Token 2",
+            "TET2"
+          );
+
+          const fee = 1500; // in bps
+          await lpAccount.registerRewardFee(testToken_1.address, fee);
+
+          expect(await testToken_1.balanceOf(lpAccount.address)).to.equal(0);
+          expect(await testToken_2.balanceOf(treasurySafeAddress)).to.equal(0);
+
+          await lpAccount.connect(lpSafe).claim(name);
+
+          // LP Account should hold balances for both reward tokens
+          expect(await testToken_1.balanceOf(lpAccount.address)).to.be.gt(0);
+          expect(await testToken_2.balanceOf(lpAccount.address)).to.be.gt(0);
+
+          // first token is registered, so expect Treasury Safe to hold a balance
+          expect(await testToken_1.balanceOf(treasurySafeAddress)).to.be.gt(0);
+
+          // second token is not registered, so don't expect Treasury Safe to hold balance
+          expect(await testToken_2.balanceOf(treasurySafeAddress)).to.equal(0);
+
+          // check appropriate fee taken out
+          const treasuryBalance = await testToken_1.balanceOf(
+            treasurySafeAddress
+          );
+          const lpAccountBalance = await testToken_1.balanceOf(
+            lpAccount.address
+          );
+          const totalRewardBalance = treasuryBalance.add(lpAccountBalance);
+          const expectedTreasuryBalanace = totalRewardBalance
+            .mul(fee)
+            .div(1000);
+          expect(treasuryBalance).to.equal(expectedTreasuryBalanace);
         });
       });
     });
