@@ -594,11 +594,23 @@ describe("Contract: LpAccount", () => {
       });
 
       describe("Fee deduction from claiming", () => {
-        it("can register reward token with fee", async () => {
+        it("Emergency Safe can set Treasury Safe address", async () => {
           //
         });
 
-        it("can register reward token without fee (default fee)", async () => {
+        it("Unpermissioned cannot set Treasury Safe address", async () => {
+          //
+        });
+
+        it("Admin Safe can register reward token with fee", async () => {
+          //
+        });
+
+        it("Admin Safe can register reward token without fee (default fee)", async () => {
+          //
+        });
+
+        it("Unpermissioned cannot register reward token with fee", async () => {
           //
         });
 
