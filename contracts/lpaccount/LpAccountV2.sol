@@ -9,6 +9,7 @@ import {
 } from "contracts/common/Imports.sol";
 import {
     Address,
+    EnumerableSet,
     NamedAddressSet,
     SafeERC20,
     SafeMath
@@ -49,9 +50,10 @@ contract LpAccountV2 is
 {
     using Address for address;
     using SafeERC20 for IERC20;
+    using SafeMath for uint256;
     using NamedAddressSet for NamedAddressSet.ZapSet;
     using NamedAddressSet for NamedAddressSet.SwapSet;
-    using SafeMath for uint256;
+    using EnumerableSet for EnumerableSet.AddressSet;
 
     IStableSwap3Pool private constant _STABLE_SWAP_3POOL =
         IStableSwap3Pool(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
@@ -62,6 +64,7 @@ contract LpAccountV2 is
 
     NamedAddressSet.ZapSet private _zaps;
     NamedAddressSet.SwapSet private _swaps;
+    EnumerableSet.AddressSet private _rewardTokens;
 
     /** @notice Log when the address registry is changed */
     event AddressRegistryChanged(address);
@@ -285,10 +288,54 @@ contract LpAccountV2 is
             _checkErc20Registrations(zap.erc20Allocations());
         require(isErc20TokenRegistered, "MISSING_ERC20_ALLOCATIONS");
 
+        uint256[] memory rewardsBalances = _getRewardsBalances();
+
         address(zap).functionDelegateCall(
             abi.encodeWithSelector(IZap.claim.selector)
         );
+
         _lockOracleAdapter(lockPeriod);
+
+        _sendFeesToTreasurySafe(rewardsBalances);
+    }
+
+    function _getRewardsBalances()
+        internal
+        view
+        returns (uint256[] memory balances)
+    {
+        balances = new uint256[](_rewardTokens.length());
+        for (uint256 i = 0; i < _rewardTokens.length(); i++) {
+            address tokenAddress = _rewardTokens.at(i);
+            balances[i] = IDetailedERC20(tokenAddress).balanceOf(address(this));
+        }
+    }
+
+    function _sendFeesToTreasurySafe(uint256[] memory rewardsBalances)
+        internal
+    {
+        uint256[] memory collectedFees = new uint256[](_rewardTokens.length());
+        for (uint256 i = 0; i < _rewardTokens.length(); i++) {
+            address tokenAddress = _rewardTokens.at(i);
+            uint256 newBalance =
+                IDetailedERC20(tokenAddress).balanceOf(address(this));
+            if (newBalance > rewardsBalances[i]) {
+                uin256 balanceDelta = newBalance.sub(rewardsBalances[i]);
+                uint256 fee = _rewardFee[tokenAddress];
+                collectedFee[i] = balanceDelta.mul(fee).div(1000);
+            }
+        }
+        address treasurySafeAddress =
+            addressRegistry.getAddress("treasurySafe");
+        for (uint256 i = 0; i < _rewardTokens.length(); i++) {
+            if (collectedFees[i] > 0) {
+                address tokenAddress = _rewardTokens.at(i);
+                IDetailedERC20(tokenAddress).transfer(
+                    treasurySafeAddress,
+                    collectedFees[i]
+                );
+            }
+        }
     }
 
     function emergencyExit(address token) external override onlyEmergencyRole {
