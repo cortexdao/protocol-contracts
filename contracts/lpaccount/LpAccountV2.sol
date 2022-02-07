@@ -64,7 +64,11 @@ contract LpAccountV2 is
 
     NamedAddressSet.ZapSet private _zaps;
     NamedAddressSet.SwapSet private _swaps;
+
+    /** @dev reward tokens to deduct fees on claim */
     EnumerableSet.AddressSet private _rewardTokens;
+    /** @dev reward token fees in basis points */
+    mapping(address => uint256) private _rewardFee;
 
     /** @notice Log when the address registry is changed */
     event AddressRegistryChanged(address);
@@ -288,7 +292,7 @@ contract LpAccountV2 is
             _checkErc20Registrations(zap.erc20Allocations());
         require(isErc20TokenRegistered, "MISSING_ERC20_ALLOCATIONS");
 
-        uint256[] memory rewardsBalances = _getRewardsBalances();
+        uint256[] memory preClaimRewardsBalances = _getRewardsBalances();
 
         address(zap).functionDelegateCall(
             abi.encodeWithSelector(IZap.claim.selector)
@@ -296,7 +300,8 @@ contract LpAccountV2 is
 
         _lockOracleAdapter(lockPeriod);
 
-        _sendFeesToTreasurySafe(rewardsBalances);
+        uint256[] memory rewardsFees = _getRewardsFees(preClaimRewardsBalances);
+        _sendFeesToTreasurySafe(rewardsFees);
     }
 
     function _getRewardsBalances()
@@ -311,28 +316,34 @@ contract LpAccountV2 is
         }
     }
 
-    function _sendFeesToTreasurySafe(uint256[] memory rewardsBalances)
+    function _getRewardsFees(uint256[] preClaimRewardsBalances)
         internal
+        view
+        returns (uint256[] memory rewardsFees)
     {
-        uint256[] memory collectedFees = new uint256[](_rewardTokens.length());
+        rewardsFees = new uint256[](_rewardTokens.length());
         for (uint256 i = 0; i < _rewardTokens.length(); i++) {
             address tokenAddress = _rewardTokens.at(i);
-            uint256 newBalance =
+            uint256 postClaimBalance =
                 IDetailedERC20(tokenAddress).balanceOf(address(this));
-            if (newBalance > rewardsBalances[i]) {
-                uin256 balanceDelta = newBalance.sub(rewardsBalances[i]);
+            uin256 balanceDelta =
+                postClaimBalance.sub(preClaimRewardsBalances[i]);
+            if (balanceDelta > 0) {
                 uint256 fee = _rewardFee[tokenAddress];
-                collectedFee[i] = balanceDelta.mul(fee).div(1000);
+                rewardsFees[i] = balanceDelta.mul(fee).div(1000);
             }
         }
+    }
+
+    function _sendFeesToTreasurySafe(uint256[] memory rewardsFees) internal {
         address treasurySafeAddress =
             addressRegistry.getAddress("treasurySafe");
         for (uint256 i = 0; i < _rewardTokens.length(); i++) {
-            if (collectedFees[i] > 0) {
+            if (rewardsFees[i] > 0) {
                 address tokenAddress = _rewardTokens.at(i);
                 IDetailedERC20(tokenAddress).transfer(
                     treasurySafeAddress,
-                    collectedFees[i]
+                    rewardsFees[i]
                 );
             }
         }
