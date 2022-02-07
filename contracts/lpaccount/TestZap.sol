@@ -11,8 +11,6 @@ import {IZap} from "./IZap.sol";
 import {TestLpAccountStorage} from "./TestLpAccountStorage.sol";
 
 contract TestZap is IZap, TestLpAccountStorage {
-    string[] internal _sortedSymbols;
-
     constructor(string memory name) public {
         _name = name;
     }
