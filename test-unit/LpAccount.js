@@ -594,14 +594,6 @@ describe("Contract: LpAccount", () => {
       });
 
       describe("Fee deduction from claiming", () => {
-        it("Emergency Safe can set Treasury Safe address", async () => {
-          //
-        });
-
-        it("Unpermissioned cannot set Treasury Safe address", async () => {
-          //
-        });
-
         it("Admin Safe can register reward token with fee", async () => {
           //
         });
@@ -623,7 +615,9 @@ describe("Contract: LpAccount", () => {
           await lpAccount.connect(adminSafe).registerZap(zap.address);
 
           const treasurySafeAddress = await generateContractAddress();
-          await lpAccount.setTreasurySafeAddress(treasurySafeAddress);
+          await addressRegistry.mock.getAddress
+            .withArgs(bytes32("treasurySafe"))
+            .returns(treasurySafeAddress);
 
           const TestErc20 = await ethers.getContractFactory("TestErc20");
           const testToken_1 = await TestErc20.deploy(
