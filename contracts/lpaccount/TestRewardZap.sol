@@ -15,17 +15,17 @@ contract TestRewardZap is IZap, TestLpAccountStorage {
         _name = name;
     }
 
-    function deployLiquidity(uint256[] calldata amounts) external override {
-        _deploysArray.push(amounts);
+    function deployLiquidity(uint256[] calldata) external override {
+        revert("NOT_IMPLEMENTED");
     }
 
     // TODO: push index in addition to amount
-    function unwindLiquidity(uint256 amount, uint8) external override {
-        _unwindsArray.push(amount);
+    function unwindLiquidity(uint256, uint8) external override {
+        revert("NOT_IMPLEMENTED");
     }
 
     function claim() external override {
-        _claimsCounter += 1;
+        revert("NOT_IMPLEMENTED");
     }
 
     // solhint-disable-next-line func-name-mixedcase
@@ -35,7 +35,7 @@ contract TestRewardZap is IZap, TestLpAccountStorage {
 
     // Order of token amounts
     function sortedSymbols() external view override returns (string[] memory) {
-        return _sortedSymbols;
+        revert("NOT_IMPLEMENTED");
     }
 
     function getLpTokenBalance(address)
@@ -44,7 +44,7 @@ contract TestRewardZap is IZap, TestLpAccountStorage {
         override
         returns (uint256)
     {
-        return 444;
+        revert("NOT_IMPLEMENTED");
     }
 
     function assetAllocations()

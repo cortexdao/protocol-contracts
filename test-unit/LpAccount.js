@@ -85,7 +85,7 @@ describe("Contract: LpAccount", () => {
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     proxyAdmin = await ProxyAdmin.deploy();
 
-    LpAccount = await ethers.getContractFactory("TestLpAccount");
+    LpAccount = await ethers.getContractFactory("TestLpAccountV2");
     const logic = await LpAccount.deploy();
 
     const initData = LpAccount.interface.encodeFunctionData(
@@ -593,7 +593,7 @@ describe("Contract: LpAccount", () => {
         });
       });
 
-      describe("Fee deduction from claiming", () => {
+      describe.only("Fee deduction from claiming", () => {
         it("Admin Safe can register reward token with fee", async () => {
           //
         });
@@ -630,7 +630,9 @@ describe("Contract: LpAccount", () => {
           );
 
           const fee = 1500; // in bps
-          await lpAccount.registerRewardFee(testToken_1.address, fee);
+          await lpAccount
+            .connect(adminSafe)
+            .registerRewardFee(testToken_1.address, fee);
 
           expect(await testToken_1.balanceOf(lpAccount.address)).to.equal(0);
           expect(await testToken_2.balanceOf(treasurySafeAddress)).to.equal(0);

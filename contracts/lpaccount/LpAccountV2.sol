@@ -68,7 +68,7 @@ contract LpAccountV2 is
     /** @dev reward tokens to deduct fees on claim */
     EnumerableSet.AddressSet private _rewardTokens;
     /** @dev reward token fees in basis points */
-    mapping(address => uint256) private _rewardFee;
+    mapping(address => uint256) public rewardFee;
 
     /** @notice Log when the address registry is changed */
     event AddressRegistryChanged(address);
@@ -304,6 +304,19 @@ contract LpAccountV2 is
         _sendFeesToTreasurySafe(rewardsFees);
     }
 
+    /**
+     * @notice register a reward token and its fee
+     * @param token address of reward token
+     * @param fee percentage to charge fee in basis points
+     */
+    function registerRewardFee(address token, uint256 fee)
+        external
+        onlyAdminRole
+    {
+        _rewardTokens.add(token);
+        rewardFee[token] = fee;
+    }
+
     function _getRewardsBalances()
         internal
         view
@@ -329,7 +342,7 @@ contract LpAccountV2 is
             uint256 balanceDelta =
                 postClaimBalance.sub(preClaimRewardsBalances[i]);
             if (balanceDelta > 0) {
-                uint256 fee = _rewardFee[tokenAddress];
+                uint256 fee = rewardFee[tokenAddress];
                 rewardsFees[i] = balanceDelta.mul(fee).div(1000);
             }
         }
