@@ -10,6 +10,26 @@ contract TestLpAccountV2 is TestLpAccountStorage, LpAccountV2 {
         _lockOracleAdapter(lockPeriod);
     }
 
+    function testSendFeesToTreasurySafe(uint256[] memory rewardsFees) external {
+        _sendFeesToTreasurySafe(rewardsFees);
+    }
+
+    function testGetRewardsBalances()
+        external
+        view
+        returns (uint256[] memory balances)
+    {
+        return _getRewardsBalances();
+    }
+
+    function testGetRewardsFees(uint256[] memory preClaimRewardsBalances)
+        external
+        view
+        returns (uint256[] memory)
+    {
+        return _getRewardsFees(preClaimRewardsBalances);
+    }
+
     function _deployCalls() external view returns (uint256[][] memory) {
         return _deploysArray;
     }
