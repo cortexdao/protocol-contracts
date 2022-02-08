@@ -25,7 +25,10 @@ contract TestRewardZap is IZap, TestLpAccountStorage {
     }
 
     function claim() external override {
-        revert("NOT_IMPLEMENTED");
+        for (uint256 i = 0; i < _rewardTokens.length; i++) {
+            IERC20 token = _rewardTokens[i];
+            token.transfer(address(this), 1 ether);
+        }
     }
 
     // solhint-disable-next-line func-name-mixedcase
