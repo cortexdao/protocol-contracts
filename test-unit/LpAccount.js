@@ -8,6 +8,7 @@ const {
   bytes32,
   tokenAmountToBigNumber,
   deepEqual,
+  MAX_UINT256,
 } = require("../utils/helpers");
 
 const IAddressRegistryV2 = artifacts.readArtifactSync("IAddressRegistryV2");
@@ -595,15 +596,15 @@ describe("Contract: LpAccount", () => {
 
       describe.only("Fee deduction from claiming", () => {
         it("Admin Safe can register reward token with fee", async () => {
-          //
+          expect.fail();
         });
 
         it("Admin Safe can register reward token without fee (default fee)", async () => {
-          //
+          expect.fail();
         });
 
         it("Unpermissioned cannot register reward token with fee", async () => {
-          //
+          expect.fail();
         });
 
         it("deducts fee from registered reward token", async () => {
@@ -628,6 +629,32 @@ describe("Contract: LpAccount", () => {
             "Test ERC20 Token 2",
             "TET2"
           );
+          await testToken_1.approve(lpAccount.address, MAX_UINT256);
+          await testToken_2.approve(lpAccount.address, MAX_UINT256);
+
+          console.log(
+            "Allowance 1: %s",
+            await testToken_1.allowance(deployer.address, lpAccount.address)
+          );
+          console.log(
+            "Allowance 2: %s",
+            await testToken_2.allowance(deployer.address, lpAccount.address)
+          );
+
+          console.log(
+            "Balance 1: %s",
+            await testToken_1.balanceOf(deployer.address)
+          );
+          console.log(
+            "Balance 2: %s",
+            await testToken_2.balanceOf(deployer.address)
+          );
+
+          await lpAccount.setTestMinter(deployer.address);
+          await lpAccount.setTestRewardTokens([
+            testToken_1.address,
+            testToken_2.address,
+          ]);
 
           const fee = 1500; // in bps
           await lpAccount
@@ -636,6 +663,9 @@ describe("Contract: LpAccount", () => {
 
           expect(await testToken_1.balanceOf(lpAccount.address)).to.equal(0);
           expect(await testToken_2.balanceOf(treasurySafeAddress)).to.equal(0);
+
+          console.log("Deployer: %s", deployer.address);
+          console.log("LP Account: %s", lpAccount.address);
 
           await lpAccount.connect(lpSafe).claim(name);
 
@@ -659,7 +689,7 @@ describe("Contract: LpAccount", () => {
           const totalRewardBalance = treasuryBalance.add(lpAccountBalance);
           const expectedTreasuryBalanace = totalRewardBalance
             .mul(fee)
-            .div(1000);
+            .div(10000);
           expect(treasuryBalance).to.equal(expectedTreasuryBalanace);
         });
       });
