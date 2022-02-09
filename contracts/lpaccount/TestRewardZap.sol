@@ -11,6 +11,8 @@ import {IZap} from "./IZap.sol";
 import {TestLpAccountStorage} from "./TestLpAccountStorage.sol";
 
 contract TestRewardZap is IZap, TestLpAccountStorage {
+    uint256 public constant CLAIM_AMOUNT = 1 ether;
+
     constructor(string memory name) public {
         _name = name;
     }
@@ -24,10 +26,19 @@ contract TestRewardZap is IZap, TestLpAccountStorage {
         revert("NOT_IMPLEMENTED");
     }
 
+    /**
+     * @dev Mock claim mechanism.  Must
+     *      1. set test tokens using `setTestRewardTokens` on LP Account.
+     *      2. approve LP Account to transfer from address set as `_testMinter`.
+     */
     function claim() external override {
         for (uint256 i = 0; i < _testRewardTokens.length; i++) {
             address token = _testRewardTokens[i];
-            IERC20(token).transferFrom(_testMinter, address(this), 1 ether);
+            IERC20(token).transferFrom(
+                _testMinter,
+                address(this),
+                CLAIM_AMOUNT
+            );
         }
     }
 

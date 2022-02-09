@@ -632,24 +632,6 @@ describe("Contract: LpAccount", () => {
           await testToken_1.approve(lpAccount.address, MAX_UINT256);
           await testToken_2.approve(lpAccount.address, MAX_UINT256);
 
-          console.log(
-            "Allowance 1: %s",
-            await testToken_1.allowance(deployer.address, lpAccount.address)
-          );
-          console.log(
-            "Allowance 2: %s",
-            await testToken_2.allowance(deployer.address, lpAccount.address)
-          );
-
-          console.log(
-            "Balance 1: %s",
-            await testToken_1.balanceOf(deployer.address)
-          );
-          console.log(
-            "Balance 2: %s",
-            await testToken_2.balanceOf(deployer.address)
-          );
-
           await lpAccount.setTestMinter(deployer.address);
           await lpAccount.setTestRewardTokens([
             testToken_1.address,
@@ -663,9 +645,6 @@ describe("Contract: LpAccount", () => {
 
           expect(await testToken_1.balanceOf(lpAccount.address)).to.equal(0);
           expect(await testToken_2.balanceOf(treasurySafeAddress)).to.equal(0);
-
-          console.log("Deployer: %s", deployer.address);
-          console.log("LP Account: %s", lpAccount.address);
 
           await lpAccount.connect(lpSafe).claim(name);
 
@@ -683,14 +662,9 @@ describe("Contract: LpAccount", () => {
           const treasuryBalance = await testToken_1.balanceOf(
             treasurySafeAddress
           );
-          const lpAccountBalance = await testToken_1.balanceOf(
-            lpAccount.address
-          );
-          const totalRewardBalance = treasuryBalance.add(lpAccountBalance);
-          const expectedTreasuryBalanace = totalRewardBalance
-            .mul(fee)
-            .div(10000);
-          expect(treasuryBalance).to.equal(expectedTreasuryBalanace);
+          const claimAmount = await zap.CLAIM_AMOUNT();
+          const collectedFee = claimAmount.mul(fee).div(10000);
+          expect(treasuryBalance).to.equal(collectedFee);
         });
       });
     });
