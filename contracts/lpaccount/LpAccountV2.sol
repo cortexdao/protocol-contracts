@@ -343,7 +343,7 @@ contract LpAccountV2 is
                 postClaimBalance.sub(preClaimRewardsBalances[i]);
             if (balanceDelta > 0) {
                 uint256 fee = rewardFee[tokenAddress];
-                rewardsFees[i] = balanceDelta.mul(fee).div(1000);
+                rewardsFees[i] = balanceDelta.mul(fee).div(10000);
             }
         }
     }
