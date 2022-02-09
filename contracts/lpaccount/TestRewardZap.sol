@@ -25,9 +25,9 @@ contract TestRewardZap is IZap, TestLpAccountStorage {
     }
 
     function claim() external override {
-        for (uint256 i = 0; i < _rewardTokens.length; i++) {
-            IERC20 token = _rewardTokens[i];
-            token.transfer(address(this), 1 ether);
+        for (uint256 i = 0; i < _testRewardTokens.length; i++) {
+            address token = _testRewardTokens[i];
+            IERC20(token).transferFrom(_testMinter, address(this), 1 ether);
         }
     }
 

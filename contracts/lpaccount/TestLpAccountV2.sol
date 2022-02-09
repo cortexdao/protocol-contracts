@@ -14,6 +14,14 @@ contract TestLpAccountV2 is TestLpAccountStorage, LpAccountV2 {
         _sendFeesToTreasurySafe(rewardsFees);
     }
 
+    function setTestRewardTokens(address[] memory tokens) external {
+        _testRewardTokens = tokens;
+    }
+
+    function setTestMinter(address minter) external {
+        _testMinter = minter;
+    }
+
     function testGetRewardsBalances()
         external
         view

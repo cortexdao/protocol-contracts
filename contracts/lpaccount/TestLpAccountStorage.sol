@@ -17,5 +17,6 @@ abstract contract TestLpAccountStorage {
     string[] internal _assetAllocations;
     IERC20[] internal _tokens;
 
-    IERC20[] internal _rewardTokens;
+    address internal _testMinter;
+    address[] internal _testRewardTokens;
 }
