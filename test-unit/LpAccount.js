@@ -9,6 +9,7 @@ const {
   tokenAmountToBigNumber,
   deepEqual,
   MAX_UINT256,
+  ZERO_ADDRESS,
 } = require("../utils/helpers");
 
 const IAddressRegistryV2 = artifacts.readArtifactSync("IAddressRegistryV2");
@@ -595,16 +596,24 @@ describe("Contract: LpAccount", () => {
       });
 
       describe.only("Fee deduction from claiming", () => {
-        it("Admin Safe can register reward token with fee", async () => {
-          expect.fail();
+        it("Only Admin Safe can register reward token with fee", async () => {
+          await expect(
+            lpAccount.connect(adminSafe).registerRewardFee(ZERO_ADDRESS, 1500)
+          ).to.not.be.reverted;
+
+          await expect(
+            lpAccount.connect(randomUser).registerRewardFee(ZERO_ADDRESS, 1500)
+          ).to.be.reverted;
         });
 
-        it("Admin Safe can register reward token without fee (default fee)", async () => {
-          expect.fail();
-        });
+        it("Only Admin Safe can register reward token without fee (default fee)", async () => {
+          await expect(
+            lpAccount.connect(adminSafe).registerDefaultRewardFee(ZERO_ADDRESS)
+          ).to.not.be.reverted;
 
-        it("Unpermissioned cannot register reward token with fee", async () => {
-          expect.fail();
+          await expect(
+            lpAccount.connect(randomUser).registerDefaultRewardFee(ZERO_ADDRESS)
+          ).to.be.reverted;
         });
 
         it("deducts fee from registered reward token", async () => {
