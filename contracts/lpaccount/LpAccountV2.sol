@@ -58,10 +58,6 @@ contract LpAccountV2 is
     IStableSwap3Pool private constant _STABLE_SWAP_3POOL =
         IStableSwap3Pool(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
     uint256 private constant _DEFAULT_LOCK_PERIOD = 135;
-    address private constant _CRV_ADDRESS =
-        0xD533a949740bb3306d119CC777fa900bA034cd52;
-    address private constant _CVX_ADDRESS =
-        0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
 
     /**
      * Begin storage variables
@@ -130,11 +126,7 @@ contract LpAccountV2 is
      * proxy admin slot defined in EIP-1967. This will only allow the proxy admin
      * to call this function during upgrades.
      */
-    function initializeUpgrade() external virtual nonReentrant onlyProxyAdmin {
-        // TODO: register CRV and CVX tokens with default fee
-        _registerRewardFee(_CRV_ADDRESS, defaultRewardFee);
-        _registerRewardFee(_CVX_ADDRESS, defaultRewardFee);
-    }
+    function initializeUpgrade() external virtual nonReentrant onlyProxyAdmin {}
 
     /**
      * @notice Sets the address registry
