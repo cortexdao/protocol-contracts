@@ -312,7 +312,9 @@ contract LpAccountV2 is
 
         _lockOracleAdapter(lockPeriod);
 
-        uint256[] memory rewardsFees = _getRewardsFees(preClaimRewardsBalances);
+        uint256[] memory postClaimRewardsBalances = _getRewardsBalances();
+        uint256[] memory rewardsFees =
+            _getRewardsFees(preClaimRewardsBalances, postClaimRewardsBalances);
         _sendFeesToTreasurySafe(rewardsFees);
     }
 
@@ -361,19 +363,16 @@ contract LpAccountV2 is
         }
     }
 
-    function _getRewardsFees(uint256[] memory preClaimRewardsBalances)
-        internal
-        view
-        returns (uint256[] memory rewardsFees)
-    {
+    function _getRewardsFees(
+        uint256[] memory preClaimRewardsBalances,
+        uint256[] memory postClaimRewardsBalances
+    ) internal view returns (uint256[] memory rewardsFees) {
         rewardsFees = new uint256[](_rewardTokens.length());
         for (uint256 i = 0; i < _rewardTokens.length(); i++) {
-            address tokenAddress = _rewardTokens.at(i);
-            uint256 postClaimBalance =
-                IERC20(tokenAddress).balanceOf(address(this));
             uint256 balanceDelta =
-                postClaimBalance.sub(preClaimRewardsBalances[i]);
+                postClaimRewardsBalances[i].sub(preClaimRewardsBalances[i]);
             if (balanceDelta > 0) {
+                address tokenAddress = _rewardTokens.at(i);
                 uint256 fee = rewardFee[tokenAddress];
                 rewardsFees[i] = balanceDelta.mul(fee).div(10000);
             }
