@@ -58,6 +58,10 @@ contract LpAccountV2 is
     IStableSwap3Pool private constant _STABLE_SWAP_3POOL =
         IStableSwap3Pool(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
     uint256 private constant _DEFAULT_LOCK_PERIOD = 135;
+    address private constant _CRV_ADDRESS =
+        0xD533a949740bb3306d119CC777fa900bA034cd52;
+    address private constant _CVX_ADDRESS =
+        0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
 
     /**
      * Begin storage variables
@@ -77,6 +81,8 @@ contract LpAccountV2 is
     EnumerableSet.AddressSet private _rewardTokens;
     /** @dev reward token fees in basis points */
     mapping(address => uint256) public rewardFee;
+    /** @dev default fee to use for rewards claiming */
+    uint256 public defaultRewardFee = 1500;
 
     /**
      * End storage variables
@@ -126,6 +132,8 @@ contract LpAccountV2 is
      */
     function initializeUpgrade() external virtual nonReentrant onlyProxyAdmin {
         // TODO: register CRV and CVX tokens with default fee
+        _registerRewardFee(_CRV_ADDRESS, defaultRewardFee);
+        _registerRewardFee(_CVX_ADDRESS, defaultRewardFee);
     }
 
     /**
@@ -325,8 +333,27 @@ contract LpAccountV2 is
         external
         onlyAdminRole
     {
+        _registerRewardFee(token, fee);
+    }
+
+    /**
+     * @notice register a reward token using the default fee
+     * @param token address of reward token
+     */
+    function registerDefaultRewardFee(address token) external onlyAdminRole {
+        _registerRewardFee(token, defaultRewardFee);
+    }
+
+    function _registerRewardFee(address token, uint256 fee) internal {
         _rewardTokens.add(token);
         rewardFee[token] = fee;
+    }
+
+    function setDefaultRewardFee(uint256 defaultRewardFee_)
+        external
+        onlyAdminRole
+    {
+        defaultRewardFee = defaultRewardFee_;
     }
 
     function _getRewardsBalances()
