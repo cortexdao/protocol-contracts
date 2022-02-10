@@ -728,7 +728,21 @@ describe.only("Contract: LpAccount", () => {
         });
 
         it("_getRewardsBalances", async () => {
-          expect.fail();
+          const amount_1 = tokenAmountToBigNumber(1.5);
+          const amount_2 = tokenAmountToBigNumber(2.23);
+          await testToken_1.transfer(lpAccount.address, amount_1);
+          await testToken_2.transfer(lpAccount.address, amount_2);
+
+          const fee = 1500;
+          await lpAccount
+            .connect(adminSafe)
+            .registerRewardFee(testToken_1.address, fee);
+          await lpAccount
+            .connect(adminSafe)
+            .registerRewardFee(testToken_2.address, fee);
+
+          const balances = await lpAccount.testGetRewardsBalances();
+          deepEqual(balances, [amount_1, amount_2]);
         });
 
         it("_getRewardsFees", async () => {
