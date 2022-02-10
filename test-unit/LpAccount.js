@@ -168,7 +168,8 @@ describe.only("Contract: LpAccount", () => {
     });
 
     it("Revert when non-admin attempts `initializeUpgrade`", async () => {
-      // need to initialize before calling `initializeUpgrade`
+      // Need to initialize before calling `initializeUpgrade`
+      // due to re-entrancy guard needing initialized storage var.
       await logic.initialize(addressRegistry.address);
       await expect(logic.initializeUpgrade()).to.be.revertedWith(
         "PROXY_ADMIN_ONLY"
@@ -217,7 +218,8 @@ describe.only("Contract: LpAccount", () => {
     });
 
     it("Revert when non-admin attempts `initializeUpgrade`", async () => {
-      // need to initialize before calling `initializeUpgrade`
+      // Need to initialize before calling `initializeUpgrade`
+      // due to re-entrancy guard needing initialized storage var.
       await logic.initialize(addressRegistry.address);
       await expect(logic.initializeUpgrade()).to.be.revertedWith(
         "PROXY_ADMIN_ONLY"
