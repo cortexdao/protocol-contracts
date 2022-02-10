@@ -776,8 +776,36 @@ describe.only("Contract: LpAccount", () => {
           deepEqual(collectedFees, [collectedFee_1, collectedFee_2]);
         });
 
-        it("_sendFeesToTreasurySafe", async () => {
-          expect.fail();
+        it.only("_sendFeesToTreasurySafe", async () => {
+          // Register reward tokens
+          await lpAccount
+            .connect(adminSafe)
+            .registerDefaultRewardFee(testToken_1.address);
+          await lpAccount
+            .connect(adminSafe)
+            .registerDefaultRewardFee(testToken_2.address);
+
+          // Send collected fees to LP Account
+          const collectedFee_1 = tokenAmountToBigNumber(12.1);
+          const collectedFee_2 = tokenAmountToBigNumber(0.16);
+          await testToken_1.transfer(lpAccount.address, collectedFee_1);
+          await testToken_2.transfer(lpAccount.address, collectedFee_2);
+
+          await lpAccount.testSendFeesToTreasurySafe([
+            collectedFee_1,
+            collectedFee_2,
+          ]);
+
+          // Transfer histories will include the initial transfer
+          // to the LP Account.
+          deepEqual(await testToken_1.getTransferCalls(), [
+            [lpAccount.address, collectedFee_1],
+            [treasurySafe.address, collectedFee_1],
+          ]);
+          deepEqual(await testToken_2.getTransferCalls(), [
+            [lpAccount.address, collectedFee_2],
+            [treasurySafe.address, collectedFee_2],
+          ]);
         });
 
         it("deducts fee from registered reward token", async () => {
