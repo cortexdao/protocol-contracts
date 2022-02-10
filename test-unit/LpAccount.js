@@ -34,7 +34,7 @@ async function deployMockSwap(name) {
   return swap;
 }
 
-describe.only("Contract: LpAccount", () => {
+describe("Contract: LpAccount", () => {
   // signers
   let deployer;
   let lpSafe;
@@ -776,7 +776,7 @@ describe.only("Contract: LpAccount", () => {
           deepEqual(collectedFees, [collectedFee_1, collectedFee_2]);
         });
 
-        it.only("_sendFeesToTreasurySafe", async () => {
+        it("_sendFeesToTreasurySafe", async () => {
           // Register reward tokens
           await lpAccount
             .connect(adminSafe)
