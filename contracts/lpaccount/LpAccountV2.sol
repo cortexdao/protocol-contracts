@@ -337,6 +337,7 @@ contract LpAccountV2 is
     }
 
     function _registerRewardFee(address token, uint256 fee) internal {
+        require(Address.isContract(token), "INVALID_ADDRESS");
         _rewardTokens.add(token);
         rewardFee[token] = fee;
     }
