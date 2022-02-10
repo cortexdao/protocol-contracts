@@ -9,7 +9,6 @@ const {
   tokenAmountToBigNumber,
   deepEqual,
   MAX_UINT256,
-  ZERO_ADDRESS,
 } = require("../utils/helpers");
 
 const IAddressRegistryV2 = artifacts.readArtifactSync("IAddressRegistryV2");
@@ -669,6 +668,15 @@ describe.only("Contract: LpAccount", () => {
       });
 
       describe("Fee deduction from claiming", () => {
+        let testToken_1;
+        let testToken_2;
+
+        before("Setup mock reward tokens", async () => {
+          const TestErc20 = await ethers.getContractFactory("TestErc20");
+          testToken_1 = await TestErc20.deploy("Test ERC20 Token 1", "TET1");
+          testToken_2 = await TestErc20.deploy("Test ERC20 Token 2", "TET2");
+        });
+
         describe("registerRewardFee", () => {
           it("Cannot register non-contract address", async () => {
             await expect(
@@ -677,28 +685,18 @@ describe.only("Contract: LpAccount", () => {
           });
 
           it("Admin Safe can register reward token with fee", async () => {
-            const contractAddress = await generateContractAddress();
-
             await expect(
               lpAccount
                 .connect(adminSafe)
-                .registerRewardFee(contractAddress, 1500)
+                .registerRewardFee(testToken_1.address, 1500)
             ).to.not.be.reverted;
-
-            await expect(
-              lpAccount
-                .connect(randomUser)
-                .registerRewardFee(contractAddress, 1500)
-            ).to.be.revertedWith("NOT_ADMIN_ROLE");
           });
 
           it("Unpermissioned cannot register reward token with fee", async () => {
-            const contractAddress = await generateContractAddress();
-
             await expect(
               lpAccount
                 .connect(randomUser)
-                .registerRewardFee(contractAddress, 1500)
+                .registerRewardFee(testToken_1.address, 1500)
             ).to.be.revertedWith("NOT_ADMIN_ROLE");
           });
         });
@@ -713,22 +711,18 @@ describe.only("Contract: LpAccount", () => {
           });
 
           it("Admin Safe can register reward token without fee (default fee)", async () => {
-            const contractAddress = await generateContractAddress();
-
             await expect(
               lpAccount
                 .connect(adminSafe)
-                .registerDefaultRewardFee(contractAddress)
+                .registerDefaultRewardFee(testToken_1.address)
             ).to.not.be.reverted;
           });
 
           it("Unpermissioned cannot register reward token without fee (default fee)", async () => {
-            const contractAddress = await generateContractAddress();
-
             await expect(
               lpAccount
                 .connect(randomUser)
-                .registerDefaultRewardFee(contractAddress)
+                .registerDefaultRewardFee(testToken_1.address)
             ).to.be.revertedWith("NOT_ADMIN_ROLE");
           });
         });
@@ -753,15 +747,6 @@ describe.only("Contract: LpAccount", () => {
           const zap = await TestRewardZap.deploy(name);
           await lpAccount.connect(adminSafe).registerZap(zap.address);
 
-          const TestErc20 = await ethers.getContractFactory("TestErc20");
-          const testToken_1 = await TestErc20.deploy(
-            "Test ERC20 Token 1",
-            "TET1"
-          );
-          const testToken_2 = await TestErc20.deploy(
-            "Test ERC20 Token 2",
-            "TET2"
-          );
           await testToken_1.approve(lpAccount.address, MAX_UINT256);
           await testToken_2.approve(lpAccount.address, MAX_UINT256);
 
