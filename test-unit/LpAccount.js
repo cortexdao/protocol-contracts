@@ -668,6 +668,7 @@ describe.only("Contract: LpAccount", () => {
 
       describe("Fee deduction from claiming", () => {
         it("Only Admin Safe can register reward token with fee", async () => {
+          // TODO: check for non-contract address
           await expect(
             lpAccount.connect(adminSafe).registerRewardFee(ZERO_ADDRESS, 1500)
           ).to.not.be.reverted;
@@ -678,6 +679,7 @@ describe.only("Contract: LpAccount", () => {
         });
 
         it("Only Admin Safe can register reward token without fee (default fee)", async () => {
+          // TODO: check for non-contract address
           await expect(
             lpAccount.connect(adminSafe).registerDefaultRewardFee(ZERO_ADDRESS)
           ).to.not.be.reverted;
@@ -686,6 +688,12 @@ describe.only("Contract: LpAccount", () => {
             lpAccount.connect(randomUser).registerDefaultRewardFee(ZERO_ADDRESS)
           ).to.be.reverted;
         });
+
+        it("_getRewardsBalances", async () => {});
+
+        it("_getRewardsFees", async () => {});
+
+        it("_sendFeesToTreasurySafe", async () => {});
 
         it("deducts fee from registered reward token", async () => {
           const TestRewardZap = await ethers.getContractFactory(
