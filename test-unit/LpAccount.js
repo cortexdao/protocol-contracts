@@ -41,6 +41,7 @@ describe.only("Contract: LpAccount", () => {
   let lpSafe;
   let emergencySafe;
   let adminSafe;
+  let treasurySafe;
   let mApt;
   let randomUser;
 
@@ -63,8 +64,16 @@ describe.only("Contract: LpAccount", () => {
   });
 
   before(async () => {
-    [deployer, lpAccount, lpSafe, emergencySafe, adminSafe, mApt, randomUser] =
-      await ethers.getSigners();
+    [
+      deployer,
+      lpAccount,
+      lpSafe,
+      emergencySafe,
+      adminSafe,
+      treasurySafe,
+      mApt,
+      randomUser,
+    ] = await ethers.getSigners();
 
     addressRegistry = await deployMockContract(
       deployer,
@@ -80,6 +89,11 @@ describe.only("Contract: LpAccount", () => {
       emergencySafe.address
     );
     await addressRegistry.mock.mAptAddress.returns(mApt.address);
+    // Needed for the `claim` function, which uses the Treasury Safe as
+    // recipient for collected fees.
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("treasurySafe"))
+      .returns(treasurySafe.address);
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     proxyAdmin = await ProxyAdmin.deploy();
@@ -680,11 +694,6 @@ describe.only("Contract: LpAccount", () => {
           const zap = await TestRewardZap.deploy(name);
           await lpAccount.connect(adminSafe).registerZap(zap.address);
 
-          const treasurySafeAddress = await generateContractAddress();
-          await addressRegistry.mock.getAddress
-            .withArgs(bytes32("treasurySafe"))
-            .returns(treasurySafeAddress);
-
           const TestErc20 = await ethers.getContractFactory("TestErc20");
           const testToken_1 = await TestErc20.deploy(
             "Test ERC20 Token 1",
@@ -709,7 +718,7 @@ describe.only("Contract: LpAccount", () => {
             .registerRewardFee(testToken_1.address, fee);
 
           expect(await testToken_1.balanceOf(lpAccount.address)).to.equal(0);
-          expect(await testToken_2.balanceOf(treasurySafeAddress)).to.equal(0);
+          expect(await testToken_2.balanceOf(treasurySafe.address)).to.equal(0);
 
           await lpAccount.connect(lpSafe).claim(name);
 
@@ -718,14 +727,14 @@ describe.only("Contract: LpAccount", () => {
           expect(await testToken_2.balanceOf(lpAccount.address)).to.be.gt(0);
 
           // first token is registered, so expect Treasury Safe to hold a balance
-          expect(await testToken_1.balanceOf(treasurySafeAddress)).to.be.gt(0);
+          expect(await testToken_1.balanceOf(treasurySafe.address)).to.be.gt(0);
 
           // second token is not registered, so don't expect Treasury Safe to hold balance
-          expect(await testToken_2.balanceOf(treasurySafeAddress)).to.equal(0);
+          expect(await testToken_2.balanceOf(treasurySafe.address)).to.equal(0);
 
           // check appropriate fee taken out
           const treasuryBalance = await testToken_1.balanceOf(
-            treasurySafeAddress
+            treasurySafe.address
           );
           const claimAmount = await zap.CLAIM_AMOUNT();
           const collectedFee = claimAmount.mul(fee).div(10000);
