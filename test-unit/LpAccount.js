@@ -669,33 +669,81 @@ describe.only("Contract: LpAccount", () => {
       });
 
       describe("Fee deduction from claiming", () => {
-        it("Only Admin Safe can register reward token with fee", async () => {
-          // TODO: check for non-contract address
-          await expect(
-            lpAccount.connect(adminSafe).registerRewardFee(ZERO_ADDRESS, 1500)
-          ).to.not.be.reverted;
+        describe("registerRewardFee", () => {
+          it("Cannot register non-contract address", async () => {
+            await expect(
+              lpAccount.connect(adminSafe).registerRewardFee(FAKE_ADDRESS, 1500)
+            ).to.be.revertedWith("INVALID_ADDRESS");
+          });
 
-          await expect(
-            lpAccount.connect(randomUser).registerRewardFee(ZERO_ADDRESS, 1500)
-          ).to.be.reverted;
+          it("Admin Safe can register reward token with fee", async () => {
+            const contractAddress = await generateContractAddress();
+
+            await expect(
+              lpAccount
+                .connect(adminSafe)
+                .registerRewardFee(contractAddress, 1500)
+            ).to.not.be.reverted;
+
+            await expect(
+              lpAccount
+                .connect(randomUser)
+                .registerRewardFee(contractAddress, 1500)
+            ).to.be.revertedWith("NOT_ADMIN_ROLE");
+          });
+
+          it("Unpermissioned cannot register reward token with fee", async () => {
+            const contractAddress = await generateContractAddress();
+
+            await expect(
+              lpAccount
+                .connect(randomUser)
+                .registerRewardFee(contractAddress, 1500)
+            ).to.be.revertedWith("NOT_ADMIN_ROLE");
+          });
         });
 
-        it("Only Admin Safe can register reward token without fee (default fee)", async () => {
-          // TODO: check for non-contract address
-          await expect(
-            lpAccount.connect(adminSafe).registerDefaultRewardFee(ZERO_ADDRESS)
-          ).to.not.be.reverted;
+        describe("registerDefaultRewardFee", () => {
+          it("Cannot register non-contract address", async () => {
+            await expect(
+              lpAccount
+                .connect(adminSafe)
+                .registerDefaultRewardFee(FAKE_ADDRESS)
+            ).to.be.revertedWith("INVALID_ADDRESS");
+          });
 
-          await expect(
-            lpAccount.connect(randomUser).registerDefaultRewardFee(ZERO_ADDRESS)
-          ).to.be.reverted;
+          it("Admin Safe can register reward token without fee (default fee)", async () => {
+            const contractAddress = await generateContractAddress();
+
+            await expect(
+              lpAccount
+                .connect(adminSafe)
+                .registerDefaultRewardFee(contractAddress)
+            ).to.not.be.reverted;
+          });
+
+          it("Unpermissioned cannot register reward token without fee (default fee)", async () => {
+            const contractAddress = await generateContractAddress();
+
+            await expect(
+              lpAccount
+                .connect(randomUser)
+                .registerDefaultRewardFee(contractAddress)
+            ).to.be.revertedWith("NOT_ADMIN_ROLE");
+          });
         });
 
-        it("_getRewardsBalances", async () => {});
+        it("_getRewardsBalances", async () => {
+          expect.fail();
+        });
 
-        it("_getRewardsFees", async () => {});
+        it("_getRewardsFees", async () => {
+          expect.fail();
+        });
 
-        it("_sendFeesToTreasurySafe", async () => {});
+        it("_sendFeesToTreasurySafe", async () => {
+          expect.fail();
+        });
 
         it("deducts fee from registered reward token", async () => {
           const TestRewardZap = await ethers.getContractFactory(
