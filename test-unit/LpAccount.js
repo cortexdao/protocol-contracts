@@ -35,7 +35,7 @@ async function deployMockSwap(name) {
   return swap;
 }
 
-describe("Contract: LpAccount", () => {
+describe.only("Contract: LpAccount", () => {
   // signers
   let deployer;
   let lpSafe;
@@ -43,9 +43,6 @@ describe("Contract: LpAccount", () => {
   let adminSafe;
   let mApt;
   let randomUser;
-
-  // contract factories
-  let LpAccount;
 
   // deployed contracts
   let lpAccount;
@@ -87,8 +84,8 @@ describe("Contract: LpAccount", () => {
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     proxyAdmin = await ProxyAdmin.deploy();
 
-    LpAccount = await ethers.getContractFactory("TestLpAccountV2");
-    const logic = await LpAccount.deploy();
+    const LpAccount = await ethers.getContractFactory("TestLpAccount");
+    const logicV1 = await LpAccount.deploy();
 
     const initData = LpAccount.interface.encodeFunctionData(
       "initialize(address)",
@@ -99,18 +96,28 @@ describe("Contract: LpAccount", () => {
       "TransparentUpgradeableProxy"
     );
     const proxy = await TransparentUpgradeableProxy.deploy(
-      logic.address,
+      logicV1.address,
       proxyAdmin.address,
       initData
     );
 
-    lpAccount = await LpAccount.attach(proxy.address);
+    const LpAccountV2 = await ethers.getContractFactory("TestLpAccountV2");
+    const logicV2 = await LpAccountV2.deploy();
+    const initV2Data = LpAccountV2.interface.encodeFunctionData(
+      "initializeUpgrade()",
+      []
+    );
+    await proxyAdmin.upgradeAndCall(proxy.address, logicV2.address, initV2Data);
+
+    lpAccount = await LpAccountV2.attach(proxy.address);
   });
 
-  describe("Initialization", () => {
+  describe("V1 Initialization", () => {
     let logic;
+    let LpAccount;
 
     before(async () => {
+      LpAccount = await ethers.getContractFactory("TestLpAccount");
       logic = await LpAccount.deploy();
     });
 
@@ -139,7 +146,56 @@ describe("Contract: LpAccount", () => {
         []
       );
       await expect(
-        await proxyAdmin
+        proxyAdmin
+          .connect(deployer)
+          .upgradeAndCall(lpAccount.address, logic.address, initData)
+      ).to.not.be.reverted;
+    });
+
+    it("Revert when non-admin attempts `initializeUpgrade`", async () => {
+      // need to initialize before calling `initializeUpgrade`
+      await logic.initialize(addressRegistry.address);
+      await expect(logic.initializeUpgrade()).to.be.revertedWith(
+        "PROXY_ADMIN_ONLY"
+      );
+    });
+  });
+
+  describe("V2 Initialization", () => {
+    let logic;
+    let LpAccountV2;
+
+    before(async () => {
+      LpAccountV2 = await ethers.getContractFactory("TestLpAccountV2");
+      logic = await LpAccountV2.deploy();
+    });
+
+    it("Allow when address registry is a contract address", async () => {
+      await expect(logic.initialize(addressRegistry.address)).to.not.be
+        .reverted;
+    });
+
+    it("Revert when address registry is not a contract address", async () => {
+      await expect(logic.initialize(FAKE_ADDRESS)).to.be.revertedWith(
+        "INVALID_ADDRESS"
+      );
+    });
+
+    it("Revert when called twice", async () => {
+      await expect(logic.initialize(addressRegistry.address)).to.not.be
+        .reverted;
+      await expect(
+        logic.initialize(addressRegistry.address)
+      ).to.be.revertedWith("Contract instance has already been initialized");
+    });
+
+    it("Proxy admin can call `initializeUpgrade` during upgrade", async () => {
+      const initData = LpAccountV2.interface.encodeFunctionData(
+        "initializeUpgrade()",
+        []
+      );
+      await expect(
+        proxyAdmin
           .connect(deployer)
           .upgradeAndCall(lpAccount.address, logic.address, initData)
       ).to.not.be.reverted;
@@ -595,7 +651,7 @@ describe("Contract: LpAccount", () => {
         });
       });
 
-      describe.only("Fee deduction from claiming", () => {
+      describe("Fee deduction from claiming", () => {
         it("Only Admin Safe can register reward token with fee", async () => {
           await expect(
             lpAccount.connect(adminSafe).registerRewardFee(ZERO_ADDRESS, 1500)

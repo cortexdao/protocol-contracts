@@ -59,16 +59,28 @@ contract LpAccountV2 is
         IStableSwap3Pool(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
     uint256 private constant _DEFAULT_LOCK_PERIOD = 135;
 
+    /**
+     * Begin storage variables
+     */
+
+    /** V1 storage */
+
     IAddressRegistryV2 public addressRegistry;
     uint256 public lockPeriod;
 
     NamedAddressSet.ZapSet private _zaps;
     NamedAddressSet.SwapSet private _swaps;
 
+    /** V2 storage */
+
     /** @dev reward tokens to deduct fees on claim */
     EnumerableSet.AddressSet private _rewardTokens;
     /** @dev reward token fees in basis points */
     mapping(address => uint256) public rewardFee;
+
+    /**
+     * End storage variables
+     */
 
     /** @notice Log when the address registry is changed */
     event AddressRegistryChanged(address);
@@ -106,15 +118,15 @@ contract LpAccountV2 is
     }
 
     /**
-     * @dev Dummy function to show how one would implement an init function
-     * for future upgrades.  Note the `initializer` modifier can only be used
-     * once in the entire contract, so we can't use it here.  Instead, we
-     * protect the upgrade init with the `onlyProxyAdmin` modifier, which
-     * checks `msg.sender` against the proxy admin slot defined in EIP-1967.
-     * This will only allow the proxy admin to call this function during upgrades.
+     * @dev Note the `initializer` modifier can only be used once in the entire
+     * contract, so we can't use it here.  Instead, we protect the upgrade init
+     * with the `onlyProxyAdmin` modifier, which checks `msg.sender` against the
+     * proxy admin slot defined in EIP-1967. This will only allow the proxy admin
+     * to call this function during upgrades.
      */
-    // solhint-disable-next-line no-empty-blocks
-    function initializeUpgrade() external virtual nonReentrant onlyProxyAdmin {}
+    function initializeUpgrade() external virtual nonReentrant onlyProxyAdmin {
+        // TODO: register CRV and CVX tokens with default fee
+    }
 
     /**
      * @notice Sets the address registry
