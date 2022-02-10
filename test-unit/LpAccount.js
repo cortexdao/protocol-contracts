@@ -66,7 +66,6 @@ describe.only("Contract: LpAccount", () => {
   before(async () => {
     [
       deployer,
-      lpAccount,
       lpSafe,
       emergencySafe,
       adminSafe,
@@ -82,7 +81,6 @@ describe.only("Contract: LpAccount", () => {
 
     // These registered addresses are setup for roles in the
     // constructor for LpAccount
-    await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
     await addressRegistry.mock.adminSafeAddress.returns(adminSafe.address);
     await addressRegistry.mock.emergencySafeAddress.returns(
@@ -124,6 +122,9 @@ describe.only("Contract: LpAccount", () => {
     await proxyAdmin.upgradeAndCall(proxy.address, logicV2.address, initV2Data);
 
     lpAccount = await LpAccountV2.attach(proxy.address);
+
+    // needed to unlock the oracle adapter
+    await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
   });
 
   describe("V1 Initialization", () => {
