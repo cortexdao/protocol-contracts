@@ -341,7 +341,7 @@ contract LpAccountV2 is
         address[] calldata tokens,
         uint256[] calldata fees
     ) external onlyAdminRole {
-        require(tokens.length == fees.length, "ARRAY_LENGTH_MISMATCH");
+        require(tokens.length == fees.length, "INPUT_ARRAYS_MISMATCH");
         for (uint256 i = 0; i < tokens.length; i++) {
             _registerRewardFee(tokens[i], fees[i]);
         }
@@ -352,6 +352,7 @@ contract LpAccountV2 is
      * @param token address of reward token
      */
     function registerDefaultRewardFee(address token) external onlyAdminRole {
+        require(defaultRewardFee_ != 0, "INVALID_DEFAULT_REWARD_FEE");
         _registerRewardFee(token, defaultRewardFee);
     }
 
@@ -363,6 +364,7 @@ contract LpAccountV2 is
         external
         onlyAdminRole
     {
+        require(defaultRewardFee_ != 0, "INVALID_DEFAULT_REWARD_FEE");
         for (uint256 i = 0; i < tokens.length; i++) {
             _registerRewardFee(tokens[i], defaultRewardFee);
         }
@@ -434,6 +436,7 @@ contract LpAccountV2 is
     }
 
     function _setDefaultRewardFee(uint256 defaultRewardFee_) internal {
+        require(defaultRewardFee_ != 0, "INVALID_DEFAULT_REWARD_FEE");
         defaultRewardFee = defaultRewardFee_;
     }
 
@@ -481,6 +484,10 @@ contract LpAccountV2 is
     }
 
     function _sendFeesToTreasurySafe(uint256[] memory rewardsFees) internal {
+        require(
+            _rewardTokens.length() == rewardsFees.length,
+            "FEE_LENGTH_MISMATCH"
+        );
         address treasurySafeAddress =
             addressRegistry.getAddress("treasurySafe");
         for (uint256 i = 0; i < _rewardTokens.length(); i++) {
