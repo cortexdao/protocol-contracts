@@ -204,7 +204,7 @@ describe.only("Convex Zaps - LP Account integration", () => {
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     const proxyAdmin = await ProxyAdmin.deploy();
 
-    const LpAccount = await ethers.getContractFactory("LpAccountV2");
+    const LpAccount = await ethers.getContractFactory("LpAccount");
     const logic = await LpAccount.deploy();
 
     const initData = LpAccount.interface.encodeFunctionData(
@@ -221,7 +221,15 @@ describe.only("Convex Zaps - LP Account integration", () => {
       initData
     );
 
-    lpAccount = await LpAccount.attach(proxy.address);
+    const LpAccountV2 = await ethers.getContractFactory("LpAccountV2");
+    const logicV2 = await LpAccountV2.deploy();
+    const initV2Data = LpAccountV2.interface.encodeFunctionData(
+      "initializeUpgrade()",
+      []
+    );
+    await proxyAdmin.upgradeAndCall(proxy.address, logicV2.address, initV2Data);
+
+    lpAccount = await LpAccountV2.attach(proxy.address);
 
     await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
   });
@@ -266,6 +274,10 @@ describe.only("Convex Zaps - LP Account integration", () => {
       rewardToken,
       useUnwrapped,
     } = curveConstants;
+
+    if (contractName != "Convex3poolZap") {
+      return;
+    }
 
     describe(contractName, () => {
       let zap;
@@ -495,6 +507,11 @@ describe.only("Convex Zaps - LP Account integration", () => {
               ]);
               await hre.network.provider.send("evm_mine");
             }
+            // const oneDayInSeconds = 60 * 60 * 24;
+            // await hre.network.provider.send("evm_increaseTime", [
+            //   20 * oneDayInSeconds,
+            // ]);
+            // await hre.network.provider.send("evm_mine");
 
             // setup reward tokens for fees
             await lpAccount
@@ -505,6 +522,10 @@ describe.only("Convex Zaps - LP Account integration", () => {
 
             expect(await crv.balanceOf(lpAccount.address)).to.be.gt(0);
             expect(await cvx.balanceOf(lpAccount.address)).to.be.gt(0);
+            const cvxBalance = await cvx.balanceOf(lpAccount.address);
+            console.log("CVX balance: %s", cvxBalance);
+            const collectedFee = cvxBalance.mul(1500).div(10000);
+            console.log("Collected fee: %s", collectedFee);
             if (typeof rewardToken !== "undefined") {
               const token = await ethers.getContractAt(
                 "IDetailedERC20",

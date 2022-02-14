@@ -773,7 +773,7 @@ describe("Contract: LpAccount", () => {
               lpAccount
                 .connect(adminSafe)
                 .registerMultipleRewardFees([testToken_1.address], [1000, 1200])
-            ).to.be.revertedWith("ARRAY_LENGTH_MISMATCH");
+            ).to.be.revertedWith("INPUT_ARRAYS_MISMATCH");
           });
         });
 
