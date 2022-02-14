@@ -126,6 +126,7 @@ contract LpAccountV2 is
      * proxy admin slot defined in EIP-1967. This will only allow the proxy admin
      * to call this function during upgrades.
      */
+    // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual nonReentrant onlyProxyAdmin {}
 
     /**
@@ -387,65 +388,11 @@ contract LpAccountV2 is
         }
     }
 
-    /// @dev zero fee is the same as deregistration
-    function _registerRewardFee(address token, uint256 fee) internal {
-        require(Address.isContract(token), "INVALID_ADDRESS");
-        if (fee > 0) {
-            _rewardTokens.add(token);
-            rewardFee[token] = fee;
-        } else {
-            _rewardTokens.remove(token);
-            rewardFee[token] = 0;
-        }
-    }
-
     function setDefaultRewardFee(uint256 defaultRewardFee_)
         external
         onlyAdminRole
     {
         defaultRewardFee = defaultRewardFee_;
-    }
-
-    function _getRewardsBalances()
-        internal
-        view
-        returns (uint256[] memory balances)
-    {
-        balances = new uint256[](_rewardTokens.length());
-        for (uint256 i = 0; i < _rewardTokens.length(); i++) {
-            address tokenAddress = _rewardTokens.at(i);
-            balances[i] = IERC20(tokenAddress).balanceOf(address(this));
-        }
-    }
-
-    function _getRewardsFees(
-        uint256[] memory preClaimRewardsBalances,
-        uint256[] memory postClaimRewardsBalances
-    ) internal view returns (uint256[] memory rewardsFees) {
-        rewardsFees = new uint256[](_rewardTokens.length());
-        for (uint256 i = 0; i < _rewardTokens.length(); i++) {
-            uint256 balanceDelta =
-                postClaimRewardsBalances[i].sub(preClaimRewardsBalances[i]);
-            if (balanceDelta > 0) {
-                address tokenAddress = _rewardTokens.at(i);
-                uint256 fee = rewardFee[tokenAddress];
-                rewardsFees[i] = balanceDelta.mul(fee).div(10000);
-            }
-        }
-    }
-
-    function _sendFeesToTreasurySafe(uint256[] memory rewardsFees) internal {
-        address treasurySafeAddress =
-            addressRegistry.getAddress("treasurySafe");
-        for (uint256 i = 0; i < _rewardTokens.length(); i++) {
-            if (rewardsFees[i] > 0) {
-                address tokenAddress = _rewardTokens.at(i);
-                IERC20(tokenAddress).safeTransfer(
-                    treasurySafeAddress,
-                    rewardsFees[i]
-                );
-            }
-        }
     }
 
     function emergencyExit(address token) external override onlyEmergencyRole {
@@ -516,6 +463,32 @@ contract LpAccountV2 is
         emit AddressRegistryChanged(addressRegistry_);
     }
 
+    /// @dev zero fee is the same as deregistration
+    function _registerRewardFee(address token, uint256 fee) internal {
+        require(Address.isContract(token), "INVALID_ADDRESS");
+        if (fee > 0) {
+            _rewardTokens.add(token);
+            rewardFee[token] = fee;
+        } else {
+            _rewardTokens.remove(token);
+            rewardFee[token] = 0;
+        }
+    }
+
+    function _sendFeesToTreasurySafe(uint256[] memory rewardsFees) internal {
+        address treasurySafeAddress =
+            addressRegistry.getAddress("treasurySafe");
+        for (uint256 i = 0; i < _rewardTokens.length(); i++) {
+            if (rewardsFees[i] > 0) {
+                address tokenAddress = _rewardTokens.at(i);
+                IERC20(tokenAddress).safeTransfer(
+                    treasurySafeAddress,
+                    rewardsFees[i]
+                );
+            }
+        }
+    }
+
     /**
      * @notice Check if multiple asset allocations are ALL registered
      * @param allocationNames An array of asset allocation names to check
@@ -552,5 +525,33 @@ contract LpAccountV2 is
             );
 
         return erc20Allocation.isErc20TokenRegistered(tokens);
+    }
+
+    function _getRewardsBalances()
+        internal
+        view
+        returns (uint256[] memory balances)
+    {
+        balances = new uint256[](_rewardTokens.length());
+        for (uint256 i = 0; i < _rewardTokens.length(); i++) {
+            address tokenAddress = _rewardTokens.at(i);
+            balances[i] = IERC20(tokenAddress).balanceOf(address(this));
+        }
+    }
+
+    function _getRewardsFees(
+        uint256[] memory preClaimRewardsBalances,
+        uint256[] memory postClaimRewardsBalances
+    ) internal view returns (uint256[] memory rewardsFees) {
+        rewardsFees = new uint256[](_rewardTokens.length());
+        for (uint256 i = 0; i < _rewardTokens.length(); i++) {
+            uint256 balanceDelta =
+                postClaimRewardsBalances[i].sub(preClaimRewardsBalances[i]);
+            if (balanceDelta > 0) {
+                address tokenAddress = _rewardTokens.at(i);
+                uint256 fee = rewardFee[tokenAddress];
+                rewardsFees[i] = balanceDelta.mul(fee).div(10000);
+            }
+        }
     }
 }
