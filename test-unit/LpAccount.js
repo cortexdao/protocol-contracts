@@ -713,23 +713,37 @@ describe.only("Contract: LpAccount", () => {
             await expect(
               lpAccount
                 .connect(adminSafe)
-                .registerMultipleRewardFees([FAKE_ADDRESS], [1500])
+                .registerMultipleRewardFees(
+                  [FAKE_ADDRESS, testToken_1.address],
+                  [1500, 1200]
+                )
             ).to.be.revertedWith("INVALID_ADDRESS");
           });
 
-          it("Admin Safe can register reward token with fee", async () => {
+          it("Admin Safe can register", async () => {
+            const fee_1 = 1200;
+            const fee_2 = 800;
             await expect(
               lpAccount
                 .connect(adminSafe)
-                .registerMultipleRewardFees([testToken_1.address], [1500])
+                .registerMultipleRewardFees(
+                  [testToken_1.address, testToken_2.address],
+                  [fee_1, fee_2]
+                )
             ).to.not.be.reverted;
+
+            expect(await lpAccount.rewardFee(testToken_1.address), fee_1);
+            expect(await lpAccount.rewardFee(testToken_2.address), fee_2);
           });
 
-          it("Unpermissioned cannot register reward token with fee", async () => {
+          it("Unpermissioned cannot register", async () => {
             await expect(
               lpAccount
                 .connect(randomUser)
-                .registerMultipleRewardFees([testToken_1.address], [1500])
+                .registerMultipleRewardFees(
+                  [testToken_1.address, testToken_2.address],
+                  [1500, 1200]
+                )
             ).to.be.revertedWith("NOT_ADMIN_ROLE");
           });
 
@@ -751,7 +765,7 @@ describe.only("Contract: LpAccount", () => {
             ).to.be.revertedWith("INVALID_ADDRESS");
           });
 
-          it("Admin Safe can register reward token without fee (default fee)", async () => {
+          it("Admin Safe can register reward token (default fee)", async () => {
             await expect(
               lpAccount
                 .connect(adminSafe)
@@ -762,12 +776,62 @@ describe.only("Contract: LpAccount", () => {
             expect(await lpAccount.rewardFee(testToken_1.address), defaultFee);
           });
 
-          it("Unpermissioned cannot register reward token without fee (default fee)", async () => {
+          it("Unpermissioned cannot register reward token (default fee)", async () => {
             await expect(
               lpAccount
                 .connect(randomUser)
                 .registerDefaultRewardFee(testToken_1.address)
             ).to.be.revertedWith("NOT_ADMIN_ROLE");
+          });
+        });
+
+        describe("registerMultipleDefaultRewardFees", () => {
+          it("Cannot register non-contract address", async () => {
+            await expect(
+              lpAccount
+                .connect(adminSafe)
+                .registerMultipleDefaultRewardFees([
+                  FAKE_ADDRESS,
+                  testToken_1.address,
+                ])
+            ).to.be.revertedWith("INVALID_ADDRESS");
+          });
+
+          it("Admin Safe can register", async () => {
+            await expect(
+              lpAccount
+                .connect(adminSafe)
+                .registerMultipleDefaultRewardFees([
+                  testToken_1.address,
+                  testToken_2.address,
+                ])
+            ).to.not.be.reverted;
+
+            const defaultFee = await lpAccount.defaultRewardFee();
+            expect(await lpAccount.rewardFee(testToken_1.address), defaultFee);
+            expect(await lpAccount.rewardFee(testToken_2.address), defaultFee);
+          });
+
+          it("Unpermissioned cannot register", async () => {
+            await expect(
+              lpAccount
+                .connect(randomUser)
+                .registerMultipleDefaultRewardFees(
+                  [testToken_1.address],
+                  [1500]
+                )
+            ).to.be.revertedWith("NOT_ADMIN_ROLE");
+          });
+
+          it("Cannot use args with differing lengths", async () => {
+            await expect(
+              lpAccount
+                .connect(adminSafe)
+                .registerMultipleDefaultRewardFees(
+                  [testToken_1.address],
+                  [1000, 1200]
+                )
+            ).to.be.revertedWith("ARRAY_LENGTH_MISMATCH");
           });
         });
 
@@ -789,6 +853,42 @@ describe.only("Contract: LpAccount", () => {
           it("Unpermissioned cannot remove reward fee", async () => {
             await expect(
               lpAccount.connect(randomUser).removeRewardFee(testToken_1.address)
+            ).to.be.revertedWith("NOT_ADMIN_ROLE");
+          });
+        });
+
+        describe("removeMultipleRewardFees", () => {
+          before("register reward fee", async () => {
+            await lpAccount
+              .connect(adminSafe)
+              .removeMultipleRewardFees(testToken_1.address, 1050);
+            await lpAccount
+              .connect(adminSafe)
+              .removeMultipleRewardFees(testToken_2.address, 1800);
+          });
+
+          it("Admin Safe can remove reward fees", async () => {
+            await expect(
+              lpAccount
+                .connect(adminSafe)
+                .removeMultipleRewardFees([
+                  testToken_1.address,
+                  testToken_2.address,
+                ])
+            ).to.not.be.reverted;
+
+            expect(await lpAccount.rewardFee(testToken_1.address), 0);
+            expect(await lpAccount.rewardFee(testToken_2.address), 0);
+          });
+
+          it("Unpermissioned cannot remove reward fees", async () => {
+            await expect(
+              lpAccount
+                .connect(randomUser)
+                .removeMultipleRewardFees([
+                  testToken_1.address,
+                  testToken_2.address,
+                ])
             ).to.be.revertedWith("NOT_ADMIN_ROLE");
           });
         });
