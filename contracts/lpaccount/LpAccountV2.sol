@@ -352,7 +352,6 @@ contract LpAccountV2 is
      * @param token address of reward token
      */
     function registerDefaultRewardFee(address token) external onlyAdminRole {
-        require(defaultRewardFee_ != 0, "INVALID_DEFAULT_REWARD_FEE");
         _registerRewardFee(token, defaultRewardFee);
     }
 
@@ -364,7 +363,6 @@ contract LpAccountV2 is
         external
         onlyAdminRole
     {
-        require(defaultRewardFee_ != 0, "INVALID_DEFAULT_REWARD_FEE");
         for (uint256 i = 0; i < tokens.length; i++) {
             _registerRewardFee(tokens[i], defaultRewardFee);
         }
@@ -375,7 +373,7 @@ contract LpAccountV2 is
      * @param token address of reward token to deregister
      */
     function removeRewardFee(address token) external onlyAdminRole {
-        _registerRewardFee(token, 0);
+        _removeRewardFee(token);
     }
 
     /**
@@ -387,7 +385,7 @@ contract LpAccountV2 is
         onlyAdminRole
     {
         for (uint256 i = 0; i < tokens.length; i++) {
-            _registerRewardFee(tokens[i], 0);
+            _removeRewardFee(tokens[i]);
         }
     }
 
@@ -471,16 +469,16 @@ contract LpAccountV2 is
         emit AddressRegistryChanged(addressRegistry_);
     }
 
-    /// @dev zero fee is the same as deregistration
     function _registerRewardFee(address token, uint256 fee) internal {
         require(Address.isContract(token), "INVALID_ADDRESS");
-        if (fee > 0) {
-            _rewardTokens.add(token);
-            rewardFee[token] = fee;
-        } else {
-            _rewardTokens.remove(token);
-            rewardFee[token] = 0;
-        }
+        require(fee != 0, "INVALID_REWARD_FEE");
+        _rewardTokens.add(token);
+        rewardFee[token] = fee;
+    }
+
+    function _removeRewardFee(address token) internal {
+        _rewardTokens.remove(token);
+        rewardFee[token] = 0;
     }
 
     function _sendFeesToTreasurySafe(uint256[] memory rewardsFees) internal {
