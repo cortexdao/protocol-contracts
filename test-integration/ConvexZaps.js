@@ -25,12 +25,13 @@ const pinnedBlock = 13616400;
 const defaultPinnedBlock = hre.config.networks.hardhat.forking.blockNumber;
 const forkingUrl = hre.config.networks.hardhat.forking.url;
 
-describe("Convex Zaps - LP Account integration", () => {
+describe.only("Convex Zaps - LP Account integration", () => {
   /* signers */
   let deployer;
   let emergencySafe;
   let adminSafe;
   let lpSafe;
+  let treasurySafe;
 
   /* deployed contracts */
   let lpAccount;
@@ -174,7 +175,8 @@ describe("Convex Zaps - LP Account integration", () => {
   });
 
   before("Setup mock address registry", async () => {
-    [deployer, lpSafe, emergencySafe, adminSafe] = await ethers.getSigners();
+    [deployer, lpSafe, emergencySafe, adminSafe, treasurySafe] =
+      await ethers.getSigners();
 
     addressRegistry = await deployMockContract(
       deployer,
@@ -191,13 +193,17 @@ describe("Convex Zaps - LP Account integration", () => {
     // mAPT is never used, but we need to return something as a role
     // is setup for it in the Erc20Allocation constructor
     await addressRegistry.mock.mAptAddress.returns(FAKE_ADDRESS);
+    // claiming requires Treasury Safe address to send fees to
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("treasurySafe"))
+      .returns(treasurySafe.address);
   });
 
   before("Deploy LP Account", async () => {
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     const proxyAdmin = await ProxyAdmin.deploy();
 
-    const LpAccount = await ethers.getContractFactory("LpAccount");
+    const LpAccount = await ethers.getContractFactory("LpAccountV2");
     const logic = await LpAccount.deploy();
 
     const initData = LpAccount.interface.encodeFunctionData(
