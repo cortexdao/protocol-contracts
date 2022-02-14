@@ -701,6 +701,40 @@ describe("Contract: LpAccount", () => {
           });
         });
 
+        describe("registerMultipleRewardFees", () => {
+          it("Cannot register non-contract address", async () => {
+            await expect(
+              lpAccount
+                .connect(adminSafe)
+                .registerMultipleRewardFees([FAKE_ADDRESS], [1500])
+            ).to.be.revertedWith("INVALID_ADDRESS");
+          });
+
+          it("Admin Safe can register reward token with fee", async () => {
+            await expect(
+              lpAccount
+                .connect(adminSafe)
+                .registerMultipleRewardFees([testToken_1.address], [1500])
+            ).to.not.be.reverted;
+          });
+
+          it("Unpermissioned cannot register reward token with fee", async () => {
+            await expect(
+              lpAccount
+                .connect(randomUser)
+                .registerMultipleRewardFees([testToken_1.address], [1500])
+            ).to.be.revertedWith("NOT_ADMIN_ROLE");
+          });
+
+          it("Cannot use args with differing lengths", async () => {
+            await expect(
+              lpAccount
+                .connect(adminSafe)
+                .registerMultipleRewardFees([testToken_1.address], [1000, 1200])
+            ).to.be.revertedWith("ARRAY_LENGTH_MISMATCH");
+          });
+        });
+
         describe("registerDefaultRewardFee", () => {
           it("Cannot register non-contract address", async () => {
             await expect(
