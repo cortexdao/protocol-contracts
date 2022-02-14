@@ -331,6 +331,21 @@ contract LpAccountV2 is
     }
 
     /**
+     * @notice register multiple reward tokens with fees
+     * @param tokens addresss of reward tokens
+     * @param fees percentage to charge fee in basis points
+     */
+    function registerMultipleRewardFees(
+        address[] calldata tokens,
+        uint256[] calldata fees
+    ) external onlyAdminRole {
+        require(tokens.length == fees.length, "ARRAY_LENGTH_MISMATCH");
+        for (uint256 i = 0; i < tokens.length; i++) {
+            _registerRewardFee(tokens[i], fees[i]);
+        }
+    }
+
+    /**
      * @notice register a reward token using the default fee
      * @param token address of reward token
      */
@@ -338,10 +353,50 @@ contract LpAccountV2 is
         _registerRewardFee(token, defaultRewardFee);
     }
 
+    /**
+     * @notice register multiple reward tokens with default fees
+     * @param tokens addresss of reward tokens
+     */
+    function registerMultipleDefaultRewardFees(address[] calldata tokens)
+        external
+        onlyAdminRole
+    {
+        for (uint256 i = 0; i < tokens.length; i++) {
+            _registerRewardFee(tokens[i], defaultRewardFee);
+        }
+    }
+
+    /**
+     * @notice deregister reward token
+     * @param token address of reward token to deregister
+     */
+    function removeRewardFee(address token) external onlyAdminRole {
+        _registerRewardFee(token, 0);
+    }
+
+    /**
+     * @notice deregister multiple reward tokens
+     * @param tokens addresses of reward tokens to deregister
+     */
+    function removeMultipleRewardFees(address[] calldata tokens)
+        external
+        onlyAdminRole
+    {
+        for (uint256 i = 0; i < tokens.length; i++) {
+            _registerRewardFee(tokens[i], 0);
+        }
+    }
+
+    /// @dev zero fee is the same as deregistration
     function _registerRewardFee(address token, uint256 fee) internal {
         require(Address.isContract(token), "INVALID_ADDRESS");
-        _rewardTokens.add(token);
-        rewardFee[token] = fee;
+        if (fee > 0) {
+            _rewardTokens.add(token);
+            rewardFee[token] = fee;
+        } else {
+            _rewardTokens.remove(token);
+            rewardFee[token] = 0;
+        }
     }
 
     function setDefaultRewardFee(uint256 defaultRewardFee_)
