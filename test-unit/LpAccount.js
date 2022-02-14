@@ -837,22 +837,11 @@ describe("Contract: LpAccount", () => {
             await expect(
               lpAccount
                 .connect(randomUser)
-                .registerMultipleDefaultRewardFees(
-                  [testToken_1.address],
-                  [1500]
-                )
+                .registerMultipleDefaultRewardFees([
+                  testToken_1.address,
+                  testToken_2.address,
+                ])
             ).to.be.revertedWith("NOT_ADMIN_ROLE");
-          });
-
-          it("Cannot use args with differing lengths", async () => {
-            await expect(
-              lpAccount
-                .connect(adminSafe)
-                .registerMultipleDefaultRewardFees(
-                  [testToken_1.address],
-                  [1000, 1200]
-                )
-            ).to.be.revertedWith("ARRAY_LENGTH_MISMATCH");
           });
         });
 
@@ -882,10 +871,10 @@ describe("Contract: LpAccount", () => {
           before("register reward fee", async () => {
             await lpAccount
               .connect(adminSafe)
-              .removeMultipleRewardFees(testToken_1.address, 1050);
+              .registerRewardFee(testToken_1.address, 1050);
             await lpAccount
               .connect(adminSafe)
-              .removeMultipleRewardFees(testToken_2.address, 1800);
+              .registerRewardFee(testToken_2.address, 1800);
           });
 
           it("Admin Safe can remove reward fees", async () => {
