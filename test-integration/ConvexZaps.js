@@ -14,6 +14,7 @@ const {
 const { WHALE_POOLS } = require("../utils/constants");
 
 const CRV_ADDRESS = "0xD533a949740bb3306d119CC777fa900bA034cd52";
+const CVX_ADDRESS = "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B";
 
 /* ************************ */
 /* set DEBUG log level here */
@@ -435,17 +436,26 @@ describe.only("Convex Zaps - LP Account integration", () => {
             );
           });
 
-          it("Claim", async () => {
-            const erc20s = await zap.erc20Allocations();
-
-            // may remove CRV from erc20 allocations in the future, like with
-            // other reward tokens, to avoid impacting TVL with slippage
-            expect(erc20s).to.include(ethers.utils.getAddress(CRV_ADDRESS));
+          it.only("Claim", async () => {
             const crv = await ethers.getContractAt(
               "IDetailedERC20",
               CRV_ADDRESS
             );
+            const cvx = await ethers.getContractAt(
+              "IDetailedERC20",
+              CVX_ADDRESS
+            );
+            const erc20s = await zap.erc20Allocations();
+
+            // may remove CRV from erc20 allocations in the future, like with
+            // other reward tokens, to avoid impacting TVL with slippage
+            expect(erc20s).to.include(ethers.utils.getAddress(crv.address));
+
             expect(await crv.balanceOf(lpAccount.address)).to.equal(0);
+            expect(await crv.balanceOf(treasurySafe.address)).to.equal(0);
+
+            expect(await cvx.balanceOf(lpAccount.address)).to.equal(0);
+            expect(await cvx.balanceOf(treasurySafe.address)).to.equal(0);
 
             if (typeof rewardToken !== "undefined") {
               const token = await ethers.getContractAt(
@@ -486,9 +496,15 @@ describe.only("Convex Zaps - LP Account integration", () => {
               await hre.network.provider.send("evm_mine");
             }
 
+            // setup reward tokens for fees
+            await lpAccount
+              .connect(adminSafe)
+              .registerMultipleDefaultRewardFees([crv.address, cvx.address]);
+
             await lpAccount.connect(lpSafe).claim(name);
 
             expect(await crv.balanceOf(lpAccount.address)).to.be.gt(0);
+            expect(await cvx.balanceOf(lpAccount.address)).to.be.gt(0);
             if (typeof rewardToken !== "undefined") {
               const token = await ethers.getContractAt(
                 "IDetailedERC20",
@@ -496,6 +512,10 @@ describe.only("Convex Zaps - LP Account integration", () => {
               );
               expect(await token.balanceOf(lpAccount.address)).to.be.gt(0);
             }
+
+            // check fees taken out
+            expect(await crv.balanceOf(treasurySafe.address)).to.be.gt(0);
+            expect(await cvx.balanceOf(treasurySafe.address)).to.be.gt(0);
           });
 
           it("Allocation picks up deployed balances", async () => {
