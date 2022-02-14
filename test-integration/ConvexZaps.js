@@ -26,7 +26,7 @@ const pinnedBlock = 13616400;
 const defaultPinnedBlock = hre.config.networks.hardhat.forking.blockNumber;
 const forkingUrl = hre.config.networks.hardhat.forking.url;
 
-describe.only("Convex Zaps - LP Account integration", () => {
+describe("Convex Zaps - LP Account integration", () => {
   /* signers */
   let deployer;
   let emergencySafe;
@@ -275,10 +275,6 @@ describe.only("Convex Zaps - LP Account integration", () => {
       useUnwrapped,
     } = curveConstants;
 
-    if (contractName != "Convex3poolZap") {
-      return;
-    }
-
     describe(contractName, () => {
       let zap;
       let stableSwap;
@@ -448,7 +444,7 @@ describe.only("Convex Zaps - LP Account integration", () => {
             );
           });
 
-          it.only("Claim", async () => {
+          it("Claim", async () => {
             const crv = await ethers.getContractAt(
               "IDetailedERC20",
               CRV_ADDRESS
@@ -507,11 +503,6 @@ describe.only("Convex Zaps - LP Account integration", () => {
               ]);
               await hre.network.provider.send("evm_mine");
             }
-            // const oneDayInSeconds = 60 * 60 * 24;
-            // await hre.network.provider.send("evm_increaseTime", [
-            //   20 * oneDayInSeconds,
-            // ]);
-            // await hre.network.provider.send("evm_mine");
 
             // setup reward tokens for fees
             await lpAccount
@@ -522,10 +513,6 @@ describe.only("Convex Zaps - LP Account integration", () => {
 
             expect(await crv.balanceOf(lpAccount.address)).to.be.gt(0);
             expect(await cvx.balanceOf(lpAccount.address)).to.be.gt(0);
-            const cvxBalance = await cvx.balanceOf(lpAccount.address);
-            console.log("CVX balance: %s", cvxBalance);
-            const collectedFee = cvxBalance.mul(1500).div(10000);
-            console.log("Collected fee: %s", collectedFee);
             if (typeof rewardToken !== "undefined") {
               const token = await ethers.getContractAt(
                 "IDetailedERC20",
