@@ -78,7 +78,7 @@ contract LpAccountV2 is
     /** @dev reward token fees in basis points */
     mapping(address => uint256) public rewardFee;
     /** @dev default fee to use for rewards claiming */
-    uint256 public defaultRewardFee = 1500;
+    uint256 public defaultRewardFee;
 
     /**
      * End storage variables
@@ -126,8 +126,9 @@ contract LpAccountV2 is
      * proxy admin slot defined in EIP-1967. This will only allow the proxy admin
      * to call this function during upgrades.
      */
-    // solhint-disable-next-line no-empty-blocks
-    function initializeUpgrade() external virtual nonReentrant onlyProxyAdmin {}
+    function initializeUpgrade() external virtual nonReentrant onlyProxyAdmin {
+        _setDefaultRewardFee(1500);
+    }
 
     /**
      * @notice Sets the address registry
@@ -392,7 +393,7 @@ contract LpAccountV2 is
         external
         onlyAdminRole
     {
-        defaultRewardFee = defaultRewardFee_;
+        _setDefaultRewardFee(defaultRewardFee_);
     }
 
     function emergencyExit(address token) external override onlyEmergencyRole {
@@ -430,6 +431,10 @@ contract LpAccountV2 is
 
     function swapNames() external view override returns (string[] memory) {
         return _swaps.names();
+    }
+
+    function _setDefaultRewardFee(uint256 defaultRewardFee_) internal {
+        defaultRewardFee = defaultRewardFee_;
     }
 
     /**

@@ -281,6 +281,9 @@ describe("Contract: LpAccount", () => {
         addressRegistry.address
       );
     });
+    it("Default reward fee is set", async () => {
+      expect(await lpAccount.defaultRewardFee()).to.equal(1500);
+    });
   });
 
   describe("emergencySetAddressRegistry", () => {
