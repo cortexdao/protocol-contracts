@@ -34,7 +34,7 @@ async function deployMockSwap(name) {
   return swap;
 }
 
-describe("Contract: LpAccount", () => {
+describe.only("Contract: LpAccount", () => {
   // signers
   let deployer;
   let lpSafe;
@@ -281,6 +281,7 @@ describe("Contract: LpAccount", () => {
         addressRegistry.address
       );
     });
+
     it("Default reward fee is set", async () => {
       expect(await lpAccount.defaultRewardFee()).to.equal(1500);
     });
@@ -766,6 +767,28 @@ describe("Contract: LpAccount", () => {
               lpAccount
                 .connect(randomUser)
                 .registerDefaultRewardFee(testToken_1.address)
+            ).to.be.revertedWith("NOT_ADMIN_ROLE");
+          });
+        });
+
+        describe("removeRewardFee", () => {
+          before("register reward fee", async () => {
+            await lpAccount
+              .connect(adminSafe)
+              .registerRewardFee(testToken_1.address, 1500);
+          });
+
+          it("Admin Safe can remove reward fee", async () => {
+            await expect(
+              lpAccount.connect(adminSafe).removeRewardFee(testToken_1.address)
+            ).to.not.be.reverted;
+
+            expect(await lpAccount.rewardFee(testToken_1.address), 0);
+          });
+
+          it("Unpermissioned cannot remove reward fee", async () => {
+            await expect(
+              lpAccount.connect(randomUser).removeRewardFee(testToken_1.address)
             ).to.be.revertedWith("NOT_ADMIN_ROLE");
           });
         });
