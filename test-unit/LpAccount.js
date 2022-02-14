@@ -34,7 +34,7 @@ async function deployMockSwap(name) {
   return swap;
 }
 
-describe.only("Contract: LpAccount", () => {
+describe("Contract: LpAccount", () => {
   // signers
   let deployer;
   let lpSafe;
@@ -341,6 +341,27 @@ describe.only("Contract: LpAccount", () => {
       const lockPeriod = 100;
       await lpAccount.connect(adminSafe).setLockPeriod(lockPeriod);
       expect(await lpAccount.lockPeriod()).to.equal(lockPeriod);
+    });
+  });
+
+  describe("setDefaultRewardFee", () => {
+    it("Admin Safe can call", async () => {
+      const defaultFee = 1250;
+      await expect(lpAccount.connect(adminSafe).setDefaultRewardFee(defaultFee))
+        .to.not.be.reverted;
+    });
+
+    it("Unpermissioned cannot call", async () => {
+      const defaultFee = 1250;
+      await expect(
+        lpAccount.connect(randomUser).setDefaultRewardFee(defaultFee)
+      ).to.be.revertedWith("NOT_ADMIN_ROLE");
+    });
+
+    it("Default reward fee can be set", async () => {
+      const defaultFee = 1250;
+      await lpAccount.connect(adminSafe).setDefaultRewardFee(defaultFee);
+      expect(await lpAccount.defaultRewardFee()).to.equal(defaultFee);
     });
   });
 
