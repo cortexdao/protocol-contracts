@@ -688,11 +688,14 @@ describe("Contract: LpAccount", () => {
           });
 
           it("Admin Safe can register reward token with fee", async () => {
+            const fee = 1200;
             await expect(
               lpAccount
                 .connect(adminSafe)
-                .registerRewardFee(testToken_1.address, 1500)
+                .registerRewardFee(testToken_1.address, fee)
             ).to.not.be.reverted;
+
+            expect(await lpAccount.rewardFee(testToken_1.address), fee);
           });
 
           it("Unpermissioned cannot register reward token with fee", async () => {
@@ -753,6 +756,9 @@ describe("Contract: LpAccount", () => {
                 .connect(adminSafe)
                 .registerDefaultRewardFee(testToken_1.address)
             ).to.not.be.reverted;
+
+            const defaultFee = await lpAccount.defaultRewardFee();
+            expect(await lpAccount.rewardFee(testToken_1.address), defaultFee);
           });
 
           it("Unpermissioned cannot register reward token without fee (default fee)", async () => {
