@@ -281,10 +281,6 @@ describe("Contract: LpAccount", () => {
         addressRegistry.address
       );
     });
-
-    it("Default reward fee is set", async () => {
-      expect(await lpAccount.defaultRewardFee()).to.equal(1500);
-    });
   });
 
   describe("emergencySetAddressRegistry", () => {
@@ -341,27 +337,6 @@ describe("Contract: LpAccount", () => {
       const lockPeriod = 100;
       await lpAccount.connect(adminSafe).setLockPeriod(lockPeriod);
       expect(await lpAccount.lockPeriod()).to.equal(lockPeriod);
-    });
-  });
-
-  describe("setDefaultRewardFee", () => {
-    it("Admin Safe can call", async () => {
-      const defaultFee = 1250;
-      await expect(lpAccount.connect(adminSafe).setDefaultRewardFee(defaultFee))
-        .to.not.be.reverted;
-    });
-
-    it("Unpermissioned cannot call", async () => {
-      const defaultFee = 1250;
-      await expect(
-        lpAccount.connect(randomUser).setDefaultRewardFee(defaultFee)
-      ).to.be.revertedWith("NOT_ADMIN_ROLE");
-    });
-
-    it("Default reward fee can be set", async () => {
-      const defaultFee = 1250;
-      await lpAccount.connect(adminSafe).setDefaultRewardFee(defaultFee);
-      expect(await lpAccount.defaultRewardFee()).to.equal(defaultFee);
     });
   });
 
@@ -955,10 +930,10 @@ describe("Contract: LpAccount", () => {
             // Register reward tokens
             await lpAccount
               .connect(adminSafe)
-              .registerDefaultRewardFee(testToken_1.address);
+              .registerRewardFee(testToken_1.address, 1500);
             await lpAccount
               .connect(adminSafe)
-              .registerDefaultRewardFee(testToken_2.address);
+              .registerRewardFee(testToken_2.address, 1500);
 
             // Send collected fees to LP Account
             const collectedFee_1 = tokenAmountToBigNumber(12.1);
@@ -975,10 +950,10 @@ describe("Contract: LpAccount", () => {
             // Register reward tokens
             await lpAccount
               .connect(adminSafe)
-              .registerDefaultRewardFee(testToken_1.address);
+              .registerRewardFee(testToken_1.address, 1500);
             await lpAccount
               .connect(adminSafe)
-              .registerDefaultRewardFee(testToken_2.address);
+              .registerRewardFee(testToken_2.address, 1500);
 
             // Send collected fees to LP Account
             const collectedFee_1 = tokenAmountToBigNumber(12.1);
@@ -1007,10 +982,10 @@ describe("Contract: LpAccount", () => {
             // Register reward tokens
             await lpAccount
               .connect(adminSafe)
-              .registerDefaultRewardFee(testToken_1.address);
+              .registerRewardFee(testToken_1.address, 1500);
             await lpAccount
               .connect(adminSafe)
-              .registerDefaultRewardFee(testToken_2.address);
+              .registerRewardFee(testToken_2.address, 1500);
 
             // Send collected fees to LP Account
             const collectedFee_1 = tokenAmountToBigNumber(12.1);
