@@ -427,11 +427,15 @@ contract LpAccountV2 is
         require(fee != 0, "INVALID_REWARD_FEE");
         _rewardTokens.add(token);
         rewardFee[token] = fee;
+
+        emit RewardFeeRegistered(token, fee);
     }
 
     function _removeRewardFee(address token) internal {
         _rewardTokens.remove(token);
         rewardFee[token] = 0;
+
+        emit RewardFeeRemoved(token);
     }
 
     function _sendFeesToTreasurySafe(uint256[] memory rewardsFees) internal {
