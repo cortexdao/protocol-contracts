@@ -33,7 +33,8 @@ import {
     ILpAccount,
     IZapRegistry,
     ISwapRegistry,
-    IStableSwap3Pool
+    IStableSwap3Pool,
+    IRewardFeeRegistry
 } from "./Imports.sol";
 
 import {ILockingOracle} from "contracts/oracle/Imports.sol";
@@ -46,7 +47,8 @@ contract LpAccountV2 is
     IZapRegistry,
     ISwapRegistry,
     Erc20AllocationConstants,
-    IEmergencyExit
+    IEmergencyExit,
+    IRewardFeeRegistry
 {
     using Address for address;
     using SafeERC20 for IERC20;
@@ -330,6 +332,7 @@ contract LpAccountV2 is
      */
     function registerRewardFee(address token, uint256 fee)
         external
+        override
         onlyAdminRole
     {
         _registerRewardFee(token, fee);
@@ -343,7 +346,7 @@ contract LpAccountV2 is
     function registerMultipleRewardFees(
         address[] calldata tokens,
         uint256[] calldata fees
-    ) external onlyAdminRole {
+    ) external override onlyAdminRole {
         require(tokens.length == fees.length, "INPUT_ARRAYS_MISMATCH");
         for (uint256 i = 0; i < tokens.length; i++) {
             _registerRewardFee(tokens[i], fees[i]);
@@ -375,7 +378,7 @@ contract LpAccountV2 is
      * @notice deregister reward token
      * @param token address of reward token to deregister
      */
-    function removeRewardFee(address token) external onlyAdminRole {
+    function removeRewardFee(address token) external override onlyAdminRole {
         _removeRewardFee(token);
     }
 
@@ -385,6 +388,7 @@ contract LpAccountV2 is
      */
     function removeMultipleRewardFees(address[] calldata tokens)
         external
+        override
         onlyAdminRole
     {
         for (uint256 i = 0; i < tokens.length; i++) {
