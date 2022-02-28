@@ -6,6 +6,11 @@ pragma experimental ABIEncoderV2;
  * @notice For managing a collection of `IZap` contracts
  */
 interface IRewardFeeRegistry {
+    /**
+     * @notice register a reward token and its fee
+     * @param token address of reward token
+     * @param fee percentage to charge fee in basis points
+     */
     function registerRewardFee(address token, uint256 fee) external;
 
     /**
