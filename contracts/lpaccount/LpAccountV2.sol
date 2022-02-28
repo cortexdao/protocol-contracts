@@ -79,8 +79,6 @@ contract LpAccountV2 is
     EnumerableSet.AddressSet private _rewardTokens;
     /** @dev reward token fees in basis points */
     mapping(address => uint256) public rewardFee;
-    /** @dev default fee to use for rewards claiming */
-    uint256 public defaultRewardFee;
 
     /**
      * End storage variables
@@ -128,9 +126,8 @@ contract LpAccountV2 is
      * proxy admin slot defined in EIP-1967. This will only allow the proxy admin
      * to call this function during upgrades.
      */
-    function initializeUpgrade() external virtual nonReentrant onlyProxyAdmin {
-        _setDefaultRewardFee(1500);
-    }
+    // solhint-disable-next-line no-empty-blocks
+    function initializeUpgrade() external virtual nonReentrant onlyProxyAdmin {}
 
     /**
      * @notice Sets the address registry
@@ -354,27 +351,6 @@ contract LpAccountV2 is
     }
 
     /**
-     * @notice register a reward token using the default fee
-     * @param token address of reward token
-     */
-    function registerDefaultRewardFee(address token) external onlyAdminRole {
-        _registerRewardFee(token, defaultRewardFee);
-    }
-
-    /**
-     * @notice register multiple reward tokens with default fees
-     * @param tokens addresss of reward tokens
-     */
-    function registerMultipleDefaultRewardFees(address[] calldata tokens)
-        external
-        onlyAdminRole
-    {
-        for (uint256 i = 0; i < tokens.length; i++) {
-            _registerRewardFee(tokens[i], defaultRewardFee);
-        }
-    }
-
-    /**
      * @notice deregister reward token
      * @param token address of reward token to deregister
      */
@@ -394,13 +370,6 @@ contract LpAccountV2 is
         for (uint256 i = 0; i < tokens.length; i++) {
             _removeRewardFee(tokens[i]);
         }
-    }
-
-    function setDefaultRewardFee(uint256 defaultRewardFee_)
-        external
-        onlyAdminRole
-    {
-        _setDefaultRewardFee(defaultRewardFee_);
     }
 
     function emergencyExit(address token) external override onlyEmergencyRole {
@@ -438,11 +407,6 @@ contract LpAccountV2 is
 
     function swapNames() external view override returns (string[] memory) {
         return _swaps.names();
-    }
-
-    function _setDefaultRewardFee(uint256 defaultRewardFee_) internal {
-        require(defaultRewardFee_ != 0, "INVALID_DEFAULT_REWARD_FEE");
-        defaultRewardFee = defaultRewardFee_;
     }
 
     /**

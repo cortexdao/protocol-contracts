@@ -507,7 +507,10 @@ describe("Convex Zaps - LP Account integration", () => {
             // setup reward tokens for fees
             await lpAccount
               .connect(adminSafe)
-              .registerMultipleDefaultRewardFees([crv.address, cvx.address]);
+              .registerMultipleRewardFees(
+                [crv.address, cvx.address],
+                [1500, 1500]
+              );
 
             await lpAccount.connect(lpSafe).claim(name);
 
