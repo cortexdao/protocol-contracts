@@ -921,7 +921,7 @@ describe("Contract: LpAccount", () => {
           deepEqual(balances, [amount_1, amount_2]);
         });
 
-        it("_getRewardsFees", async () => {
+        it("_calculateRewardsFees", async () => {
           const preClaimAmount_1 = tokenAmountToBigNumber(0);
           const postClaimAmount_1 = tokenAmountToBigNumber(1.5);
           const fee_1 = 1500;
@@ -945,7 +945,7 @@ describe("Contract: LpAccount", () => {
             .connect(adminSafe)
             .registerRewardFee(testToken_2.address, fee_2);
 
-          const collectedFees = await lpAccount.testGetRewardsFees(
+          const collectedFees = await lpAccount.testCalculateRewardsFees(
             [preClaimAmount_1, preClaimAmount_2],
             [postClaimAmount_1, postClaimAmount_2]
           );

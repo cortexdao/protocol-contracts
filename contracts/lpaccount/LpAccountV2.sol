@@ -316,7 +316,10 @@ contract LpAccountV2 is
 
         uint256[] memory postClaimRewardsBalances = _getRewardsBalances();
         uint256[] memory rewardsFees =
-            _getRewardsFees(preClaimRewardsBalances, postClaimRewardsBalances);
+            _calculateRewardsFees(
+                preClaimRewardsBalances,
+                postClaimRewardsBalances
+            );
         _sendFeesToTreasurySafe(rewardsFees);
     }
 
@@ -549,7 +552,7 @@ contract LpAccountV2 is
         }
     }
 
-    function _getRewardsFees(
+    function _calculateRewardsFees(
         uint256[] memory preClaimRewardsBalances,
         uint256[] memory postClaimRewardsBalances
     ) internal view returns (uint256[] memory rewardsFees) {
