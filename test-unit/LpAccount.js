@@ -921,35 +921,82 @@ describe("Contract: LpAccount", () => {
           deepEqual(balances, [amount_1, amount_2]);
         });
 
-        it("_calculateRewardsFees", async () => {
-          const preClaimAmount_1 = tokenAmountToBigNumber(0);
-          const postClaimAmount_1 = tokenAmountToBigNumber(1.5);
-          const fee_1 = 1500;
-          const collectedFee_1 = postClaimAmount_1
-            .sub(preClaimAmount_1)
-            .mul(fee_1)
-            .div(10000);
+        describe("_calculateRewardsFees", () => {
+          it("revert on input arrays length mismatch", async () => {
+            const preClaimAmount_1 = tokenAmountToBigNumber(0);
+            const postClaimAmount_1 = tokenAmountToBigNumber(1.5);
+            const fee_1 = 1500;
 
-          const preClaimAmount_2 = tokenAmountToBigNumber(1.0001);
-          const postClaimAmount_2 = tokenAmountToBigNumber(2.23);
-          const fee_2 = 625;
-          const collectedFee_2 = postClaimAmount_2
-            .sub(preClaimAmount_2)
-            .mul(fee_2)
-            .div(10000);
+            const postClaimAmount_2 = tokenAmountToBigNumber(2.23);
+            const fee_2 = 625;
 
-          await lpAccount
-            .connect(adminSafe)
-            .registerRewardFee(testToken_1.address, fee_1);
-          await lpAccount
-            .connect(adminSafe)
-            .registerRewardFee(testToken_2.address, fee_2);
+            await lpAccount
+              .connect(adminSafe)
+              .registerRewardFee(testToken_1.address, fee_1);
+            await lpAccount
+              .connect(adminSafe)
+              .registerRewardFee(testToken_2.address, fee_2);
 
-          const collectedFees = await lpAccount.testCalculateRewardsFees(
-            [preClaimAmount_1, preClaimAmount_2],
-            [postClaimAmount_1, postClaimAmount_2]
-          );
-          deepEqual(collectedFees, [collectedFee_1, collectedFee_2]);
+            await expect(
+              lpAccount.testCalculateRewardsFees(
+                [preClaimAmount_1],
+                [postClaimAmount_1, postClaimAmount_2]
+              )
+            ).to.be.revertedWith("INPUT_ARRAYS_MISMATCH");
+          });
+
+          it("revert on balances length mismatch", async () => {
+            const preClaimAmount_1 = tokenAmountToBigNumber(0);
+            const postClaimAmount_1 = tokenAmountToBigNumber(1.5);
+            const fee_1 = 1500;
+
+            const fee_2 = 625;
+
+            await lpAccount
+              .connect(adminSafe)
+              .registerRewardFee(testToken_1.address, fee_1);
+            await lpAccount
+              .connect(adminSafe)
+              .registerRewardFee(testToken_2.address, fee_2);
+
+            await expect(
+              lpAccount.testCalculateRewardsFees(
+                [preClaimAmount_1],
+                [postClaimAmount_1]
+              )
+            ).to.be.revertedWith("BALANCE_LENGTH_MISMATCH");
+          });
+
+          it("calculates correct fees", async () => {
+            const preClaimAmount_1 = tokenAmountToBigNumber(0);
+            const postClaimAmount_1 = tokenAmountToBigNumber(1.5);
+            const fee_1 = 1500;
+            const collectedFee_1 = postClaimAmount_1
+              .sub(preClaimAmount_1)
+              .mul(fee_1)
+              .div(10000);
+
+            const preClaimAmount_2 = tokenAmountToBigNumber(1.0001);
+            const postClaimAmount_2 = tokenAmountToBigNumber(2.23);
+            const fee_2 = 625;
+            const collectedFee_2 = postClaimAmount_2
+              .sub(preClaimAmount_2)
+              .mul(fee_2)
+              .div(10000);
+
+            await lpAccount
+              .connect(adminSafe)
+              .registerRewardFee(testToken_1.address, fee_1);
+            await lpAccount
+              .connect(adminSafe)
+              .registerRewardFee(testToken_2.address, fee_2);
+
+            const collectedFees = await lpAccount.testCalculateRewardsFees(
+              [preClaimAmount_1, preClaimAmount_2],
+              [postClaimAmount_1, postClaimAmount_2]
+            );
+            deepEqual(collectedFees, [collectedFee_1, collectedFee_2]);
+          });
         });
 
         it("_sendFeesToTreasurySafe", async () => {

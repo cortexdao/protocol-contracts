@@ -556,6 +556,14 @@ contract LpAccountV2 is
         uint256[] memory preClaimRewardsBalances,
         uint256[] memory postClaimRewardsBalances
     ) internal view returns (uint256[] memory rewardsFees) {
+        require(
+            preClaimRewardsBalances.length == postClaimRewardsBalances.length,
+            "INPUT_ARRAYS_MISMATCH"
+        );
+        require(
+            _rewardTokens.length() == preClaimRewardsBalances.length,
+            "BALANCE_LENGTH_MISMATCH"
+        );
         rewardsFees = new uint256[](_rewardTokens.length());
         for (uint256 i = 0; i < _rewardTokens.length(); i++) {
             uint256 balanceDelta =
