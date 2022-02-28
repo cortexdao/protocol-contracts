@@ -924,18 +924,16 @@ describe("Contract: LpAccount", () => {
         describe("_calculateRewardsFees", () => {
           it("revert on input arrays length mismatch", async () => {
             const preClaimAmount_1 = tokenAmountToBigNumber(0);
+
             const postClaimAmount_1 = tokenAmountToBigNumber(1.5);
-            const fee_1 = 1500;
-
             const postClaimAmount_2 = tokenAmountToBigNumber(2.23);
-            const fee_2 = 625;
 
             await lpAccount
               .connect(adminSafe)
-              .registerRewardFee(testToken_1.address, fee_1);
+              .registerRewardFee(testToken_1.address, 1500);
             await lpAccount
               .connect(adminSafe)
-              .registerRewardFee(testToken_2.address, fee_2);
+              .registerRewardFee(testToken_2.address, 625);
 
             await expect(
               lpAccount.testCalculateRewardsFees(
@@ -948,16 +946,13 @@ describe("Contract: LpAccount", () => {
           it("revert on balances length mismatch", async () => {
             const preClaimAmount_1 = tokenAmountToBigNumber(0);
             const postClaimAmount_1 = tokenAmountToBigNumber(1.5);
-            const fee_1 = 1500;
-
-            const fee_2 = 625;
 
             await lpAccount
               .connect(adminSafe)
-              .registerRewardFee(testToken_1.address, fee_1);
+              .registerRewardFee(testToken_1.address, 1500);
             await lpAccount
               .connect(adminSafe)
-              .registerRewardFee(testToken_2.address, fee_2);
+              .registerRewardFee(testToken_2.address, 625);
 
             await expect(
               lpAccount.testCalculateRewardsFees(
