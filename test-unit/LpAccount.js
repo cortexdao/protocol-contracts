@@ -962,6 +962,30 @@ describe("Contract: LpAccount", () => {
             ).to.be.revertedWith("BALANCE_LENGTH_MISMATCH");
           });
 
+          it("revert if balance post claim is less than pre claim", async () => {
+            const preClaimAmount_1 = tokenAmountToBigNumber(0);
+            const postClaimAmount_1 = tokenAmountToBigNumber(1.5);
+
+            // purposefully set post claim amount less than pre claim
+            const preClaimAmount_2 = tokenAmountToBigNumber(2.208);
+            const postClaimAmount_2 = tokenAmountToBigNumber(2.1);
+            expect(postClaimAmount_2).to.be.lt(preClaimAmount_2);
+
+            await lpAccount
+              .connect(adminSafe)
+              .registerRewardFee(testToken_1.address, 1500);
+            await lpAccount
+              .connect(adminSafe)
+              .registerRewardFee(testToken_2.address, 625);
+
+            await expect(
+              lpAccount.testCalculateRewardsFees(
+                [preClaimAmount_1, preClaimAmount_2],
+                [postClaimAmount_1, postClaimAmount_2]
+              )
+            ).to.be.revertedWith("SafeMath: subtraction overflow");
+          });
+
           it("calculates correct fees", async () => {
             const preClaimAmount_1 = tokenAmountToBigNumber(0);
             const postClaimAmount_1 = tokenAmountToBigNumber(1.5);
