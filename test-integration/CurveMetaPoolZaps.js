@@ -222,7 +222,15 @@ describe("Curve MetaPool Zaps - LP Account integration", () => {
       initData
     );
 
-    lpAccount = await LpAccount.attach(proxy.address);
+    const LpAccountV2 = await ethers.getContractFactory("LpAccountV2");
+    const logicV2 = await LpAccountV2.deploy();
+    const initV2Data = LpAccountV2.interface.encodeFunctionData(
+      "initializeUpgrade()",
+      []
+    );
+    await proxyAdmin.upgradeAndCall(proxy.address, logicV2.address, initV2Data);
+
+    lpAccount = await LpAccountV2.attach(proxy.address);
 
     await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
   });
