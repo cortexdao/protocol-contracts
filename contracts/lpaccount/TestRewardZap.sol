@@ -10,22 +10,36 @@ import {
 import {IZap} from "./IZap.sol";
 import {TestLpAccountStorage} from "./TestLpAccountStorage.sol";
 
-contract TestZap is IZap, TestLpAccountStorage {
+contract TestRewardZap is IZap, TestLpAccountStorage {
+    uint256 public constant CLAIM_AMOUNT = 1 ether;
+
     constructor(string memory name) public {
         _name = name;
     }
 
-    function deployLiquidity(uint256[] calldata amounts) external override {
-        _deploysArray.push(amounts);
+    function deployLiquidity(uint256[] calldata) external override {
+        revert("NOT_IMPLEMENTED");
     }
 
     // TODO: push index in addition to amount
-    function unwindLiquidity(uint256 amount, uint8) external override {
-        _unwindsArray.push(amount);
+    function unwindLiquidity(uint256, uint8) external override {
+        revert("NOT_IMPLEMENTED");
     }
 
+    /**
+     * @dev Mock claim mechanism.  Must
+     *      1. set test tokens using `setTestRewardTokens` on LP Account.
+     *      2. approve LP Account to transfer from address set as `_testMinter`.
+     */
     function claim() external override {
-        _claimsCounter += 1;
+        for (uint256 i = 0; i < _testRewardTokens.length; i++) {
+            address token = _testRewardTokens[i];
+            IERC20(token).transferFrom(
+                _testMinter,
+                address(this),
+                CLAIM_AMOUNT
+            );
+        }
     }
 
     // solhint-disable-next-line func-name-mixedcase
@@ -35,7 +49,7 @@ contract TestZap is IZap, TestLpAccountStorage {
 
     // Order of token amounts
     function sortedSymbols() external view override returns (string[] memory) {
-        return _sortedSymbols;
+        revert("NOT_IMPLEMENTED");
     }
 
     function getLpTokenBalance(address)
@@ -44,7 +58,7 @@ contract TestZap is IZap, TestLpAccountStorage {
         override
         returns (uint256)
     {
-        return 444;
+        revert("NOT_IMPLEMENTED");
     }
 
     function assetAllocations()

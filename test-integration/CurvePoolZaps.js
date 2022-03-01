@@ -27,6 +27,7 @@ describe("Curve Pool Zaps - LP Account integration", () => {
   let emergencySafe;
   let adminSafe;
   let lpSafe;
+  let treasurySafe;
 
   /* deployed contracts */
   let lpAccount;
@@ -159,7 +160,8 @@ describe("Curve Pool Zaps - LP Account integration", () => {
   });
 
   before("Setup mock address registry", async () => {
-    [deployer, lpSafe, emergencySafe, adminSafe] = await ethers.getSigners();
+    [deployer, lpSafe, emergencySafe, adminSafe, treasurySafe] =
+      await ethers.getSigners();
 
     addressRegistry = await deployMockContract(
       deployer,
@@ -176,6 +178,10 @@ describe("Curve Pool Zaps - LP Account integration", () => {
     // mAPT is never used, but we need to return something as a role
     // is setup for it in the Erc20Allocation constructor
     await addressRegistry.mock.mAptAddress.returns(FAKE_ADDRESS);
+    // claiming requires Treasury Safe address to send fees to
+    await addressRegistry.mock.getAddress
+      .withArgs(bytes32("treasurySafe"))
+      .returns(treasurySafe.address);
   });
 
   before("Deploy LP Account", async () => {
@@ -199,7 +205,15 @@ describe("Curve Pool Zaps - LP Account integration", () => {
       initData
     );
 
-    lpAccount = await LpAccount.attach(proxy.address);
+    const LpAccountV2 = await ethers.getContractFactory("LpAccountV2");
+    const logicV2 = await LpAccountV2.deploy();
+    const initV2Data = LpAccountV2.interface.encodeFunctionData(
+      "initializeUpgrade()",
+      []
+    );
+    await proxyAdmin.upgradeAndCall(proxy.address, logicV2.address, initV2Data);
+
+    lpAccount = await LpAccountV2.attach(proxy.address);
 
     await addressRegistry.mock.lpAccountAddress.returns(lpAccount.address);
   });
@@ -414,14 +428,18 @@ describe("Curve Pool Zaps - LP Account integration", () => {
           });
 
           it("Claim", async () => {
-            const erc20s = await zap.erc20Allocations();
-
-            expect(erc20s).to.include(ethers.utils.getAddress(CRV_ADDRESS));
             const crv = await ethers.getContractAt(
               "IDetailedERC20",
               CRV_ADDRESS
             );
+            const erc20s = await zap.erc20Allocations();
+
+            // may remove CRV from erc20 allocations in the future, like with
+            // other reward tokens, to avoid impacting TVL with slippage
+            expect(erc20s).to.include(ethers.utils.getAddress(crv.address));
+
             expect(await crv.balanceOf(lpAccount.address)).to.equal(0);
+            expect(await crv.balanceOf(treasurySafe.address)).to.equal(0);
 
             if (typeof rewardToken !== "undefined") {
               expect(erc20s).to.include(ethers.utils.getAddress(rewardToken));
@@ -454,6 +472,11 @@ describe("Curve Pool Zaps - LP Account integration", () => {
               await hre.network.provider.send("evm_mine");
             }
 
+            // setup reward tokens for fees
+            await lpAccount
+              .connect(adminSafe)
+              .registerRewardFee(crv.address, 1500);
+
             await lpAccount.connect(lpSafe).claim(name);
 
             expect(await crv.balanceOf(lpAccount.address)).to.be.gt(0);
@@ -464,6 +487,9 @@ describe("Curve Pool Zaps - LP Account integration", () => {
               );
               expect(await token.balanceOf(lpAccount.address)).to.be.gt(0);
             }
+
+            // check fees taken out
+            expect(await crv.balanceOf(treasurySafe.address)).to.be.gt(0);
           });
 
           it("Allocation picks up deployed balances", async () => {
