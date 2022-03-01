@@ -519,7 +519,7 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
                 [1500, 1500]
               );
 
-            await lpAccount.connect(lpSafe).claim(name);
+            await lpAccount.connect(lpSafe).claim([name]);
 
             expect(await crv.balanceOf(lpAccount.address)).to.be.gt(0);
             expect(await cvx.balanceOf(lpAccount.address)).to.be.gt(0);
