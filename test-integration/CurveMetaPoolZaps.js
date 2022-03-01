@@ -14,7 +14,6 @@ const {
 const { WHALE_POOLS } = require("../utils/constants");
 
 const CRV_ADDRESS = "0xD533a949740bb3306d119CC777fa900bA034cd52";
-const CVX_ADDRESS = "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B";
 
 /* ************************ */
 /* set DEBUG log level here */
@@ -445,10 +444,6 @@ describe("Curve MetaPool Zaps - LP Account integration", () => {
               "IDetailedERC20",
               CRV_ADDRESS
             );
-            const cvx = await ethers.getContractAt(
-              "IDetailedERC20",
-              CVX_ADDRESS
-            );
             const erc20s = await zap.erc20Allocations();
 
             // may remove CRV from erc20 allocations in the future, like with
@@ -457,9 +452,6 @@ describe("Curve MetaPool Zaps - LP Account integration", () => {
 
             expect(await crv.balanceOf(lpAccount.address)).to.equal(0);
             expect(await crv.balanceOf(treasurySafe.address)).to.equal(0);
-
-            expect(await cvx.balanceOf(lpAccount.address)).to.equal(0);
-            expect(await cvx.balanceOf(treasurySafe.address)).to.equal(0);
 
             if (typeof rewardToken !== "undefined") {
               expect(erc20s).to.include(ethers.utils.getAddress(rewardToken));
@@ -494,15 +486,11 @@ describe("Curve MetaPool Zaps - LP Account integration", () => {
             // setup reward tokens for fees
             await lpAccount
               .connect(adminSafe)
-              .registerMultipleRewardFees(
-                [crv.address, cvx.address],
-                [1500, 1500]
-              );
+              .registerRewardFee(crv.address, 1500);
 
             await lpAccount.connect(lpSafe).claim(name);
 
             expect(await crv.balanceOf(lpAccount.address)).to.be.gt(0);
-            expect(await cvx.balanceOf(lpAccount.address)).to.be.gt(0);
             if (typeof rewardToken !== "undefined") {
               const token = await ethers.getContractAt(
                 "IDetailedERC20",
@@ -513,7 +501,6 @@ describe("Curve MetaPool Zaps - LP Account integration", () => {
 
             // check fees taken out
             expect(await crv.balanceOf(treasurySafe.address)).to.be.gt(0);
-            expect(await cvx.balanceOf(treasurySafe.address)).to.be.gt(0);
           });
 
           it("Allocation picks up deployed balances", async () => {
