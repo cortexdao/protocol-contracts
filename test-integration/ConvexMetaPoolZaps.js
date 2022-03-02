@@ -111,6 +111,16 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
       whaleAddress: WHALE_POOLS["OUSD"],
       rewardToken: "0x8207c1FfC5B6804F6024322CcF34F29c3541Ae26",
     },
+    {
+      contractName: "ConvexUstWormholeZap",
+      swapAddress: "0xCEAF7747579696A2F0bb206a14210e3c9e6fB269",
+      swapInterface: "IMetaPool",
+      lpTokenAddress: "0xCEAF7747579696A2F0bb206a14210e3c9e6fB269",
+      gaugeAddress: "0x7e2b9B5244bcFa5108A76D5E7b507CFD5581AD4A",
+      gaugeInterface: "IBaseRewardPool",
+      numberOfCoins: 4,
+      whaleAddress: WHALE_POOLS["UST-Wormhole"],
+    },
     // UST pool reward period ends right before our pinned block
     // {
     //   contractName: "ConvexUstZap",
