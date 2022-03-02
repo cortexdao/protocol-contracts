@@ -6,6 +6,8 @@ import {IAssetAllocation, IERC20} from "contracts/common/Imports.sol";
 abstract contract TestLpAccountStorage {
     string internal _name;
 
+    string[] internal _sortedSymbols;
+
     uint256[][] internal _deploysArray;
     uint256[] internal _unwindsArray;
     uint256[] internal _swapsArray;
@@ -14,4 +16,8 @@ abstract contract TestLpAccountStorage {
 
     string[] internal _assetAllocations;
     IERC20[] internal _tokens;
+
+    /// @dev see `TestRewardZap`
+    address internal _testMinter;
+    address[] internal _testRewardTokens;
 }
