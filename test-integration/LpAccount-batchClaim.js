@@ -46,6 +46,11 @@ describe("LP Account integration: batch claiming", () => {
   let stableswaps = [];
   let rewardContracts = [];
 
+  let crv;
+  let cvx;
+  let rewardToken_0;
+  let rewardToken_1;
+
   let underlyerToken;
   const underlyerIndex = 0;
   const startingTokens = 100000;
@@ -237,10 +242,8 @@ describe("LP Account integration: batch claiming", () => {
     const curve3poolAllocation = await Curve3poolAllocation.deploy();
 
     for (const [zap, data] of _.zip(zaps, zapData)) {
-      console.log(await zap.NAME());
       const allocationNames = await zap.assetAllocations();
       for (let name of allocationNames) {
-        console.log(name);
         name = name
           .split("-")
           .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -249,7 +252,6 @@ describe("LP Account integration: batch claiming", () => {
           name = "AaveStableCoin";
         }
         const allocationContractName = name + "Allocation";
-        console.log(allocationContractName);
         const allocationFactory = await ethers.getContractFactory(
           allocationContractName
         );
@@ -283,7 +285,7 @@ describe("LP Account integration: batch claiming", () => {
     }
   });
 
-  beforeEach("Fund LP Account with pool underlyer", async () => {
+  before("Fund LP Account with pool underlyer", async () => {
     for (const [stableSwap, data] of _.zip(stableswaps, zapData)) {
       let underlyerAddress;
       if (data.useUnwrapped) {
@@ -311,9 +313,9 @@ describe("LP Account integration: batch claiming", () => {
     }
   });
 
-  it("claim through multiple zaps at once", async () => {
-    const crv = await ethers.getContractAt("IDetailedERC20", CRV_ADDRESS);
-    const cvx = await ethers.getContractAt("IDetailedERC20", CVX_ADDRESS);
+  before("Setup reward tokens", async () => {
+    crv = await ethers.getContractAt("IDetailedERC20", CRV_ADDRESS);
+    cvx = await ethers.getContractAt("IDetailedERC20", CVX_ADDRESS);
     const erc20s_0 = await zaps[0].erc20Allocations();
     const erc20s_1 = await zaps[1].erc20Allocations();
 
@@ -322,23 +324,17 @@ describe("LP Account integration: batch claiming", () => {
     expect(erc20s_0).to.include(ethers.utils.getAddress(crv.address));
     expect(erc20s_1).to.include(ethers.utils.getAddress(crv.address));
 
-    expect(await crv.balanceOf(lpAccount.address)).to.equal(0);
-    expect(await crv.balanceOf(treasurySafe.address)).to.equal(0);
-
-    expect(await cvx.balanceOf(lpAccount.address)).to.equal(0);
-    expect(await cvx.balanceOf(treasurySafe.address)).to.equal(0);
-
-    const rewardToken_0 = await ethers.getContractAt(
+    rewardToken_0 = await ethers.getContractAt(
       "IDetailedERC20",
       zapData[0].rewardToken
     );
-    const rewardToken_1 = await ethers.getContractAt(
+    rewardToken_1 = await ethers.getContractAt(
       "IDetailedERC20",
       zapData[1].rewardToken
     );
-    expect(await rewardToken_0.balanceOf(lpAccount.address)).to.equal(0);
-    expect(await rewardToken_1.balanceOf(lpAccount.address)).to.equal(0);
+  });
 
+  before("Deploy into pools", async () => {
     const amounts = new Array(4).fill("0");
     // deposit 1% of the starting amount
     const underlyerAmount = tokenAmountToBigNumber(
@@ -358,12 +354,24 @@ describe("LP Account integration: batch claiming", () => {
     const oneDayInSeconds = 60 * 60 * 24;
     await hre.network.provider.send("evm_increaseTime", [oneDayInSeconds]);
     await hre.network.provider.send("evm_mine");
+  });
+
+  it("claim multiple zaps at once (CRV and CVX registered)", async () => {
+    expect(await crv.balanceOf(lpAccount.address)).to.equal(0);
+    expect(await cvx.balanceOf(lpAccount.address)).to.equal(0);
+    expect(await rewardToken_0.balanceOf(lpAccount.address)).to.equal(0);
+    expect(await rewardToken_1.balanceOf(lpAccount.address)).to.equal(0);
+
+    expect(await crv.balanceOf(treasurySafe.address)).to.equal(0);
+    expect(await cvx.balanceOf(treasurySafe.address)).to.equal(0);
 
     // setup reward tokens for fees
     await lpAccount
       .connect(adminSafe)
       .registerMultipleRewardFees([crv.address, cvx.address], [1500, 1500]);
 
+    const name_0 = await zaps[0].NAME();
+    const name_1 = await zaps[1].NAME();
     await lpAccount.connect(lpSafe).claim([name_0, name_1]);
 
     expect(await crv.balanceOf(lpAccount.address)).to.be.gt(0);
@@ -373,6 +381,57 @@ describe("LP Account integration: batch claiming", () => {
 
     // check fees taken out
     expect(await crv.balanceOf(treasurySafe.address)).to.be.gt(0);
+    expect(await cvx.balanceOf(treasurySafe.address)).to.be.gt(0);
+  });
+
+  it("claim multiple zaps at once (neither CRV nor CVX registered)", async () => {
+    expect(await crv.balanceOf(lpAccount.address)).to.equal(0);
+    expect(await cvx.balanceOf(lpAccount.address)).to.equal(0);
+    expect(await rewardToken_0.balanceOf(lpAccount.address)).to.equal(0);
+    expect(await rewardToken_1.balanceOf(lpAccount.address)).to.equal(0);
+
+    expect(await crv.balanceOf(treasurySafe.address)).to.equal(0);
+    expect(await cvx.balanceOf(treasurySafe.address)).to.equal(0);
+
+    const name_0 = await zaps[0].NAME();
+    const name_1 = await zaps[1].NAME();
+    await lpAccount.connect(lpSafe).claim([name_0, name_1]);
+
+    expect(await crv.balanceOf(lpAccount.address)).to.be.gt(0);
+    expect(await cvx.balanceOf(lpAccount.address)).to.be.gt(0);
+    expect(await rewardToken_0.balanceOf(lpAccount.address)).to.be.gt(0);
+    expect(await rewardToken_1.balanceOf(lpAccount.address)).to.be.gt(0);
+
+    // check fees taken out
+    expect(await crv.balanceOf(treasurySafe.address)).to.equal(0);
+    expect(await cvx.balanceOf(treasurySafe.address)).to.equal(0);
+  });
+
+  it("claim multiple zaps at once (only CVX registered)", async () => {
+    expect(await crv.balanceOf(lpAccount.address)).to.equal(0);
+    expect(await cvx.balanceOf(lpAccount.address)).to.equal(0);
+    expect(await rewardToken_0.balanceOf(lpAccount.address)).to.equal(0);
+    expect(await rewardToken_1.balanceOf(lpAccount.address)).to.equal(0);
+
+    expect(await crv.balanceOf(treasurySafe.address)).to.equal(0);
+    expect(await cvx.balanceOf(treasurySafe.address)).to.equal(0);
+
+    // setup reward tokens for fees
+    await lpAccount
+      .connect(adminSafe)
+      .registerMultipleRewardFees([cvx.address], [1500]);
+
+    const name_0 = await zaps[0].NAME();
+    const name_1 = await zaps[1].NAME();
+    await lpAccount.connect(lpSafe).claim([name_0, name_1]);
+
+    expect(await crv.balanceOf(lpAccount.address)).to.be.gt(0);
+    expect(await cvx.balanceOf(lpAccount.address)).to.be.gt(0);
+    expect(await rewardToken_0.balanceOf(lpAccount.address)).to.be.gt(0);
+    expect(await rewardToken_1.balanceOf(lpAccount.address)).to.be.gt(0);
+
+    // check fees taken out
+    expect(await crv.balanceOf(treasurySafe.address)).to.equal(0);
     expect(await cvx.balanceOf(treasurySafe.address)).to.be.gt(0);
   });
 });
