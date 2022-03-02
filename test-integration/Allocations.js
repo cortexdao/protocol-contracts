@@ -690,7 +690,10 @@ describe("Allocations", () => {
         });
 
         it("Get primary underlyer balance from account holding", async () => {
-          const primaryAmount = tokenAmountToBigNumber("1000", 18);
+          const primaryAmount = tokenAmountToBigNumber(
+            "1000",
+            await primaryToken.decimals()
+          );
           const primaryIndex = 0;
           const minAmount = 0;
 
@@ -716,7 +719,10 @@ describe("Allocations", () => {
         });
 
         it("Get primary underlyer balance from gauge holding", async () => {
-          const primaryAmount = tokenAmountToBigNumber("1000", 18);
+          const primaryAmount = tokenAmountToBigNumber(
+            "1000",
+            await primaryToken.decimals()
+          );
           const primaryIndex = 0;
           const minAmount = 0;
 
@@ -749,7 +755,10 @@ describe("Allocations", () => {
         });
 
         it("Get primary underlyer balance from combined holdings", async () => {
-          const primaryAmount = tokenAmountToBigNumber("1000", 18);
+          const primaryAmount = tokenAmountToBigNumber(
+            "1000",
+            await primaryToken.decimals()
+          );
           const primaryIndex = 0;
           const minAmount = 0;
 
