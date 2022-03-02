@@ -1068,6 +1068,37 @@ describe("Contract: LpAccount", () => {
           const collectedFee = claimAmount.mul(fee).div(10000);
           expect(treasuryBalance).to.equal(collectedFee);
         });
+
+        it("claims with no fees if no reward token is registered", async () => {
+          const TestRewardZap = await ethers.getContractFactory(
+            "TestRewardZap"
+          );
+          const name = "mockZap";
+          const zap = await TestRewardZap.deploy(name);
+          await lpAccount.connect(adminSafe).registerZap(zap.address);
+
+          await testToken_1.approve(lpAccount.address, MAX_UINT256);
+          await testToken_2.approve(lpAccount.address, MAX_UINT256);
+
+          await lpAccount.setTestMinter(deployer.address);
+          await lpAccount.setTestRewardTokens([
+            testToken_1.address,
+            testToken_2.address,
+          ]);
+
+          expect(await testToken_1.balanceOf(lpAccount.address)).to.equal(0);
+          expect(await testToken_2.balanceOf(lpAccount.address)).to.equal(0);
+
+          await lpAccount.connect(lpSafe).claim([name]);
+
+          // LP Account should hold balances for both reward tokens
+          expect(await testToken_1.balanceOf(lpAccount.address)).to.be.gt(0);
+          expect(await testToken_2.balanceOf(lpAccount.address)).to.be.gt(0);
+
+          // no fees collected
+          expect(await testToken_1.balanceOf(treasurySafe.address)).to.equal(0);
+          expect(await testToken_2.balanceOf(treasurySafe.address)).to.equal(0);
+        });
       });
     });
   });
