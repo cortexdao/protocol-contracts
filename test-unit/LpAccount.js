@@ -616,7 +616,7 @@ describe("Contract: LpAccount", () => {
           const name = await zap.NAME();
 
           await expect(
-            lpAccount.connect(lpSafe).claim(name)
+            lpAccount.connect(lpSafe).claim([name])
           ).to.be.revertedWith("INVALID_NAME");
         });
 
@@ -626,7 +626,7 @@ describe("Contract: LpAccount", () => {
 
           const name = await zap.NAME();
 
-          await expect(lpAccount.connect(lpSafe).claim(name)).to.not.be
+          await expect(lpAccount.connect(lpSafe).claim([name])).to.not.be
             .reverted;
         });
 
@@ -637,7 +637,7 @@ describe("Contract: LpAccount", () => {
           const name = await zap.NAME();
 
           await expect(
-            lpAccount.connect(randomUser).claim(name)
+            lpAccount.connect(randomUser).claim([name])
           ).to.be.revertedWith("NOT_LP_ROLE");
         });
 
@@ -647,8 +647,21 @@ describe("Contract: LpAccount", () => {
 
           const name = await zap.NAME();
 
-          await lpAccount.connect(lpSafe).claim(name);
+          await lpAccount.connect(lpSafe).claim([name]);
           expect(await lpAccount._claimsCounter()).to.equal(1);
+        });
+
+        it("can claim multiple", async () => {
+          const zap_1 = await deployMockZap("mockZap_1");
+          await lpAccount.connect(adminSafe).registerZap(zap_1.address);
+          const name_1 = await zap_1.NAME();
+
+          const zap_2 = await deployMockZap("mockZap_2");
+          await lpAccount.connect(adminSafe).registerZap(zap_2.address);
+          const name_2 = await zap_2.NAME();
+
+          await lpAccount.connect(lpSafe).claim([name_1, name_2]);
+          expect(await lpAccount._claimsCounter()).to.equal(2);
         });
 
         it("cannot deploy with unregistered ERC20", async () => {
@@ -662,7 +675,7 @@ describe("Contract: LpAccount", () => {
           ].returns(false);
 
           await expect(
-            lpAccount.connect(lpSafe).claim(name)
+            lpAccount.connect(lpSafe).claim([name])
           ).to.be.revertedWith("MISSING_ERC20_ALLOCATIONS");
         });
       });
@@ -1035,7 +1048,7 @@ describe("Contract: LpAccount", () => {
           expect(await testToken_1.balanceOf(lpAccount.address)).to.equal(0);
           expect(await testToken_2.balanceOf(treasurySafe.address)).to.equal(0);
 
-          await lpAccount.connect(lpSafe).claim(name);
+          await lpAccount.connect(lpSafe).claim([name]);
 
           // LP Account should hold balances for both reward tokens
           expect(await testToken_1.balanceOf(lpAccount.address)).to.be.gt(0);

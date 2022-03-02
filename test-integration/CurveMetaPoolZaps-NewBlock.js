@@ -432,7 +432,7 @@ describe("Curve MetaPool Zaps (Updated block) - LP Account integration", () => {
               .connect(adminSafe)
               .registerRewardFee(crv.address, 1500);
 
-            await lpAccount.connect(lpSafe).claim(name);
+            await lpAccount.connect(lpSafe).claim([name]);
 
             expect(await crv.balanceOf(lpAccount.address)).to.be.gt(0);
             if (typeof rewardToken !== "undefined") {

@@ -30,7 +30,7 @@ import {
 import {
     IZap,
     ISwap,
-    ILpAccount,
+    ILpAccountV2,
     IZapRegistry,
     ISwapRegistry,
     IStableSwap3Pool,
@@ -43,7 +43,7 @@ contract LpAccountV2 is
     Initializable,
     AccessControlUpgradeSafe,
     ReentrancyGuardUpgradeSafe,
-    ILpAccount,
+    ILpAccountV2,
     IZapRegistry,
     ISwapRegistry,
     Erc20AllocationConstants,
@@ -292,26 +292,27 @@ contract LpAccountV2 is
         _lockOracleAdapter(lockPeriod);
     }
 
-    function claim(string calldata name)
+    function claim(string[] calldata names)
         external
         override
         nonReentrant
         onlyLpRole
     {
-        IZap zap = _zaps.get(name);
-        require(address(zap) != address(0), "INVALID_NAME");
-
-        bool isErc20TokenRegistered =
-            _checkErc20Registrations(zap.erc20Allocations());
-        require(isErc20TokenRegistered, "MISSING_ERC20_ALLOCATIONS");
-
         uint256[] memory preClaimRewardsBalances = _getRewardsBalances();
 
-        address(zap).functionDelegateCall(
-            abi.encodeWithSelector(IZap.claim.selector)
-        );
+        for (uint256 i = 0; i < names.length; i++) {
+            string calldata name = names[i];
+            IZap zap = _zaps.get(name);
+            require(address(zap) != address(0), "INVALID_NAME");
 
-        _lockOracleAdapter(lockPeriod);
+            bool isErc20TokenRegistered =
+                _checkErc20Registrations(zap.erc20Allocations());
+            require(isErc20TokenRegistered, "MISSING_ERC20_ALLOCATIONS");
+
+            address(zap).functionDelegateCall(
+                abi.encodeWithSelector(IZap.claim.selector)
+            );
+        }
 
         uint256[] memory postClaimRewardsBalances = _getRewardsBalances();
         uint256[] memory rewardsFees =
@@ -320,6 +321,8 @@ contract LpAccountV2 is
                 postClaimRewardsBalances
             );
         _sendFeesToTreasurySafe(rewardsFees);
+
+        _lockOracleAdapter(lockPeriod);
     }
 
     function registerRewardFee(address token, uint256 fee)
