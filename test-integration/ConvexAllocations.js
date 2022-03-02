@@ -581,7 +581,10 @@ describe("Convex Allocations", () => {
         });
 
         it("Should show zero primary underlyer balance if only LP Account holding", async () => {
-          const primaryAmount = tokenAmountToBigNumber("1000", 18);
+          const primaryAmount = tokenAmountToBigNumber(
+            "1000",
+            await primaryToken.decimals()
+          );
           const minAmount = 0;
 
           // deposit primary underlyer into metapool
@@ -601,7 +604,10 @@ describe("Convex Allocations", () => {
         });
 
         it("Get primary underlyer balance held by reward contract", async () => {
-          const primaryAmount = tokenAmountToBigNumber("1000", 18);
+          const primaryAmount = tokenAmountToBigNumber(
+            "1000",
+            await primaryToken.decimals()
+          );
           const minAmount = 0;
 
           // deposit primary underlyer into metapool

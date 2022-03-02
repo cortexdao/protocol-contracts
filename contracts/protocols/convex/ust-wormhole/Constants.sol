@@ -5,10 +5,7 @@ import {IERC20, INameIdentifier} from "contracts/common/Imports.sol";
 import {
     IBaseRewardPool
 } from "contracts/protocols/convex/common/interfaces/Imports.sol";
-import {
-    IMetaPool,
-    IOldDepositor
-} from "contracts/protocols/curve/metapool/Imports.sol";
+import {IMetaPool} from "contracts/protocols/curve/metapool/Imports.sol";
 
 abstract contract ConvexUstWormholeConstants is INameIdentifier {
     string public constant override NAME = "convex-ust-wormhole";
