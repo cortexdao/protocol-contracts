@@ -158,6 +158,12 @@ const CurveMetaPoolAllocations = [
     // using the Curve pool itself as the "whale": see prior note
     whaleAddress: "0x5a6A4D54456819380173272A5E8E9B9904BdF41B",
   },
+  {
+    contractName: "CurveUstWormholeAllocation",
+    primaryUnderlyerSymbol: "UST (Wormhole)",
+    // using the Curve pool itself as the "whale": see prior note
+    whaleAddress: "0xCEAF7747579696A2F0bb206a14210e3c9e6fB269",
+  },
 ];
 
 async function getContractAt(
