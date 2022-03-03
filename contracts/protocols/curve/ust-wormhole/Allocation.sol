@@ -3,18 +3,18 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import {
-    MetaPoolAllocationBase
+    MetaPoolAllocationBaseV3
 } from "contracts/protocols/curve/metapool/Imports.sol";
 
 import {CurveUstWormholeConstants} from "./Constants.sol";
 
 contract CurveUstWormholeAllocation is
-    MetaPoolAllocationBase,
+    MetaPoolAllocationBaseV3,
     CurveUstWormholeConstants
 {
     constructor(address curve3PoolAllocation_)
         public
-        MetaPoolAllocationBase(curve3PoolAllocation_)
+        MetaPoolAllocationBaseV3(curve3PoolAllocation_)
     {} // solhint-disable-line no-empty-blocks
 
     function balanceOf(address account, uint8 tokenIndex)
@@ -39,6 +39,6 @@ contract CurveUstWormholeAllocation is
         override
         returns (TokenData[] memory)
     {
-        return _getBasePoolTokenData(address(PRIMARY_UNDERLYER), "UST", 6);
+        return _getBasePoolTokenData();
     }
 }

@@ -3,13 +3,13 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import {
-    MetaPoolAllocationBaseV2
+    MetaPoolAllocationBaseV3
 } from "contracts/protocols/convex/metapool/Imports.sol";
 
 import {ConvexUstWormholeConstants} from "./Constants.sol";
 
 contract ConvexUstWormholeAllocation is
-    MetaPoolAllocationBaseV2,
+    MetaPoolAllocationBaseV3,
     ConvexUstWormholeConstants
 {
     function balanceOf(address account, uint8 tokenIndex)
@@ -34,6 +34,6 @@ contract ConvexUstWormholeAllocation is
         override
         returns (TokenData[] memory)
     {
-        return _getBasePoolTokenData(address(PRIMARY_UNDERLYER), "UST", 6);
+        return _getBasePoolTokenData();
     }
 }
