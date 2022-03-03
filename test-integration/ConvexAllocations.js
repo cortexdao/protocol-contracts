@@ -155,6 +155,8 @@ const ConvexMetaPoolAllocations = [
     pid: 59,
     // using the Curve pool itself as the "whale": see prior note
     whaleAddress: "0xCEAF7747579696A2F0bb206a14210e3c9e6fB269",
+    // this allocation avoids decomposing into primary coin
+    skipPrimary: true,
   },
 ];
 
@@ -463,6 +465,7 @@ describe("Convex Allocations", () => {
       pid,
       whaleAddress,
       interfaceOverride,
+      skipPrimary,
     } = allocationData;
 
     describe(`Convex ${primaryUnderlyerSymbol} allocation`, () => {
@@ -548,95 +551,109 @@ describe("Convex Allocations", () => {
         );
       });
 
-      describe("Primary underlyer", () => {
-        let primaryToken;
-        let primaryAllocationId;
-        const primaryIndex = 0;
+      if (!skipPrimary) {
+        describe("Primary underlyer", () => {
+          let primaryToken;
+          let primaryAllocationId;
+          const primaryIndex = 0;
 
-        before("Get allocation ID", async () => {
-          primaryAllocationId = await tvlManager.testEncodeAssetAllocationId(
-            allocation.address,
-            primaryIndex
+          before("Get allocation ID", async () => {
+            primaryAllocationId = await tvlManager.testEncodeAssetAllocationId(
+              allocation.address,
+              primaryIndex
+            );
+          });
+
+          before(
+            `Prepare account 0 with ${primaryUnderlyerSymbol}`,
+            async () => {
+              const PRIMARY_UNDERLYER_ADDRESS =
+                await allocation.PRIMARY_UNDERLYER();
+              primaryToken = await ethers.getContractAt(
+                "IDetailedERC20",
+                PRIMARY_UNDERLYER_ADDRESS
+              );
+              const amount = tokenAmountToBigNumber(
+                100000,
+                await primaryToken.decimals()
+              );
+              const sender = whaleAddress;
+              await acquireToken(
+                sender,
+                lpAccount,
+                primaryToken,
+                amount,
+                deployer
+              );
+            }
           );
+
+          it("Should show zero primary underlyer balance if no holdings", async () => {
+            const balance = await tvlManager.balanceOf(primaryAllocationId);
+            expect(balance).to.equal(0);
+          });
+
+          it("Should show zero primary underlyer balance if only LP Account holding", async () => {
+            const primaryAmount = tokenAmountToBigNumber(
+              "1000",
+              await primaryToken.decimals()
+            );
+            const minAmount = 0;
+
+            // deposit primary underlyer into metapool
+            await primaryToken
+              .connect(lpAccount)
+              .approve(metaPool.address, MAX_UINT256);
+            await metaPool["add_liquidity(uint256[2],uint256)"](
+              [primaryAmount, "0"],
+              minAmount
+            );
+
+            const lpBalance = await lpToken.balanceOf(lpAccount.address);
+            expect(lpBalance).to.be.gt(0);
+
+            const balance = await tvlManager.balanceOf(primaryAllocationId);
+            expect(balance).to.equal(0);
+          });
+
+          it("Get primary underlyer balance held by reward contract", async () => {
+            const primaryAmount = tokenAmountToBigNumber(
+              "1000",
+              await primaryToken.decimals()
+            );
+            const minAmount = 0;
+
+            // deposit primary underlyer into metapool
+            await primaryToken
+              .connect(lpAccount)
+              .approve(metaPool.address, MAX_UINT256);
+            await metaPool["add_liquidity(uint256[2],uint256)"](
+              [primaryAmount, "0"],
+              minAmount
+            );
+
+            await lpToken
+              .connect(lpAccount)
+              .approve(booster.address, MAX_UINT256);
+            const lpBalance = await lpToken.balanceOf(lpAccount.address);
+            await booster.deposit(pid, lpBalance, true);
+            expect(await lpToken.balanceOf(lpAccount.address)).to.equal(0);
+            const gaugeLpBalance = await rewardContract.balanceOf(
+              lpAccount.address
+            );
+            expect(gaugeLpBalance).to.equal(lpBalance);
+
+            const balance = await tvlManager.balanceOf(primaryAllocationId);
+            expect(balance).to.equal(0);
+          });
         });
-
-        before(`Prepare account 0 with ${primaryUnderlyerSymbol}`, async () => {
-          const PRIMARY_UNDERLYER_ADDRESS =
-            await allocation.PRIMARY_UNDERLYER();
-          primaryToken = await ethers.getContractAt(
-            "IDetailedERC20",
-            PRIMARY_UNDERLYER_ADDRESS
-          );
-          const amount = tokenAmountToBigNumber(
-            100000,
-            await primaryToken.decimals()
-          );
-          const sender = whaleAddress;
-          await acquireToken(sender, lpAccount, primaryToken, amount, deployer);
-        });
-
-        it("Should show zero primary underlyer balance if no holdings", async () => {
-          const balance = await tvlManager.balanceOf(primaryAllocationId);
-          expect(balance).to.equal(0);
-        });
-
-        it("Should show zero primary underlyer balance if only LP Account holding", async () => {
-          const primaryAmount = tokenAmountToBigNumber(
-            "1000",
-            await primaryToken.decimals()
-          );
-          const minAmount = 0;
-
-          // deposit primary underlyer into metapool
-          await primaryToken
-            .connect(lpAccount)
-            .approve(metaPool.address, MAX_UINT256);
-          await metaPool["add_liquidity(uint256[2],uint256)"](
-            [primaryAmount, "0"],
-            minAmount
-          );
-
-          const lpBalance = await lpToken.balanceOf(lpAccount.address);
-          expect(lpBalance).to.be.gt(0);
-
-          const balance = await tvlManager.balanceOf(primaryAllocationId);
-          expect(balance).to.equal(0);
-        });
-
-        it("Get primary underlyer balance held by reward contract", async () => {
-          const primaryAmount = tokenAmountToBigNumber(
-            "1000",
-            await primaryToken.decimals()
-          );
-          const minAmount = 0;
-
-          // deposit primary underlyer into metapool
-          await primaryToken
-            .connect(lpAccount)
-            .approve(metaPool.address, MAX_UINT256);
-          await metaPool["add_liquidity(uint256[2],uint256)"](
-            [primaryAmount, "0"],
-            minAmount
-          );
-
-          await lpToken
-            .connect(lpAccount)
-            .approve(booster.address, MAX_UINT256);
-          const lpBalance = await lpToken.balanceOf(lpAccount.address);
-          await booster.deposit(pid, lpBalance, true);
-          expect(await lpToken.balanceOf(lpAccount.address)).to.equal(0);
-          const gaugeLpBalance = await rewardContract.balanceOf(
-            lpAccount.address
-          );
-          expect(gaugeLpBalance).to.equal(lpBalance);
-
-          const balance = await tvlManager.balanceOf(primaryAllocationId);
-          expect(balance).to.equal(0);
-        });
-      });
+      }
 
       [1, 2, 3].forEach((underlyerIndex) => {
         const basePoolIndex = underlyerIndex - 1;
+        if (skipPrimary) {
+          underlyerIndex = basePoolIndex;
+        }
 
         describe(`3Pool index: ${basePoolIndex}`, () => {
           let underlyerToken;
