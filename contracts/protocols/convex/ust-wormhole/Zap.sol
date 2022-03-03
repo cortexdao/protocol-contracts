@@ -6,16 +6,16 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAssetAllocation} from "contracts/common/Imports.sol";
 import {ConvexUstWormholeConstants} from "./Constants.sol";
 import {
-    MetaPoolDepositorZap
+    MetaPoolDepositorZapV2
 } from "contracts/protocols/convex/metapool/Imports.sol";
 
 contract ConvexUstWormholeZap is
-    MetaPoolDepositorZap,
+    MetaPoolDepositorZapV2,
     ConvexUstWormholeConstants
 {
     constructor()
         public
-        MetaPoolDepositorZap(META_POOL, address(LP_TOKEN), PID, 10000, 100) // solhint-disable-next-line no-empty-blocks
+        MetaPoolDepositorZapV2(META_POOL, address(LP_TOKEN), PID, 10000, 100) // solhint-disable-next-line no-empty-blocks
     {}
 
     function assetAllocations() public view override returns (string[] memory) {
