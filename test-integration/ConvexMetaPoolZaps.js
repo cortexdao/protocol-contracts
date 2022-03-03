@@ -375,12 +375,14 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
             allocationContractName
           );
           let allocation;
-          if (allocationContractName.startsWith("Curve")) {
+          // Convex metapool allocations have zero constructor args.
+          // Curve metapool allocations can have one or zero constructor
+          // args, depending on the version of the metapool base allocation.
+          if (allocationFactory.interface.deploy.inputs.length != 0) {
             allocation = await allocationFactory.deploy(
               curve3poolAllocation.address
             );
           } else {
-            // Convex metapool allocations have zero constructor args
             allocation = await allocationFactory.deploy();
           }
           await tvlManager
