@@ -12,11 +12,6 @@ contract CurveUstWormholeAllocation is
     MetaPoolAllocationBaseV3,
     CurveUstWormholeConstants
 {
-    constructor(address curve3PoolAllocation_)
-        public
-        MetaPoolAllocationBaseV3(curve3PoolAllocation_)
-    {} // solhint-disable-line no-empty-blocks
-
     function balanceOf(address account, uint8 tokenIndex)
         public
         view
