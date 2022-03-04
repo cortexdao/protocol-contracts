@@ -231,7 +231,19 @@ describe("Contract: PoolToken", () => {
           .connect(deployer)
           .upgradeAndCall(proxy.address, logicV2.address, poolTokenV2InitData);
 
-        poolToken = await PoolTokenV2.attach(proxy.address);
+        const PoolTokenV3 = await ethers.getContractFactory("TestPoolTokenV3");
+        const logicV3 = await PoolTokenV3.deploy();
+        await logicV3.deployed();
+
+        const poolTokenV3InitData = PoolTokenV3.interface.encodeFunctionData(
+          "initializeV3",
+          []
+        );
+        await proxyAdmin
+          .connect(deployer)
+          .upgradeAndCall(proxy.address, logicV3.address, poolTokenV3InitData);
+
+        poolToken = await PoolTokenV3.attach(proxy.address);
 
         await acquireToken(
           WHALE_POOLS[symbol],
