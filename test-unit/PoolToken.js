@@ -844,7 +844,7 @@ describe("Contract: PoolTokenV3", () => {
       });
 
       it("getUnderlyerAmountWithFee returns expected amount", async () => {
-        const decimals = 1;
+        const decimals = 18;
         await underlyerMock.mock.decimals.returns(decimals);
         const depositAmount = tokenAmountToBigNumber("1", decimals);
         await underlyerMock.mock.allowance.returns(depositAmount);
@@ -854,33 +854,43 @@ describe("Contract: PoolTokenV3", () => {
           tokenAmountToBigNumber("1000")
         );
 
-        // make a desposit to update saved time
+        // make a deposit to update saved time
         await poolToken.connect(randomUser).addLiquidity(depositAmount);
 
-        // calculate expected underlyer amount and fee
+        // calculate expected underlyer amount after withdrawal fee
         const aptAmount = tokenAmountToBigNumber(1);
-        const underlyerAmount = await poolToken.getUnderlyerAmount(aptAmount);
+        const originalUnderlyerAmount = await poolToken.getUnderlyerAmount(
+          aptAmount
+        );
+        const withdrawalFee = await poolToken.withdrawalFee();
+        const withdrawalFeeAmount = originalUnderlyerAmount
+          .mul(withdrawalFee)
+          .div(1000000);
+        const underlyerAmount =
+          originalUnderlyerAmount.sub(withdrawalFeeAmount);
+
+        // calculate arbitrage fee
         const feePercentage = await poolToken.feePercentage();
-        const fee = underlyerAmount.mul(feePercentage).div(100);
+        const fee = originalUnderlyerAmount.mul(feePercentage).div(100);
 
-        // advance time not quite enough, so there is a fee
+        // There is an arbitrage fee.
+        // WARNING: need to call `getUnderlyerAmountWithFee` using depositor
+        // since last deposit time needs to get set
+        expect(
+          await poolToken
+            .connect(randomUser)
+            .getUnderlyerAmountWithFee(aptAmount)
+        ).to.equal(underlyerAmount.sub(fee));
+
+        // advance by just enough time; now there is no arbitrage fee
         const feePeriod = await poolToken.feePeriod();
-        await ethers.provider.send("evm_increaseTime", [
-          feePeriod.div(2).toNumber(),
-        ]); // add feePeriod seconds
+        await ethers.provider.send("evm_increaseTime", [feePeriod.toNumber()]);
         await ethers.provider.send("evm_mine"); // mine the next block
-        expect(await poolToken.getUnderlyerAmountWithFee(aptAmount)).to.equal(
-          underlyerAmount.sub(fee)
-        );
-
-        // advance by just enough time; now there is no fee
-        await ethers.provider.send("evm_increaseTime", [
-          feePeriod.div(2).toNumber(),
-        ]); // add feePeriod seconds
-        await ethers.provider.send("evm_mine"); // mine the next block
-        expect(await poolToken.getUnderlyerAmountWithFee(aptAmount)).to.equal(
-          underlyerAmount
-        );
+        expect(
+          await poolToken
+            .connect(randomUser)
+            .getUnderlyerAmountWithFee(aptAmount)
+        ).to.equal(underlyerAmount);
       });
     });
 
