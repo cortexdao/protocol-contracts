@@ -23,7 +23,7 @@ import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
 
 import {
     IReservePool,
-    IWithdrawFeePool,
+    IWithdrawFeePoolV2,
     ILockingPool,
     IPoolToken,
     ILiquidityPoolV2
@@ -41,7 +41,7 @@ contract PoolTokenV3 is
     ILiquidityPoolV2,
     IPoolToken,
     IReservePool,
-    IWithdrawFeePool,
+    IWithdrawFeePoolV2,
     ILockingPool,
     Initializable,
     AccessControlUpgradeSafe,
@@ -94,7 +94,7 @@ contract PoolTokenV3 is
      *@notice fee charged for all withdrawals in 1/100th basis points,
      * e.g. 100 = 1 bps
      */
-    uint256 public withdrawalFee;
+    uint256 public override withdrawalFee;
 
     /* ------------------------------- */
 
@@ -358,7 +358,7 @@ contract PoolTokenV3 is
         nonReentrant
         onlyAdminRole
     {
-        wiwthdrawalFee = withdrawalFee_;
+        withdrawalFee = withdrawalFee_;
         emit WithdrawalFeeChanged(withdrawalFee_);
     }
 
