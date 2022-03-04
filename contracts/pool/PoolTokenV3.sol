@@ -176,7 +176,7 @@ contract PoolTokenV3 is
      * `msg.sender` against the proxy admin slot defined in EIP-1967.
      * This will only allow the proxy admin to call this function during upgrades.
      */
-    function initializeUpgradeV3() external nonReentrant onlyProxyAdmin {
+    function initializeV3() external nonReentrant onlyProxyAdmin {
         withdrawalFee = 1000;
     }
 

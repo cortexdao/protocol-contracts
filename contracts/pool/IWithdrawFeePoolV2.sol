@@ -35,6 +35,10 @@ interface IWithdrawFeePoolV2 {
      */
     function setFeePercentage(uint256 feePercentage_) external;
 
+    /**
+     * @notice Set the new withdrawal fee
+     * @param withdrawalFee_ The new withdrawal fee
+     */
     function setWithdrawalFee(uint256 withdrawalFee_) external;
 
     /**
@@ -54,6 +58,7 @@ interface IWithdrawFeePoolV2 {
     /**
      *@notice fee charged for all withdrawals in 1/100th basis points,
      * e.g. 100 = 1 bps
+     * @return The withdrawal fee
      */
     function withdrawalFee() external view returns (uint256);
 
