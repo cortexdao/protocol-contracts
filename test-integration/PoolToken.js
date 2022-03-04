@@ -840,8 +840,9 @@ describe("Contract: PoolToken", () => {
                 .connect(randomUser)
                 .transfer(poolToken.address, reserveBalance);
 
-              // calculate slightly more than APT amount corresponding to the reserve
-              const extraAmount = tokenAmountToBigNumber("1", decimals);
+              // calculate slightly more than APT amount corresponding to the reserve;
+              // need to account for the withdraw fee
+              const extraAmount = tokenAmountToBigNumber("151", decimals);
               const reserveAptAmountPlusExtra =
                 await poolToken.calculateMintAmount(
                   reserveBalance.add(extraAmount)
