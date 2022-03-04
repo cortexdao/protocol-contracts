@@ -80,10 +80,10 @@ contract PoolTokenV3 is
      * @dev this slot replaces the last V1 slot for the price agg
      */
     IAddressRegistryV2 public addressRegistry;
-    /** @notice seconds since last deposit during which withdrawal fee is charged */
-    uint256 public override feePeriod;
-    /** @notice percentage charged for withdrawal fee */
-    uint256 public override feePercentage;
+    /** @notice seconds since last deposit during which arbitrage fee is charged */
+    uint256 public override arbitrageFeePeriod;
+    /** @notice percentage charged for arbitrage fee */
+    uint256 public override arbitrageFee;
     /** @notice time of last deposit */
     mapping(address => uint256) public lastDepositTime;
     /** @notice percentage of pool total value available for immediate withdrawal */
@@ -94,7 +94,7 @@ contract PoolTokenV3 is
      *@notice fee charged for all withdrawals in 1/100th basis points,
      * e.g. 100 = 1 bps
      */
-    uint256 public override withdrawalFee;
+    uint256 public override withdrawFee;
 
     /* ------------------------------- */
 
@@ -163,8 +163,8 @@ contract PoolTokenV3 is
         _setupRole(EMERGENCY_ROLE, addressRegistry.emergencySafeAddress());
         _setupRole(CONTRACT_ROLE, addressRegistry.mAptAddress());
 
-        feePeriod = 1 days;
-        feePercentage = 5;
+        // feePeriod = 1 days;   <-- Comment-out for compiler; renamed to `arbitrageFeePeriod`
+        // feePercentage = 5;   <-- Comment-out for compiler; renamed to `arbitrageFee`
         reservePercentage = 5;
     }
 
@@ -177,7 +177,7 @@ contract PoolTokenV3 is
      * This will only allow the proxy admin to call this function during upgrades.
      */
     function initializeV3() external nonReentrant onlyProxyAdmin {
-        withdrawalFee = 1000;
+        withdrawFee = 1000;
     }
 
     function emergencyLock() external override onlyEmergencyRole {
@@ -322,24 +322,24 @@ contract PoolTokenV3 is
         _setAddressRegistry(addressRegistry_);
     }
 
-    function setFeePeriod(uint256 feePeriod_)
+    function setArbitrageFeePeriod(uint256 feePeriod)
         external
         override
         nonReentrant
         onlyAdminRole
     {
-        feePeriod = feePeriod_;
-        emit FeePeriodChanged(feePeriod_);
+        arbitrageFeePeriod = feePeriod;
+        emit ArbitrageFeePeriodChanged(feePeriod);
     }
 
-    function setFeePercentage(uint256 feePercentage_)
+    function setArbitrageFee(uint256 feePercentage)
         external
         override
         nonReentrant
         onlyAdminRole
     {
-        feePercentage = feePercentage_;
-        emit FeePercentageChanged(feePercentage_);
+        arbitrageFee = feePercentage;
+        emit ArbitrageFeeChanged(feePercentage);
     }
 
     function setReservePercentage(uint256 reservePercentage_)
@@ -352,14 +352,14 @@ contract PoolTokenV3 is
         emit ReservePercentageChanged(reservePercentage_);
     }
 
-    function setWithdrawalFee(uint256 withdrawalFee_)
+    function setWithdrawFee(uint256 withdrawFee_)
         external
         override
         nonReentrant
         onlyAdminRole
     {
-        withdrawalFee = withdrawalFee_;
-        emit WithdrawalFeeChanged(withdrawalFee_);
+        withdrawFee = withdrawFee_;
+        emit WithdrawFeeChanged(withdrawFee_);
     }
 
     function emergencyExit(address token) external override onlyEmergencyRole {
@@ -411,7 +411,7 @@ contract PoolTokenV3 is
     }
 
     /**
-     * @dev To check if fee will be applied, use `isEarlyRedeem`.
+     * @dev To check if arbitrage fee will be applied, use `isEarlyRedeem`.
      */
     function getUnderlyerAmountWithFee(uint256 aptAmount)
         public
@@ -421,11 +421,11 @@ contract PoolTokenV3 is
     {
         uint256 underlyerAmount = getUnderlyerAmount(aptAmount);
         uint256 withdrawFeeAmount =
-            underlyerAmount.mul(withdrawalFee).div(1000000);
+            underlyerAmount.mul(withdrawFee).div(1000000);
         uint256 underlyerAmountWithFee = underlyerAmount.sub(withdrawFeeAmount);
 
         if (isEarlyRedeem()) {
-            uint256 arbFeeAmount = underlyerAmount.mul(feePercentage).div(100);
+            uint256 arbFeeAmount = underlyerAmount.mul(arbitrageFee).div(100);
             underlyerAmountWithFee = underlyerAmountWithFee.sub(arbFeeAmount);
         }
 
@@ -464,8 +464,11 @@ contract PoolTokenV3 is
      * the waiting period is restarted on each deposit.
      */
     function isEarlyRedeem() public view override returns (bool) {
-        // solhint-disable-next-line not-rely-on-time
-        return block.timestamp.sub(lastDepositTime[msg.sender]) < feePeriod;
+        // solhint-disable not-rely-on-time
+        return
+            block.timestamp.sub(lastDepositTime[msg.sender]) <
+            arbitrageFeePeriod;
+        // solhint-enable
     }
 
     /**

@@ -2,68 +2,68 @@
 pragma solidity 0.6.11;
 
 /**
- * @notice For pools that can charge an early withdrawal fee
+ * @notice For pools that can charge an early withdraw fee
  */
 interface IWithdrawFeePoolV2 {
     /**
-     * @notice Log when the fee period changes
-     * @param feePeriod The new fee period
+     * @notice Log when the arbitrage fee period changes
+     * @param arbitrageFeePeriod The new period
      */
-    event FeePeriodChanged(uint256 feePeriod);
+    event ArbitrageFeePeriodChanged(uint256 arbitrageFeePeriod);
 
     /**
-     * @notice Log when the fee percentage changes
-     * @param feePercentage The new percentage
+     * @notice Log when the arbitrage fee percentage changes
+     * @param arbitrageFee The new fee
      */
-    event FeePercentageChanged(uint256 feePercentage);
+    event ArbitrageFeeChanged(uint256 arbitrageFee);
 
     /**
-     * @notice Log when the withdrawal fee changes
-     * @param withdrawalFee The new withdrawal fee
+     * @notice Log when the withdraw fee changes
+     * @param withdrawFee The new fee
      */
-    event WithdrawalFeeChanged(uint256 withdrawalFee);
+    event WithdrawFeeChanged(uint256 withdrawFee);
 
     /**
-     * @notice Set the new fee period
-     * @param feePeriod_ The new fee period
+     * @notice Set the new arbitrage fee period
+     * @param arbitrageFeePeriod The new period
      */
-    function setFeePeriod(uint256 feePeriod_) external;
+    function setArbitrageFeePeriod(uint256 arbitrageFeePeriod) external;
 
     /**
-     * @notice Set the new fee percentage
-     * @param feePercentage_ The new percentage
+     * @notice Set the new arbitrageFee
+     * @param arbitrageFee The new fee
      */
-    function setFeePercentage(uint256 feePercentage_) external;
+    function setArbitrageFee(uint256 arbitrageFee) external;
 
     /**
-     * @notice Set the new withdrawal fee
-     * @param withdrawalFee_ The new withdrawal fee
+     * @notice Set the new withdraw fee
+     * @param withdrawFee The new withdraw fee
      */
-    function setWithdrawalFee(uint256 withdrawalFee_) external;
+    function setWithdrawFee(uint256 withdrawFee) external;
 
     /**
-     * @notice Get the period of time that a withdrawal will be considered early
-     * @notice An early withdrawal gets charged a fee
+     * @notice Get the period of time a withdrawal will be considered early
+     * @notice An early withdrawal gets a fee as protection against arbitrage.
      * @notice The period starts from the time of the last deposit for an account
      * @return The time in seconds
      */
-    function feePeriod() external view returns (uint256);
+    function arbitrageFeePeriod() external view returns (uint256);
 
     /**
-     * @notice Get the percentage of a withdrawal that is charged as a fee
-     * @return The percentage
+     * @notice Get the fee charged to protect against arbitrage in percentage points.
+     * @return The arbitrage fee
      */
-    function feePercentage() external view returns (uint256);
+    function arbitrageFee() external view returns (uint256);
 
     /**
-     *@notice fee charged for all withdrawals in 1/100th basis points,
+     *@notice Get the fee charged for all withdrawals in 1/100th basis points,
      * e.g. 100 = 1 bps
-     * @return The withdrawal fee
+     * @return The withdraw fee
      */
-    function withdrawalFee() external view returns (uint256);
+    function withdrawFee() external view returns (uint256);
 
     /**
-     * @notice Check if caller will be charged early withdrawal fee
+     * @notice Check if caller will be charged early withdraw fee
      * @return `true` when fee will apply, `false` when it won't
      */
     function isEarlyRedeem() external view returns (bool);
