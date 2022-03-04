@@ -1120,7 +1120,9 @@ describe.only("Contract: PoolTokenV3", () => {
         });
 
         it("Emit correct APT events", async () => {
-          const underlyerAmount = await poolToken.getUnderlyerAmount(aptAmount);
+          const underlyerAmount = await poolToken.getUnderlyerAmountWithFee(
+            aptAmount
+          );
           const depositValue = await poolToken.getValueFromUnderlyerAmount(
             underlyerAmount
           );
@@ -1176,7 +1178,9 @@ describe.only("Contract: PoolTokenV3", () => {
            *
            *  Instead, we have to do some hacky revert-check logic.
            */
-          const underlyerAmount = await poolToken.getUnderlyerAmount(aptAmount);
+          const underlyerAmount = await poolToken.getUnderlyerAmountWithFee(
+            aptAmount
+          );
           await underlyerMock.mock.transfer.reverts();
           await expect(poolToken.connect(randomUser).redeem(aptAmount)).to.be
             .reverted;
