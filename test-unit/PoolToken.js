@@ -18,7 +18,7 @@ const AddressRegistry = artifacts.require("IAddressRegistryV2");
 const MetaPoolToken = artifacts.require("MetaPoolToken");
 const OracleAdapter = artifacts.require("OracleAdapter");
 
-describe("Contract: PoolTokenV2", () => {
+describe.only("Contract: PoolTokenV3", () => {
   // signers
   let deployer;
   let adminSafe;
@@ -30,10 +30,7 @@ describe("Contract: PoolTokenV2", () => {
   let anotherUser;
 
   // contract factories
-  let ProxyAdmin;
   let PoolTokenProxy;
-  let PoolToken;
-  let PoolTokenV2;
 
   // mocks
   let underlyerMock;
@@ -68,10 +65,11 @@ describe("Contract: PoolTokenV2", () => {
       anotherUser,
     ] = await ethers.getSigners();
 
-    ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     PoolTokenProxy = await ethers.getContractFactory("PoolTokenProxy");
-    PoolToken = await ethers.getContractFactory("TestPoolToken");
-    PoolTokenV2 = await ethers.getContractFactory("TestPoolTokenV2");
+    const PoolToken = await ethers.getContractFactory("TestPoolToken");
+    const PoolTokenV2 = await ethers.getContractFactory("TestPoolTokenV2");
+    const PoolTokenV3 = await ethers.getContractFactory("TestPoolTokenV3");
 
     underlyerMock = await deployMockContract(deployer, IDetailedERC20.abi);
     proxyAdmin = await ProxyAdmin.deploy();
@@ -88,6 +86,9 @@ describe("Contract: PoolTokenV2", () => {
 
     const logicV2 = await PoolTokenV2.deploy();
     await logicV2.deployed();
+
+    const logicV3 = await PoolTokenV3.deploy();
+    await logicV3.deployed();
 
     addressRegistryMock = await deployMockContract(
       deployer,
@@ -116,13 +117,23 @@ describe("Contract: PoolTokenV2", () => {
       deployer.address
     );
 
-    const initData = PoolTokenV2.interface.encodeFunctionData(
+    // upgrade to V2
+    const initV2Data = PoolTokenV2.interface.encodeFunctionData(
       "initializeUpgrade(address)",
       [addressRegistryMock.address]
     );
     await proxyAdmin
       .connect(deployer)
-      .upgradeAndCall(proxy.address, logicV2.address, initData);
+      .upgradeAndCall(proxy.address, logicV2.address, initV2Data);
+    // upgrade to V3
+    const initV3Data = PoolTokenV3.interface.encodeFunctionData(
+      "initializeV3()",
+      []
+    );
+    await proxyAdmin
+      .connect(deployer)
+      .upgradeAndCall(proxy.address, logicV3.address, initV3Data);
+
     poolToken = await PoolTokenV2.attach(proxy.address);
   });
 
