@@ -242,16 +242,16 @@ describe("Contract: PoolTokenV3", () => {
       expect(await poolToken.redeemLock()).to.equal(false);
     });
 
-    it("feePeriod set to correct value", async () => {
-      expect(await poolToken.feePeriod()).to.equal(24 * 60 * 60);
+    it("arbitrageFeePeriod set to correct value", async () => {
+      expect(await poolToken.arbitrageFeePeriod()).to.equal(24 * 60 * 60);
     });
 
-    it("feePercentage set to correct value", async () => {
-      expect(await poolToken.feePercentage()).to.equal(5);
+    it("arbitrageFee set to correct value", async () => {
+      expect(await poolToken.arbitrageFee()).to.equal(5);
     });
 
-    it("withdrawalFee set to correct value", async () => {
-      expect(await poolToken.withdrawalFee()).to.equal(1000);
+    it("withdrawFee set to correct value", async () => {
+      expect(await poolToken.withdrawFee()).to.equal(1000);
     });
   });
 
@@ -360,30 +360,32 @@ describe("Contract: PoolTokenV3", () => {
     });
   });
 
-  describe("Set feePeriod", () => {
+  describe("Set arbitrageFeePeriod", () => {
     it("Admin Safe can set", async () => {
       const newFeePeriod = 12 * 60 * 60;
-      await expect(poolToken.connect(adminSafe).setFeePeriod(newFeePeriod)).to
-        .not.be.reverted;
-      expect(await poolToken.feePeriod()).to.equal(newFeePeriod);
+      await expect(
+        poolToken.connect(adminSafe).setArbitrageFeePeriod(newFeePeriod)
+      ).to.not.be.reverted;
+      expect(await poolToken.arbitrageFeePeriod()).to.equal(newFeePeriod);
     });
     it("Revert if unpermissioned account attempts to set", async () => {
-      await expect(poolToken.connect(randomUser).setFeePeriod(12 * 60 * 60)).to
-        .be.reverted;
+      await expect(
+        poolToken.connect(randomUser).setArbitrageFeePeriod(12 * 60 * 60)
+      ).to.be.reverted;
     });
   });
 
-  describe("Set feePercentage", () => {
+  describe("Set arbitrageFee", () => {
     it("Admin Safe can set", async () => {
-      const newFeePercentage = 12;
+      const newArbitrageFee = 12;
       await expect(
-        poolToken.connect(adminSafe).setFeePercentage(newFeePercentage)
+        poolToken.connect(adminSafe).setArbitrageFee(newArbitrageFee)
       ).to.not.be.reverted;
-      expect(await poolToken.feePercentage()).to.equal(newFeePercentage);
+      expect(await poolToken.arbitrageFee()).to.equal(newArbitrageFee);
     });
 
     it("Revert if unpermissioned account attempts to set", async () => {
-      await expect(poolToken.connect(randomUser).setFeePercentage(12)).to.be
+      await expect(poolToken.connect(randomUser).setArbitrageFee(12)).to.be
         .reverted;
     });
   });
@@ -403,17 +405,16 @@ describe("Contract: PoolTokenV3", () => {
     });
   });
 
-  describe("Set withdrawalFee", () => {
+  describe("Set withdrawFee", () => {
     it("Admin Safe can set", async () => {
-      const newWithdrawalFee = 1200;
-      await expect(
-        poolToken.connect(adminSafe).setWithdrawalFee(newWithdrawalFee)
-      ).to.not.be.reverted;
-      expect(await poolToken.withdrawalFee()).to.equal(newWithdrawalFee);
+      const newWithdrawFee = 1200;
+      await expect(poolToken.connect(adminSafe).setWithdrawFee(newWithdrawFee))
+        .to.not.be.reverted;
+      expect(await poolToken.withdrawFee()).to.equal(newWithdrawFee);
     });
 
     it("Revert if unpermissioned account attempts to set", async () => {
-      await expect(poolToken.connect(randomUser).setWithdrawalFee(1200)).to.be
+      await expect(poolToken.connect(randomUser).setWithdrawFee(1200)).to.be
         .reverted;
     });
   });
@@ -837,8 +838,10 @@ describe("Contract: PoolTokenV3", () => {
 
         expect(await poolToken.connect(randomUser).isEarlyRedeem()).to.be.true;
 
-        const feePeriod = await poolToken.feePeriod();
-        await ethers.provider.send("evm_increaseTime", [feePeriod.toNumber()]); // add feePeriod seconds
+        const arbitrageFeePeriod = await poolToken.arbitrageFeePeriod();
+        await ethers.provider.send("evm_increaseTime", [
+          arbitrageFeePeriod.toNumber(),
+        ]); // add arbitrageFeePeriod seconds
         await ethers.provider.send("evm_mine"); // mine the next block
         expect(await poolToken.connect(randomUser).isEarlyRedeem()).to.be.false;
       });
@@ -862,16 +865,15 @@ describe("Contract: PoolTokenV3", () => {
         const originalUnderlyerAmount = await poolToken.getUnderlyerAmount(
           aptAmount
         );
-        const withdrawalFee = await poolToken.withdrawalFee();
-        const withdrawalFeeAmount = originalUnderlyerAmount
-          .mul(withdrawalFee)
+        const withdrawFee = await poolToken.withdrawFee();
+        const withdrawFeeAmount = originalUnderlyerAmount
+          .mul(withdrawFee)
           .div(1000000);
-        const underlyerAmount =
-          originalUnderlyerAmount.sub(withdrawalFeeAmount);
+        const underlyerAmount = originalUnderlyerAmount.sub(withdrawFeeAmount);
 
         // calculate arbitrage fee
-        const feePercentage = await poolToken.feePercentage();
-        const fee = originalUnderlyerAmount.mul(feePercentage).div(100);
+        const arbitrageFee = await poolToken.arbitrageFee();
+        const fee = originalUnderlyerAmount.mul(arbitrageFee).div(100);
 
         // There is an arbitrage fee.
         // WARNING: need to call `getUnderlyerAmountWithFee` using depositor
@@ -883,8 +885,10 @@ describe("Contract: PoolTokenV3", () => {
         ).to.equal(underlyerAmount.sub(fee));
 
         // advance by just enough time; now there is no arbitrage fee
-        const feePeriod = await poolToken.feePeriod();
-        await ethers.provider.send("evm_increaseTime", [feePeriod.toNumber()]);
+        const arbitrageFeePeriod = await poolToken.arbitrageFeePeriod();
+        await ethers.provider.send("evm_increaseTime", [
+          arbitrageFeePeriod.toNumber(),
+        ]);
         await ethers.provider.send("evm_mine"); // mine the next block
         expect(
           await poolToken
