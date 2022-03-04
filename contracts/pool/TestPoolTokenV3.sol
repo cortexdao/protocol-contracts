@@ -25,6 +25,10 @@ contract TestPoolTokenV3 is PoolTokenV3 {
         testMint(to, amount);
     }
 
+    function testSetLastDepositTime(address account, uint256 timestamp) public {
+        lastDepositTime[account] = timestamp;
+    }
+
     function testGetDeployedValue() public view returns (uint256) {
         return _getDeployedValue();
     }
