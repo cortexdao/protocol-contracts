@@ -134,7 +134,7 @@ describe.only("Contract: PoolTokenV3", () => {
       .connect(deployer)
       .upgradeAndCall(proxy.address, logicV3.address, initV3Data);
 
-    poolToken = await PoolTokenV2.attach(proxy.address);
+    poolToken = await PoolTokenV3.attach(proxy.address);
   });
 
   describe("Constructor", () => {
@@ -248,6 +248,10 @@ describe.only("Contract: PoolTokenV3", () => {
 
     it("feePercentage set to correct value", async () => {
       expect(await poolToken.feePercentage()).to.equal(5);
+    });
+
+    it("withdrawalFee set to correct value", async () => {
+      expect(await poolToken.withdrawalFee()).to.equal(1000);
     });
   });
 
@@ -395,6 +399,21 @@ describe.only("Contract: PoolTokenV3", () => {
 
     it("Revert if unpermissioned account attempts to set", async () => {
       await expect(poolToken.connect(randomUser).setReservePercentage(10)).to.be
+        .reverted;
+    });
+  });
+
+  describe("Set withdrawalFee", () => {
+    it("Admin Safe can set", async () => {
+      const newWithdrawalFee = 1200;
+      await expect(
+        poolToken.connect(adminSafe).setWithdrawalFee(newWithdrawalFee)
+      ).to.not.be.reverted;
+      expect(await poolToken.withdrawalFee()).to.equal(newWithdrawalFee);
+    });
+
+    it("Revert if unpermissioned account attempts to set", async () => {
+      await expect(poolToken.connect(randomUser).setWithdrawalFee(1200)).to.be
         .reverted;
     });
   });
