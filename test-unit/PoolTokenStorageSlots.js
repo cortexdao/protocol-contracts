@@ -94,12 +94,13 @@ APY.Finance APT V1
 APY.Finance APT V2
   101 mapping (bytes32 => RoleData) _roles; <-- repurposes V1 slot
   303 IAddressRegistryV2 addressRegistry; <-- replaces V1 slot
-  304 uint256 feePeriod;
-  305 uint256 feePercentage;
+  304 uint256 feePeriod; <-- renamed in V3
+  305 uint256 feePercentage; <-- renamed in V3
   306 mapping(address => uint256) lastDepositTime;
+  307 uint256 reservePercentage;
 
 APY.Finance APT V3
-  307 uint256 withdrawalFee
+  308 uint256 withdrawalFee
 */
 
 /* ************************ */
@@ -195,7 +196,7 @@ describe("APT V3 retains V1 and V2 storage slot positions", () => {
   });
 
   it("Retains V1 storage slots 0 through 302", async () => {
-    const numSlots = 307;
+    const numSlots = 308;
     const slots = [];
     for (let i = 0; i < numSlots; i++) {
       const data = await readSlot(poolToken.address, i);
@@ -323,8 +324,8 @@ describe("APT V3 retains V1 and V2 storage slot positions", () => {
     expect(data).to.not.equal(ZERO_DATA);
   });
 
-  it("Retains v2 storage slots 304 through 306", async () => {
-    const numSlots = 307;
+  it("Retains v2 storage slots 304 through 307", async () => {
+    const numSlots = 308;
     const slots = [];
     for (let i = 0; i < numSlots; i++) {
       const data = await readSlot(poolToken.address, i);
@@ -332,12 +333,14 @@ describe("APT V3 retains V1 and V2 storage slot positions", () => {
       slots.push(data);
     }
 
-    // 304 uint256 feePeriod;
+    // 304 uint256 feePeriod; renamed to `arbitrageFeePeriod`
     expect(parseUint(slots[304])).to.equal(24 * 60 * 60);
-    // 305 uint256 feePercentage;
+    // 305 uint256 feePercentage; renamed to `arbitrageFee`
     expect(parseUint(slots[305])).to.equal(5);
     // 306 mapping(address => uint256) lastDepositTime;
     expect(slots[306]).to.equal(ZERO_DATA);
+    // 307 uint256 reservePercentage;
+    expect(parseUint(slots[307])).to.equal(5);
   });
 
   it("Retains V2 storage slot for lastDepositTime mapping", async () => {
