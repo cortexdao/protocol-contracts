@@ -886,7 +886,7 @@ describe("Contract: PoolToken", () => {
                 reserveBalance
               );
               const redeemAptAmount = reserveAptAmount.div(2);
-              const underlyerAmount = await poolToken.getUnderlyerAmount(
+              const underlyerAmount = await poolToken.getUnderlyerAmountWithFee(
                 redeemAptAmount
               );
               await poolToken.testMint(randomUser.address, redeemAptAmount);
