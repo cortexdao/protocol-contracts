@@ -18,7 +18,7 @@ const AddressRegistry = artifacts.require("IAddressRegistryV2");
 const MetaPoolToken = artifacts.require("MetaPoolToken");
 const OracleAdapter = artifacts.require("OracleAdapter");
 
-describe.only("Contract: PoolTokenV3", () => {
+describe("Contract: PoolTokenV3", () => {
   // signers
   let deployer;
   let adminSafe;
@@ -1206,7 +1206,7 @@ describe.only("Contract: PoolTokenV3", () => {
           if (deployedValue == 0) return;
           // this "transfer" pushes the user's corresponding underlyer amount
           // for his APT higher than the reserve balance.
-          const smallAptAmount = 10;
+          const smallAptAmount = tokenAmountToBigNumber("0.0000001");
           await poolToken.testBurn(deployer.address, smallAptAmount);
           await poolToken.testMint(randomUser.address, smallAptAmount);
 
