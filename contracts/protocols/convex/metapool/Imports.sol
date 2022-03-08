@@ -2,5 +2,6 @@
 pragma solidity 0.6.11;
 
 import {MetaPoolAllocationBaseV2} from "./MetaPoolAllocationBaseV2.sol";
+import {MetaPoolAllocationBaseV3} from "./MetaPoolAllocationBaseV3.sol";
 import {MetaPoolOldDepositorZap} from "./MetaPoolOldDepositorZap.sol";
 import {MetaPoolDepositorZap} from "./MetaPoolDepositorZap.sol";
