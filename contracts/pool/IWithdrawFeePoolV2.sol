@@ -24,16 +24,12 @@ interface IWithdrawFeePoolV2 {
     event WithdrawFeeChanged(uint256 withdrawFee);
 
     /**
-     * @notice Set the new arbitrage fee period
-     * @param arbitrageFeePeriod The new period
+     * @notice Set the new arbitrage fee and period
+     * @param arbitrageFee The new fee in percentage points
+     * @param arbitrageFeePeriod The new period in seconds
      */
-    function setArbitrageFeePeriod(uint256 arbitrageFeePeriod) external;
-
-    /**
-     * @notice Set the new arbitrageFee
-     * @param arbitrageFee The new fee
-     */
-    function setArbitrageFee(uint256 arbitrageFee) external;
+    function setArbitrageFee(uint256 arbitrageFee, uint256 arbitrageFeePeriod)
+        external;
 
     /**
      * @notice Set the new withdraw fee

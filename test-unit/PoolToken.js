@@ -360,33 +360,22 @@ describe("Contract: PoolTokenV3", () => {
     });
   });
 
-  describe("Set arbitrageFeePeriod", () => {
-    it("Admin Safe can set", async () => {
-      const newFeePeriod = 12 * 60 * 60;
-      await expect(
-        poolToken.connect(adminSafe).setArbitrageFeePeriod(newFeePeriod)
-      ).to.not.be.reverted;
-      expect(await poolToken.arbitrageFeePeriod()).to.equal(newFeePeriod);
-    });
-    it("Revert if unpermissioned account attempts to set", async () => {
-      await expect(
-        poolToken.connect(randomUser).setArbitrageFeePeriod(12 * 60 * 60)
-      ).to.be.reverted;
-    });
-  });
-
   describe("Set arbitrageFee", () => {
     it("Admin Safe can set", async () => {
       const newArbitrageFee = 12;
+      const newFeePeriod = 12 * 60 * 60;
       await expect(
-        poolToken.connect(adminSafe).setArbitrageFee(newArbitrageFee)
+        poolToken
+          .connect(adminSafe)
+          .setArbitrageFee(newArbitrageFee, newFeePeriod)
       ).to.not.be.reverted;
       expect(await poolToken.arbitrageFee()).to.equal(newArbitrageFee);
+      expect(await poolToken.arbitrageFeePeriod()).to.equal(newFeePeriod);
     });
 
     it("Revert if unpermissioned account attempts to set", async () => {
-      await expect(poolToken.connect(randomUser).setArbitrageFee(12)).to.be
-        .reverted;
+      await expect(poolToken.connect(randomUser).setArbitrageFee(12, 84600)).to
+        .be.reverted;
     });
   });
 

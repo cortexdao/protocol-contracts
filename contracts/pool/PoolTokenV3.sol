@@ -322,23 +322,15 @@ contract PoolTokenV3 is
         _setAddressRegistry(addressRegistry_);
     }
 
-    function setArbitrageFeePeriod(uint256 feePeriod)
-        external
-        override
-        nonReentrant
-        onlyAdminRole
-    {
-        arbitrageFeePeriod = feePeriod;
-        emit ArbitrageFeePeriodChanged(feePeriod);
-    }
-
-    function setArbitrageFee(uint256 feePercentage)
+    function setArbitrageFee(uint256 feePercentage, uint256 feePeriod)
         external
         override
         nonReentrant
         onlyAdminRole
     {
         arbitrageFee = feePercentage;
+        arbitrageFeePeriod = feePeriod;
+        emit ArbitrageFeePeriodChanged(feePeriod);
         emit ArbitrageFeeChanged(feePercentage);
     }
 
