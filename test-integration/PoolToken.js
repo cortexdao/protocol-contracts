@@ -231,7 +231,19 @@ describe("Contract: PoolToken", () => {
           .connect(deployer)
           .upgradeAndCall(proxy.address, logicV2.address, poolTokenV2InitData);
 
-        poolToken = await PoolTokenV2.attach(proxy.address);
+        const PoolTokenV3 = await ethers.getContractFactory("TestPoolTokenV3");
+        const logicV3 = await PoolTokenV3.deploy();
+        await logicV3.deployed();
+
+        const poolTokenV3InitData = PoolTokenV3.interface.encodeFunctionData(
+          "initializeV3",
+          []
+        );
+        await proxyAdmin
+          .connect(deployer)
+          .upgradeAndCall(proxy.address, logicV3.address, poolTokenV3InitData);
+
+        poolToken = await PoolTokenV3.attach(proxy.address);
 
         await acquireToken(
           WHALE_POOLS[symbol],
@@ -828,8 +840,9 @@ describe("Contract: PoolToken", () => {
                 .connect(randomUser)
                 .transfer(poolToken.address, reserveBalance);
 
-              // calculate slightly more than APT amount corresponding to the reserve
-              const extraAmount = tokenAmountToBigNumber("1", decimals);
+              // calculate slightly more than APT amount corresponding to the reserve;
+              // need to account for the withdraw fee
+              const extraAmount = tokenAmountToBigNumber("151", decimals);
               const reserveAptAmountPlusExtra =
                 await poolToken.calculateMintAmount(
                   reserveBalance.add(extraAmount)
@@ -874,7 +887,7 @@ describe("Contract: PoolToken", () => {
                 reserveBalance
               );
               const redeemAptAmount = reserveAptAmount.div(2);
-              const underlyerAmount = await poolToken.getUnderlyerAmount(
+              const underlyerAmount = await poolToken.getUnderlyerAmountWithFee(
                 redeemAptAmount
               );
               await poolToken.testMint(randomUser.address, redeemAptAmount);
@@ -976,9 +989,10 @@ describe("Contract: PoolToken", () => {
             });
           });
 
-          describe("Test early withdrawal fee", () => {
+          describe("Test withdraw and arbitrage fees", () => {
             let underlyerAmount;
             let aptAmount;
+            let withdrawFee;
 
             beforeEach(async () => {
               // increase APT total supply
@@ -1001,13 +1015,19 @@ describe("Contract: PoolToken", () => {
               );
               aptAmount = await poolToken.calculateMintAmount(underlyerAmount);
               await poolToken.connect(randomUser).addLiquidity(underlyerAmount);
+
+              withdrawFee = underlyerAmount
+                .mul(await poolToken.withdrawFee())
+                .div(1000000);
             });
 
-            it("Deduct fee if redeem is during fee period", async () => {
-              const fee = underlyerAmount
-                .mul(await poolToken.feePercentage())
+            it("Deduct arbitrage fee if redeem is during fee period", async () => {
+              const arbitrageFee = underlyerAmount
+                .mul(await poolToken.arbitrageFee())
                 .div(100);
-              const underlyerAmountMinusFee = underlyerAmount.sub(fee);
+              const underlyerAmountMinusFee = underlyerAmount
+                .sub(withdrawFee)
+                .sub(arbitrageFee);
 
               const beforeBalance = await underlyer.balanceOf(
                 randomUser.address
@@ -1021,15 +1041,15 @@ describe("Contract: PoolToken", () => {
               const tolerance = Math.ceil((await underlyer.decimals()) / 4);
               const allowedDeviation = tokenAmountToBigNumber(5, tolerance);
               expect(
-                Math.abs(underlyerAmountMinusFee.sub(transferAmount))
+                underlyerAmountMinusFee.sub(transferAmount).abs()
               ).to.be.lt(allowedDeviation);
             });
 
-            it("No fee if redeem is after fee period", async () => {
-              const feePeriod = await poolToken.feePeriod();
+            it("No arbitrage fee if redeem is after fee period", async () => {
+              const arbitrageFeePeriod = await poolToken.arbitrageFeePeriod();
               // advance time by feePeriod seconds and mine next block
               await ethers.provider.send("evm_increaseTime", [
-                feePeriod.toNumber(),
+                arbitrageFeePeriod.toNumber(),
               ]);
               await ethers.provider.send("evm_mine");
               // effectively disable staleness check
@@ -1048,9 +1068,9 @@ describe("Contract: PoolToken", () => {
 
               const tolerance = Math.ceil((await underlyer.decimals()) / 4);
               const allowedDeviation = tokenAmountToBigNumber(5, tolerance);
-              expect(Math.abs(underlyerAmount.sub(transferAmount))).to.be.lt(
-                allowedDeviation
-              );
+              expect(
+                underlyerAmount.sub(withdrawFee).sub(transferAmount).abs()
+              ).to.be.lt(allowedDeviation);
             });
           });
         });
