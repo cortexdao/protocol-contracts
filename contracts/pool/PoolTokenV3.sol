@@ -57,6 +57,8 @@ contract PoolTokenV3 is
 
     uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
     uint256 internal constant _MAX_INT256 = 2**255 - 1;
+    uint256 internal constant ARB_FEE_DENOMINATOR = 100;
+    uint256 internal constant WITHDRAW_FEE_DENOMINATOR = 1000000;
 
     /* ------------------------------- */
     /* impl-specific storage variables */
@@ -413,11 +415,12 @@ contract PoolTokenV3 is
     {
         uint256 underlyerAmount = getUnderlyerAmount(aptAmount);
         uint256 withdrawFeeAmount =
-            underlyerAmount.mul(withdrawFee).div(1000000);
+            underlyerAmount.mul(withdrawFee).div(WITHDRAW_FEE_DENOMINATOR);
         uint256 underlyerAmountWithFee = underlyerAmount.sub(withdrawFeeAmount);
 
         if (isEarlyRedeem()) {
-            uint256 arbFeeAmount = underlyerAmount.mul(arbitrageFee).div(100);
+            uint256 arbFeeAmount =
+                underlyerAmount.mul(arbitrageFee).div(ARB_FEE_DENOMINATOR);
             underlyerAmountWithFee = underlyerAmountWithFee.sub(arbFeeAmount);
         }
 
