@@ -147,7 +147,9 @@ describe.only("GovernanceToken", () => {
     });
 
     it("Unpermissioned cannot call", async () => {
-      await instance.connect(randomUser).addLocker(locker.address);
+      await expect(
+        instance.connect(randomUser).addLocker(locker.address)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
 

@@ -73,7 +73,7 @@ contract GovernanceTokenV2 is
         lockEnd = lockEnd_;
     }
 
-    function addLocker(address locker) external override {
+    function addLocker(address locker) external override onlyOwner {
         require(false, "NOT_IMPLEMENTED_YET");
     }
 
