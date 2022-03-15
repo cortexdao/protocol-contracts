@@ -12,10 +12,13 @@ import {
     ERC20UpgradeSafe
 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 
+import {ITimeLocked} from "./ITimeLocked.sol";
+
 contract GovernanceTokenV2 is
     Initializable,
     OwnableUpgradeSafe,
-    ERC20UpgradeSafe
+    ERC20UpgradeSafe,
+    ITimeLocked
 {
     /* ------------------------------- */
     /* impl-specific storage variables */
@@ -24,7 +27,7 @@ contract GovernanceTokenV2 is
     address public proxyAdmin;
 
     // V2
-    uint256 public lockEnd;
+    uint256 public override lockEnd;
 
     /* ------------------------------- */
 
@@ -39,6 +42,7 @@ contract GovernanceTokenV2 is
         revert("DONT_SEND_ETHER");
     }
 
+    /** @dev V1 init, copied unchanged from V1 contract */
     function initialize(address adminAddress, uint256 totalSupply)
         external
         initializer
@@ -59,13 +63,34 @@ contract GovernanceTokenV2 is
     // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual onlyAdmin {}
 
+    function setLockEnd(uint256 lockEnd_) external override onlyOwner {
+        lockEnd = lockEnd_;
+    }
+
+    function addLocker(address locker) external override {
+        require(false, "NOT_IMPLEMENTED_YET");
+    }
+
+    function removeLocker(address locker) external override {
+        require(false, "NOT_IMPLEMENTED_YET");
+    }
+
+    function lockAmount(address account, uint256 amount) external override {
+        require(false, "NOT_IMPLEMENTED_YET");
+    }
+
     function setAdminAddress(address adminAddress) public onlyOwner {
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
         emit AdminChanged(adminAddress);
     }
 
-    function setLockEnd(uint256 lockEnd_) external onlyOwner {
-        lockEnd = lockEnd_;
+    function unlockedAmount(address account)
+        public
+        view
+        override
+        returns (uint256)
+    {
+        require(false, "NOT_IMPLEMENTED_YET");
     }
 }
