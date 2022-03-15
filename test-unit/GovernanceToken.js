@@ -148,7 +148,7 @@ describe.only("GovernanceToken", () => {
       expect(await instance.isLocker(locker.address)).to.be.true;
     });
 
-    it("Unpermissioned cannot call", async () => {
+    it("Unpermissioned cannot add", async () => {
       await expect(
         instance.connect(randomUser).addLocker(locker.address)
       ).to.be.revertedWith("Ownable: caller is not the owner");
@@ -166,7 +166,7 @@ describe.only("GovernanceToken", () => {
       expect(await instance.isLocker(locker.address)).to.be.false;
     });
 
-    it("Unpermissioned cannot call", async () => {
+    it("Unpermissioned cannot remove", async () => {
       await expect(
         instance.connect(randomUser).removeLocker(locker.address)
       ).to.be.revertedWith("Ownable: caller is not the owner");
@@ -189,7 +189,7 @@ describe.only("GovernanceToken", () => {
       );
     });
 
-    it("Locker can call", async () => {
+    it("Locker can lock amount", async () => {
       const amount = tokenAmountToBigNumber("100");
       await expect(
         instance.connect(locker).lockAmount(randomUser.address, amount)
@@ -199,7 +199,7 @@ describe.only("GovernanceToken", () => {
       );
     });
 
-    it("Unpermissioned cannot call", async () => {
+    it("Unpermissioned cannot lock", async () => {
       const amount = tokenAmountToBigNumber("100");
       await expect(
         instance.connect(randomUser).lockAmount(randomUser.address, amount)
@@ -234,7 +234,14 @@ describe.only("GovernanceToken", () => {
     });
 
     it("Cannot `transfer` more than unlocked amount", async () => {
-      expect.fail();
+      const amount = tokenAmountToBigNumber("100");
+      await instance.connect(locker).lockAmount(randomUser.address, amount);
+      const unlockedAmount = await instance.unlockedAmount(randomUser.address);
+      await expect(
+        instance
+          .connect(randomUser)
+          .transfer(owner.address, unlockedAmount.add(1))
+      ).to.be.reverted;
     });
 
     it("Can `transfer` up to unlocked amount", async () => {
