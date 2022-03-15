@@ -1,13 +1,15 @@
 const { expect } = require("chai");
 const hre = require("hardhat");
-const { ethers } = hre;
+const { ethers, waffle } = hre;
+const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS, tokenAmountToBigNumber } = require("../utils/helpers");
 
 describe.only("GovernanceToken", () => {
   // signers
-  let owner;
-  let instanceAdmin;
+  let deployer;
+  let user;
+  let anotherUser;
   let randomUser;
   let locker;
 
@@ -36,35 +38,36 @@ describe.only("GovernanceToken", () => {
   });
 
   before(async () => {
-    [owner, instanceAdmin, randomUser, locker] = await ethers.getSigners();
+    [deployer, user, anotherUser, randomUser, locker] =
+      await ethers.getSigners();
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
-    proxyAdmin = await ProxyAdmin.connect(owner).deploy();
+    proxyAdmin = await ProxyAdmin.connect(deployer).deploy();
 
     const GovernanceToken = await ethers.getContractFactory("GovernanceToken");
-    logic = await GovernanceToken.connect(owner).deploy();
+    logic = await GovernanceToken.connect(deployer).deploy();
 
     const GovernanceTokenV2 = await ethers.getContractFactory(
       "GovernanceTokenV2"
     );
-    logicV2 = await GovernanceTokenV2.connect(owner).deploy();
+    logicV2 = await GovernanceTokenV2.connect(deployer).deploy();
 
     GovernanceTokenProxy = await ethers.getContractFactory(
       "GovernanceTokenProxy"
     );
-    proxy = await GovernanceTokenProxy.connect(owner).deploy(
+    proxy = await GovernanceTokenProxy.connect(deployer).deploy(
       logic.address,
       proxyAdmin.address,
       totalSupply
     );
-    await proxyAdmin.connect(owner).upgrade(proxy.address, logicV2.address);
+    await proxyAdmin.connect(deployer).upgrade(proxy.address, logicV2.address);
     instance = await GovernanceTokenV2.attach(proxy.address);
   });
 
   describe("Constructor", () => {
     it("Revert on invalid admin address", async () => {
       await expect(
-        GovernanceTokenProxy.connect(owner).deploy(
+        GovernanceTokenProxy.connect(deployer).deploy(
           logic.address,
           ZERO_ADDRESS,
           totalSupply
@@ -75,7 +78,7 @@ describe.only("GovernanceToken", () => {
 
   describe("initialize", () => {
     it("Owner set correctly", async () => {
-      expect(await instance.owner()).to.equal(owner.address);
+      expect(await instance.owner()).to.equal(deployer.address);
     });
 
     it("Name set correctly", async () => {
@@ -92,7 +95,7 @@ describe.only("GovernanceToken", () => {
 
     it("Revert on sent ETH", async () => {
       await expect(
-        owner.sendTransaction({ to: instance.address, value: "10" })
+        deployer.sendTransaction({ to: instance.address, value: "10" })
       ).to.be.revertedWith("DONT_SEND_ETHER");
     });
 
@@ -101,7 +104,7 @@ describe.only("GovernanceToken", () => {
     });
 
     it("Owner has total supply", async () => {
-      expect(await instance.balanceOf(owner.address)).to.equal(
+      expect(await instance.balanceOf(deployer.address)).to.equal(
         await instance.totalSupply()
       );
     });
@@ -109,13 +112,14 @@ describe.only("GovernanceToken", () => {
 
   describe("setAdminAdddress", () => {
     it("Owner can set", async () => {
-      await instance.connect(owner).setAdminAddress(instanceAdmin.address);
-      expect(await instance.proxyAdmin()).to.equal(instanceAdmin.address);
+      const contractAddress = (await deployMockContract(deployer, [])).address;
+      await instance.connect(deployer).setAdminAddress(contractAddress);
+      expect(await instance.proxyAdmin()).to.equal(contractAddress);
     });
 
     it("Revert on invalid admin address", async () => {
       await expect(
-        instance.connect(owner).setAdminAddress(ZERO_ADDRESS)
+        instance.connect(deployer).setAdminAddress(ZERO_ADDRESS)
       ).to.be.revertedWith("INVALID_ADMIN");
     });
 
@@ -129,7 +133,7 @@ describe.only("GovernanceToken", () => {
   describe("setLockEnd", () => {
     it("Owner can set", async () => {
       const timestamp = 1653349667;
-      await instance.connect(owner).setLockEnd(timestamp);
+      await instance.connect(deployer).setLockEnd(timestamp);
       expect(await instance.lockEnd()).to.equal(timestamp);
     });
 
@@ -144,7 +148,7 @@ describe.only("GovernanceToken", () => {
   describe("addLocker", () => {
     it("Owner can add locker", async () => {
       expect(await instance.isLocker(locker.address)).to.be.false;
-      await instance.connect(owner).addLocker(locker.address);
+      await instance.connect(deployer).addLocker(locker.address);
       expect(await instance.isLocker(locker.address)).to.be.true;
     });
 
@@ -157,12 +161,12 @@ describe.only("GovernanceToken", () => {
 
   describe("removeLocker", () => {
     before("add locker", async () => {
-      await instance.connect(owner).addLocker(locker.address);
+      await instance.connect(deployer).addLocker(locker.address);
       expect(await instance.isLocker(locker.address)).to.be.true;
     });
 
     it("Owner can remove locker", async () => {
-      await instance.connect(owner).removeLocker(locker.address);
+      await instance.connect(deployer).removeLocker(locker.address);
       expect(await instance.isLocker(locker.address)).to.be.false;
     });
 
@@ -179,17 +183,19 @@ describe.only("GovernanceToken", () => {
     before("set lock end", async () => {
       const timestamp = (await ethers.provider.getBlock()).timestamp;
       const lockEnd = timestamp + 86400 * 7;
-      await instance.connect(owner).setLockEnd(lockEnd);
+      await instance.connect(deployer).setLockEnd(lockEnd);
     });
 
     before("add locker", async () => {
-      await instance.connect(owner).addLocker(locker.address);
+      await instance.connect(deployer).addLocker(locker.address);
       expect(await instance.isLocker(locker.address)).to.be.true;
     });
 
     before("prepare user APY balance", async () => {
       userBalance = tokenAmountToBigNumber("1000");
-      await instance.connect(owner).transfer(randomUser.address, userBalance);
+      await instance
+        .connect(deployer)
+        .transfer(randomUser.address, userBalance);
       expect(await instance.unlockedAmount(randomUser.address)).to.equal(
         userBalance
       );
@@ -243,11 +249,10 @@ describe.only("GovernanceToken", () => {
       const amount = tokenAmountToBigNumber("100");
       await instance.connect(locker).lockAmount(randomUser.address, amount);
       const unlockedAmount = await instance.unlockedAmount(randomUser.address);
-      console.log("Unlocked amount: %s", unlockedAmount);
       await expect(
         instance
           .connect(randomUser)
-          .transfer(owner.address, unlockedAmount.add(1))
+          .transfer(deployer.address, unlockedAmount.add(1))
       ).to.be.revertedWith("LOCKED_BALANCE");
     });
 
@@ -256,7 +261,7 @@ describe.only("GovernanceToken", () => {
       await instance.connect(locker).lockAmount(randomUser.address, amount);
       const unlockedAmount = await instance.unlockedAmount(randomUser.address);
       await expect(
-        instance.connect(randomUser).transfer(owner.address, unlockedAmount)
+        instance.connect(randomUser).transfer(deployer.address, unlockedAmount)
       ).to.not.be.reverted;
     });
 
