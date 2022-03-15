@@ -112,7 +112,7 @@ contract("GovernanceToken Unit Test", async (accounts) => {
     });
   });
 
-  describe.only("setLockEnd", async () => {
+  describe("setLockEnd", async () => {
     it("Owner can set", async () => {
       const timestamp = 1653349667;
       await instance.setLockEnd(timestamp, { from: owner });
@@ -125,6 +125,50 @@ contract("GovernanceToken Unit Test", async (accounts) => {
         instance.setLockEnd(timestamp, { from: randomUser }),
         "Ownable: caller is not the owner"
       );
+    });
+  });
+
+  describe("addLocker", () => {
+    it("Owner can set", async () => {
+      //
+    });
+  });
+
+  describe("removeLocker", () => {
+    it("Owner can set", async () => {
+      //
+    });
+  });
+
+  describe("unlockedAmount", () => {
+    it("Can read unlocked amount", async () => {
+      //
+    });
+  });
+
+  describe("lockAmount", () => {
+    it("Locker can call", async () => {
+      //
+    });
+
+    it("Unpermissioned cannot call", async () => {
+      //
+    });
+
+    it("Can lock specified amount", async () => {
+      //
+    });
+  });
+
+  describe("transfer", () => {
+    it("Cannot transfer more than unlocked amount", async () => {
+      //
+    });
+  });
+
+  describe("transferFrom", () => {
+    it("Cannot transfer more than unlocked amount", async () => {
+      //
     });
   });
 });
