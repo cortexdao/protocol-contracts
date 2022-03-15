@@ -143,7 +143,9 @@ describe.only("GovernanceToken", () => {
 
   describe("addLocker", () => {
     it("Owner can add locker", async () => {
+      expect(instance.isLocker(locker.address)).to.be.false;
       await instance.connect(owner).addLocker(locker.address);
+      expect(instance.isLocker(locker.address)).to.be.true;
     });
 
     it("Unpermissioned cannot call", async () => {
