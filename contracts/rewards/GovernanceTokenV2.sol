@@ -12,7 +12,8 @@ import {
     ERC20UpgradeSafe
 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 
-import {EnumerableSet, SafeMath} from "contracts/libraries/Imports.sol";
+import {EnumerableSet} from "contracts/libraries/Imports.sol";
+import {SafeMath as SafeMathUpgradeSafe} from "contracts/proxy/Imports.sol";
 import {ITimeLocked} from "./ITimeLocked.sol";
 
 contract GovernanceTokenV2 is
@@ -21,6 +22,7 @@ contract GovernanceTokenV2 is
     ERC20UpgradeSafe,
     ITimeLocked
 {
+    using SafeMathUpgradeSafe for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /* ------------------------------- */
@@ -34,6 +36,7 @@ contract GovernanceTokenV2 is
     uint256 public override lockEnd;
     /** @dev addresses allowed to timelock user balances */
     EnumerableSet.AddressSet private _lockers;
+    mapping(address => uint256) private _lockedAmount;
 
     /* ------------------------------- */
 
@@ -89,7 +92,11 @@ contract GovernanceTokenV2 is
     }
 
     function lockAmount(address account, uint256 amount) external override {
-        require(false, "NOT_IMPLEMENTED_YET");
+        require(
+            amount <= unlockedAmount(account),
+            "AMOUNT_EXCEEDS_UNLOCKED_BALANCE"
+        );
+        _lockedAmount[account] = _lockedAmount[account].add(amount);
     }
 
     function setAdminAddress(address adminAddress) public onlyOwner {
@@ -104,7 +111,7 @@ contract GovernanceTokenV2 is
         override
         returns (uint256)
     {
-        require(false, "NOT_IMPLEMENTED_YET");
+        return balanceOf(account).sub(_lockedAmount[account]);
     }
 
     function isLocker(address account) public view returns (bool) {

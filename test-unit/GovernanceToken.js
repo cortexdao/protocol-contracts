@@ -174,20 +174,36 @@ describe.only("GovernanceToken", () => {
   });
 
   describe("lockAmount / unlockedAmount", () => {
+    let userBalance;
+
+    before("add locker", async () => {
+      await instance.connect(owner).addLocker(locker.address);
+      expect(await instance.isLocker(locker.address)).to.be.true;
+    });
+
+    before("prepare user APY balance", async () => {
+      userBalance = tokenAmountToBigNumber("1000");
+      await instance.connect(owner).transfer(randomUser.address, userBalance);
+      expect(await instance.unlockedAmount(randomUser.address)).to.equal(
+        userBalance
+      );
+    });
+
     it("Locker can call", async () => {
-      //
+      const amount = tokenAmountToBigNumber("100");
+      await expect(
+        instance.connect(locker).lockAmount(randomUser.address, amount)
+      ).to.not.be.reverted;
+      expect(await instance.unlockedAmount(randomUser.address)).to.equal(
+        userBalance.sub(amount)
+      );
     });
 
     it("Unpermissioned cannot call", async () => {
-      //
-    });
-
-    it("Can lock specified amount", async () => {
-      //
-    });
-
-    it("Can read unlocked amount", async () => {
-      //
+      const amount = tokenAmountToBigNumber("100");
+      await expect(
+        instance.connect(randomUser).lockAmount(randomUser.address, amount)
+      ).to.be.reverted;
     });
 
     it("Cannot `transfer` more than unlocked amount", async () => {
