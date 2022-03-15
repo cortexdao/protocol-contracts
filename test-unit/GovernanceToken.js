@@ -206,28 +206,55 @@ describe.only("GovernanceToken", () => {
       ).to.be.reverted;
     });
 
+    it("Cannot lock more than balance", async () => {
+      // case 1: lock more than balance at once
+      await expect(
+        instance
+          .connect(locker)
+          .lockAmount(randomUser.address, userBalance.add(1))
+      ).to.be.revertedWith("AMOUNT_EXCEEDS_UNLOCKED_BALANCE");
+
+      // case 2: lock in stages
+      const amount = userBalance.div(2);
+      // should be allowed to lock half
+      await instance.connect(locker).lockAmount(randomUser.address, amount);
+      // cannot lock again with more than half
+      expect(await instance.unlockedAmount(randomUser.address)).to.equal(
+        amount
+      );
+      await expect(
+        instance.connect(locker).lockAmount(randomUser.address, amount.add(1))
+      ).to.be.revertedWith("AMOUNT_EXCEEDS_UNLOCKED_BALANCE");
+      // can lock again with half
+      await expect(
+        instance.connect(locker).lockAmount(randomUser.address, amount)
+      ).to.not.be.reverted;
+      // everything is locked
+      expect(await instance.unlockedAmount(randomUser.address)).to.equal(0);
+    });
+
     it("Cannot `transfer` more than unlocked amount", async () => {
-      //
+      expect.fail();
     });
 
     it("Can `transfer` up to unlocked amount", async () => {
-      //
+      expect.fail();
     });
 
     it("Can `transfer` locked amount after lock end", async () => {
-      //
+      expect.fail();
     });
 
     it("Cannot `transferFrom` more than unlocked amount", async () => {
-      //
+      expect.fail();
     });
 
     it("Can `transferFrom` up to unlocked amount", async () => {
-      //
+      expect.fail();
     });
 
     it("Can `transferFrom` locked amount after lock end", async () => {
-      //
+      expect.fail();
     });
   });
 });
