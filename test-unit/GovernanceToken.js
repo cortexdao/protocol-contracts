@@ -129,24 +129,26 @@ contract("GovernanceToken Unit Test", async (accounts) => {
   });
 
   describe("addLocker", () => {
-    it("Owner can set", async () => {
+    it("Owner can add locker", async () => {
+      //
+    });
+
+    it("Unpermissioned cannot call", async () => {
       //
     });
   });
 
   describe("removeLocker", () => {
-    it("Owner can set", async () => {
+    it("Owner can remove locker", async () => {
+      //
+    });
+
+    it("Unpermissioned cannot call", async () => {
       //
     });
   });
 
-  describe("unlockedAmount", () => {
-    it("Can read unlocked amount", async () => {
-      //
-    });
-  });
-
-  describe("lockAmount", () => {
+  describe("lockAmount / unlockedAmount", () => {
     it("Locker can call", async () => {
       //
     });
@@ -158,16 +160,32 @@ contract("GovernanceToken Unit Test", async (accounts) => {
     it("Can lock specified amount", async () => {
       //
     });
-  });
 
-  describe("transfer", () => {
-    it("Cannot transfer more than unlocked amount", async () => {
+    it("Can read unlocked amount", async () => {
       //
     });
-  });
 
-  describe("transferFrom", () => {
-    it("Cannot transfer more than unlocked amount", async () => {
+    it("Cannot `transfer` more than unlocked amount", async () => {
+      //
+    });
+
+    it("Can `transfer` up to unlocked amount", async () => {
+      //
+    });
+
+    it("Can `transfer` locked amount after lock end", async () => {
+      //
+    });
+
+    it("Cannot `transferFrom` more than unlocked amount", async () => {
+      //
+    });
+
+    it("Can `transferFrom` up to unlocked amount", async () => {
+      //
+    });
+
+    it("Can `transferFrom` locked amount after lock end", async () => {
       //
     });
   });
