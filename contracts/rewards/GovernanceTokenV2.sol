@@ -44,6 +44,11 @@ contract GovernanceTokenV2 is
         _;
     }
 
+    modifier onlyLocker() {
+        require(isLocker(msg.sender), "LOCKER_ONLY");
+        _;
+    }
+
     receive() external payable {
         revert("DONT_SEND_ETHER");
     }
@@ -98,5 +103,9 @@ contract GovernanceTokenV2 is
         returns (uint256)
     {
         require(false, "NOT_IMPLEMENTED_YET");
+    }
+
+    function isLocker(address account) public view returns (bool) {
+        return false;
     }
 }
