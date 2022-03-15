@@ -1,25 +1,27 @@
-const { assert } = require("chai");
-const { artifacts, contract } = require("hardhat");
-const { expectRevert, ether } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
+const hre = require("hardhat");
+const { ethers } = hre;
 const timeMachine = require("ganache-time-traveler");
-const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
+const { ZERO_ADDRESS, tokenAmountToBigNumber } = require("../utils/helpers");
 
-const ProxyAdmin = artifacts.require("ProxyAdmin");
-const GovernanceTokenProxy = artifacts.require("GovernanceTokenProxy");
-const GovernanceToken = artifacts.require("GovernanceToken");
-const GovernanceTokenV2 = artifacts.require("GovernanceTokenV2");
+describe.only("GovernanceToken", () => {
+  // signers
+  let owner;
+  let instanceAdmin;
+  let randomUser;
+  let locker;
 
-contract.only("GovernanceToken", async (accounts) => {
-  const [owner, instanceAdmin, randomUser, locker] = accounts;
-
+  // deployed contracts
   let proxyAdmin;
   let logic;
   let logicV2;
   let proxy;
   let instance;
 
-  const totalSupply = ether("100000000");
+  // contract factories
+  let GovernanceTokenProxy;
+
+  const totalSupply = tokenAmountToBigNumber("100000000");
 
   // use EVM snapshots for test isolation
   let snapshotId;
@@ -34,58 +36,72 @@ contract.only("GovernanceToken", async (accounts) => {
   });
 
   before(async () => {
-    proxyAdmin = await ProxyAdmin.new({ from: owner });
-    logic = await GovernanceToken.new({ from: owner });
-    logicV2 = await GovernanceTokenV2.new({ from: owner });
-    proxy = await GovernanceTokenProxy.new(
+    [owner, instanceAdmin, randomUser, locker] = await ethers.getSigners();
+
+    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+    proxyAdmin = await ProxyAdmin.connect(owner).deploy();
+
+    const GovernanceToken = await ethers.getContractFactory("GovernanceToken");
+    logic = await GovernanceToken.connect(owner).deploy();
+
+    const GovernanceTokenV2 = await ethers.getContractFactory(
+      "GovernanceTokenV2"
+    );
+    logicV2 = await GovernanceTokenV2.connect(owner).deploy();
+
+    GovernanceTokenProxy = await ethers.getContractFactory(
+      "GovernanceTokenProxy"
+    );
+    proxy = await GovernanceTokenProxy.connect(owner).deploy(
       logic.address,
       proxyAdmin.address,
-      totalSupply,
-      {
-        from: owner,
-      }
+      totalSupply
     );
-    await proxyAdmin.upgrade(proxy.address, logicV2.address, { from: owner });
-    instance = await GovernanceTokenV2.at(proxy.address);
+    await proxyAdmin.connect(owner).upgrade(proxy.address, logicV2.address);
+    instance = await GovernanceTokenV2.attach(proxy.address);
   });
 
   describe("Constructor", () => {
     it("Revert on invalid admin address", async () => {
-      await expectRevert.unspecified(
-        GovernanceTokenProxy.new(logic.address, ZERO_ADDRESS, totalSupply, {
-          from: owner,
-        })
-      );
+      await expect(
+        GovernanceTokenProxy.connect(owner).deploy(
+          logic.address,
+          ZERO_ADDRESS,
+          totalSupply
+        )
+      ).to.be.reverted;
     });
   });
 
   describe("initialize", () => {
     it("Owner set correctly", async () => {
-      assert.equal(await instance.owner(), owner);
+      expect(await instance.owner()).to.equal(owner.address);
     });
 
     it("Name set correctly", async () => {
-      assert.equal(await instance.name(), "APY Governance Token");
+      expect(await instance.name()).to.equal("APY Governance Token");
     });
 
     it("Symbol set correctly", async () => {
-      assert.equal(await instance.symbol(), "APY");
+      expect(await instance.symbol()).to.equal("APY");
     });
 
     it("Decimals set correctly", async () => {
-      assert.equal(await instance.decimals(), 18);
+      expect(await instance.decimals()).to.equal(18);
     });
 
     it("Revert on sent ETH", async () => {
-      await expectRevert(instance.send(10), "DONT_SEND_ETHER");
+      await expect(
+        owner.sendTransaction({ to: instance.address, value: "10" })
+      ).to.be.revertedWith("DONT_SEND_ETHER");
     });
 
     it("totalSupply is set correctly", async () => {
-      expect(await instance.totalSupply()).to.bignumber.equal(totalSupply);
+      expect(await instance.totalSupply()).to.equal(totalSupply);
     });
 
     it("Owner has total supply", async () => {
-      expect(await instance.balanceOf(owner)).to.bignumber.equal(
+      expect(await instance.balanceOf(owner.address)).to.equal(
         await instance.totalSupply()
       );
     });
@@ -93,48 +109,45 @@ contract.only("GovernanceToken", async (accounts) => {
 
   describe("setAdminAdddress", () => {
     it("Owner can set", async () => {
-      await instance.setAdminAddress(instanceAdmin, { from: owner });
-      assert.equal(await instance.proxyAdmin(), instanceAdmin);
+      await instance.connect(owner).setAdminAddress(instanceAdmin.address);
+      expect(await instance.proxyAdmin()).to.equal(instanceAdmin.address);
     });
 
     it("Revert on invalid admin address", async () => {
-      await expectRevert(
-        instance.setAdminAddress(ZERO_ADDRESS, { from: owner }),
-        "INVALID_ADMIN"
-      );
+      await expect(
+        instance.connect(owner).setAdminAddress(ZERO_ADDRESS)
+      ).to.be.revertedWith("INVALID_ADMIN");
     });
 
     it("Unpermissioned cannot set", async () => {
-      await expectRevert(
-        instance.setAdminAddress(instanceAdmin, { from: randomUser }),
-        "Ownable: caller is not the owner"
-      );
+      await expect(
+        instance.connect(randomUser).setAdminAddress(ZERO_ADDRESS)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
 
   describe("setLockEnd", () => {
     it("Owner can set", async () => {
       const timestamp = 1653349667;
-      await instance.setLockEnd(timestamp, { from: owner });
-      assert.equal(await instance.lockEnd(), timestamp);
+      await instance.connect(owner).setLockEnd(timestamp);
+      expect(await instance.lockEnd()).to.equal(timestamp);
     });
 
     it("Unpermissioned cannot set", async () => {
       const timestamp = 1653349667;
-      await expectRevert(
-        instance.setLockEnd(timestamp, { from: randomUser }),
-        "Ownable: caller is not the owner"
-      );
+      await expect(
+        instance.connect(randomUser).setLockEnd(timestamp)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
 
   describe("addLocker", () => {
     it("Owner can add locker", async () => {
-      await instance.addLocker(locker, { from: owner });
+      await instance.connect(owner).addLocker(locker.address);
     });
 
     it("Unpermissioned cannot call", async () => {
-      await instance.addLocker(locker, { from: randomUser });
+      await instance.connect(randomUser).addLocker(locker.address);
     });
   });
 
