@@ -91,7 +91,11 @@ contract GovernanceTokenV2 is
         emit LockerRemoved(locker);
     }
 
-    function lockAmount(address account, uint256 amount) external override {
+    function lockAmount(address account, uint256 amount)
+        external
+        override
+        onlyLocker
+    {
         require(
             amount <= unlockedAmount(account),
             "AMOUNT_EXCEEDS_UNLOCKED_BALANCE"
