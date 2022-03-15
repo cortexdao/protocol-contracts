@@ -176,6 +176,12 @@ describe.only("GovernanceToken", () => {
   describe("lockAmount / unlockedAmount", () => {
     let userBalance;
 
+    before("set lock end", async () => {
+      const timestamp = (await ethers.provider.getBlock()).timestamp;
+      const lockEnd = timestamp + 86400 * 7;
+      await instance.connect(owner).setLockEnd(lockEnd);
+    });
+
     before("add locker", async () => {
       await instance.connect(owner).addLocker(locker.address);
       expect(await instance.isLocker(locker.address)).to.be.true;
@@ -237,15 +243,21 @@ describe.only("GovernanceToken", () => {
       const amount = tokenAmountToBigNumber("100");
       await instance.connect(locker).lockAmount(randomUser.address, amount);
       const unlockedAmount = await instance.unlockedAmount(randomUser.address);
+      console.log("Unlocked amount: %s", unlockedAmount);
       await expect(
         instance
           .connect(randomUser)
           .transfer(owner.address, unlockedAmount.add(1))
-      ).to.be.reverted;
+      ).to.be.revertedWith("LOCKED_BALANCE");
     });
 
     it("Can `transfer` up to unlocked amount", async () => {
-      expect.fail();
+      const amount = tokenAmountToBigNumber("100");
+      await instance.connect(locker).lockAmount(randomUser.address, amount);
+      const unlockedAmount = await instance.unlockedAmount(randomUser.address);
+      await expect(
+        instance.connect(randomUser).transfer(owner.address, unlockedAmount)
+      ).to.not.be.reverted;
     });
 
     it("Can `transfer` locked amount after lock end", async () => {

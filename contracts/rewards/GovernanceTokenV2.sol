@@ -113,12 +113,29 @@ contract GovernanceTokenV2 is
         public
         view
         override
-        returns (uint256)
+        returns (uint256 amount)
     {
-        return balanceOf(account).sub(_lockedAmount[account]);
+        if (block.timestamp > lockEnd) {
+            amount = balanceOf(account);
+        } else {
+            amount = balanceOf(account).sub(_lockedAmount[account]);
+        }
     }
 
     function isLocker(address account) public view returns (bool) {
         return _lockers.contains(account);
+    }
+
+    /**
+     * @dev This hook will block transfers until block timestamp
+     * is past `lockEnd`.
+     */
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal override {
+        super._beforeTokenTransfer(from, to, amount);
+        require(amount <= unlockedAmount(from), "LOCKED_BALANCE");
     }
 }
