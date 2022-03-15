@@ -49,7 +49,7 @@ contract.only("GovernanceToken", async (accounts) => {
     instance = await GovernanceTokenV2.at(proxy.address);
   });
 
-  describe("Constructor", async () => {
+  describe("Constructor", () => {
     it("Revert on invalid admin address", async () => {
       await expectRevert.unspecified(
         GovernanceTokenProxy.new(logic.address, ZERO_ADDRESS, totalSupply, {
@@ -59,7 +59,7 @@ contract.only("GovernanceToken", async (accounts) => {
     });
   });
 
-  describe("initialize", async () => {
+  describe("initialize", () => {
     it("Owner set correctly", async () => {
       assert.equal(await instance.owner(), owner);
     });
@@ -91,7 +91,7 @@ contract.only("GovernanceToken", async (accounts) => {
     });
   });
 
-  describe("setAdminAdddress", async () => {
+  describe("setAdminAdddress", () => {
     it("Owner can set", async () => {
       await instance.setAdminAddress(instanceAdmin, { from: owner });
       assert.equal(await instance.proxyAdmin(), instanceAdmin);
@@ -112,7 +112,7 @@ contract.only("GovernanceToken", async (accounts) => {
     });
   });
 
-  describe("setLockEnd", async () => {
+  describe("setLockEnd", () => {
     it("Owner can set", async () => {
       const timestamp = 1653349667;
       await instance.setLockEnd(timestamp, { from: owner });
