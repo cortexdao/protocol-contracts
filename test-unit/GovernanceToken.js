@@ -245,40 +245,59 @@ describe.only("GovernanceToken", () => {
       expect(await instance.unlockedAmount(randomUser.address)).to.equal(0);
     });
 
-    it("Cannot `transfer` more than unlocked amount", async () => {
-      const amount = tokenAmountToBigNumber("100");
-      await instance.connect(locker).lockAmount(randomUser.address, amount);
-      const unlockedAmount = await instance.unlockedAmount(randomUser.address);
-      await expect(
-        instance
-          .connect(randomUser)
-          .transfer(deployer.address, unlockedAmount.add(1))
-      ).to.be.revertedWith("LOCKED_BALANCE");
-    });
+    describe("transfer / transferFrom", () => {
+      const lockedAmount = tokenAmountToBigNumber("100");
+      let unlockedAmount;
 
-    it("Can `transfer` up to unlocked amount", async () => {
-      const amount = tokenAmountToBigNumber("100");
-      await instance.connect(locker).lockAmount(randomUser.address, amount);
-      const unlockedAmount = await instance.unlockedAmount(randomUser.address);
-      await expect(
-        instance.connect(randomUser).transfer(deployer.address, unlockedAmount)
-      ).to.not.be.reverted;
-    });
+      before("Lock amount for user", async () => {
+        await instance
+          .connect(locker)
+          .lockAmount(randomUser.address, lockedAmount);
+        unlockedAmount = await instance.unlockedAmount(randomUser.address);
+      });
 
-    it("Can `transfer` locked amount after lock end", async () => {
-      expect.fail();
-    });
+      it("Cannot `transfer` more than unlocked amount", async () => {
+        await expect(
+          instance
+            .connect(randomUser)
+            .transfer(deployer.address, unlockedAmount.add(1))
+        ).to.be.revertedWith("LOCKED_BALANCE");
+      });
 
-    it("Cannot `transferFrom` more than unlocked amount", async () => {
-      expect.fail();
-    });
+      it("Can `transfer` up to unlocked amount", async () => {
+        await expect(
+          instance
+            .connect(randomUser)
+            .transfer(deployer.address, unlockedAmount)
+        ).to.not.be.reverted;
+      });
 
-    it("Can `transferFrom` up to unlocked amount", async () => {
-      expect.fail();
-    });
+      it("Can `transfer` locked amount after lock end", async () => {
+        const currentTimestamp = (await ethers.provider.getBlock()).timestamp;
+        const lockEnd = await instance.lockEnd();
+        expect(currentTimestamp).to.be.lt(lockEnd);
+        const lockRemaining = lockEnd - currentTimestamp;
+        await ethers.provider.send("evm_increaseTime", [lockRemaining]);
+        await ethers.provider.send("evm_mine");
 
-    it("Can `transferFrom` locked amount after lock end", async () => {
-      expect.fail();
+        await expect(
+          instance
+            .connect(randomUser)
+            .transfer(deployer.address, unlockedAmount.add(1))
+        ).to.not.be.reverted;
+      });
+
+      it("Cannot `transferFrom` more than unlocked amount", async () => {
+        expect.fail();
+      });
+
+      it("Can `transferFrom` up to unlocked amount", async () => {
+        expect.fail();
+      });
+
+      it("Can `transferFrom` locked amount after lock end", async () => {
+        expect.fail();
+      });
     });
   });
 });
