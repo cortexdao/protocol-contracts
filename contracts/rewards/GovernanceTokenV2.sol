@@ -65,7 +65,7 @@ contract GovernanceTokenV2 is
         emit AdminChanged(adminAddress);
     }
 
-    function setLockEnd(uint256 timestamp) external onlyOwner {
-        //
+    function setLockEnd(uint256 lockEnd_) external onlyOwner {
+        lockEnd = lockEnd_;
     }
 }
