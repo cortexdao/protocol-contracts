@@ -20,7 +20,11 @@ contract GovernanceTokenV2 is
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
+    // V1
     address public proxyAdmin;
+
+    // V2
+    uint256 public lockEnd;
 
     /* ------------------------------- */
 
@@ -59,5 +63,9 @@ contract GovernanceTokenV2 is
         require(adminAddress != address(0), "INVALID_ADMIN");
         proxyAdmin = adminAddress;
         emit AdminChanged(adminAddress);
+    }
+
+    function setLockEnd(uint256 timestamp) external onlyOwner {
+        //
     }
 }

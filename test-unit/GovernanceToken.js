@@ -36,7 +36,7 @@ contract("GovernanceToken Unit Test", async (accounts) => {
   before(async () => {
     proxyAdmin = await ProxyAdmin.new({ from: owner });
     logic = await GovernanceToken.new({ from: owner });
-    logicV2 = await GovernanceToken.new({ from: owner });
+    logicV2 = await GovernanceTokenV2.new({ from: owner });
     proxy = await GovernanceTokenProxy.new(
       logic.address,
       proxyAdmin.address,
@@ -107,6 +107,22 @@ contract("GovernanceToken Unit Test", async (accounts) => {
     it("Unpermissioned cannot set", async () => {
       await expectRevert(
         instance.setAdminAddress(instanceAdmin, { from: randomUser }),
+        "Ownable: caller is not the owner"
+      );
+    });
+  });
+
+  describe.only("setLockEnd", async () => {
+    it("Owner can set", async () => {
+      const timestamp = 1653349667;
+      await instance.setLockEnd(timestamp, { from: owner });
+      assert.equal(await instance.lockEnd(), timestamp);
+    });
+
+    it("Unpermissioned cannot set", async () => {
+      const timestamp = 1653349667;
+      await expectRevert(
+        instance.setLockEnd(timestamp, { from: randomUser }),
         "Ownable: caller is not the owner"
       );
     });
