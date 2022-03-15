@@ -143,9 +143,9 @@ describe.only("GovernanceToken", () => {
 
   describe("addLocker", () => {
     it("Owner can add locker", async () => {
-      expect(instance.isLocker(locker.address)).to.be.false;
+      expect(await instance.isLocker(locker.address)).to.be.false;
       await instance.connect(owner).addLocker(locker.address);
-      expect(instance.isLocker(locker.address)).to.be.true;
+      expect(await instance.isLocker(locker.address)).to.be.true;
     });
 
     it("Unpermissioned cannot call", async () => {
@@ -156,12 +156,20 @@ describe.only("GovernanceToken", () => {
   });
 
   describe("removeLocker", () => {
+    before("add locker", async () => {
+      await instance.connect(owner).addLocker(locker.address);
+      expect(await instance.isLocker(locker.address)).to.be.true;
+    });
+
     it("Owner can remove locker", async () => {
-      //
+      await instance.connect(owner).removeLocker(locker.address);
+      expect(await instance.isLocker(locker.address)).to.be.false;
     });
 
     it("Unpermissioned cannot call", async () => {
-      //
+      await expect(
+        instance.connect(randomUser).removeLocker(locker.address)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
 

@@ -78,12 +78,14 @@ contract GovernanceTokenV2 is
         lockEnd = lockEnd_;
     }
 
-    function addLocker(address locker) external override onlyOwner {
-        require(false, "NOT_IMPLEMENTED_YET");
+    function addLocker(address account) external override onlyOwner {
+        _lockers.add(account);
+        emit LockerAdded(account);
     }
 
-    function removeLocker(address locker) external override {
-        require(false, "NOT_IMPLEMENTED_YET");
+    function removeLocker(address locker) external override onlyOwner {
+        _lockers.remove(locker);
+        emit LockerRemoved(locker);
     }
 
     function lockAmount(address account, uint256 amount) external override {
@@ -106,6 +108,6 @@ contract GovernanceTokenV2 is
     }
 
     function isLocker(address account) public view returns (bool) {
-        return false;
+        return _lockers.contains(account);
     }
 }
