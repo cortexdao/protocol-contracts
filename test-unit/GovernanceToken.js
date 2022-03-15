@@ -10,8 +10,8 @@ const GovernanceTokenProxy = artifacts.require("GovernanceTokenProxy");
 const GovernanceToken = artifacts.require("GovernanceToken");
 const GovernanceTokenV2 = artifacts.require("GovernanceTokenV2");
 
-contract("GovernanceToken Unit Test", async (accounts) => {
-  const [owner, instanceAdmin, randomUser] = accounts;
+contract.only("GovernanceToken", async (accounts) => {
+  const [owner, instanceAdmin, randomUser, locker] = accounts;
 
   let proxyAdmin;
   let logic;
@@ -130,11 +130,11 @@ contract("GovernanceToken Unit Test", async (accounts) => {
 
   describe("addLocker", () => {
     it("Owner can add locker", async () => {
-      //
+      await instance.addLocker(locker, { from: owner });
     });
 
     it("Unpermissioned cannot call", async () => {
-      //
+      await instance.addLocker(locker, { from: randomUser });
     });
   });
 
