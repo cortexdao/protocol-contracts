@@ -12,6 +12,7 @@ import {
     ERC20UpgradeSafe
 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 
+import {EnumerableSet, SafeMath} from "contracts/libraries/Imports.sol";
 import {ITimeLocked} from "./ITimeLocked.sol";
 
 contract GovernanceTokenV2 is
@@ -20,6 +21,8 @@ contract GovernanceTokenV2 is
     ERC20UpgradeSafe,
     ITimeLocked
 {
+    using EnumerableSet for EnumerableSet.AddressSet;
+
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
@@ -27,7 +30,10 @@ contract GovernanceTokenV2 is
     address public proxyAdmin;
 
     // V2
+    /** @notice expiry of timelock in unix time */
     uint256 public override lockEnd;
+    /** @dev addresses allowed to timelock user balances */
+    EnumerableSet.AddressSet private _lockers;
 
     /* ------------------------------- */
 
