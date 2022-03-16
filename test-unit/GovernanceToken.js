@@ -290,7 +290,11 @@ describe.only("GovernanceToken", () => {
       });
 
       it("Can `transferFrom` up to unlocked amount", async () => {
-        expect.fail();
+        await expect(
+          instance
+            .connect(anotherUser)
+            .transferFrom(user.address, randomUser.address, unlockedAmount)
+        ).to.be.revertedWith("LOCKED_BALANCE");
       });
 
       it("Can `transferFrom` locked amount after lock end", async () => {
