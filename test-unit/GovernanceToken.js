@@ -294,11 +294,10 @@ describe.only("GovernanceToken", () => {
           instance
             .connect(anotherUser)
             .transferFrom(user.address, randomUser.address, unlockedAmount)
-        ).to.be.revertedWith("LOCKED_BALANCE");
+        ).to.not.be.reverted;
       });
 
       it("Can `transferFrom` locked amount after lock end", async () => {
-        expect.fail();
         const currentTimestamp = (await ethers.provider.getBlock()).timestamp;
         const lockEnd = await instance.lockEnd();
         expect(currentTimestamp).to.be.lt(lockEnd);
@@ -308,8 +307,12 @@ describe.only("GovernanceToken", () => {
 
         await expect(
           instance
-            .connect(user)
-            .transfer(anotherUser.address, unlockedAmount.add(1))
+            .connect(anotherUser)
+            .transferFrom(
+              user.address,
+              randomUser.address,
+              unlockedAmount.add(1)
+            )
         ).to.not.be.reverted;
       });
     });
