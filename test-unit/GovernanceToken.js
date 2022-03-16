@@ -8,9 +8,9 @@ const { ZERO_ADDRESS, tokenAmountToBigNumber } = require("../utils/helpers");
 describe("GovernanceToken", () => {
   // signers
   let deployer;
-  let user;
-  let anotherUser;
   let randomUser;
+  let sender;
+  let recipient;
   let locker;
 
   // deployed contracts
@@ -38,7 +38,7 @@ describe("GovernanceToken", () => {
   });
 
   before(async () => {
-    [deployer, user, anotherUser, randomUser, locker] =
+    [deployer, sender, recipient, randomUser, locker] =
       await ethers.getSigners();
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
@@ -193,15 +193,17 @@ describe("GovernanceToken", () => {
 
     before("prepare user APY balance", async () => {
       userBalance = tokenAmountToBigNumber("1000");
-      await govToken.connect(deployer).transfer(user.address, userBalance);
-      expect(await govToken.unlockedAmount(user.address)).to.equal(userBalance);
+      await govToken.connect(deployer).transfer(sender.address, userBalance);
+      expect(await govToken.unlockedAmount(sender.address)).to.equal(
+        userBalance
+      );
     });
 
     it("Locker can lock amount", async () => {
       const amount = tokenAmountToBigNumber("100");
-      await expect(govToken.connect(locker).lockAmount(user.address, amount)).to
-        .not.be.reverted;
-      expect(await govToken.unlockedAmount(user.address)).to.equal(
+      await expect(govToken.connect(locker).lockAmount(sender.address, amount))
+        .to.not.be.reverted;
+      expect(await govToken.unlockedAmount(sender.address)).to.equal(
         userBalance.sub(amount)
       );
     });
@@ -209,30 +211,30 @@ describe("GovernanceToken", () => {
     it("Unpermissioned cannot lock", async () => {
       const amount = tokenAmountToBigNumber("100");
       await expect(
-        govToken.connect(randomUser).lockAmount(user.address, amount)
+        govToken.connect(randomUser).lockAmount(sender.address, amount)
       ).to.be.reverted;
     });
 
     it("Cannot lock more than balance", async () => {
       // case 1: lock more than balance at once
       await expect(
-        govToken.connect(locker).lockAmount(user.address, userBalance.add(1))
+        govToken.connect(locker).lockAmount(sender.address, userBalance.add(1))
       ).to.be.revertedWith("AMOUNT_EXCEEDS_UNLOCKED_BALANCE");
 
       // case 2: lock in stages
       const amount = userBalance.div(2);
       // should be allowed to lock half
-      await govToken.connect(locker).lockAmount(user.address, amount);
+      await govToken.connect(locker).lockAmount(sender.address, amount);
       // cannot lock again with more than half
-      expect(await govToken.unlockedAmount(user.address)).to.equal(amount);
+      expect(await govToken.unlockedAmount(sender.address)).to.equal(amount);
       await expect(
-        govToken.connect(locker).lockAmount(user.address, amount.add(1))
+        govToken.connect(locker).lockAmount(sender.address, amount.add(1))
       ).to.be.revertedWith("AMOUNT_EXCEEDS_UNLOCKED_BALANCE");
       // can lock again with half
-      await expect(govToken.connect(locker).lockAmount(user.address, amount)).to
-        .not.be.reverted;
+      await expect(govToken.connect(locker).lockAmount(sender.address, amount))
+        .to.not.be.reverted;
       // everything is locked
-      expect(await govToken.unlockedAmount(user.address)).to.equal(0);
+      expect(await govToken.unlockedAmount(sender.address)).to.equal(0);
     });
 
     describe("transfer / transferFrom", () => {
@@ -240,26 +242,37 @@ describe("GovernanceToken", () => {
       let unlockedAmount;
 
       before("Lock amount for user", async () => {
-        await govToken.connect(locker).lockAmount(user.address, lockedAmount);
-        unlockedAmount = await govToken.unlockedAmount(user.address);
+        await govToken.connect(locker).lockAmount(sender.address, lockedAmount);
+        unlockedAmount = await govToken.unlockedAmount(sender.address);
       });
 
       before("Approve another user to transfer", async () => {
-        await govToken.connect(user).approve(anotherUser.address, userBalance);
+        await govToken.connect(sender).approve(randomUser.address, userBalance);
       });
 
       it("Cannot `transfer` more than unlocked amount", async () => {
         await expect(
           govToken
-            .connect(user)
-            .transfer(anotherUser.address, unlockedAmount.add(1))
+            .connect(sender)
+            .transfer(recipient.address, unlockedAmount.add(1))
         ).to.be.revertedWith("LOCKED_BALANCE");
       });
 
       it("Can `transfer` up to unlocked amount", async () => {
-        await expect(
-          govToken.connect(user).transfer(anotherUser.address, unlockedAmount)
-        ).to.not.be.reverted;
+        const senderBalance = await govToken.balanceOf(sender.address);
+        const recipientBalance = await govToken.balanceOf(recipient.address);
+        const transferAmount = unlockedAmount;
+
+        await govToken
+          .connect(sender)
+          .transfer(recipient.address, transferAmount);
+
+        expect(await govToken.balanceOf(sender.address)).to.equal(
+          senderBalance.sub(transferAmount)
+        );
+        expect(await govToken.balanceOf(recipient.address)).to.equal(
+          recipientBalance.add(transferAmount)
+        );
       });
 
       it("Can `transfer` locked amount after lock end", async () => {
@@ -270,19 +283,28 @@ describe("GovernanceToken", () => {
         await ethers.provider.send("evm_increaseTime", [lockRemaining]);
         await ethers.provider.send("evm_mine");
 
-        await expect(
-          govToken
-            .connect(user)
-            .transfer(anotherUser.address, unlockedAmount.add(1))
-        ).to.not.be.reverted;
+        const senderBalance = await govToken.balanceOf(sender.address);
+        const recipientBalance = await govToken.balanceOf(recipient.address);
+        const transferAmount = unlockedAmount.add(1);
+
+        await govToken
+          .connect(sender)
+          .transfer(recipient.address, transferAmount);
+
+        expect(await govToken.balanceOf(sender.address)).to.equal(
+          senderBalance.sub(transferAmount)
+        );
+        expect(await govToken.balanceOf(recipient.address)).to.equal(
+          recipientBalance.add(transferAmount)
+        );
       });
 
       it("Cannot `transferFrom` more than unlocked amount", async () => {
         await expect(
           govToken
-            .connect(anotherUser)
+            .connect(recipient)
             .transferFrom(
-              user.address,
+              sender.address,
               randomUser.address,
               unlockedAmount.add(1)
             )
@@ -290,11 +312,20 @@ describe("GovernanceToken", () => {
       });
 
       it("Can `transferFrom` up to unlocked amount", async () => {
-        await expect(
-          govToken
-            .connect(anotherUser)
-            .transferFrom(user.address, randomUser.address, unlockedAmount)
-        ).to.not.be.reverted;
+        const senderBalance = await govToken.balanceOf(sender.address);
+        const recipientBalance = await govToken.balanceOf(recipient.address);
+        const transferAmount = unlockedAmount;
+
+        await govToken
+          .connect(randomUser)
+          .transferFrom(sender.address, recipient.address, transferAmount);
+
+        expect(await govToken.balanceOf(sender.address)).to.equal(
+          senderBalance.sub(transferAmount)
+        );
+        expect(await govToken.balanceOf(recipient.address)).to.equal(
+          recipientBalance.add(transferAmount)
+        );
       });
 
       it("Can `transferFrom` locked amount after lock end", async () => {
@@ -305,15 +336,20 @@ describe("GovernanceToken", () => {
         await ethers.provider.send("evm_increaseTime", [lockRemaining]);
         await ethers.provider.send("evm_mine");
 
-        await expect(
-          govToken
-            .connect(anotherUser)
-            .transferFrom(
-              user.address,
-              randomUser.address,
-              unlockedAmount.add(1)
-            )
-        ).to.not.be.reverted;
+        const senderBalance = await govToken.balanceOf(sender.address);
+        const recipientBalance = await govToken.balanceOf(recipient.address);
+        const transferAmount = unlockedAmount.add(1);
+
+        await govToken
+          .connect(randomUser)
+          .transferFrom(sender.address, recipient.address, transferAmount);
+
+        expect(await govToken.balanceOf(sender.address)).to.equal(
+          senderBalance.sub(transferAmount)
+        );
+        expect(await govToken.balanceOf(recipient.address)).to.equal(
+          recipientBalance.add(transferAmount)
+        );
       });
     });
   });
