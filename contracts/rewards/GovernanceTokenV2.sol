@@ -36,6 +36,7 @@ contract GovernanceTokenV2 is
     uint256 public override lockEnd;
     /** @dev addresses allowed to timelock user balances */
     EnumerableSet.AddressSet private _lockers;
+    /** @dev amounts locked per user */
     mapping(address => uint256) private _lockedAmount;
 
     /* ------------------------------- */
@@ -115,6 +116,7 @@ contract GovernanceTokenV2 is
         override
         returns (uint256 amount)
     {
+        // solhint-disable-next-line not-rely-on-time
         if (block.timestamp > lockEnd) {
             amount = balanceOf(account);
         } else {
@@ -122,7 +124,7 @@ contract GovernanceTokenV2 is
         }
     }
 
-    function isLocker(address account) public view returns (bool) {
+    function isLocker(address account) public view override returns (bool) {
         return _lockers.contains(account);
     }
 

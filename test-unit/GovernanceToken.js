@@ -5,7 +5,7 @@ const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
 const { ZERO_ADDRESS, tokenAmountToBigNumber } = require("../utils/helpers");
 
-describe.only("GovernanceToken", () => {
+describe("GovernanceToken", () => {
   // signers
   let deployer;
   let user;
@@ -18,7 +18,7 @@ describe.only("GovernanceToken", () => {
   let logic;
   let logicV2;
   let proxy;
-  let instance;
+  let govToken;
 
   // contract factories
   let GovernanceTokenProxy;
@@ -61,7 +61,7 @@ describe.only("GovernanceToken", () => {
       totalSupply
     );
     await proxyAdmin.connect(deployer).upgrade(proxy.address, logicV2.address);
-    instance = await GovernanceTokenV2.attach(proxy.address);
+    govToken = await GovernanceTokenV2.attach(proxy.address);
   });
 
   describe("Constructor", () => {
@@ -78,34 +78,34 @@ describe.only("GovernanceToken", () => {
 
   describe("initialize", () => {
     it("Owner set correctly", async () => {
-      expect(await instance.owner()).to.equal(deployer.address);
+      expect(await govToken.owner()).to.equal(deployer.address);
     });
 
     it("Name set correctly", async () => {
-      expect(await instance.name()).to.equal("APY Governance Token");
+      expect(await govToken.name()).to.equal("APY Governance Token");
     });
 
     it("Symbol set correctly", async () => {
-      expect(await instance.symbol()).to.equal("APY");
+      expect(await govToken.symbol()).to.equal("APY");
     });
 
     it("Decimals set correctly", async () => {
-      expect(await instance.decimals()).to.equal(18);
+      expect(await govToken.decimals()).to.equal(18);
     });
 
     it("Revert on sent ETH", async () => {
       await expect(
-        deployer.sendTransaction({ to: instance.address, value: "10" })
+        deployer.sendTransaction({ to: govToken.address, value: "10" })
       ).to.be.revertedWith("DONT_SEND_ETHER");
     });
 
     it("totalSupply is set correctly", async () => {
-      expect(await instance.totalSupply()).to.equal(totalSupply);
+      expect(await govToken.totalSupply()).to.equal(totalSupply);
     });
 
     it("Owner has total supply", async () => {
-      expect(await instance.balanceOf(deployer.address)).to.equal(
-        await instance.totalSupply()
+      expect(await govToken.balanceOf(deployer.address)).to.equal(
+        await govToken.totalSupply()
       );
     });
   });
@@ -113,19 +113,19 @@ describe.only("GovernanceToken", () => {
   describe("setAdminAdddress", () => {
     it("Owner can set", async () => {
       const contractAddress = (await deployMockContract(deployer, [])).address;
-      await instance.connect(deployer).setAdminAddress(contractAddress);
-      expect(await instance.proxyAdmin()).to.equal(contractAddress);
+      await govToken.connect(deployer).setAdminAddress(contractAddress);
+      expect(await govToken.proxyAdmin()).to.equal(contractAddress);
     });
 
     it("Revert on invalid admin address", async () => {
       await expect(
-        instance.connect(deployer).setAdminAddress(ZERO_ADDRESS)
+        govToken.connect(deployer).setAdminAddress(ZERO_ADDRESS)
       ).to.be.revertedWith("INVALID_ADMIN");
     });
 
     it("Unpermissioned cannot set", async () => {
       await expect(
-        instance.connect(randomUser).setAdminAddress(ZERO_ADDRESS)
+        govToken.connect(randomUser).setAdminAddress(ZERO_ADDRESS)
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
@@ -133,46 +133,46 @@ describe.only("GovernanceToken", () => {
   describe("setLockEnd", () => {
     it("Owner can set", async () => {
       const timestamp = 1653349667;
-      await instance.connect(deployer).setLockEnd(timestamp);
-      expect(await instance.lockEnd()).to.equal(timestamp);
+      await govToken.connect(deployer).setLockEnd(timestamp);
+      expect(await govToken.lockEnd()).to.equal(timestamp);
     });
 
     it("Unpermissioned cannot set", async () => {
       const timestamp = 1653349667;
       await expect(
-        instance.connect(randomUser).setLockEnd(timestamp)
+        govToken.connect(randomUser).setLockEnd(timestamp)
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
 
   describe("addLocker", () => {
     it("Owner can add locker", async () => {
-      expect(await instance.isLocker(locker.address)).to.be.false;
-      await instance.connect(deployer).addLocker(locker.address);
-      expect(await instance.isLocker(locker.address)).to.be.true;
+      expect(await govToken.isLocker(locker.address)).to.be.false;
+      await govToken.connect(deployer).addLocker(locker.address);
+      expect(await govToken.isLocker(locker.address)).to.be.true;
     });
 
     it("Unpermissioned cannot add", async () => {
       await expect(
-        instance.connect(randomUser).addLocker(locker.address)
+        govToken.connect(randomUser).addLocker(locker.address)
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
 
   describe("removeLocker", () => {
     before("add locker", async () => {
-      await instance.connect(deployer).addLocker(locker.address);
-      expect(await instance.isLocker(locker.address)).to.be.true;
+      await govToken.connect(deployer).addLocker(locker.address);
+      expect(await govToken.isLocker(locker.address)).to.be.true;
     });
 
     it("Owner can remove locker", async () => {
-      await instance.connect(deployer).removeLocker(locker.address);
-      expect(await instance.isLocker(locker.address)).to.be.false;
+      await govToken.connect(deployer).removeLocker(locker.address);
+      expect(await govToken.isLocker(locker.address)).to.be.false;
     });
 
     it("Unpermissioned cannot remove", async () => {
       await expect(
-        instance.connect(randomUser).removeLocker(locker.address)
+        govToken.connect(randomUser).removeLocker(locker.address)
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
@@ -183,25 +183,25 @@ describe.only("GovernanceToken", () => {
     before("set lock end", async () => {
       const timestamp = (await ethers.provider.getBlock()).timestamp;
       const lockEnd = timestamp + 86400 * 7;
-      await instance.connect(deployer).setLockEnd(lockEnd);
+      await govToken.connect(deployer).setLockEnd(lockEnd);
     });
 
     before("add locker", async () => {
-      await instance.connect(deployer).addLocker(locker.address);
-      expect(await instance.isLocker(locker.address)).to.be.true;
+      await govToken.connect(deployer).addLocker(locker.address);
+      expect(await govToken.isLocker(locker.address)).to.be.true;
     });
 
     before("prepare user APY balance", async () => {
       userBalance = tokenAmountToBigNumber("1000");
-      await instance.connect(deployer).transfer(user.address, userBalance);
-      expect(await instance.unlockedAmount(user.address)).to.equal(userBalance);
+      await govToken.connect(deployer).transfer(user.address, userBalance);
+      expect(await govToken.unlockedAmount(user.address)).to.equal(userBalance);
     });
 
     it("Locker can lock amount", async () => {
       const amount = tokenAmountToBigNumber("100");
-      await expect(instance.connect(locker).lockAmount(user.address, amount)).to
+      await expect(govToken.connect(locker).lockAmount(user.address, amount)).to
         .not.be.reverted;
-      expect(await instance.unlockedAmount(user.address)).to.equal(
+      expect(await govToken.unlockedAmount(user.address)).to.equal(
         userBalance.sub(amount)
       );
     });
@@ -209,30 +209,30 @@ describe.only("GovernanceToken", () => {
     it("Unpermissioned cannot lock", async () => {
       const amount = tokenAmountToBigNumber("100");
       await expect(
-        instance.connect(randomUser).lockAmount(user.address, amount)
+        govToken.connect(randomUser).lockAmount(user.address, amount)
       ).to.be.reverted;
     });
 
     it("Cannot lock more than balance", async () => {
       // case 1: lock more than balance at once
       await expect(
-        instance.connect(locker).lockAmount(user.address, userBalance.add(1))
+        govToken.connect(locker).lockAmount(user.address, userBalance.add(1))
       ).to.be.revertedWith("AMOUNT_EXCEEDS_UNLOCKED_BALANCE");
 
       // case 2: lock in stages
       const amount = userBalance.div(2);
       // should be allowed to lock half
-      await instance.connect(locker).lockAmount(user.address, amount);
+      await govToken.connect(locker).lockAmount(user.address, amount);
       // cannot lock again with more than half
-      expect(await instance.unlockedAmount(user.address)).to.equal(amount);
+      expect(await govToken.unlockedAmount(user.address)).to.equal(amount);
       await expect(
-        instance.connect(locker).lockAmount(user.address, amount.add(1))
+        govToken.connect(locker).lockAmount(user.address, amount.add(1))
       ).to.be.revertedWith("AMOUNT_EXCEEDS_UNLOCKED_BALANCE");
       // can lock again with half
-      await expect(instance.connect(locker).lockAmount(user.address, amount)).to
+      await expect(govToken.connect(locker).lockAmount(user.address, amount)).to
         .not.be.reverted;
       // everything is locked
-      expect(await instance.unlockedAmount(user.address)).to.equal(0);
+      expect(await govToken.unlockedAmount(user.address)).to.equal(0);
     });
 
     describe("transfer / transferFrom", () => {
@@ -240,17 +240,17 @@ describe.only("GovernanceToken", () => {
       let unlockedAmount;
 
       before("Lock amount for user", async () => {
-        await instance.connect(locker).lockAmount(user.address, lockedAmount);
-        unlockedAmount = await instance.unlockedAmount(user.address);
+        await govToken.connect(locker).lockAmount(user.address, lockedAmount);
+        unlockedAmount = await govToken.unlockedAmount(user.address);
       });
 
       before("Approve another user to transfer", async () => {
-        await instance.connect(user).approve(anotherUser.address, userBalance);
+        await govToken.connect(user).approve(anotherUser.address, userBalance);
       });
 
       it("Cannot `transfer` more than unlocked amount", async () => {
         await expect(
-          instance
+          govToken
             .connect(user)
             .transfer(anotherUser.address, unlockedAmount.add(1))
         ).to.be.revertedWith("LOCKED_BALANCE");
@@ -258,20 +258,20 @@ describe.only("GovernanceToken", () => {
 
       it("Can `transfer` up to unlocked amount", async () => {
         await expect(
-          instance.connect(user).transfer(anotherUser.address, unlockedAmount)
+          govToken.connect(user).transfer(anotherUser.address, unlockedAmount)
         ).to.not.be.reverted;
       });
 
       it("Can `transfer` locked amount after lock end", async () => {
         const currentTimestamp = (await ethers.provider.getBlock()).timestamp;
-        const lockEnd = await instance.lockEnd();
+        const lockEnd = await govToken.lockEnd();
         expect(currentTimestamp).to.be.lt(lockEnd);
         const lockRemaining = lockEnd - currentTimestamp;
         await ethers.provider.send("evm_increaseTime", [lockRemaining]);
         await ethers.provider.send("evm_mine");
 
         await expect(
-          instance
+          govToken
             .connect(user)
             .transfer(anotherUser.address, unlockedAmount.add(1))
         ).to.not.be.reverted;
@@ -279,7 +279,7 @@ describe.only("GovernanceToken", () => {
 
       it("Cannot `transferFrom` more than unlocked amount", async () => {
         await expect(
-          instance
+          govToken
             .connect(anotherUser)
             .transferFrom(
               user.address,
@@ -291,7 +291,7 @@ describe.only("GovernanceToken", () => {
 
       it("Can `transferFrom` up to unlocked amount", async () => {
         await expect(
-          instance
+          govToken
             .connect(anotherUser)
             .transferFrom(user.address, randomUser.address, unlockedAmount)
         ).to.not.be.reverted;
@@ -299,14 +299,14 @@ describe.only("GovernanceToken", () => {
 
       it("Can `transferFrom` locked amount after lock end", async () => {
         const currentTimestamp = (await ethers.provider.getBlock()).timestamp;
-        const lockEnd = await instance.lockEnd();
+        const lockEnd = await govToken.lockEnd();
         expect(currentTimestamp).to.be.lt(lockEnd);
         const lockRemaining = lockEnd - currentTimestamp;
         await ethers.provider.send("evm_increaseTime", [lockRemaining]);
         await ethers.provider.send("evm_mine");
 
         await expect(
-          instance
+          govToken
             .connect(anotherUser)
             .transferFrom(
               user.address,
