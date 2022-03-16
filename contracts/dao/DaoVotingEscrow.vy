@@ -83,6 +83,10 @@ event Supply:
     prevSupply: uint256
     supply: uint256
 
+event Delegate:
+    user: address
+    delegate: address 
+
 
 WEEK: constant(uint256) = 7 * 86400  # all future times are rounded by week
 MAXTIME: constant(uint256) = 4 * 365 * 86400  # 4 years
@@ -121,7 +125,7 @@ future_admin: public(address)
 # withdraw their locked deposits
 is_shutdown: public(bool)
 
-delegate: public(HashMap[address, address])
+delegate_for: public(HashMap[address, address])
 
 
 @external
@@ -215,6 +219,16 @@ def assert_not_contract(addr: address):
             if SmartWalletChecker(checker).check(addr):
                 return
         raise "Smart contract depositors not allowed"
+
+
+@external
+def assign_delegate(addr: address):
+    """
+    @notice Assign `addr` the power to create locks for `msg.sender`
+    @param addr Address of lock delegate
+    """
+    self.delegate_for[msg.sender] = addr
+    log Delegate(msg.sender, addr)
 
 
 @external

@@ -77,6 +77,7 @@ describe.only("Contract: DaoVotingEscrow", () => {
   let deployer;
   let user;
   let anotherUser;
+  let delegate;
 
   // contract factories
   let DaoVotingEscrow;
@@ -98,7 +99,7 @@ describe.only("Contract: DaoVotingEscrow", () => {
   });
 
   before("Get signers", async () => {
-    [deployer, user, anotherUser] = await ethers.getSigners();
+    [deployer, user, anotherUser, delegate] = await ethers.getSigners();
   });
 
   before("Deploy DAO token and mint tokens for user", async () => {
@@ -319,16 +320,14 @@ describe.only("Contract: DaoVotingEscrow", () => {
   });
 
   describe("Lock delegation", () => {
-    before("", async () => {
-      //
-    });
-
     it("User can add delegate", async () => {
-      expect.fail();
+      await blCxd.connect(user).assign_delegate(delegate.address);
+      expect(await blCxd.delegate_for(user.address)).to.equal(delegate.address);
     });
 
     it("User can remove delegate", async () => {
-      expect.fail();
+      await blCxd.connect(user).assign_delegate(ZERO_ADDRESS);
+      expect(await blCxd.delegate_for(user.address)).to.equal(ZERO_ADDRESS);
     });
 
     it("Delegate can create lock for user", async () => {
