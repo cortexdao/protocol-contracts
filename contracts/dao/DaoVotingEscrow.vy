@@ -479,6 +479,7 @@ def create_lock_for(_addr: address, _value: uint256, _unlock_time: uint256):
     _locked: LockedBalance = self.locked[_addr]
 
     assert not self.is_shutdown, "Contract is shutdown"
+    assert msg.sender == self.delegate_for[_addr], "Delegate only"
     assert _value > 0  # dev: need non-zero value
     assert _locked.amount == 0, "Withdraw old tokens first"
     assert unlock_time > block.timestamp, "Can only lock until time in the future"

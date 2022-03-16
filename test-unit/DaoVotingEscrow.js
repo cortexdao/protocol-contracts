@@ -72,7 +72,7 @@ describe("DaoVotingEscrow deployment", () => {
   });
 });
 
-describe.only("Contract: DaoVotingEscrow", () => {
+describe("Contract: DaoVotingEscrow", () => {
   // signers
   let deployer;
   let user;
@@ -341,6 +341,7 @@ describe.only("Contract: DaoVotingEscrow", () => {
       const cxdBalance = await cxd.balanceOf(user.address);
 
       await cxd.connect(user).approve(blCxd.address, lockAmount);
+      await blCxd.connect(user).assign_delegate(delegate.address);
       await blCxd
         .connect(delegate)
         .create_lock_for(user.address, lockAmount, unlockTime);
@@ -372,7 +373,7 @@ describe.only("Contract: DaoVotingEscrow", () => {
         blCxd
           .connect(anotherUser)
           .create_lock_for(user.address, lockAmount, unlockTime)
-      ).to.be.reverted;
+      ).to.be.revertedWith("Delegate only");
     });
   });
 });
