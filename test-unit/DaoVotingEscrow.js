@@ -360,7 +360,19 @@ describe.only("Contract: DaoVotingEscrow", () => {
     });
 
     it("Non-delegate cannot create lock for user", async () => {
-      expect.fail();
+      const currentTime = (await ethers.provider.getBlock()).timestamp;
+      // lock for ~ 6 months
+      const unlockTime = BigNumber.from(currentTime + 6 * MONTH)
+        .div(WEEK)
+        .mul(WEEK);
+      const lockAmount = tokenAmountToBigNumber("15");
+
+      await cxd.connect(user).approve(blCxd.address, lockAmount);
+      await expect(
+        blCxd
+          .connect(anotherUser)
+          .create_lock_for(user.address, lockAmount, unlockTime)
+      ).to.be.reverted;
     });
   });
 });
