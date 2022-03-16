@@ -72,7 +72,7 @@ describe("DaoVotingEscrow deployment", () => {
   });
 });
 
-describe("Contract: DaoVotingEscrow", () => {
+describe.only("Contract: DaoVotingEscrow", () => {
   // signers
   let deployer;
   let user;
@@ -319,6 +319,24 @@ describe("Contract: DaoVotingEscrow", () => {
   });
 
   describe("Lock delegation", () => {
-    //
+    before("", async () => {
+      //
+    });
+
+    it("User can add delegate", async () => {
+      expect.fail();
+    });
+
+    it("User can remove delegate", async () => {
+      expect.fail();
+    });
+
+    it("Delegate can create lock for user", async () => {
+      expect.fail();
+    });
+
+    it("Non-delegate cannot create lock for user", async () => {
+      expect.fail();
+    });
   });
 });
