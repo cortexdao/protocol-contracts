@@ -104,25 +104,25 @@ describe.only("DaoTokenMinter", () => {
     });
   });
 
-  describe("vanilla mint", () => {
+  describe("Regular mint", () => {
     let userBalance;
 
-    before("set lock end", async () => {
+    before("Set lock end", async () => {
       const timestamp = (await ethers.provider.getBlock()).timestamp;
       const lockEnd = timestamp + 86400 * 7;
       await govToken.connect(deployer).setLockEnd(lockEnd);
     });
 
-    before("add minter as locker", async () => {
+    before("Add minter as locker", async () => {
       await govToken.connect(deployer).addLocker(minter.address);
     });
 
-    before("prepare user APY balance", async () => {
+    before("Prepare user APY balance", async () => {
       userBalance = tokenAmountToBigNumber("1000");
       await govToken.connect(deployer).transfer(user.address, userBalance);
     });
 
-    it("can mint DAO tokens", async () => {
+    it("Can mint DAO tokens", async () => {
       expect(await daoToken.balanceOf(user.address)).to.equal(0);
 
       await minter.connect(user).mint();
@@ -130,7 +130,7 @@ describe.only("DaoTokenMinter", () => {
       expect(await daoToken.balanceOf(user.address)).to.equal(userBalance);
     });
 
-    it("revert mint if not locker", async () => {
+    it("Revert mint if mint isn't locker", async () => {
       await govToken.connect(deployer).removeLocker(minter.address);
 
       await expect(minter.connect(user).mint()).to.be.revertedWith(
@@ -139,7 +139,7 @@ describe.only("DaoTokenMinter", () => {
     });
   });
 
-  describe("boost-lock mint", () => {
+  describe("Boost-lock mint", () => {
     it("can mint boost-locked DAO tokens", async () => {
       expect.fail();
     });
