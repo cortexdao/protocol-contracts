@@ -1,10 +1,8 @@
 const { expect } = require("chai");
 const hre = require("hardhat");
-const { ethers, waffle } = hre;
-const { deployMockContract } = waffle;
+const { ethers } = hre;
 const timeMachine = require("ganache-time-traveler");
 const {
-  ZERO_ADDRESS,
   tokenAmountToBigNumber,
   impersonateAccount,
   getProxyAdmin,
@@ -16,10 +14,7 @@ const BLAPY_TOKEN_ADDRESS = "0xDC9EFf7BB202Fd60dE3f049c7Ec1EfB08006261f";
 describe.only("DaoTokenMinter", () => {
   // signers
   let deployer;
-  let randomUser;
   let user;
-  let recipient;
-  let locker;
 
   // deployed contracts
   let minter;
@@ -43,7 +38,7 @@ describe.only("DaoTokenMinter", () => {
   });
 
   before("Upgrade Governance Token for time-lock functionality", async () => {
-    [deployer, user, recipient, randomUser, locker] = await ethers.getSigners();
+    [deployer, user] = await ethers.getSigners();
 
     const proxy = await ethers.getContractAt(
       "TransparentUpgradeableProxy",
