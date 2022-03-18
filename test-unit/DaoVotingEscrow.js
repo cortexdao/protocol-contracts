@@ -107,7 +107,7 @@ describe("Contract: DaoVotingEscrow", () => {
     cxd = await DaoToken.deploy();
     await cxd.initialize();
 
-    await cxd.mint(user.address, tokenAmountToBigNumber("100"));
+    await cxd.testMint(user.address, tokenAmountToBigNumber("100"));
     expect(await cxd.balanceOf(user.address)).to.equal(
       tokenAmountToBigNumber("100")
     );
@@ -203,7 +203,7 @@ describe("Contract: DaoVotingEscrow", () => {
 
   describe("Withdraw when shutdown", () => {
     before("Mint tokens for another user", async () => {
-      await cxd.mint(anotherUser.address, tokenAmountToBigNumber("100"));
+      await cxd.testMint(anotherUser.address, tokenAmountToBigNumber("100"));
       expect(await cxd.balanceOf(anotherUser.address)).to.equal(
         tokenAmountToBigNumber("100")
       );

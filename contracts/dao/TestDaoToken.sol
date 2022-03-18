@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 import {DaoToken} from "contracts/dao/DaoToken.sol";
 
 contract TestDaoToken is DaoToken {
-    function mint(address account, uint256 amount) external {
+    function testMint(address account, uint256 amount) external {
         _mint(account, amount);
     }
 }

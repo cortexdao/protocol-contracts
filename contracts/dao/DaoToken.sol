@@ -26,4 +26,9 @@ contract DaoToken is Initializable, OwnableUpgradeSafe, ERC20UpgradeSafe {
 
     // solhint-disable-next-line no-empty-blocks
     function initializeV2() external virtual onlyProxyAdmin {}
+
+    // solhint-disable-next-line no-empty-blocks
+    function mint(address account, uint256 amount) external {
+        _mint(account, amount);
+    }
 }
