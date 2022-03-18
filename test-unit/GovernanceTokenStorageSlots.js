@@ -8,7 +8,7 @@ const ZERO_DATA =
   "0000000000000000000000000000000000000000000000000000000000000000";
 
 /*
-This is the expected storage layout of the APT contract, based on
+This is the expected storage layout of the GovernanceToken contract, based on
 the following external package:
 
 @openzeppelin/openzeppelin-ethereum-packages@3.0.0
