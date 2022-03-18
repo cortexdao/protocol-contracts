@@ -98,7 +98,7 @@ contract GovernanceTokenV2 is
         onlyLocker
     {
         require(
-            amount <= unlockedAmount(account),
+            amount <= unlockedBalance(account),
             "AMOUNT_EXCEEDS_UNLOCKED_BALANCE"
         );
         _lockedAmount[account] = _lockedAmount[account].add(amount);
@@ -110,7 +110,7 @@ contract GovernanceTokenV2 is
         emit AdminChanged(adminAddress);
     }
 
-    function unlockedAmount(address account)
+    function unlockedBalance(address account)
         public
         view
         override
@@ -138,6 +138,6 @@ contract GovernanceTokenV2 is
         uint256 amount
     ) internal override {
         super._beforeTokenTransfer(from, to, amount);
-        require(amount <= unlockedAmount(from), "LOCKED_BALANCE");
+        require(amount <= unlockedBalance(from), "LOCKED_BALANCE");
     }
 }

@@ -16,7 +16,7 @@ interface ITimeLocked {
 
     function lockEnd() external view returns (uint256);
 
-    function unlockedAmount(address account) external view returns (uint256);
+    function unlockedBalance(address account) external view returns (uint256);
 
     function isLocker(address account) external view returns (bool);
 }
