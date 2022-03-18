@@ -17,7 +17,7 @@ describe.only("DaoTokenMinter", () => {
   // signers
   let deployer;
   let randomUser;
-  let sender;
+  let user;
   let recipient;
   let locker;
 
@@ -43,8 +43,7 @@ describe.only("DaoTokenMinter", () => {
   });
 
   before("Upgrade Governance Token for time-lock functionality", async () => {
-    [deployer, sender, recipient, randomUser, locker] =
-      await ethers.getSigners();
+    [deployer, user, recipient, randomUser, locker] = await ethers.getSigners();
 
     const proxy = await ethers.getContractAt(
       "TransparentUpgradeableProxy",
@@ -104,7 +103,9 @@ describe.only("DaoTokenMinter", () => {
 
   describe("Defaults", () => {
     it("Mint fails", async () => {
-      await expect(minter.mint()).to.be.revertedWith("AIRDROP_INACTIVE");
+      await expect(minter.connect(user).mint()).to.be.revertedWith(
+        "AIRDROP_INACTIVE"
+      );
     });
   });
 
@@ -123,11 +124,15 @@ describe.only("DaoTokenMinter", () => {
 
     before("prepare user APY balance", async () => {
       userBalance = tokenAmountToBigNumber("1000");
-      await govToken.connect(deployer).transfer(sender.address, userBalance);
+      await govToken.connect(deployer).transfer(user.address, userBalance);
     });
 
     it("mint DAO tokens", async () => {
-      expect.fail();
+      expect(await daoToken.balanceOf(user.address)).to.equal(0);
+
+      await minter.connect(user).mint();
+
+      expect(await daoToken.balanceOf(user.address)).to.equal(userBalance);
     });
   });
 });
