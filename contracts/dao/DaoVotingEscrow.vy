@@ -83,6 +83,10 @@ event Supply:
     prevSupply: uint256
     supply: uint256
 
+event Delegate:
+    user: address
+    delegate: address 
+
 
 WEEK: constant(uint256) = 7 * 86400  # all future times are rounded by week
 MAXTIME: constant(uint256) = 4 * 365 * 86400  # 4 years
@@ -116,10 +120,15 @@ smart_wallet_checker: public(address)
 admin: public(address)  # Can and will be a smart contract
 future_admin: public(address)
 
-# Functionality added by APY.Finance to allow complete
-# shutdown of this contract while allowing users to
-# withdraw their locked deposits
+# Functionality added by APY.Finance:
+
+# 1) allow complete shutdown of this contract while
+# allowing users to withdraw their locked deposits
 is_shutdown: public(bool)
+
+# 2) allow delegation for the `create_lock` functionality
+# via a slightly modified `create_lock_for` function.
+delegate_for: public(HashMap[address, address])
 
 
 @external
@@ -153,6 +162,8 @@ def __init__(token_addr: address, _name: String[64], _symbol: String[32], _versi
 def shutdown():
     """
     @notice Disable deposits but allow withdrawals regardless of lock
+
+    Extension by APY.Finance
     """
     assert msg.sender == self.admin, "Admin only"  # dev: admin only
     self.is_shutdown = True
@@ -213,6 +224,18 @@ def assert_not_contract(addr: address):
             if SmartWalletChecker(checker).check(addr):
                 return
         raise "Smart contract depositors not allowed"
+
+
+@external
+def assign_delegate(addr: address):
+    """
+    @notice Assign `addr` the power to create locks for `msg.sender`
+    @param addr Address of lock delegate
+
+    Extension by APY.Finance
+    """
+    self.delegate_for[msg.sender] = addr
+    log Delegate(msg.sender, addr)
 
 
 @external
@@ -447,6 +470,30 @@ def create_lock(_value: uint256, _unlock_time: uint256):
     assert unlock_time <= block.timestamp + MAXTIME, "Voting lock can be 4 years max"
 
     self._deposit_for(msg.sender, _value, unlock_time, _locked, CREATE_LOCK_TYPE)
+
+
+@external
+@nonreentrant('lock')
+def create_lock_for(_addr: address, _value: uint256, _unlock_time: uint256):
+    """
+    @notice Deposit `_value` tokens for `_addr` and lock until `_unlock_time`
+    @param _addr Address lock is for
+    @param _value Amount to deposit
+    @param _unlock_time Epoch time when tokens unlock, rounded down to whole weeks
+
+    Extension by APY.Finance
+    """
+    unlock_time: uint256 = (_unlock_time / WEEK) * WEEK  # Locktime is rounded down to weeks
+    _locked: LockedBalance = self.locked[_addr]
+
+    assert not self.is_shutdown, "Contract is shutdown"
+    assert msg.sender == self.delegate_for[_addr], "Delegate only"
+    assert _value > 0  # dev: need non-zero value
+    assert _locked.amount == 0, "Withdraw old tokens first"
+    assert unlock_time > block.timestamp, "Can only lock until time in the future"
+    assert unlock_time <= block.timestamp + MAXTIME, "Voting lock can be 4 years max"
+
+    self._deposit_for(_addr, _value, unlock_time, _locked, CREATE_LOCK_TYPE)
 
 
 @external
