@@ -127,12 +127,26 @@ describe.only("DaoTokenMinter", () => {
       await govToken.connect(deployer).transfer(user.address, userBalance);
     });
 
-    it("mint DAO tokens", async () => {
+    it("can mint DAO tokens", async () => {
       expect(await daoToken.balanceOf(user.address)).to.equal(0);
 
       await minter.connect(user).mint();
 
       expect(await daoToken.balanceOf(user.address)).to.equal(userBalance);
+    });
+
+    it("revert mint if not locker", async () => {
+      await govToken.connect(deployer).removeLocker(minter.address);
+
+      await expect(minter.connect(user).mint()).to.be.revertedWith(
+        "LOCKER_ONLY"
+      );
+    });
+  });
+
+  describe("boost-lock mint", () => {
+    it("can mint boost-locked DAO tokens", async () => {
+      expect.fail();
     });
   });
 });
