@@ -19,6 +19,8 @@ contract DaoTokenMinter {
     address public immutable VE_TOKEN_ADDRESS;
 
     constructor(address daoTokenAddress, address veTokenAddress) public {
+        require(daoTokenAddress != address(0), "INVALID_DAO_ADDRESS");
+        require(veTokenAddress != address(0), "INVALID_ESCROW_ADDRESS");
         DAO_TOKEN_ADDRESS = daoTokenAddress;
         VE_TOKEN_ADDRESS = veTokenAddress;
     }

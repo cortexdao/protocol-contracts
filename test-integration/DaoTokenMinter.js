@@ -96,9 +96,41 @@ describe.only("DaoTokenMinter", () => {
     );
   });
 
+  describe("Constructor", () => {
+    it("Contract fails to deploy when passed invalid DAO address", async () => {
+      const DaoTokenMinter = await ethers.getContractFactory("DaoTokenMinter");
+      await expect(
+        DaoTokenMinter.deploy(
+          ethers.constants.AddressZero,
+          daoVotingEscrow.address
+        )
+      ).to.be.revertedWith("INVALID_DAO_ADDRESS");
+    });
+
+    it("Contract fails to deploy when passed invalid Escrow address", async () => {
+      const DaoTokenMinter = await ethers.getContractFactory("DaoTokenMinter");
+      await expect(
+        DaoTokenMinter.deploy(daoToken.address, ethers.constants.AddressZero)
+      ).to.be.revertedWith("INVALID_ESCROW_ADDRESS");
+    });
+  });
+
   describe("Defaults", () => {
+    it("Storage variable are set correctly", async () => {
+      expect(await minter.APY_TOKEN_ADDRESS()).to.equal(govToken.address);
+      expect(await minter.BLAPY_TOKEN_ADDRESS()).to.equal(blApy.address);
+      expect(await minter.DAO_TOKEN_ADDRESS()).to.equal(daoToken.address);
+      expect(await minter.VE_TOKEN_ADDRESS()).to.equal(daoVotingEscrow.address);
+    });
+
     it("Mint fails", async () => {
       await expect(minter.connect(user).mint()).to.be.revertedWith(
+        "AIRDROP_INACTIVE"
+      );
+    });
+
+    it("Mint Boost Locked fails", async () => {
+      await expect(minter.connect(user).mintBoostLocked()).to.be.revertedWith(
         "AIRDROP_INACTIVE"
       );
     });
@@ -140,8 +172,38 @@ describe.only("DaoTokenMinter", () => {
   });
 
   describe("Boost-lock mint", () => {
-    it("can mint boost-locked DAO tokens", async () => {
-      expect.fail();
+    let userBalance;
+
+    before("Set lock end", async () => {
+      const timestamp = (await ethers.provider.getBlock()).timestamp;
+      const lockEnd = timestamp + 86400 * 7;
+      await govToken.connect(deployer).setLockEnd(lockEnd);
     });
+
+    before("Add minter as locker", async () => {
+      await govToken.connect(deployer).addLocker(minter.address);
+    });
+
+    before("Prepare user APY balance", async () => {
+      userBalance = tokenAmountToBigNumber("1000");
+      await govToken.connect(deployer).transfer(user.address, userBalance);
+      await blApy
+        .connect(user)
+        .create_lock(userBalance, await govToken.lockEnd());
+    });
+
+    it("Can mint boost-locked DAO tokens", async () => {
+      expect(await daoToken.balanceOf(user.address)).to.equal(0);
+      await minter.connect(user).mintBoostLocked();
+      expect(await daoToken.balanceOf(user.address)).to.equal(userBalance);
+    });
+
+    // it("Revert mint if mint isn't locker", async () => {
+    //   await govToken.connect(deployer).removeLocker(minter.address);
+
+    //   await expect(minter.connect(user).mint()).to.be.revertedWith(
+    //     "LOCKER_ONLY"
+    //   );
+    // });
   });
 });
