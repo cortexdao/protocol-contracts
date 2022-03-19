@@ -156,7 +156,6 @@ describe.only("DaoTokenMinter", () => {
 
     it("Can mint DAO tokens", async () => {
       expect(await daoToken.balanceOf(user.address)).to.equal(0);
-
       await minter.connect(user).mint();
 
       expect(await daoToken.balanceOf(user.address)).to.equal(userBalance);

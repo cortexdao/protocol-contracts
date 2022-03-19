@@ -40,6 +40,7 @@ contract DaoTokenMinter {
 
         IVotingEscrow blApy = IVotingEscrow(BLAPY_TOKEN_ADDRESS);
         IVotingEscrow.LockedBalance memory locked = blApy.locked(msg.sender);
+        require(false, "1");
         // amount is int128 so we do a defensive check
         if (locked.amount <= 0) {
             revert("NO_BOOST_LOCKED_AMOUNT");
