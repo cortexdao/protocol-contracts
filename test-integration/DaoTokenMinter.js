@@ -8,6 +8,9 @@ const {
   getProxyAdmin,
 } = require("../utils/helpers");
 
+const pinnedBlock = 14024402;
+const forkingUrl = hre.config.networks.hardhat.forking.url;
+
 const GOV_TOKEN_ADDRESS = "0x95a4492F028aa1fd432Ea71146b433E7B4446611";
 const BLAPY_TOKEN_ADDRESS = "0xDC9EFf7BB202Fd60dE3f049c7Ec1EfB08006261f";
 
@@ -35,6 +38,17 @@ describe.only("DaoTokenMinter", () => {
 
   afterEach(async () => {
     await timeMachine.revertToSnapshot(snapshotId);
+  });
+
+  before("Use newer pinned block for recently deployed contracts", async () => {
+    await hre.network.provider.send("hardhat_reset", [
+      {
+        forking: {
+          jsonRpcUrl: forkingUrl,
+          blockNumber: pinnedBlock,
+        },
+      },
+    ]);
   });
 
   before("Upgrade Governance Token for time-lock functionality", async () => {
@@ -156,6 +170,7 @@ describe.only("DaoTokenMinter", () => {
 
     it("Can mint DAO tokens", async () => {
       expect(await daoToken.balanceOf(user.address)).to.equal(0);
+
       await minter.connect(user).mint();
 
       expect(await daoToken.balanceOf(user.address)).to.equal(userBalance);
@@ -186,6 +201,7 @@ describe.only("DaoTokenMinter", () => {
     before("Prepare user APY balance", async () => {
       userBalance = tokenAmountToBigNumber("1000");
       await govToken.connect(deployer).transfer(user.address, userBalance);
+      await govToken.connect(user).approve(blApy.address, userBalance);
       await blApy
         .connect(user)
         .create_lock(userBalance, await govToken.lockEnd());
