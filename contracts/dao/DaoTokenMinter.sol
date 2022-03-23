@@ -7,6 +7,7 @@ import {SafeERC20} from "contracts/libraries/Imports.sol";
 
 import {ITimeLocked} from "contracts/rewards/ITimeLocked.sol";
 import {IVotingEscrow} from "contracts/dao/IVotingEscrow.sol";
+import {IRewardDistributor} from "contracts/dao/IRewardDistributor.sol";
 import {DaoToken} from "./DaoToken.sol";
 
 contract DaoTokenMinter {
@@ -14,6 +15,8 @@ contract DaoTokenMinter {
         0x95a4492F028aa1fd432Ea71146b433E7B4446611;
     address public constant BLAPY_TOKEN_ADDRESS =
         0xDC9EFf7BB202Fd60dE3f049c7Ec1EfB08006261f;
+    address public constant APY_REWARD_DISTRIBUTOR_ADDRESS =
+        0x2E11558316df8Dde1130D81bdd8535f15f70B23d;
 
     address public immutable DAO_TOKEN_ADDRESS;
     address public immutable VE_TOKEN_ADDRESS;
@@ -23,16 +26,6 @@ contract DaoTokenMinter {
         require(veTokenAddress != address(0), "INVALID_ESCROW_ADDRESS");
         DAO_TOKEN_ADDRESS = daoTokenAddress;
         VE_TOKEN_ADDRESS = veTokenAddress;
-    }
-
-    function mint() external {
-        require(isAirdropActive(), "AIRDROP_INACTIVE");
-
-        ITimeLocked apy = ITimeLocked(APY_TOKEN_ADDRESS);
-        uint256 unlockedApyBalance = apy.unlockedBalance(msg.sender);
-
-        apy.lockAmount(msg.sender, unlockedApyBalance);
-        DaoToken(DAO_TOKEN_ADDRESS).mint(msg.sender, unlockedApyBalance);
     }
 
     function mintBoostLocked() external {
@@ -57,6 +50,41 @@ contract DaoTokenMinter {
             blApyLockedAmount,
             blApyLockEnd
         );
+    }
+
+    function claimApyAndMint(
+        IRewardDistributor.Recipient calldata recipient,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external {
+        require(isAirdropActive(), "AIRDROP_INACTIVE");
+        claimApy(recipient, v, r, s);
+        mint();
+    }
+
+    function claimApy(
+        IRewardDistributor.Recipient calldata recipient,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public {
+        IRewardDistributor(APY_REWARD_DISTRIBUTOR_ADDRESS).claim(
+            recipient,
+            v,
+            r,
+            s
+        );
+    }
+
+    function mint() public {
+        require(isAirdropActive(), "AIRDROP_INACTIVE");
+
+        ITimeLocked apy = ITimeLocked(APY_TOKEN_ADDRESS);
+        uint256 unlockedApyBalance = apy.unlockedBalance(msg.sender);
+
+        apy.lockAmount(msg.sender, unlockedApyBalance);
+        DaoToken(DAO_TOKEN_ADDRESS).mint(msg.sender, unlockedApyBalance);
     }
 
     function isAirdropActive() public view returns (bool) {
