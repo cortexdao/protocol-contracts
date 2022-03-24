@@ -192,6 +192,12 @@ describe.only("DaoTokenMinter", () => {
         "AIRDROP_INACTIVE"
       );
     });
+
+    it("Claim APY and mint fails", async () => {
+      await expect(minter.connect(user).claimApyAndMint()).to.be.revertedWith(
+        "AIRDROP_INACTIVE"
+      );
+    });
   });
 
   describe("Regular mint", () => {
