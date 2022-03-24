@@ -14,6 +14,49 @@ const forkingUrl = hre.config.networks.hardhat.forking.url;
 
 const GOV_TOKEN_ADDRESS = "0x95a4492F028aa1fd432Ea71146b433E7B4446611";
 const BLAPY_TOKEN_ADDRESS = "0xDC9EFf7BB202Fd60dE3f049c7Ec1EfB08006261f";
+const REWARD_DISTRIBUTOR_ADDRESS = "0x2E11558316df8Dde1130D81bdd8535f15f70B23d";
+
+// default account 0 used in some old version of ganache
+const DISTRIBUTOR_SIGNER = "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1";
+const DISTRIBUTOR_SIGNER_KEY =
+  "0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d";
+
+async function generateSignature(
+  key,
+  contract,
+  nonce,
+  recipient,
+  amount,
+  chain = 1
+) {
+  const domain = {
+    name: "APY Distribution",
+    version: "1",
+    chainId: chain,
+    verifyingContract: contract,
+  };
+  const types = {
+    Recipient: [
+      { name: "nonce", type: "uint256" },
+      { name: "wallet", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+  };
+  const data = {
+    nonce: nonce,
+    wallet: recipient,
+    amount: amount,
+  };
+
+  const provider = ethers.provider;
+  const wallet = new ethers.Wallet(key, provider);
+  let signature = await wallet._signTypedData(domain, types, data);
+  signature = signature.slice(2);
+  const r = "0x" + signature.substring(0, 64);
+  const s = "0x" + signature.substring(64, 128);
+  const v = parseInt(signature.substring(128, 130), 16);
+  return { r, s, v };
+}
 
 describe.only("DaoTokenMinter", () => {
   // signers
@@ -272,6 +315,59 @@ describe.only("DaoTokenMinter", () => {
 
       await expect(minter.connect(user).mintBoostLocked()).to.be.revertedWith(
         "BOOST_LOCK_ENDS_TOO_EARLY"
+      );
+    });
+  });
+
+  describe.only("Claim APY and mint", () => {
+    let userBalance;
+    let rewardDistributor;
+
+    before(
+      "Attach to MAINNET reward distributor and set test signer",
+      async () => {
+        rewardDistributor = await ethers.getContractAt(
+          "RewardDistributor",
+          REWARD_DISTRIBUTOR_ADDRESS
+        );
+        const distributorOwner = await impersonateAccount(
+          await rewardDistributor.owner()
+        );
+        await rewardDistributor
+          .connect(distributorOwner)
+          .setSigner(DISTRIBUTOR_SIGNER);
+      }
+    );
+
+    before("Set lock end", async () => {
+      const timestamp = (await ethers.provider.getBlock()).timestamp;
+      const lockEnd = timestamp + SECONDS_IN_DAY * 7;
+      await govToken.connect(deployer).setLockEnd(lockEnd);
+    });
+
+    before("Add minter as locker", async () => {
+      await govToken.connect(deployer).addLocker(minter.address);
+    });
+
+    before("Prepare user APY balance", async () => {
+      userBalance = tokenAmountToBigNumber("1000");
+      await govToken.connect(deployer).transfer(user.address, userBalance);
+    });
+
+    it("Successfully claim APY", async () => {
+      const claimAmount = tokenAmountToBigNumber("123");
+      const nonce = "0";
+      const { v, r, s } = await generateSignature(
+        DISTRIBUTOR_SIGNER_KEY,
+        REWARD_DISTRIBUTOR_ADDRESS,
+        nonce,
+        user.address,
+        claimAmount
+      );
+      let recipientData = [nonce, user.address, claimAmount];
+      await rewardDistributor.connect(user).claim(recipientData, v, r, s);
+      expect(await govToken.balanceOf(user.address)).to.equal(
+        userBalance.add(claimAmount)
       );
     });
   });
