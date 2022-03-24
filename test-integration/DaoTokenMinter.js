@@ -187,6 +187,18 @@ describe.only("DaoTokenMinter", () => {
       await minter.connect(user).mint();
       expect(await daoToken.balanceOf(user.address)).to.equal(userBalance);
     });
+
+    it("Can mint more after accumulating more APY", async () => {
+      // mint using current APY balance
+      await minter.connect(user).mint();
+      // accumulate more APY and mint
+      const transferAmount = tokenAmountToBigNumber("288");
+      await govToken.connect(deployer).transfer(user.address, transferAmount);
+      await minter.connect(user).mint();
+
+      const expectedBalance = userBalance.add(transferAmount);
+      expect(await daoToken.balanceOf(user.address)).to.equal(expectedBalance);
+    });
   });
 
   describe("Boost-lock mint", () => {
