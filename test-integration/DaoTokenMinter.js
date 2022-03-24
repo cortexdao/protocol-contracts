@@ -366,7 +366,9 @@ describe.only("DaoTokenMinter", () => {
       );
       let recipientData = [nonce, user.address, claimAmount];
       // await rewardDistributor.connect(user).claim(recipientData, v, r, s);
-      await minter.claimApy(recipientData, v, r, s);
+      await expect(minter.claimApy(recipientData, v, r, s))
+        .to.emit(govToken, "Transfer")
+        .withArgs(rewardDistributor.address, user.address, claimAmount);
       expect(await govToken.balanceOf(user.address)).to.equal(
         userBalance.add(claimAmount)
       );
