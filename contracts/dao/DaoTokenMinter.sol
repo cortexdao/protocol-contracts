@@ -51,7 +51,7 @@ contract DaoTokenMinter {
             ITimeLocked(APY_TOKEN_ADDRESS).lockEnd() <= blApyLockEnd,
             "BOOST_LOCK_ENDS_TOO_EARLY"
         );
-        DaoToken(DAO_TOKEN_ADDRESS).mint(address(this), blApyLockedAmount);
+        DaoToken(DAO_TOKEN_ADDRESS).mint(msg.sender, blApyLockedAmount);
         IVotingEscrow(VE_TOKEN_ADDRESS).create_lock_for(
             msg.sender,
             blApyLockedAmount,

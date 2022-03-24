@@ -8,6 +8,7 @@ const {
   getProxyAdmin,
 } = require("../utils/helpers");
 
+const SECONDS_IN_DAY = 86400;
 const pinnedBlock = 14024402;
 const forkingUrl = hre.config.networks.hardhat.forking.url;
 
@@ -155,7 +156,7 @@ describe.only("DaoTokenMinter", () => {
 
     before("Set lock end", async () => {
       const timestamp = (await ethers.provider.getBlock()).timestamp;
-      const lockEnd = timestamp + 86400 * 7;
+      const lockEnd = timestamp + SECONDS_IN_DAY * 7;
       await govToken.connect(deployer).setLockEnd(lockEnd);
     });
 
@@ -168,17 +169,14 @@ describe.only("DaoTokenMinter", () => {
       await govToken.connect(deployer).transfer(user.address, userBalance);
     });
 
-    it("Can mint DAO tokens", async () => {
+    it("Successfully mint DAO tokens", async () => {
       expect(await daoToken.balanceOf(user.address)).to.equal(0);
-
       await minter.connect(user).mint();
-
       expect(await daoToken.balanceOf(user.address)).to.equal(userBalance);
     });
 
-    it("Revert mint if mint isn't locker", async () => {
+    it("Unsuccessfully mint if minter isn't a locker", async () => {
       await govToken.connect(deployer).removeLocker(minter.address);
-
       await expect(minter.connect(user).mint()).to.be.revertedWith(
         "LOCKER_ONLY"
       );
@@ -186,11 +184,11 @@ describe.only("DaoTokenMinter", () => {
   });
 
   describe("Boost-lock mint", () => {
-    let userBalance;
+    let userAPYBal;
 
     before("Set lock end", async () => {
       const timestamp = (await ethers.provider.getBlock()).timestamp;
-      const lockEnd = timestamp + 86400 * 7; // timestamp + seconds in a week
+      const lockEnd = timestamp + SECONDS_IN_DAY * 7; // lock ends in 1 week
       await govToken.connect(deployer).setLockEnd(lockEnd);
     });
 
@@ -198,37 +196,55 @@ describe.only("DaoTokenMinter", () => {
       await govToken.connect(deployer).addLocker(minter.address);
     });
 
-    before("Prepare user APY balance", async () => {
-      userBalance = tokenAmountToBigNumber("1000");
-      await govToken.connect(deployer).transfer(user.address, userBalance);
-      await govToken.connect(user).approve(blApy.address, userBalance);
-
-      // create a lock longer than the lockEnd
-      const currentTime = (await ethers.provider.getBlock()).timestamp;
-      const unlockTime = ethers.BigNumber.from(currentTime + 86400 * 30 * 6); // lock for 6 months
-      await blApy.connect(user).create_lock(userBalance, unlockTime);
-
-      await govToken
-        .connect(user)
-        .approve(daoVotingEscrow.address, userBalance);
-    });
-
     before("Setup user delegation to daoToken", async () => {
       await daoVotingEscrow.connect(user).assign_delegate(minter.address);
     });
 
-    it("Can mint boost-locked DAO tokens", async () => {
-      expect(await daoToken.balanceOf(user.address)).to.equal(0);
-      await minter.connect(user).mintBoostLocked();
-      expect(await daoToken.balanceOf(user.address)).to.equal(userBalance);
+    before("Prepare user APY balance", async () => {
+      userAPYBal = tokenAmountToBigNumber("1000");
+      await govToken.connect(deployer).transfer(user.address, userAPYBal);
+      await govToken.connect(user).approve(blApy.address, userAPYBal);
     });
 
-    // it("Revert mint if mint isn't locker", async () => {
-    //   await govToken.connect(deployer).removeLocker(minter.address);
+    it("Successfully mint boost-locked DAO tokens", async () => {
+      // create a lock longer than the lockEnd
+      const currentTime = (await ethers.provider.getBlock()).timestamp;
+      const unlockTime = ethers.BigNumber.from(
+        currentTime + SECONDS_IN_DAY * 30 * 6
+      ); // lock for 6 months
+      await blApy.connect(user).create_lock(userAPYBal, unlockTime);
 
-    //   await expect(minter.connect(user).mint()).to.be.revertedWith(
-    //     "LOCKER_ONLY"
-    //   );
-    // });
+      // user first approves daoVotingEscrow to transfer DAO tokens after mint
+      const [locked_blApy_balance] = await blApy.locked(user.address);
+      await daoToken
+        .connect(user)
+        .approve(daoVotingEscrow.address, locked_blApy_balance);
+
+      // mint the boost locked DAO tokens
+      expect(await daoToken.balanceOf(user.address)).to.equal(0);
+      await minter.connect(user).mintBoostLocked();
+      expect((await daoVotingEscrow.locked(user.address))[0]).to.equal(
+        locked_blApy_balance
+      );
+    });
+
+    it("Unsuccessfully mint boost-locked DAO tokens if no locked blApy", async () => {
+      await expect(minter.connect(user).mintBoostLocked()).to.be.revertedWith(
+        "NO_BOOST_LOCKED_AMOUNT"
+      );
+    });
+
+    it("Unsuccessfully mint boost-locked DAO tokens if locked blApy ends too early", async () => {
+      // create a lock longer than the lockEnd
+      const currentTime = (await ethers.provider.getBlock()).timestamp;
+      const unlockTime = ethers.BigNumber.from(
+        currentTime + SECONDS_IN_DAY * 6
+      ); // lock ends in 6 days
+      await blApy.connect(user).create_lock(userAPYBal, unlockTime);
+
+      await expect(minter.connect(user).mintBoostLocked()).to.be.revertedWith(
+        "BOOST_LOCK_ENDS_TOO_EARLY"
+      );
+    });
   });
 });

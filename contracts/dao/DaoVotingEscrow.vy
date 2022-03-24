@@ -416,6 +416,7 @@ def _deposit_for(_addr: address, _value: uint256, unlock_time: uint256, locked_b
     # _locked.end > block.timestamp (always)
     self._checkpoint(_addr, old_locked, _locked)
 
+
     if _value != 0:
         assert ERC20(self.token).transferFrom(_addr, self, _value)
 
