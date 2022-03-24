@@ -199,6 +199,16 @@ describe.only("DaoTokenMinter", () => {
       const expectedBalance = userBalance.add(transferAmount);
       expect(await daoToken.balanceOf(user.address)).to.equal(expectedBalance);
     });
+
+    it("Can't mint after airdrop ends", async () => {
+      const lockEnd = (await govToken.lockEnd()).toNumber();
+      await ethers.provider.send("evm_setNextBlockTimestamp", [lockEnd]);
+      await ethers.provider.send("evm_mine");
+
+      await expect(minter.connect(user).mint()).to.be.revertedWith(
+        "AIRDROP_INACTIVE"
+      );
+    });
   });
 
   describe("Boost-lock mint", () => {
