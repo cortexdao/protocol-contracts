@@ -373,5 +373,9 @@ describe.only("DaoTokenMinter", () => {
         userBalance.add(claimAmount)
       );
     });
+
+    it("Successfully claim APY and mint DAO tokens", async () => {
+      expect.fail();
+    });
   });
 });
