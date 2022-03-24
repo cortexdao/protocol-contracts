@@ -181,6 +181,12 @@ describe.only("DaoTokenMinter", () => {
         "LOCKER_ONLY"
       );
     });
+
+    it("Can't mint more with same APY tokens", async () => {
+      await minter.connect(user).mint();
+      await minter.connect(user).mint();
+      expect(await daoToken.balanceOf(user.address)).to.equal(userBalance);
+    });
   });
 
   describe("Boost-lock mint", () => {
