@@ -78,20 +78,48 @@ contract GovernanceTokenV2 is
     // solhint-disable-next-line no-empty-blocks
     function initializeUpgrade() external virtual onlyAdmin {}
 
+    /**
+     * @notice Set the time-lock expiry for all locked balances.
+     * @param lockEnd_ time-lock expiry
+     *
+     * @dev It is possible to terminate the lock early  by setting `lockEnd` to a past
+     * time, e.g. 0.
+     *
+     * Resetting `lockEnd` to another future time is also possible.  This may be useful
+     * if the end of the time-lock needs to be reconsidered.
+     *
+     * WARNING: starting another lock after one has expired can cause issues.  The
+     * time-lock functionality is only meant to be used once, during which it can be
+     * extended or ended early, as mentioned above.  Creating a time-lock after APY
+     * transfers have happened could result in reverts for some users.
+     */
     function setLockEnd(uint256 lockEnd_) external override onlyOwner {
         lockEnd = lockEnd_;
     }
 
+    /**
+     * @notice Allow account to time-lock user balances.
+     * @param account address to give locking privilege
+     */
     function addLocker(address account) external override onlyOwner {
         _lockers.add(account);
         emit LockerAdded(account);
     }
 
+    /**
+     * @notice Remove account from allowed lockers
+     * @param account address to no longer allow locking privilege
+     */
     function removeLocker(address locker) external override onlyOwner {
         _lockers.remove(locker);
         emit LockerRemoved(locker);
     }
 
+    /**
+     * @notice Time-lock specified amount of account's balance.
+     * @param account address which will have its balance locked
+     * @param amount amount of balance to be locked
+     */
     function lockAmount(address account, uint256 amount)
         external
         override
@@ -114,17 +142,6 @@ contract GovernanceTokenV2 is
      * @notice Returns the portion of account balance that is not time-locked.
      * @param account the user address
      * @return Unlocked portion of user balance
-     *
-     * @dev It is possible to terminate the lock early  by setting `lockEnd` to a past
-     * time, e.g. 0.
-     *
-     * Resetting `lockEnd` to another future time is also possible.  This may be useful
-     * if the end of the time-lock needs to be reconsidered.
-     *
-     * WARNING: starting another lock after one has expired can cause issues.  The
-     * time-lock functionality is only meant to be used once, during which it can be
-     * extended or ended early, as mentioned above.  Creating a time-lock after APY
-     * transfers have happened could result in reverts for some users.
      */
     function unlockedBalance(address account)
         public
@@ -140,6 +157,10 @@ contract GovernanceTokenV2 is
         }
     }
 
+    /** @notice Check if account is allowed to time-lock.
+     * @param account account to check
+     * @return true if allowed to lock, else false
+     */
     function isLocker(address account) public view override returns (bool) {
         return _lockers.contains(account);
     }
