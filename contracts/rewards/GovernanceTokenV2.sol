@@ -110,6 +110,22 @@ contract GovernanceTokenV2 is
         emit AdminChanged(adminAddress);
     }
 
+    /**
+     * @notice Returns the portion of account balance that is not time-locked.
+     * @param account the user address
+     * @return Unlocked portion of user balance
+     *
+     * @dev It is possible to terminate the lock early  by setting `lockEnd` to a past
+     * time, e.g. 0.
+     *
+     * Resetting `lockEnd` to another future time is also possible.  This may be useful
+     * if the end of the time-lock needs to be reconsidered.
+     *
+     * WARNING: starting another lock after one has expired can cause issues.  The
+     * time-lock functionality is only meant to be used once, during which it can be
+     * extended or ended early, as mentioned above.  Creating a time-lock after APY
+     * transfers have happened could result in reverts for some users.
+     */
     function unlockedBalance(address account)
         public
         view
