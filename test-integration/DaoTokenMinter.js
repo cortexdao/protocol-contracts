@@ -325,7 +325,7 @@ describe.only("DaoTokenMinter", () => {
     });
   });
 
-  describe.only("Claim APY and mint", () => {
+  describe("Claim APY and mint", () => {
     let userBalance;
     let rewardDistributor;
 
