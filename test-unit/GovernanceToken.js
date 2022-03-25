@@ -299,6 +299,18 @@ describe("GovernanceToken", () => {
         );
       });
 
+      it("Can `transfer` locked amount if `lockEnd` is set to past", async () => {
+        const timestamp = (await ethers.provider.getBlock()).timestamp;
+        const lockEnd = timestamp - 1;
+        await govToken.connect(deployer).setLockEnd(lockEnd);
+
+        const transferAmount = unlockedBalance.add(1);
+
+        await expect(
+          govToken.connect(sender).transfer(recipient.address, transferAmount)
+        ).to.not.be.reverted;
+      });
+
       it("Cannot `transferFrom` more than unlocked amount", async () => {
         await expect(
           govToken
@@ -350,6 +362,20 @@ describe("GovernanceToken", () => {
         expect(await govToken.balanceOf(recipient.address)).to.equal(
           recipientBalance.add(transferAmount)
         );
+      });
+
+      it("Can `transferFrom` locked amount if `lockEnd` is set to past", async () => {
+        const timestamp = (await ethers.provider.getBlock()).timestamp;
+        const lockEnd = timestamp - 1;
+        await govToken.connect(deployer).setLockEnd(lockEnd);
+
+        const transferAmount = unlockedBalance.add(1);
+
+        await expect(
+          govToken
+            .connect(randomUser)
+            .transferFrom(sender.address, recipient.address, transferAmount)
+        ).to.be.reverted;
       });
     });
   });
