@@ -2,8 +2,7 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {IDetailedERC20} from "contracts/common/Imports.sol";
-import {SafeERC20} from "contracts/libraries/Imports.sol";
+import {SafeMath} from "contracts/libraries/Imports.sol";
 
 import {ITimeLocked} from "contracts/rewards/ITimeLocked.sol";
 import {IVotingEscrow} from "contracts/dao/IVotingEscrow.sol";
@@ -11,6 +10,8 @@ import {IRewardDistributor} from "contracts/dao/IRewardDistributor.sol";
 import {DaoToken} from "./DaoToken.sol";
 
 contract DaoTokenMinter {
+    using SafeMath for uint256;
+
     address public constant APY_TOKEN_ADDRESS =
         0x95a4492F028aa1fd432Ea71146b433E7B4446611;
     address public constant BLAPY_TOKEN_ADDRESS =
