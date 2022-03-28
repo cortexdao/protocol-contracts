@@ -59,7 +59,7 @@ async function generateSignature(
   return { r, s, v };
 }
 
-describe.only("DaoTokenMinter", () => {
+describe("DaoTokenMinter", () => {
   // signers
   let deployer;
   let user;
