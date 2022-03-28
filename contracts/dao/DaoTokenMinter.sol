@@ -21,6 +21,9 @@ contract DaoTokenMinter {
     address public immutable DAO_TOKEN_ADDRESS;
     address public immutable VE_TOKEN_ADDRESS;
 
+    uint256 internal _CONVERSION_NUMERATOR = 271828182;
+    uint256 internal _CONVERSION_DENOMINATOR = 1e8;
+
     constructor(address daoTokenAddress, address veTokenAddress) public {
         require(daoTokenAddress != address(0), "INVALID_DAO_ADDRESS");
         require(veTokenAddress != address(0), "INVALID_ESCROW_ADDRESS");
@@ -44,10 +47,11 @@ contract DaoTokenMinter {
             ITimeLocked(APY_TOKEN_ADDRESS).lockEnd() <= blApyLockEnd,
             "BOOST_LOCK_ENDS_TOO_EARLY"
         );
-        DaoToken(DAO_TOKEN_ADDRESS).mint(msg.sender, blApyLockedAmount);
+        uint256 mintAmount = _convertAmount(blApyLockedAmount);
+        DaoToken(DAO_TOKEN_ADDRESS).mint(msg.sender, mintAmount);
         IVotingEscrow(VE_TOKEN_ADDRESS).create_lock_for(
             msg.sender,
-            blApyLockedAmount,
+            mintAmount,
             blApyLockEnd
         );
     }
@@ -84,12 +88,19 @@ contract DaoTokenMinter {
         uint256 unlockedApyBalance = apy.unlockedBalance(msg.sender);
 
         apy.lockAmount(msg.sender, unlockedApyBalance);
-        DaoToken(DAO_TOKEN_ADDRESS).mint(msg.sender, unlockedApyBalance);
+        uint256 mintAmount = _convertAmount(unlockedApyBalance);
+        DaoToken(DAO_TOKEN_ADDRESS).mint(msg.sender, mintAmount);
     }
 
     function isAirdropActive() public view returns (bool) {
         ITimeLocked apyToken = ITimeLocked(APY_TOKEN_ADDRESS);
         // solhint-disable-next-line not-rely-on-time
         return block.timestamp < apyToken.lockEnd();
+    }
+
+    /** @dev convert APY token amount to CXD token amount */
+    function _convertAmount(uint256 apyAmount) internal view returns (uint256) {
+        return
+            apyAmount.mul(_CONVERSION_NUMERATOR).div(_CONVERSION_DENOMINATOR);
     }
 }
