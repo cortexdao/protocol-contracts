@@ -10,6 +10,7 @@ const {
 
 const SECONDS_IN_DAY = 86400;
 const pinnedBlock = 14024402;
+const defaultPinnedBlock = hre.config.networks.hardhat.forking.blockNumber;
 const forkingUrl = hre.config.networks.hardhat.forking.url;
 
 const GOV_TOKEN_ADDRESS = "0x95a4492F028aa1fd432Ea71146b433E7B4446611";
@@ -90,6 +91,17 @@ describe.only("DaoTokenMinter", () => {
         forking: {
           jsonRpcUrl: forkingUrl,
           blockNumber: pinnedBlock,
+        },
+      },
+    ]);
+  });
+
+  after("Reset to default pinned block", async () => {
+    await hre.network.provider.send("hardhat_reset", [
+      {
+        forking: {
+          jsonRpcUrl: forkingUrl,
+          blockNumber: defaultPinnedBlock,
         },
       },
     ]);
