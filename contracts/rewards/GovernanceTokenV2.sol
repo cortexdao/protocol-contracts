@@ -108,7 +108,7 @@ contract GovernanceTokenV2 is
 
     /**
      * @notice Remove account from allowed lockers
-     * @param account address to no longer allow locking privilege
+     * @param locker address to no longer allow locking privilege
      */
     function removeLocker(address locker) external override onlyOwner {
         _lockers.remove(locker);
@@ -141,7 +141,7 @@ contract GovernanceTokenV2 is
     /**
      * @notice Returns the portion of account balance that is not time-locked.
      * @param account the user address
-     * @return Unlocked portion of user balance
+     * @return amount Unlocked portion of user balance
      */
     function unlockedBalance(address account)
         public
