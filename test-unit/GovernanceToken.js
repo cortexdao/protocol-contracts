@@ -375,7 +375,7 @@ describe("GovernanceToken", () => {
           govToken
             .connect(randomUser)
             .transferFrom(sender.address, recipient.address, transferAmount)
-        ).to.be.reverted;
+        ).to.not.be.reverted;
       });
     });
   });
