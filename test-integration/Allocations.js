@@ -158,6 +158,14 @@ const CurveMetaPoolAllocations = [
     // using the Curve pool itself as the "whale": see prior note
     whaleAddress: "0x5a6A4D54456819380173272A5E8E9B9904BdF41B",
   },
+  {
+    contractName: "CurveUstWormholeAllocation",
+    primaryUnderlyerSymbol: "UST (Wormhole)",
+    // using the Curve pool itself as the "whale": see prior note
+    whaleAddress: "0xCEAF7747579696A2F0bb206a14210e3c9e6fB269",
+    // this allocation avoids decomposing into primary coin
+    skipPrimary: true,
+  },
 ];
 
 async function getContractAt(
@@ -580,6 +588,7 @@ describe("Allocations", () => {
       primaryUnderlyerSymbol,
       whaleAddress,
       interfaceOverride,
+      skipPrimary,
     } = allocationData;
 
     describe(`Curve ${primaryUnderlyerSymbol} allocation`, () => {
@@ -600,7 +609,13 @@ describe("Allocations", () => {
         );
         curve3poolAllocation = await Curve3poolAllocation.deploy();
         const CurveAllocation = await ethers.getContractFactory(contractName);
-        allocation = await CurveAllocation.deploy(curve3poolAllocation.address);
+        if (skipPrimary) {
+          allocation = await CurveAllocation.deploy();
+        } else {
+          allocation = await CurveAllocation.deploy(
+            curve3poolAllocation.address
+          );
+        }
       });
 
       before("Register asset allocation", async () => {
@@ -656,138 +671,171 @@ describe("Allocations", () => {
         );
       });
 
-      describe("Primary underlyer", () => {
-        let primaryToken;
-        let primaryAllocationId;
-        const primaryIndex = 0;
-
-        before("Get allocation ID", async () => {
-          primaryAllocationId = await tvlManager.testEncodeAssetAllocationId(
-            allocation.address,
-            primaryIndex
-          );
-        });
-
-        before(`Prepare account 0 with ${primaryUnderlyerSymbol}`, async () => {
-          const PRIMARY_UNDERLYER_ADDRESS =
-            await allocation.PRIMARY_UNDERLYER();
-          primaryToken = await ethers.getContractAt(
-            "IDetailedERC20",
-            PRIMARY_UNDERLYER_ADDRESS
-          );
-          const amount = tokenAmountToBigNumber(
-            100000,
-            await primaryToken.decimals()
-          );
-          const sender = whaleAddress;
-          await acquireToken(sender, lpAccount, primaryToken, amount, deployer);
-        });
-
-        it("Get primary underlyer balance from account holding", async () => {
-          const primaryAmount = tokenAmountToBigNumber("1000", 18);
+      if (!skipPrimary) {
+        describe("Primary underlyer", () => {
+          let primaryToken;
+          let primaryAllocationId;
           const primaryIndex = 0;
-          const minAmount = 0;
 
-          // deposit primary underlyer into metapool
-          await primaryToken
-            .connect(lpAccount)
-            .approve(metaPool.address, MAX_UINT256);
-          await metaPool["add_liquidity(uint256[2],uint256)"](
-            [primaryAmount, "0"],
-            minAmount
+          before("Get allocation ID", async () => {
+            primaryAllocationId = await tvlManager.testEncodeAssetAllocationId(
+              allocation.address,
+              primaryIndex
+            );
+          });
+
+          before(
+            `Prepare account 0 with ${primaryUnderlyerSymbol}`,
+            async () => {
+              const PRIMARY_UNDERLYER_ADDRESS =
+                await allocation.PRIMARY_UNDERLYER();
+              primaryToken = await ethers.getContractAt(
+                "IDetailedERC20",
+                PRIMARY_UNDERLYER_ADDRESS
+              );
+              const amount = tokenAmountToBigNumber(
+                100000,
+                await primaryToken.decimals()
+              );
+              const sender = whaleAddress;
+              await acquireToken(
+                sender,
+                lpAccount,
+                primaryToken,
+                amount,
+                deployer
+              );
+            }
           );
 
-          const metaPoolPrimaryBalance = await metaPool.balances(primaryIndex);
-          const lpBalance = await lpToken.balanceOf(lpAccount.address);
-          const lpTotalSupply = await lpToken.totalSupply();
-          const expectedBalance = lpBalance
-            .mul(metaPoolPrimaryBalance)
-            .div(lpTotalSupply);
+          it("Get primary underlyer balance from account holding", async () => {
+            const primaryAmount = tokenAmountToBigNumber(
+              "1000",
+              await primaryToken.decimals()
+            );
+            const primaryIndex = 0;
+            const minAmount = 0;
 
-          const balance = await tvlManager.balanceOf(primaryAllocationId);
-          // allow a few wei deviation
-          expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
+            // deposit primary underlyer into metapool
+            await primaryToken
+              .connect(lpAccount)
+              .approve(metaPool.address, MAX_UINT256);
+            await metaPool["add_liquidity(uint256[2],uint256)"](
+              [primaryAmount, "0"],
+              minAmount
+            );
+
+            const metaPoolPrimaryBalance = await metaPool.balances(
+              primaryIndex
+            );
+            const lpBalance = await lpToken.balanceOf(lpAccount.address);
+            const lpTotalSupply = await lpToken.totalSupply();
+            const expectedBalance = lpBalance
+              .mul(metaPoolPrimaryBalance)
+              .div(lpTotalSupply);
+
+            const balance = await tvlManager.balanceOf(primaryAllocationId);
+            // allow a few wei deviation
+            expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
+          });
+
+          it("Get primary underlyer balance from gauge holding", async () => {
+            const primaryAmount = tokenAmountToBigNumber(
+              "1000",
+              await primaryToken.decimals()
+            );
+            const primaryIndex = 0;
+            const minAmount = 0;
+
+            // deposit primary underlyer into metapool
+            await primaryToken
+              .connect(lpAccount)
+              .approve(metaPool.address, MAX_UINT256);
+            await metaPool["add_liquidity(uint256[2],uint256)"](
+              [primaryAmount, "0"],
+              minAmount
+            );
+
+            const metaPoolPrimaryBalance = await metaPool.balances(
+              primaryIndex
+            );
+
+            await lpToken
+              .connect(lpAccount)
+              .approve(gauge.address, MAX_UINT256);
+            const lpBalance = await lpToken.balanceOf(lpAccount.address);
+            await gauge["deposit(uint256)"](lpBalance);
+            expect(await lpToken.balanceOf(lpAccount.address)).to.equal(0);
+            const gaugeLpBalance = await gauge.balanceOf(lpAccount.address);
+            expect(gaugeLpBalance).to.equal(lpBalance);
+
+            const lpTotalSupply = await lpToken.totalSupply();
+            const expectedBalance = gaugeLpBalance
+              .mul(metaPoolPrimaryBalance)
+              .div(lpTotalSupply);
+
+            const balance = await tvlManager.balanceOf(primaryAllocationId);
+            // allow a few wei deviation
+            expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
+          });
+
+          it("Get primary underlyer balance from combined holdings", async () => {
+            const primaryAmount = tokenAmountToBigNumber(
+              "1000",
+              await primaryToken.decimals()
+            );
+            const primaryIndex = 0;
+            const minAmount = 0;
+
+            // deposit primary underlyer into metapool
+            await primaryToken
+              .connect(lpAccount)
+              .approve(metaPool.address, MAX_UINT256);
+            await metaPool["add_liquidity(uint256[2],uint256)"](
+              [primaryAmount, "0"],
+              minAmount
+            );
+
+            // split LP tokens between strategy and gauge
+            const totalLpBalance = await lpToken.balanceOf(lpAccount.address);
+            const strategyLpBalance = totalLpBalance.div(3);
+            const gaugeLpBalance = totalLpBalance.sub(strategyLpBalance);
+            expect(gaugeLpBalance).to.be.gt(0);
+            expect(strategyLpBalance).to.be.gt(0);
+
+            await lpToken
+              .connect(lpAccount)
+              .approve(gauge.address, MAX_UINT256);
+            await gauge["deposit(uint256)"](gaugeLpBalance);
+
+            expect(await lpToken.balanceOf(lpAccount.address)).to.equal(
+              strategyLpBalance
+            );
+            expect(await gauge.balanceOf(lpAccount.address)).to.equal(
+              gaugeLpBalance
+            );
+
+            const metaPoolPrimaryBalance = await metaPool.balances(
+              primaryIndex
+            );
+            const lpTotalSupply = await lpToken.totalSupply();
+
+            const expectedBalance = totalLpBalance
+              .mul(metaPoolPrimaryBalance)
+              .div(lpTotalSupply);
+
+            const balance = await tvlManager.balanceOf(primaryAllocationId);
+            // allow a few wei deviation
+            expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
+          });
         });
-
-        it("Get primary underlyer balance from gauge holding", async () => {
-          const primaryAmount = tokenAmountToBigNumber("1000", 18);
-          const primaryIndex = 0;
-          const minAmount = 0;
-
-          // deposit primary underlyer into metapool
-          await primaryToken
-            .connect(lpAccount)
-            .approve(metaPool.address, MAX_UINT256);
-          await metaPool["add_liquidity(uint256[2],uint256)"](
-            [primaryAmount, "0"],
-            minAmount
-          );
-
-          const metaPoolPrimaryBalance = await metaPool.balances(primaryIndex);
-
-          await lpToken.connect(lpAccount).approve(gauge.address, MAX_UINT256);
-          const lpBalance = await lpToken.balanceOf(lpAccount.address);
-          await gauge["deposit(uint256)"](lpBalance);
-          expect(await lpToken.balanceOf(lpAccount.address)).to.equal(0);
-          const gaugeLpBalance = await gauge.balanceOf(lpAccount.address);
-          expect(gaugeLpBalance).to.equal(lpBalance);
-
-          const lpTotalSupply = await lpToken.totalSupply();
-          const expectedBalance = gaugeLpBalance
-            .mul(metaPoolPrimaryBalance)
-            .div(lpTotalSupply);
-
-          const balance = await tvlManager.balanceOf(primaryAllocationId);
-          // allow a few wei deviation
-          expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
-        });
-
-        it("Get primary underlyer balance from combined holdings", async () => {
-          const primaryAmount = tokenAmountToBigNumber("1000", 18);
-          const primaryIndex = 0;
-          const minAmount = 0;
-
-          // deposit primary underlyer into metapool
-          await primaryToken
-            .connect(lpAccount)
-            .approve(metaPool.address, MAX_UINT256);
-          await metaPool["add_liquidity(uint256[2],uint256)"](
-            [primaryAmount, "0"],
-            minAmount
-          );
-
-          // split LP tokens between strategy and gauge
-          const totalLpBalance = await lpToken.balanceOf(lpAccount.address);
-          const strategyLpBalance = totalLpBalance.div(3);
-          const gaugeLpBalance = totalLpBalance.sub(strategyLpBalance);
-          expect(gaugeLpBalance).to.be.gt(0);
-          expect(strategyLpBalance).to.be.gt(0);
-
-          await lpToken.connect(lpAccount).approve(gauge.address, MAX_UINT256);
-          await gauge["deposit(uint256)"](gaugeLpBalance);
-
-          expect(await lpToken.balanceOf(lpAccount.address)).to.equal(
-            strategyLpBalance
-          );
-          expect(await gauge.balanceOf(lpAccount.address)).to.equal(
-            gaugeLpBalance
-          );
-
-          const metaPoolPrimaryBalance = await metaPool.balances(primaryIndex);
-          const lpTotalSupply = await lpToken.totalSupply();
-
-          const expectedBalance = totalLpBalance
-            .mul(metaPoolPrimaryBalance)
-            .div(lpTotalSupply);
-
-          const balance = await tvlManager.balanceOf(primaryAllocationId);
-          // allow a few wei deviation
-          expect(balance.sub(expectedBalance).abs()).to.be.lt(3);
-        });
-      });
+      }
 
       [1, 2, 3].forEach((underlyerIndex) => {
         const basePoolIndex = underlyerIndex - 1;
+        if (skipPrimary) {
+          underlyerIndex = basePoolIndex;
+        }
 
         describe(`3Pool index: ${basePoolIndex}`, () => {
           let underlyerToken;
@@ -862,6 +910,17 @@ describe("Allocations", () => {
               .mul(metaPoolBaseLpBalance)
               .div(lpTotalSupply);
 
+            // update LP Safe's base pool LP balance after swapping
+            // primary underlyer for more base pool LP token
+            if (skipPrimary) {
+              const metaPoolPrimaryBalance = await metaPool.balances(0);
+              const primaryAmount = lpBalance
+                .mul(metaPoolPrimaryBalance)
+                .div(lpTotalSupply);
+              const swap3CrvOutput = await metaPool.get_dy(0, 1, primaryAmount);
+              baseLpBalance = baseLpBalance.add(swap3CrvOutput);
+            }
+
             const expectedBalance = baseLpBalance
               .mul(basePoolDaiBalance)
               .div(basePoolLpTotalSupply);
@@ -918,6 +977,17 @@ describe("Allocations", () => {
             baseLpBalance = gaugeLpBalance
               .mul(metaPoolBaseLpBalance)
               .div(lpTotalSupply);
+
+            // update LP Safe's base pool LP balance after swapping
+            // primary underlyer for more base pool LP token
+            if (skipPrimary) {
+              const metaPoolPrimaryBalance = await metaPool.balances(0);
+              const primaryAmount = lpBalance
+                .mul(metaPoolPrimaryBalance)
+                .div(lpTotalSupply);
+              const swap3CrvOutput = await metaPool.get_dy(0, 1, primaryAmount);
+              baseLpBalance = baseLpBalance.add(swap3CrvOutput);
+            }
 
             const expectedBalance = baseLpBalance
               .mul(basePoolDaiBalance)
@@ -985,6 +1055,17 @@ describe("Allocations", () => {
 
             const basePoolDaiBalance = await basePool.balances(basePoolIndex);
             const basePoolLpTotalSupply = await baseLpToken.totalSupply();
+
+            // update LP Safe's base pool LP balance after swapping
+            // primary underlyer for more base pool LP token
+            if (skipPrimary) {
+              const metaPoolPrimaryBalance = await metaPool.balances(0);
+              const primaryAmount = totalLpBalance
+                .mul(metaPoolPrimaryBalance)
+                .div(lpTotalSupply);
+              const swap3CrvOutput = await metaPool.get_dy(0, 1, primaryAmount);
+              baseLpBalance = baseLpBalance.add(swap3CrvOutput);
+            }
 
             const expectedBalance = baseLpBalance
               .mul(basePoolDaiBalance)

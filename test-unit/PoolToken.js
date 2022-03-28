@@ -18,7 +18,7 @@ const AddressRegistry = artifacts.require("IAddressRegistryV2");
 const MetaPoolToken = artifacts.require("MetaPoolToken");
 const OracleAdapter = artifacts.require("OracleAdapter");
 
-describe("Contract: PoolTokenV2", () => {
+describe("Contract: PoolTokenV3", () => {
   // signers
   let deployer;
   let adminSafe;
@@ -30,10 +30,7 @@ describe("Contract: PoolTokenV2", () => {
   let anotherUser;
 
   // contract factories
-  let ProxyAdmin;
   let PoolTokenProxy;
-  let PoolToken;
-  let PoolTokenV2;
 
   // mocks
   let underlyerMock;
@@ -68,10 +65,11 @@ describe("Contract: PoolTokenV2", () => {
       anotherUser,
     ] = await ethers.getSigners();
 
-    ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
+    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     PoolTokenProxy = await ethers.getContractFactory("PoolTokenProxy");
-    PoolToken = await ethers.getContractFactory("TestPoolToken");
-    PoolTokenV2 = await ethers.getContractFactory("TestPoolTokenV2");
+    const PoolToken = await ethers.getContractFactory("TestPoolToken");
+    const PoolTokenV2 = await ethers.getContractFactory("TestPoolTokenV2");
+    const PoolTokenV3 = await ethers.getContractFactory("TestPoolTokenV3");
 
     underlyerMock = await deployMockContract(deployer, IDetailedERC20.abi);
     proxyAdmin = await ProxyAdmin.deploy();
@@ -88,6 +86,9 @@ describe("Contract: PoolTokenV2", () => {
 
     const logicV2 = await PoolTokenV2.deploy();
     await logicV2.deployed();
+
+    const logicV3 = await PoolTokenV3.deploy();
+    await logicV3.deployed();
 
     addressRegistryMock = await deployMockContract(
       deployer,
@@ -116,14 +117,24 @@ describe("Contract: PoolTokenV2", () => {
       deployer.address
     );
 
-    const initData = PoolTokenV2.interface.encodeFunctionData(
+    // upgrade to V2
+    const initV2Data = PoolTokenV2.interface.encodeFunctionData(
       "initializeUpgrade(address)",
       [addressRegistryMock.address]
     );
     await proxyAdmin
       .connect(deployer)
-      .upgradeAndCall(proxy.address, logicV2.address, initData);
-    poolToken = await PoolTokenV2.attach(proxy.address);
+      .upgradeAndCall(proxy.address, logicV2.address, initV2Data);
+    // upgrade to V3
+    const initV3Data = PoolTokenV3.interface.encodeFunctionData(
+      "initializeV3()",
+      []
+    );
+    await proxyAdmin
+      .connect(deployer)
+      .upgradeAndCall(proxy.address, logicV3.address, initV3Data);
+
+    poolToken = await PoolTokenV3.attach(proxy.address);
   });
 
   describe("Constructor", () => {
@@ -231,12 +242,16 @@ describe("Contract: PoolTokenV2", () => {
       expect(await poolToken.redeemLock()).to.equal(false);
     });
 
-    it("feePeriod set to correct value", async () => {
-      expect(await poolToken.feePeriod()).to.equal(24 * 60 * 60);
+    it("arbitrageFeePeriod set to correct value", async () => {
+      expect(await poolToken.arbitrageFeePeriod()).to.equal(24 * 60 * 60);
     });
 
-    it("feePercentage set to correct value", async () => {
-      expect(await poolToken.feePercentage()).to.equal(5);
+    it("arbitrageFee set to correct value", async () => {
+      expect(await poolToken.arbitrageFee()).to.equal(5);
+    });
+
+    it("withdrawFee set to correct value", async () => {
+      expect(await poolToken.withdrawFee()).to.equal(1000);
     });
   });
 
@@ -345,31 +360,22 @@ describe("Contract: PoolTokenV2", () => {
     });
   });
 
-  describe("Set feePeriod", () => {
+  describe("Set arbitrageFee", () => {
     it("Admin Safe can set", async () => {
+      const newArbitrageFee = 12;
       const newFeePeriod = 12 * 60 * 60;
-      await expect(poolToken.connect(adminSafe).setFeePeriod(newFeePeriod)).to
-        .not.be.reverted;
-      expect(await poolToken.feePeriod()).to.equal(newFeePeriod);
-    });
-    it("Revert if unpermissioned account attempts to set", async () => {
-      await expect(poolToken.connect(randomUser).setFeePeriod(12 * 60 * 60)).to
-        .be.reverted;
-    });
-  });
-
-  describe("Set feePercentage", () => {
-    it("Admin Safe can set", async () => {
-      const newFeePercentage = 12;
       await expect(
-        poolToken.connect(adminSafe).setFeePercentage(newFeePercentage)
+        poolToken
+          .connect(adminSafe)
+          .setArbitrageFee(newArbitrageFee, newFeePeriod)
       ).to.not.be.reverted;
-      expect(await poolToken.feePercentage()).to.equal(newFeePercentage);
+      expect(await poolToken.arbitrageFee()).to.equal(newArbitrageFee);
+      expect(await poolToken.arbitrageFeePeriod()).to.equal(newFeePeriod);
     });
 
     it("Revert if unpermissioned account attempts to set", async () => {
-      await expect(poolToken.connect(randomUser).setFeePercentage(12)).to.be
-        .reverted;
+      await expect(poolToken.connect(randomUser).setArbitrageFee(12, 84600)).to
+        .be.reverted;
     });
   });
 
@@ -384,6 +390,20 @@ describe("Contract: PoolTokenV2", () => {
 
     it("Revert if unpermissioned account attempts to set", async () => {
       await expect(poolToken.connect(randomUser).setReservePercentage(10)).to.be
+        .reverted;
+    });
+  });
+
+  describe("Set withdrawFee", () => {
+    it("Admin Safe can set", async () => {
+      const newWithdrawFee = 1200;
+      await expect(poolToken.connect(adminSafe).setWithdrawFee(newWithdrawFee))
+        .to.not.be.reverted;
+      expect(await poolToken.withdrawFee()).to.equal(newWithdrawFee);
+    });
+
+    it("Revert if unpermissioned account attempts to set", async () => {
+      await expect(poolToken.connect(randomUser).setWithdrawFee(1200)).to.be
         .reverted;
     });
   });
@@ -807,14 +827,16 @@ describe("Contract: PoolTokenV2", () => {
 
         expect(await poolToken.connect(randomUser).isEarlyRedeem()).to.be.true;
 
-        const feePeriod = await poolToken.feePeriod();
-        await ethers.provider.send("evm_increaseTime", [feePeriod.toNumber()]); // add feePeriod seconds
+        const arbitrageFeePeriod = await poolToken.arbitrageFeePeriod();
+        await ethers.provider.send("evm_increaseTime", [
+          arbitrageFeePeriod.toNumber(),
+        ]); // add arbitrageFeePeriod seconds
         await ethers.provider.send("evm_mine"); // mine the next block
         expect(await poolToken.connect(randomUser).isEarlyRedeem()).to.be.false;
       });
 
       it("getUnderlyerAmountWithFee returns expected amount", async () => {
-        const decimals = 1;
+        const decimals = 18;
         await underlyerMock.mock.decimals.returns(decimals);
         const depositAmount = tokenAmountToBigNumber("1", decimals);
         await underlyerMock.mock.allowance.returns(depositAmount);
@@ -824,33 +846,44 @@ describe("Contract: PoolTokenV2", () => {
           tokenAmountToBigNumber("1000")
         );
 
-        // make a desposit to update saved time
+        // make a deposit to update saved time
         await poolToken.connect(randomUser).addLiquidity(depositAmount);
 
-        // calculate expected underlyer amount and fee
+        // calculate expected underlyer amount after withdrawal fee
         const aptAmount = tokenAmountToBigNumber(1);
-        const underlyerAmount = await poolToken.getUnderlyerAmount(aptAmount);
-        const feePercentage = await poolToken.feePercentage();
-        const fee = underlyerAmount.mul(feePercentage).div(100);
-
-        // advance time not quite enough, so there is a fee
-        const feePeriod = await poolToken.feePeriod();
-        await ethers.provider.send("evm_increaseTime", [
-          feePeriod.div(2).toNumber(),
-        ]); // add feePeriod seconds
-        await ethers.provider.send("evm_mine"); // mine the next block
-        expect(await poolToken.getUnderlyerAmountWithFee(aptAmount)).to.equal(
-          underlyerAmount.sub(fee)
+        const originalUnderlyerAmount = await poolToken.getUnderlyerAmount(
+          aptAmount
         );
+        const withdrawFee = await poolToken.withdrawFee();
+        const withdrawFeeAmount = originalUnderlyerAmount
+          .mul(withdrawFee)
+          .div(1000000);
+        const underlyerAmount = originalUnderlyerAmount.sub(withdrawFeeAmount);
 
-        // advance by just enough time; now there is no fee
+        // calculate arbitrage fee
+        const arbitrageFee = await poolToken.arbitrageFee();
+        const fee = originalUnderlyerAmount.mul(arbitrageFee).div(100);
+
+        // There is an arbitrage fee.
+        // WARNING: need to call `getUnderlyerAmountWithFee` using depositor
+        // since last deposit time needs to get set
+        expect(
+          await poolToken
+            .connect(randomUser)
+            .getUnderlyerAmountWithFee(aptAmount)
+        ).to.equal(underlyerAmount.sub(fee));
+
+        // advance by just enough time; now there is no arbitrage fee
+        const arbitrageFeePeriod = await poolToken.arbitrageFeePeriod();
         await ethers.provider.send("evm_increaseTime", [
-          feePeriod.div(2).toNumber(),
-        ]); // add feePeriod seconds
+          arbitrageFeePeriod.toNumber(),
+        ]);
         await ethers.provider.send("evm_mine"); // mine the next block
-        expect(await poolToken.getUnderlyerAmountWithFee(aptAmount)).to.equal(
-          underlyerAmount
-        );
+        expect(
+          await poolToken
+            .connect(randomUser)
+            .getUnderlyerAmountWithFee(aptAmount)
+        ).to.equal(underlyerAmount);
       });
     });
 
@@ -1090,7 +1123,9 @@ describe("Contract: PoolTokenV2", () => {
         });
 
         it("Emit correct APT events", async () => {
-          const underlyerAmount = await poolToken.getUnderlyerAmount(aptAmount);
+          const underlyerAmount = await poolToken.getUnderlyerAmountWithFee(
+            aptAmount
+          );
           const depositValue = await poolToken.getValueFromUnderlyerAmount(
             underlyerAmount
           );
@@ -1146,7 +1181,9 @@ describe("Contract: PoolTokenV2", () => {
            *
            *  Instead, we have to do some hacky revert-check logic.
            */
-          const underlyerAmount = await poolToken.getUnderlyerAmount(aptAmount);
+          const underlyerAmount = await poolToken.getUnderlyerAmountWithFee(
+            aptAmount
+          );
           await underlyerMock.mock.transfer.reverts();
           await expect(poolToken.connect(randomUser).redeem(aptAmount)).to.be
             .reverted;
@@ -1172,7 +1209,7 @@ describe("Contract: PoolTokenV2", () => {
           if (deployedValue == 0) return;
           // this "transfer" pushes the user's corresponding underlyer amount
           // for his APT higher than the reserve balance.
-          const smallAptAmount = 10;
+          const smallAptAmount = tokenAmountToBigNumber("0.0000001");
           await poolToken.testBurn(deployer.address, smallAptAmount);
           await poolToken.testMint(randomUser.address, smallAptAmount);
 

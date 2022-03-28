@@ -111,6 +111,17 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
       whaleAddress: WHALE_POOLS["OUSD"],
       rewardToken: "0x8207c1FfC5B6804F6024322CcF34F29c3541Ae26",
     },
+    {
+      contractName: "ConvexUstWormholeZap",
+      swapAddress: "0xCEAF7747579696A2F0bb206a14210e3c9e6fB269",
+      swapInterface: "IMetaPool",
+      lpTokenAddress: "0xCEAF7747579696A2F0bb206a14210e3c9e6fB269",
+      gaugeAddress: "0x7e2b9B5244bcFa5108A76D5E7b507CFD5581AD4A",
+      gaugeInterface: "IBaseRewardPool",
+      numberOfCoins: 4,
+      whaleAddress: WHALE_POOLS["UST-Wormhole"],
+      primaryWithdrawBlocked: true,
+    },
     // UST pool reward period ends right before our pinned block
     // {
     //   contractName: "ConvexUstZap",
@@ -281,8 +292,9 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
       gaugeInterface,
       numberOfCoins,
       rewardToken,
+      primaryWithdrawBlocked,
     } = curveConstants;
-    let { whaleAddress } = curveConstants;
+    let { whaleAddress } = curveConstants; // might need to reset later
 
     describe(contractName, () => {
       let zap;
@@ -365,12 +377,14 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
             allocationContractName
           );
           let allocation;
-          if (allocationContractName.startsWith("Curve")) {
+          // Convex metapool allocations have zero constructor args.
+          // Curve metapool allocations can have one or zero constructor
+          // args, depending on the version of the metapool base allocation.
+          if (allocationFactory.interface.deploy.inputs.length != 0) {
             allocation = await allocationFactory.deploy(
               curve3poolAllocation.address
             );
           } else {
-            // Convex metapool allocations have zero constructor args
             allocation = await allocationFactory.deploy();
           }
           await tvlManager
@@ -419,169 +433,202 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
             );
           });
 
-          it("Deploy and unwind", async () => {
-            const amounts = new Array(numberOfCoins).fill("0");
-            const underlyerAmount = tokenAmountToBigNumber(
-              1000,
-              await underlyerToken.decimals()
-            );
-            amounts[underlyerIndex] = underlyerAmount;
+          if (primaryWithdrawBlocked && underlyerIndex == 0) {
+            it("Unwind into primary coin blocked", async () => {
+              const amounts = new Array(numberOfCoins).fill("0");
+              const underlyerAmount = tokenAmountToBigNumber(
+                1000,
+                await underlyerToken.decimals()
+              );
+              amounts[underlyerIndex] = underlyerAmount;
 
-            const name = await zap.NAME();
-            await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
+              const name = await zap.NAME();
+              await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
 
-            const prevUnderlyerBalance = await underlyerToken.balanceOf(
-              lpAccount.address
-            );
-            expect(prevUnderlyerBalance).gt(0);
-            const prevLpBalance = await lpToken.balanceOf(lpAccount.address);
-            expect(prevLpBalance).to.equal(0);
-            const prevGaugeLpBalance = await gauge.balanceOf(lpAccount.address);
-            expect(prevGaugeLpBalance).gt(0);
+              const prevUnderlyerBalance = await underlyerToken.balanceOf(
+                lpAccount.address
+              );
+              expect(prevUnderlyerBalance).gt(0);
+              const prevLpBalance = await lpToken.balanceOf(lpAccount.address);
+              expect(prevLpBalance).to.equal(0);
+              const prevGaugeLpBalance = await gauge.balanceOf(
+                lpAccount.address
+              );
+              expect(prevGaugeLpBalance).gt(0);
 
-            await lpAccount
-              .connect(lpSafe)
-              .unwindStrategy(name, prevGaugeLpBalance, underlyerIndex);
+              await expect(
+                lpAccount
+                  .connect(lpSafe)
+                  .unwindStrategy(name, prevGaugeLpBalance, underlyerIndex)
+              ).to.be.revertedWith("CANT_WITHDRAW_PRIMARY");
+            });
+          } else {
+            it("Deploy and unwind", async () => {
+              const amounts = new Array(numberOfCoins).fill("0");
+              const underlyerAmount = tokenAmountToBigNumber(
+                1000,
+                await underlyerToken.decimals()
+              );
+              amounts[underlyerIndex] = underlyerAmount;
 
-            const afterUnderlyerBalance = await underlyerToken.balanceOf(
-              lpAccount.address
-            );
-            expect(afterUnderlyerBalance).gt(prevUnderlyerBalance);
-            const afterLpBalance = await lpToken.balanceOf(lpAccount.address);
-            expect(afterLpBalance).to.equal(0);
-            const afterGaugeLpBalance = await gauge.balanceOf(
-              lpAccount.address
-            );
-            expect(afterGaugeLpBalance).to.equal(0);
-          });
+              const name = await zap.NAME();
+              await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
 
-          it("Claim", async () => {
-            const crv = await ethers.getContractAt(
-              "IDetailedERC20",
-              CRV_ADDRESS
-            );
-            const cvx = await ethers.getContractAt(
-              "IDetailedERC20",
-              CVX_ADDRESS
-            );
-            const erc20s = await zap.erc20Allocations();
+              const prevUnderlyerBalance = await underlyerToken.balanceOf(
+                lpAccount.address
+              );
+              expect(prevUnderlyerBalance).gt(0);
+              const prevLpBalance = await lpToken.balanceOf(lpAccount.address);
+              expect(prevLpBalance).to.equal(0);
+              const prevGaugeLpBalance = await gauge.balanceOf(
+                lpAccount.address
+              );
+              expect(prevGaugeLpBalance).gt(0);
 
-            // may remove CRV from erc20 allocations in the future, like with
-            // other reward tokens, to avoid impacting TVL with slippage
-            expect(erc20s).to.include(ethers.utils.getAddress(crv.address));
+              await lpAccount
+                .connect(lpSafe)
+                .unwindStrategy(name, prevGaugeLpBalance, underlyerIndex);
 
-            expect(await crv.balanceOf(lpAccount.address)).to.equal(0);
-            expect(await crv.balanceOf(treasurySafe.address)).to.equal(0);
+              const afterUnderlyerBalance = await underlyerToken.balanceOf(
+                lpAccount.address
+              );
+              expect(afterUnderlyerBalance).gt(prevUnderlyerBalance);
+              const afterLpBalance = await lpToken.balanceOf(lpAccount.address);
+              expect(afterLpBalance).to.equal(0);
+              const afterGaugeLpBalance = await gauge.balanceOf(
+                lpAccount.address
+              );
+              expect(afterGaugeLpBalance).to.equal(0);
+            });
 
-            expect(await cvx.balanceOf(lpAccount.address)).to.equal(0);
-            expect(await cvx.balanceOf(treasurySafe.address)).to.equal(0);
-
-            if (typeof rewardToken !== "undefined") {
-              const token = await ethers.getContractAt(
+            it("Claim", async () => {
+              const crv = await ethers.getContractAt(
                 "IDetailedERC20",
-                rewardToken
+                CRV_ADDRESS
               );
-              expect(await token.balanceOf(lpAccount.address)).to.equal(0);
-            }
-
-            const amounts = new Array(numberOfCoins).fill("0");
-            const underlyerAmount = tokenAmountToBigNumber(
-              100000,
-              await underlyerToken.decimals()
-            );
-            amounts[underlyerIndex] = underlyerAmount;
-
-            const name = await zap.NAME();
-            await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
-
-            console.debug("periodFinish: %s", await gauge.periodFinish());
-            console.debug(
-              "Deploy strategy time: %s",
-              (await ethers.provider.getBlock()).timestamp
-            );
-
-            // allows rewards to accumulate:
-            // CRV rewards accumulate within a block, but other rewards, like
-            // staked Aave, require longer
-            if (erc20s.length > 1) {
-              const oneDayInSeconds = 60 * 60 * 24;
-              await hre.network.provider.send("evm_increaseTime", [
-                oneDayInSeconds,
-              ]);
-              await hre.network.provider.send("evm_mine");
-            }
-
-            // setup reward tokens for fees
-            await lpAccount
-              .connect(adminSafe)
-              .registerMultipleRewardFees(
-                [crv.address, cvx.address],
-                [1500, 1500]
-              );
-
-            await lpAccount.connect(lpSafe).claim([name]);
-
-            expect(await crv.balanceOf(lpAccount.address)).to.be.gt(0);
-            expect(await cvx.balanceOf(lpAccount.address)).to.be.gt(0);
-            if (typeof rewardToken !== "undefined") {
-              const token = await ethers.getContractAt(
+              const cvx = await ethers.getContractAt(
                 "IDetailedERC20",
-                rewardToken
+                CVX_ADDRESS
               );
-              expect(await token.balanceOf(lpAccount.address)).to.be.gt(0);
-            }
+              const erc20s = await zap.erc20Allocations();
 
-            // check fees taken out
-            expect(await crv.balanceOf(treasurySafe.address)).to.be.gt(0);
-            expect(await cvx.balanceOf(treasurySafe.address)).to.be.gt(0);
-          });
+              // may remove CRV from erc20 allocations in the future, like with
+              // other reward tokens, to avoid impacting TVL with slippage
+              expect(erc20s).to.include(ethers.utils.getAddress(crv.address));
 
-          it("Allocation picks up deployed balances", async () => {
-            const allocationIds = await tvlManager.getAssetAllocationIds();
-            const expectedNumIds = await numAllocationIds(zap);
-            expect(allocationIds.length).to.equal(expectedNumIds);
+              expect(await crv.balanceOf(lpAccount.address)).to.equal(0);
+              expect(await crv.balanceOf(treasurySafe.address)).to.equal(0);
 
-            const totalNormalizedBalance = await getTotalNormalizedBalance(
-              allocationIds
-            );
+              expect(await cvx.balanceOf(lpAccount.address)).to.equal(0);
+              expect(await cvx.balanceOf(treasurySafe.address)).to.equal(0);
 
-            const amounts = new Array(numberOfCoins).fill("0");
-            const decimals = await underlyerToken.decimals();
-            // deposit 1% of the starting amount
-            const underlyerAmount = tokenAmountToBigNumber(
-              startingTokens * 0.01,
-              decimals
-            );
-            amounts[underlyerIndex] = underlyerAmount;
+              if (typeof rewardToken !== "undefined") {
+                const token = await ethers.getContractAt(
+                  "IDetailedERC20",
+                  rewardToken
+                );
+                expect(await token.balanceOf(lpAccount.address)).to.equal(0);
+              }
 
-            const name = await zap.NAME();
-            await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
+              const amounts = new Array(numberOfCoins).fill("0");
+              const underlyerAmount = tokenAmountToBigNumber(
+                100000,
+                await underlyerToken.decimals()
+              );
+              amounts[underlyerIndex] = underlyerAmount;
 
-            // allow some deviation from diverging stablecoin rates
-            const normalizedUnderlyerAmount = underlyerAmount
-              .mul(BigNumber.from(10).pow(18))
-              .div(BigNumber.from(10).pow(decimals));
-            const deviation = normalizedUnderlyerAmount.div(100);
+              const name = await zap.NAME();
+              await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
 
-            let newTotalNormalizedAmount = await getTotalNormalizedBalance(
-              allocationIds
-            );
-            expect(
-              newTotalNormalizedAmount.sub(totalNormalizedBalance).abs()
-            ).to.be.lt(deviation);
+              console.debug("periodFinish: %s", await gauge.periodFinish());
+              console.debug(
+                "Deploy strategy time: %s",
+                (await ethers.provider.getBlock()).timestamp
+              );
 
-            const gaugeLpBalance = await gauge.balanceOf(lpAccount.address);
-            await lpAccount
-              .connect(lpSafe)
-              .unwindStrategy(name, gaugeLpBalance, underlyerIndex);
+              // allows rewards to accumulate:
+              // CRV rewards accumulate within a block, but other rewards, like
+              // staked Aave, require longer
+              if (erc20s.length > 1) {
+                const oneDayInSeconds = 60 * 60 * 24;
+                await hre.network.provider.send("evm_increaseTime", [
+                  oneDayInSeconds,
+                ]);
+                await hre.network.provider.send("evm_mine");
+              }
 
-            newTotalNormalizedAmount = await getTotalNormalizedBalance(
-              allocationIds
-            );
-            expect(
-              newTotalNormalizedAmount.sub(totalNormalizedBalance).abs()
-            ).to.be.lt(deviation);
-          });
+              // setup reward tokens for fees
+              await lpAccount
+                .connect(adminSafe)
+                .registerMultipleRewardFees(
+                  [crv.address, cvx.address],
+                  [1500, 1500]
+                );
+
+              await lpAccount.connect(lpSafe).claim([name]);
+
+              expect(await crv.balanceOf(lpAccount.address)).to.be.gt(0);
+              expect(await cvx.balanceOf(lpAccount.address)).to.be.gt(0);
+              if (typeof rewardToken !== "undefined") {
+                const token = await ethers.getContractAt(
+                  "IDetailedERC20",
+                  rewardToken
+                );
+                expect(await token.balanceOf(lpAccount.address)).to.be.gt(0);
+              }
+
+              // check fees taken out
+              expect(await crv.balanceOf(treasurySafe.address)).to.be.gt(0);
+              expect(await cvx.balanceOf(treasurySafe.address)).to.be.gt(0);
+            });
+
+            it("Allocation picks up deployed balances", async () => {
+              const allocationIds = await tvlManager.getAssetAllocationIds();
+              const expectedNumIds = await numAllocationIds(zap);
+              expect(allocationIds.length).to.equal(expectedNumIds);
+
+              const totalNormalizedBalance = await getTotalNormalizedBalance(
+                allocationIds
+              );
+
+              const amounts = new Array(numberOfCoins).fill("0");
+              const decimals = await underlyerToken.decimals();
+              // deposit 1% of the starting amount
+              const underlyerAmount = tokenAmountToBigNumber(
+                startingTokens * 0.01,
+                decimals
+              );
+              amounts[underlyerIndex] = underlyerAmount;
+
+              const name = await zap.NAME();
+              await lpAccount.connect(lpSafe).deployStrategy(name, amounts);
+
+              // allow some deviation from diverging stablecoin rates
+              const normalizedUnderlyerAmount = underlyerAmount
+                .mul(BigNumber.from(10).pow(18))
+                .div(BigNumber.from(10).pow(decimals));
+              const deviation = normalizedUnderlyerAmount.div(100);
+
+              let newTotalNormalizedAmount = await getTotalNormalizedBalance(
+                allocationIds
+              );
+              expect(
+                newTotalNormalizedAmount.sub(totalNormalizedBalance).abs()
+              ).to.be.lt(deviation);
+
+              const gaugeLpBalance = await gauge.balanceOf(lpAccount.address);
+              await lpAccount
+                .connect(lpSafe)
+                .unwindStrategy(name, gaugeLpBalance, underlyerIndex);
+
+              newTotalNormalizedAmount = await getTotalNormalizedBalance(
+                allocationIds
+              );
+              expect(
+                newTotalNormalizedAmount.sub(totalNormalizedBalance).abs()
+              ).to.be.lt(deviation);
+            });
+          }
         });
       });
     });
