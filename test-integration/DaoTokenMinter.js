@@ -59,7 +59,7 @@ async function generateSignature(
   return { r, s, v };
 }
 
-function convertToMintAmount(apyAmount) {
+function convertToCdxAmount(apyAmount) {
   return apyAmount.mul(271828182).div(100000000);
 }
 
@@ -247,7 +247,7 @@ describe.only("DaoTokenMinter", () => {
     it("Successfully mint DAO tokens", async () => {
       expect(await daoToken.balanceOf(user.address)).to.equal(0);
       await minter.connect(user).mint();
-      const mintAmount = convertToMintAmount(userBalance);
+      const mintAmount = convertToCdxAmount(userBalance);
       expect(await daoToken.balanceOf(user.address)).to.equal(mintAmount);
     });
 
@@ -261,7 +261,7 @@ describe.only("DaoTokenMinter", () => {
     it("Can't mint more with same APY tokens", async () => {
       await minter.connect(user).mint();
       await minter.connect(user).mint();
-      const mintAmount = convertToMintAmount(userBalance);
+      const mintAmount = convertToCdxAmount(userBalance);
       expect(await daoToken.balanceOf(user.address)).to.equal(mintAmount);
     });
 
@@ -273,10 +273,8 @@ describe.only("DaoTokenMinter", () => {
       await govToken.connect(deployer).transfer(user.address, transferAmount);
       await minter.connect(user).mint();
 
-      const expectedBalance = convertToMintAmount(
-        userBalance.add(transferAmount)
-      );
-      expect(await daoToken.balanceOf(user.address)).to.equal(expectedBalance);
+      const mintAmount = convertToCdxAmount(userBalance.add(transferAmount));
+      expect(await daoToken.balanceOf(user.address)).to.equal(mintAmount);
     });
 
     it("Can't mint after airdrop ends", async () => {
@@ -322,17 +320,22 @@ describe.only("DaoTokenMinter", () => {
       await blApy.connect(user).create_lock(userAPYBal, unlockTime);
 
       // user first approves daoVotingEscrow to transfer DAO tokens after mint
-      const [locked_blApy_balance] = await blApy.locked(user.address);
+      const [apyAmount] = await blApy.locked(user.address);
+      const expectedCdxAmount = convertToCdxAmount(apyAmount);
       await daoToken
         .connect(user)
-        .approve(daoVotingEscrow.address, locked_blApy_balance);
+        .approve(daoVotingEscrow.address, expectedCdxAmount);
 
       // mint the boost locked DAO tokens
-      expect(await daoToken.balanceOf(user.address)).to.equal(0);
+      expect((await daoVotingEscrow.locked(user.address))[0]).to.equal(0);
       await minter.connect(user).mintBoostLocked();
-      expect((await daoVotingEscrow.locked(user.address))[0]).to.equal(
-        locked_blApy_balance
-      );
+      // check locked CDX amount is properly converted from APY amount
+      const [cdxAmount] = await daoVotingEscrow.locked(user.address);
+      expect(cdxAmount).to.equal(expectedCdxAmount);
+      // check CDX lock end is the same as APY lock end
+      const [, apyLockEnd] = await blApy.locked(user.address);
+      const [, cdxLockEnd] = await daoVotingEscrow.locked(user.address);
+      expect(apyLockEnd).to.equal(cdxLockEnd);
     });
 
     it("Unsuccessfully mint boost-locked DAO tokens if no locked blApy", async () => {
