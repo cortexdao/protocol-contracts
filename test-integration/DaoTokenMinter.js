@@ -206,9 +206,19 @@ describe("DaoTokenMinter", () => {
     });
 
     it("Claim APY and mint fails", async () => {
-      await expect(minter.connect(user).claimApyAndMint()).to.be.revertedWith(
-        "AIRDROP_INACTIVE"
+      const claimAmount = tokenAmountToBigNumber("123");
+      const nonce = "0";
+      const { v, r, s } = await generateSignature(
+        DISTRIBUTOR_SIGNER_KEY,
+        REWARD_DISTRIBUTOR_ADDRESS,
+        nonce,
+        user.address,
+        claimAmount
       );
+      let recipientData = [nonce, user.address, claimAmount];
+      await expect(
+        minter.connect(user).claimApyAndMint(recipientData, v, r, s)
+      ).to.be.revertedWith("AIRDROP_INACTIVE");
     });
   });
 
