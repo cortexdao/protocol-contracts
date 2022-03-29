@@ -63,7 +63,7 @@ function convertToCdxAmount(apyAmount) {
   return apyAmount.mul(271828182).div(100000000);
 }
 
-describe.only("DaoTokenMinter", () => {
+describe("DaoTokenMinter", () => {
   // signers
   let deployer;
   let user;
@@ -78,15 +78,15 @@ describe.only("DaoTokenMinter", () => {
   let proxyAdmin;
 
   // use EVM snapshots for test isolation
-  let snapshotId;
+  let testSnapshotId;
 
   beforeEach(async () => {
-    let snapshot = await timeMachine.takeSnapshot();
-    snapshotId = snapshot["result"];
+    const snapshot = await timeMachine.takeSnapshot();
+    testSnapshotId = snapshot["result"];
   });
 
   afterEach(async () => {
-    await timeMachine.revertToSnapshot(snapshotId);
+    await timeMachine.revertToSnapshot(testSnapshotId);
   });
 
   before("Use newer pinned block for recently deployed contracts", async () => {
@@ -229,6 +229,18 @@ describe.only("DaoTokenMinter", () => {
   describe("Regular mint", () => {
     let userBalance;
 
+    // use EVM snapshots for test isolation
+    let snapshotId;
+
+    before(async () => {
+      const snapshot = await timeMachine.takeSnapshot();
+      snapshotId = snapshot["result"];
+    });
+
+    after(async () => {
+      await timeMachine.revertToSnapshot(snapshotId);
+    });
+
     before("Set lock end", async () => {
       const timestamp = (await ethers.provider.getBlock()).timestamp;
       const lockEnd = timestamp + SECONDS_IN_DAY * 7;
@@ -290,6 +302,18 @@ describe.only("DaoTokenMinter", () => {
 
   describe("Boost-lock mint", () => {
     let userAPYBal;
+
+    // use EVM snapshots for test isolation
+    let snapshotId;
+
+    before(async () => {
+      const snapshot = await timeMachine.takeSnapshot();
+      snapshotId = snapshot["result"];
+    });
+
+    after(async () => {
+      await timeMachine.revertToSnapshot(snapshotId);
+    });
 
     before("Set lock end", async () => {
       const timestamp = (await ethers.provider.getBlock()).timestamp;
@@ -362,6 +386,18 @@ describe.only("DaoTokenMinter", () => {
     let userBalance;
     let rewardDistributor;
 
+    // use EVM snapshots for test isolation
+    let snapshotId;
+
+    before(async () => {
+      const snapshot = await timeMachine.takeSnapshot();
+      snapshotId = snapshot["result"];
+    });
+
+    after(async () => {
+      await timeMachine.revertToSnapshot(snapshotId);
+    });
+
     before(
       "Attach to MAINNET reward distributor and set test signer",
       async () => {
@@ -393,6 +429,10 @@ describe.only("DaoTokenMinter", () => {
       await govToken.connect(deployer).transfer(user.address, userBalance);
     });
 
+    after(async () => {
+      await timeMachine.revertToSnapshot(snapshotId);
+    });
+
     it("Successfully claim APY", async () => {
       const claimAmount = tokenAmountToBigNumber("123");
       const nonce = "0";
@@ -405,12 +445,14 @@ describe.only("DaoTokenMinter", () => {
       );
       let recipientData = [nonce, user.address, claimAmount];
 
+      expect(await govToken.balanceOf(user.address)).to.equal(userBalance);
+
       await expect(minter.claimApy(recipientData, v, r, s))
         .to.emit(govToken, "Transfer")
         .withArgs(rewardDistributor.address, user.address, claimAmount);
 
-      const mintAmount = convertToCdxAmount(userBalance.add(claimAmount));
-      expect(await govToken.balanceOf(user.address)).to.equal(mintAmount);
+      const expectedBalance = userBalance.add(claimAmount);
+      expect(await govToken.balanceOf(user.address)).to.equal(expectedBalance);
     });
 
     it("Successfully claim APY and mint DAO tokens", async () => {
@@ -429,9 +471,14 @@ describe.only("DaoTokenMinter", () => {
 
       await minter.connect(user).claimApyAndMint(recipientData, v, r, s);
 
-      const mintAmount = convertToCdxAmount(userBalance.add(claimAmount));
-      expect(await govToken.balanceOf(user.address)).to.equal(mintAmount);
-      expect(await daoToken.balanceOf(user.address)).to.equal(mintAmount);
+      const expectedApyBalance = userBalance.add(claimAmount);
+      const expectedCdxBalance = convertToCdxAmount(expectedApyBalance);
+      expect(await govToken.balanceOf(user.address)).to.equal(
+        expectedApyBalance
+      );
+      expect(await daoToken.balanceOf(user.address)).to.equal(
+        expectedCdxBalance
+      );
     });
   });
 });
