@@ -380,6 +380,27 @@ describe("DaoTokenMinter", () => {
         "BOOST_LOCK_ENDS_TOO_EARLY"
       );
     });
+
+    it("Cannot repeatedly mint boost-locked DAO tokens", async () => {
+      // create a lock longer than the lockEnd
+      const currentTime = (await ethers.provider.getBlock()).timestamp;
+      const unlockTime = ethers.BigNumber.from(
+        currentTime + SECONDS_IN_DAY * 30 * 6
+      ); // lock for 6 months
+      await blApy.connect(user).create_lock(userAPYBal, unlockTime);
+
+      // user first approves daoVotingEscrow to transfer DAO tokens after mint
+      const [apyAmount] = await blApy.locked(user.address);
+      const expectedCdxAmount = convertToCdxAmount(apyAmount);
+      await daoToken
+        .connect(user)
+        .approve(daoVotingEscrow.address, expectedCdxAmount);
+
+      await minter.connect(user).mintBoostLocked();
+      await expect(minter.connect(user).mintBoostLocked()).to.be.revertedWith(
+        "Withdraw old tokens first"
+      );
+    });
   });
 
   describe("Claim APY and mint", () => {
