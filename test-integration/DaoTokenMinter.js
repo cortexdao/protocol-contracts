@@ -404,12 +404,13 @@ describe.only("DaoTokenMinter", () => {
         claimAmount
       );
       let recipientData = [nonce, user.address, claimAmount];
+
       await expect(minter.claimApy(recipientData, v, r, s))
         .to.emit(govToken, "Transfer")
         .withArgs(rewardDistributor.address, user.address, claimAmount);
-      expect(await govToken.balanceOf(user.address)).to.equal(
-        userBalance.add(claimAmount)
-      );
+
+      const mintAmount = convertToCdxAmount(userBalance.add(claimAmount));
+      expect(await govToken.balanceOf(user.address)).to.equal(mintAmount);
     });
 
     it("Successfully claim APY and mint DAO tokens", async () => {
@@ -428,9 +429,9 @@ describe.only("DaoTokenMinter", () => {
 
       await minter.connect(user).claimApyAndMint(recipientData, v, r, s);
 
-      const expectedBalance = userBalance.add(claimAmount);
-      expect(await govToken.balanceOf(user.address)).to.equal(expectedBalance);
-      expect(await daoToken.balanceOf(user.address)).to.equal(expectedBalance);
+      const mintAmount = convertToCdxAmount(userBalance.add(claimAmount));
+      expect(await govToken.balanceOf(user.address)).to.equal(mintAmount);
+      expect(await daoToken.balanceOf(user.address)).to.equal(mintAmount);
     });
   });
 });
