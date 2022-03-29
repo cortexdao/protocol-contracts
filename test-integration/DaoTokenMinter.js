@@ -59,7 +59,11 @@ async function generateSignature(
   return { r, s, v };
 }
 
-describe("DaoTokenMinter", () => {
+function convertToMintAmount(apyAmount) {
+  return apyAmount.mul(271828182).div(100000000);
+}
+
+describe.only("DaoTokenMinter", () => {
   // signers
   let deployer;
   let user;
@@ -243,7 +247,8 @@ describe("DaoTokenMinter", () => {
     it("Successfully mint DAO tokens", async () => {
       expect(await daoToken.balanceOf(user.address)).to.equal(0);
       await minter.connect(user).mint();
-      expect(await daoToken.balanceOf(user.address)).to.equal(userBalance);
+      const mintAmount = convertToMintAmount(userBalance);
+      expect(await daoToken.balanceOf(user.address)).to.equal(mintAmount);
     });
 
     it("Unsuccessfully mint if minter isn't a locker", async () => {
@@ -256,7 +261,8 @@ describe("DaoTokenMinter", () => {
     it("Can't mint more with same APY tokens", async () => {
       await minter.connect(user).mint();
       await minter.connect(user).mint();
-      expect(await daoToken.balanceOf(user.address)).to.equal(userBalance);
+      const mintAmount = convertToMintAmount(userBalance);
+      expect(await daoToken.balanceOf(user.address)).to.equal(mintAmount);
     });
 
     it("Can mint more after accumulating more APY", async () => {
@@ -267,7 +273,9 @@ describe("DaoTokenMinter", () => {
       await govToken.connect(deployer).transfer(user.address, transferAmount);
       await minter.connect(user).mint();
 
-      const expectedBalance = userBalance.add(transferAmount);
+      const expectedBalance = convertToMintAmount(
+        userBalance.add(transferAmount)
+      );
       expect(await daoToken.balanceOf(user.address)).to.equal(expectedBalance);
     });
 
