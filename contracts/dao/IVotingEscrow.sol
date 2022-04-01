@@ -2,6 +2,8 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
+/* solhint-disable func-name-mixedcase, func-param-name-mixedcase */
+
 import {IDetailedERC20} from "contracts/common/Imports.sol";
 
 interface IVotingEscrow is IDetailedERC20 {
@@ -30,3 +32,5 @@ interface IVotingEscrow is IDetailedERC20 {
 
     function supply() external view returns (uint256);
 }
+
+/* solhint-enable func-name-mixedcase, func-param-name-mixedcase */
