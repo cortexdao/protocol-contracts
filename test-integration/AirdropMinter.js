@@ -263,6 +263,14 @@ describe.only("AirdropMinter", () => {
       expect(await daoToken.balanceOf(user.address)).to.equal(mintAmount);
     });
 
+    it("Unsuccessfully mint DAO tokens when aidrop has ended", async () => {
+      expect(await daoToken.balanceOf(user.address)).to.equal(0);
+      await govToken.connect(deployer).setLockEnd(0);
+      await expect(minter.connect(user).mint()).to.be.revertedWith(
+        "AIRDROP_INACTIVE"
+      );
+    });
+
     it("Unsuccessfully mint if minter isn't a locker", async () => {
       await govToken.connect(deployer).removeLocker(minter.address);
       await expect(minter.connect(user).mint()).to.be.revertedWith(
@@ -401,6 +409,29 @@ describe.only("AirdropMinter", () => {
         "Withdraw old tokens first"
       );
     });
+
+    it("Unsuccessfully mint DAO tokens when airdrop has ended", async () => {
+      // create a lock longer than the lockEnd
+      const currentTime = (await ethers.provider.getBlock()).timestamp;
+      const unlockTime = ethers.BigNumber.from(
+        currentTime + SECONDS_IN_DAY * 30 * 6
+      ); // lock for 6 months
+      await blApy.connect(user).create_lock(userAPYBal, unlockTime);
+
+      // user first approves daoVotingEscrow to transfer DAO tokens after mint
+      const [apyAmount] = await blApy.locked(user.address);
+      const expectedCdxAmount = convertToCdxAmount(apyAmount);
+      await daoToken
+        .connect(user)
+        .approve(daoVotingEscrow.address, expectedCdxAmount);
+
+      // mint the boost locked DAO tokens
+      expect((await daoVotingEscrow.locked(user.address))[0]).to.equal(0);
+      await govToken.connect(deployer).setLockEnd(0);
+      await expect(minter.connect(user).mintLocked()).to.be.revertedWith(
+        "AIRDROP_INACTIVE"
+      );
+    });
   });
 
   describe("Claim APY and mint", () => {
@@ -500,6 +531,32 @@ describe.only("AirdropMinter", () => {
       expect(await daoToken.balanceOf(user.address)).to.equal(
         expectedCdxBalance
       );
+    });
+
+    it("Expire Airdrop", async () => {
+      await govToken.connect(deployer).setLockEnd(0);
+    });
+
+    it("Verify that the minter detects when Airdrop has ended", async () => {
+      await govToken.connect(deployer).setLockEnd(0);
+      expect(await minter.connect(user).isAirdropActive(), true);
+    });
+
+    it("Unsuccessfully claim APY and mint DAO tokens when airdrop has ended", async () => {
+      const claimAmount = tokenAmountToBigNumber("123");
+      const nonce = "0";
+      const { v, r, s } = await generateSignature(
+        DISTRIBUTOR_SIGNER_KEY,
+        REWARD_DISTRIBUTOR_ADDRESS,
+        nonce,
+        user.address,
+        claimAmount
+      );
+      let recipientData = [nonce, user.address, claimAmount];
+      await govToken.connect(deployer).setLockEnd(0);
+      await expect(
+        minter.connect(user).claimApyAndMint(recipientData, v, r, s)
+      ).to.be.revertedWith("AIRDROP_INACTIVE");
     });
   });
 });
