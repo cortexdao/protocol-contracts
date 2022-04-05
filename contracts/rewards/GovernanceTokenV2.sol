@@ -12,8 +12,12 @@ import {
     ERC20UpgradeSafe
 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 
-import {EnumerableSet} from "contracts/libraries/Imports.sol";
-import {SafeMath as SafeMathUpgradeSafe} from "contracts/proxy/Imports.sol";
+// import {EnumerableSet} from "contracts/libraries/Imports.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
+// import {SafeMath as SafeMathUpgradeSafe} from "contracts/proxy/Imports.sol";
+import {
+    SafeMath as SafeMathUpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import {ITimeLocked} from "./ITimeLocked.sol";
 
 contract GovernanceTokenV2 is
