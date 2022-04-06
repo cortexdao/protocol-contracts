@@ -70,12 +70,10 @@ async function main(argv) {
 
   console.log("Contract address: %s", logicV2.address);
 
-  await logicV2
-    .connect(safeOwner)
-    .initialize(ADDRESS_REGISTRY_ADDRESS, {
-      maxFeePerGas,
-      maxPriorityFeePerGas,
-    });
+  await logicV2.connect(safeOwner).initialize(ADDRESS_REGISTRY_ADDRESS, {
+    maxFeePerGas,
+    maxPriorityFeePerGas,
+  });
 
   console.log("Verifying on Etherscan ...");
   await hre.run("verify:verify", {
