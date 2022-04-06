@@ -175,6 +175,9 @@ contract GovernanceTokenV2 is
         uint256 amount
     ) internal override {
         super._beforeTokenTransfer(from, to, amount);
-        require(amount <= unlockedBalance(from), "LOCKED_BALANCE");
+        require(
+            from == address(0) || amount <= unlockedBalance(from),
+            "LOCKED_BALANCE"
+        );
     }
 }
