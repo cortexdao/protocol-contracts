@@ -1,12 +1,12 @@
 const { expect } = require("chai");
 const hre = require("hardhat");
 const { ethers, waffle, artifacts } = hre;
-const { deployMockContract } = waffle
+const { deployMockContract } = waffle;
 const timeMachine = require("ganache-time-traveler");
 const {
   tokenAmountToBigNumber,
   impersonateAccount,
-  getProxyAdmin,
+  forciblySendEth,
 } = require("../utils/helpers");
 
 const GovernanceTokenV2 = artifacts.readArtifactSync("GovernanceTokenV2");
@@ -16,9 +16,10 @@ const DaoVotingEscrow = artifacts.readArtifactSync("DaoVotingEscrow");
 
 const SECONDS_IN_DAY = 86400;
 
-const APY_TOKEN_ADDRESS = "0x95a4492F028aa1fd432Ea71146b433E7B4446611"
-const BLAPY_TOKEN_ADDRESS = "0xDC9EFf7BB202Fd60dE3f049c7Ec1EfB08006261f"
-const APY_REWARD_DISTRIBUTOR_ADDRESS = "0x2E11558316df8Dde1130D81bdd8535f15f70B23d"
+const APY_TOKEN_ADDRESS = "0x95a4492F028aa1fd432Ea71146b433E7B4446611";
+const BLAPY_TOKEN_ADDRESS = "0xDC9EFf7BB202Fd60dE3f049c7Ec1EfB08006261f";
+const APY_REWARD_DISTRIBUTOR_ADDRESS =
+  "0x2E11558316df8Dde1130D81bdd8535f15f70B23d";
 
 // default account 0 used in some old version of ganache
 const DISTRIBUTOR_SIGNER = "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1";
@@ -93,19 +94,49 @@ describe.only("AirdropMinter", () => {
 
   before("Upgrade Governance Token for time-lock functionality", async () => {
     [deployer, user] = await ethers.getSigners();
-    govToken = await deployMockContract(deployer, GovernanceTokenV2.abi)
   });
 
-  before("Attach to blAPY contract", async () => {
-    blApy = await deployMockContract(deployer, VotingEscrow.abi)
+  before("Setup mocked APY Token", async () => {
+    const apyDeployerAddress = "0x7e9b0669018a70d6efcca2b11850a704db0e5b04";
+    await forciblySendEth(
+      apyDeployerAddress,
+      tokenAmountToBigNumber(5),
+      deployer.address
+    );
+    await hre.network.provider.send("hardhat_setNonce", [
+      apyDeployerAddress,
+      "0x2",
+    ]);
+    const apyDeployerSigner = await impersonateAccount(apyDeployerAddress);
+    govToken = await deployMockContract(
+      apyDeployerSigner,
+      GovernanceTokenV2.abi
+    );
+    expect(govToken.address).to.equal(APY_TOKEN_ADDRESS);
+  });
+
+  before("Setup mocked BLAPY Token", async () => {
+    const blApyDeployerAddress = "0xeb47c114b81c87980579340f491f28068e66578d";
+    await forciblySendEth(
+      blApyDeployerAddress,
+      tokenAmountToBigNumber(5),
+      deployer.address
+    );
+    await hre.network.provider.send("hardhat_setNonce", [
+      blApyDeployerAddress,
+      "0xF",
+    ]);
+    const blApyDeployerSigner = await impersonateAccount(blApyDeployerAddress);
+    blApy = await deployMockContract(blApyDeployerSigner, VotingEscrow.abi);
+    expect(blApy.address).to.equal(BLAPY_TOKEN_ADDRESS);
   });
 
   before("Deploy DAO token", async () => {
-    daoToken = await deployMockContract(deployer, DaoToken.abi)
+    daoToken = await deployMockContract(deployer, DaoToken.abi);
   });
 
   before("Deploy DAO Voting Escrow", async () => {
-    daoVotingEscrow = await deployMockContract(deployer, DaoVotingEscrow.abi)
+    daoVotingEscrow = await deployMockContract(deployer, DaoVotingEscrow.abi);
   });
 
   before("Deploy DAO token minter", async () => {
@@ -136,16 +167,21 @@ describe.only("AirdropMinter", () => {
   });
 
   describe("Defaults", () => {
+    before(async () => {
+      await govToken.mock.lockEnd.returns(0);
+    });
+
     it("Storage variable are set correctly", async () => {
       expect(await minter.APY_TOKEN_ADDRESS()).to.equal(APY_TOKEN_ADDRESS);
       expect(await minter.BLAPY_TOKEN_ADDRESS()).to.equal(BLAPY_TOKEN_ADDRESS);
-      expect(await minter.APY_REWARD_DISTRIBUTOR_ADDRESS()).to.equal(APY_REWARD_DISTRIBUTOR_ADDRESS);
+      expect(await minter.APY_REWARD_DISTRIBUTOR_ADDRESS()).to.equal(
+        APY_REWARD_DISTRIBUTOR_ADDRESS
+      );
       expect(await minter.DAO_TOKEN_ADDRESS()).to.equal(daoToken.address);
       expect(await minter.VE_TOKEN_ADDRESS()).to.equal(daoVotingEscrow.address);
     });
 
     it("Mint fails", async () => {
-
       await expect(minter.connect(user).mint()).to.be.revertedWith(
         "AIRDROP_INACTIVE"
       );
@@ -372,7 +408,7 @@ describe.only("AirdropMinter", () => {
       async () => {
         rewardDistributor = await ethers.getContractAt(
           "RewardDistributor",
-          REWARD_DISTRIBUTOR_ADDRESS
+          APY_REWARD_DISTRIBUTOR_ADDRESS
         );
         const distributorOwner = await impersonateAccount(
           await rewardDistributor.owner()
@@ -407,7 +443,7 @@ describe.only("AirdropMinter", () => {
       const nonce = "0";
       const { v, r, s } = await generateSignature(
         DISTRIBUTOR_SIGNER_KEY,
-        REWARD_DISTRIBUTOR_ADDRESS,
+        APY_REWARD_DISTRIBUTOR_ADDRESS,
         nonce,
         user.address,
         claimAmount
@@ -429,7 +465,7 @@ describe.only("AirdropMinter", () => {
       const nonce = "0";
       const { v, r, s } = await generateSignature(
         DISTRIBUTOR_SIGNER_KEY,
-        REWARD_DISTRIBUTOR_ADDRESS,
+        APY_REWARD_DISTRIBUTOR_ADDRESS,
         nonce,
         user.address,
         claimAmount
