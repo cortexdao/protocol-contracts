@@ -237,6 +237,28 @@ describe("GovernanceToken", () => {
       expect(await govToken.unlockedBalance(sender.address)).to.equal(0);
     });
 
+    it("Cannot lock until lock period is active", async () => {
+      // set lockEnd to initial state
+      await govToken.connect(deployer).setLockEnd(0);
+
+      await expect(
+        govToken.connect(locker).lockAmount(sender.address, userBalance)
+      ).to.be.revertedWith("LOCK_INACTIVE");
+    });
+
+    it("Cannot lock after lock period ends", async () => {
+      // expire the lock
+      const lockEnd = await govToken.lockEnd();
+      await ethers.provider.send("evm_setNextBlockTimestamp", [
+        lockEnd.toNumber(),
+      ]);
+      await ethers.provider.send("evm_mine");
+
+      await expect(
+        govToken.connect(locker).lockAmount(sender.address, userBalance)
+      ).to.be.revertedWith("LOCK_INACTIVE");
+    });
+
     describe("transfer / transferFrom", () => {
       const lockedAmount = tokenAmountToBigNumber("100");
       let unlockedBalance;

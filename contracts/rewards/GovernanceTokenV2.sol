@@ -125,6 +125,7 @@ contract GovernanceTokenV2 is
         override
         onlyLocker
     {
+        require(isLockActive(), "LOCK_INACTIVE");
         require(
             amount <= unlockedBalance(account),
             "AMOUNT_EXCEEDS_UNLOCKED_BALANCE"
@@ -149,12 +150,19 @@ contract GovernanceTokenV2 is
         override
         returns (uint256 amount)
     {
-        // solhint-disable-next-line not-rely-on-time
-        if (block.timestamp > lockEnd) {
-            amount = balanceOf(account);
-        } else {
+        if (isLockActive()) {
             amount = balanceOf(account).sub(_lockedAmount[account]);
+        } else {
+            amount = balanceOf(account);
         }
+    }
+
+    /**
+     * @notice Returns true if lock is active.
+     */
+    function isLockActive() public view returns (bool) {
+        // solhint-disable-next-line not-rely-on-time
+        return block.timestamp <= lockEnd;
     }
 
     /** @notice Check if account is allowed to time-lock.

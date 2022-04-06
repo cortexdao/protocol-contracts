@@ -15,7 +15,7 @@ const { ethers, network } = require("hardhat");
 const {
   waitForSafeTxReceipt,
   getAdminSafeSigner,
-} = require("../utils/helpers");
+} = require("../../utils/helpers");
 
 // eslint-disable-next-line no-unused-vars
 async function main(argv) {
@@ -29,7 +29,7 @@ async function main(argv) {
   }
   const safeSigner = await getAdminSafeSigner(networkName);
 
-  const contractName = "GovernanceToken";
+  const contractName = "GovernanceTokenV2";
   console.log(`${contractName} deploy`);
   console.log("");
 
