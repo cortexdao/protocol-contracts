@@ -259,7 +259,7 @@ describe.only("AirdropMinter", () => {
       );
     });
 
-    it("unsuccessfully mintLocked with correct mintAmount", async () => {
+    it("unsuccessfully mintLocked when boost lock ends too early", async () => {
       const apyAmt = ethers.BigNumber.from(1029);
       const timestamp = (await ethers.provider.getBlock()).timestamp;
       const lockEnd = timestamp + SECONDS_IN_DAY * 7;
@@ -276,12 +276,13 @@ describe.only("AirdropMinter", () => {
       const lockEnd = timestamp + SECONDS_IN_DAY * 7;
       await govToken.mock.lockEnd.returns(lockEnd);
       await blApy.mock.locked.returns(apyAmt, lockEnd);
+      // 1029 * 271828182 / 1e8 = 2797; computed mintAmount
       const cdxAmt = convertToCdxAmount(apyAmt);
       await daoToken.mock.mint.withArgs(user.address, cdxAmt).returns();
       await daoVotingEscrow.mock.create_lock_for
         .withArgs(user.address, cdxAmt, lockEnd)
         .returns();
-      await minter.connect(user).mintLocked();
+      await expect(minter.connect(user).mintLocked()).to.not.be.reverted;
     });
   });
 });
