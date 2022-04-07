@@ -243,7 +243,7 @@ describe("GovernanceToken", () => {
 
       await expect(
         govToken.connect(locker).lockAmount(sender.address, userBalance)
-      ).to.be.revertedWith("LOCK_INACTIVE");
+      ).to.be.revertedWith("LOCK_PERIOD_INACTIVE");
     });
 
     it("Cannot lock after lock period ends", async () => {
@@ -256,7 +256,7 @@ describe("GovernanceToken", () => {
 
       await expect(
         govToken.connect(locker).lockAmount(sender.address, userBalance)
-      ).to.be.revertedWith("LOCK_INACTIVE");
+      ).to.be.revertedWith("LOCK_PERIOD_INACTIVE");
     });
 
     describe("transfer / transferFrom", () => {
