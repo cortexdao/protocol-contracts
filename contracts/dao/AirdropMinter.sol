@@ -24,6 +24,7 @@ contract AirdropMinter {
 
     uint256 internal constant _CONVERSION_NUMERATOR = 271828182;
     uint256 internal constant _CONVERSION_DENOMINATOR = 1e8;
+    uint256 internal constant _CONVERSION_BONUS = 100; // 1 basis point
 
     constructor(address daoTokenAddress, address veTokenAddress) public {
         require(daoTokenAddress != address(0), "INVALID_DAO_ADDRESS");
@@ -49,6 +50,8 @@ contract AirdropMinter {
             "BOOST_LOCK_ENDS_TOO_EARLY"
         );
         uint256 mintAmount = _convertAmount(blApyLockedAmount);
+        uint256 bonusAmount = mintAmount.div(_CONVERSION_BONUS);
+        mintAmount = mintAmount.add(bonusAmount);
         DaoToken(DAO_TOKEN_ADDRESS).mint(msg.sender, mintAmount);
         IVotingEscrow(VE_TOKEN_ADDRESS).create_lock_for(
             msg.sender,

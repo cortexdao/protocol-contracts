@@ -278,11 +278,13 @@ describe("AirdropMinter", () => {
       await blApy.mock.locked.returns(apyAmt, lockEnd);
       // 1029 * 271828182 / 1e8 = 2797; computed mintAmount
       const cdxAmt = convertToCdxAmount(apyAmt);
-      await daoToken.mock.mint.withArgs(user.address, cdxAmt).returns();
+      const cdxBonusAmt = cdxAmt.add(cdxAmt.div(100));
+      await daoToken.mock.mint.withArgs(user.address, cdxBonusAmt).returns();
       await daoVotingEscrow.mock.create_lock_for
-        .withArgs(user.address, cdxAmt, lockEnd)
+        .withArgs(user.address, cdxBonusAmt, lockEnd)
         .returns();
-      await expect(minter.connect(user).mintLocked()).to.not.be.reverted;
+      // await expect(minter.connect(user).mintLocked()).to.not.be.reverted;
+      await minter.connect(user).mintLocked();
     });
   });
 });
