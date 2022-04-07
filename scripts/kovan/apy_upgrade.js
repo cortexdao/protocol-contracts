@@ -66,21 +66,17 @@ async function main(argv) {
   const totalSupply = tokenAmountToBigNumber("100000000");
   let tx = await logicV2
     .connect(apyTokenDeployer)
-    .initialize(proxyAdmin.address, totalSupply);
-  await tx.wait();
+    .initialize(PROXY_ADMIN_ADDRESS, totalSupply);
+  await tx.wait(2);
 
   console.log("Upgrading proxy ...");
   const proxyAdmin = await ethers.getContractAt(
     "ProxyAdmin",
     PROXY_ADMIN_ADDRESS
   );
-  const proxy = await ethers.getContractAt(
-    "GovernanceTokenProxy",
-    GOV_TOKEN_ADDRESS
-  );
   tx = await proxyAdmin
     .connect(apyTokenDeployer)
-    .upgrade(proxy.address, logicV2.address);
+    .upgrade(GOV_TOKEN_ADDRESS, logicV2.address);
   await tx.wait();
 }
 
