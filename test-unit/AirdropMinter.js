@@ -67,7 +67,7 @@ function convertToCdxAmount(apyAmount) {
   return apyAmount.mul(271828182).div(100000000);
 }
 
-describe.only("AirdropMinter", () => {
+describe("AirdropMinter", () => {
   // signers
   let deployer;
   let user;
