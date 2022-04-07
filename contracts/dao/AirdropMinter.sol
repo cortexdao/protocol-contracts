@@ -22,8 +22,8 @@ contract AirdropMinter {
     address public immutable DAO_TOKEN_ADDRESS;
     address public immutable VE_TOKEN_ADDRESS;
 
-    uint256 internal _CONVERSION_NUMERATOR = 271828182;
-    uint256 internal _CONVERSION_DENOMINATOR = 1e8;
+    uint256 internal constant _CONVERSION_NUMERATOR = 271828182;
+    uint256 internal constant _CONVERSION_DENOMINATOR = 1e8;
 
     constructor(address daoTokenAddress, address veTokenAddress) public {
         require(daoTokenAddress != address(0), "INVALID_DAO_ADDRESS");
