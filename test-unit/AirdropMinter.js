@@ -284,10 +284,4 @@ describe.only("AirdropMinter", () => {
       await minter.connect(user).mintLocked();
     });
   });
-
-  describe("claimApyAndMint()", () => {
-    it("unsuccessful", async () => {});
-
-    it("successfully", async () => {});
-  });
 });
