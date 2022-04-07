@@ -354,16 +354,20 @@ describe("AirdropMinter", () => {
       // user first approves daoVotingEscrow to transfer DAO tokens after mint
       const [apyAmount] = await blApy.locked(user.address);
       const expectedCdxAmount = convertToCdxAmount(apyAmount);
+      const bonusExpectedCdxAmount = expectedCdxAmount.add(
+        expectedCdxAmount.div(100)
+      );
+      console.log("exp", bonusExpectedCdxAmount.toString());
       await daoToken
         .connect(user)
-        .approve(daoVotingEscrow.address, expectedCdxAmount);
+        .approve(daoVotingEscrow.address, bonusExpectedCdxAmount);
 
       // mint the boost locked DAO tokens
       expect((await daoVotingEscrow.locked(user.address))[0]).to.equal(0);
       await minter.connect(user).mintLocked();
       // check locked CDX amount is properly converted from APY amount
       const [cdxAmount] = await daoVotingEscrow.locked(user.address);
-      expect(cdxAmount).to.equal(expectedCdxAmount);
+      expect(cdxAmount).to.equal(bonusExpectedCdxAmount);
       // check CDX lock end is the same as APY lock end
       const [, apyLockEnd] = await blApy.locked(user.address);
       const [, cdxLockEnd] = await daoVotingEscrow.locked(user.address);
@@ -399,10 +403,15 @@ describe("AirdropMinter", () => {
 
       // user first approves daoVotingEscrow to transfer DAO tokens after mint
       const [apyAmount] = await blApy.locked(user.address);
-      const expectedCdxAmount = convertToCdxAmount(apyAmount);
+      const expectedCdxAmount = convertToCdxAmount(apyAmount).add(
+        apyAmount.div(100)
+      );
+      const bonusExpectedCdxAmount = expectedCdxAmount.add(
+        expectedCdxAmount.div(100)
+      );
       await daoToken
         .connect(user)
-        .approve(daoVotingEscrow.address, expectedCdxAmount);
+        .approve(daoVotingEscrow.address, bonusExpectedCdxAmount);
 
       await minter.connect(user).mintLocked();
       await expect(minter.connect(user).mintLocked()).to.be.revertedWith(
