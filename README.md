@@ -1,6 +1,6 @@
 ![CI](https://github.com/apy-finance/apy-core/workflows/CI/badge.svg?branch=develop)
 
-# APY Smart Contracts
+# CORTEX DAO Smart Contracts
 
 ## Install Dependencies
 
