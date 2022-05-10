@@ -112,7 +112,7 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
       rewardToken: "0x8207c1FfC5B6804F6024322CcF34F29c3541Ae26",
     },
     {
-      contractName: "ConvexUstWormholeZap",
+      contractName: "ConvexUstWormholeZapV2",
       swapAddress: "0xCEAF7747579696A2F0bb206a14210e3c9e6fB269",
       swapInterface: "IMetaPool",
       lpTokenAddress: "0xCEAF7747579696A2F0bb206a14210e3c9e6fB269",
