@@ -9,7 +9,7 @@ import {
     MetaPoolDepositorZapV2
 } from "contracts/protocols/convex/metapool/Imports.sol";
 
-contract ConvexUstWormholeZap is
+contract ConvexUstWormholeZapV2 is
     MetaPoolDepositorZapV2,
     ConvexUstWormholeConstants
 {
