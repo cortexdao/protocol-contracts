@@ -246,24 +246,25 @@ contract IndexToken is
         // TODO: replace by receiver?
         lastDepositTime[msg.sender] = block.timestamp;
 
-        // calculateMintAmount() is not used because deposit value
-        // is needed for the event
-        uint256 depositValue = getValueFromUnderlyerAmount(assets);
-        uint256 poolTotalValue = getPoolTotalValue();
-        shares = _calculateMintAmount(depositValue, poolTotalValue);
+        // // calculateMintAmount() is not used because deposit value
+        // // is needed for the event
+        // uint256 depositValue = getValueFromUnderlyerAmount(assets);
+        // uint256 poolTotalValue = getPoolTotalValue();
+        // shares = _calculateMintAmount(depositValue, poolTotalValue);
+        shares = convertToShares(assets);
 
         _mint(receiver, shares);
         underlyer.safeTransferFrom(msg.sender, address(this), assets);
 
-        // TODO: can avoid second `getPoolTotalValue` call to save gas
-        emit DepositedAPT(
-            msg.sender, // TODO: receiver?
-            underlyer,
-            assets,
-            shares,
-            depositValue,
-            getPoolTotalValue()
-        );
+        // // TODO: can avoid second `getPoolTotalValue` call to save gas
+        // emit DepositedAPT(
+        //     msg.sender, // TODO: receiver?
+        //     underlyer,
+        //     assets,
+        //     shares,
+        //     depositValue,
+        //     getPoolTotalValue()
+        // );
     }
 
     function emergencyLockAddLiquidity()
@@ -417,17 +418,6 @@ contract IndexToken is
         return convertToShares(assets);
     }
 
-    function convertToShares(uint256 assets)
-        public
-        view
-        virtual
-        returns (uint256)
-    {
-        uint256 depositValue = getValueFromUnderlyerAmount(assets);
-        uint256 poolTotalValue = getPoolTotalValue();
-        return _calculateMintAmount(depositValue, poolTotalValue);
-    }
-
     function getAPTValue(uint256 aptAmount) external view returns (uint256) {
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
         return aptAmount.mul(getPoolTotalValue()).div(totalSupply());
@@ -459,7 +449,7 @@ contract IndexToken is
         view
         returns (uint256)
     {
-        uint256 underlyerAmount = getUnderlyerAmount(aptAmount);
+        uint256 underlyerAmount = convertToAssets(aptAmount);
         uint256 withdrawFeeAmount =
             underlyerAmount.mul(withdrawFee).div(WITHDRAW_FEE_DENOMINATOR);
         uint256 underlyerAmountWithFee = underlyerAmount.sub(withdrawFeeAmount);
@@ -471,32 +461,6 @@ contract IndexToken is
         }
 
         return underlyerAmountWithFee;
-    }
-
-    function getUnderlyerAmount(uint256 aptAmount)
-        public
-        view
-        returns (uint256)
-    {
-        if (aptAmount == 0) {
-            return 0;
-        }
-        require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        // the below is mathematically equivalent to:
-        //
-        // getUnderlyerAmountFromValue(getAPTValue(aptAmount));
-        //
-        // but composing the two functions leads to early loss
-        // of precision from division, so it's better to do it
-        // this way:
-        uint256 underlyerPrice = getUnderlyerPrice();
-        uint256 decimals = underlyer.decimals();
-        return
-            aptAmount
-                .mul(getPoolTotalValue())
-                .mul(10**decimals)
-                .div(totalSupply())
-                .div(underlyerPrice);
     }
 
     /**
@@ -623,18 +587,45 @@ contract IndexToken is
      * The important thing is they are consistent, i.e. both pre-deposit
      * or both post-deposit.
      */
-    function _calculateMintAmount(uint256 depositValue, uint256 poolTotalValue)
-        internal
-        view
-        returns (uint256)
-    {
-        uint256 totalSupply = totalSupply();
+    function convertToShares(uint256 assets) public view returns (uint256) {
+        uint256 supply = totalSupply();
+        if (supply == 0) return assets;
 
-        if (poolTotalValue == 0 || totalSupply == 0) {
-            return depositValue.mul(DEFAULT_APT_TO_UNDERLYER_FACTOR);
-        }
+        // mathematically equivalent to:
+        // assets.mul(supply).div(totalAssets())
+        // but better precision due to avoiding early division
+        uint256 totalValue = getPoolTotalValue();
+        uint256 assetPrice = getUnderlyerPrice();
+        uint256 decimals = underlyer.decimals();
+        return
+            assets.mul(supply).mul(assetPrice).div(totalValue).div(
+                10**decimals
+            );
+    }
 
-        return (depositValue.mul(totalSupply)).div(poolTotalValue);
+    function convertToAssets(uint256 shares) public view returns (uint256) {
+        if (shares == 0) return 0;
+
+        uint256 supply = totalSupply();
+        if (supply == 0) return shares;
+
+        // mathematically equivalent to:
+        // shares.mul(totalAssets()).div(supply)
+        // but better precision due to avoiding early division
+        uint256 totalValue = getPoolTotalValue();
+        uint256 assetPrice = getUnderlyerPrice();
+        uint256 decimals = underlyer.decimals();
+        return
+            shares.mul(totalValue).mul(10**decimals).div(assetPrice).div(
+                supply
+            );
+    }
+
+    function totalAssets() public view virtual returns (uint256) {
+        uint256 totalValue = getPoolTotalValue();
+        uint256 assetPrice = getUnderlyerPrice();
+        uint256 decimals = underlyer.decimals();
+        return totalValue.mul(10**decimals).div(assetPrice);
     }
 
     /**
