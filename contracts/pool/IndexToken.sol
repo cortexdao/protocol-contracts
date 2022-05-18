@@ -326,14 +326,14 @@ contract IndexToken is
         _burn(owner, shares);
         IDetailedERC20(asset).safeTransfer(receiver, redeemUnderlyerAmt);
 
-        emit RedeemedAPT(
-            msg.sender, // TODO: receiver?
-            asset,
-            redeemUnderlyerAmt,
-            shares,
-            getValueFromUnderlyerAmount(redeemUnderlyerAmt),
-            getPoolTotalValue()
-        );
+        // emit RedeemedAPT(
+        //     msg.sender, // TODO: receiver?
+        //     asset,
+        //     redeemUnderlyerAmt,
+        //     shares,
+        //     getValueFromUnderlyerAmount(redeemUnderlyerAmt),
+        //     getPoolTotalValue()
+        // );
     }
 
     function emergencyLockRedeem()
@@ -466,6 +466,64 @@ contract IndexToken is
         returns (uint256)
     {
         return convertToAssets(shares);
+    }
+
+    // TODO: improve calc precision; double-check rounding up business
+    function previewMint(uint256 shares)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
+        uint256 supply = totalSupply();
+        return supply == 0 ? shares : shares.mul(totalAssets()).div(supply) + 1;
+    }
+
+    // TODO: improve calc precision; double-check rounding up business
+    function previewWithdraw(uint256 assets)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
+        uint256 supply = totalSupply();
+        return supply == 0 ? assets : assets.mul(supply).div(totalAssets()) + 1;
+    }
+
+    function maxDeposit(address)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
+        return type(uint256).max;
+    }
+
+    function maxMint(address) public view virtual override returns (uint256) {
+        return type(uint256).max;
+    }
+
+    function maxWithdraw(address owner)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
+        return convertToAssets(balanceOf(owner));
+    }
+
+    function maxRedeem(address owner)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
+        return balanceOf(owner);
     }
 
     /**
