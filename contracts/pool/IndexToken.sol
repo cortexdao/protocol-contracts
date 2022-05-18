@@ -40,8 +40,6 @@ import {
  */
 contract IndexToken is
     IERC4626,
-    ILiquidityPoolV2,
-    IReservePool,
     IWithdrawFeePoolV2,
     ILockingPool,
     Initializable,
@@ -88,7 +86,7 @@ contract IndexToken is
     /** @notice time of last deposit */
     mapping(address => uint256) public lastDepositTime;
     /** @notice percentage of pool total value available for immediate withdrawal */
-    uint256 public override reservePercentage;
+    uint256 public reservePercentage;
 
     // V3
     /**
@@ -272,6 +270,28 @@ contract IndexToken is
         // );
     }
 
+    function mint(uint256 shares, address receiver)
+        external
+        virtual
+        override
+        nonReentrant
+        whenNotPaused
+        returns (uint256 assets)
+    {
+        assets = previewMint(shares); // No need to check for rounding error, previewMint rounds up.
+
+        // Need to transfer before minting or ERC777s could reenter.
+        IDetailedERC20(asset).safeTransferFrom(
+            msg.sender,
+            address(this),
+            assets
+        );
+
+        _mint(receiver, shares);
+
+        emit Deposit(msg.sender, receiver, assets, shares);
+    }
+
     function emergencyLockAddLiquidity()
         external
         override
@@ -316,15 +336,14 @@ contract IndexToken is
         //     "ALLOWANCE_INSUFFICIENT"
         // );
 
-        uint256 redeemUnderlyerAmt = getUnderlyerAmountWithFee(shares);
+        assets = getUnderlyerAmountWithFee(shares);
         require(
-            redeemUnderlyerAmt <=
-                IDetailedERC20(asset).balanceOf(address(this)),
+            assets <= IDetailedERC20(asset).balanceOf(address(this)),
             "RESERVE_INSUFFICIENT"
         );
 
         _burn(owner, shares);
-        IDetailedERC20(asset).safeTransfer(receiver, redeemUnderlyerAmt);
+        IDetailedERC20(asset).safeTransfer(receiver, assets);
 
         // emit RedeemedAPT(
         //     msg.sender, // TODO: receiver?
@@ -334,6 +353,35 @@ contract IndexToken is
         //     getValueFromUnderlyerAmount(redeemUnderlyerAmt),
         //     getPoolTotalValue()
         // );
+    }
+
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner
+    )
+        external
+        virtual
+        override
+        nonReentrant
+        whenNotPaused
+        returns (uint256 shares)
+    {
+        shares = previewWithdraw(assets); // No need to check for rounding error, previewWithdraw rounds up.
+
+        // FIXME: need to account for owner allowance
+        // if (msg.sender != owner) {
+        //     uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
+
+        //     if (allowed != type(uint256).max)
+        //         allowance[owner][msg.sender] = allowed - shares;
+        // }
+
+        _burn(owner, shares);
+
+        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+
+        IDetailedERC20(asset).safeTransfer(receiver, assets);
     }
 
     function emergencyLockRedeem()
@@ -361,7 +409,6 @@ contract IndexToken is
      */
     function transferToLpAccount(uint256 amount)
         external
-        override
         nonReentrant
         whenNotPaused
         onlyContractRole
@@ -398,12 +445,11 @@ contract IndexToken is
 
     function setReservePercentage(uint256 reservePercentage_)
         external
-        override
         nonReentrant
         onlyAdminRole
     {
         reservePercentage = reservePercentage_;
-        emit ReservePercentageChanged(reservePercentage_);
+        // emit ReservePercentageChanged(reservePercentage_);
     }
 
     function setWithdrawFee(uint256 withdrawFee_)
@@ -430,7 +476,7 @@ contract IndexToken is
         return aptAmount.mul(getPoolTotalValue()).div(totalSupply());
     }
 
-    function getReserveTopUpValue() external view override returns (int256) {
+    function getReserveTopUpValue() external view returns (int256) {
         int256 topUpValue = _getReserveTopUpValue();
         if (topUpValue == 0) {
             return 0;
@@ -564,7 +610,7 @@ contract IndexToken is
      * @dev Total value also includes that have been borrowed from the pool
      * @dev Typically it is the LP Account that borrows from the pool
      */
-    function getPoolTotalValue() public view override returns (uint256) {
+    function getPoolTotalValue() public view returns (uint256) {
         uint256 underlyerValue = _getPoolUnderlyerValue();
         uint256 mAptValue = _getDeployedValue();
         return underlyerValue.add(mAptValue);
@@ -573,7 +619,6 @@ contract IndexToken is
     function getValueFromUnderlyerAmount(uint256 underlyerAmount)
         public
         view
-        override
         returns (uint256)
     {
         if (underlyerAmount == 0) {
@@ -583,7 +628,7 @@ contract IndexToken is
         return getUnderlyerPrice().mul(underlyerAmount).div(10**decimals);
     }
 
-    function getUnderlyerPrice() public view override returns (uint256) {
+    function getUnderlyerPrice() public view returns (uint256) {
         IOracleAdapter oracleAdapter =
             IOracleAdapter(addressRegistry.oracleAdapterAddress());
         return oracleAdapter.getAssetPrice(address(asset));
