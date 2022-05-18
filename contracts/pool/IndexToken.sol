@@ -71,7 +71,7 @@ contract IndexToken is
     /** @notice true if withdrawing is locked */
     bool public redeemLock;
     /** @notice underlying stablecoin */
-    IDetailedERC20 public override underlyer;
+    address public override asset;
     /** @notice USD price feed for the stablecoin */
     // AggregatorV3Interface public priceAgg; <-- removed in V2
 
@@ -155,7 +155,7 @@ contract IndexToken is
      */
     function initialize(
         address adminAddress,
-        IDetailedERC20 underlyer_,
+        address underlyer_,
         AggregatorV3Interface priceAgg
     ) external initializer {
         require(adminAddress != address(0), "INVALID_ADMIN");
@@ -173,7 +173,7 @@ contract IndexToken is
         // _setAdminAddress(adminAddress);  <-- deprecated in V2.
         addLiquidityLock = false;
         redeemLock = false;
-        underlyer = underlyer_;
+        asset = underlyer_;
         // setPriceAggregator(priceAgg);  <-- deprecated in V2.
     }
 
@@ -239,7 +239,8 @@ contract IndexToken is
         require(!addLiquidityLock, "LOCKED");
         require(assets > 0, "AMOUNT_INSUFFICIENT");
         require(
-            underlyer.allowance(msg.sender, address(this)) >= assets,
+            IDetailedERC20(asset).allowance(msg.sender, address(this)) >=
+                assets,
             "ALLOWANCE_INSUFFICIENT"
         );
         // TODO: replace by receiver?
@@ -254,12 +255,16 @@ contract IndexToken is
         shares = convertToShares(assets);
 
         _mint(receiver, shares);
-        underlyer.safeTransferFrom(msg.sender, address(this), assets);
+        IDetailedERC20(asset).safeTransferFrom(
+            msg.sender,
+            address(this),
+            assets
+        );
 
         // // TODO: can avoid second `getPoolTotalValue` call to save gas
         // emit DepositedAPT(
         //     msg.sender, // TODO: receiver?
-        //     underlyer,
+        //     asset,
         //     assets,
         //     shares,
         //     depositValue,
@@ -313,16 +318,17 @@ contract IndexToken is
 
         uint256 redeemUnderlyerAmt = getUnderlyerAmountWithFee(shares);
         require(
-            redeemUnderlyerAmt <= underlyer.balanceOf(address(this)),
+            redeemUnderlyerAmt <=
+                IDetailedERC20(asset).balanceOf(address(this)),
             "RESERVE_INSUFFICIENT"
         );
 
         _burn(owner, shares);
-        underlyer.safeTransfer(receiver, redeemUnderlyerAmt);
+        IDetailedERC20(asset).safeTransfer(receiver, redeemUnderlyerAmt);
 
         emit RedeemedAPT(
             msg.sender, // TODO: receiver?
-            underlyer,
+            asset,
             redeemUnderlyerAmt,
             shares,
             getValueFromUnderlyerAmount(redeemUnderlyerAmt),
@@ -360,7 +366,10 @@ contract IndexToken is
         whenNotPaused
         onlyContractRole
     {
-        underlyer.safeTransfer(addressRegistry.lpAccountAddress(), amount);
+        IDetailedERC20(asset).safeTransfer(
+            addressRegistry.lpAccountAddress(),
+            amount
+        );
     }
 
     /**
@@ -432,9 +441,9 @@ contract IndexToken is
         require(price <= uint256(type(int256).max), "INVALID_PRICE");
 
         int256 topUpAmount =
-            topUpValue.mul(int256(10**uint256(underlyer.decimals()))).div(
-                int256(getUnderlyerPrice())
-            );
+            topUpValue
+                .mul(int256(10**uint256(IDetailedERC20(asset).decimals())))
+                .div(int256(getUnderlyerPrice()));
 
         return topUpAmount;
     }
@@ -512,14 +521,14 @@ contract IndexToken is
         if (underlyerAmount == 0) {
             return 0;
         }
-        uint256 decimals = underlyer.decimals();
+        uint256 decimals = IDetailedERC20(asset).decimals();
         return getUnderlyerPrice().mul(underlyerAmount).div(10**decimals);
     }
 
     function getUnderlyerPrice() public view override returns (uint256) {
         IOracleAdapter oracleAdapter =
             IOracleAdapter(addressRegistry.oracleAdapterAddress());
-        return oracleAdapter.getAssetPrice(address(underlyer));
+        return oracleAdapter.getAssetPrice(address(asset));
     }
 
     /**
@@ -548,7 +557,7 @@ contract IndexToken is
         // but better precision due to avoiding early division
         uint256 totalValue = getPoolTotalValue();
         uint256 assetPrice = getUnderlyerPrice();
-        uint256 decimals = underlyer.decimals();
+        uint256 decimals = IDetailedERC20(asset).decimals();
         return
             assets.mul(supply).mul(assetPrice).div(totalValue).div(
                 10**decimals
@@ -572,7 +581,7 @@ contract IndexToken is
         // but better precision due to avoiding early division
         uint256 totalValue = getPoolTotalValue();
         uint256 assetPrice = getUnderlyerPrice();
-        uint256 decimals = underlyer.decimals();
+        uint256 decimals = IDetailedERC20(asset).decimals();
         return
             shares.mul(totalValue).mul(10**decimals).div(assetPrice).div(
                 supply
@@ -582,7 +591,7 @@ contract IndexToken is
     function totalAssets() public view virtual override returns (uint256) {
         uint256 totalValue = getPoolTotalValue();
         uint256 assetPrice = getUnderlyerPrice();
-        uint256 decimals = underlyer.decimals();
+        uint256 decimals = IDetailedERC20(asset).decimals();
         return totalValue.mul(10**decimals).div(assetPrice);
     }
 
@@ -666,7 +675,10 @@ contract IndexToken is
      * @return The USD value
      */
     function _getPoolUnderlyerValue() internal view returns (uint256) {
-        return getValueFromUnderlyerAmount(underlyer.balanceOf(address(this)));
+        return
+            getValueFromUnderlyerAmount(
+                IDetailedERC20(asset).balanceOf(address(this))
+            );
     }
 
     /**
