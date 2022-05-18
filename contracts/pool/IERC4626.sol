@@ -2,9 +2,7 @@
 
 pragma solidity 0.6.11;
 
-import {IDetailedERC20} from "contracts/common/Imports.sol";
-
-interface IERC4626 is IDetailedERC20 {
+interface IERC4626 {
     event Deposit(
         address indexed caller,
         address indexed owner,

@@ -232,6 +232,8 @@ contract IndexToken is
      */
     function deposit(uint256 assets, address receiver)
         external
+        virtual
+        override
         nonReentrant
         whenNotPaused
         returns (uint256 shares)
@@ -294,7 +296,14 @@ contract IndexToken is
         uint256 shares,
         address receiver,
         address owner
-    ) external virtual nonReentrant whenNotPaused returns (uint256 assets) {
+    )
+        external
+        virtual
+        override
+        nonReentrant
+        whenNotPaused
+        returns (uint256 assets)
+    {
         require(!redeemLock, "LOCKED");
         require(shares > 0, "AMOUNT_INSUFFICIENT");
         require(shares <= balanceOf(owner), "BALANCE_INSUFFICIENT");
@@ -413,9 +422,20 @@ contract IndexToken is
         public
         view
         virtual
+        override
         returns (uint256)
     {
         return convertToShares(assets);
+    }
+
+    function previewRedeem(uint256 shares)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
+        return convertToAssets(shares);
     }
 
     function getAPTValue(uint256 aptAmount) external view returns (uint256) {
@@ -587,7 +607,13 @@ contract IndexToken is
      * The important thing is they are consistent, i.e. both pre-deposit
      * or both post-deposit.
      */
-    function convertToShares(uint256 assets) public view returns (uint256) {
+    function convertToShares(uint256 assets)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
         uint256 supply = totalSupply();
         if (supply == 0) return assets;
 
@@ -603,7 +629,13 @@ contract IndexToken is
             );
     }
 
-    function convertToAssets(uint256 shares) public view returns (uint256) {
+    function convertToAssets(uint256 shares)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
         if (shares == 0) return 0;
 
         uint256 supply = totalSupply();
@@ -621,7 +653,7 @@ contract IndexToken is
             );
     }
 
-    function totalAssets() public view virtual returns (uint256) {
+    function totalAssets() public view virtual override returns (uint256) {
         uint256 totalValue = getPoolTotalValue();
         uint256 assetPrice = getUnderlyerPrice();
         uint256 decimals = underlyer.decimals();
