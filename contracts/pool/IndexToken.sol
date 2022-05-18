@@ -242,8 +242,8 @@ contract IndexToken is
             underlyer.allowance(msg.sender, address(this)) >= assets,
             "ALLOWANCE_INSUFFICIENT"
         );
-        // solhint-disable-next-line not-rely-on-time
         // TODO: replace by receiver?
+        // solhint-disable-next-line not-rely-on-time
         lastDepositTime[msg.sender] = block.timestamp;
 
         // // calculateMintAmount() is not used because deposit value
@@ -416,26 +416,6 @@ contract IndexToken is
         emit EmergencyExit(emergencySafe, token_, balance);
     }
 
-    function previewDeposit(uint256 assets)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
-        return convertToShares(assets);
-    }
-
-    function previewRedeem(uint256 shares)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
-        return convertToAssets(shares);
-    }
-
     function getAPTValue(uint256 aptAmount) external view returns (uint256) {
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
         return aptAmount.mul(getPoolTotalValue()).div(totalSupply());
@@ -457,6 +437,26 @@ contract IndexToken is
             );
 
         return topUpAmount;
+    }
+
+    function previewDeposit(uint256 assets)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
+        return convertToShares(assets);
+    }
+
+    function previewRedeem(uint256 shares)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
+        return convertToAssets(shares);
     }
 
     /**
@@ -520,6 +520,70 @@ contract IndexToken is
         IOracleAdapter oracleAdapter =
             IOracleAdapter(addressRegistry.oracleAdapterAddress());
         return oracleAdapter.getAssetPrice(address(underlyer));
+    }
+
+    /**
+     * @dev amount of APT minted should be in same ratio to APT supply
+     * as deposit value is to pool's total value, i.e.:
+     *
+     * mint amount / total supply
+     * = deposit value / pool total value
+     *
+     * For denominators, pre or post-deposit amounts can be used.
+     * The important thing is they are consistent, i.e. both pre-deposit
+     * or both post-deposit.
+     */
+    function convertToShares(uint256 assets)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
+        uint256 supply = totalSupply();
+        if (supply == 0) return assets;
+
+        // mathematically equivalent to:
+        // assets.mul(supply).div(totalAssets())
+        // but better precision due to avoiding early division
+        uint256 totalValue = getPoolTotalValue();
+        uint256 assetPrice = getUnderlyerPrice();
+        uint256 decimals = underlyer.decimals();
+        return
+            assets.mul(supply).mul(assetPrice).div(totalValue).div(
+                10**decimals
+            );
+    }
+
+    function convertToAssets(uint256 shares)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
+        if (shares == 0) return 0;
+
+        uint256 supply = totalSupply();
+        if (supply == 0) return shares;
+
+        // mathematically equivalent to:
+        // shares.mul(totalAssets()).div(supply)
+        // but better precision due to avoiding early division
+        uint256 totalValue = getPoolTotalValue();
+        uint256 assetPrice = getUnderlyerPrice();
+        uint256 decimals = underlyer.decimals();
+        return
+            shares.mul(totalValue).mul(10**decimals).div(assetPrice).div(
+                supply
+            );
+    }
+
+    function totalAssets() public view virtual override returns (uint256) {
+        uint256 totalValue = getPoolTotalValue();
+        uint256 assetPrice = getUnderlyerPrice();
+        uint256 decimals = underlyer.decimals();
+        return totalValue.mul(10**decimals).div(assetPrice);
     }
 
     function _setAddressRegistry(address addressRegistry_) internal {
@@ -595,70 +659,6 @@ contract IndexToken is
                 .sub(int256(unnormalizedUnderlyerValue))
                 .div(int256(reservePercentage).add(100));
         return topUpValue;
-    }
-
-    /**
-     * @dev amount of APT minted should be in same ratio to APT supply
-     * as deposit value is to pool's total value, i.e.:
-     *
-     * mint amount / total supply
-     * = deposit value / pool total value
-     *
-     * For denominators, pre or post-deposit amounts can be used.
-     * The important thing is they are consistent, i.e. both pre-deposit
-     * or both post-deposit.
-     */
-    function convertToShares(uint256 assets)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
-        uint256 supply = totalSupply();
-        if (supply == 0) return assets;
-
-        // mathematically equivalent to:
-        // assets.mul(supply).div(totalAssets())
-        // but better precision due to avoiding early division
-        uint256 totalValue = getPoolTotalValue();
-        uint256 assetPrice = getUnderlyerPrice();
-        uint256 decimals = underlyer.decimals();
-        return
-            assets.mul(supply).mul(assetPrice).div(totalValue).div(
-                10**decimals
-            );
-    }
-
-    function convertToAssets(uint256 shares)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
-        if (shares == 0) return 0;
-
-        uint256 supply = totalSupply();
-        if (supply == 0) return shares;
-
-        // mathematically equivalent to:
-        // shares.mul(totalAssets()).div(supply)
-        // but better precision due to avoiding early division
-        uint256 totalValue = getPoolTotalValue();
-        uint256 assetPrice = getUnderlyerPrice();
-        uint256 decimals = underlyer.decimals();
-        return
-            shares.mul(totalValue).mul(10**decimals).div(assetPrice).div(
-                supply
-            );
-    }
-
-    function totalAssets() public view virtual override returns (uint256) {
-        uint256 totalValue = getPoolTotalValue();
-        uint256 assetPrice = getUnderlyerPrice();
-        uint256 decimals = underlyer.decimals();
-        return totalValue.mul(10**decimals).div(assetPrice);
     }
 
     /**
