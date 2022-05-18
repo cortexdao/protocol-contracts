@@ -60,81 +60,40 @@ contract IndexToken is
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
-
-    // V1
-    /** @dev used to protect init functions for upgrades */
-    address private _proxyAdmin; // <-- deprecated in v2; visibility changed to avoid name clash
-    /** @notice true if depositing is locked */
-    bool public addLiquidityLock;
-    /** @notice true if withdrawing is locked */
-    bool public redeemLock;
-    /** @notice underlying stablecoin */
-    address public override asset;
-    /** @notice USD price feed for the stablecoin */
-    // AggregatorV3Interface public priceAgg; <-- removed in V2
-
-    // V2
     /**
      * @notice registry to fetch core platform addresses from
      * @dev this slot replaces the last V1 slot for the price agg
      */
     IAddressRegistryV2 public addressRegistry;
+
+    /** @notice true if depositing is locked */
+    bool public addLiquidityLock;
+    /** @notice true if withdrawing is locked */
+    bool public redeemLock;
+
+    /** @notice underlying stablecoin */
+    address public override asset;
+
+    /** @notice time of last deposit */
+    mapping(address => uint256) public lastDepositTime;
     /** @notice seconds since last deposit during which arbitrage fee is charged */
     uint256 public override arbitrageFeePeriod;
     /** @notice percentage charged for arbitrage fee */
     uint256 public override arbitrageFee;
-    /** @notice time of last deposit */
-    mapping(address => uint256) public lastDepositTime;
-    /** @notice percentage of pool total value available for immediate withdrawal */
-    uint256 public reservePercentage;
 
-    // V3
     /**
      *@notice fee charged for all withdrawals in 1/100th basis points,
      * e.g. 100 = 1 bps
      */
     uint256 public override withdrawFee;
 
+    /** @notice percentage of pool total value available for immediate withdrawal */
+    uint256 public reservePercentage;
+
     /* ------------------------------- */
 
     /** @notice Log when the address registry is changed */
     event AddressRegistryChanged(address);
-
-    /**
-     * @notice Log a token deposit
-     * @param sender Address of the depositor account
-     * @param token Token deposited
-     * @param tokenAmount The amount of tokens deposited
-     * @param aptMintAmount Number of shares received
-     * @param tokenEthValue Total value of the deposit
-     * @param totalEthValueLocked Total value of the pool
-     */
-    event DepositedAPT(
-        address indexed sender,
-        IDetailedERC20 token,
-        uint256 tokenAmount,
-        uint256 aptMintAmount,
-        uint256 tokenEthValue,
-        uint256 totalEthValueLocked
-    );
-
-    /**
-     * @notice Log a token withdrawal
-     * @param sender Address of the withdrawal account
-     * @param token Token withdrawn
-     * @param redeemedTokenAmount The amount of tokens withdrawn
-     * @param aptRedeemAmount Number of shares redeemed
-     * @param tokenEthValue Total value of the withdrawal
-     * @param totalEthValueLocked Total value of the pool
-     */
-    event RedeemedAPT(
-        address indexed sender,
-        IDetailedERC20 token,
-        uint256 redeemedTokenAmount,
-        uint256 aptRedeemAmount,
-        uint256 tokenEthValue,
-        uint256 totalEthValueLocked
-    );
 
     /**
      * @dev Since the proxy delegate calls to this "logic" contract, any
@@ -151,69 +110,46 @@ contract IndexToken is
      * NOTE: this function is copied from the V1 contract and has already
      * been called during V1 deployment.  It is included here for clarity.
      */
-    function initialize(
-        address adminAddress,
-        address underlyer_,
-        AggregatorV3Interface priceAgg
-    ) external initializer {
-        require(adminAddress != address(0), "INVALID_ADMIN");
+    function initialize(address addressRegistry_, address underlyer_)
+        external
+        initializer
+    {
         require(address(underlyer_) != address(0), "INVALID_TOKEN");
-        require(address(priceAgg) != address(0), "INVALID_AGG");
 
         // initialize ancestor storage
         __Context_init_unchained();
-        // __Ownable_init_unchained();  <-- Comment-out for compiler; replaced by AccessControl
+        __AccessControl_init_unchained();
         __ReentrancyGuard_init_unchained();
         __Pausable_init_unchained();
         __ERC20_init_unchained("APY Pool Token", "APT");
 
         // initialize impl-specific storage
-        // _setAdminAddress(adminAddress);  <-- deprecated in V2.
         addLiquidityLock = false;
         redeemLock = false;
         asset = underlyer_;
-        // setPriceAggregator(priceAgg);  <-- deprecated in V2.
-    }
 
-    /**
-     * @dev Note the `initializer` modifier can only be used once in the
-     * entire contract, so we can't use it here.  Instead, we protect
-     * the upgrade init with the `onlyProxyAdmin` modifier, which checks
-     * `msg.sender` against the proxy admin slot defined in EIP-1967.
-     * This will only allow the proxy admin to call this function during upgrades.
-     */
-    function initializeUpgrade(address addressRegistry_)
-        external
-        nonReentrant
-        onlyProxyAdmin
-    {
         _setAddressRegistry(addressRegistry_);
 
-        // Sadly, the AccessControl init is protected by `initializer` so can't
-        // be called ever again (see above natspec).  Fortunately, the init body
-        // is empty, so we don't actually need to call it.
-        // __AccessControl_init_unchained();
         _setupRole(DEFAULT_ADMIN_ROLE, addressRegistry.emergencySafeAddress());
         _setupRole(ADMIN_ROLE, addressRegistry.adminSafeAddress());
         _setupRole(EMERGENCY_ROLE, addressRegistry.emergencySafeAddress());
         _setupRole(CONTRACT_ROLE, addressRegistry.mAptAddress());
 
-        // feePeriod = 1 days;   <-- Comment-out for compiler; renamed to `arbitrageFeePeriod`
-        // feePercentage = 5;   <-- Comment-out for compiler; renamed to `arbitrageFee`
+        arbitrageFeePeriod = 1 days;
+        arbitrageFee = 5;
         reservePercentage = 5;
+        withdrawFee = 1000;
     }
 
     /**
-     * @notice initialize storage for the V3 upgrade
+     * @notice initialize storage for the V2 upgrade
      * @dev Note the `initializer` modifier can only be used once in the
      * entire contract, so we can't use it here.  Instead, we protect
      * the upgrade init with the `onlyProxyAdmin` modifier, which checks
      * `msg.sender` against the proxy admin slot defined in EIP-1967.
      * This will only allow the proxy admin to call this function during upgrades.
      */
-    function initializeV3() external nonReentrant onlyProxyAdmin {
-        withdrawFee = 1000;
-    }
+    function initializeV2() external nonReentrant onlyProxyAdmin {}
 
     function emergencyLock() external override onlyEmergencyRole {
         _pause();
@@ -245,11 +181,6 @@ contract IndexToken is
         // solhint-disable-next-line not-rely-on-time
         lastDepositTime[msg.sender] = block.timestamp;
 
-        // // calculateMintAmount() is not used because deposit value
-        // // is needed for the event
-        // uint256 depositValue = getValueFromUnderlyerAmount(assets);
-        // uint256 poolTotalValue = getPoolTotalValue();
-        // shares = _calculateMintAmount(depositValue, poolTotalValue);
         shares = convertToShares(assets);
 
         _mint(receiver, shares);
@@ -259,15 +190,7 @@ contract IndexToken is
             assets
         );
 
-        // // TODO: can avoid second `getPoolTotalValue` call to save gas
-        // emit DepositedAPT(
-        //     msg.sender, // TODO: receiver?
-        //     asset,
-        //     assets,
-        //     shares,
-        //     depositValue,
-        //     getPoolTotalValue()
-        // );
+        emit Deposit(msg.sender, receiver, assets, shares);
     }
 
     function mint(uint256 shares, address receiver)
@@ -345,14 +268,7 @@ contract IndexToken is
         _burn(owner, shares);
         IDetailedERC20(asset).safeTransfer(receiver, assets);
 
-        // emit RedeemedAPT(
-        //     msg.sender, // TODO: receiver?
-        //     asset,
-        //     redeemUnderlyerAmt,
-        //     shares,
-        //     getValueFromUnderlyerAmount(redeemUnderlyerAmt),
-        //     getPoolTotalValue()
-        // );
+        emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
 
     function withdraw(
@@ -702,23 +618,6 @@ contract IndexToken is
         require(addressRegistry_.isContract(), "INVALID_ADDRESS");
         addressRegistry = IAddressRegistryV2(addressRegistry_);
         emit AddressRegistryChanged(addressRegistry_);
-    }
-
-    /**
-     * @dev This hook is in-place to block inter-user APT transfers, as it
-     * is one avenue that can be used by arbitrageurs to drain the
-     * reserves.
-     */
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal override {
-        super._beforeTokenTransfer(from, to, amount);
-        // allow minting and burning
-        if (from == address(0) || to == address(0)) return;
-        // block transfer between users
-        revert("INVALID_TRANSFER");
     }
 
     /**
