@@ -289,25 +289,34 @@ contract IndexToken is
     /**
      * @dev May revert if there is not enough in the pool.
      */
-    function redeem(uint256 aptAmount) external nonReentrant whenNotPaused {
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) external virtual nonReentrant whenNotPaused returns (uint256 assets) {
         require(!redeemLock, "LOCKED");
-        require(aptAmount > 0, "AMOUNT_INSUFFICIENT");
-        require(aptAmount <= balanceOf(msg.sender), "BALANCE_INSUFFICIENT");
+        require(shares > 0, "AMOUNT_INSUFFICIENT");
+        require(shares <= balanceOf(owner), "BALANCE_INSUFFICIENT");
+        // FIXME: need to account for owner allowance
+        // require(
+        //     super.allowance(owner), msg.sender) >= assets,
+        //     "ALLOWANCE_INSUFFICIENT"
+        // );
 
-        uint256 redeemUnderlyerAmt = getUnderlyerAmountWithFee(aptAmount);
+        uint256 redeemUnderlyerAmt = getUnderlyerAmountWithFee(shares);
         require(
             redeemUnderlyerAmt <= underlyer.balanceOf(address(this)),
             "RESERVE_INSUFFICIENT"
         );
 
-        _burn(msg.sender, aptAmount);
-        underlyer.safeTransfer(msg.sender, redeemUnderlyerAmt);
+        _burn(owner, shares);
+        underlyer.safeTransfer(receiver, redeemUnderlyerAmt);
 
         emit RedeemedAPT(
-            msg.sender,
+            msg.sender, // TODO: receiver?
             underlyer,
             redeemUnderlyerAmt,
-            aptAmount,
+            shares,
             getValueFromUnderlyerAmount(redeemUnderlyerAmt),
             getPoolTotalValue()
         );
@@ -409,7 +418,7 @@ contract IndexToken is
     }
 
     function convertToShares(uint256 assets)
-        external
+        public
         view
         virtual
         returns (uint256)
