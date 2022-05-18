@@ -56,8 +56,6 @@ contract IndexToken is
     using SignedSafeMathUpgradeSafe for int256;
     using SafeERC20 for IDetailedERC20;
 
-    uint256 public constant DEFAULT_APT_TO_UNDERLYER_FACTOR = 1000;
-    uint256 internal constant _MAX_INT256 = 2**255 - 1;
     uint256 internal constant ARB_FEE_DENOMINATOR = 100;
     uint256 internal constant WITHDRAW_FEE_DENOMINATOR = 1000000;
 
@@ -584,9 +582,12 @@ contract IndexToken is
             _getDeployedValue().mul(reservePercentage);
         uint256 unnormalizedUnderlyerValue = _getPoolUnderlyerValue().mul(100);
 
-        require(unnormalizedTargetValue <= _MAX_INT256, "SIGNED_INT_OVERFLOW");
         require(
-            unnormalizedUnderlyerValue <= _MAX_INT256,
+            unnormalizedTargetValue <= uint256(type(int256).max),
+            "SIGNED_INT_OVERFLOW"
+        );
+        require(
+            unnormalizedUnderlyerValue <= uint256(type(int256).max),
             "SIGNED_INT_OVERFLOW"
         );
         int256 topUpValue =
