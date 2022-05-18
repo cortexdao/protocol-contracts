@@ -22,6 +22,7 @@ import {
 import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
 
 import {
+    IERC4626,
     IReservePool,
     IWithdrawFeePoolV2,
     ILockingPool,
@@ -38,6 +39,7 @@ import {
  * @notice Tokens borrowed from the pool are tracked with the `MetaPoolToken`
  */
 contract IndexToken is
+    IERC4626,
     ILiquidityPoolV2,
     IReservePool,
     IWithdrawFeePoolV2,
@@ -397,12 +399,22 @@ contract IndexToken is
         emit EmergencyExit(emergencySafe, token_, balance);
     }
 
-    function calculateMintAmount(uint256 depositAmount)
-        external
+    function previewDeposit(uint256 assets)
+        public
         view
+        virtual
         returns (uint256)
     {
-        uint256 depositValue = getValueFromUnderlyerAmount(depositAmount);
+        return convertToShares(assets);
+    }
+
+    function convertToShares(uint256 assets)
+        external
+        view
+        virtual
+        returns (uint256)
+    {
+        uint256 depositValue = getValueFromUnderlyerAmount(assets);
         uint256 poolTotalValue = getPoolTotalValue();
         return _calculateMintAmount(depositValue, poolTotalValue);
     }

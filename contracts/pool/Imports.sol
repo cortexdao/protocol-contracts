@@ -7,3 +7,4 @@ import {IWithdrawFeePoolV2} from "./IWithdrawFeePoolV2.sol";
 import {ILockingPool} from "./ILockingPool.sol";
 import {IPoolToken} from "./IPoolToken.sol";
 import {ILiquidityPoolV2} from "./ILiquidityPoolV2.sol";
+import {IERC4626} from "./IERC4626.sol";
