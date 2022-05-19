@@ -40,8 +40,6 @@ import {
  */
 contract IndexToken is
     IERC4626,
-    IWithdrawFeePoolV2,
-    ILockingPool,
     Initializable,
     AccessControlUpgradeSafe,
     ReentrancyGuardUpgradeSafe,
@@ -77,15 +75,15 @@ contract IndexToken is
     /** @notice time of last deposit */
     mapping(address => uint256) public lastDepositTime;
     /** @notice seconds since last deposit during which arbitrage fee is charged */
-    uint256 public override arbitrageFeePeriod;
+    uint256 public arbitrageFeePeriod;
     /** @notice percentage charged for arbitrage fee */
-    uint256 public override arbitrageFee;
+    uint256 public arbitrageFee;
 
     /**
      *@notice fee charged for all withdrawals in 1/100th basis points,
      * e.g. 100 = 1 bps
      */
-    uint256 public override withdrawFee;
+    uint256 public withdrawFee;
 
     /** @notice percentage of pool total value available for immediate withdrawal */
     uint256 public reservePercentage;
@@ -151,11 +149,11 @@ contract IndexToken is
      */
     function initializeV2() external nonReentrant onlyProxyAdmin {}
 
-    function emergencyLock() external override onlyEmergencyRole {
+    function emergencyLock() external onlyEmergencyRole {
         _pause();
     }
 
-    function emergencyUnlock() external override onlyEmergencyRole {
+    function emergencyUnlock() external onlyEmergencyRole {
         _unpause();
     }
 
@@ -217,22 +215,20 @@ contract IndexToken is
 
     function emergencyLockAddLiquidity()
         external
-        override
         nonReentrant
         onlyEmergencyRole
     {
         addLiquidityLock = true;
-        emit AddLiquidityLocked();
+        // emit AddLiquidityLocked();
     }
 
     function emergencyUnlockAddLiquidity()
         external
-        override
         nonReentrant
         onlyEmergencyRole
     {
         addLiquidityLock = false;
-        emit AddLiquidityUnlocked();
+        // emit AddLiquidityUnlocked();
     }
 
     /**
@@ -259,7 +255,8 @@ contract IndexToken is
         //     "ALLOWANCE_INSUFFICIENT"
         // );
 
-        assets = getUnderlyerAmountWithFee(shares);
+        assets = previewRedeem(shares, owner);
+        assets = previewRedeem(shares);
         require(
             assets <= IDetailedERC20(asset).balanceOf(address(this)),
             "RESERVE_INSUFFICIENT"
@@ -300,24 +297,14 @@ contract IndexToken is
         IDetailedERC20(asset).safeTransfer(receiver, assets);
     }
 
-    function emergencyLockRedeem()
-        external
-        override
-        nonReentrant
-        onlyEmergencyRole
-    {
+    function emergencyLockRedeem() external nonReentrant onlyEmergencyRole {
         redeemLock = true;
-        emit RedeemLocked();
+        // emit RedeemLocked();
     }
 
-    function emergencyUnlockRedeem()
-        external
-        override
-        nonReentrant
-        onlyEmergencyRole
-    {
+    function emergencyUnlockRedeem() external nonReentrant onlyEmergencyRole {
         redeemLock = false;
-        emit RedeemUnlocked();
+        // emit RedeemUnlocked();
     }
 
     /**
@@ -349,14 +336,13 @@ contract IndexToken is
 
     function setArbitrageFee(uint256 feePercentage, uint256 feePeriod)
         external
-        override
         nonReentrant
         onlyAdminRole
     {
         arbitrageFee = feePercentage;
         arbitrageFeePeriod = feePeriod;
-        emit ArbitrageFeePeriodChanged(feePeriod);
-        emit ArbitrageFeeChanged(feePercentage);
+        // emit ArbitrageFeePeriodChanged(feePeriod);
+        // emit ArbitrageFeeChanged(feePercentage);
     }
 
     function setReservePercentage(uint256 reservePercentage_)
@@ -370,12 +356,11 @@ contract IndexToken is
 
     function setWithdrawFee(uint256 withdrawFee_)
         external
-        override
         nonReentrant
         onlyAdminRole
     {
         withdrawFee = withdrawFee_;
-        emit WithdrawFeeChanged(withdrawFee_);
+        // emit WithdrawFeeChanged(withdrawFee_);
     }
 
     function emergencyExit(address token) external override onlyEmergencyRole {
@@ -384,7 +369,7 @@ contract IndexToken is
         uint256 balance = token_.balanceOf(address(this));
         token_.safeTransfer(emergencySafe, balance);
 
-        emit EmergencyExit(emergencySafe, token_, balance);
+        // emit EmergencyExit(emergencySafe, token_, balance);
     }
 
     function getAPTValue(uint256 aptAmount) external view returns (uint256) {
@@ -418,16 +403,6 @@ contract IndexToken is
         returns (uint256)
     {
         return convertToShares(assets);
-    }
-
-    function previewRedeem(uint256 shares)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
-        return convertToAssets(shares);
     }
 
     // TODO: improve calc precision; double-check rounding up business
@@ -489,10 +464,29 @@ contract IndexToken is
     }
 
     /**
-     * @dev To check if arbitrage fee will be applied, use `isEarlyRedeem`.
+     * @dev To check if arbitrage fee will be applied, use `hasArbFee`.
      */
-    function getUnderlyerAmountWithFee(uint256 aptAmount)
+    function previewRedeem(uint256 aptAmount, address owner)
         public
+        view
+        returns (uint256)
+    {
+        bool arbFee = hasArbFee(owner);
+        return _previewRedeem(aptAmount, arbFee);
+    }
+
+    function previewRedeem(uint256 aptAmount)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
+        return _previewRedeem(aptAmount, true);
+    }
+
+    function _previewRedeem(uint256 aptAmount, bool hasArbFee)
+        internal
         view
         returns (uint256)
     {
@@ -501,7 +495,7 @@ contract IndexToken is
             underlyerAmount.mul(withdrawFee).div(WITHDRAW_FEE_DENOMINATOR);
         uint256 underlyerAmountWithFee = underlyerAmount.sub(withdrawFeeAmount);
 
-        if (isEarlyRedeem()) {
+        if (hasArbFee) {
             uint256 arbFeeAmount =
                 underlyerAmount.mul(arbitrageFee).div(ARB_FEE_DENOMINATOR);
             underlyerAmountWithFee = underlyerAmountWithFee.sub(arbFeeAmount);
@@ -514,11 +508,9 @@ contract IndexToken is
      * @dev `lastDepositTime` is stored each time user makes a deposit, so
      * the waiting period is restarted on each deposit.
      */
-    function isEarlyRedeem() public view override returns (bool) {
+    function hasArbFee(address owner) public view returns (bool) {
         // solhint-disable not-rely-on-time
-        return
-            block.timestamp.sub(lastDepositTime[msg.sender]) <
-            arbitrageFeePeriod;
+        return block.timestamp.sub(lastDepositTime[owner]) < arbitrageFeePeriod;
         // solhint-enable
     }
 
