@@ -175,9 +175,8 @@ contract IndexToken is
                 assets,
             "ALLOWANCE_INSUFFICIENT"
         );
-        // TODO: replace by receiver?
         // solhint-disable-next-line not-rely-on-time
-        lastDepositTime[msg.sender] = block.timestamp;
+        lastDepositTime[receiver] = block.timestamp;
 
         shares = convertToShares(assets);
 
