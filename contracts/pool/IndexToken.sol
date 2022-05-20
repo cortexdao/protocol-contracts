@@ -256,7 +256,6 @@ contract IndexToken is
         // );
 
         assets = previewRedeem(shares, owner);
-        assets = previewRedeem(shares);
         require(
             assets <= IDetailedERC20(asset).balanceOf(address(this)),
             "RESERVE_INSUFFICIENT"
