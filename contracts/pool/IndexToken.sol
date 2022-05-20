@@ -97,9 +97,6 @@ contract IndexToken is
      * `initializer` modifier protects this function from being called
      * repeatedly.  It should be called during the deployment so that
      * it cannot be called by someone else later.
-     *
-     * NOTE: this function is copied from the V1 contract and has already
-     * been called during V1 deployment.  It is included here for clarity.
      */
     function initialize(address addressRegistry_, address underlyer_)
         external
@@ -140,7 +137,7 @@ contract IndexToken is
      * `msg.sender` against the proxy admin slot defined in EIP-1967.
      * This will only allow the proxy admin to call this function during upgrades.
      */
-    function initializeV2() external nonReentrant onlyProxyAdmin {}
+    function initializeV2() external nonReentrant onlyProxyAdmin {} // solhint-disable-line no-empty-blocks
 
     function emergencyLock() external onlyEmergencyRole {
         _pause();
@@ -476,25 +473,6 @@ contract IndexToken is
         return _previewRedeem(aptAmount, true);
     }
 
-    function _previewRedeem(uint256 aptAmount, bool hasArbFee)
-        internal
-        view
-        returns (uint256)
-    {
-        uint256 underlyerAmount = convertToAssets(aptAmount);
-        uint256 withdrawFeeAmount =
-            underlyerAmount.mul(withdrawFee).div(WITHDRAW_FEE_DENOMINATOR);
-        uint256 underlyerAmountWithFee = underlyerAmount.sub(withdrawFeeAmount);
-
-        if (hasArbFee) {
-            uint256 arbFeeAmount =
-                underlyerAmount.mul(arbitrageFee).div(ARB_FEE_DENOMINATOR);
-            underlyerAmountWithFee = underlyerAmountWithFee.sub(arbFeeAmount);
-        }
-
-        return underlyerAmountWithFee;
-    }
-
     /**
      * @dev `lastDepositTime` is stored each time user makes a deposit, so
      * the waiting period is restarted on each deposit.
@@ -675,5 +653,24 @@ contract IndexToken is
     function _getDeployedValue() internal view returns (uint256) {
         MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAptAddress());
         return mApt.getDeployedValue(address(this));
+    }
+
+    function _previewRedeem(uint256 aptAmount, bool hasArbFee)
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 underlyerAmount = convertToAssets(aptAmount);
+        uint256 withdrawFeeAmount =
+            underlyerAmount.mul(withdrawFee).div(WITHDRAW_FEE_DENOMINATOR);
+        uint256 underlyerAmountWithFee = underlyerAmount.sub(withdrawFeeAmount);
+
+        if (hasArbFee) {
+            uint256 arbFeeAmount =
+                underlyerAmount.mul(arbitrageFee).div(ARB_FEE_DENOMINATOR);
+            underlyerAmountWithFee = underlyerAmountWithFee.sub(arbFeeAmount);
+        }
+
+        return underlyerAmountWithFee;
     }
 }
