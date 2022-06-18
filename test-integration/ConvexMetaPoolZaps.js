@@ -47,7 +47,7 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
 
   const ConvexMetaPoolZaps = [
     {
-      contractName: "ConvexAlusdZap",
+      contractName: "ConvexAlusdZapV2",
       swapAddress: "0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c",
       swapInterface: "IMetaPool",
       lpTokenAddress: "0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c",
@@ -56,6 +56,7 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
       numberOfCoins: 4,
       whaleAddress: WHALE_POOLS["ALUSD"],
       rewardToken: "0xdBdb4d16EdA451D0503b854CF79D55697F90c8DF",
+      primaryWithdrawBlocked: true,
     },
     {
       contractName: "ConvexFraxZap",
