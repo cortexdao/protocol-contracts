@@ -21,7 +21,7 @@ import {
 } from "contracts/oracle/Imports.sol";
 import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
 
-import {IERC4626} from "./Imports.sol";
+import {IERC4626, IFeePool} from "./Imports.sol";
 
 /**
  * @notice Collect user deposits so they can be lent to the LP Account
@@ -33,12 +33,13 @@ import {IERC4626} from "./Imports.sol";
  */
 contract IndexToken is
     IERC4626,
+    IEmergencyExit,
+    IFeePool,
     Initializable,
     AccessControlUpgradeSafe,
     ReentrancyGuardUpgradeSafe,
     PausableUpgradeSafe,
-    ERC20UpgradeSafe,
-    IEmergencyExit
+    ERC20UpgradeSafe
 {
     using AddressUpgradeSafe for address;
     using SafeMathUpgradeSafe for uint256;
@@ -68,15 +69,15 @@ contract IndexToken is
     /** @notice time of last deposit */
     mapping(address => uint256) public lastDepositTime;
     /** @notice seconds since last deposit during which arbitrage fee is charged */
-    uint256 public arbitrageFeePeriod;
+    uint256 public override arbitrageFeePeriod;
     /** @notice percentage charged for arbitrage fee */
-    uint256 public arbitrageFee;
+    uint256 public override arbitrageFee;
 
     /**
      *@notice fee charged for all withdrawals in 1/100th basis points,
      * e.g. 100 = 1 bps
      */
-    uint256 public withdrawFee;
+    uint256 public override withdrawFee;
 
     /** @notice percentage of pool total value available for immediate withdrawal */
     uint256 public reservePercentage;
@@ -324,13 +325,14 @@ contract IndexToken is
 
     function setArbitrageFee(uint256 feePercentage, uint256 feePeriod)
         external
+        override
         nonReentrant
         onlyAdminRole
     {
         arbitrageFee = feePercentage;
         arbitrageFeePeriod = feePeriod;
-        // emit ArbitrageFeePeriodChanged(feePeriod);
-        // emit ArbitrageFeeChanged(feePercentage);
+        emit ArbitrageFeePeriodChanged(feePeriod);
+        emit ArbitrageFeeChanged(feePercentage);
     }
 
     function setReservePercentage(uint256 reservePercentage_)
@@ -344,11 +346,12 @@ contract IndexToken is
 
     function setWithdrawFee(uint256 withdrawFee_)
         external
+        override
         nonReentrant
         onlyAdminRole
     {
         withdrawFee = withdrawFee_;
-        // emit WithdrawFeeChanged(withdrawFee_);
+        emit WithdrawFeeChanged(withdrawFee_);
     }
 
     function emergencyExit(address token) external override onlyEmergencyRole {
@@ -477,7 +480,7 @@ contract IndexToken is
      * @dev `lastDepositTime` is stored each time user makes a deposit, so
      * the waiting period is restarted on each deposit.
      */
-    function hasArbFee(address owner) public view returns (bool) {
+    function hasArbFee(address owner) public view override returns (bool) {
         // solhint-disable not-rely-on-time
         return block.timestamp.sub(lastDepositTime[owner]) < arbitrageFeePeriod;
         // solhint-enable
