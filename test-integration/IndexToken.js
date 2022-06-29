@@ -182,7 +182,7 @@ describe.only("Contract: IndexToken", () => {
       oracleAdapter.address
     );
 
-    const IndexToken = await ethers.getContractFactory("IndexToken");
+    const IndexToken = await ethers.getContractFactory("TestIndexToken");
     const logic = await IndexToken.deploy();
     await logic.deployed();
 
@@ -230,15 +230,21 @@ describe.only("Contract: IndexToken", () => {
       );
     });
 
+    // FIXME
     it("DEFAULT_APT_TO_UNDERLYER_FACTOR has correct value", async () => {
+      assert.fail("Need to set this correctly");
       assert.equal(await indexToken.DEFAULT_APT_TO_UNDERLYER_FACTOR(), 1000);
     });
 
+    // TODO: get the correct name
     it("Name has correct value", async () => {
-      assert.equal(await indexToken.name(), "APY Pool Token");
+      assert.fail("Get the correct name");
+      assert.equal(await indexToken.name(), "Cortex Index Token");
     });
 
+    // TODO: get the correct index
     it("Symbol has correct value", async () => {
+      assert.fail("Get the correct symbol");
       assert.equal(await indexToken.symbol(), "APT");
     });
 
@@ -407,26 +413,6 @@ describe.only("Contract: IndexToken", () => {
     });
   });
 
-  describe("Block inter-user APT transfers", () => {
-    it("Revert APT transfer", async () => {
-      const decimals = await indexToken.decimals();
-      const amount = tokenAmountToBigNumber("1", decimals);
-      await expect(
-        indexToken.connect(randomUser).transfer(anotherUser.address, amount)
-      ).to.be.revertedWith("INVALID_TRANSFER");
-    });
-
-    it("Revert APT transferFrom", async () => {
-      const decimals = await indexToken.decimals();
-      const amount = tokenAmountToBigNumber("1", decimals);
-      await expect(
-        indexToken
-          .connect(deployer)
-          .transferFrom(randomUser.address, anotherUser.address, amount)
-      ).to.be.revertedWith("INVALID_TRANSFER");
-    });
-  });
-
   describe("emergencyExit", () => {
     it("Should only be callable by the emergencySafe", async () => {
       await expect(
@@ -536,12 +522,12 @@ describe.only("Contract: IndexToken", () => {
           );
         });
 
-        it("calculateMintAmount returns value", async () => {
+        it("convertToShares returns value", async () => {
           const depositAmount = tokenAmountToBigNumber(
             1,
             await underlyer.decimals()
           );
-          const expectedAptMinted = await indexToken.calculateMintAmount(
+          const expectedAptMinted = await indexToken.convertToShares(
             depositAmount
           );
           console.debug(
@@ -579,11 +565,9 @@ describe.only("Contract: IndexToken", () => {
           assert(price.gt(0));
         });
 
-        it("getUnderlyerAmount returns value", async () => {
+        it("convertToAssets returns value", async () => {
           const aptAmount = tokenAmountToBigNumber("100", "18");
-          const underlyerAmount = await indexToken.getUnderlyerAmount(
-            aptAmount
-          );
+          const underlyerAmount = await indexToken.convertToAssets(aptAmount);
           console.debug(`\tUnderlyer Amount: ${underlyerAmount.toString()}`);
           assert(underlyerAmount.gt(0));
         });
@@ -700,9 +684,7 @@ describe.only("Contract: IndexToken", () => {
             1000,
             await underlyer.decimals()
           );
-          const mintAmount = await indexToken.calculateMintAmount(
-            depositAmount
-          );
+          const mintAmount = await indexToken.convertToShares(depositAmount);
 
           const depositPromise = indexToken
             .connect(randomUser)
@@ -738,14 +720,14 @@ describe.only("Contract: IndexToken", () => {
             .to.emit(indexToken, "Transfer")
             .withArgs(ZERO_ADDRESS, randomUser.address, mintAmount);
 
-          // DepositedAPT event:
+          // Deposit event:
           // check the values reflect post-interaction state
           const depositValue = await indexToken.getValueFromUnderlyerAmount(
             depositAmount
           );
           const poolValue = await indexToken.getPoolTotalValue();
           await expect(depositPromise)
-            .to.emit(indexToken, "DepositedAPT")
+            .to.emit(indexToken, "Deposit")
             .withArgs(
               randomUser.address,
               underlyer.address,
@@ -759,15 +741,17 @@ describe.only("Contract: IndexToken", () => {
 
       describe("redeem", () => {
         it("Revert if withdraw is zero", async () => {
-          await expect(indexToken.redeem(0)).to.be.revertedWith(
-            "AMOUNT_INSUFFICIENT"
-          );
+          await expect(
+            indexToken.redeem(0, randomUser.address, randomUser.address)
+          ).to.be.revertedWith("AMOUNT_INSUFFICIENT");
         });
 
         it("Revert if APT balance is less than withdraw", async () => {
           await indexToken.testMint(randomUser.address, 1);
           await expect(
-            indexToken.connect(randomUser).redeem(2)
+            indexToken
+              .connect(randomUser)
+              .redeem(2, randomUser.address, randomUser.address)
           ).to.be.revertedWith("BALANCE_INSUFFICIENT");
         });
 
@@ -792,10 +776,9 @@ describe.only("Contract: IndexToken", () => {
           // calculate slightly more than APT amount corresponding to the reserve;
           // need to account for the withdraw fee
           const extraAmount = tokenAmountToBigNumber("151", decimals);
-          const reserveAptAmountPlusExtra =
-            await indexToken.calculateMintAmount(
-              reserveBalance.add(extraAmount)
-            );
+          const reserveAptAmountPlusExtra = await indexToken.convertToShares(
+            reserveBalance.add(extraAmount)
+          );
 
           // "transfer" slightly more than reserve's APT amount to the user
           // (direct transfer between users is blocked)
@@ -809,7 +792,13 @@ describe.only("Contract: IndexToken", () => {
           );
 
           await expect(
-            indexToken.connect(randomUser).redeem(reserveAptAmountPlusExtra)
+            indexToken
+              .connect(randomUser)
+              .redeem(
+                reserveAptAmountPlusExtra,
+                randomUser.address,
+                randomUser.address
+              )
           ).to.be.revertedWith("RESERVE_INSUFFICIENT");
         });
 
@@ -830,7 +819,7 @@ describe.only("Contract: IndexToken", () => {
               tokenAmountToBigNumber("1000", await underlyer.decimals())
             );
           const reserveBalance = await underlyer.balanceOf(indexToken.address);
-          const reserveAptAmount = await indexToken.calculateMintAmount(
+          const reserveAptAmount = await indexToken.convertToShares(
             reserveBalance
           );
           const redeemAptAmount = reserveAptAmount.div(2);
@@ -845,7 +834,7 @@ describe.only("Contract: IndexToken", () => {
           // execute the redeem
           const redeemPromise = indexToken
             .connect(randomUser)
-            .redeem(redeemAptAmount);
+            .redeem(redeemAptAmount, randomUser.address, randomUser.address);
           const trx = await redeemPromise;
 
           /* ------ START THE ASSERTS -------------- */
@@ -899,7 +888,7 @@ describe.only("Contract: IndexToken", () => {
       });
 
       describe("Test for dust", () => {
-        it("getUnderlyerAmount after calculateMintAmount results in small dust", async () => {
+        it("convertToAssets after convertToShares results in small dust", async () => {
           // increase APT total supply
           await indexToken.testMint(
             deployer.address,
@@ -918,13 +907,9 @@ describe.only("Contract: IndexToken", () => {
             "1",
             await underlyer.decimals()
           );
-          const mintAmount = await indexToken.calculateMintAmount(
-            depositAmount
-          );
+          const mintAmount = await indexToken.convertToShares(depositAmount);
           await indexToken.connect(randomUser).deposit(depositAmount);
-          const underlyerAmount = await indexToken.getUnderlyerAmount(
-            mintAmount
-          );
+          const underlyerAmount = await indexToken.convertToAssets(mintAmount);
           expect(underlyerAmount).to.be.lt(depositAmount);
           const tolerance = Math.ceil((await underlyer.decimals()) / 4);
           const allowedDeviation = tokenAmountToBigNumber(5, tolerance);
@@ -958,7 +943,7 @@ describe.only("Contract: IndexToken", () => {
             "1",
             await underlyer.decimals()
           );
-          aptAmount = await indexToken.calculateMintAmount(underlyerAmount);
+          aptAmount = await indexToken.convertToShares(underlyerAmount);
           await indexToken
             .connect(randomUser)
             .deposit(underlyerAmount, randomUser.address);
@@ -977,7 +962,9 @@ describe.only("Contract: IndexToken", () => {
             .sub(arbitrageFee);
 
           const beforeBalance = await underlyer.balanceOf(randomUser.address);
-          await indexToken.connect(randomUser).redeem(aptAmount);
+          await indexToken
+            .connect(randomUser)
+            .redeem(aptAmount, randomUser.address, randomUser.address);
           const afterBalance = await underlyer.balanceOf(randomUser.address);
           const transferAmount = afterBalance.sub(beforeBalance);
 
@@ -1001,7 +988,9 @@ describe.only("Contract: IndexToken", () => {
             .setChainlinkStalePeriod(MAX_UINT256);
 
           const beforeBalance = await underlyer.balanceOf(randomUser.address);
-          await indexToken.connect(randomUser).redeem(aptAmount);
+          await indexToken
+            .connect(randomUser)
+            .redeem(aptAmount, randomUser.address, randomUser.address);
           const afterBalance = await underlyer.balanceOf(randomUser.address);
           const transferAmount = afterBalance.sub(beforeBalance);
 
