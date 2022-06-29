@@ -655,7 +655,7 @@ contract IndexToken is
         return mApt.getDeployedValue(address(this));
     }
 
-    function _previewRedeem(uint256 aptAmount, bool hasArbFee)
+    function _previewRedeem(uint256 aptAmount, bool arbFee)
         internal
         view
         returns (uint256)
@@ -665,7 +665,7 @@ contract IndexToken is
             underlyerAmount.mul(withdrawFee).div(WITHDRAW_FEE_DENOMINATOR);
         uint256 underlyerAmountWithFee = underlyerAmount.sub(withdrawFeeAmount);
 
-        if (hasArbFee) {
+        if (arbFee) {
             uint256 arbFeeAmount =
                 underlyerAmount.mul(arbitrageFee).div(ARB_FEE_DENOMINATOR);
             underlyerAmountWithFee = underlyerAmountWithFee.sub(arbFeeAmount);
