@@ -278,9 +278,11 @@ describe.only("Contract: IndexToken", () => {
         indexToken.connect(randomUser).deposit(50, randomUser.address)
       ).to.revertedWith("Pausable: paused");
 
-      await expect(indexToken.connect(randomUser).redeem(50)).to.revertedWith(
-        "Pausable: paused"
-      );
+      await expect(
+        indexToken
+          .connect(randomUser)
+          .redeem(50, randomUser.address, randomUser.address)
+      ).to.revertedWith("Pausable: paused");
     });
 
     it("Revert when calling transferToLpAccount on locked pool", async () => {
@@ -385,9 +387,11 @@ describe.only("Contract: IndexToken", () => {
     it("Revert redeem when pool is locked", async () => {
       await indexToken.connect(emergencySafe).emergencyLockRedeem();
 
-      await expect(indexToken.connect(randomUser).redeem(1)).to.be.revertedWith(
-        "LOCKED"
-      );
+      await expect(
+        indexToken
+          .connect(randomUser)
+          .redeem(1, randomUser.address, randomUser.address)
+      ).to.be.revertedWith("LOCKED");
     });
 
     it("Redeem should work after unlock", async () => {
@@ -395,7 +399,11 @@ describe.only("Contract: IndexToken", () => {
       await indexToken.connect(emergencySafe).emergencyUnlockRedeem();
 
       await indexToken.testMint(randomUser.address, 1);
-      await expect(indexToken.connect(randomUser).redeem(1)).to.not.be.reverted;
+      await expect(
+        indexToken
+          .connect(randomUser)
+          .redeem(1, randomUser.address, randomUser.address)
+      ).to.not.be.reverted;
     });
   });
 
