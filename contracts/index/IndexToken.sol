@@ -357,7 +357,7 @@ contract IndexToken is
         uint256 balance = token_.balanceOf(address(this));
         token_.safeTransfer(emergencySafe, balance);
 
-        // emit EmergencyExit(emergencySafe, token_, balance);
+        emit EmergencyExit(emergencySafe, token_, balance);
     }
 
     function getAPTValue(uint256 aptAmount) external view returns (uint256) {
