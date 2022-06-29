@@ -20,8 +20,9 @@ import {
     IOracleAdapter
 } from "contracts/oracle/Imports.sol";
 import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
+import {ILockingPool} from "contracts/pool/Imports.sol";
 
-import {IERC4626, IFeePool} from "./Imports.sol";
+import {IERC4626, IFeePool, IReservePool} from "./Imports.sol";
 
 /**
  * @notice Collect user deposits so they can be lent to the LP Account
@@ -35,6 +36,8 @@ contract IndexToken is
     IERC4626,
     IEmergencyExit,
     IFeePool,
+    ILockingPool,
+    IReservePool,
     Initializable,
     AccessControlUpgradeSafe,
     ReentrancyGuardUpgradeSafe,
@@ -80,7 +83,7 @@ contract IndexToken is
     uint256 public override withdrawFee;
 
     /** @notice percentage of pool total value available for immediate withdrawal */
-    uint256 public reservePercentage;
+    uint256 public override reservePercentage;
 
     /* ------------------------------- */
 
@@ -140,11 +143,11 @@ contract IndexToken is
      */
     function initializeV2() external nonReentrant onlyProxyAdmin {} // solhint-disable-line no-empty-blocks
 
-    function emergencyLock() external onlyEmergencyRole {
+    function emergencyLock() external override onlyEmergencyRole {
         _pause();
     }
 
-    function emergencyUnlock() external onlyEmergencyRole {
+    function emergencyUnlock() external override onlyEmergencyRole {
         _unpause();
     }
 
@@ -205,20 +208,22 @@ contract IndexToken is
 
     function emergencyLockAddLiquidity()
         external
+        override
         nonReentrant
         onlyEmergencyRole
     {
         addLiquidityLock = true;
-        // emit AddLiquidityLocked();
+        emit AddLiquidityLocked();
     }
 
     function emergencyUnlockAddLiquidity()
         external
+        override
         nonReentrant
         onlyEmergencyRole
     {
         addLiquidityLock = false;
-        // emit AddLiquidityUnlocked();
+        emit AddLiquidityUnlocked();
     }
 
     /**
@@ -286,14 +291,24 @@ contract IndexToken is
         IDetailedERC20(asset).safeTransfer(receiver, assets);
     }
 
-    function emergencyLockRedeem() external nonReentrant onlyEmergencyRole {
+    function emergencyLockRedeem()
+        external
+        override
+        nonReentrant
+        onlyEmergencyRole
+    {
         redeemLock = true;
-        // emit RedeemLocked();
+        emit RedeemLocked();
     }
 
-    function emergencyUnlockRedeem() external nonReentrant onlyEmergencyRole {
+    function emergencyUnlockRedeem()
+        external
+        override
+        nonReentrant
+        onlyEmergencyRole
+    {
         redeemLock = false;
-        // emit RedeemUnlocked();
+        emit RedeemUnlocked();
     }
 
     /**
@@ -301,6 +316,7 @@ contract IndexToken is
      */
     function transferToLpAccount(uint256 amount)
         external
+        override
         nonReentrant
         whenNotPaused
         onlyContractRole
@@ -337,11 +353,12 @@ contract IndexToken is
 
     function setReservePercentage(uint256 reservePercentage_)
         external
+        override
         nonReentrant
         onlyAdminRole
     {
         reservePercentage = reservePercentage_;
-        // emit ReservePercentageChanged(reservePercentage_);
+        emit ReservePercentageChanged(reservePercentage_);
     }
 
     function setWithdrawFee(uint256 withdrawFee_)
@@ -368,7 +385,7 @@ contract IndexToken is
         return aptAmount.mul(getPoolTotalValue()).div(totalSupply());
     }
 
-    function getReserveTopUpValue() external view returns (int256) {
+    function getReserveTopUpValue() external view override returns (int256) {
         int256 topUpValue = _getReserveTopUpValue();
         if (topUpValue == 0) {
             return 0;
