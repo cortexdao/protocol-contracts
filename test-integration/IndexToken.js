@@ -910,7 +910,9 @@ describe.only("Contract: IndexToken", () => {
             await underlyer.decimals()
           );
           const mintAmount = await indexToken.convertToShares(depositAmount);
-          await indexToken.connect(randomUser).deposit(depositAmount);
+          await indexToken
+            .connect(randomUser)
+            .deposit(depositAmount, randomUser.address);
           const underlyerAmount = await indexToken["previewRedeem(uint256)"](
             mintAmount
           );
