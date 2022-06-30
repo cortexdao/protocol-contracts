@@ -815,9 +815,9 @@ describe.only("Contract: IndexToken", () => {
             reserveBalance
           );
           const redeemAptAmount = reserveAptAmount.div(2);
-          const underlyerAmount = await indexToken["convertToAssets(uint256)"](
-            redeemAptAmount
-          );
+          const underlyerAmount = await indexToken[
+            "previewRedeem(uint256,address)"
+          ](redeemAptAmount, randomUser.address);
           await indexToken.testMint(randomUser.address, redeemAptAmount);
           await indexToken.testBurn(deployer.address, redeemAptAmount);
 
@@ -860,21 +860,15 @@ describe.only("Contract: IndexToken", () => {
             .to.emit(indexToken, "Transfer")
             .withArgs(randomUser.address, ZERO_ADDRESS, redeemAptAmount);
 
-          // RedeemedAPT event:
-          // check the values reflect post-interaction state
-          const tokenValue = await indexToken.getValueFromUnderlyerAmount(
-            underlyerTransferAmount
-          );
-          const poolValue = await indexToken.getPoolTotalValue();
+          // Withdraw event:
           await expect(redeemPromise)
-            .to.emit(indexToken, "RedeemedAPT")
+            .to.emit(indexToken, "Withdraw")
             .withArgs(
               randomUser.address,
-              underlyer.address,
+              randomUser.address,
+              randomUser.address,
               underlyerTransferAmount,
-              redeemAptAmount,
-              tokenValue,
-              poolValue
+              redeemAptAmount
             );
         });
       });
