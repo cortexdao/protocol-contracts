@@ -9,6 +9,10 @@ contract TestIndexToken is IndexToken {
         _mint(account, amount);
     }
 
+    function testBurn(address account, uint256 amount) public {
+        _burn(account, amount);
+    }
+
     function testSetLastDepositTime(address account, uint256 timestamp) public {
         lastDepositTime[account] = timestamp;
     }
