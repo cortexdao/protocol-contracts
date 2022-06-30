@@ -567,7 +567,9 @@ describe.only("Contract: IndexToken", () => {
 
         it("convertToAssets returns value", async () => {
           const aptAmount = tokenAmountToBigNumber("100", "18");
-          const underlyerAmount = await indexToken.convertToAssets(aptAmount);
+          const underlyerAmount = await indexToken["previewRedeem(uint256)"](
+            aptAmount
+          );
           console.debug(`\tUnderlyer Amount: ${underlyerAmount.toString()}`);
           assert(underlyerAmount.gt(0));
         });
@@ -823,7 +825,7 @@ describe.only("Contract: IndexToken", () => {
             reserveBalance
           );
           const redeemAptAmount = reserveAptAmount.div(2);
-          const underlyerAmount = await indexToken.getUnderlyerAmountWithFee(
+          const underlyerAmount = await indexToken["convertToAssets(uint256)"](
             redeemAptAmount
           );
           await indexToken.testMint(randomUser.address, redeemAptAmount);
@@ -909,7 +911,9 @@ describe.only("Contract: IndexToken", () => {
           );
           const mintAmount = await indexToken.convertToShares(depositAmount);
           await indexToken.connect(randomUser).deposit(depositAmount);
-          const underlyerAmount = await indexToken.convertToAssets(mintAmount);
+          const underlyerAmount = await indexToken["previewRedeem(uint256)"](
+            mintAmount
+          );
           expect(underlyerAmount).to.be.lt(depositAmount);
           const tolerance = Math.ceil((await underlyer.decimals()) / 4);
           const allowedDeviation = tokenAmountToBigNumber(5, tolerance);
