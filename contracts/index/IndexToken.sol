@@ -113,7 +113,7 @@ contract IndexToken is
         __AccessControl_init_unchained();
         __ReentrancyGuard_init_unchained();
         __Pausable_init_unchained();
-        __ERC20_init_unchained("APY Pool Token", "APT");
+        __ERC20_init_unchained("Convex Index Token", "idxCVX");
 
         // initialize impl-specific storage
         addLiquidityLock = false;

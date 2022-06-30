@@ -236,16 +236,13 @@ describe.only("Contract: IndexToken", () => {
       assert.equal(await indexToken.DEFAULT_APT_TO_UNDERLYER_FACTOR(), 1000);
     });
 
-    // TODO: get the correct name
     it("Name has correct value", async () => {
-      assert.fail("Get the correct name");
-      assert.equal(await indexToken.name(), "Cortex Index Token");
+      assert.equal(await indexToken.name(), "Convex Index Token");
     });
 
     // TODO: get the correct index
     it("Symbol has correct value", async () => {
-      assert.fail("Get the correct symbol");
-      assert.equal(await indexToken.symbol(), "APT");
+      assert.equal(await indexToken.symbol(), "idxCVX");
     });
 
     it("Decimals has correct value", async () => {
