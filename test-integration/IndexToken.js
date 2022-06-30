@@ -897,15 +897,13 @@ describe.only("Contract: IndexToken", () => {
           await indexToken
             .connect(randomUser)
             .deposit(depositAmount, randomUser.address);
-          const underlyerAmount = await indexToken["previewRedeem(uint256)"](
-            mintAmount
-          );
+          const underlyerAmount = await indexToken.convertToAssets(mintAmount);
           expect(underlyerAmount).to.be.lt(depositAmount);
           const tolerance = Math.ceil((await underlyer.decimals()) / 4);
           const allowedDeviation = tokenAmountToBigNumber(5, tolerance);
-          expect(Math.abs(underlyerAmount.sub(depositAmount))).to.be.lt(
-            allowedDeviation
-          );
+          console.log("Deposit amount: %s", depositAmount);
+          console.log("Underlyer amount: %s", underlyerAmount);
+          expect(depositAmount.sub(underlyerAmount)).to.be.lt(allowedDeviation);
         });
       });
 
