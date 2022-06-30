@@ -707,33 +707,26 @@ describe.only("Contract: IndexToken", () => {
             mintAmount
           );
 
-          // APT transfer event
+          // Underlyer transfer event
           await expectEventInTransaction(trx.hash, underlyer, "Transfer", {
             from: randomUser.address,
             to: indexToken.address,
             value: depositAmount,
           });
 
-          // APT transfer event
+          // Index token transfer event
           await expect(depositPromise)
             .to.emit(indexToken, "Transfer")
             .withArgs(ZERO_ADDRESS, randomUser.address, mintAmount);
 
           // Deposit event:
-          // check the values reflect post-interaction state
-          const depositValue = await indexToken.getValueFromUnderlyerAmount(
-            depositAmount
-          );
-          const poolValue = await indexToken.getPoolTotalValue();
           await expect(depositPromise)
             .to.emit(indexToken, "Deposit")
             .withArgs(
               randomUser.address,
-              underlyer.address,
+              randomUser.address,
               depositAmount,
-              mintAmount,
-              depositValue,
-              poolValue
+              mintAmount
             );
         });
       });
