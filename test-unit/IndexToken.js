@@ -160,10 +160,6 @@ describe.only("Contract: IndexToken", () => {
         .be.true;
     });
 
-    it("DEFAULT_APT_TO_UNDERLYER_FACTOR set to correct value", async () => {
-      expect(await indexToken.DEFAULT_APT_TO_UNDERLYER_FACTOR()).to.equal(1000);
-    });
-
     it("Name set to correct value", async () => {
       expect(await indexToken.name()).to.equal("Convex Index Token");
     });
@@ -275,7 +271,7 @@ describe.only("Contract: IndexToken", () => {
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
 
-    it("Revert when calling addLiquidity/redeem on locked pool", async () => {
+    it("Revert when calling deposit/redeem on locked pool", async () => {
       await indexToken.connect(emergencySafe).emergencyLock();
 
       await expect(
@@ -283,7 +279,9 @@ describe.only("Contract: IndexToken", () => {
       ).to.revertedWith("Pausable: paused");
 
       await expect(
-        indexToken.connect(randomUser).redeem(50, randomUser.address)
+        indexToken
+          .connect(randomUser)
+          .redeem(50, randomUser.address, randomUser.address)
       ).to.revertedWith("Pausable: paused");
     });
 
@@ -612,37 +610,36 @@ describe.only("Contract: IndexToken", () => {
     });
   });
 
-  describe("calculateMintAmount", () => {
+  describe("convertToShares", () => {
     beforeEach(async () => {
       await mAptMock.mock.getDeployedValue.returns(0);
     });
 
-    it("Uses fixed ratio with zero total supply", async () => {
+    it("Uses 1:1 ratio with zero total supply", async () => {
       expect(await indexToken.totalSupply()).to.equal(0);
 
       await underlyerMock.mock.decimals.returns("0");
       await oracleAdapterMock.mock.getAssetPrice.returns(1);
 
-      const DEPOSIT_FACTOR = await indexToken.DEFAULT_APT_TO_UNDERLYER_FACTOR();
       const depositAmount = tokenAmountToBigNumber("123");
 
       await underlyerMock.mock.balanceOf.returns(9999);
-      expect(await indexToken.calculateMintAmount(depositAmount)).to.equal(
-        depositAmount.mul(DEPOSIT_FACTOR)
+      expect(await indexToken.convertToShares(depositAmount)).to.equal(
+        depositAmount
       );
 
       // result doesn't depend on pool's underlyer balance
       await underlyerMock.mock.balanceOf
         .withArgs(indexToken.address)
         .returns(0);
-      expect(await indexToken.calculateMintAmount(depositAmount)).to.equal(
-        depositAmount.mul(DEPOSIT_FACTOR)
+      expect(await indexToken.convertToShares(depositAmount)).to.equal(
+        depositAmount
       );
 
       // result doesn't depend on pool's deployed value
       await mAptMock.mock.getDeployedValue.returns(10000000);
-      expect(await indexToken.calculateMintAmount(depositAmount)).to.equal(
-        depositAmount.mul(DEPOSIT_FACTOR)
+      expect(await indexToken.convertToShares(depositAmount)).to.equal(
+        depositAmount
       );
     });
 
@@ -661,7 +658,7 @@ describe.only("Contract: IndexToken", () => {
       const expectedMintAmount = aptTotalSupply
         .mul(depositAmount)
         .div(poolBalance);
-      expect(await indexToken.calculateMintAmount(depositAmount)).to.equal(
+      expect(await indexToken.convertToShares(depositAmount)).to.equal(
         expectedMintAmount
       );
     });
@@ -691,7 +688,7 @@ describe.only("Contract: IndexToken", () => {
       const expectedMintAmount = aptTotalSupply
         .mul(depositValue)
         .div(poolTotalValue);
-      expect(await indexToken.calculateMintAmount(depositAmount)).to.equal(
+      expect(await indexToken.convertToShares(depositAmount)).to.equal(
         expectedMintAmount
       );
     });
@@ -887,7 +884,7 @@ describe.only("Contract: IndexToken", () => {
         });
 
         it("Increase APT balance by calculated amount", async () => {
-          const expectedMintAmount = await indexToken.calculateMintAmount(
+          const expectedMintAmount = await indexToken.convertToShares(
             depositAmount
           );
 
@@ -897,7 +894,7 @@ describe.only("Contract: IndexToken", () => {
         });
 
         it("Emit correct APT events", async () => {
-          const expectedMintAmount = await indexToken.calculateMintAmount(
+          const expectedMintAmount = await indexToken.convertToShares(
             depositAmount
           );
           const depositValue = await indexToken.getValueFromUnderlyerAmount(
@@ -1064,7 +1061,7 @@ describe.only("Contract: IndexToken", () => {
           await indexToken.testMint(deployer.address, aptSupply);
           // Transfer reserve APT amount to user; must do a burn and mint
           // since inter-user transfer is blocked.
-          reserveAptAmount = await indexToken.calculateMintAmount(poolBalance);
+          reserveAptAmount = await indexToken.convertToShares(poolBalance);
           await indexToken.testBurn(deployer.address, reserveAptAmount);
           await indexToken.testMint(randomUser.address, reserveAptAmount);
           aptAmount = reserveAptAmount;
@@ -1214,26 +1211,6 @@ describe.only("Contract: IndexToken", () => {
           indexToken.connect(randomUser).redeem(1)
         ).to.be.revertedWith("LOCKED");
       });
-    });
-  });
-
-  describe("Block inter-user APT transfers", () => {
-    it("Revert APT transfer", async () => {
-      const decimals = await indexToken.decimals();
-      const amount = tokenAmountToBigNumber("1", decimals);
-      await expect(
-        indexToken.connect(randomUser).transfer(anotherUser.address, amount)
-      ).to.be.revertedWith("INVALID_TRANSFER");
-    });
-
-    it("Revert APT transferFrom", async () => {
-      const decimals = await indexToken.decimals();
-      const amount = tokenAmountToBigNumber("1", decimals);
-      await expect(
-        indexToken
-          .connect(deployer)
-          .transferFrom(randomUser.address, anotherUser.address, amount)
-      ).to.be.revertedWith("INVALID_TRANSFER");
     });
   });
 });
