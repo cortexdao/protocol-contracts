@@ -694,21 +694,21 @@ describe.only("Contract: IndexToken", () => {
     });
   });
 
-  describe("getUnderlyerAmount", () => {
+  describe("convertToAssets", () => {
     beforeEach(async () => {
       await mAptMock.mock.getDeployedValue.returns(0);
     });
 
     it("Revert on zero total supply", async () => {
       expect(await indexToken.totalSupply()).to.equal(0);
-      await expect(indexToken.getUnderlyerAmount(100)).to.be.revertedWith(
+      await expect(indexToken.convertToAssets(100)).to.be.revertedWith(
         "INSUFFICIENT_TOTAL_SUPPLY"
       );
     });
 
     it("Always return zero on zero input", async () => {
       expect(await indexToken.totalSupply()).to.equal(0);
-      expect(await indexToken.getUnderlyerAmount(0)).to.equal(0);
+      expect(await indexToken.convertToAssets(0)).to.equal(0);
     });
 
     it("Returns expected amount", async () => {
@@ -723,7 +723,7 @@ describe.only("Contract: IndexToken", () => {
       const aptAmount = tokenAmountToBigNumber(1, 18);
       await indexToken.testMint(randomUser.address, aptAmount);
       const totalSupply = await indexToken.totalSupply();
-      const underlyerAmount = await indexToken.getUnderlyerAmount(aptAmount);
+      const underlyerAmount = await indexToken.convertToAssets(aptAmount);
 
       // deployed value is zero so total value is only from underlyer, so after
       // price conversion result is just the APT share of underlyer balance
@@ -732,24 +732,24 @@ describe.only("Contract: IndexToken", () => {
     });
   });
 
-  describe("addLiquidity", () => {
+  describe("deposit", () => {
     it("Revert if deposit is zero", async () => {
-      await expect(indexToken.addLiquidity(0)).to.be.revertedWith(
-        "AMOUNT_INSUFFICIENT"
-      );
+      await expect(
+        indexToken.deposit(0, randomUser.address)
+      ).to.be.revertedWith("AMOUNT_INSUFFICIENT");
     });
 
     it("Revert if allowance is less than deposit", async () => {
       await underlyerMock.mock.allowance.returns(0);
-      await expect(indexToken.addLiquidity(1)).to.be.revertedWith(
-        "ALLOWANCE_INSUFFICIENT"
-      );
+      await expect(
+        indexToken.deposit(1, randomUser.address)
+      ).to.be.revertedWith("ALLOWANCE_INSUFFICIENT");
     });
 
     describe("Last deposit time", () => {
       beforeEach(async () => {
         // These get rollbacked due to snapshotting.
-        // Just enough mocking to get `addLiquidity` to not revert.
+        // Just enough mocking to get `deposit` to not revert.
         await mAptMock.mock.getDeployedValue.returns(0);
         await oracleAdapterMock.mock.getAssetPrice.returns(1);
         await underlyerMock.mock.decimals.returns(6);
@@ -759,7 +759,7 @@ describe.only("Contract: IndexToken", () => {
       });
 
       it("Save deposit time for user", async () => {
-        await indexToken.connect(randomUser).addLiquidity(1);
+        await indexToken.connect(randomUser).deposit(1, randomUser.address);
 
         const blockTimestamp = (await ethers.provider.getBlock()).timestamp;
         expect(await indexToken.lastDepositTime(randomUser.address)).to.equal(
@@ -767,27 +767,25 @@ describe.only("Contract: IndexToken", () => {
         );
       });
 
-      it("isEarlyRedeem is false before first deposit", async () => {
+      it("hasArbFee is false before first deposit", async () => {
         // functional test to make sure first deposit will not be penalized
         expect(await indexToken.lastDepositTime(randomUser.address)).to.equal(
           0
         );
-        expect(await indexToken.connect(randomUser).isEarlyRedeem()).to.be
-          .false;
+        expect(await indexToken.hasArbFee(randomUser.address)).to.be.false;
       });
 
-      it("isEarlyRedeem returns correctly when called after deposit", async () => {
-        await indexToken.connect(randomUser).addLiquidity(1);
+      it("hasArbFee returns correctly when called after deposit", async () => {
+        await indexToken.connect(randomUser).deposit(1, randomUser.address);
 
-        expect(await indexToken.connect(randomUser).isEarlyRedeem()).to.be.true;
+        expect(await indexToken.hasArbFee(randomUser.address)).to.be.true;
 
         const arbitrageFeePeriod = await indexToken.arbitrageFeePeriod();
         await ethers.provider.send("evm_increaseTime", [
           arbitrageFeePeriod.toNumber(),
         ]); // add arbitrageFeePeriod seconds
         await ethers.provider.send("evm_mine"); // mine the next block
-        expect(await indexToken.connect(randomUser).isEarlyRedeem()).to.be
-          .false;
+        expect(await indexToken.hasArbFee(randomUser.address)).to.be.false;
       });
 
       it("getUnderlyerAmountWithFee returns expected amount", async () => {
