@@ -891,15 +891,14 @@ describe.only("Contract: IndexToken", () => {
           );
 
           await expect(() =>
-            indexToken.connect(randomUser).addLiquidity(depositAmount)
+            indexToken
+              .connect(randomUser)
+              .deposit(depositAmount, randomUser.address)
           ).to.changeTokenBalance(indexToken, randomUser, expectedMintAmount);
         });
 
         it("Emit correct APT events", async () => {
           const expectedMintAmount = await indexToken.convertToShares(
-            depositAmount
-          );
-          const depositValue = await indexToken.getValueFromUnderlyerAmount(
             depositAmount
           );
 
@@ -908,34 +907,22 @@ describe.only("Contract: IndexToken", () => {
           await underlyerMock.mock.balanceOf
             .withArgs(indexToken.address)
             .returns(poolBalance.add(depositAmount));
-          const poolValue = await indexToken.getPoolTotalValue();
-          // Technically this is a hack.  `getPoolTotalValue` gets called twice
-          // in `addLiquidity`: before and after the transfer.  If APT total supply
-          // were not zero, the pool eth value would be calculated and used both
-          // times.  This would give inconsistent values to check against the event
-          // and the test should fail (`expectedMintAmount` and `poolValue`
-          // would be inconsistent.)
-          //
-          // See similar, but more extensive comments in the corresponding test
-          // for `redeem`.
 
-          const addLiquidityPromise = indexToken
+          const depositPromise = indexToken
             .connect(randomUser)
-            .addLiquidity(depositAmount);
+            .deposit(depositAmount, randomUser.address);
 
-          await expect(addLiquidityPromise)
+          await expect(depositPromise)
             .to.emit(indexToken, "Transfer")
             .withArgs(ZERO_ADDRESS, randomUser.address, expectedMintAmount);
 
-          await expect(addLiquidityPromise)
-            .to.emit(indexToken, "DepositedAPT")
+          await expect(depositPromise)
+            .to.emit(indexToken, "Deposit")
             .withArgs(
               randomUser.address,
-              underlyerMock.address,
+              randomUser.address,
               depositAmount,
-              expectedMintAmount,
-              depositValue,
-              poolValue
+              expectedMintAmount
             );
         });
 
@@ -949,15 +936,19 @@ describe.only("Contract: IndexToken", () => {
            *
            *  Instead, we have to do some hacky revert-check logic.
            */
-          await underlyerMock.mock.transferFrom.reverts();
+          await underlyerMock.mock.transferFrom.revertsWithReason("FAIL_TEST");
           await expect(
-            indexToken.connect(randomUser).addLiquidity(depositAmount)
-          ).to.be.reverted;
+            indexToken
+              .connect(randomUser)
+              .deposit(depositAmount, randomUser.address)
+          ).to.be.revertedWith("FAIL_TEST");
           await underlyerMock.mock.transferFrom
             .withArgs(randomUser.address, indexToken.address, depositAmount)
             .returns(true);
           await expect(
-            indexToken.connect(randomUser).addLiquidity(depositAmount)
+            indexToken
+              .connect(randomUser)
+              .deposit(depositAmount, randomUser.address)
           ).to.not.be.reverted;
         });
 
@@ -966,7 +957,9 @@ describe.only("Contract: IndexToken", () => {
           await indexToken.connect(emergencySafe).emergencyUnlockAddLiquidity();
 
           await expect(
-            indexToken.connect(randomUser).addLiquidity(depositAmount)
+            indexToken
+              .connect(randomUser)
+              .deposit(depositAmount, randomUser.address)
           ).to.not.be.reverted;
         });
       });
@@ -1001,7 +994,7 @@ describe.only("Contract: IndexToken", () => {
         await indexToken.connect(emergencySafe).emergencyLockAddLiquidity();
 
         await expect(
-          indexToken.connect(randomUser).addLiquidity(1)
+          indexToken.connect(randomUser).deposit(1, randomUser.address)
         ).to.be.revertedWith("LOCKED");
       });
     });
@@ -1009,16 +1002,18 @@ describe.only("Contract: IndexToken", () => {
 
   describe("redeem", () => {
     it("Revert if withdraw is zero", async () => {
-      await expect(indexToken.redeem(0)).to.be.revertedWith(
-        "AMOUNT_INSUFFICIENT"
-      );
+      await expect(
+        indexToken.redeem(0, randomUser.address, randomUser.address)
+      ).to.be.revertedWith("AMOUNT_INSUFFICIENT");
     });
 
     it("Revert if APT balance is less than withdraw", async () => {
       await indexToken.testMint(randomUser.address, 1);
-      await expect(indexToken.connect(randomUser).redeem(2)).to.be.revertedWith(
-        "BALANCE_INSUFFICIENT"
-      );
+      await expect(
+        indexToken
+          .connect(randomUser)
+          .redeem(2, randomUser.address, randomUser.address)
+      ).to.be.revertedWith("BALANCE_INSUFFICIENT");
     });
 
     /* 
@@ -1075,44 +1070,20 @@ describe.only("Contract: IndexToken", () => {
 
         it("Decrease APT balance by redeem amount", async () => {
           await expect(() =>
-            indexToken.connect(randomUser).redeem(aptAmount)
+            indexToken
+              .connect(randomUser)
+              .redeem(aptAmount, randomUser.address, randomUser.address)
           ).to.changeTokenBalance(indexToken, randomUser, aptAmount.mul(-1));
         });
 
         it("Emit correct APT events", async () => {
-          const underlyerAmount = await indexToken.getUnderlyerAmountWithFee(
-            aptAmount
-          );
-          const depositValue = await indexToken.getValueFromUnderlyerAmount(
-            underlyerAmount
-          );
-
-          const poolValue = await indexToken.getPoolTotalValue();
-          // This is wrong, as it is the value prior to the underlyer transfer.
-          // However, it is the only way to get the test to pass with mocking.
-          //
-          // What we *should* do is mock the underlyer transfer from the pool, so we can
-          // check redeem event has the post-redeem pool ETH value:
-          //
-          // await underlyerMock.mock.balanceOf
-          //   .withArgs(poolToken.address)
-          //   .returns(poolBalance.sub(underlyerAmount));
-          //
-          // The problem is that `getPoolTotalValue` gets called twice
-          // in `redeem`: before (inside `getAPTValue`) and after the transfer,
-          // in the event.  This gives inconsistent values between underlyerAmount
-          // and poolTotalValue in the event args and we can't fix it by mocking
-          // since it is all done in one transaction.
-          //
-          // If the mock contract allowed us to return different values on
-          // consecutive calls, we could fix the test.
-          //
-          // The best option right now is to explicitly check the event is correct
-          // in the integration tests.
+          const underlyerAmount = await indexToken[
+            "previewRedeem(uint256,address)"
+          ](aptAmount, randomUser.address);
 
           const redeemPromise = indexToken
             .connect(randomUser)
-            .redeem(aptAmount);
+            .redeem(aptAmount, randomUser.address, randomUser.address);
 
           await expect(redeemPromise)
             .to.emit(indexToken, "Transfer")
@@ -1122,11 +1093,9 @@ describe.only("Contract: IndexToken", () => {
             .to.emit(indexToken, "RedeemedAPT")
             .withArgs(
               randomUser.address,
-              underlyerMock.address,
+              randomUser.address,
               underlyerAmount,
-              aptAmount,
-              depositValue,
-              poolValue
+              aptAmount
             );
         });
 
@@ -1140,25 +1109,34 @@ describe.only("Contract: IndexToken", () => {
            *
            *  Instead, we have to do some hacky revert-check logic.
            */
-          const underlyerAmount = await indexToken.getUnderlyerAmountWithFee(
-            aptAmount
-          );
+          const underlyerAmount = await indexToken[
+            "previewRedeem(uint256,address)"
+          ](aptAmount, randomUser.address);
           await underlyerMock.mock.transfer.reverts();
-          await expect(indexToken.connect(randomUser).redeem(aptAmount)).to.be
-            .reverted;
+          await expect(
+            indexToken
+              .connect(randomUser)
+              .redeem(aptAmount, randomUser.address, randomUser.address)
+          ).to.be.reverted;
           await underlyerMock.mock.transfer
             .withArgs(randomUser.address, underlyerAmount)
             .returns(true);
-          await expect(indexToken.connect(randomUser).redeem(aptAmount)).to.not
-            .be.reverted;
+          await expect(
+            indexToken
+              .connect(randomUser)
+              .redeem(aptAmount, randomUser.address, randomUser.address)
+          ).to.not.be.reverted;
         });
 
         it("Redeem should work after unlock", async () => {
           await indexToken.connect(emergencySafe).emergencyLockRedeem();
           await indexToken.connect(emergencySafe).emergencyUnlockRedeem();
 
-          await expect(indexToken.connect(randomUser).redeem(aptAmount)).to.not
-            .be.reverted;
+          await expect(
+            indexToken
+              .connect(randomUser)
+              .redeem(aptAmount, randomUser.address, randomUser.address)
+          ).to.not.be.reverted;
         });
 
         it("Revert when underlyer amount exceeds reserve", async () => {
@@ -1175,7 +1153,11 @@ describe.only("Contract: IndexToken", () => {
           await expect(
             indexToken
               .connect(randomUser)
-              .redeem(reserveAptAmount.add(smallAptAmount))
+              .redeem(
+                reserveAptAmount.add(smallAptAmount),
+                randomUser.address,
+                randomUser.address
+              )
           ).to.be.revertedWith("RESERVE_INSUFFICIENT");
         });
       });
