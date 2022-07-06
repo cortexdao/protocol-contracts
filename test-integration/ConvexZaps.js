@@ -22,7 +22,7 @@ const CVX_ADDRESS = "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B";
 console.debugging = false;
 /* ************************ */
 
-const pinnedBlock = 13616400;
+const pinnedBlock = 15085764;
 const defaultPinnedBlock = hre.config.networks.hardhat.forking.blockNumber;
 const forkingUrl = hre.config.networks.hardhat.forking.url;
 
@@ -111,6 +111,16 @@ describe("Convex Zaps - LP Account integration", () => {
       numberOfCoins: 3,
       whaleAddress: WHALE_POOLS["DAI"],
       useUnwrapped: true,
+    },
+    {
+      contractName: "ConvexFraxUsdcZap",
+      swapAddress: "0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2",
+      swapInterface: "IStableSwap2",
+      lpTokenAddress: "0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC",
+      rewardContractAddress: "0x7e880867363A7e321f5d260Cade2B0Bb2F717B02",
+      rewardContractInterface: "IBaseRewardPool",
+      numberOfCoins: 2,
+      whaleAddress: WHALE_POOLS["FRAX"],
     },
   ];
 
