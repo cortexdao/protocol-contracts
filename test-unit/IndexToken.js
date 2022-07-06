@@ -800,11 +800,13 @@ describe.only("Contract: IndexToken", () => {
         );
 
         // make a deposit to update saved time
-        await indexToken.connect(randomUser).addLiquidity(depositAmount);
+        await indexToken
+          .connect(randomUser)
+          .deposit(depositAmount, randomUser.address);
 
         // calculate expected underlyer amount after withdrawal fee
         const aptAmount = tokenAmountToBigNumber(1);
-        const originalUnderlyerAmount = await indexToken.getUnderlyerAmount(
+        const originalUnderlyerAmount = await indexToken.convertToAssets(
           aptAmount
         );
         const withdrawFee = await indexToken.withdrawFee();
@@ -821,9 +823,10 @@ describe.only("Contract: IndexToken", () => {
         // WARNING: need to call `getUnderlyerAmountWithFee` using depositor
         // since last deposit time needs to get set
         expect(
-          await indexToken
-            .connect(randomUser)
-            .getUnderlyerAmountWithFee(aptAmount)
+          await indexToken["previewRedeem(uint256,address)"](
+            aptAmount,
+            randomUser.address
+          )
         ).to.equal(underlyerAmount.sub(fee));
 
         // advance by just enough time; now there is no arbitrage fee
@@ -833,9 +836,10 @@ describe.only("Contract: IndexToken", () => {
         ]);
         await ethers.provider.send("evm_mine"); // mine the next block
         expect(
-          await indexToken
-            .connect(randomUser)
-            .getUnderlyerAmountWithFee(aptAmount)
+          await indexToken["previewRedeem(uint256,address)"](
+            aptAmount,
+            randomUser.address
+          )
         ).to.equal(underlyerAmount);
       });
     });
