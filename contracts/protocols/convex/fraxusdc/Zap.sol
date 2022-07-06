@@ -18,7 +18,7 @@ contract ConvexFraxUsdcZap is ConvexZapBase, ConvexFraxUsdcConstants {
 
     function assetAllocations() public view override returns (string[] memory) {
         string[] memory allocationNames = new string[](1);
-        allocationNames[1] = NAME;
+        allocationNames[0] = NAME;
         return allocationNames;
     }
 
