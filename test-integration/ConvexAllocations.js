@@ -17,7 +17,7 @@ const { WHALE_POOLS } = require("../utils/constants");
 console.debugging = false;
 /* ************************ */
 
-const pinnedBlock = 13818110;
+const pinnedBlock = 15085764;
 const defaultPinnedBlock = hre.config.networks.hardhat.forking.blockNumber;
 const forkingUrl = hre.config.networks.hardhat.forking.url;
 
@@ -93,6 +93,21 @@ const ConvexPoolAllocations = [
       IStableSwap: "IOldStableSwap3",
     },
     unwrap: true,
+  },
+  {
+    contractName: "ConvexFraxUsdcAllocation",
+    poolName: "FraxUsdc",
+    pid: 100,
+    // using the Curve pool itself as the "whale":
+    // should be ok since the pool's external balances (vs the pool's
+    // internal balances) are only used for admin balances and determining
+    // deposit amounts for "fee" assets.
+    whaleAddress: "0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2",
+    numberOfCoins: 2,
+    interfaceOverride: {
+      IStableSwap: "IStableSwap2",
+    },
+    unwrap: false,
   },
 ];
 
@@ -190,7 +205,7 @@ async function getContractAt(
   return contract;
 }
 
-describe("Convex Allocations", () => {
+describe.only("Convex Allocations", () => {
   /* signers */
   let deployer;
   let emergencySafe;
