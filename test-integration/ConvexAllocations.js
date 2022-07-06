@@ -205,7 +205,7 @@ async function getContractAt(
   return contract;
 }
 
-describe.only("Convex Allocations", () => {
+describe("Convex Allocations", () => {
   /* signers */
   let deployer;
   let emergencySafe;
