@@ -539,10 +539,10 @@ describe.only("Contract: IndexToken", () => {
           assert(val.gt(0));
         });
 
-        it("getAPTValue returns value", async () => {
+        it("getUsdValue returns value", async () => {
           const aptAmount = tokenAmountToBigNumber("100", "18");
-          const val = await indexToken.getAPTValue(aptAmount);
-          console.debug(`\tAPT Eth Value: ${val.toString()}`);
+          const val = await indexToken.getUsdValue(aptAmount);
+          console.debug(`\tUSD Value: ${val.toString()}`);
           assert(val.gt(0));
         });
 

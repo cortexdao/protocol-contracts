@@ -381,7 +381,8 @@ contract IndexToken is
         emit EmergencyExit(emergencySafe, token_, balance);
     }
 
-    function getAPTValue(uint256 aptAmount) external view returns (uint256) {
+    function getUsdValue(uint256 aptAmount) external view returns (uint256) {
+        if (aptAmount == 0) return 0;
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
         return aptAmount.mul(getPoolTotalValue()).div(totalSupply());
     }

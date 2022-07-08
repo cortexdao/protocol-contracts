@@ -451,10 +451,15 @@ describe.only("Contract: IndexToken", () => {
     });
   });
 
-  describe("getAPTValue", () => {
-    it("Revert when zero APT supply", async () => {
+  describe("getUsdValue", () => {
+    it("Return zero on zero amount", async () => {
       expect(await indexToken.totalSupply()).to.equal(0);
-      await expect(indexToken.getAPTValue(10)).to.be.revertedWith(
+      expect(await indexToken.getUsdValue(0)).to.equal(0);
+    });
+
+    it("Revert on nonzero amount when zero APT supply", async () => {
+      expect(await indexToken.totalSupply()).to.equal(0);
+      await expect(indexToken.getUsdValue(10)).to.be.revertedWith(
         "INSUFFICIENT_TOTAL_SUPPLY"
       );
     });
@@ -474,14 +479,14 @@ describe.only("Contract: IndexToken", () => {
       await mAptMock.mock.getDeployedValue.returns(0);
       let poolTotalValue = await indexToken.getPoolTotalValue();
       let expectedValue = poolTotalValue.mul(aptAmount).div(aptSupply);
-      expect(await indexToken.getAPTValue(aptAmount)).to.equal(expectedValue);
+      expect(await indexToken.getUsdValue(aptAmount)).to.equal(expectedValue);
 
       // non-zero deployed value
       const deployedValue = tokenAmountToBigNumber(1234);
       await mAptMock.mock.getDeployedValue.returns(deployedValue);
       poolTotalValue = await indexToken.getPoolTotalValue();
       expectedValue = poolTotalValue.mul(aptAmount).div(aptSupply);
-      expect(await indexToken.getAPTValue(aptAmount)).to.equal(expectedValue);
+      expect(await indexToken.getUsdValue(aptAmount)).to.equal(expectedValue);
     });
   });
 
