@@ -244,11 +244,14 @@ contract IndexToken is
         require(!redeemLock, "LOCKED");
         require(shares > 0, "AMOUNT_INSUFFICIENT");
         require(shares <= balanceOf(owner), "BALANCE_INSUFFICIENT");
-        // FIXME: need to account for owner allowance
-        // require(
-        //     super.allowance(owner), msg.sender) >= assets,
-        //     "ALLOWANCE_INSUFFICIENT"
-        // );
+        if (msg.sender != owner) {
+            uint256 allowed = allowance(owner, msg.sender);
+            require(allowed >= shares, "ALLOWANCE_INSUFFICIENT");
+            // save gas for infinite approvals
+            if (allowed != type(uint256).max) {
+                _approve(owner, msg.sender, allowed.sub(shares));
+            }
+        }
 
         assets = previewRedeem(shares, owner);
         require(

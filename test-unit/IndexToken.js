@@ -1079,6 +1079,9 @@ describe.only("Contract: IndexToken", () => {
         });
 
         it("Approved user can redeem", async () => {
+          await indexToken
+            .connect(randomUser)
+            .approve(anotherUser.address, aptAmount);
           await expect(() =>
             indexToken
               .connect(anotherUser)
@@ -1087,6 +1090,9 @@ describe.only("Contract: IndexToken", () => {
         });
 
         it("Unapproved user cannot redeem", async () => {
+          expect(
+            await indexToken.allowance(randomUser.address, anotherUser.address)
+          ).to.equal(0);
           await expect(
             indexToken
               .connect(anotherUser)
