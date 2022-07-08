@@ -699,11 +699,9 @@ describe.only("Contract: IndexToken", () => {
       await mAptMock.mock.getDeployedValue.returns(0);
     });
 
-    it("Revert on zero total supply", async () => {
+    it("Convert 1:1 on zero total supply", async () => {
       expect(await indexToken.totalSupply()).to.equal(0);
-      await expect(indexToken.convertToAssets(100)).to.be.revertedWith(
-        "INSUFFICIENT_TOTAL_SUPPLY"
-      );
+      expect(await indexToken.convertToAssets(100)).to.equal(100);
     });
 
     it("Always return zero on zero input", async () => {
