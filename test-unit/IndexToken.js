@@ -26,7 +26,7 @@ describe.only("Contract: IndexToken", () => {
   let lpAccount;
   let lpSafe;
   let randomUser;
-  let anotherUser;
+  let receiver;
 
   // mocks
   let underlyerMock;
@@ -59,7 +59,7 @@ describe.only("Contract: IndexToken", () => {
       emergencySafe,
       lpSafe,
       randomUser,
-      anotherUser,
+      receiver,
     ] = await ethers.getSigners();
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
@@ -737,16 +737,16 @@ describe.only("Contract: IndexToken", () => {
 
   describe("deposit", () => {
     it("Revert if deposit is zero", async () => {
-      await expect(
-        indexToken.deposit(0, randomUser.address)
-      ).to.be.revertedWith("AMOUNT_INSUFFICIENT");
+      await expect(indexToken.deposit(0, receiver.address)).to.be.revertedWith(
+        "AMOUNT_INSUFFICIENT"
+      );
     });
 
     it("Revert if allowance is less than deposit", async () => {
       await underlyerMock.mock.allowance.returns(0);
-      await expect(
-        indexToken.deposit(1, randomUser.address)
-      ).to.be.revertedWith("ALLOWANCE_INSUFFICIENT");
+      await expect(indexToken.deposit(1, receiver.address)).to.be.revertedWith(
+        "ALLOWANCE_INSUFFICIENT"
+      );
     });
 
     describe("Last deposit time", () => {
@@ -761,34 +761,32 @@ describe.only("Contract: IndexToken", () => {
         await underlyerMock.mock.transferFrom.returns(true);
       });
 
-      it("Save deposit time for user", async () => {
-        await indexToken.connect(randomUser).deposit(1, randomUser.address);
+      it("Save deposit time for receiver", async () => {
+        await indexToken.connect(randomUser).deposit(1, receiver.address);
 
         const blockTimestamp = (await ethers.provider.getBlock()).timestamp;
-        expect(await indexToken.lastDepositTime(randomUser.address)).to.equal(
+        expect(await indexToken.lastDepositTime(receiver.address)).to.equal(
           blockTimestamp
         );
       });
 
       it("hasArbFee is false before first deposit", async () => {
         // functional test to make sure first deposit will not be penalized
-        expect(await indexToken.lastDepositTime(randomUser.address)).to.equal(
-          0
-        );
-        expect(await indexToken.hasArbFee(randomUser.address)).to.be.false;
+        expect(await indexToken.lastDepositTime(receiver.address)).to.equal(0);
+        expect(await indexToken.hasArbFee(receiver.address)).to.be.false;
       });
 
       it("hasArbFee returns correctly when called after deposit", async () => {
-        await indexToken.connect(randomUser).deposit(1, randomUser.address);
+        await indexToken.connect(randomUser).deposit(1, receiver.address);
 
-        expect(await indexToken.hasArbFee(randomUser.address)).to.be.true;
+        expect(await indexToken.hasArbFee(receiver.address)).to.be.true;
 
         const arbitrageFeePeriod = await indexToken.arbitrageFeePeriod();
         await ethers.provider.send("evm_increaseTime", [
           arbitrageFeePeriod.toNumber(),
         ]); // add arbitrageFeePeriod seconds
         await ethers.provider.send("evm_mine"); // mine the next block
-        expect(await indexToken.hasArbFee(randomUser.address)).to.be.false;
+        expect(await indexToken.hasArbFee(receiver.address)).to.be.false;
       });
 
       it("getUnderlyerAmountWithFee returns expected amount", async () => {
@@ -805,7 +803,7 @@ describe.only("Contract: IndexToken", () => {
         // make a deposit to update saved time
         await indexToken
           .connect(randomUser)
-          .deposit(depositAmount, randomUser.address);
+          .deposit(depositAmount, receiver.address);
 
         // calculate expected underlyer amount after withdrawal fee
         const aptAmount = tokenAmountToBigNumber(1);
@@ -828,7 +826,7 @@ describe.only("Contract: IndexToken", () => {
         expect(
           await indexToken["previewRedeem(uint256,address)"](
             aptAmount,
-            randomUser.address
+            receiver.address
           )
         ).to.equal(underlyerAmount.sub(fee));
 
@@ -841,7 +839,7 @@ describe.only("Contract: IndexToken", () => {
         expect(
           await indexToken["previewRedeem(uint256,address)"](
             aptAmount,
-            randomUser.address
+            receiver.address
           )
         ).to.equal(underlyerAmount);
       });
@@ -896,8 +894,8 @@ describe.only("Contract: IndexToken", () => {
           await expect(() =>
             indexToken
               .connect(randomUser)
-              .deposit(depositAmount, randomUser.address)
-          ).to.changeTokenBalance(indexToken, randomUser, expectedMintAmount);
+              .deposit(depositAmount, receiver.address)
+          ).to.changeTokenBalance(indexToken, receiver, expectedMintAmount);
         });
 
         it("Emit correct APT events", async () => {
@@ -913,17 +911,17 @@ describe.only("Contract: IndexToken", () => {
 
           const depositPromise = indexToken
             .connect(randomUser)
-            .deposit(depositAmount, randomUser.address);
+            .deposit(depositAmount, receiver.address);
 
           await expect(depositPromise)
             .to.emit(indexToken, "Transfer")
-            .withArgs(ZERO_ADDRESS, randomUser.address, expectedMintAmount);
+            .withArgs(ZERO_ADDRESS, receiver.address, expectedMintAmount);
 
           await expect(depositPromise)
             .to.emit(indexToken, "Deposit")
             .withArgs(
               randomUser.address,
-              randomUser.address,
+              receiver.address,
               depositAmount,
               expectedMintAmount
             );
@@ -943,7 +941,7 @@ describe.only("Contract: IndexToken", () => {
           await expect(
             indexToken
               .connect(randomUser)
-              .deposit(depositAmount, randomUser.address)
+              .deposit(depositAmount, receiver.address)
           ).to.be.revertedWith("FAIL_TEST");
           await underlyerMock.mock.transferFrom
             .withArgs(randomUser.address, indexToken.address, depositAmount)
@@ -951,7 +949,7 @@ describe.only("Contract: IndexToken", () => {
           await expect(
             indexToken
               .connect(randomUser)
-              .deposit(depositAmount, randomUser.address)
+              .deposit(depositAmount, receiver.address)
           ).to.not.be.reverted;
         });
 
@@ -962,7 +960,7 @@ describe.only("Contract: IndexToken", () => {
           await expect(
             indexToken
               .connect(randomUser)
-              .deposit(depositAmount, randomUser.address)
+              .deposit(depositAmount, receiver.address)
           ).to.not.be.reverted;
         });
       });
@@ -997,7 +995,7 @@ describe.only("Contract: IndexToken", () => {
         await indexToken.connect(emergencySafe).emergencyLockDeposit();
 
         await expect(
-          indexToken.connect(randomUser).deposit(1, randomUser.address)
+          indexToken.connect(randomUser).deposit(1, receiver.address)
         ).to.be.revertedWith("LOCKED");
       });
     });
