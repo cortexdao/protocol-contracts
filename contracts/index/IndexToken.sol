@@ -20,9 +20,8 @@ import {
     IOracleAdapter
 } from "contracts/oracle/Imports.sol";
 import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
-import {ILockingPool} from "contracts/pool/Imports.sol";
 
-import {IERC4626, IFeePool, IReservePool} from "./Imports.sol";
+import {IERC4626, IFeePool, ILockingPool, IReservePool} from "./Imports.sol";
 
 /**
  * @notice Collect user deposits so they can be lent to the LP Account
@@ -62,7 +61,7 @@ contract IndexToken is
     IAddressRegistryV2 public addressRegistry;
 
     /** @notice true if depositing is locked */
-    bool public addLiquidityLock;
+    bool public depositLock;
     /** @notice true if withdrawing is locked */
     bool public redeemLock;
 
@@ -116,7 +115,7 @@ contract IndexToken is
         __ERC20_init_unchained("Convex Index Token", "idxCVX");
 
         // initialize impl-specific storage
-        addLiquidityLock = false;
+        depositLock = false;
         redeemLock = false;
         asset = underlyer_;
 
@@ -163,7 +162,7 @@ contract IndexToken is
         whenNotPaused
         returns (uint256 shares)
     {
-        require(!addLiquidityLock, "LOCKED");
+        require(!depositLock, "LOCKED");
         require(assets > 0, "AMOUNT_INSUFFICIENT");
         require(
             IDetailedERC20(asset).allowance(msg.sender, address(this)) >=
@@ -207,24 +206,24 @@ contract IndexToken is
         emit Deposit(msg.sender, receiver, assets, shares);
     }
 
-    function emergencyLockAddLiquidity()
+    function emergencyLockDeposit()
         external
         override
         nonReentrant
         onlyEmergencyRole
     {
-        addLiquidityLock = true;
-        emit AddLiquidityLocked();
+        depositLock = true;
+        emit DepositLocked();
     }
 
-    function emergencyUnlockAddLiquidity()
+    function emergencyUnlockDeposit()
         external
         override
         nonReentrant
         onlyEmergencyRole
     {
-        addLiquidityLock = false;
-        emit AddLiquidityUnlocked();
+        depositLock = false;
+        emit DepositUnlocked();
     }
 
     /**

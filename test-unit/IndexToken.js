@@ -182,8 +182,8 @@ describe.only("Contract: IndexToken", () => {
       expect(await indexToken.asset()).to.equal(underlyerMock.address);
     });
 
-    it("addLiquidity is unlocked", async () => {
-      expect(await indexToken.addLiquidityLock()).to.equal(false);
+    it("deposit is unlocked", async () => {
+      expect(await indexToken.depositLock()).to.equal(false);
     });
 
     it("redeem is unlocked", async () => {
@@ -956,8 +956,8 @@ describe.only("Contract: IndexToken", () => {
         });
 
         it("Deposit should work after unlock", async () => {
-          await indexToken.connect(emergencySafe).emergencyLockAddLiquidity();
-          await indexToken.connect(emergencySafe).emergencyUnlockAddLiquidity();
+          await indexToken.connect(emergencySafe).emergencyLockDeposit();
+          await indexToken.connect(emergencySafe).emergencyUnlockDeposit();
 
           await expect(
             indexToken
@@ -971,30 +971,30 @@ describe.only("Contract: IndexToken", () => {
     describe("Locking", () => {
       it("Emergency Safe can lock", async () => {
         await expect(
-          indexToken.connect(emergencySafe).emergencyLockAddLiquidity()
-        ).to.emit(indexToken, "AddLiquidityLocked");
+          indexToken.connect(emergencySafe).emergencyLockDeposit()
+        ).to.emit(indexToken, "DepositLocked");
       });
 
       it("Emergency Safe can unlock", async () => {
         await expect(
-          indexToken.connect(emergencySafe).emergencyUnlockAddLiquidity()
-        ).to.emit(indexToken, "AddLiquidityUnlocked");
+          indexToken.connect(emergencySafe).emergencyUnlockDeposit()
+        ).to.emit(indexToken, "DepositUnlocked");
       });
 
       it("Revert if unpermissioned account attempts to lock", async () => {
         await expect(
-          indexToken.connect(randomUser).emergencyLockAddLiquidity()
+          indexToken.connect(randomUser).emergencyLockDeposit()
         ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
       });
 
       it("Revert if unpermissioned account attempts to unlock", async () => {
         await expect(
-          indexToken.connect(randomUser).emergencyUnlockAddLiquidity()
+          indexToken.connect(randomUser).emergencyUnlockDeposit()
         ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
       });
 
       it("Revert deposit when pool is locked", async () => {
-        await indexToken.connect(emergencySafe).emergencyLockAddLiquidity();
+        await indexToken.connect(emergencySafe).emergencyLockDeposit();
 
         await expect(
           indexToken.connect(randomUser).deposit(1, randomUser.address)
