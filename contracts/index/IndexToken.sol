@@ -122,6 +122,7 @@ contract IndexToken is
 
         _setAddressRegistry(addressRegistry_);
 
+        // FIXME: these need to be Cortex DAO addresses
         _setupRole(DEFAULT_ADMIN_ROLE, addressRegistry.emergencySafeAddress());
         _setupRole(ADMIN_ROLE, addressRegistry.adminSafeAddress());
         _setupRole(EMERGENCY_ROLE, addressRegistry.emergencySafeAddress());
