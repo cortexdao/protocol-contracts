@@ -27,6 +27,7 @@ describe.only("Contract: IndexToken", () => {
   let lpSafe;
   let randomUser;
   let receiver;
+  let anotherUser;
 
   // mocks
   let underlyerMock;
@@ -60,6 +61,7 @@ describe.only("Contract: IndexToken", () => {
       lpSafe,
       randomUser,
       receiver,
+      anotherUser,
     ] = await ethers.getSigners();
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
@@ -1004,7 +1006,7 @@ describe.only("Contract: IndexToken", () => {
   describe("redeem", () => {
     it("Revert if withdraw is zero", async () => {
       await expect(
-        indexToken.redeem(0, randomUser.address, randomUser.address)
+        indexToken.redeem(0, receiver.address, randomUser.address)
       ).to.be.revertedWith("AMOUNT_INSUFFICIENT");
     });
 
@@ -1013,7 +1015,7 @@ describe.only("Contract: IndexToken", () => {
       await expect(
         indexToken
           .connect(randomUser)
-          .redeem(2, randomUser.address, randomUser.address)
+          .redeem(2, receiver.address, randomUser.address)
       ).to.be.revertedWith("BALANCE_INSUFFICIENT");
     });
 
@@ -1057,11 +1059,10 @@ describe.only("Contract: IndexToken", () => {
 
           // Mint APT supply to go along with pool's total ETH value.
           await indexToken.testMint(deployer.address, aptSupply);
-          // Transfer reserve APT amount to user; must do a burn and mint
-          // since inter-user transfer is blocked.
           reserveAptAmount = await indexToken.convertToShares(poolBalance);
-          await indexToken.testBurn(deployer.address, reserveAptAmount);
-          await indexToken.testMint(randomUser.address, reserveAptAmount);
+          await indexToken
+            .connect(deployer)
+            .transfer(randomUser.address, reserveAptAmount);
           aptAmount = reserveAptAmount;
         });
 
@@ -1073,8 +1074,24 @@ describe.only("Contract: IndexToken", () => {
           await expect(() =>
             indexToken
               .connect(randomUser)
-              .redeem(aptAmount, randomUser.address, randomUser.address)
+              .redeem(aptAmount, receiver.address, randomUser.address)
           ).to.changeTokenBalance(indexToken, randomUser, aptAmount.mul(-1));
+        });
+
+        it("Approved user can redeem", async () => {
+          await expect(() =>
+            indexToken
+              .connect(anotherUser)
+              .redeem(aptAmount, receiver.address, randomUser.address)
+          ).to.changeTokenBalance(indexToken, randomUser, aptAmount.mul(-1));
+        });
+
+        it("Unapproved user cannot redeem", async () => {
+          await expect(
+            indexToken
+              .connect(anotherUser)
+              .redeem(aptAmount, receiver.address, randomUser.address)
+          ).to.be.reverted;
         });
 
         it("Emit correct APT events", async () => {
