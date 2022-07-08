@@ -1090,8 +1090,9 @@ describe.only("Contract: IndexToken", () => {
             .withArgs(randomUser.address, ZERO_ADDRESS, aptAmount);
 
           await expect(redeemPromise)
-            .to.emit(indexToken, "RedeemedAPT")
+            .to.emit(indexToken, "Withdraw")
             .withArgs(
+              randomUser.address,
               randomUser.address,
               randomUser.address,
               underlyerAmount,
@@ -1192,7 +1193,9 @@ describe.only("Contract: IndexToken", () => {
         await indexToken.connect(emergencySafe).emergencyLockRedeem();
 
         await expect(
-          indexToken.connect(randomUser).redeem(1)
+          indexToken
+            .connect(randomUser)
+            .redeem(1, randomUser.address, randomUser.address)
         ).to.be.revertedWith("LOCKED");
       });
     });
