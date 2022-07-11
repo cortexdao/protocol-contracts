@@ -173,6 +173,15 @@ const ConvexMetaPoolAllocations = [
     // this allocation avoids decomposing into primary coin
     skipPrimary: true,
   },
+  {
+    contractName: "ConvexDolaAllocation",
+    primaryUnderlyerSymbol: "DOLA",
+    pid: 62,
+    // using the Curve pool itself as the "whale": see prior note
+    whaleAddress: "0xAA5A67c256e27A5d80712c51971408db3370927D",
+    // this allocation avoids decomposing into primary coin
+    skipPrimary: true,
+  },
 ];
 
 async function getContractAt(

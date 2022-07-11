@@ -16,7 +16,7 @@ const { WHALE_POOLS } = require("../utils/constants");
 const CRV_ADDRESS = "0xD533a949740bb3306d119CC777fa900bA034cd52";
 const CVX_ADDRESS = "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B";
 
-const pinnedBlock = 13755900;
+const pinnedBlock = 15085764;
 const defaultPinnedBlock = hre.config.networks.hardhat.forking.blockNumber;
 const forkingUrl = hre.config.networks.hardhat.forking.url;
 
@@ -55,7 +55,10 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
       gaugeInterface: "IBaseRewardPool",
       numberOfCoins: 4,
       whaleAddress: WHALE_POOLS["ALUSD"],
-      rewardToken: "0xdBdb4d16EdA451D0503b854CF79D55697F90c8DF",
+      // Percent slippage when depositing, used when testing allocation
+      slippage: 5,
+      // rewards shut off
+      // rewardToken: "0xdBdb4d16EdA451D0503b854CF79D55697F90c8DF",
     },
     {
       contractName: "ConvexFraxZap",
@@ -69,16 +72,19 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
       // rewards shut off?
       // rewardToken: "0x3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0",
     },
-    {
-      contractName: "ConvexLusdZap",
-      swapAddress: "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
-      swapInterface: "IMetaPool",
-      lpTokenAddress: "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
-      gaugeAddress: "0x2ad92A7aE036a038ff02B96c88de868ddf3f8190",
-      gaugeInterface: "IBaseRewardPool",
-      numberOfCoins: 4,
-      whaleAddress: WHALE_POOLS["LUSD"],
-    },
+    // Slippage is to high for the zap to be able to unwind
+    // {
+    //   contractName: "ConvexLusdZap",
+    //   swapAddress: "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
+    //   swapInterface: "IMetaPool",
+    //   lpTokenAddress: "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
+    //   gaugeAddress: "0x2ad92A7aE036a038ff02B96c88de868ddf3f8190",
+    //   gaugeInterface: "IBaseRewardPool",
+    //   numberOfCoins: 4,
+    //   whaleAddress: WHALE_POOLS["LUSD"],
+    //   // Percent slippage when depositing, used when testing allocation
+    //   slippage: 5,
+    // },
     {
       contractName: "ConvexMimZap",
       swapAddress: "0x5a6A4D54456819380173272A5E8E9B9904BdF41B",
@@ -88,7 +94,8 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
       gaugeInterface: "IBaseRewardPool",
       numberOfCoins: 4,
       whaleAddress: WHALE_POOLS["MIM"],
-      rewardToken: "0x090185f2135308BaD17527004364eBcC2D37e5F6",
+      // rewards shut off
+      // rewardToken: "0x090185f2135308BaD17527004364eBcC2D37e5F6",
     },
     {
       contractName: "ConvexMusdZap",
@@ -100,28 +107,31 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
       numberOfCoins: 4,
       whaleAddress: WHALE_POOLS["MUSD"],
     },
-    {
-      contractName: "ConvexOusdZap",
-      swapAddress: "0x87650D7bbfC3A9F10587d7778206671719d9910D",
-      swapInterface: "IMetaPool",
-      lpTokenAddress: "0x87650D7bbfC3A9F10587d7778206671719d9910D",
-      gaugeAddress: "0x7D536a737C13561e0D2Decf1152a653B4e615158",
-      gaugeInterface: "IBaseRewardPool",
-      numberOfCoins: 4,
-      whaleAddress: WHALE_POOLS["OUSD"],
-      rewardToken: "0x8207c1FfC5B6804F6024322CcF34F29c3541Ae26",
-    },
-    {
-      contractName: "ConvexUstWormholeZapV2",
-      swapAddress: "0xCEAF7747579696A2F0bb206a14210e3c9e6fB269",
-      swapInterface: "IMetaPool",
-      lpTokenAddress: "0xCEAF7747579696A2F0bb206a14210e3c9e6fB269",
-      gaugeAddress: "0x7e2b9B5244bcFa5108A76D5E7b507CFD5581AD4A",
-      gaugeInterface: "IBaseRewardPool",
-      numberOfCoins: 4,
-      whaleAddress: WHALE_POOLS["UST-Wormhole"],
-      primaryWithdrawBlocked: true,
-    },
+    // OUSD rewards were not streaming during the pinned block
+    // {
+    //   contractName: "ConvexOusdZap",
+    //   swapAddress: "0x87650D7bbfC3A9F10587d7778206671719d9910D",
+    //   swapInterface: "IMetaPool",
+    //   lpTokenAddress: "0x87650D7bbfC3A9F10587d7778206671719d9910D",
+    //   gaugeAddress: "0x7D536a737C13561e0D2Decf1152a653B4e615158",
+    //   gaugeInterface: "IBaseRewardPool",
+    //   numberOfCoins: 4,
+    //   whaleAddress: WHALE_POOLS["OUSD"],
+    //   // rewards shut off
+    //   // rewardToken: "0x8207c1FfC5B6804F6024322CcF34F29c3541Ae26",
+    // },
+    // UST-wormhole reward period ends before the pinned block
+    //{
+    //  contractName: "ConvexUstWormholeZapV2",
+    //  swapAddress: "0xCEAF7747579696A2F0bb206a14210e3c9e6fB269",
+    //  swapInterface: "IMetaPool",
+    //  lpTokenAddress: "0xCEAF7747579696A2F0bb206a14210e3c9e6fB269",
+    //  gaugeAddress: "0x7e2b9B5244bcFa5108A76D5E7b507CFD5581AD4A",
+    //  gaugeInterface: "IBaseRewardPool",
+    //  numberOfCoins: 4,
+    //  whaleAddress: WHALE_POOLS["UST-Wormhole"],
+    //  primaryWithdrawBlocked: true,
+    //},
     // UST pool reward period ends right before our pinned block
     // {
     //   contractName: "ConvexUstZap",
@@ -133,6 +143,17 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
     //   numberOfCoins: 4,
     //   whaleAddress: WHALE_POOLS["UST"],
     // },
+    {
+      contractName: "ConvexDolaZap",
+      swapAddress: "0xAA5A67c256e27A5d80712c51971408db3370927D",
+      swapInterface: "IMetaPool",
+      lpTokenAddress: "0xAA5A67c256e27A5d80712c51971408db3370927D",
+      gaugeAddress: "0x835f69e58087E5B6bffEf182fe2bf959Fe253c3c",
+      gaugeInterface: "IBaseRewardPool",
+      numberOfCoins: 4,
+      whaleAddress: WHALE_POOLS["DOLA"],
+      primaryWithdrawBlocked: true,
+    },
   ];
 
   async function getTotalNormalizedBalance(allocationIds) {
@@ -293,6 +314,7 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
       numberOfCoins,
       rewardToken,
       primaryWithdrawBlocked,
+      slippage,
     } = curveConstants;
     let { whaleAddress } = curveConstants; // might need to reset later
 
@@ -607,7 +629,11 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
               const normalizedUnderlyerAmount = underlyerAmount
                 .mul(BigNumber.from(10).pow(18))
                 .div(BigNumber.from(10).pow(decimals));
-              const deviation = normalizedUnderlyerAmount.div(100);
+
+              let deviation = normalizedUnderlyerAmount.div(100);
+              if (typeof slippage !== "undefined") {
+                deviation = deviation.mul(slippage);
+              }
 
               let newTotalNormalizedAmount = await getTotalNormalizedBalance(
                 allocationIds
