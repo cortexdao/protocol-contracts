@@ -1097,7 +1097,7 @@ describe.only("Contract: IndexToken", () => {
             indexToken
               .connect(anotherUser)
               .redeem(aptAmount, receiver.address, randomUser.address)
-          ).to.be.reverted;
+          ).to.be.revertedWith("ALLOWANCE_INSUFFICIENT");
         });
 
         it("Emit correct APT events", async () => {
