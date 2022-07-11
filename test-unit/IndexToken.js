@@ -791,7 +791,7 @@ describe.only("Contract: IndexToken", () => {
         expect(await indexToken.hasArbFee(receiver.address)).to.be.false;
       });
 
-      it("getUnderlyerAmountWithFee returns expected amount", async () => {
+      it("previewRedeem returns expected amount", async () => {
         const decimals = 18;
         await underlyerMock.mock.decimals.returns(decimals);
         const depositAmount = tokenAmountToBigNumber("1", decimals);
@@ -823,7 +823,7 @@ describe.only("Contract: IndexToken", () => {
         const fee = originalUnderlyerAmount.mul(arbitrageFee).div(100);
 
         // There is an arbitrage fee.
-        // WARNING: need to call `getUnderlyerAmountWithFee` using depositor
+        // WARNING: need to call `previewRedeem` using depositor
         // since last deposit time needs to get set
         expect(
           await indexToken["previewRedeem(uint256,address)"](
@@ -1220,6 +1220,207 @@ describe.only("Contract: IndexToken", () => {
           indexToken
             .connect(randomUser)
             .redeem(1, randomUser.address, randomUser.address)
+        ).to.be.revertedWith("LOCKED");
+      });
+    });
+  });
+
+  describe.only("withdraw", () => {
+    it("Revert if withdraw is zero", async () => {
+      await expect(
+        indexToken.withdraw(0, receiver.address, randomUser.address)
+      ).to.be.revertedWith("AMOUNT_INSUFFICIENT");
+    });
+
+    it.skip("Revert if share balance is less than withdraw", async () => {
+      await indexToken.testMint(randomUser.address, 1);
+      await expect(
+        indexToken
+          .connect(randomUser)
+          .withdraw(2, receiver.address, randomUser.address)
+      ).to.be.revertedWith("BALANCE_INSUFFICIENT");
+    });
+
+    /* 
+      Test with range of deployed TVL values.  Using 0 as
+      deployed value forces old code paths without mAPT since
+      the pool's total ETH value comes purely from its underlyer
+      holdings.
+    */
+    const deployedValues = [
+      tokenAmountToBigNumber(0),
+      tokenAmountToBigNumber(2193389),
+      tokenAmountToBigNumber(187892873),
+    ];
+    deployedValues.forEach(function (deployedValue) {
+      describe(`  deployed value: ${deployedValue}`, () => {
+        const decimals = 6;
+        const poolBalance = tokenAmountToBigNumber(1000, decimals);
+        const aptSupply = tokenAmountToBigNumber(1000000);
+        let reserveAptAmount;
+        let aptAmount;
+        let assetAmount;
+
+        // use EVM snapshots for test isolation
+        let snapshotId;
+
+        before(async () => {
+          const snapshot = await timeMachine.takeSnapshot();
+          snapshotId = snapshot["result"];
+
+          await mAptMock.mock.getDeployedValue.returns(deployedValue);
+
+          const price = 1;
+          await oracleAdapterMock.mock.getAssetPrice.returns(price);
+
+          await underlyerMock.mock.decimals.returns(decimals);
+          await underlyerMock.mock.allowance.returns(poolBalance);
+          await underlyerMock.mock.balanceOf
+            .withArgs(indexToken.address)
+            .returns(poolBalance);
+          await underlyerMock.mock.transfer.returns(true);
+
+          // Mint APT supply to go along with pool's total ETH value.
+          await indexToken.testMint(deployer.address, aptSupply);
+          reserveAptAmount = await indexToken.convertToShares(poolBalance);
+          await indexToken
+            .connect(deployer)
+            .transfer(randomUser.address, reserveAptAmount);
+          aptAmount = reserveAptAmount;
+          assetAmount = poolBalance;
+        });
+
+        after(async () => {
+          await timeMachine.revertToSnapshot(snapshotId);
+        });
+
+        it("Decrease APT balance by redeem amount", async () => {
+          await expect(() =>
+            indexToken
+              .connect(randomUser)
+              .withdraw(assetAmount, receiver.address, randomUser.address)
+          ).to.changeTokenBalance(indexToken, randomUser, aptAmount.mul(-1));
+        });
+
+        it("Approved user can redeem", async () => {
+          await indexToken
+            .connect(randomUser)
+            .approve(anotherUser.address, aptAmount);
+          await expect(() =>
+            indexToken
+              .connect(anotherUser)
+              .withdraw(aptAmount, receiver.address, randomUser.address)
+          ).to.changeTokenBalance(indexToken, randomUser, aptAmount.mul(-1));
+        });
+
+        it("Unapproved user cannot redeem", async () => {
+          expect(
+            await indexToken.allowance(randomUser.address, anotherUser.address)
+          ).to.equal(0);
+          await expect(
+            indexToken
+              .connect(anotherUser)
+              .withdraw(aptAmount, receiver.address, randomUser.address)
+          ).to.be.revertedWith("ALLOWANCE_INSUFFICIENT");
+        });
+
+        it("Emit correct APT events", async () => {
+          const shareAmount = await indexToken[
+            "previewWithdraw(uint256,address)"
+          ](assetAmount, randomUser.address);
+
+          const withdrawPromise = indexToken
+            .connect(randomUser)
+            .withdraw(assetAmount, receiver.address, randomUser.address);
+
+          await expect(withdrawPromise)
+            .to.emit(indexToken, "Transfer")
+            .withArgs(randomUser.address, ZERO_ADDRESS, shareAmount);
+
+          await expect(withdrawPromise)
+            .to.emit(indexToken, "Withdraw")
+            .withArgs(
+              randomUser.address,
+              receiver.address,
+              randomUser.address,
+              assetAmount,
+              shareAmount
+            );
+        });
+
+        it("transfer called on underlyer", async () => {
+          /* https://github.com/nomiclabs/hardhat/issues/1135
+           * Due to the above issue, we can't simply do:
+           *
+           *  expect("transfer")
+           *    .to.be.calledOnContract(underlyerMock)
+           *    .withArgs(randomUser.address, underlyerAmount);
+           *
+           *  Instead, we have to do some hacky revert-check logic.
+           */
+          const underlyerAmount = await indexToken[
+            "previewRedeem(uint256,address)"
+          ](aptAmount, randomUser.address);
+          await underlyerMock.mock.transfer.reverts();
+          await expect(
+            indexToken
+              .connect(randomUser)
+              .redeem(aptAmount, randomUser.address, randomUser.address)
+          ).to.be.reverted;
+          await underlyerMock.mock.transfer
+            .withArgs(randomUser.address, underlyerAmount)
+            .returns(true);
+          await expect(
+            indexToken
+              .connect(randomUser)
+              .withdraw(aptAmount, receiver.address, randomUser.address)
+          ).to.not.be.reverted;
+        });
+
+        it("Redeem should work after unlock", async () => {
+          await indexToken.connect(emergencySafe).emergencyLockRedeem();
+          await indexToken.connect(emergencySafe).emergencyUnlockRedeem();
+
+          await expect(
+            indexToken
+              .connect(randomUser)
+              .withdraw(aptAmount, receiver.address, randomUser.address)
+          ).to.not.be.reverted;
+        });
+
+        it("Revert when underlyer amount exceeds reserve", async () => {
+          // when zero deployed value, APT share gives ownership of only
+          // underlyer amount, and this amount will be fully in the reserve
+          // so there is nothing to test.
+          if (deployedValue == 0) return;
+          // this transfer pushes the user's corresponding underlyer amount
+          // for his APT higher than the reserve balance.
+          const smallAptAmount = tokenAmountToBigNumber("0.0000001");
+          await indexToken
+            .connect(deployer)
+            .transfer(randomUser.address, smallAptAmount);
+
+          await expect(
+            indexToken
+              .connect(randomUser)
+              .withdraw(
+                reserveAptAmount.add(smallAptAmount),
+                receiver.address,
+                randomUser.address
+              )
+          ).to.be.revertedWith("RESERVE_INSUFFICIENT");
+        });
+      });
+    });
+
+    describe("Locking", () => {
+      it("Revert redeem when pool is locked", async () => {
+        await indexToken.connect(emergencySafe).emergencyLockRedeem();
+
+        await expect(
+          indexToken
+            .connect(randomUser)
+            .withdraw(1, randomUser.address, randomUser.address)
         ).to.be.revertedWith("LOCKED");
       });
     });

@@ -277,21 +277,16 @@ contract IndexToken is
         whenNotPaused
         returns (uint256 shares)
     {
+        require(!redeemLock, "LOCKED");
+        require(assets > 0, "AMOUNT_INSUFFICIENT");
+
         shares = previewWithdraw(assets); // No need to check for rounding error, previewWithdraw rounds up.
-
-        // FIXME: need to account for owner allowance
-        // if (msg.sender != owner) {
-        //     uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
-
-        //     if (allowed != type(uint256).max)
-        //         allowance[owner][msg.sender] = allowed - shares;
-        // }
+        require(shares <= balanceOf(owner), "BALANCE_INSUFFICIENT");
 
         _burn(owner, shares);
+        IDetailedERC20(asset).safeTransfer(receiver, assets);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
-
-        IDetailedERC20(asset).safeTransfer(receiver, assets);
     }
 
     function emergencyLockRedeem()
@@ -429,7 +424,16 @@ contract IndexToken is
         return supply == 0 ? shares : shares.mul(totalAssets()).div(supply) + 1;
     }
 
-    // TODO: improve calc precision; double-check rounding up business
+    function previewWithdraw(uint256 assets, address owner)
+        public
+        view
+        virtual
+        returns (uint256)
+    {
+        bool arbFee = hasArbFee(owner);
+        return _previewWithdraw(assets, arbFee);
+    }
+
     function previewWithdraw(uint256 assets)
         public
         view
@@ -437,8 +441,7 @@ contract IndexToken is
         override
         returns (uint256)
     {
-        uint256 supply = totalSupply();
-        return supply == 0 ? assets : assets.mul(supply).div(totalAssets()) + 1;
+        return _previewWithdraw(assets, true);
     }
 
     function maxDeposit(address)
@@ -685,6 +688,23 @@ contract IndexToken is
         returns (uint256)
     {
         uint256 underlyerAmount = convertToAssets(aptAmount);
+        return _getUnderlyerAmountWithFees(underlyerAmount, arbFee);
+    }
+
+    function _previewWithdraw(uint256 assets, bool arbFee)
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 assetsWithFees = _getUnderlyerAmountWithFees(assets, arbFee);
+        return convertToShares(assetsWithFees) + 1;
+    }
+
+    function _getUnderlyerAmountWithFees(uint256 underlyerAmount, bool arbFee)
+        internal
+        view
+        returns (uint256)
+    {
         uint256 withdrawFeeAmount =
             underlyerAmount.mul(withdrawFee).div(WITHDRAW_FEE_DENOMINATOR);
         uint256 underlyerAmountWithFee = underlyerAmount.sub(withdrawFeeAmount);
