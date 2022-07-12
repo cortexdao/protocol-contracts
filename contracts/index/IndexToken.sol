@@ -688,7 +688,7 @@ contract IndexToken is
         returns (uint256)
     {
         uint256 underlyerAmount = convertToAssets(aptAmount);
-        return _getUnderlyerAmountWithFees(underlyerAmount, arbFee);
+        return _getUnderlyerAmountAfterFees(underlyerAmount, arbFee);
     }
 
     function _previewWithdraw(uint256 assets, bool arbFee)
@@ -696,11 +696,11 @@ contract IndexToken is
         view
         returns (uint256)
     {
-        uint256 assetsWithFees = _getUnderlyerAmountWithFees(assets, arbFee);
+        uint256 assetsWithFees = _getUnderlyerAmountBeforeFees(assets, arbFee);
         return convertToShares(assetsWithFees) + 1;
     }
 
-    function _getUnderlyerAmountWithFees(uint256 underlyerAmount, bool arbFee)
+    function _getUnderlyerAmountAfterFees(uint256 underlyerAmount, bool arbFee)
         internal
         view
         returns (uint256)
@@ -716,5 +716,24 @@ contract IndexToken is
         }
 
         return underlyerAmountWithFee;
+    }
+
+    function _getUnderlyerAmountBeforeFees(uint256 underlyerAmount, bool arbFee)
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 underlyerAmountBeforeFee = underlyerAmount;
+
+        if (arbFee) {
+            underlyerAmountBeforeFee.mul(ARB_FEE_DENOMINATOR).div(
+                ARB_FEE_DENOMINATOR.sub(arbitrageFee)
+            );
+        }
+        underlyerAmountBeforeFee = underlyerAmountBeforeFee
+            .mul(WITHDRAW_FEE_DENOMINATOR)
+            .div(WITHDRAW_FEE_DENOMINATOR.sub(withdrawFee));
+
+        return underlyerAmountBeforeFee;
     }
 }
