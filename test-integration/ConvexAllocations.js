@@ -109,6 +109,17 @@ const ConvexPoolAllocations = [
     },
     unwrap: false,
   },
+  {
+    contractName: "ConvexIronbankAllocation",
+    poolName: "Ironbank",
+    pid: 29,
+    whaleAddress: "0x2dded6Da1BF5DBdF597C45fcFaa3194e53EcfeAF",
+    numberOfCoins: 3,
+    interfaceOverride: {
+      IStableSwap: "IStableSwap",
+    },
+    unwrap: true,
+  },
 ];
 
 const ConvexMetaPoolAllocations = [
