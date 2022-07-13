@@ -129,6 +129,17 @@ describe("Convex Zaps - LP Account integration", () => {
       whaleAddress: "0xdcef968d416a41cdac0ed8702fac8128a64241a2",
       primaryWithdrawBlocked: true,
     },
+    {
+      contractName: "ConvexIronbankZap",
+      swapAddress: "0x2dded6Da1BF5DBdF597C45fcFaa3194e53EcfeAF",
+      swapInterface: "IStableSwap",
+      lpTokenAddress: "0x5282a4eF67D9C33135340fB3289cc1711c13638C",
+      rewardContractAddress: "0x3E03fFF82F77073cc590b656D42FceB12E4910A8",
+      rewardContractInterface: "IBaseRewardPool",
+      numberOfCoins: 3,
+      whaleAddress: WHALE_POOLS["DAI"],
+      useUnwrapped: true,
+    },
   ];
 
   async function getTotalNormalizedBalance(allocationIds) {
