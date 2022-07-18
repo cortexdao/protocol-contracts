@@ -721,19 +721,22 @@ contract IndexToken is
     function _getUnderlyerAmountBeforeFees(uint256 underlyerAmount, bool arbFee)
         internal
         view
-        returns (uint256)
+        returns (uint256 underlyerAmountBeforeFee)
     {
-        uint256 underlyerAmountBeforeFee = underlyerAmount;
-
         if (arbFee) {
-            underlyerAmountBeforeFee.mul(ARB_FEE_DENOMINATOR).div(
-                ARB_FEE_DENOMINATOR.sub(arbitrageFee)
+            underlyerAmountBeforeFee = underlyerAmount
+                .mul(WITHDRAW_FEE_DENOMINATOR)
+                .mul(ARB_FEE_DENOMINATOR)
+                .div(
+                WITHDRAW_FEE_DENOMINATOR
+                    .mul(ARB_FEE_DENOMINATOR)
+                    .sub(withdrawFee.mul(ARB_FEE_DENOMINATOR))
+                    .sub(arbitrageFee.mul(WITHDRAW_FEE_DENOMINATOR))
             );
+        } else {
+            underlyerAmountBeforeFee = underlyerAmount
+                .mul(WITHDRAW_FEE_DENOMINATOR)
+                .div(WITHDRAW_FEE_DENOMINATOR.sub(withdrawFee));
         }
-        underlyerAmountBeforeFee = underlyerAmountBeforeFee
-            .mul(WITHDRAW_FEE_DENOMINATOR)
-            .div(WITHDRAW_FEE_DENOMINATOR.sub(withdrawFee));
-
-        return underlyerAmountBeforeFee;
     }
 }

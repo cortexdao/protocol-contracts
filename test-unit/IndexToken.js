@@ -737,6 +737,100 @@ describe.only("Contract: IndexToken", () => {
     });
   });
 
+  describe("_getUnderlyerAmountAfterFees", () => {
+    const ARB_FEE_DENOMINATOR = 100;
+    const WITHDRAW_FEE_DENOMINATOR = 1e6;
+    let arbitrageFee;
+    let withdrawFee;
+
+    beforeEach(async () => {
+      arbitrageFee = await indexToken.arbitrageFee();
+      withdrawFee = await indexToken.withdrawFee();
+    });
+
+    it("correctly deducts withdraw fee", async () => {
+      const underlyerAmount = tokenAmountToBigNumber(31528, 18);
+      const hasArbFee = false;
+
+      const withdrawFeeAmount = underlyerAmount
+        .mul(withdrawFee)
+        .div(WITHDRAW_FEE_DENOMINATOR);
+      const expectedAmount = underlyerAmount.sub(withdrawFeeAmount);
+      const result = await indexToken.testGetUnderlyerAmountAfterFees(
+        underlyerAmount,
+        hasArbFee
+      );
+      expect(result).to.equal(expectedAmount);
+    });
+
+    it("correctly deducts withdraw and arb fees", async () => {
+      const underlyerAmount = tokenAmountToBigNumber(100191, 18);
+      const hasArbFee = true;
+
+      const withdrawFeeAmount = underlyerAmount
+        .mul(withdrawFee)
+        .div(WITHDRAW_FEE_DENOMINATOR);
+      const arbFeeAmount = underlyerAmount
+        .mul(arbitrageFee)
+        .div(ARB_FEE_DENOMINATOR);
+      const expectedAmount = underlyerAmount
+        .sub(withdrawFeeAmount)
+        .sub(arbFeeAmount);
+      const result = await indexToken.testGetUnderlyerAmountAfterFees(
+        underlyerAmount,
+        hasArbFee
+      );
+      expect(result).to.equal(expectedAmount);
+    });
+  });
+
+  describe("_getUnderlyerAmountBeforeFees", () => {
+    const ARB_FEE_DENOMINATOR = 100;
+    const WITHDRAW_FEE_DENOMINATOR = 1e6;
+    let arbitrageFee;
+    let withdrawFee;
+
+    beforeEach(async () => {
+      arbitrageFee = await indexToken.arbitrageFee();
+      withdrawFee = await indexToken.withdrawFee();
+    });
+
+    it("correctly undoes withdraw fee", async () => {
+      const underlyerAmount = tokenAmountToBigNumber(31528, 18);
+      const hasArbFee = false;
+
+      const withdrawFeeAmount = underlyerAmount
+        .mul(withdrawFee)
+        .div(WITHDRAW_FEE_DENOMINATOR);
+      const underlyerAmountAfterFee = underlyerAmount.sub(withdrawFeeAmount);
+      const result = await indexToken.testGetUnderlyerAmountBeforeFees(
+        underlyerAmountAfterFee,
+        hasArbFee
+      );
+      expect(result).to.equal(underlyerAmount);
+    });
+
+    it("correctly undoes withdraw and arb fees", async () => {
+      const underlyerAmount = tokenAmountToBigNumber(100191, 18);
+      const hasArbFee = true;
+
+      const withdrawFeeAmount = underlyerAmount
+        .mul(withdrawFee)
+        .div(WITHDRAW_FEE_DENOMINATOR);
+      const arbFeeAmount = underlyerAmount
+        .mul(arbitrageFee)
+        .div(ARB_FEE_DENOMINATOR);
+      const underlyerAmountAfterFees = underlyerAmount
+        .sub(withdrawFeeAmount)
+        .sub(arbFeeAmount);
+      const result = await indexToken.testGetUnderlyerAmountBeforeFees(
+        underlyerAmountAfterFees,
+        hasArbFee
+      );
+      expect(result).to.equal(underlyerAmount);
+    });
+  });
+
   describe("deposit", () => {
     it("Revert if deposit is zero", async () => {
       await expect(indexToken.deposit(0, receiver.address)).to.be.revertedWith(
@@ -1225,7 +1319,7 @@ describe.only("Contract: IndexToken", () => {
     });
   });
 
-  describe.only("withdraw", () => {
+  describe("withdraw", () => {
     it("Revert if withdraw is zero", async () => {
       await expect(
         indexToken.withdraw(0, receiver.address, randomUser.address)
