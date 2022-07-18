@@ -1381,7 +1381,7 @@ describe.only("Contract: IndexToken", () => {
             .connect(deployer)
             .transfer(randomUser.address, reserveAptAmount);
           aptAmount = reserveAptAmount;
-          assetAmount = poolBalance;
+          assetAmount = await indexToken["previewRedeem(uint256)"](aptAmount);
         });
 
         after(async () => {
