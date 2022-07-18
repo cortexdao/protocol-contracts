@@ -280,7 +280,7 @@ contract IndexToken is
         require(!redeemLock, "LOCKED");
         require(assets > 0, "AMOUNT_INSUFFICIENT");
 
-        shares = previewWithdraw(assets); // No need to check for rounding error, previewWithdraw rounds up.
+        shares = previewWithdraw(assets, owner); // No need to check for rounding error, previewWithdraw rounds up.
         require(shares <= balanceOf(owner), "BALANCE_INSUFFICIENT");
 
         _burn(owner, shares);
@@ -421,7 +421,8 @@ contract IndexToken is
         returns (uint256)
     {
         uint256 supply = totalSupply();
-        return supply == 0 ? shares : shares.mul(totalAssets()).div(supply) + 1;
+        return
+            supply == 0 ? shares : shares.mul(totalAssets()).div(supply).add(1);
     }
 
     function previewWithdraw(uint256 assets, address owner)
@@ -696,8 +697,9 @@ contract IndexToken is
         view
         returns (uint256)
     {
-        uint256 assetsWithFees = _getUnderlyerAmountBeforeFees(assets, arbFee);
-        return convertToShares(assetsWithFees) + 1;
+        uint256 assetsBeforeFees =
+            _getUnderlyerAmountBeforeFees(assets, arbFee);
+        return convertToShares(assetsBeforeFees).add(1);
     }
 
     function _getUnderlyerAmountAfterFees(uint256 underlyerAmount, bool arbFee)

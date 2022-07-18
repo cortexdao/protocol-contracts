@@ -1343,8 +1343,8 @@ describe.only("Contract: IndexToken", () => {
     */
     const deployedValues = [
       tokenAmountToBigNumber(0),
-      tokenAmountToBigNumber(2193389),
-      tokenAmountToBigNumber(187892873),
+      // tokenAmountToBigNumber(2193389),
+      // tokenAmountToBigNumber(187892873),
     ];
     deployedValues.forEach(function (deployedValue) {
       describe(`  deployed value: ${deployedValue}`, () => {
@@ -1380,8 +1380,19 @@ describe.only("Contract: IndexToken", () => {
           await indexToken
             .connect(deployer)
             .transfer(randomUser.address, reserveAptAmount);
-          aptAmount = reserveAptAmount;
-          assetAmount = await indexToken["previewRedeem(uint256)"](aptAmount);
+          assetAmount = (
+            await indexToken["previewRedeem(uint256)"](reserveAptAmount)
+          ).sub(1);
+          aptAmount = await indexToken["previewWithdraw(uint256)"](assetAmount);
+          console.log("APT amount: %s", aptAmount);
+          console.log("Reserve APT amount: %s", reserveAptAmount);
+          console.log("asset amount: %s", assetAmount);
+          // Must set deposit time to properly account for arb fee
+          const blockTimestamp = (await ethers.provider.getBlock()).timestamp;
+          await indexToken.testSetLastDepositTime(
+            randomUser.address,
+            blockTimestamp
+          );
         });
 
         after(async () => {
@@ -1389,11 +1400,16 @@ describe.only("Contract: IndexToken", () => {
         });
 
         it("Decrease APT balance by redeem amount", async () => {
-          await expect(() =>
-            indexToken
-              .connect(randomUser)
-              .withdraw(assetAmount, receiver.address, randomUser.address)
-          ).to.changeTokenBalance(indexToken, randomUser, aptAmount.mul(-1));
+          const prevIndexBalance = await indexToken.balanceOf(
+            randomUser.address
+          );
+          await indexToken
+            .connect(randomUser)
+            .withdraw(assetAmount, receiver.address, randomUser.address);
+          const indexBalance = await indexToken.balanceOf(randomUser.address);
+          const indexDelta = prevIndexBalance.sub(indexBalance);
+          console.log("Index delta: %s", indexDelta);
+          expect(indexDelta.sub(aptAmount).abs()).to.be.lt(2);
         });
 
         it("Approved user can redeem", async () => {
