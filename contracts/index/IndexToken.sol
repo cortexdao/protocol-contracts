@@ -282,6 +282,14 @@ contract IndexToken is
 
         shares = previewWithdraw(assets, owner); // No need to check for rounding error, previewWithdraw rounds up.
         require(shares <= balanceOf(owner), "BALANCE_INSUFFICIENT");
+        if (msg.sender != owner) {
+            uint256 allowed = allowance(owner, msg.sender);
+            require(allowed >= shares, "ALLOWANCE_INSUFFICIENT");
+            // save gas for infinite approvals
+            if (allowed != type(uint256).max) {
+                _approve(owner, msg.sender, allowed.sub(shares));
+            }
+        }
 
         _burn(owner, shares);
         IDetailedERC20(asset).safeTransfer(receiver, assets);

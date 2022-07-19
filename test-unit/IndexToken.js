@@ -1201,7 +1201,7 @@ describe.only("Contract: IndexToken", () => {
 
           const redeemPromise = indexToken
             .connect(randomUser)
-            .redeem(aptAmount, randomUser.address, randomUser.address);
+            .redeem(aptAmount, receiver.address, randomUser.address);
 
           await expect(redeemPromise)
             .to.emit(indexToken, "Transfer")
@@ -1211,7 +1211,7 @@ describe.only("Contract: IndexToken", () => {
             .to.emit(indexToken, "Withdraw")
             .withArgs(
               randomUser.address,
-              randomUser.address,
+              receiver.address,
               randomUser.address,
               underlyerAmount,
               aptAmount
@@ -1231,19 +1231,19 @@ describe.only("Contract: IndexToken", () => {
           const underlyerAmount = await indexToken[
             "previewRedeem(uint256,address)"
           ](aptAmount, randomUser.address);
-          await underlyerMock.mock.transfer.reverts();
+          await underlyerMock.mock.transfer.revertsWithReason("FAIL_TEST");
           await expect(
             indexToken
               .connect(randomUser)
-              .redeem(aptAmount, randomUser.address, randomUser.address)
-          ).to.be.reverted;
+              .redeem(aptAmount, receiver.address, randomUser.address)
+          ).to.be.revertedWith("FAIL_TEST");
           await underlyerMock.mock.transfer
-            .withArgs(randomUser.address, underlyerAmount)
+            .withArgs(receiver.address, underlyerAmount)
             .returns(true);
           await expect(
             indexToken
               .connect(randomUser)
-              .redeem(aptAmount, randomUser.address, randomUser.address)
+              .redeem(aptAmount, receiver.address, randomUser.address)
           ).to.not.be.reverted;
         });
 
@@ -1320,19 +1320,10 @@ describe.only("Contract: IndexToken", () => {
   });
 
   describe("withdraw", () => {
-    it("Revert if withdraw is zero", async () => {
+    it("Revert if withdraw amount is zero", async () => {
       await expect(
         indexToken.withdraw(0, receiver.address, randomUser.address)
       ).to.be.revertedWith("AMOUNT_INSUFFICIENT");
-    });
-
-    it.skip("Revert if share balance is less than withdraw", async () => {
-      await indexToken.testMint(randomUser.address, 1);
-      await expect(
-        indexToken
-          .connect(randomUser)
-          .withdraw(2, receiver.address, randomUser.address)
-      ).to.be.revertedWith("BALANCE_INSUFFICIENT");
     });
 
     /* 
@@ -1384,9 +1375,6 @@ describe.only("Contract: IndexToken", () => {
             await indexToken["previewRedeem(uint256)"](reserveAptAmount)
           ).sub(1);
           aptAmount = await indexToken["previewWithdraw(uint256)"](assetAmount);
-          console.log("APT amount: %s", aptAmount);
-          console.log("Reserve APT amount: %s", reserveAptAmount);
-          console.log("asset amount: %s", assetAmount);
           // Must set deposit time to properly account for arb fee
           const blockTimestamp = (await ethers.provider.getBlock()).timestamp;
           await indexToken.testSetLastDepositTime(
@@ -1399,6 +1387,18 @@ describe.only("Contract: IndexToken", () => {
           await timeMachine.revertToSnapshot(snapshotId);
         });
 
+        it("Revert if share balance is insufficient for withdraw", async () => {
+          await expect(
+            indexToken
+              .connect(randomUser)
+              .withdraw(
+                assetAmount.add(1),
+                receiver.address,
+                randomUser.address
+              )
+          ).to.be.revertedWith("BALANCE_INSUFFICIENT");
+        });
+
         it("Decrease APT balance by redeem amount", async () => {
           const prevIndexBalance = await indexToken.balanceOf(
             randomUser.address
@@ -1408,7 +1408,6 @@ describe.only("Contract: IndexToken", () => {
             .withdraw(assetAmount, receiver.address, randomUser.address);
           const indexBalance = await indexToken.balanceOf(randomUser.address);
           const indexDelta = prevIndexBalance.sub(indexBalance);
-          console.log("Index delta: %s", indexDelta);
           expect(indexDelta.sub(aptAmount).abs()).to.be.lt(2);
         });
 
@@ -1416,11 +1415,15 @@ describe.only("Contract: IndexToken", () => {
           await indexToken
             .connect(randomUser)
             .approve(anotherUser.address, aptAmount);
-          await expect(() =>
-            indexToken
-              .connect(anotherUser)
-              .withdraw(aptAmount, receiver.address, randomUser.address)
-          ).to.changeTokenBalance(indexToken, randomUser, aptAmount.mul(-1));
+          const prevIndexBalance = await indexToken.balanceOf(
+            randomUser.address
+          );
+          await indexToken
+            .connect(randomUser)
+            .withdraw(assetAmount, receiver.address, randomUser.address);
+          const indexBalance = await indexToken.balanceOf(randomUser.address);
+          const indexDelta = prevIndexBalance.sub(indexBalance);
+          expect(indexDelta.sub(aptAmount).abs()).to.be.lt(2);
         });
 
         it("Unapproved user cannot redeem", async () => {
@@ -1430,11 +1433,11 @@ describe.only("Contract: IndexToken", () => {
           await expect(
             indexToken
               .connect(anotherUser)
-              .withdraw(aptAmount, receiver.address, randomUser.address)
+              .withdraw(assetAmount, receiver.address, randomUser.address)
           ).to.be.revertedWith("ALLOWANCE_INSUFFICIENT");
         });
 
-        it("Emit correct APT events", async () => {
+        it("Emit correct events", async () => {
           const shareAmount = await indexToken[
             "previewWithdraw(uint256,address)"
           ](assetAmount, randomUser.address);
@@ -1468,33 +1471,30 @@ describe.only("Contract: IndexToken", () => {
            *
            *  Instead, we have to do some hacky revert-check logic.
            */
-          const underlyerAmount = await indexToken[
-            "previewRedeem(uint256,address)"
-          ](aptAmount, randomUser.address);
-          await underlyerMock.mock.transfer.reverts();
+          await underlyerMock.mock.transfer.revertsWithReason("FAIL_TEST");
           await expect(
             indexToken
               .connect(randomUser)
-              .redeem(aptAmount, randomUser.address, randomUser.address)
-          ).to.be.reverted;
+              .withdraw(assetAmount, receiver.address, randomUser.address)
+          ).to.be.revertedWith("FAIL_TEST");
           await underlyerMock.mock.transfer
-            .withArgs(randomUser.address, underlyerAmount)
+            .withArgs(receiver.address, assetAmount)
             .returns(true);
           await expect(
             indexToken
               .connect(randomUser)
-              .withdraw(aptAmount, receiver.address, randomUser.address)
+              .withdraw(assetAmount, receiver.address, randomUser.address)
           ).to.not.be.reverted;
         });
 
-        it("Redeem should work after unlock", async () => {
+        it("Withdraw should work after unlock", async () => {
           await indexToken.connect(emergencySafe).emergencyLockRedeem();
           await indexToken.connect(emergencySafe).emergencyUnlockRedeem();
 
           await expect(
             indexToken
               .connect(randomUser)
-              .withdraw(aptAmount, receiver.address, randomUser.address)
+              .withdraw(assetAmount, receiver.address, randomUser.address)
           ).to.not.be.reverted;
         });
 
@@ -1509,22 +1509,21 @@ describe.only("Contract: IndexToken", () => {
           await indexToken
             .connect(deployer)
             .transfer(randomUser.address, smallAptAmount);
+          const assetAmount = await indexToken[
+            "previewWithdraw(uint256,address)"
+          ](reserveAptAmount.add(smallAptAmount), randomUser.address);
 
           await expect(
             indexToken
               .connect(randomUser)
-              .withdraw(
-                reserveAptAmount.add(smallAptAmount),
-                receiver.address,
-                randomUser.address
-              )
+              .withdraw(assetAmount, receiver.address, randomUser.address)
           ).to.be.revertedWith("RESERVE_INSUFFICIENT");
         });
       });
     });
 
     describe("Locking", () => {
-      it("Revert redeem when pool is locked", async () => {
+      it("Revert withdraw when pool is locked", async () => {
         await indexToken.connect(emergencySafe).emergencyLockRedeem();
 
         await expect(
