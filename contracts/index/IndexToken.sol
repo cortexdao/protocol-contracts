@@ -279,6 +279,10 @@ contract IndexToken is
     {
         require(!redeemLock, "LOCKED");
         require(assets > 0, "AMOUNT_INSUFFICIENT");
+        require(
+            assets <= IDetailedERC20(asset).balanceOf(address(this)),
+            "RESERVE_INSUFFICIENT"
+        );
 
         shares = previewWithdraw(assets, owner); // No need to check for rounding error, previewWithdraw rounds up.
         require(shares <= balanceOf(owner), "BALANCE_INSUFFICIENT");

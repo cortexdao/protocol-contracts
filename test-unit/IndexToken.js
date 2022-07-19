@@ -1263,11 +1263,12 @@ describe.only("Contract: IndexToken", () => {
           // underlyer amount, and this amount will be fully in the reserve
           // so there is nothing to test.
           if (deployedValue == 0) return;
-          // this "transfer" pushes the user's corresponding underlyer amount
+          // this transfer pushes the user's corresponding underlyer amount
           // for his APT higher than the reserve balance.
           const smallAptAmount = tokenAmountToBigNumber("0.0000001");
-          await indexToken.testBurn(deployer.address, smallAptAmount);
-          await indexToken.testMint(randomUser.address, smallAptAmount);
+          await indexToken
+            .connect(deployer)
+            .transfer(randomUser.address, smallAptAmount);
 
           await expect(
             indexToken
@@ -1334,8 +1335,8 @@ describe.only("Contract: IndexToken", () => {
     */
     const deployedValues = [
       tokenAmountToBigNumber(0),
-      // tokenAmountToBigNumber(2193389),
-      // tokenAmountToBigNumber(187892873),
+      tokenAmountToBigNumber(2193389),
+      tokenAmountToBigNumber(187892873),
     ];
     deployedValues.forEach(function (deployedValue) {
       describe(`  deployed value: ${deployedValue}`, () => {
@@ -1392,7 +1393,7 @@ describe.only("Contract: IndexToken", () => {
             indexToken
               .connect(randomUser)
               .withdraw(
-                assetAmount.add(1),
+                assetAmount.add(2),
                 receiver.address,
                 randomUser.address
               )
@@ -1499,24 +1500,14 @@ describe.only("Contract: IndexToken", () => {
         });
 
         it("Revert when underlyer amount exceeds reserve", async () => {
-          // when zero deployed value, APT share gives ownership of only
-          // underlyer amount, and this amount will be fully in the reserve
-          // so there is nothing to test.
-          if (deployedValue == 0) return;
-          // this transfer pushes the user's corresponding underlyer amount
-          // for his APT higher than the reserve balance.
-          const smallAptAmount = tokenAmountToBigNumber("0.0000001");
-          await indexToken
-            .connect(deployer)
-            .transfer(randomUser.address, smallAptAmount);
-          const assetAmount = await indexToken[
-            "previewWithdraw(uint256,address)"
-          ](reserveAptAmount.add(smallAptAmount), randomUser.address);
-
           await expect(
             indexToken
               .connect(randomUser)
-              .withdraw(assetAmount, receiver.address, randomUser.address)
+              .withdraw(
+                poolBalance.add(1),
+                receiver.address,
+                randomUser.address
+              )
           ).to.be.revertedWith("RESERVE_INSUFFICIENT");
         });
       });
