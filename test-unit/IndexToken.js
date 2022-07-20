@@ -2,6 +2,7 @@ const { assert, expect } = require("chai");
 const hre = require("hardhat");
 const { artifacts, ethers, waffle } = hre;
 const { deployMockContract } = waffle;
+const { BigNumber } = ethers;
 
 const timeMachine = require("ganache-time-traveler");
 
@@ -644,17 +645,21 @@ describe.only("Contract: IndexToken", () => {
       await mAptMock.mock.getDeployedValue.returns(0);
     });
 
-    it("Uses 1:1 ratio with zero total supply", async () => {
+    it("Uses 1:1 token ratio with zero total supply", async () => {
       expect(await indexToken.totalSupply()).to.equal(0);
 
-      await underlyerMock.mock.decimals.returns("0");
+      const decimals = 6;
+      await underlyerMock.mock.decimals.returns(decimals);
       await oracleAdapterMock.mock.getAssetPrice.returns(1);
 
-      const depositAmount = tokenAmountToBigNumber("123");
+      const depositAmount = tokenAmountToBigNumber("123", decimals);
+      const expectedShareAmount = depositAmount
+        .mul(BigNumber.from(10).pow(18))
+        .div(BigNumber.from(10).pow(decimals));
 
       await underlyerMock.mock.balanceOf.returns(9999);
       expect(await indexToken.convertToShares(depositAmount)).to.equal(
-        depositAmount
+        expectedShareAmount
       );
 
       // result doesn't depend on pool's underlyer balance
@@ -662,13 +667,13 @@ describe.only("Contract: IndexToken", () => {
         .withArgs(indexToken.address)
         .returns(0);
       expect(await indexToken.convertToShares(depositAmount)).to.equal(
-        depositAmount
+        expectedShareAmount
       );
 
       // result doesn't depend on pool's deployed value
       await mAptMock.mock.getDeployedValue.returns(10000000);
       expect(await indexToken.convertToShares(depositAmount)).to.equal(
-        depositAmount
+        expectedShareAmount
       );
     });
 
@@ -730,7 +735,18 @@ describe.only("Contract: IndexToken", () => {
 
     it("Convert 1:1 on zero total supply", async () => {
       expect(await indexToken.totalSupply()).to.equal(0);
-      expect(await indexToken.convertToAssets(100)).to.equal(100);
+
+      const decimals = 6;
+      await underlyerMock.mock.decimals.returns(decimals);
+
+      const shareAmount = tokenAmountToBigNumber("123");
+      const expectedAssetAmount = shareAmount
+        .mul(BigNumber.from(10).pow(decimals))
+        .div(BigNumber.from(10).pow(18));
+
+      expect(await indexToken.convertToAssets(shareAmount)).to.equal(
+        expectedAssetAmount
+      );
     });
 
     it("Always return zero on zero input", async () => {
@@ -1119,7 +1135,7 @@ describe.only("Contract: IndexToken", () => {
     });
   });
 
-  describe.only("mint", () => {
+  describe("mint", () => {
     it("Revert if mint is zero", async () => {
       await expect(indexToken.mint(0, receiver.address)).to.be.revertedWith(
         "AMOUNT_INSUFFICIENT"
@@ -1127,6 +1143,7 @@ describe.only("Contract: IndexToken", () => {
     });
 
     it("Revert if allowance is less than deposit", async () => {
+      await underlyerMock.mock.decimals.returns(6); // needed to get to check
       await underlyerMock.mock.allowance.returns(0);
       await expect(indexToken.mint(1, receiver.address)).to.be.revertedWith(
         "ALLOWANCE_INSUFFICIENT"
