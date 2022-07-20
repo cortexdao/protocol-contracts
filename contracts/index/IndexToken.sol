@@ -201,7 +201,7 @@ contract IndexToken is
             "ALLOWANCE_INSUFFICIENT"
         );
         // solhint-disable-next-line not-rely-on-time
-        // lastDepositTime[receiver] = block.timestamp;
+        lastDepositTime[receiver] = block.timestamp;
 
         _mint(receiver, shares);
         IDetailedERC20(asset).safeTransferFrom(

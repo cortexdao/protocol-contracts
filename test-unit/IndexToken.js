@@ -1136,11 +1136,11 @@ describe.only("Contract: IndexToken", () => {
     describe("Last deposit time", () => {
       beforeEach(async () => {
         // These get rollbacked due to snapshotting.
-        // Just enough mocking to get `deposit` to not revert.
+        // Just enough mocking to get `mint` to not revert.
         await mAptMock.mock.getDeployedValue.returns(0);
         await oracleAdapterMock.mock.getAssetPrice.returns(1);
         await underlyerMock.mock.decimals.returns(6);
-        await underlyerMock.mock.allowance.returns(1);
+        await underlyerMock.mock.allowance.returns(2); // account for rounding up in previewMint
         await underlyerMock.mock.balanceOf.returns(1);
         await underlyerMock.mock.transferFrom.returns(true);
       });
