@@ -722,6 +722,77 @@ describe.only("Contract: IndexToken", () => {
         });
       });
 
+      describe("mint", () => {
+        it("Revert if deposit is zero", async () => {
+          await expect(indexToken.mint(0, receiver.address)).to.be.revertedWith(
+            "AMOUNT_INSUFFICIENT"
+          );
+        });
+
+        it("Revert if allowance is less than deposit", async () => {
+          await expect(indexToken.mint(1, receiver.address)).to.be.revertedWith(
+            "ALLOWANCE_INSUFFICIENT"
+          );
+        });
+
+        it("Test mint pass", async () => {
+          const underlyerBalanceBefore = await underlyer.balanceOf(
+            randomUser.address
+          );
+          console.debug(
+            `\tUnderlyer Balance Before Mint: ${underlyerBalanceBefore.toString()}`
+          );
+
+          const mintAmount = tokenAmountToBigNumber(1000);
+          const depositAmount = await indexToken.previewMint(mintAmount);
+          const balance = await underlyer.balanceOf(randomUser.address);
+          console.log("User balance: %s", balance);
+          console.log("Deposit amount: %s", depositAmount);
+
+          const mintPromise = indexToken
+            .connect(randomUser)
+            .mint(mintAmount, receiver.address);
+          await mintPromise;
+
+          let underlyerBalanceAfter = await underlyer.balanceOf(
+            randomUser.address
+          );
+          console.debug(
+            `\tUnderlyer Balance After Mint: ${underlyerBalanceAfter.toString()}`
+          );
+
+          expect(await underlyer.balanceOf(indexToken.address)).to.equal(
+            depositAmount
+          );
+          expect(await underlyer.balanceOf(randomUser.address)).to.equal(
+            underlyerBalanceBefore.sub(depositAmount)
+          );
+          expect(await indexToken.balanceOf(receiver.address)).to.equal(
+            mintAmount
+          );
+
+          // Underlyer transfer event
+          await expect(mintPromise)
+            .to.emit(underlyer, "Transfer")
+            .withArgs(randomUser.address, indexToken.address, depositAmount);
+
+          // Index token transfer event
+          await expect(mintPromise)
+            .to.emit(indexToken, "Transfer")
+            .withArgs(ZERO_ADDRESS, receiver.address, mintAmount);
+
+          // Deposit event:
+          await expect(mintPromise)
+            .to.emit(indexToken, "Deposit")
+            .withArgs(
+              randomUser.address,
+              receiver.address,
+              depositAmount,
+              mintAmount
+            );
+        });
+      });
+
       describe("redeem", () => {
         it("Revert if withdraw is zero", async () => {
           await expect(

@@ -575,14 +575,14 @@ contract IndexToken is
         returns (uint256)
     {
         uint256 supply = totalSupply();
-        if (supply == 0) return assets;
+        uint256 decimals = IDetailedERC20(asset).decimals();
+        if (supply == 0) return assets.mul(10**18).div(10**decimals);
 
         // mathematically equivalent to:
         // assets.mul(supply).div(totalAssets())
         // but better precision due to avoiding early division
         uint256 totalValue = getPoolTotalValue();
         uint256 assetPrice = getUnderlyerPrice();
-        uint256 decimals = IDetailedERC20(asset).decimals();
         return
             assets.mul(supply).mul(assetPrice).div(totalValue).div(
                 10**decimals
@@ -599,14 +599,14 @@ contract IndexToken is
         if (shares == 0) return 0;
 
         uint256 supply = totalSupply();
-        if (supply == 0) return shares;
+        uint256 decimals = IDetailedERC20(asset).decimals();
+        if (supply == 0) return shares.mul(10**decimals).div(10**18);
 
         // mathematically equivalent to:
         // shares.mul(totalAssets()).div(supply)
         // but better precision due to avoiding early division
         uint256 totalValue = getPoolTotalValue();
         uint256 assetPrice = getUnderlyerPrice();
-        uint256 decimals = IDetailedERC20(asset).decimals();
         return
             shares.mul(totalValue).mul(10**decimals).div(assetPrice).div(
                 supply
