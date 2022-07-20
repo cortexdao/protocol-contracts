@@ -9,9 +9,7 @@ const {
   console,
   tokenAmountToBigNumber,
   FAKE_ADDRESS,
-  expectEventInTransaction,
   deployAggregator,
-  forciblySendEth,
   generateContractAddress,
 } = require("../utils/helpers");
 
@@ -242,7 +240,6 @@ describe.only("Contract: IndexToken", () => {
       assert.equal(await indexToken.name(), "Convex Index Token");
     });
 
-    // TODO: get the correct index
     it("Symbol has correct value", async () => {
       assert.equal(await indexToken.symbol(), "idxCVX");
     });
@@ -280,13 +277,13 @@ describe.only("Contract: IndexToken", () => {
       await indexToken.connect(emergencySafe).emergencyLock();
 
       await expect(
-        indexToken.connect(randomUser).deposit(50, randomUser.address)
+        indexToken.connect(randomUser).deposit(50, receiver.address)
       ).to.revertedWith("Pausable: paused");
 
       await expect(
         indexToken
           .connect(randomUser)
-          .redeem(50, randomUser.address, randomUser.address)
+          .redeem(50, receiver.address, randomUser.address)
       ).to.revertedWith("Pausable: paused");
     });
 
@@ -328,7 +325,7 @@ describe.only("Contract: IndexToken", () => {
       await indexToken.connect(emergencySafe).emergencyLockDeposit();
 
       await expect(
-        indexToken.connect(randomUser).deposit(1, randomUser.address)
+        indexToken.connect(randomUser).deposit(1, receiver.address)
       ).to.be.revertedWith("LOCKED");
     });
 
@@ -336,9 +333,8 @@ describe.only("Contract: IndexToken", () => {
       await indexToken.connect(emergencySafe).emergencyLockDeposit();
       await indexToken.connect(emergencySafe).emergencyUnlockDeposit();
 
-      await expect(
-        indexToken.connect(randomUser).deposit(1, randomUser.address)
-      ).to.not.be.reverted;
+      await expect(indexToken.connect(randomUser).deposit(1, receiver.address))
+        .to.not.be.reverted;
     });
   });
 
@@ -347,13 +343,8 @@ describe.only("Contract: IndexToken", () => {
       // need to impersonate the mAPT contract and fund it, since its
       // address was set as CONTRACT_ROLE upon PoolTokenV2 deployment
       const mAptSigner = await impersonateAccount(mApt.address);
-      await forciblySendEth(
-        mAptSigner.address,
-        tokenAmountToBigNumber(1),
-        deployer.address
-      );
 
-      await indexToken.connect(randomUser).deposit(100, randomUser.address);
+      await indexToken.connect(randomUser).deposit(100, receiver.address);
       await expect(indexToken.connect(mAptSigner).transferToLpAccount(100)).to
         .not.be.reverted;
     });
@@ -395,7 +386,7 @@ describe.only("Contract: IndexToken", () => {
       await expect(
         indexToken
           .connect(randomUser)
-          .redeem(1, randomUser.address, randomUser.address)
+          .redeem(1, receiver.address, randomUser.address)
       ).to.be.revertedWith("LOCKED");
     });
 
@@ -407,7 +398,7 @@ describe.only("Contract: IndexToken", () => {
       await expect(
         indexToken
           .connect(randomUser)
-          .redeem(1, randomUser.address, randomUser.address)
+          .redeem(1, receiver.address, randomUser.address)
       ).to.not.be.reverted;
     });
   });
@@ -424,7 +415,7 @@ describe.only("Contract: IndexToken", () => {
     });
 
     it("Should transfer all deposited tokens to the emergencySafe", async () => {
-      await indexToken.connect(randomUser).deposit(100000, randomUser.address);
+      await indexToken.connect(randomUser).deposit(100000, receiver.address);
 
       const prevPoolBalance = await underlyer.balanceOf(indexToken.address);
       const prevSafeBalance = await underlyer.balanceOf(emergencySafe.address);
@@ -466,7 +457,7 @@ describe.only("Contract: IndexToken", () => {
     });
 
     it("Should emit the EmergencyExit event", async () => {
-      await indexToken.connect(randomUser).deposit(100000, randomUser.address);
+      await indexToken.connect(randomUser).deposit(100000, receiver.address);
 
       const balance = await underlyer.balanceOf(indexToken.address);
 
@@ -663,13 +654,13 @@ describe.only("Contract: IndexToken", () => {
       describe("deposit", () => {
         it("Revert if deposit is zero", async () => {
           await expect(
-            indexToken.deposit(0, randomUser.address)
+            indexToken.deposit(0, receiver.address)
           ).to.be.revertedWith("AMOUNT_INSUFFICIENT");
         });
 
         it("Revert if allowance is less than deposit", async () => {
           await expect(
-            indexToken.deposit(1, randomUser.address)
+            indexToken.deposit(1, receiver.address)
           ).to.be.revertedWith("ALLOWANCE_INSUFFICIENT");
         });
 
@@ -689,8 +680,8 @@ describe.only("Contract: IndexToken", () => {
 
           const depositPromise = indexToken
             .connect(randomUser)
-            .deposit(depositAmount, randomUser.address);
-          const trx = await depositPromise;
+            .deposit(depositAmount, receiver.address);
+          await depositPromise;
 
           let underlyerBalanceAfter = await underlyer.balanceOf(
             randomUser.address
@@ -705,28 +696,26 @@ describe.only("Contract: IndexToken", () => {
           expect(await underlyer.balanceOf(randomUser.address)).to.equal(
             underlyerBalanceBefore.sub(depositAmount)
           );
-          expect(await indexToken.balanceOf(randomUser.address)).to.equal(
+          expect(await indexToken.balanceOf(receiver.address)).to.equal(
             mintAmount
           );
 
           // Underlyer transfer event
-          await expectEventInTransaction(trx.hash, underlyer, "Transfer", {
-            from: randomUser.address,
-            to: indexToken.address,
-            value: depositAmount,
-          });
+          await expect(depositPromise)
+            .to.emit(underlyer, "Transfer")
+            .withArgs(randomUser.address, indexToken.address, depositAmount);
 
           // Index token transfer event
           await expect(depositPromise)
             .to.emit(indexToken, "Transfer")
-            .withArgs(ZERO_ADDRESS, randomUser.address, mintAmount);
+            .withArgs(ZERO_ADDRESS, receiver.address, mintAmount);
 
           // Deposit event:
           await expect(depositPromise)
             .to.emit(indexToken, "Deposit")
             .withArgs(
               randomUser.address,
-              randomUser.address,
+              receiver.address,
               depositAmount,
               mintAmount
             );
@@ -736,7 +725,7 @@ describe.only("Contract: IndexToken", () => {
       describe("redeem", () => {
         it("Revert if withdraw is zero", async () => {
           await expect(
-            indexToken.redeem(0, randomUser.address, randomUser.address)
+            indexToken.redeem(0, receiver.address, randomUser.address)
           ).to.be.revertedWith("AMOUNT_INSUFFICIENT");
         });
 
@@ -745,7 +734,7 @@ describe.only("Contract: IndexToken", () => {
           await expect(
             indexToken
               .connect(randomUser)
-              .redeem(2, randomUser.address, randomUser.address)
+              .redeem(2, receiver.address, randomUser.address)
           ).to.be.revertedWith("BALANCE_INSUFFICIENT");
         });
 
@@ -774,23 +763,17 @@ describe.only("Contract: IndexToken", () => {
             reserveBalance.add(extraAmount)
           );
 
-          // "transfer" slightly more than reserve's APT amount to the user
-          // (direct transfer between users is blocked)
-          await indexToken.testBurn(
-            deployer.address,
-            reserveAptAmountPlusExtra
-          );
-          await indexToken.testMint(
-            randomUser.address,
-            reserveAptAmountPlusExtra
-          );
+          // transfer slightly more than reserve's APT amount to the user
+          await indexToken
+            .connect(deployer)
+            .transfer(randomUser.address, reserveAptAmountPlusExtra);
 
           await expect(
             indexToken
               .connect(randomUser)
               .redeem(
                 reserveAptAmountPlusExtra,
-                randomUser.address,
+                receiver.address,
                 randomUser.address
               )
           ).to.be.revertedWith("RESERVE_INSUFFICIENT");
@@ -824,21 +807,19 @@ describe.only("Contract: IndexToken", () => {
             .connect(deployer)
             .transfer(randomUser.address, redeemAptAmount);
 
-          const underlyerBalance = await underlyer.balanceOf(
-            randomUser.address
-          );
+          const underlyerBalance = await underlyer.balanceOf(receiver.address);
 
           // execute the redeem
           const redeemPromise = indexToken
             .connect(randomUser)
-            .redeem(redeemAptAmount, randomUser.address, randomUser.address);
-          const trx = await redeemPromise;
+            .redeem(redeemAptAmount, receiver.address, randomUser.address);
+          await redeemPromise;
 
           /* ------ START THE ASSERTS -------------- */
 
           // underlyer balances
           const underlyerBalanceAfter = await underlyer.balanceOf(
-            randomUser.address
+            receiver.address
           );
           const underlyerTransferAmount =
             underlyerBalanceAfter.sub(underlyerBalance);
@@ -854,11 +835,13 @@ describe.only("Contract: IndexToken", () => {
           );
 
           // underlyer transfer event
-          await expectEventInTransaction(trx.hash, underlyer, "Transfer", {
-            from: indexToken.address,
-            to: randomUser.address,
-            value: underlyerTransferAmount,
-          });
+          await expect(redeemPromise)
+            .to.emit(underlyer, "Transfer")
+            .withArgs(
+              indexToken.address,
+              receiver.address,
+              underlyerTransferAmount
+            );
 
           // APT transfer event
           await expect(redeemPromise)
@@ -870,7 +853,7 @@ describe.only("Contract: IndexToken", () => {
             .to.emit(indexToken, "Withdraw")
             .withArgs(
               randomUser.address,
-              randomUser.address,
+              receiver.address,
               randomUser.address,
               underlyerTransferAmount,
               redeemAptAmount
@@ -881,7 +864,7 @@ describe.only("Contract: IndexToken", () => {
       describe("withdraw", () => {
         it("Revert if withdraw amount is zero", async () => {
           await expect(
-            indexToken.redeem(0, randomUser.address, randomUser.address)
+            indexToken.withdraw(0, receiver.address, randomUser.address)
           ).to.be.revertedWith("AMOUNT_INSUFFICIENT");
         });
 
@@ -910,7 +893,7 @@ describe.only("Contract: IndexToken", () => {
               .connect(randomUser)
               .withdraw(
                 assetAmount.add(1),
-                randomUser.address,
+                receiver.address,
                 randomUser.address
               )
           ).to.be.revertedWith("BALANCE_INSUFFICIENT");
@@ -930,7 +913,7 @@ describe.only("Contract: IndexToken", () => {
               .connect(randomUser)
               .withdraw(
                 reserveBalance.add(1),
-                randomUser.address,
+                receiver.address,
                 randomUser.address
               )
           ).to.be.revertedWith("RESERVE_INSUFFICIENT");
@@ -961,9 +944,7 @@ describe.only("Contract: IndexToken", () => {
             .connect(deployer)
             .transfer(randomUser.address, withdrawShareAmount);
 
-          const underlyerBalance = await underlyer.balanceOf(
-            randomUser.address
-          );
+          const underlyerBalance = await underlyer.balanceOf(receiver.address);
           const shareBalance = await indexToken.balanceOf(randomUser.address);
 
           // execute the withdraw
@@ -971,16 +952,16 @@ describe.only("Contract: IndexToken", () => {
             .connect(randomUser)
             .withdraw(
               withdrawAssetAmount,
-              randomUser.address,
+              receiver.address,
               randomUser.address
             );
-          const trx = await withdrawPromise;
+          await withdrawPromise;
 
           /* ------ START THE ASSERTS -------------- */
 
           // underlyer balances
           const underlyerBalanceAfter = await underlyer.balanceOf(
-            randomUser.address
+            receiver.address
           );
           const underlyerTransferAmount =
             underlyerBalanceAfter.sub(underlyerBalance);
@@ -1001,11 +982,13 @@ describe.only("Contract: IndexToken", () => {
           );
 
           // underlyer transfer event
-          await expectEventInTransaction(trx.hash, underlyer, "Transfer", {
-            from: indexToken.address,
-            to: randomUser.address,
-            value: underlyerTransferAmount,
-          });
+          await expect(withdrawPromise)
+            .to.emit(underlyer, "Transfer")
+            .withArgs(
+              indexToken.address,
+              receiver.address,
+              underlyerTransferAmount
+            );
 
           // APT transfer event
           await expect(withdrawPromise)
@@ -1017,7 +1000,7 @@ describe.only("Contract: IndexToken", () => {
             .to.emit(indexToken, "Withdraw")
             .withArgs(
               randomUser.address,
-              randomUser.address,
+              receiver.address,
               randomUser.address,
               underlyerTransferAmount,
               withdrawShareAmount
