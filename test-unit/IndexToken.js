@@ -1154,13 +1154,13 @@ describe.only("Contract: IndexToken", () => {
         );
       });
 
-      it("hasArbFee is false before first deposit", async () => {
+      it("hasArbFee is false before first mint", async () => {
         // functional test to make sure first deposit will not be penalized
         expect(await indexToken.lastDepositTime(receiver.address)).to.equal(0);
         expect(await indexToken.hasArbFee(receiver.address)).to.be.false;
       });
 
-      it("hasArbFee returns correctly when called after deposit", async () => {
+      it("hasArbFee returns correctly when called after mint", async () => {
         await indexToken.connect(randomUser).mint(1, receiver.address);
 
         expect(await indexToken.hasArbFee(receiver.address)).to.be.true;
@@ -1171,61 +1171,6 @@ describe.only("Contract: IndexToken", () => {
         ]); // add arbitrageFeePeriod seconds
         await ethers.provider.send("evm_mine"); // mine the next block
         expect(await indexToken.hasArbFee(receiver.address)).to.be.false;
-      });
-
-      it("previewRedeem returns expected amount", async () => {
-        const decimals = 18;
-        await underlyerMock.mock.decimals.returns(decimals);
-        const depositAmount = tokenAmountToBigNumber("1", decimals);
-        await underlyerMock.mock.allowance.returns(depositAmount);
-        await underlyerMock.mock.balanceOf.returns(depositAmount);
-        await indexToken.testMint(
-          deployer.address,
-          tokenAmountToBigNumber("1000")
-        );
-
-        // make a deposit to update saved time
-        await indexToken
-          .connect(randomUser)
-          .mint(depositAmount, receiver.address);
-
-        // calculate expected underlyer amount after withdrawal fee
-        const aptAmount = tokenAmountToBigNumber(1);
-        const originalUnderlyerAmount = await indexToken.convertToAssets(
-          aptAmount
-        );
-        const withdrawFee = await indexToken.withdrawFee();
-        const withdrawFeeAmount = originalUnderlyerAmount
-          .mul(withdrawFee)
-          .div(1000000);
-        const underlyerAmount = originalUnderlyerAmount.sub(withdrawFeeAmount);
-
-        // calculate arbitrage fee
-        const arbitrageFee = await indexToken.arbitrageFee();
-        const fee = originalUnderlyerAmount.mul(arbitrageFee).div(100);
-
-        // There is an arbitrage fee.
-        // WARNING: need to call `previewRedeem` using depositor
-        // since last deposit time needs to get set
-        expect(
-          await indexToken["previewRedeem(uint256,address)"](
-            aptAmount,
-            receiver.address
-          )
-        ).to.equal(underlyerAmount.sub(fee));
-
-        // advance by just enough time; now there is no arbitrage fee
-        const arbitrageFeePeriod = await indexToken.arbitrageFeePeriod();
-        await ethers.provider.send("evm_increaseTime", [
-          arbitrageFeePeriod.toNumber(),
-        ]);
-        await ethers.provider.send("evm_mine"); // mine the next block
-        expect(
-          await indexToken["previewRedeem(uint256,address)"](
-            aptAmount,
-            receiver.address
-          )
-        ).to.equal(underlyerAmount);
       });
     });
 
@@ -1243,7 +1188,8 @@ describe.only("Contract: IndexToken", () => {
     deployedValues.forEach(function (deployedValue) {
       describe(`  deployed value: ${deployedValue}`, () => {
         const decimals = 6;
-        const depositAmount = tokenAmountToBigNumber(1, decimals);
+        const mintAmount = tokenAmountToBigNumber(1);
+        let depositAmount;
         const poolBalance = tokenAmountToBigNumber(1000, decimals);
 
         // use EVM snapshots for test isolation
@@ -1259,55 +1205,41 @@ describe.only("Contract: IndexToken", () => {
           await oracleAdapterMock.mock.getAssetPrice.returns(price);
 
           await underlyerMock.mock.decimals.returns(decimals);
-          await underlyerMock.mock.allowance.returns(depositAmount);
           await underlyerMock.mock.balanceOf
             .withArgs(indexToken.address)
             .returns(poolBalance);
           await underlyerMock.mock.transferFrom.returns(true);
+
+          depositAmount = await indexToken.previewMint(mintAmount);
+          await underlyerMock.mock.allowance.returns(depositAmount);
         });
 
         after(async () => {
           await timeMachine.revertToSnapshot(snapshotId);
         });
 
-        it("Increase APT balance by calculated amount", async () => {
-          const expectedMintAmount = await indexToken.convertToShares(
-            depositAmount
-          );
-
+        it("Increase share balance by mint amount", async () => {
           await expect(() =>
-            indexToken
-              .connect(randomUser)
-              .deposit(depositAmount, receiver.address)
-          ).to.changeTokenBalance(indexToken, receiver, expectedMintAmount);
+            indexToken.connect(randomUser).mint(mintAmount, receiver.address)
+          ).to.changeTokenBalance(indexToken, receiver, mintAmount);
         });
 
-        it("Emit correct APT events", async () => {
-          const expectedMintAmount = await indexToken.convertToShares(
-            depositAmount
-          );
-
-          // mock the underlyer transfer to the pool, so we can
-          // check deposit event has the post-deposit pool ETH value
-          await underlyerMock.mock.balanceOf
-            .withArgs(indexToken.address)
-            .returns(poolBalance.add(depositAmount));
-
-          const depositPromise = indexToken
+        it("Emit correct events", async () => {
+          const mintPromise = indexToken
             .connect(randomUser)
-            .deposit(depositAmount, receiver.address);
+            .mint(mintAmount, receiver.address);
 
-          await expect(depositPromise)
+          await expect(mintPromise)
             .to.emit(indexToken, "Transfer")
-            .withArgs(ZERO_ADDRESS, receiver.address, expectedMintAmount);
+            .withArgs(ZERO_ADDRESS, receiver.address, mintAmount);
 
-          await expect(depositPromise)
+          await expect(mintPromise)
             .to.emit(indexToken, "Deposit")
             .withArgs(
               randomUser.address,
               receiver.address,
               depositAmount,
-              expectedMintAmount
+              mintAmount
             );
         });
 
@@ -1323,64 +1255,28 @@ describe.only("Contract: IndexToken", () => {
            */
           await underlyerMock.mock.transferFrom.revertsWithReason("FAIL_TEST");
           await expect(
-            indexToken
-              .connect(randomUser)
-              .deposit(depositAmount, receiver.address)
+            indexToken.connect(randomUser).mint(mintAmount, receiver.address)
           ).to.be.revertedWith("FAIL_TEST");
           await underlyerMock.mock.transferFrom
             .withArgs(randomUser.address, indexToken.address, depositAmount)
             .returns(true);
           await expect(
-            indexToken
-              .connect(randomUser)
-              .deposit(depositAmount, receiver.address)
+            indexToken.connect(randomUser).mint(mintAmount, receiver.address)
           ).to.not.be.reverted;
         });
 
         it("Deposit should work after unlock", async () => {
           await indexToken.connect(emergencySafe).emergencyLockDeposit();
+          await expect(
+            indexToken.connect(randomUser).mint(1, receiver.address)
+          ).to.be.revertedWith("LOCKED");
+
           await indexToken.connect(emergencySafe).emergencyUnlockDeposit();
 
           await expect(
-            indexToken
-              .connect(randomUser)
-              .deposit(depositAmount, receiver.address)
+            indexToken.connect(randomUser).mint(mintAmount, receiver.address)
           ).to.not.be.reverted;
         });
-      });
-    });
-
-    describe("Locking", () => {
-      it("Emergency Safe can lock", async () => {
-        await expect(
-          indexToken.connect(emergencySafe).emergencyLockDeposit()
-        ).to.emit(indexToken, "DepositLocked");
-      });
-
-      it("Emergency Safe can unlock", async () => {
-        await expect(
-          indexToken.connect(emergencySafe).emergencyUnlockDeposit()
-        ).to.emit(indexToken, "DepositUnlocked");
-      });
-
-      it("Revert if unpermissioned account attempts to lock", async () => {
-        await expect(
-          indexToken.connect(randomUser).emergencyLockDeposit()
-        ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
-      });
-
-      it("Revert if unpermissioned account attempts to unlock", async () => {
-        await expect(
-          indexToken.connect(randomUser).emergencyUnlockDeposit()
-        ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
-      });
-
-      it("Revert deposit when pool is locked", async () => {
-        await indexToken.connect(emergencySafe).emergencyLockDeposit();
-
-        await expect(
-          indexToken.connect(randomUser).deposit(1, receiver.address)
-        ).to.be.revertedWith("LOCKED");
       });
     });
   });

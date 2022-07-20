@@ -192,6 +192,7 @@ contract IndexToken is
         whenNotPaused
         returns (uint256 assets)
     {
+        require(!depositLock, "LOCKED");
         require(shares > 0, "AMOUNT_INSUFFICIENT");
 
         assets = previewMint(shares);
