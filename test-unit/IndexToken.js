@@ -1119,6 +1119,272 @@ describe.only("Contract: IndexToken", () => {
     });
   });
 
+  describe.only("mint", () => {
+    it("Revert if mint is zero", async () => {
+      await expect(indexToken.mint(0, receiver.address)).to.be.revertedWith(
+        "AMOUNT_INSUFFICIENT"
+      );
+    });
+
+    it("Revert if allowance is less than deposit", async () => {
+      await underlyerMock.mock.allowance.returns(0);
+      await expect(indexToken.mint(1, receiver.address)).to.be.revertedWith(
+        "ALLOWANCE_INSUFFICIENT"
+      );
+    });
+
+    describe("Last deposit time", () => {
+      beforeEach(async () => {
+        // These get rollbacked due to snapshotting.
+        // Just enough mocking to get `deposit` to not revert.
+        await mAptMock.mock.getDeployedValue.returns(0);
+        await oracleAdapterMock.mock.getAssetPrice.returns(1);
+        await underlyerMock.mock.decimals.returns(6);
+        await underlyerMock.mock.allowance.returns(1);
+        await underlyerMock.mock.balanceOf.returns(1);
+        await underlyerMock.mock.transferFrom.returns(true);
+      });
+
+      it("Save deposit time for receiver", async () => {
+        await indexToken.connect(randomUser).mint(1, receiver.address);
+
+        const blockTimestamp = (await ethers.provider.getBlock()).timestamp;
+        expect(await indexToken.lastDepositTime(receiver.address)).to.equal(
+          blockTimestamp
+        );
+      });
+
+      it("hasArbFee is false before first deposit", async () => {
+        // functional test to make sure first deposit will not be penalized
+        expect(await indexToken.lastDepositTime(receiver.address)).to.equal(0);
+        expect(await indexToken.hasArbFee(receiver.address)).to.be.false;
+      });
+
+      it("hasArbFee returns correctly when called after deposit", async () => {
+        await indexToken.connect(randomUser).mint(1, receiver.address);
+
+        expect(await indexToken.hasArbFee(receiver.address)).to.be.true;
+
+        const arbitrageFeePeriod = await indexToken.arbitrageFeePeriod();
+        await ethers.provider.send("evm_increaseTime", [
+          arbitrageFeePeriod.toNumber(),
+        ]); // add arbitrageFeePeriod seconds
+        await ethers.provider.send("evm_mine"); // mine the next block
+        expect(await indexToken.hasArbFee(receiver.address)).to.be.false;
+      });
+
+      it("previewRedeem returns expected amount", async () => {
+        const decimals = 18;
+        await underlyerMock.mock.decimals.returns(decimals);
+        const depositAmount = tokenAmountToBigNumber("1", decimals);
+        await underlyerMock.mock.allowance.returns(depositAmount);
+        await underlyerMock.mock.balanceOf.returns(depositAmount);
+        await indexToken.testMint(
+          deployer.address,
+          tokenAmountToBigNumber("1000")
+        );
+
+        // make a deposit to update saved time
+        await indexToken
+          .connect(randomUser)
+          .mint(depositAmount, receiver.address);
+
+        // calculate expected underlyer amount after withdrawal fee
+        const aptAmount = tokenAmountToBigNumber(1);
+        const originalUnderlyerAmount = await indexToken.convertToAssets(
+          aptAmount
+        );
+        const withdrawFee = await indexToken.withdrawFee();
+        const withdrawFeeAmount = originalUnderlyerAmount
+          .mul(withdrawFee)
+          .div(1000000);
+        const underlyerAmount = originalUnderlyerAmount.sub(withdrawFeeAmount);
+
+        // calculate arbitrage fee
+        const arbitrageFee = await indexToken.arbitrageFee();
+        const fee = originalUnderlyerAmount.mul(arbitrageFee).div(100);
+
+        // There is an arbitrage fee.
+        // WARNING: need to call `previewRedeem` using depositor
+        // since last deposit time needs to get set
+        expect(
+          await indexToken["previewRedeem(uint256,address)"](
+            aptAmount,
+            receiver.address
+          )
+        ).to.equal(underlyerAmount.sub(fee));
+
+        // advance by just enough time; now there is no arbitrage fee
+        const arbitrageFeePeriod = await indexToken.arbitrageFeePeriod();
+        await ethers.provider.send("evm_increaseTime", [
+          arbitrageFeePeriod.toNumber(),
+        ]);
+        await ethers.provider.send("evm_mine"); // mine the next block
+        expect(
+          await indexToken["previewRedeem(uint256,address)"](
+            aptAmount,
+            receiver.address
+          )
+        ).to.equal(underlyerAmount);
+      });
+    });
+
+    /* 
+      Test with range of deployed TVL values.  Using 0 as
+      deployed value forces old code paths without mAPT since
+      the pool's total ETH value comes purely from its underlyer
+      holdings.
+    */
+    const deployedValues = [
+      tokenAmountToBigNumber(0),
+      tokenAmountToBigNumber(2193389),
+      tokenAmountToBigNumber(187892873),
+    ];
+    deployedValues.forEach(function (deployedValue) {
+      describe(`  deployed value: ${deployedValue}`, () => {
+        const decimals = 6;
+        const depositAmount = tokenAmountToBigNumber(1, decimals);
+        const poolBalance = tokenAmountToBigNumber(1000, decimals);
+
+        // use EVM snapshots for test isolation
+        let snapshotId;
+
+        before(async () => {
+          const snapshot = await timeMachine.takeSnapshot();
+          snapshotId = snapshot["result"];
+
+          await mAptMock.mock.getDeployedValue.returns(deployedValue);
+
+          const price = 1;
+          await oracleAdapterMock.mock.getAssetPrice.returns(price);
+
+          await underlyerMock.mock.decimals.returns(decimals);
+          await underlyerMock.mock.allowance.returns(depositAmount);
+          await underlyerMock.mock.balanceOf
+            .withArgs(indexToken.address)
+            .returns(poolBalance);
+          await underlyerMock.mock.transferFrom.returns(true);
+        });
+
+        after(async () => {
+          await timeMachine.revertToSnapshot(snapshotId);
+        });
+
+        it("Increase APT balance by calculated amount", async () => {
+          const expectedMintAmount = await indexToken.convertToShares(
+            depositAmount
+          );
+
+          await expect(() =>
+            indexToken
+              .connect(randomUser)
+              .deposit(depositAmount, receiver.address)
+          ).to.changeTokenBalance(indexToken, receiver, expectedMintAmount);
+        });
+
+        it("Emit correct APT events", async () => {
+          const expectedMintAmount = await indexToken.convertToShares(
+            depositAmount
+          );
+
+          // mock the underlyer transfer to the pool, so we can
+          // check deposit event has the post-deposit pool ETH value
+          await underlyerMock.mock.balanceOf
+            .withArgs(indexToken.address)
+            .returns(poolBalance.add(depositAmount));
+
+          const depositPromise = indexToken
+            .connect(randomUser)
+            .deposit(depositAmount, receiver.address);
+
+          await expect(depositPromise)
+            .to.emit(indexToken, "Transfer")
+            .withArgs(ZERO_ADDRESS, receiver.address, expectedMintAmount);
+
+          await expect(depositPromise)
+            .to.emit(indexToken, "Deposit")
+            .withArgs(
+              randomUser.address,
+              receiver.address,
+              depositAmount,
+              expectedMintAmount
+            );
+        });
+
+        it("transferFrom called on underlyer", async () => {
+          /* https://github.com/nomiclabs/hardhat/issues/1135
+           * Due to the above issue, we can't simply do:
+           *
+           *  expect("transferFrom")
+           *    .to.be.calledOnContract(underlyerMock)
+           *    .withArgs(randomUser.address, poolToken.address, depositAmount);
+           *
+           *  Instead, we have to do some hacky revert-check logic.
+           */
+          await underlyerMock.mock.transferFrom.revertsWithReason("FAIL_TEST");
+          await expect(
+            indexToken
+              .connect(randomUser)
+              .deposit(depositAmount, receiver.address)
+          ).to.be.revertedWith("FAIL_TEST");
+          await underlyerMock.mock.transferFrom
+            .withArgs(randomUser.address, indexToken.address, depositAmount)
+            .returns(true);
+          await expect(
+            indexToken
+              .connect(randomUser)
+              .deposit(depositAmount, receiver.address)
+          ).to.not.be.reverted;
+        });
+
+        it("Deposit should work after unlock", async () => {
+          await indexToken.connect(emergencySafe).emergencyLockDeposit();
+          await indexToken.connect(emergencySafe).emergencyUnlockDeposit();
+
+          await expect(
+            indexToken
+              .connect(randomUser)
+              .deposit(depositAmount, receiver.address)
+          ).to.not.be.reverted;
+        });
+      });
+    });
+
+    describe("Locking", () => {
+      it("Emergency Safe can lock", async () => {
+        await expect(
+          indexToken.connect(emergencySafe).emergencyLockDeposit()
+        ).to.emit(indexToken, "DepositLocked");
+      });
+
+      it("Emergency Safe can unlock", async () => {
+        await expect(
+          indexToken.connect(emergencySafe).emergencyUnlockDeposit()
+        ).to.emit(indexToken, "DepositUnlocked");
+      });
+
+      it("Revert if unpermissioned account attempts to lock", async () => {
+        await expect(
+          indexToken.connect(randomUser).emergencyLockDeposit()
+        ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
+      });
+
+      it("Revert if unpermissioned account attempts to unlock", async () => {
+        await expect(
+          indexToken.connect(randomUser).emergencyUnlockDeposit()
+        ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
+      });
+
+      it("Revert deposit when pool is locked", async () => {
+        await indexToken.connect(emergencySafe).emergencyLockDeposit();
+
+        await expect(
+          indexToken.connect(randomUser).deposit(1, receiver.address)
+        ).to.be.revertedWith("LOCKED");
+      });
+    });
+  });
+
   describe("redeem", () => {
     it("Revert if withdraw is zero", async () => {
       await expect(

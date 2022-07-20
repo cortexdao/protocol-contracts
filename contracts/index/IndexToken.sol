@@ -192,16 +192,23 @@ contract IndexToken is
         whenNotPaused
         returns (uint256 assets)
     {
-        assets = previewMint(shares); // No need to check for rounding error, previewMint rounds up.
+        require(shares > 0, "AMOUNT_INSUFFICIENT");
 
-        // Need to transfer before minting or ERC777s could reenter.
+        assets = previewMint(shares);
+        require(
+            IDetailedERC20(asset).allowance(msg.sender, address(this)) >=
+                assets,
+            "ALLOWANCE_INSUFFICIENT"
+        );
+        // solhint-disable-next-line not-rely-on-time
+        // lastDepositTime[receiver] = block.timestamp;
+
+        _mint(receiver, shares);
         IDetailedERC20(asset).safeTransferFrom(
             msg.sender,
             address(this),
             assets
         );
-
-        _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, assets, shares);
     }
@@ -424,7 +431,6 @@ contract IndexToken is
         return convertToShares(assets);
     }
 
-    // TODO: improve calc precision; double-check rounding up business
     function previewMint(uint256 shares)
         public
         view
@@ -432,9 +438,7 @@ contract IndexToken is
         override
         returns (uint256)
     {
-        uint256 supply = totalSupply();
-        return
-            supply == 0 ? shares : shares.mul(totalAssets()).div(supply).add(1);
+        return convertToAssets(shares).add(1);
     }
 
     function previewWithdraw(uint256 assets, address owner)
