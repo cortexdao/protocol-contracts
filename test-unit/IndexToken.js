@@ -273,17 +273,39 @@ describe.only("Contract: IndexToken", () => {
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
 
-    it("Revert when calling deposit/redeem on locked pool", async () => {
+    it("Revert when calling deposit on locked pool", async () => {
       await indexToken.connect(emergencySafe).emergencyLock();
 
       await expect(
         indexToken.connect(randomUser).deposit(50, randomUser.address)
       ).to.revertedWith("Pausable: paused");
+    });
+
+    it("Revert when calling mint on locked pool", async () => {
+      await indexToken.connect(emergencySafe).emergencyLock();
+
+      await expect(
+        indexToken.connect(randomUser).mint(50, randomUser.address)
+      ).to.revertedWith("Pausable: paused");
+    });
+
+    it("Revert when calling redeem on locked pool", async () => {
+      await indexToken.connect(emergencySafe).emergencyLock();
 
       await expect(
         indexToken
           .connect(randomUser)
           .redeem(50, randomUser.address, randomUser.address)
+      ).to.revertedWith("Pausable: paused");
+    });
+
+    it("Revert when calling withdraw on locked pool", async () => {
+      await indexToken.connect(emergencySafe).emergencyLock();
+
+      await expect(
+        indexToken
+          .connect(randomUser)
+          .withdraw(50, randomUser.address, randomUser.address)
       ).to.revertedWith("Pausable: paused");
     });
 
