@@ -31,7 +31,7 @@ describe.only("Contract: IndexToken", () => {
   let anotherUser;
 
   // mocks
-  let underlyerMock;
+  let assetMock;
   let addressRegistryMock;
   let mAptMock;
   let oracleAdapterMock;
@@ -69,7 +69,7 @@ describe.only("Contract: IndexToken", () => {
     proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
 
-    underlyerMock = await deployMockContract(deployer, IDetailedERC20.abi);
+    assetMock = await deployMockContract(deployer, IDetailedERC20.abi);
 
     addressRegistryMock = await deployMockContract(
       deployer,
@@ -102,7 +102,7 @@ describe.only("Contract: IndexToken", () => {
     );
     const initData = IndexToken.interface.encodeFunctionData(
       "initialize(address,address)",
-      [addressRegistryMock.address, underlyerMock.address]
+      [addressRegistryMock.address, assetMock.address]
     );
     const proxy = await TransparentUpgradeableProxy.deploy(
       logic.address,
@@ -117,7 +117,7 @@ describe.only("Contract: IndexToken", () => {
   describe("Initialize", () => {
     it("Revert when address registry address is non-contract", async () => {
       await expect(
-        logic.initialize(FAKE_ADDRESS, underlyerMock.address)
+        logic.initialize(FAKE_ADDRESS, assetMock.address)
       ).to.be.revertedWith("INVALID_ADDRESS");
     });
 
@@ -182,7 +182,7 @@ describe.only("Contract: IndexToken", () => {
     });
 
     it("Asset is set correctly", async () => {
-      expect(await indexToken.asset()).to.equal(underlyerMock.address);
+      expect(await indexToken.asset()).to.equal(assetMock.address);
     });
 
     it("deposit is unlocked", async () => {
@@ -233,18 +233,18 @@ describe.only("Contract: IndexToken", () => {
     });
   });
 
-  describe("getUnderlyerPrice", () => {
+  describe("getAssetPrice", () => {
     it("Delegates to oracle adapter", async () => {
       const price = tokenAmountToBigNumber("1.02", 8);
       await oracleAdapterMock.mock.getAssetPrice.returns(price);
-      expect(await indexToken.getUnderlyerPrice()).to.equal(price);
+      expect(await indexToken.getAssetPrice()).to.equal(price);
     });
 
     it("Reverts with same reason as oracle adapter", async () => {
       await oracleAdapterMock.mock.getAssetPrice.revertsWithReason(
         "SOMETHING_WRONG"
       );
-      await expect(indexToken.getUnderlyerPrice()).to.be.revertedWith(
+      await expect(indexToken.getAssetPrice()).to.be.revertedWith(
         "SOMETHING_WRONG"
       );
     });
@@ -321,7 +321,7 @@ describe.only("Contract: IndexToken", () => {
 
   describe("Transfer to LP Safe", () => {
     before(async () => {
-      await underlyerMock.mock.transfer.returns(true);
+      await assetMock.mock.transfer.returns(true);
     });
 
     it("mAPT can call transferToLpAccount", async () => {
@@ -383,32 +383,32 @@ describe.only("Contract: IndexToken", () => {
     });
   });
 
-  describe("getValueFromUnderlyerAmount", () => {
+  describe("getValueFromAssetAmount", () => {
     it("Return 0 for zero amount", async () => {
-      expect(await indexToken.getValueFromUnderlyerAmount(0)).to.equal(0);
+      expect(await indexToken.getValueFromAssetAmount(0)).to.equal(0);
     });
 
     it("Returns correct value", async () => {
       const decimals = 1;
-      await underlyerMock.mock.decimals.returns(decimals);
+      await assetMock.mock.decimals.returns(decimals);
       const price = 2;
       await oracleAdapterMock.mock.getAssetPrice.returns(price);
 
-      const underlyerAmount = tokenAmountToBigNumber(5, decimals);
+      const assetAmount = tokenAmountToBigNumber(5, decimals);
       // 50 * 2 / 10 ^ 1
-      const expectedValue = underlyerAmount.mul(price).div(10 ** decimals);
-      expect(
-        await indexToken.getValueFromUnderlyerAmount(underlyerAmount)
-      ).to.equal(expectedValue);
+      const expectedValue = assetAmount.mul(price).div(10 ** decimals);
+      expect(await indexToken.getValueFromAssetAmount(assetAmount)).to.equal(
+        expectedValue
+      );
     });
   });
 
-  describe("_getPoolUnderlyerValue", () => {
+  describe("_getPoolAssetValue", () => {
     it("Returns correct value regardless of deployed value", async () => {
       const decimals = 1;
-      await underlyerMock.mock.decimals.returns(decimals);
+      await assetMock.mock.decimals.returns(decimals);
       const balance = tokenAmountToBigNumber("7.5", decimals);
-      await underlyerMock.mock.balanceOf.returns(balance);
+      await assetMock.mock.balanceOf.returns(balance);
 
       const price = 2;
       await oracleAdapterMock.mock.getAssetPrice.returns(price);
@@ -419,16 +419,12 @@ describe.only("Contract: IndexToken", () => {
       // force zero deployed value
       await mAptMock.mock.getDeployedValue.returns(0);
       expect(await indexToken.testGetDeployedValue()).to.equal(0);
-      expect(await indexToken.testGetPoolUnderlyerValue()).to.equal(
-        expectedValue
-      );
+      expect(await indexToken.testGetPoolAssetValue()).to.equal(expectedValue);
 
       // force non-zero deployed value
       await mAptMock.mock.getDeployedValue.returns(1234);
       expect(await indexToken.testGetDeployedValue()).to.be.gt(0);
-      expect(await indexToken.testGetPoolUnderlyerValue()).to.equal(
-        expectedValue
-      );
+      expect(await indexToken.testGetPoolAssetValue()).to.equal(expectedValue);
     });
   });
 
@@ -459,9 +455,9 @@ describe.only("Contract: IndexToken", () => {
   describe("getPoolTotalValue", () => {
     it("Returns correct value", async () => {
       const decimals = 1;
-      await underlyerMock.mock.decimals.returns(decimals);
-      const underlyerBalance = tokenAmountToBigNumber("7.5", decimals);
-      await underlyerMock.mock.balanceOf.returns(underlyerBalance);
+      await assetMock.mock.decimals.returns(decimals);
+      const assetBalance = tokenAmountToBigNumber("7.5", decimals);
+      await assetMock.mock.balanceOf.returns(assetBalance);
 
       const deployedValue = tokenAmountToBigNumber(1234);
       await mAptMock.mock.getDeployedValue.returns(deployedValue);
@@ -469,9 +465,9 @@ describe.only("Contract: IndexToken", () => {
       const price = 2;
       await oracleAdapterMock.mock.getAssetPrice.returns(price);
 
-      // Underlyer ETH value: 75 * 2 / 10^1 = 15
-      const underlyerValue = underlyerBalance.mul(price).div(10 ** decimals);
-      const expectedValue = underlyerValue.add(deployedValue);
+      // asset ETH value: 75 * 2 / 10^1 = 15
+      const assetValue = assetBalance.mul(price).div(10 ** decimals);
+      const expectedValue = assetValue.add(deployedValue);
       expect(await indexToken.getPoolTotalValue()).to.equal(expectedValue);
     });
   });
@@ -491,8 +487,8 @@ describe.only("Contract: IndexToken", () => {
 
     it("Returns correct value", async () => {
       await indexToken.testMint(randomUser.address, 100);
-      await underlyerMock.mock.decimals.returns(0);
-      await underlyerMock.mock.balanceOf.returns(100);
+      await assetMock.mock.decimals.returns(0);
+      await assetMock.mock.balanceOf.returns(100);
 
       const price = 2;
       await oracleAdapterMock.mock.getAssetPrice.returns(price);
@@ -520,8 +516,8 @@ describe.only("Contract: IndexToken", () => {
       // set pool total ETH value to 0
       await oracleAdapterMock.mock.getAssetPrice.returns(1);
       await mAptMock.mock.getDeployedValue.returns(0);
-      await underlyerMock.mock.balanceOf.returns(0);
-      await underlyerMock.mock.decimals.returns(6);
+      await assetMock.mock.balanceOf.returns(0);
+      await assetMock.mock.decimals.returns(6);
 
       expect(await indexToken.getReserveTopUpValue()).to.equal(0);
     });
@@ -529,12 +525,12 @@ describe.only("Contract: IndexToken", () => {
     it("Returns correctly calculated value when zero deployed value", async () => {
       await oracleAdapterMock.mock.getAssetPrice.returns(1);
       await mAptMock.mock.getDeployedValue.returns(0);
-      // set positive pool underlyer ETH value,
+      // set positive pool asset ETH value,
       // which should result in negative reserve top-up
       const decimals = 6;
-      await underlyerMock.mock.decimals.returns(decimals);
+      await assetMock.mock.decimals.returns(decimals);
       const poolBalance = tokenAmountToBigNumber(105e10, decimals);
-      await underlyerMock.mock.balanceOf.returns(poolBalance);
+      await assetMock.mock.balanceOf.returns(poolBalance);
 
       const aptSupply = tokenAmountToBigNumber(10000);
       await indexToken.testMint(deployer.address, aptSupply);
@@ -553,9 +549,9 @@ describe.only("Contract: IndexToken", () => {
     it("Returns reservePercentage of post deployed value when zero balance", async () => {
       const price = 1;
       await oracleAdapterMock.mock.getAssetPrice.returns(price);
-      await underlyerMock.mock.balanceOf.returns(0);
+      await assetMock.mock.balanceOf.returns(0);
       const decimals = 6;
-      await underlyerMock.mock.decimals.returns(decimals);
+      await assetMock.mock.decimals.returns(decimals);
 
       const aptSupply = tokenAmountToBigNumber(10000);
       await indexToken.testMint(deployer.address, aptSupply);
@@ -582,8 +578,8 @@ describe.only("Contract: IndexToken", () => {
       await oracleAdapterMock.mock.getAssetPrice.returns(price);
       const decimals = 6;
       const poolBalance = tokenAmountToBigNumber(1e10, decimals);
-      await underlyerMock.mock.balanceOf.returns(poolBalance);
-      await underlyerMock.mock.decimals.returns(decimals);
+      await assetMock.mock.balanceOf.returns(poolBalance);
+      await assetMock.mock.decimals.returns(decimals);
 
       const aptSupply = tokenAmountToBigNumber(10000);
       await indexToken.testMint(deployer.address, aptSupply);
@@ -591,7 +587,7 @@ describe.only("Contract: IndexToken", () => {
       const deployedValue = tokenAmountToBigNumber(500);
       await mAptMock.mock.getDeployedValue.returns(deployedValue);
 
-      const poolUnderlyerValue = await indexToken.testGetPoolUnderlyerValue();
+      const poolAssetValue = await indexToken.testGetPoolAssetValue();
       const topUpAmount = await indexToken.getReserveTopUpValue();
       expect(topUpAmount).to.be.gt(0);
 
@@ -605,7 +601,7 @@ describe.only("Contract: IndexToken", () => {
         .sub(topUpValue)
         .mul(reservePercentage)
         .div(100);
-      expect(poolUnderlyerValue.add(topUpValue)).to.equal(targetValue);
+      expect(poolAssetValue.add(topUpValue)).to.equal(targetValue);
     });
 
     it("Returns correctly calculated value when top-up is negative", async () => {
@@ -613,8 +609,8 @@ describe.only("Contract: IndexToken", () => {
       await oracleAdapterMock.mock.getAssetPrice.returns(price);
       const decimals = 6;
       const poolBalance = tokenAmountToBigNumber(2.05e18, decimals);
-      await underlyerMock.mock.balanceOf.returns(poolBalance);
-      await underlyerMock.mock.decimals.returns(decimals);
+      await assetMock.mock.balanceOf.returns(poolBalance);
+      await assetMock.mock.decimals.returns(decimals);
 
       const aptSupply = tokenAmountToBigNumber(10000);
       await indexToken.testMint(deployer.address, aptSupply);
@@ -622,7 +618,7 @@ describe.only("Contract: IndexToken", () => {
       const deployedValue = tokenAmountToBigNumber(20);
       await mAptMock.mock.getDeployedValue.returns(deployedValue);
 
-      const poolUnderlyerValue = await indexToken.testGetPoolUnderlyerValue();
+      const poolAssetValue = await indexToken.testGetPoolAssetValue();
       const topUpAmount = await indexToken.getReserveTopUpValue();
       expect(topUpAmount).to.be.lt(0);
 
@@ -636,7 +632,7 @@ describe.only("Contract: IndexToken", () => {
         .sub(topUpValue)
         .mul(reservePercentage)
         .div(100);
-      expect(poolUnderlyerValue.add(topUpValue)).to.equal(targetValue);
+      expect(poolAssetValue.add(topUpValue)).to.equal(targetValue);
     });
   });
 
@@ -649,7 +645,7 @@ describe.only("Contract: IndexToken", () => {
       expect(await indexToken.totalSupply()).to.equal(0);
 
       const decimals = 6;
-      await underlyerMock.mock.decimals.returns(decimals);
+      await assetMock.mock.decimals.returns(decimals);
       await oracleAdapterMock.mock.getAssetPrice.returns(1);
 
       const depositAmount = tokenAmountToBigNumber("123", decimals);
@@ -657,15 +653,13 @@ describe.only("Contract: IndexToken", () => {
         .mul(BigNumber.from(10).pow(18))
         .div(BigNumber.from(10).pow(decimals));
 
-      await underlyerMock.mock.balanceOf.returns(9999);
+      await assetMock.mock.balanceOf.returns(9999);
       expect(await indexToken.convertToShares(depositAmount)).to.equal(
         expectedShareAmount
       );
 
-      // result doesn't depend on pool's underlyer balance
-      await underlyerMock.mock.balanceOf
-        .withArgs(indexToken.address)
-        .returns(0);
+      // result doesn't depend on pool's asset balance
+      await assetMock.mock.balanceOf.withArgs(indexToken.address).returns(0);
       expect(await indexToken.convertToShares(depositAmount)).to.equal(
         expectedShareAmount
       );
@@ -685,8 +679,8 @@ describe.only("Contract: IndexToken", () => {
       const poolBalance = tokenAmountToBigNumber("9999", decimals);
 
       await oracleAdapterMock.mock.getAssetPrice.returns(1);
-      await underlyerMock.mock.balanceOf.returns(poolBalance);
-      await underlyerMock.mock.decimals.returns(decimals);
+      await assetMock.mock.balanceOf.returns(poolBalance);
+      await assetMock.mock.decimals.returns(decimals);
 
       await indexToken.testMint(indexToken.address, aptTotalSupply);
       const expectedMintAmount = aptTotalSupply
@@ -702,12 +696,12 @@ describe.only("Contract: IndexToken", () => {
 
       const aptTotalSupply = tokenAmountToBigNumber("900", "18");
       const depositAmount = tokenAmountToBigNumber("1000", decimals);
-      const poolUnderlyerBalance = tokenAmountToBigNumber("9999", decimals);
+      const poolAssetBalance = tokenAmountToBigNumber("9999", decimals);
 
       const price = 1;
       await oracleAdapterMock.mock.getAssetPrice.returns(price);
-      await underlyerMock.mock.balanceOf.returns(poolUnderlyerBalance);
-      await underlyerMock.mock.decimals.returns(decimals);
+      await assetMock.mock.balanceOf.returns(poolAssetBalance);
+      await assetMock.mock.decimals.returns(decimals);
 
       await mAptMock.mock.balanceOf.returns(tokenAmountToBigNumber(10));
       await mAptMock.mock.totalSupply.returns(tokenAmountToBigNumber(1000));
@@ -737,7 +731,7 @@ describe.only("Contract: IndexToken", () => {
       expect(await indexToken.totalSupply()).to.equal(0);
 
       const decimals = 6;
-      await underlyerMock.mock.decimals.returns(decimals);
+      await assetMock.mock.decimals.returns(decimals);
 
       const shareAmount = tokenAmountToBigNumber("123");
       const expectedAssetAmount = shareAmount
@@ -756,9 +750,9 @@ describe.only("Contract: IndexToken", () => {
 
     it("Returns expected amount", async () => {
       const decimals = 6;
-      const underlyerBalance = tokenAmountToBigNumber(250, decimals);
-      await underlyerMock.mock.balanceOf.returns(underlyerBalance);
-      await underlyerMock.mock.decimals.returns(decimals);
+      const assetBalance = tokenAmountToBigNumber(250, decimals);
+      await assetMock.mock.balanceOf.returns(assetBalance);
+      await assetMock.mock.decimals.returns(decimals);
       await oracleAdapterMock.mock.getAssetPrice.returns(
         tokenAmountToBigNumber("1.02", 8)
       );
@@ -766,16 +760,16 @@ describe.only("Contract: IndexToken", () => {
       const aptAmount = tokenAmountToBigNumber(1, 18);
       await indexToken.testMint(randomUser.address, aptAmount);
       const totalSupply = await indexToken.totalSupply();
-      const underlyerAmount = await indexToken.convertToAssets(aptAmount);
+      const assetAmount = await indexToken.convertToAssets(aptAmount);
 
-      // deployed value is zero so total value is only from underlyer, so after
-      // price conversion result is just the APT share of underlyer balance
-      const expectedAmount = underlyerBalance.mul(aptAmount).div(totalSupply);
-      expect(underlyerAmount).to.equal(expectedAmount);
+      // deployed value is zero so total value is only from asset, so after
+      // price conversion result is just the APT share of asset balance
+      const expectedAmount = assetBalance.mul(aptAmount).div(totalSupply);
+      expect(assetAmount).to.equal(expectedAmount);
     });
   });
 
-  describe("_getUnderlyerAmountAfterFees", () => {
+  describe("_getAssetAmountAfterFees", () => {
     const ARB_FEE_DENOMINATOR = 100;
     const WITHDRAW_FEE_DENOMINATOR = 1e6;
     let arbitrageFee;
@@ -787,42 +781,42 @@ describe.only("Contract: IndexToken", () => {
     });
 
     it("correctly deducts withdraw fee", async () => {
-      const underlyerAmount = tokenAmountToBigNumber(31528, 18);
+      const assetAmount = tokenAmountToBigNumber(31528, 18);
       const hasArbFee = false;
 
-      const withdrawFeeAmount = underlyerAmount
+      const withdrawFeeAmount = assetAmount
         .mul(withdrawFee)
         .div(WITHDRAW_FEE_DENOMINATOR);
-      const expectedAmount = underlyerAmount.sub(withdrawFeeAmount);
-      const result = await indexToken.testGetUnderlyerAmountAfterFees(
-        underlyerAmount,
+      const expectedAmount = assetAmount.sub(withdrawFeeAmount);
+      const result = await indexToken.testGetAssetAmountAfterFees(
+        assetAmount,
         hasArbFee
       );
       expect(result).to.equal(expectedAmount);
     });
 
     it("correctly deducts withdraw and arb fees", async () => {
-      const underlyerAmount = tokenAmountToBigNumber(100191, 18);
+      const assetAmount = tokenAmountToBigNumber(100191, 18);
       const hasArbFee = true;
 
-      const withdrawFeeAmount = underlyerAmount
+      const withdrawFeeAmount = assetAmount
         .mul(withdrawFee)
         .div(WITHDRAW_FEE_DENOMINATOR);
-      const arbFeeAmount = underlyerAmount
+      const arbFeeAmount = assetAmount
         .mul(arbitrageFee)
         .div(ARB_FEE_DENOMINATOR);
-      const expectedAmount = underlyerAmount
+      const expectedAmount = assetAmount
         .sub(withdrawFeeAmount)
         .sub(arbFeeAmount);
-      const result = await indexToken.testGetUnderlyerAmountAfterFees(
-        underlyerAmount,
+      const result = await indexToken.testGetAssetAmountAfterFees(
+        assetAmount,
         hasArbFee
       );
       expect(result).to.equal(expectedAmount);
     });
   });
 
-  describe("_getUnderlyerAmountBeforeFees", () => {
+  describe("_getAssetAmountBeforeFees", () => {
     const ARB_FEE_DENOMINATOR = 100;
     const WITHDRAW_FEE_DENOMINATOR = 1e6;
     let arbitrageFee;
@@ -834,38 +828,38 @@ describe.only("Contract: IndexToken", () => {
     });
 
     it("correctly undoes withdraw fee", async () => {
-      const underlyerAmount = tokenAmountToBigNumber(31528, 18);
+      const assetAmount = tokenAmountToBigNumber(31528, 18);
       const hasArbFee = false;
 
-      const withdrawFeeAmount = underlyerAmount
+      const withdrawFeeAmount = assetAmount
         .mul(withdrawFee)
         .div(WITHDRAW_FEE_DENOMINATOR);
-      const underlyerAmountAfterFee = underlyerAmount.sub(withdrawFeeAmount);
-      const result = await indexToken.testGetUnderlyerAmountBeforeFees(
-        underlyerAmountAfterFee,
+      const assetAmountAfterFee = assetAmount.sub(withdrawFeeAmount);
+      const result = await indexToken.testGetAssetAmountBeforeFees(
+        assetAmountAfterFee,
         hasArbFee
       );
-      expect(result).to.equal(underlyerAmount);
+      expect(result).to.equal(assetAmount);
     });
 
     it("correctly undoes withdraw and arb fees", async () => {
-      const underlyerAmount = tokenAmountToBigNumber(100191, 18);
+      const assetAmount = tokenAmountToBigNumber(100191, 18);
       const hasArbFee = true;
 
-      const withdrawFeeAmount = underlyerAmount
+      const withdrawFeeAmount = assetAmount
         .mul(withdrawFee)
         .div(WITHDRAW_FEE_DENOMINATOR);
-      const arbFeeAmount = underlyerAmount
+      const arbFeeAmount = assetAmount
         .mul(arbitrageFee)
         .div(ARB_FEE_DENOMINATOR);
-      const underlyerAmountAfterFees = underlyerAmount
+      const assetAmountAfterFees = assetAmount
         .sub(withdrawFeeAmount)
         .sub(arbFeeAmount);
-      const result = await indexToken.testGetUnderlyerAmountBeforeFees(
-        underlyerAmountAfterFees,
+      const result = await indexToken.testGetAssetAmountBeforeFees(
+        assetAmountAfterFees,
         hasArbFee
       );
-      expect(result).to.equal(underlyerAmount);
+      expect(result).to.equal(assetAmount);
     });
   });
 
@@ -877,7 +871,7 @@ describe.only("Contract: IndexToken", () => {
     });
 
     it("Revert if allowance is less than deposit", async () => {
-      await underlyerMock.mock.allowance.returns(0);
+      await assetMock.mock.allowance.returns(0);
       await expect(indexToken.deposit(1, receiver.address)).to.be.revertedWith(
         "ALLOWANCE_INSUFFICIENT"
       );
@@ -889,10 +883,10 @@ describe.only("Contract: IndexToken", () => {
         // Just enough mocking to get `deposit` to not revert.
         await mAptMock.mock.getDeployedValue.returns(0);
         await oracleAdapterMock.mock.getAssetPrice.returns(1);
-        await underlyerMock.mock.decimals.returns(6);
-        await underlyerMock.mock.allowance.returns(1);
-        await underlyerMock.mock.balanceOf.returns(1);
-        await underlyerMock.mock.transferFrom.returns(true);
+        await assetMock.mock.decimals.returns(6);
+        await assetMock.mock.allowance.returns(1);
+        await assetMock.mock.balanceOf.returns(1);
+        await assetMock.mock.transferFrom.returns(true);
       });
 
       it("Save deposit time for receiver", async () => {
@@ -925,10 +919,10 @@ describe.only("Contract: IndexToken", () => {
 
       it("previewRedeem returns expected amount", async () => {
         const decimals = 18;
-        await underlyerMock.mock.decimals.returns(decimals);
+        await assetMock.mock.decimals.returns(decimals);
         const depositAmount = tokenAmountToBigNumber("1", decimals);
-        await underlyerMock.mock.allowance.returns(depositAmount);
-        await underlyerMock.mock.balanceOf.returns(depositAmount);
+        await assetMock.mock.allowance.returns(depositAmount);
+        await assetMock.mock.balanceOf.returns(depositAmount);
         await indexToken.testMint(
           deployer.address,
           tokenAmountToBigNumber("1000")
@@ -939,20 +933,18 @@ describe.only("Contract: IndexToken", () => {
           .connect(randomUser)
           .deposit(depositAmount, receiver.address);
 
-        // calculate expected underlyer amount after withdrawal fee
+        // calculate expected asset amount after withdrawal fee
         const aptAmount = tokenAmountToBigNumber(1);
-        const originalUnderlyerAmount = await indexToken.convertToAssets(
-          aptAmount
-        );
+        const originalAssetAmount = await indexToken.convertToAssets(aptAmount);
         const withdrawFee = await indexToken.withdrawFee();
-        const withdrawFeeAmount = originalUnderlyerAmount
+        const withdrawFeeAmount = originalAssetAmount
           .mul(withdrawFee)
           .div(1000000);
-        const underlyerAmount = originalUnderlyerAmount.sub(withdrawFeeAmount);
+        const assetAmount = originalAssetAmount.sub(withdrawFeeAmount);
 
         // calculate arbitrage fee
         const arbitrageFee = await indexToken.arbitrageFee();
-        const fee = originalUnderlyerAmount.mul(arbitrageFee).div(100);
+        const fee = originalAssetAmount.mul(arbitrageFee).div(100);
 
         // There is an arbitrage fee.
         // WARNING: need to call `previewRedeem` using depositor
@@ -962,7 +954,7 @@ describe.only("Contract: IndexToken", () => {
             aptAmount,
             receiver.address
           )
-        ).to.equal(underlyerAmount.sub(fee));
+        ).to.equal(assetAmount.sub(fee));
 
         // advance by just enough time; now there is no arbitrage fee
         const arbitrageFeePeriod = await indexToken.arbitrageFeePeriod();
@@ -975,14 +967,14 @@ describe.only("Contract: IndexToken", () => {
             aptAmount,
             receiver.address
           )
-        ).to.equal(underlyerAmount);
+        ).to.equal(assetAmount);
       });
     });
 
     /* 
       Test with range of deployed TVL values.  Using 0 as
       deployed value forces old code paths without mAPT since
-      the pool's total ETH value comes purely from its underlyer
+      the pool's total ETH value comes purely from its asset
       holdings.
     */
     const deployedValues = [
@@ -1008,12 +1000,12 @@ describe.only("Contract: IndexToken", () => {
           const price = 1;
           await oracleAdapterMock.mock.getAssetPrice.returns(price);
 
-          await underlyerMock.mock.decimals.returns(decimals);
-          await underlyerMock.mock.allowance.returns(depositAmount);
-          await underlyerMock.mock.balanceOf
+          await assetMock.mock.decimals.returns(decimals);
+          await assetMock.mock.allowance.returns(depositAmount);
+          await assetMock.mock.balanceOf
             .withArgs(indexToken.address)
             .returns(poolBalance);
-          await underlyerMock.mock.transferFrom.returns(true);
+          await assetMock.mock.transferFrom.returns(true);
         });
 
         after(async () => {
@@ -1037,9 +1029,9 @@ describe.only("Contract: IndexToken", () => {
             depositAmount
           );
 
-          // mock the underlyer transfer to the pool, so we can
+          // mock the asset transfer to the pool, so we can
           // check deposit event has the post-deposit pool ETH value
-          await underlyerMock.mock.balanceOf
+          await assetMock.mock.balanceOf
             .withArgs(indexToken.address)
             .returns(poolBalance.add(depositAmount));
 
@@ -1061,23 +1053,23 @@ describe.only("Contract: IndexToken", () => {
             );
         });
 
-        it("transferFrom called on underlyer", async () => {
+        it("transferFrom called on asset", async () => {
           /* https://github.com/nomiclabs/hardhat/issues/1135
            * Due to the above issue, we can't simply do:
            *
            *  expect("transferFrom")
-           *    .to.be.calledOnContract(underlyerMock)
+           *    .to.be.calledOnContract(assetMock)
            *    .withArgs(randomUser.address, poolToken.address, depositAmount);
            *
            *  Instead, we have to do some hacky revert-check logic.
            */
-          await underlyerMock.mock.transferFrom.revertsWithReason("FAIL_TEST");
+          await assetMock.mock.transferFrom.revertsWithReason("FAIL_TEST");
           await expect(
             indexToken
               .connect(randomUser)
               .deposit(depositAmount, receiver.address)
           ).to.be.revertedWith("FAIL_TEST");
-          await underlyerMock.mock.transferFrom
+          await assetMock.mock.transferFrom
             .withArgs(randomUser.address, indexToken.address, depositAmount)
             .returns(true);
           await expect(
@@ -1143,8 +1135,8 @@ describe.only("Contract: IndexToken", () => {
     });
 
     it("Revert if allowance is less than deposit", async () => {
-      await underlyerMock.mock.decimals.returns(6); // needed to get to check
-      await underlyerMock.mock.allowance.returns(0);
+      await assetMock.mock.decimals.returns(6); // needed to get to check
+      await assetMock.mock.allowance.returns(0);
       await expect(indexToken.mint(1, receiver.address)).to.be.revertedWith(
         "ALLOWANCE_INSUFFICIENT"
       );
@@ -1156,10 +1148,10 @@ describe.only("Contract: IndexToken", () => {
         // Just enough mocking to get `mint` to not revert.
         await mAptMock.mock.getDeployedValue.returns(0);
         await oracleAdapterMock.mock.getAssetPrice.returns(1);
-        await underlyerMock.mock.decimals.returns(6);
-        await underlyerMock.mock.allowance.returns(2); // account for rounding up in previewMint
-        await underlyerMock.mock.balanceOf.returns(1);
-        await underlyerMock.mock.transferFrom.returns(true);
+        await assetMock.mock.decimals.returns(6);
+        await assetMock.mock.allowance.returns(2); // account for rounding up in previewMint
+        await assetMock.mock.balanceOf.returns(1);
+        await assetMock.mock.transferFrom.returns(true);
       });
 
       it("Save deposit time for receiver", async () => {
@@ -1194,7 +1186,7 @@ describe.only("Contract: IndexToken", () => {
     /* 
       Test with range of deployed TVL values.  Using 0 as
       deployed value forces old code paths without mAPT since
-      the pool's total ETH value comes purely from its underlyer
+      the pool's total ETH value comes purely from its asset
       holdings.
     */
     const deployedValues = [
@@ -1221,14 +1213,14 @@ describe.only("Contract: IndexToken", () => {
           const price = 1;
           await oracleAdapterMock.mock.getAssetPrice.returns(price);
 
-          await underlyerMock.mock.decimals.returns(decimals);
-          await underlyerMock.mock.balanceOf
+          await assetMock.mock.decimals.returns(decimals);
+          await assetMock.mock.balanceOf
             .withArgs(indexToken.address)
             .returns(poolBalance);
-          await underlyerMock.mock.transferFrom.returns(true);
+          await assetMock.mock.transferFrom.returns(true);
 
           depositAmount = await indexToken.previewMint(mintAmount);
-          await underlyerMock.mock.allowance.returns(depositAmount);
+          await assetMock.mock.allowance.returns(depositAmount);
         });
 
         after(async () => {
@@ -1260,21 +1252,21 @@ describe.only("Contract: IndexToken", () => {
             );
         });
 
-        it("transferFrom called on underlyer", async () => {
+        it("transferFrom called on asset", async () => {
           /* https://github.com/nomiclabs/hardhat/issues/1135
            * Due to the above issue, we can't simply do:
            *
            *  expect("transferFrom")
-           *    .to.be.calledOnContract(underlyerMock)
+           *    .to.be.calledOnContract(assetMock)
            *    .withArgs(randomUser.address, poolToken.address, depositAmount);
            *
            *  Instead, we have to do some hacky revert-check logic.
            */
-          await underlyerMock.mock.transferFrom.revertsWithReason("FAIL_TEST");
+          await assetMock.mock.transferFrom.revertsWithReason("FAIL_TEST");
           await expect(
             indexToken.connect(randomUser).mint(mintAmount, receiver.address)
           ).to.be.revertedWith("FAIL_TEST");
-          await underlyerMock.mock.transferFrom
+          await assetMock.mock.transferFrom
             .withArgs(randomUser.address, indexToken.address, depositAmount)
             .returns(true);
           await expect(
@@ -1317,7 +1309,7 @@ describe.only("Contract: IndexToken", () => {
     /* 
       Test with range of deployed TVL values.  Using 0 as
       deployed value forces old code paths without mAPT since
-      the pool's total ETH value comes purely from its underlyer
+      the pool's total ETH value comes purely from its asset
       holdings.
     */
     const deployedValues = [
@@ -1345,12 +1337,12 @@ describe.only("Contract: IndexToken", () => {
           const price = 1;
           await oracleAdapterMock.mock.getAssetPrice.returns(price);
 
-          await underlyerMock.mock.decimals.returns(decimals);
-          await underlyerMock.mock.allowance.returns(poolBalance);
-          await underlyerMock.mock.balanceOf
+          await assetMock.mock.decimals.returns(decimals);
+          await assetMock.mock.allowance.returns(poolBalance);
+          await assetMock.mock.balanceOf
             .withArgs(indexToken.address)
             .returns(poolBalance);
-          await underlyerMock.mock.transfer.returns(true);
+          await assetMock.mock.transfer.returns(true);
 
           // Mint APT supply to go along with pool's total ETH value.
           await indexToken.testMint(deployer.address, aptSupply);
@@ -1396,7 +1388,7 @@ describe.only("Contract: IndexToken", () => {
         });
 
         it("Emit correct APT events", async () => {
-          const underlyerAmount = await indexToken[
+          const assetAmount = await indexToken[
             "previewRedeem(uint256,address)"
           ](aptAmount, randomUser.address);
 
@@ -1414,32 +1406,32 @@ describe.only("Contract: IndexToken", () => {
               randomUser.address,
               receiver.address,
               randomUser.address,
-              underlyerAmount,
+              assetAmount,
               aptAmount
             );
         });
 
-        it("transfer called on underlyer", async () => {
+        it("transfer called on asset", async () => {
           /* https://github.com/nomiclabs/hardhat/issues/1135
            * Due to the above issue, we can't simply do:
            *
            *  expect("transfer")
-           *    .to.be.calledOnContract(underlyerMock)
-           *    .withArgs(randomUser.address, underlyerAmount);
+           *    .to.be.calledOnContract(assetMock)
+           *    .withArgs(randomUser.address, assetAmount);
            *
            *  Instead, we have to do some hacky revert-check logic.
            */
-          const underlyerAmount = await indexToken[
+          const assetAmount = await indexToken[
             "previewRedeem(uint256,address)"
           ](aptAmount, randomUser.address);
-          await underlyerMock.mock.transfer.revertsWithReason("FAIL_TEST");
+          await assetMock.mock.transfer.revertsWithReason("FAIL_TEST");
           await expect(
             indexToken
               .connect(randomUser)
               .redeem(aptAmount, receiver.address, randomUser.address)
           ).to.be.revertedWith("FAIL_TEST");
-          await underlyerMock.mock.transfer
-            .withArgs(receiver.address, underlyerAmount)
+          await assetMock.mock.transfer
+            .withArgs(receiver.address, assetAmount)
             .returns(true);
           await expect(
             indexToken
@@ -1459,12 +1451,12 @@ describe.only("Contract: IndexToken", () => {
           ).to.not.be.reverted;
         });
 
-        it("Revert when underlyer amount exceeds reserve", async () => {
+        it("Revert when asset amount exceeds reserve", async () => {
           // when zero deployed value, APT share gives ownership of only
-          // underlyer amount, and this amount will be fully in the reserve
+          // asset amount, and this amount will be fully in the reserve
           // so there is nothing to test.
           if (deployedValue == 0) return;
-          // this transfer pushes the user's corresponding underlyer amount
+          // this transfer pushes the user's corresponding asset amount
           // for his APT higher than the reserve balance.
           const smallAptAmount = tokenAmountToBigNumber("0.0000001");
           await indexToken
@@ -1531,7 +1523,7 @@ describe.only("Contract: IndexToken", () => {
     /* 
       Test with range of deployed TVL values.  Using 0 as
       deployed value forces old code paths without mAPT since
-      the pool's total ETH value comes purely from its underlyer
+      the pool's total ETH value comes purely from its asset
       holdings.
     */
     const deployedValues = [
@@ -1560,12 +1552,12 @@ describe.only("Contract: IndexToken", () => {
           const price = 1;
           await oracleAdapterMock.mock.getAssetPrice.returns(price);
 
-          await underlyerMock.mock.decimals.returns(decimals);
-          await underlyerMock.mock.allowance.returns(poolBalance);
-          await underlyerMock.mock.balanceOf
+          await assetMock.mock.decimals.returns(decimals);
+          await assetMock.mock.allowance.returns(poolBalance);
+          await assetMock.mock.balanceOf
             .withArgs(indexToken.address)
             .returns(poolBalance);
-          await underlyerMock.mock.transfer.returns(true);
+          await assetMock.mock.transfer.returns(true);
 
           // Mint APT supply to go along with pool's total ETH value.
           await indexToken.testMint(deployer.address, aptSupply);
@@ -1663,23 +1655,23 @@ describe.only("Contract: IndexToken", () => {
             );
         });
 
-        it("transfer called on underlyer", async () => {
+        it("transfer called on asset", async () => {
           /* https://github.com/nomiclabs/hardhat/issues/1135
            * Due to the above issue, we can't simply do:
            *
            *  expect("transfer")
-           *    .to.be.calledOnContract(underlyerMock)
-           *    .withArgs(randomUser.address, underlyerAmount);
+           *    .to.be.calledOnContract(assetMock)
+           *    .withArgs(randomUser.address, assetAmount);
            *
            *  Instead, we have to do some hacky revert-check logic.
            */
-          await underlyerMock.mock.transfer.revertsWithReason("FAIL_TEST");
+          await assetMock.mock.transfer.revertsWithReason("FAIL_TEST");
           await expect(
             indexToken
               .connect(randomUser)
               .withdraw(assetAmount, receiver.address, randomUser.address)
           ).to.be.revertedWith("FAIL_TEST");
-          await underlyerMock.mock.transfer
+          await assetMock.mock.transfer
             .withArgs(receiver.address, assetAmount)
             .returns(true);
           await expect(
@@ -1700,7 +1692,7 @@ describe.only("Contract: IndexToken", () => {
           ).to.not.be.reverted;
         });
 
-        it("Revert when underlyer amount exceeds reserve", async () => {
+        it("Revert when asset amount exceeds reserve", async () => {
           await expect(
             indexToken
               .connect(randomUser)

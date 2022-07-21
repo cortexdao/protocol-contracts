@@ -21,23 +21,23 @@ contract TestIndexToken is IndexToken {
         return _getDeployedValue();
     }
 
-    function testGetPoolUnderlyerValue() public view returns (uint256) {
-        return _getPoolUnderlyerValue();
+    function testGetPoolAssetValue() public view returns (uint256) {
+        return _getPoolAssetValue();
     }
 
-    function testGetUnderlyerAmountAfterFees(uint256 amount, bool arbFee)
+    function testGetAssetAmountAfterFees(uint256 amount, bool arbFee)
         public
         view
         returns (uint256)
     {
-        return _getUnderlyerAmountAfterFees(amount, arbFee);
+        return _getAssetAmountAfterFees(amount, arbFee);
     }
 
-    function testGetUnderlyerAmountBeforeFees(uint256 amount, bool arbFee)
+    function testGetAssetAmountBeforeFees(uint256 amount, bool arbFee)
         public
         view
         returns (uint256)
     {
-        return _getUnderlyerAmountBeforeFees(amount, arbFee);
+        return _getAssetAmountBeforeFees(amount, arbFee);
     }
 }

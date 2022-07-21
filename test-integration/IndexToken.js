@@ -69,14 +69,14 @@ describe.only("Contract: IndexToken", () => {
   const USDC_AGG_ADDRESS = "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6";
 
   let tvlAgg;
-  let underlyer;
+  let asset;
   let oracleAdapter;
   let mApt;
   let addressRegistry;
   let indexToken;
 
   before("Setup", async () => {
-    underlyer = await ethers.getContractAt("IDetailedERC20", tokenAddress);
+    asset = await ethers.getContractAt("IDetailedERC20", tokenAddress);
 
     const paymentAmount = link("1");
     const maxSubmissionValue = tokenAmountToBigNumber("1", "20");
@@ -194,7 +194,7 @@ describe.only("Contract: IndexToken", () => {
 
     const initData = IndexToken.interface.encodeFunctionData(
       "initialize(address,address)",
-      [addressRegistry.address, underlyer.address]
+      [addressRegistry.address, asset.address]
     );
     const proxy = await TransparentUpgradeableProxy.deploy(
       logic.address,
@@ -208,18 +208,14 @@ describe.only("Contract: IndexToken", () => {
     await acquireToken(
       WHALE_POOLS[symbol],
       randomUser.address,
-      underlyer,
+      asset,
       "1000000",
       randomUser.address
     );
 
     //handle allownaces
-    await underlyer
-      .connect(randomUser)
-      .approve(indexToken.address, MAX_UINT256);
-    await underlyer
-      .connect(anotherUser)
-      .approve(indexToken.address, MAX_UINT256);
+    await asset.connect(randomUser).approve(indexToken.address, MAX_UINT256);
+    await asset.connect(anotherUser).approve(indexToken.address, MAX_UINT256);
 
     console.debug(`Proxy Admin: ${proxyAdmin.address}`);
     console.debug(`Logic: ${logic.address}`);
@@ -406,24 +402,24 @@ describe.only("Contract: IndexToken", () => {
   describe("emergencyExit", () => {
     it("Should only be callable by the emergencySafe", async () => {
       await expect(
-        indexToken.connect(randomUser).emergencyExit(underlyer.address)
+        indexToken.connect(randomUser).emergencyExit(asset.address)
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
 
       await expect(
-        indexToken.connect(emergencySafe).emergencyExit(underlyer.address)
+        indexToken.connect(emergencySafe).emergencyExit(asset.address)
       ).to.not.be.reverted;
     });
 
     it("Should transfer all deposited tokens to the emergencySafe", async () => {
       await indexToken.connect(randomUser).deposit(100000, receiver.address);
 
-      const prevPoolBalance = await underlyer.balanceOf(indexToken.address);
-      const prevSafeBalance = await underlyer.balanceOf(emergencySafe.address);
+      const prevPoolBalance = await asset.balanceOf(indexToken.address);
+      const prevSafeBalance = await asset.balanceOf(emergencySafe.address);
 
-      await indexToken.connect(emergencySafe).emergencyExit(underlyer.address);
+      await indexToken.connect(emergencySafe).emergencyExit(asset.address);
 
-      const nextPoolBalance = await underlyer.balanceOf(indexToken.address);
-      const nextSafeBalance = await underlyer.balanceOf(emergencySafe.address);
+      const nextPoolBalance = await asset.balanceOf(indexToken.address);
+      const nextSafeBalance = await asset.balanceOf(emergencySafe.address);
 
       expect(nextPoolBalance).to.equal(0);
       expect(nextSafeBalance.sub(prevSafeBalance)).to.equal(prevPoolBalance);
@@ -459,13 +455,13 @@ describe.only("Contract: IndexToken", () => {
     it("Should emit the EmergencyExit event", async () => {
       await indexToken.connect(randomUser).deposit(100000, receiver.address);
 
-      const balance = await underlyer.balanceOf(indexToken.address);
+      const balance = await asset.balanceOf(indexToken.address);
 
       await expect(
-        indexToken.connect(emergencySafe).emergencyExit(underlyer.address)
+        indexToken.connect(emergencySafe).emergencyExit(asset.address)
       )
         .to.emit(indexToken, "EmergencyExit")
-        .withArgs(emergencySafe.address, underlyer.address, balance);
+        .withArgs(emergencySafe.address, asset.address, balance);
     });
   });
 
@@ -497,16 +493,16 @@ describe.only("Contract: IndexToken", () => {
         await oracleAdapter.connect(emergencySafe).emergencyUnlock();
       });
 
-      describe("Underlyer and mAPT integration with calculations", () => {
+      describe("Asset and mAPT integration with calculations", () => {
         beforeEach(async () => {
           /* these get rollbacked after each test due to snapshotting */
           const aptAmount = tokenAmountToBigNumber("1000000000", "18");
           await indexToken.testMint(deployer.address, aptAmount);
-          const symbol = await underlyer.symbol();
+          const symbol = await asset.symbol();
           await acquireToken(
             WHALE_POOLS[symbol],
             indexToken.address,
-            underlyer,
+            asset,
             "10000",
             deployer.address
           );
@@ -515,7 +511,7 @@ describe.only("Contract: IndexToken", () => {
         it("convertToShares returns value", async () => {
           const depositAmount = tokenAmountToBigNumber(
             1,
-            await underlyer.decimals()
+            await asset.decimals()
           );
           const expectedAptMinted = await indexToken.convertToShares(
             depositAmount
@@ -539,53 +535,51 @@ describe.only("Contract: IndexToken", () => {
           assert(val.gt(0));
         });
 
-        it("getValueFromUnderlyerAmount returns value", async () => {
-          const amount = tokenAmountToBigNumber(
-            5000,
-            await underlyer.decimals()
-          );
-          const val = await indexToken.getValueFromUnderlyerAmount(amount);
+        it("getValueFromAssetAmount returns value", async () => {
+          const amount = tokenAmountToBigNumber(5000, await asset.decimals());
+          const val = await indexToken.getValueFromAssetAmount(amount);
           console.debug(`\tEth Value from Token Amount ${val.toString()}`);
           assert(val.gt(0));
         });
 
-        it("getUnderlyerPrice returns value", async () => {
-          const price = await indexToken.getUnderlyerPrice();
+        it("getAssetPrice returns value", async () => {
+          const price = await indexToken.getAssetPrice();
           console.debug(`\tToken Eth Price: ${price.toString()}`);
           assert(price.gt(0));
         });
 
         it("convertToAssets returns value", async () => {
           const aptAmount = tokenAmountToBigNumber("100", "18");
-          const underlyerAmount = await indexToken["previewRedeem(uint256)"](
+          const assetAmount = await indexToken["previewRedeem(uint256)"](
             aptAmount
           );
-          console.debug(`\tUnderlyer Amount: ${underlyerAmount.toString()}`);
-          assert(underlyerAmount.gt(0));
+          console.debug(`\tAsset Amount: ${assetAmount.toString()}`);
+          assert(assetAmount.gt(0));
         });
 
-        it("_getPoolUnderlyerValue returns correct value", async () => {
-          let underlyerBalance = await underlyer.balanceOf(indexToken.address);
-          let expectedUnderlyerValue =
-            await indexToken.getValueFromUnderlyerAmount(underlyerBalance);
-          expect(await indexToken.testGetPoolUnderlyerValue()).to.equal(
-            expectedUnderlyerValue
+        it("_getPoolAssetValue returns correct value", async () => {
+          let assetBalance = await asset.balanceOf(indexToken.address);
+          let expectedAssetValue = await indexToken.getValueFromAssetAmount(
+            assetBalance
+          );
+          expect(await indexToken.testGetPoolAssetValue()).to.equal(
+            expectedAssetValue
           );
 
-          const underlyerAmount = tokenAmountToBigNumber(
+          const assetAmount = tokenAmountToBigNumber(
             "1553",
-            await underlyer.decimals()
+            await asset.decimals()
           );
-          await underlyer
+          await asset
             .connect(randomUser)
-            .transfer(indexToken.address, underlyerAmount);
+            .transfer(indexToken.address, assetAmount);
 
-          underlyerBalance = await underlyer.balanceOf(indexToken.address);
-          expectedUnderlyerValue = await indexToken.getValueFromUnderlyerAmount(
-            underlyerBalance
+          assetBalance = await asset.balanceOf(indexToken.address);
+          expectedAssetValue = await indexToken.getValueFromAssetAmount(
+            assetBalance
           );
-          expect(await indexToken.testGetPoolUnderlyerValue()).to.equal(
-            expectedUnderlyerValue
+          expect(await indexToken.testGetPoolAssetValue()).to.equal(
+            expectedAssetValue
           );
         });
 
@@ -618,8 +612,8 @@ describe.only("Contract: IndexToken", () => {
         });
 
         it("getReserveTopUpValue returns correct value", async () => {
-          const price = await indexToken.getUnderlyerPrice();
-          const decimals = await underlyer.decimals();
+          const price = await indexToken.getAssetPrice();
+          const decimals = await asset.decimals();
           const topUpAmount = await indexToken.getReserveTopUpValue();
           const topUpValue = topUpAmount
             .mul(price)
@@ -628,13 +622,12 @@ describe.only("Contract: IndexToken", () => {
             expect(topUpValue).to.be.lt(0);
           } else {
             // it's possible to be negative, but not for the current
-            // values we picked where underlyer amount is very small
+            // values we picked where asset amount is very small
             // compared to the deployed values
             expect(topUpValue).to.be.gt(0);
           }
 
-          const poolUnderlyerValue =
-            await indexToken.testGetPoolUnderlyerValue();
+          const poolAssetValue = await indexToken.testGetPoolAssetValue();
           // assuming we unwind the top-up value from the pool's deployed
           // capital, the reserve percentage of resulting deployed value
           // is what we are targeting
@@ -643,9 +636,9 @@ describe.only("Contract: IndexToken", () => {
             .sub(topUpValue)
             .mul(reservePercentage)
             .div(100);
-          const tolerance = Math.ceil((await underlyer.decimals()) / 4);
+          const tolerance = Math.ceil((await asset.decimals()) / 4);
           const allowedDeviation = tokenAmountToBigNumber(5, tolerance);
-          expect(poolUnderlyerValue.add(topUpValue).sub(targetValue)).to.be.lt(
+          expect(poolAssetValue.add(topUpValue).sub(targetValue)).to.be.lt(
             allowedDeviation
           );
         });
@@ -665,16 +658,14 @@ describe.only("Contract: IndexToken", () => {
         });
 
         it("Test deposit pass", async () => {
-          const underlyerBalanceBefore = await underlyer.balanceOf(
-            randomUser.address
-          );
+          const assetBalanceBefore = await asset.balanceOf(randomUser.address);
           console.debug(
-            `\tUnderlyer Balance Before Mint: ${underlyerBalanceBefore.toString()}`
+            `\tAsset Balance Before Mint: ${assetBalanceBefore.toString()}`
           );
 
           const depositAmount = tokenAmountToBigNumber(
             1000,
-            await underlyer.decimals()
+            await asset.decimals()
           );
           const mintAmount = await indexToken.convertToShares(depositAmount);
 
@@ -683,26 +674,24 @@ describe.only("Contract: IndexToken", () => {
             .deposit(depositAmount, receiver.address);
           await depositPromise;
 
-          let underlyerBalanceAfter = await underlyer.balanceOf(
-            randomUser.address
-          );
+          let assetBalanceAfter = await asset.balanceOf(randomUser.address);
           console.debug(
-            `\tUnderlyer Balance After Mint: ${underlyerBalanceAfter.toString()}`
+            `\tAsset Balance After Mint: ${assetBalanceAfter.toString()}`
           );
 
-          expect(await underlyer.balanceOf(indexToken.address)).to.equal(
+          expect(await asset.balanceOf(indexToken.address)).to.equal(
             depositAmount
           );
-          expect(await underlyer.balanceOf(randomUser.address)).to.equal(
-            underlyerBalanceBefore.sub(depositAmount)
+          expect(await asset.balanceOf(randomUser.address)).to.equal(
+            assetBalanceBefore.sub(depositAmount)
           );
           expect(await indexToken.balanceOf(receiver.address)).to.equal(
             mintAmount
           );
 
-          // Underlyer transfer event
+          // Asset transfer event
           await expect(depositPromise)
-            .to.emit(underlyer, "Transfer")
+            .to.emit(asset, "Transfer")
             .withArgs(randomUser.address, indexToken.address, depositAmount);
 
           // Index token transfer event
@@ -736,16 +725,14 @@ describe.only("Contract: IndexToken", () => {
         });
 
         it("Test mint pass", async () => {
-          const underlyerBalanceBefore = await underlyer.balanceOf(
-            randomUser.address
-          );
+          const assetBalanceBefore = await asset.balanceOf(randomUser.address);
           console.debug(
-            `\tUnderlyer Balance Before Mint: ${underlyerBalanceBefore.toString()}`
+            `\tAsset Balance Before Mint: ${assetBalanceBefore.toString()}`
           );
 
           const mintAmount = tokenAmountToBigNumber(1000);
           const depositAmount = await indexToken.previewMint(mintAmount);
-          const balance = await underlyer.balanceOf(randomUser.address);
+          const balance = await asset.balanceOf(randomUser.address);
           console.log("User balance: %s", balance);
           console.log("Deposit amount: %s", depositAmount);
 
@@ -754,26 +741,24 @@ describe.only("Contract: IndexToken", () => {
             .mint(mintAmount, receiver.address);
           await mintPromise;
 
-          let underlyerBalanceAfter = await underlyer.balanceOf(
-            randomUser.address
-          );
+          let assetBalanceAfter = await asset.balanceOf(randomUser.address);
           console.debug(
-            `\tUnderlyer Balance After Mint: ${underlyerBalanceAfter.toString()}`
+            `\tAsset Balance After Mint: ${assetBalanceAfter.toString()}`
           );
 
-          expect(await underlyer.balanceOf(indexToken.address)).to.equal(
+          expect(await asset.balanceOf(indexToken.address)).to.equal(
             depositAmount
           );
-          expect(await underlyer.balanceOf(randomUser.address)).to.equal(
-            underlyerBalanceBefore.sub(depositAmount)
+          expect(await asset.balanceOf(randomUser.address)).to.equal(
+            assetBalanceBefore.sub(depositAmount)
           );
           expect(await indexToken.balanceOf(receiver.address)).to.equal(
             mintAmount
           );
 
-          // Underlyer transfer event
+          // asset transfer event
           await expect(mintPromise)
-            .to.emit(underlyer, "Transfer")
+            .to.emit(asset, "Transfer")
             .withArgs(randomUser.address, indexToken.address, depositAmount);
 
           // Index token transfer event
@@ -809,21 +794,21 @@ describe.only("Contract: IndexToken", () => {
           ).to.be.revertedWith("BALANCE_INSUFFICIENT");
         });
 
-        it("Revert when underlyer amount is greater than reserve", async () => {
+        it("Revert when asset amount is greater than reserve", async () => {
           // When zero deployed value, APT share gives ownership of only
-          // underlyer amount, and this amount will be fully in the reserve
+          // asset amount, and this amount will be fully in the reserve
           // so there is nothing to test.
           if (deployedValue == 0) return;
 
-          const decimals = await underlyer.decimals();
+          const decimals = await asset.decimals();
 
           // mint the APT supply
           const aptSupply = tokenAmountToBigNumber("100000");
           await indexToken.testMint(deployer.address, aptSupply);
 
-          // seed the pool with underlyer
+          // seed the pool with asset
           const reserveBalance = tokenAmountToBigNumber("150000", decimals);
-          await underlyer
+          await asset
             .connect(randomUser)
             .transfer(indexToken.address, reserveBalance);
 
@@ -856,29 +841,29 @@ describe.only("Contract: IndexToken", () => {
           await indexToken.testMint(deployer.address, aptSupply);
 
           /* Setup pool and user APT amounts:
-                 1. give pool an underlyer reserve balance
+                 1. give pool an asset reserve balance
                  2. calculate the reserve's APT amount
                  3. transfer APT amount less than that to the user
           */
-          await underlyer
+          await asset
             .connect(randomUser)
             .transfer(
               indexToken.address,
-              tokenAmountToBigNumber("1000", await underlyer.decimals())
+              tokenAmountToBigNumber("1000", await asset.decimals())
             );
-          const reserveBalance = await underlyer.balanceOf(indexToken.address);
+          const reserveBalance = await asset.balanceOf(indexToken.address);
           const reserveAptAmount = await indexToken.convertToShares(
             reserveBalance
           );
           const redeemAptAmount = reserveAptAmount.div(2);
-          const underlyerAmount = await indexToken[
+          const assetAmount = await indexToken[
             "previewRedeem(uint256,address)"
           ](redeemAptAmount, randomUser.address);
           await indexToken
             .connect(deployer)
             .transfer(randomUser.address, redeemAptAmount);
 
-          const underlyerBalance = await underlyer.balanceOf(receiver.address);
+          const assetBalance = await asset.balanceOf(receiver.address);
 
           // execute the redeem
           const redeemPromise = indexToken
@@ -888,15 +873,12 @@ describe.only("Contract: IndexToken", () => {
 
           /* ------ START THE ASSERTS -------------- */
 
-          // underlyer balances
-          const underlyerBalanceAfter = await underlyer.balanceOf(
-            receiver.address
-          );
-          const underlyerTransferAmount =
-            underlyerBalanceAfter.sub(underlyerBalance);
-          expect(underlyerTransferAmount).to.equal(underlyerAmount);
-          expect(await underlyer.balanceOf(indexToken.address)).to.equal(
-            reserveBalance.sub(underlyerAmount)
+          // asset balances
+          const assetBalanceAfter = await asset.balanceOf(receiver.address);
+          const assetTransferAmount = assetBalanceAfter.sub(assetBalance);
+          expect(assetTransferAmount).to.equal(assetAmount);
+          expect(await asset.balanceOf(indexToken.address)).to.equal(
+            reserveBalance.sub(assetAmount)
           );
 
           // APT balances
@@ -905,13 +887,13 @@ describe.only("Contract: IndexToken", () => {
             aptSupply.sub(redeemAptAmount)
           );
 
-          // underlyer transfer event
+          // asset transfer event
           await expect(redeemPromise)
-            .to.emit(underlyer, "Transfer")
+            .to.emit(asset, "Transfer")
             .withArgs(
               indexToken.address,
               receiver.address,
-              underlyerTransferAmount
+              assetTransferAmount
             );
 
           // APT transfer event
@@ -926,7 +908,7 @@ describe.only("Contract: IndexToken", () => {
               randomUser.address,
               receiver.address,
               randomUser.address,
-              underlyerTransferAmount,
+              assetTransferAmount,
               redeemAptAmount
             );
         });
@@ -940,11 +922,11 @@ describe.only("Contract: IndexToken", () => {
         });
 
         it("Revert if share balance is insufficient for withdraw amount", async () => {
-          const symbol = await underlyer.symbol();
+          const symbol = await asset.symbol();
           await acquireToken(
             WHALE_POOLS[symbol],
             indexToken.address,
-            underlyer,
+            asset,
             "10000",
             deployer.address
           );
@@ -971,11 +953,11 @@ describe.only("Contract: IndexToken", () => {
         });
 
         it("Revert when asset amount is greater than reserve", async () => {
-          const decimals = await underlyer.decimals();
+          const decimals = await asset.decimals();
 
-          // seed the pool with underlyer
+          // seed the pool with asset
           const reserveBalance = tokenAmountToBigNumber("150000", decimals);
-          await underlyer
+          await asset
             .connect(randomUser)
             .transfer(indexToken.address, reserveBalance);
 
@@ -996,17 +978,17 @@ describe.only("Contract: IndexToken", () => {
           await indexToken.testMint(deployer.address, indexSupply);
 
           /* Setup pool and user share amounts:
-                 1. give pool an underlyer reserve balance
+                 1. give pool an asset reserve balance
                  2. calculate the reserve's share amount
                  3. transfer share amount less than that to the user
           */
-          await underlyer
+          await asset
             .connect(randomUser)
             .transfer(
               indexToken.address,
-              tokenAmountToBigNumber("1000", await underlyer.decimals())
+              tokenAmountToBigNumber("1000", await asset.decimals())
             );
-          const reserveBalance = await underlyer.balanceOf(indexToken.address);
+          const reserveBalance = await asset.balanceOf(indexToken.address);
           const withdrawAssetAmount = reserveBalance.div(2);
           const withdrawShareAmount = await indexToken[
             "previewWithdraw(uint256,address)"
@@ -1015,7 +997,7 @@ describe.only("Contract: IndexToken", () => {
             .connect(deployer)
             .transfer(randomUser.address, withdrawShareAmount);
 
-          const underlyerBalance = await underlyer.balanceOf(receiver.address);
+          const assetBalance = await asset.balanceOf(receiver.address);
           const shareBalance = await indexToken.balanceOf(randomUser.address);
 
           // execute the withdraw
@@ -1030,14 +1012,11 @@ describe.only("Contract: IndexToken", () => {
 
           /* ------ START THE ASSERTS -------------- */
 
-          // underlyer balances
-          const underlyerBalanceAfter = await underlyer.balanceOf(
-            receiver.address
-          );
-          const underlyerTransferAmount =
-            underlyerBalanceAfter.sub(underlyerBalance);
-          expect(underlyerTransferAmount).to.equal(withdrawAssetAmount);
-          expect(await underlyer.balanceOf(indexToken.address)).to.equal(
+          // asset balances
+          const assetBalanceAfter = await asset.balanceOf(receiver.address);
+          const assetTransferAmount = assetBalanceAfter.sub(assetBalance);
+          expect(assetTransferAmount).to.equal(withdrawAssetAmount);
+          expect(await asset.balanceOf(indexToken.address)).to.equal(
             reserveBalance.sub(withdrawAssetAmount)
           );
 
@@ -1052,13 +1031,13 @@ describe.only("Contract: IndexToken", () => {
             indexSupply.sub(shareBurnAmount)
           );
 
-          // underlyer transfer event
+          // asset transfer event
           await expect(withdrawPromise)
-            .to.emit(underlyer, "Transfer")
+            .to.emit(asset, "Transfer")
             .withArgs(
               indexToken.address,
               receiver.address,
-              underlyerTransferAmount
+              assetTransferAmount
             );
 
           // APT transfer event
@@ -1073,7 +1052,7 @@ describe.only("Contract: IndexToken", () => {
               randomUser.address,
               receiver.address,
               randomUser.address,
-              underlyerTransferAmount,
+              assetTransferAmount,
               withdrawShareAmount
             );
         });
@@ -1090,29 +1069,29 @@ describe.only("Contract: IndexToken", () => {
           await acquireToken(
             WHALE_POOLS[symbol],
             indexToken.address,
-            underlyer,
+            asset,
             "12000000", // 12 MM
             deployer.address
           );
 
           const depositAmount = tokenAmountToBigNumber(
             "1",
-            await underlyer.decimals()
+            await asset.decimals()
           );
           const mintAmount = await indexToken.convertToShares(depositAmount);
           await indexToken
             .connect(randomUser)
             .deposit(depositAmount, randomUser.address);
-          const underlyerAmount = await indexToken.convertToAssets(mintAmount);
-          expect(underlyerAmount).to.be.lt(depositAmount);
-          const tolerance = Math.ceil((await underlyer.decimals()) / 4);
+          const assetAmount = await indexToken.convertToAssets(mintAmount);
+          expect(assetAmount).to.be.lt(depositAmount);
+          const tolerance = Math.ceil((await asset.decimals()) / 4);
           const allowedDeviation = tokenAmountToBigNumber(5, tolerance);
-          expect(depositAmount.sub(underlyerAmount)).to.be.lt(allowedDeviation);
+          expect(depositAmount.sub(assetAmount)).to.be.lt(allowedDeviation);
         });
       });
 
       describe("Test withdraw and arbitrage fees", () => {
-        let underlyerAmount;
+        let assetAmount;
         let aptAmount;
         let withdrawFee;
 
@@ -1126,43 +1105,40 @@ describe.only("Contract: IndexToken", () => {
           await acquireToken(
             WHALE_POOLS[symbol],
             indexToken.address,
-            underlyer,
+            asset,
             "12000000", // 12 MM
             deployer.address
           );
 
-          underlyerAmount = tokenAmountToBigNumber(
-            "1",
-            await underlyer.decimals()
-          );
-          aptAmount = await indexToken.convertToShares(underlyerAmount);
+          assetAmount = tokenAmountToBigNumber("1", await asset.decimals());
+          aptAmount = await indexToken.convertToShares(assetAmount);
           await indexToken
             .connect(randomUser)
-            .deposit(underlyerAmount, randomUser.address);
+            .deposit(assetAmount, randomUser.address);
 
-          withdrawFee = underlyerAmount
+          withdrawFee = assetAmount
             .mul(await indexToken.withdrawFee())
             .div(1000000);
         });
 
         it("Deduct arbitrage fee if redeem is during fee period", async () => {
-          const arbitrageFee = underlyerAmount
+          const arbitrageFee = assetAmount
             .mul(await indexToken.arbitrageFee())
             .div(100);
-          const underlyerAmountMinusFee = underlyerAmount
+          const assetAmountMinusFee = assetAmount
             .sub(withdrawFee)
             .sub(arbitrageFee);
 
-          const beforeBalance = await underlyer.balanceOf(randomUser.address);
+          const beforeBalance = await asset.balanceOf(randomUser.address);
           await indexToken
             .connect(randomUser)
             .redeem(aptAmount, randomUser.address, randomUser.address);
-          const afterBalance = await underlyer.balanceOf(randomUser.address);
+          const afterBalance = await asset.balanceOf(randomUser.address);
           const transferAmount = afterBalance.sub(beforeBalance);
 
-          const tolerance = Math.ceil((await underlyer.decimals()) / 4);
+          const tolerance = Math.ceil((await asset.decimals()) / 4);
           const allowedDeviation = tokenAmountToBigNumber(5, tolerance);
-          expect(underlyerAmountMinusFee.sub(transferAmount).abs()).to.be.lt(
+          expect(assetAmountMinusFee.sub(transferAmount).abs()).to.be.lt(
             allowedDeviation
           );
         });
@@ -1179,17 +1155,17 @@ describe.only("Contract: IndexToken", () => {
             .connect(adminSafe)
             .setChainlinkStalePeriod(MAX_UINT256);
 
-          const beforeBalance = await underlyer.balanceOf(randomUser.address);
+          const beforeBalance = await asset.balanceOf(randomUser.address);
           await indexToken
             .connect(randomUser)
             .redeem(aptAmount, randomUser.address, randomUser.address);
-          const afterBalance = await underlyer.balanceOf(randomUser.address);
+          const afterBalance = await asset.balanceOf(randomUser.address);
           const transferAmount = afterBalance.sub(beforeBalance);
 
-          const tolerance = Math.ceil((await underlyer.decimals()) / 4);
+          const tolerance = Math.ceil((await asset.decimals()) / 4);
           const allowedDeviation = tokenAmountToBigNumber(5, tolerance);
           expect(
-            underlyerAmount.sub(withdrawFee).sub(transferAmount).abs()
+            assetAmount.sub(withdrawFee).sub(transferAmount).abs()
           ).to.be.lt(allowedDeviation);
         });
       });

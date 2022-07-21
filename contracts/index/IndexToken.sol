@@ -101,11 +101,11 @@ contract IndexToken is
      * repeatedly.  It should be called during the deployment so that
      * it cannot be called by someone else later.
      */
-    function initialize(address addressRegistry_, address underlyer_)
+    function initialize(address addressRegistry_, address asset_)
         external
         initializer
     {
-        require(address(underlyer_) != address(0), "INVALID_TOKEN");
+        require(address(asset_) != address(0), "INVALID_TOKEN");
 
         // initialize ancestor storage
         __Context_init_unchained();
@@ -117,7 +117,7 @@ contract IndexToken is
         // initialize impl-specific storage
         depositLock = false;
         redeemLock = false;
-        asset = underlyer_;
+        asset = asset_;
 
         _setAddressRegistry(addressRegistry_);
 
@@ -152,7 +152,7 @@ contract IndexToken is
     }
 
     /**
-     * @dev If no APT tokens have been minted yet, fallback to a fixed ratio.
+     * @dev If no share tokens have been minted yet, fallback to a fixed ratio.
      */
     function deposit(uint256 assets, address receiver)
         external
@@ -398,10 +398,10 @@ contract IndexToken is
         emit EmergencyExit(emergencySafe, token_, balance);
     }
 
-    function getUsdValue(uint256 aptAmount) external view returns (uint256) {
-        if (aptAmount == 0) return 0;
+    function getUsdValue(uint256 shareAmount) external view returns (uint256) {
+        if (shareAmount == 0) return 0;
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        return aptAmount.mul(getPoolTotalValue()).div(totalSupply());
+        return shareAmount.mul(getPoolTotalValue()).div(totalSupply());
     }
 
     function getReserveTopUpValue() external view override returns (int256) {
@@ -411,13 +411,13 @@ contract IndexToken is
         }
 
         // Should never revert because the OracleAdapter converts from int256
-        uint256 price = getUnderlyerPrice();
+        uint256 price = getAssetPrice();
         require(price <= uint256(type(int256).max), "INVALID_PRICE");
 
         int256 topUpAmount =
             topUpValue
                 .mul(int256(10**uint256(IDetailedERC20(asset).decimals())))
-                .div(int256(getUnderlyerPrice()));
+                .div(int256(getAssetPrice()));
 
         return topUpAmount;
     }
@@ -499,23 +499,23 @@ contract IndexToken is
     /**
      * @dev To check if arbitrage fee will be applied, use `hasArbFee`.
      */
-    function previewRedeem(uint256 aptAmount, address owner)
+    function previewRedeem(uint256 shareAmount, address owner)
         public
         view
         returns (uint256)
     {
         bool arbFee = hasArbFee(owner);
-        return _previewRedeem(aptAmount, arbFee);
+        return _previewRedeem(shareAmount, arbFee);
     }
 
-    function previewRedeem(uint256 aptAmount)
+    function previewRedeem(uint256 shareAmount)
         public
         view
         virtual
         override
         returns (uint256)
     {
-        return _previewRedeem(aptAmount, true);
+        return _previewRedeem(shareAmount, true);
     }
 
     /**
@@ -533,31 +533,31 @@ contract IndexToken is
      * @dev Typically it is the LP Account that borrows from the pool
      */
     function getPoolTotalValue() public view returns (uint256) {
-        uint256 underlyerValue = _getPoolUnderlyerValue();
+        uint256 assetValue = _getPoolAssetValue();
         uint256 mAptValue = _getDeployedValue();
-        return underlyerValue.add(mAptValue);
+        return assetValue.add(mAptValue);
     }
 
-    function getValueFromUnderlyerAmount(uint256 underlyerAmount)
+    function getValueFromAssetAmount(uint256 assetAmount)
         public
         view
         returns (uint256)
     {
-        if (underlyerAmount == 0) {
+        if (assetAmount == 0) {
             return 0;
         }
         uint256 decimals = IDetailedERC20(asset).decimals();
-        return getUnderlyerPrice().mul(underlyerAmount).div(10**decimals);
+        return getAssetPrice().mul(assetAmount).div(10**decimals);
     }
 
-    function getUnderlyerPrice() public view returns (uint256) {
+    function getAssetPrice() public view returns (uint256) {
         IOracleAdapter oracleAdapter =
             IOracleAdapter(addressRegistry.oracleAdapterAddress());
         return oracleAdapter.getAssetPrice(address(asset));
     }
 
     /**
-     * @dev amount of APT minted should be in same ratio to APT supply
+     * @dev amount of share minted should be in same ratio to share supply
      * as deposit value is to pool's total value, i.e.:
      *
      * mint amount / total supply
@@ -582,7 +582,7 @@ contract IndexToken is
         // assets.mul(supply).div(totalAssets())
         // but better precision due to avoiding early division
         uint256 totalValue = getPoolTotalValue();
-        uint256 assetPrice = getUnderlyerPrice();
+        uint256 assetPrice = getAssetPrice();
         return
             assets.mul(supply).mul(assetPrice).div(totalValue).div(
                 10**decimals
@@ -606,7 +606,7 @@ contract IndexToken is
         // shares.mul(totalAssets()).div(supply)
         // but better precision due to avoiding early division
         uint256 totalValue = getPoolTotalValue();
-        uint256 assetPrice = getUnderlyerPrice();
+        uint256 assetPrice = getAssetPrice();
         return
             shares.mul(totalValue).mul(10**decimals).div(assetPrice).div(
                 supply
@@ -615,7 +615,7 @@ contract IndexToken is
 
     function totalAssets() public view virtual override returns (uint256) {
         uint256 totalValue = getPoolTotalValue();
-        uint256 assetPrice = getUnderlyerPrice();
+        uint256 assetPrice = getAssetPrice();
         uint256 decimals = IDetailedERC20(asset).decimals();
         return totalValue.mul(10**decimals).div(assetPrice);
     }
@@ -661,19 +661,19 @@ contract IndexToken is
     function _getReserveTopUpValue() internal view returns (int256) {
         uint256 unnormalizedTargetValue =
             _getDeployedValue().mul(reservePercentage);
-        uint256 unnormalizedUnderlyerValue = _getPoolUnderlyerValue().mul(100);
+        uint256 unnormalizedAssetValue = _getPoolAssetValue().mul(100);
 
         require(
             unnormalizedTargetValue <= uint256(type(int256).max),
             "SIGNED_INT_OVERFLOW"
         );
         require(
-            unnormalizedUnderlyerValue <= uint256(type(int256).max),
+            unnormalizedAssetValue <= uint256(type(int256).max),
             "SIGNED_INT_OVERFLOW"
         );
         int256 topUpValue =
             int256(unnormalizedTargetValue)
-                .sub(int256(unnormalizedUnderlyerValue))
+                .sub(int256(unnormalizedAssetValue))
                 .div(int256(reservePercentage).add(100));
         return topUpValue;
     }
@@ -682,9 +682,9 @@ contract IndexToken is
      * @notice Get the USD value of tokens in the pool
      * @return The USD value
      */
-    function _getPoolUnderlyerValue() internal view returns (uint256) {
+    function _getPoolAssetValue() internal view returns (uint256) {
         return
-            getValueFromUnderlyerAmount(
+            getValueFromAssetAmount(
                 IDetailedERC20(asset).balanceOf(address(this))
             );
     }
@@ -700,13 +700,13 @@ contract IndexToken is
         return mApt.getDeployedValue(address(this));
     }
 
-    function _previewRedeem(uint256 aptAmount, bool arbFee)
+    function _previewRedeem(uint256 shareAmount, bool arbFee)
         internal
         view
         returns (uint256)
     {
-        uint256 underlyerAmount = convertToAssets(aptAmount);
-        return _getUnderlyerAmountAfterFees(underlyerAmount, arbFee);
+        uint256 assetAmount = convertToAssets(shareAmount);
+        return _getAssetAmountAfterFees(assetAmount, arbFee);
     }
 
     function _previewWithdraw(uint256 assets, bool arbFee)
@@ -714,36 +714,35 @@ contract IndexToken is
         view
         returns (uint256)
     {
-        uint256 assetsBeforeFees =
-            _getUnderlyerAmountBeforeFees(assets, arbFee);
+        uint256 assetsBeforeFees = _getAssetAmountBeforeFees(assets, arbFee);
         return convertToShares(assetsBeforeFees).add(1);
     }
 
-    function _getUnderlyerAmountAfterFees(uint256 underlyerAmount, bool arbFee)
+    function _getAssetAmountAfterFees(uint256 assetAmount, bool arbFee)
         internal
         view
         returns (uint256)
     {
         uint256 withdrawFeeAmount =
-            underlyerAmount.mul(withdrawFee).div(WITHDRAW_FEE_DENOMINATOR);
-        uint256 underlyerAmountWithFee = underlyerAmount.sub(withdrawFeeAmount);
+            assetAmount.mul(withdrawFee).div(WITHDRAW_FEE_DENOMINATOR);
+        uint256 assetAmountWithFee = assetAmount.sub(withdrawFeeAmount);
 
         if (arbFee) {
             uint256 arbFeeAmount =
-                underlyerAmount.mul(arbitrageFee).div(ARB_FEE_DENOMINATOR);
-            underlyerAmountWithFee = underlyerAmountWithFee.sub(arbFeeAmount);
+                assetAmount.mul(arbitrageFee).div(ARB_FEE_DENOMINATOR);
+            assetAmountWithFee = assetAmountWithFee.sub(arbFeeAmount);
         }
 
-        return underlyerAmountWithFee;
+        return assetAmountWithFee;
     }
 
-    function _getUnderlyerAmountBeforeFees(uint256 underlyerAmount, bool arbFee)
+    function _getAssetAmountBeforeFees(uint256 assetAmount, bool arbFee)
         internal
         view
-        returns (uint256 underlyerAmountBeforeFee)
+        returns (uint256 assetAmountBeforeFee)
     {
         if (arbFee) {
-            underlyerAmountBeforeFee = underlyerAmount
+            assetAmountBeforeFee = assetAmount
                 .mul(WITHDRAW_FEE_DENOMINATOR)
                 .mul(ARB_FEE_DENOMINATOR)
                 .div(
@@ -753,7 +752,7 @@ contract IndexToken is
                     .sub(arbitrageFee.mul(WITHDRAW_FEE_DENOMINATOR))
             );
         } else {
-            underlyerAmountBeforeFee = underlyerAmount
+            assetAmountBeforeFee = assetAmount
                 .mul(WITHDRAW_FEE_DENOMINATOR)
                 .div(WITHDRAW_FEE_DENOMINATOR.sub(withdrawFee));
         }
