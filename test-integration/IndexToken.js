@@ -21,7 +21,7 @@ const link = (amount) => tokenAmountToBigNumber(amount, "18");
 console.debugging = false;
 /* ************************ */
 
-describe.only("Contract: IndexToken", () => {
+describe("Contract: IndexToken", () => {
   let deployer;
   let oracle;
   let adminSafe;

@@ -18,7 +18,7 @@ const AddressRegistry = artifacts.require("IAddressRegistryV2");
 const MetaPoolToken = artifacts.require("MetaPoolToken");
 const OracleAdapter = artifacts.require("OracleAdapter");
 
-describe.only("Contract: IndexToken", () => {
+describe("Contract: IndexToken", () => {
   // signers
   let deployer;
   let adminSafe;
