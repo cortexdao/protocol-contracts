@@ -41,8 +41,14 @@ contract DepositZap {
 
     address public immutable indexToken;
 
+    mapping(uint256 => address) public underlyers;
+
     constructor(address indexToken_) public {
         indexToken = indexToken_;
+
+        underlyers[0] = DAI;
+        underlyers[1] = USDC;
+        underlyers[2] = USDT;
     }
 
     function deposit(uint256 amount, uint8 index) external {
@@ -72,12 +78,19 @@ contract DepositZap {
         uint256 minAmount
     ) internal {
         require(index < 3, "INVALID_INDEX");
-        IDetailedERC20(USDC).transferFrom(msg.sender, address(this), amount);
-        IDetailedERC20(USDC).approve(CURVE_3POOL, 0);
-        IDetailedERC20(USDC).approve(CURVE_3POOL, amount);
+
+        address token = underlyers[index];
+        IDetailedERC20(token).safeTransferFrom(
+            msg.sender,
+            address(this),
+            amount
+        );
+        IDetailedERC20(token).safeApprove(CURVE_3POOL, 0);
+        IDetailedERC20(token).safeApprove(CURVE_3POOL, amount);
+
         uint256[3] memory amounts;
         amounts[index] = amount;
-        _addLiquidity(amounts, 0);
+        _addLiquidity(amounts, minAmount);
     }
 
     function _addLiquidity(uint256[3] memory amounts, uint256 minAmount)
