@@ -59,17 +59,9 @@ contract DepositZap {
         IERC4626(indexToken).deposit(lpAmount, msg.sender);
     }
 
-    function redeem(
-        uint256 lpAmount,
-        uint8 index,
-        uint256 minAmount
-    ) external {
+    function redeem(uint256 lpAmount, uint8 index) external {
         require(index < 3, "INVALID_INDEX");
-        ICurve3Pool(CURVE_3POOL).remove_liquidity_one_coin(
-            lpAmount,
-            index,
-            minAmount
-        );
+        ICurve3Pool(CURVE_3POOL).remove_liquidity_one_coin(lpAmount, index, 0);
     }
 
     function _addLiquidityOneCoin(
