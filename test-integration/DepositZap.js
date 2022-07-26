@@ -1,6 +1,5 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { MaxUint256: MAX_UINT256 } = ethers.constants;
 const { bytes32 } = require("../utils/helpers");
 const timeMachine = require("ganache-time-traveler");
 const { WHALE_POOLS } = require("../utils/constants");
@@ -12,7 +11,9 @@ const {
   generateContractAddress,
 } = require("../utils/helpers");
 
+const DAI_ADDRESS = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
 const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+const TETHER_ADDRESS = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
 const CURVE_3CRV_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
 const USDC_AGG_ADDRESS = "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6";
 
@@ -42,11 +43,12 @@ describe("Contract: IndexToken", () => {
   let adminSafe;
   let emergencySafe;
   let randomUser;
-  let anotherUser;
 
   // Mainnet ERC20s
   let curve3Crv;
+  let dai;
   let usdc;
+  let tether;
 
   // protocol contracts
   let tvlAgg;
@@ -60,7 +62,7 @@ describe("Contract: IndexToken", () => {
   let depositZap;
 
   before(async () => {
-    [deployer, oracle, adminSafe, emergencySafe, randomUser, anotherUser] =
+    [deployer, oracle, adminSafe, emergencySafe, randomUser] =
       await ethers.getSigners();
   });
 
@@ -179,7 +181,9 @@ describe("Contract: IndexToken", () => {
       "IDetailedERC20",
       CURVE_3CRV_ADDRESS
     );
+    dai = await ethers.getContractAt("IDetailedERC20", DAI_ADDRESS);
     usdc = await ethers.getContractAt("IDetailedERC20", USDC_ADDRESS);
+    tether = await ethers.getContractAt("IDetailedERC20", TETHER_ADDRESS);
   });
 
   before("Deploy Oracle Adapter", async () => {
@@ -210,22 +214,6 @@ describe("Contract: IndexToken", () => {
     );
     const proxy = await deployProxy(logic, proxyAdmin, initData);
     indexToken = await IndexToken.attach(proxy.address);
-
-    await acquireToken(
-      WHALE_POOLS["USDC"],
-      randomUser.address,
-      usdc,
-      "1000000",
-      randomUser.address
-    );
-
-    //handle allownaces
-    await curve3Crv
-      .connect(randomUser)
-      .approve(indexToken.address, MAX_UINT256);
-    await curve3Crv
-      .connect(anotherUser)
-      .approve(indexToken.address, MAX_UINT256);
   });
 
   before("Deploy Deposit Zap", async () => {
@@ -235,13 +223,63 @@ describe("Contract: IndexToken", () => {
   });
 
   describe.only("deposit", () => {
-    it("can deposit", async () => {
+    it("can deposit DAI", async () => {
       expect(await indexToken.balanceOf(randomUser.address)).to.equal(0);
+
+      await acquireToken(
+        WHALE_POOLS["DAI"],
+        randomUser.address,
+        dai,
+        "1000000",
+        randomUser.address
+      );
+
+      const depositAmount = tokenAmountToBigNumber(1000, 18);
+      const index = 0; // DAI
+
+      await dai.connect(randomUser).approve(depositZap.address, depositAmount);
+      await depositZap.connect(randomUser).deposit(depositAmount, index);
+
+      expect(await indexToken.balanceOf(randomUser.address)).to.gt(0);
+    });
+
+    it("can deposit USDC", async () => {
+      expect(await indexToken.balanceOf(randomUser.address)).to.equal(0);
+
+      await acquireToken(
+        WHALE_POOLS["USDC"],
+        randomUser.address,
+        usdc,
+        "1000000",
+        randomUser.address
+      );
 
       const depositAmount = tokenAmountToBigNumber(1000, 6);
       const index = 1; // USDC
 
       await usdc.connect(randomUser).approve(depositZap.address, depositAmount);
+      await depositZap.connect(randomUser).deposit(depositAmount, index);
+
+      expect(await indexToken.balanceOf(randomUser.address)).to.gt(0);
+    });
+
+    it("can deposit Tether", async () => {
+      expect(await indexToken.balanceOf(randomUser.address)).to.equal(0);
+
+      await acquireToken(
+        WHALE_POOLS["USDT"],
+        randomUser.address,
+        tether,
+        "1000000",
+        randomUser.address
+      );
+
+      const depositAmount = tokenAmountToBigNumber(1000, 6);
+      const index = 2; // Tether
+
+      await tether
+        .connect(randomUser)
+        .approve(depositZap.address, depositAmount);
       await depositZap.connect(randomUser).deposit(depositAmount, index);
 
       expect(await indexToken.balanceOf(randomUser.address)).to.gt(0);
