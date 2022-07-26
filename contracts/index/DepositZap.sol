@@ -59,8 +59,10 @@ contract DepositZap {
         IERC4626(indexToken).deposit(lpAmount, msg.sender);
     }
 
-    function redeem(uint256 lpAmount, uint8 index) external {
+    function redeem(uint256 shares, uint8 index) external {
         require(index < 3, "INVALID_INDEX");
+        IERC4626(indexToken).redeem(shares, address(this), msg.sender);
+        uint256 lpAmount = IDetailedERC20(CURVE_3CRV).balanceOf(address(this));
         ICurve3Pool(CURVE_3POOL).remove_liquidity_one_coin(lpAmount, index, 0);
     }
 
