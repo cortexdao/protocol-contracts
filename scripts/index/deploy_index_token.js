@@ -54,7 +54,7 @@ async function main(argv) {
   await indexToken.connect(alice).deposit(depositAmount, alice.address);
   console.log(
     "Alice index token balance: %s",
-    await indexToken.balanceOf(alice.address)
+    (await indexToken.balanceOf(alice.address)) / 10 ** 18
   );
 }
 

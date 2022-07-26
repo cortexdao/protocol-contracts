@@ -130,6 +130,10 @@ async function main(argv) {
 
   // seed the pool with our liquidity
   await pool.connect(alice)["add_liquidity(uint256[2],uint256)"](quantities, 0);
+
+  console.log("Pool balances:");
+  console.log("  USDC: %s", quantities[0] / 10 ** 6);
+  console.log("  idxCVX: %s", quantities[1] / 10 ** 18);
 }
 
 if (!module.parent) {
