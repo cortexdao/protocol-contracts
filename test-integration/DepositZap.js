@@ -285,4 +285,33 @@ describe("Contract: IndexToken", () => {
       expect(await indexToken.balanceOf(randomUser.address)).to.gt(0);
     });
   });
+
+  describe.only("redeem", () => {
+    before("Deposit for index tokens", async () => {
+      const depositAmount = tokenAmountToBigNumber(1000, 6);
+      const index = 1; // USDC
+
+      await acquireToken(
+        WHALE_POOLS["USDC"],
+        deployer.address,
+        usdc,
+        depositAmount,
+        deployer.address
+      );
+
+      await usdc.connect(deployer).approve(depositZap.address, depositAmount);
+      await depositZap.connect(deployer).deposit(depositAmount, index);
+
+      const indexBalance = await indexToken.balanceOf(deployer.address);
+      await indexToken
+        .connect(deployer)
+        .transfer(randomUser.address, indexBalance);
+    });
+
+    it("can withdraw in USDC", async () => {
+      const index = 1;
+      const indexBalance = await indexToken.balanceOf(randomUser.address);
+      await depositZap.redeem(indexBalance, index);
+    });
+  });
 });
