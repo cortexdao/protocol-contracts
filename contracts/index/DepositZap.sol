@@ -53,7 +53,7 @@ contract DepositZap {
         IERC4626(indexToken).deposit(lpAmount, msg.sender);
     }
 
-    function removeLiquidityOneCoin(
+    function redeem(
         uint256 lpAmount,
         uint8 index,
         uint256 minAmount
@@ -73,6 +73,8 @@ contract DepositZap {
     ) internal {
         require(index < 3, "INVALID_INDEX");
         IDetailedERC20(USDC).transferFrom(msg.sender, address(this), amount);
+        IDetailedERC20(USDC).approve(CURVE_3POOL, 0);
+        IDetailedERC20(USDC).approve(CURVE_3POOL, amount);
         uint256[3] memory amounts;
         amounts[index] = amount;
         _addLiquidity(amounts, 0);
