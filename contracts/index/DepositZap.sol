@@ -61,9 +61,18 @@ contract DepositZap {
 
     function redeem(uint256 shares, uint8 index) external {
         require(index < 3, "INVALID_INDEX");
+
+        // redeem index tokens for 3CRV; user must have approved the zap
         IERC4626(indexToken).redeem(shares, address(this), msg.sender);
+
+        // pull out of 3Pool into underlyer (redeem 3CRV)
         uint256 lpAmount = IDetailedERC20(CURVE_3CRV).balanceOf(address(this));
         ICurve3Pool(CURVE_3POOL).remove_liquidity_one_coin(lpAmount, index, 0);
+
+        // transfer underlyer balance to user
+        address token = underlyers[index];
+        uint256 tokenBalance = IDetailedERC20(token).balanceOf(address(this));
+        IDetailedERC20(token).safeTransfer(msg.sender, tokenBalance);
     }
 
     function _addLiquidityOneCoin(
