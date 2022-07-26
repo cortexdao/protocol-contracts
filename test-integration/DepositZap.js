@@ -12,7 +12,9 @@ const {
   generateContractAddress,
 } = require("../utils/helpers");
 
-const link = (amount) => tokenAmountToBigNumber(amount, "18");
+const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+const CURVE_3CRV_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
+const USDC_AGG_ADDRESS = "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6";
 
 /* ************************ */
 /* set DEBUG log level here */
@@ -20,7 +22,21 @@ const link = (amount) => tokenAmountToBigNumber(amount, "18");
 console.debugging = false;
 /* ************************ */
 
+async function deployProxy(logic, proxyAdmin, initData) {
+  const TransparentUpgradeableProxy = await ethers.getContractFactory(
+    "TransparentUpgradeableProxy"
+  );
+  const proxy = await TransparentUpgradeableProxy.deploy(
+    logic.address,
+    proxyAdmin.address,
+    initData
+  );
+  await proxy.deployed();
+  return proxy;
+}
+
 describe("Contract: IndexToken", () => {
+  // signers
   let deployer;
   let oracle;
   let adminSafe;
@@ -28,6 +44,19 @@ describe("Contract: IndexToken", () => {
   let randomUser;
   let anotherUser;
 
+  // Mainnet ERC20s
+  let curve3Crv;
+  let usdc;
+
+  // protocol contracts
+  let tvlAgg;
+  let oracleAdapter;
+  let mApt;
+  let addressRegistry;
+  let proxyAdmin;
+
+  // system under test
+  let indexToken;
   let depositZap;
 
   before(async () => {
@@ -57,26 +86,8 @@ describe("Contract: IndexToken", () => {
     await timeMachine.revertToSnapshot(suiteSnapshotId);
   });
 
-  const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-  const CURVE_3CRV_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
-  const USDC_AGG_ADDRESS = "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6";
-
-  let tvlAgg;
-  let curve3Crv;
-  let usdc;
-  let oracleAdapter;
-  let mApt;
-  let addressRegistry;
-  let indexToken;
-
-  before("Setup", async () => {
-    curve3Crv = await ethers.getContractAt(
-      "IDetailedERC20",
-      CURVE_3CRV_ADDRESS
-    );
-    usdc = await ethers.getContractAt("IDetailedERC20", USDC_ADDRESS);
-
-    const paymentAmount = link("1");
+  before("Setup Chainlink Aggregator", async () => {
+    const paymentAmount = tokenAmountToBigNumber("1", 18); // LINK
     const maxSubmissionValue = tokenAmountToBigNumber("1", "20");
     const tvlAggConfig = {
       paymentAmount, // payment amount (price paid for each oracle submission, in wei)
@@ -91,30 +102,27 @@ describe("Contract: IndexToken", () => {
       deployer.address, // oracle owner
       deployer.address // ETH funder
     );
+  });
 
+  before("Deploy and Setup Address Registry", async () => {
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
 
     const AddressRegistryV2 = await ethers.getContractFactory(
       "AddressRegistryV2"
     );
     const addressRegistryLogic = await AddressRegistryV2.deploy();
-    const addressRegistryProxyAdmin = await ProxyAdmin.deploy();
-    await addressRegistryProxyAdmin.deployed();
+    proxyAdmin = await ProxyAdmin.deploy();
+    await proxyAdmin.deployed();
 
     const encodedParamData = AddressRegistryV2.interface.encodeFunctionData(
       "initialize(address)",
-      [addressRegistryProxyAdmin.address]
+      [proxyAdmin.address]
     );
-
-    const TransparentUpgradeableProxy = await ethers.getContractFactory(
-      "TransparentUpgradeableProxy"
-    );
-    const addressRegistryProxy = await TransparentUpgradeableProxy.deploy(
-      addressRegistryLogic.address,
-      addressRegistryProxyAdmin.address,
+    const addressRegistryProxy = await deployProxy(
+      addressRegistryLogic,
+      proxyAdmin,
       encodedParamData
     );
-
     addressRegistry = await AddressRegistryV2.attach(
       addressRegistryProxy.address
     );
@@ -149,10 +157,9 @@ describe("Contract: IndexToken", () => {
 
     const lpSafeAddress = await generateContractAddress(deployer);
     await addressRegistry.registerAddress(bytes32("lpSafe"), lpSafeAddress);
+  });
 
-    const proxyAdmin = await ProxyAdmin.deploy();
-    await proxyAdmin.deployed();
-
+  before("Deploy mAPT", async () => {
     const MetaPoolToken = await ethers.getContractFactory("TestMetaPoolToken");
     const mAptLogic = await MetaPoolToken.deploy();
     await mAptLogic.deployed();
@@ -161,16 +168,21 @@ describe("Contract: IndexToken", () => {
       "initialize(address)",
       [addressRegistry.address]
     );
-    const mAptProxy = await TransparentUpgradeableProxy.deploy(
-      mAptLogic.address,
-      proxyAdmin.address,
-      mAptInitData
-    );
-    await mAptProxy.deployed();
+    const mAptProxy = await deployProxy(mAptLogic, proxyAdmin, mAptInitData);
     mApt = await MetaPoolToken.attach(mAptProxy.address);
 
     await addressRegistry.registerAddress(bytes32("mApt"), mApt.address);
+  });
 
+  before("Attack to Mainnet ERC20s", async () => {
+    curve3Crv = await ethers.getContractAt(
+      "IDetailedERC20",
+      CURVE_3CRV_ADDRESS
+    );
+    usdc = await ethers.getContractAt("IDetailedERC20", USDC_ADDRESS);
+  });
+
+  before("Deploy Oracle Adapter", async () => {
     const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
     oracleAdapter = await OracleAdapter.deploy(
       addressRegistry.address,
@@ -185,7 +197,9 @@ describe("Contract: IndexToken", () => {
       bytes32("oracleAdapter"),
       oracleAdapter.address
     );
+  });
 
+  before("Deploy Index Token", async () => {
     const IndexToken = await ethers.getContractFactory("TestIndexToken");
     const logic = await IndexToken.deploy();
     await logic.deployed();
@@ -194,13 +208,7 @@ describe("Contract: IndexToken", () => {
       "initialize(address,address)",
       [addressRegistry.address, curve3Crv.address]
     );
-    const proxy = await TransparentUpgradeableProxy.deploy(
-      logic.address,
-      proxyAdmin.address,
-      initData
-    );
-    await proxy.deployed();
-
+    const proxy = await deployProxy(logic, proxyAdmin, initData);
     indexToken = await IndexToken.attach(proxy.address);
 
     await acquireToken(
@@ -218,7 +226,9 @@ describe("Contract: IndexToken", () => {
     await curve3Crv
       .connect(anotherUser)
       .approve(indexToken.address, MAX_UINT256);
+  });
 
+  before("Deploy Deposit Zap", async () => {
     const DepositZap = await ethers.getContractFactory("DepositZap");
     depositZap = await DepositZap.deploy(indexToken.address);
     await depositZap.deployed();
