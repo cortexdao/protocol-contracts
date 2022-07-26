@@ -1,14 +1,13 @@
-const { assert, expect } = require("chai");
+const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { AddressZero: ZERO_ADDRESS, MaxUint256: MAX_UINT256 } = ethers.constants;
-const { impersonateAccount, bytes32 } = require("../utils/helpers");
+const { MaxUint256: MAX_UINT256 } = ethers.constants;
+const { bytes32 } = require("../utils/helpers");
 const timeMachine = require("ganache-time-traveler");
-const { WHALE_POOLS, FARM_TOKENS } = require("../utils/constants");
+const { WHALE_POOLS } = require("../utils/constants");
 const {
   acquireToken,
   console,
   tokenAmountToBigNumber,
-  FAKE_ADDRESS,
   deployAggregator,
   generateContractAddress,
 } = require("../utils/helpers");
@@ -29,18 +28,11 @@ describe("Contract: IndexToken", () => {
   let randomUser;
   let anotherUser;
 
-  let depositZap
+  let depositZap;
 
   before(async () => {
-    [
-      deployer,
-      oracle,
-      adminSafe,
-      emergencySafe,
-      randomUser,
-      anotherUser,
-      receiver,
-    ] = await ethers.getSigners();
+    [deployer, oracle, adminSafe, emergencySafe, randomUser, anotherUser] =
+      await ethers.getSigners();
   });
 
   // use EVM snapshots for test isolation
@@ -66,7 +58,7 @@ describe("Contract: IndexToken", () => {
   });
 
   const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-  const CURVE_3CRV_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
+  const CURVE_3CRV_ADDRESS = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490";
   const USDC_AGG_ADDRESS = "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6";
 
   let tvlAgg;
@@ -78,7 +70,10 @@ describe("Contract: IndexToken", () => {
   let indexToken;
 
   before("Setup", async () => {
-    curve3Crv = await ethers.getContractAt("IDetailedERC20", CURVE_3CRV_ADDRESS);
+    curve3Crv = await ethers.getContractAt(
+      "IDetailedERC20",
+      CURVE_3CRV_ADDRESS
+    );
     usdc = await ethers.getContractAt("IDetailedERC20", USDC_ADDRESS);
 
     const paymentAmount = link("1");
@@ -217,27 +212,29 @@ describe("Contract: IndexToken", () => {
     );
 
     //handle allownaces
-    console.log("Approving ...")
-    await curve3Crv.connect(randomUser).approve(indexToken.address, MAX_UINT256);
-    await curve3Crv.connect(anotherUser).approve(indexToken.address, MAX_UINT256);
+    await curve3Crv
+      .connect(randomUser)
+      .approve(indexToken.address, MAX_UINT256);
+    await curve3Crv
+      .connect(anotherUser)
+      .approve(indexToken.address, MAX_UINT256);
 
-    console.log("Deploying ...")
-    const DepositZap = await ethers.getContractFactory("DepositZap")
-    depositZap = await DepositZap.deploy(indexToken.address)
-    await depositZap.deployed()
+    const DepositZap = await ethers.getContractFactory("DepositZap");
+    depositZap = await DepositZap.deploy(indexToken.address);
+    await depositZap.deployed();
   });
-
 
   describe.only("deposit", () => {
     it("can deposit", async () => {
-      const depositAmount = tokenAmountToBigNumber(100, 6)
-      const index = 1  // USDC
+      expect(await indexToken.balanceOf(randomUser.address)).to.equal(0);
 
-      await usdc.connect(randomUser).approve(depositZap.address, depositAmount)
-      await depositZap.connect(randomUser).deposit(depositAmount, index) 
-    })
+      const depositAmount = tokenAmountToBigNumber(1000, 6);
+      const index = 1; // USDC
 
-  })
+      await usdc.connect(randomUser).approve(depositZap.address, depositAmount);
+      await depositZap.connect(randomUser).deposit(depositAmount, index);
 
-
+      expect(await indexToken.balanceOf(randomUser.address)).to.gt(0);
+    });
+  });
 });
