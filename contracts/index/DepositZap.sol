@@ -48,26 +48,9 @@ contract DepositZap {
     function deposit(uint256 amount, uint8 index) external {
         _addLiquidityOneCoin(amount, index, 0);
         uint256 lpAmount = IDetailedERC20(CURVE_3CRV).balanceOf(address(this));
+        IDetailedERC20(CURVE_3CRV).safeApprove(indexToken, 0);
+        IDetailedERC20(CURVE_3CRV).safeApprove(indexToken, lpAmount);
         IERC4626(indexToken).deposit(lpAmount, msg.sender);
-    }
-
-    function _addLiquidityOneCoin(
-        uint256 amount,
-        uint256 index,
-        uint256 minAmount
-    ) internal {
-        uint256[3] memory amounts;
-        amounts[index] = amount;
-        _addLiquidity(amounts, 0);
-    }
-
-    function _addLiquidity(uint256[3] memory amounts, uint256 minAmount)
-        internal
-    {
-        ICurve3Pool(CURVE_3POOL).add_liquidity(
-            [amounts[0], amounts[1], amounts[2]],
-            minAmount
-        );
     }
 
     function removeLiquidityOneCoin(
@@ -79,6 +62,27 @@ contract DepositZap {
         ICurve3Pool(CURVE_3POOL).remove_liquidity_one_coin(
             lpAmount,
             index,
+            minAmount
+        );
+    }
+
+    function _addLiquidityOneCoin(
+        uint256 amount,
+        uint256 index,
+        uint256 minAmount
+    ) internal {
+        require(index < 3, "INVALID_INDEX");
+        IDetailedERC20(USDC).transferFrom(msg.sender, address(this), amount);
+        uint256[3] memory amounts;
+        amounts[index] = amount;
+        _addLiquidity(amounts, 0);
+    }
+
+    function _addLiquidity(uint256[3] memory amounts, uint256 minAmount)
+        internal
+    {
+        ICurve3Pool(CURVE_3POOL).add_liquidity(
+            [amounts[0], amounts[1], amounts[2]],
             minAmount
         );
     }
