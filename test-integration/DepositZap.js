@@ -309,6 +309,7 @@ describe("Contract: IndexToken", () => {
     });
 
     it("can withdraw in USDC", async () => {
+      expect(await usdc.balanceOf(randomUser.address)).to.equal(0);
       const index = 1;
       const indexBalance = await indexToken.balanceOf(randomUser.address);
 
@@ -316,6 +317,7 @@ describe("Contract: IndexToken", () => {
         .connect(randomUser)
         .approve(depositZap.address, indexBalance);
       await depositZap.connect(randomUser).redeem(indexBalance, index);
+      expect(await usdc.balanceOf(randomUser.address)).to.be.gt(0);
     });
   });
 });
