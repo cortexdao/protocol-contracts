@@ -3,21 +3,9 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import {IDetailedERC20} from "contracts/common/Imports.sol";
-import {SafeERC20} from "contracts/libraries/Imports.sol";
-import {
-    Initializable,
-    ERC20UpgradeSafe,
-    ReentrancyGuardUpgradeSafe,
-    PausableUpgradeSafe,
-    AccessControlUpgradeSafe,
-    Address as AddressUpgradeSafe,
-    SafeMath as SafeMathUpgradeSafe,
-    SignedSafeMath as SignedSafeMathUpgradeSafe
-} from "contracts/proxy/Imports.sol";
-import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
+import {SafeERC20, SafeMath} from "contracts/libraries/Imports.sol";
 
-import {IERC4626, IFeePool, ILockingPool, IReservePool} from "./Imports.sol";
-
+import {IERC4626} from "./Imports.sol";
 import {ICurve3Pool} from "./ICurve3Pool.sol";
 
 /**
@@ -25,9 +13,7 @@ import {ICurve3Pool} from "./ICurve3Pool.sol";
  * and then deposit for index tokens.
  */
 contract DepositZap {
-    using AddressUpgradeSafe for address;
-    using SafeMathUpgradeSafe for uint256;
-    using SignedSafeMathUpgradeSafe for int256;
+    using SafeMath for uint256;
     using SafeERC20 for IDetailedERC20;
 
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
