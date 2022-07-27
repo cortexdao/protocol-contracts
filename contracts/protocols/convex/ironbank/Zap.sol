@@ -21,9 +21,8 @@ contract ConvexIronbankZap is ConvexZapBase, ConvexIronbankConstants {
     {} // solhint-disable no-empty-blocks
 
     function assetAllocations() public view override returns (string[] memory) {
-        string[] memory allocationNames = new string[](2);
-        allocationNames[0] = "curve-ironbank";
-        allocationNames[1] = NAME;
+        string[] memory allocationNames = new string[](1);
+        allocationNames[0] = NAME;
         return allocationNames;
     }
 
