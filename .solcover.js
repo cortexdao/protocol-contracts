@@ -4,6 +4,7 @@ module.exports = {
     "registry/AddressRegistry.sol",
     "deploy/TestAlphaDeployment.sol",
     "deploy/testFactories.sol",
+    "index/TestIndexToken.sol",
     "libraries/TestNamedAddressSet.sol",
     "lpaccount/TestLpAccount.sol",
     "lpaccount/TestLpAccountStorage.sol",
