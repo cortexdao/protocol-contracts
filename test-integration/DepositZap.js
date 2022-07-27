@@ -308,6 +308,18 @@ describe("Contract: IndexToken", () => {
         .transfer(randomUser.address, indexBalance);
     });
 
+    it("can withdraw in DAI", async () => {
+      expect(await dai.balanceOf(randomUser.address)).to.equal(0);
+      const index = 0;
+      const indexBalance = await indexToken.balanceOf(randomUser.address);
+
+      await indexToken
+        .connect(randomUser)
+        .approve(depositZap.address, indexBalance);
+      await depositZap.connect(randomUser).redeem(indexBalance, index);
+      expect(await dai.balanceOf(randomUser.address)).to.be.gt(0);
+    });
+
     it("can withdraw in USDC", async () => {
       expect(await usdc.balanceOf(randomUser.address)).to.equal(0);
       const index = 1;
@@ -318,6 +330,18 @@ describe("Contract: IndexToken", () => {
         .approve(depositZap.address, indexBalance);
       await depositZap.connect(randomUser).redeem(indexBalance, index);
       expect(await usdc.balanceOf(randomUser.address)).to.be.gt(0);
+    });
+
+    it("can withdraw in Tether", async () => {
+      expect(await tether.balanceOf(randomUser.address)).to.equal(0);
+      const index = 2;
+      const indexBalance = await indexToken.balanceOf(randomUser.address);
+
+      await indexToken
+        .connect(randomUser)
+        .approve(depositZap.address, indexBalance);
+      await depositZap.connect(randomUser).redeem(indexBalance, index);
+      expect(await tether.balanceOf(randomUser.address)).to.be.gt(0);
     });
   });
 });
