@@ -222,7 +222,7 @@ describe("Contract: IndexToken", () => {
     await depositZap.deployed();
   });
 
-  describe.only("deposit", () => {
+  describe("deposit", () => {
     it("can deposit DAI", async () => {
       expect(await indexToken.balanceOf(randomUser.address)).to.equal(0);
 
@@ -286,7 +286,7 @@ describe("Contract: IndexToken", () => {
     });
   });
 
-  describe.only("redeem", () => {
+  describe("redeem", () => {
     before("Deposit for index tokens", async () => {
       const depositAmount = tokenAmountToBigNumber(1000, 6);
       const index = 1; // USDC
