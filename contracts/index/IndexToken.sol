@@ -692,12 +692,12 @@ contract IndexToken is
     /**
      * @notice Get the USD value of tokens owed to the pool
      * @dev Tokens from the pool are typically borrowed by the LP Account
-     * @dev Tokens borrowed from the pool are tracked with mAPT
-     * @return The USD value
+     * @return The USD value.  USD prices have 8 decimals.
      */
     function _getDeployedValue() internal view returns (uint256) {
-        MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAptAddress());
-        return mApt.getDeployedValue(address(this));
+        IOracleAdapter oracleAdapter =
+            IOracleAdapter(addressRegistry.oracleAdapterAddress());
+        return oracleAdapter.getTvl();
     }
 
     function _previewRedeem(uint256 shareAmount, bool arbFee)
