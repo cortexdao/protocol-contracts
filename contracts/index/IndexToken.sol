@@ -125,7 +125,10 @@ contract IndexToken is
         _setupRole(DEFAULT_ADMIN_ROLE, addressRegistry.emergencySafeAddress());
         _setupRole(ADMIN_ROLE, addressRegistry.adminSafeAddress());
         _setupRole(EMERGENCY_ROLE, addressRegistry.emergencySafeAddress());
-        _setupRole(CONTRACT_ROLE, addressRegistry.mAptAddress());
+        _setupRole(
+            CONTRACT_ROLE,
+            addressRegistry.getAddress("lpAccountFunder")
+        );
 
         arbitrageFeePeriod = 1 days;
         arbitrageFee = 5;
