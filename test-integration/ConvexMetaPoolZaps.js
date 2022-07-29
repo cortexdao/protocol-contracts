@@ -99,7 +99,7 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
       primaryWithdrawBlocked: true,
     },
     {
-      contractName: "ConvexMusdZap",
+      contractName: "ConvexMusdZapV2",
       swapAddress: "0x8474DdbE98F5aA3179B3B3F5942D724aFcdec9f6",
       swapInterface: "IMetaPool",
       lpTokenAddress: "0x1AEf73d49Dedc4b1778d0706583995958Dc862e6",
@@ -107,6 +107,7 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
       gaugeInterface: "IBaseRewardPool",
       numberOfCoins: 4,
       whaleAddress: WHALE_POOLS["MUSD"],
+      primaryWithdrawBlocked: true,
     },
     // OUSD rewards were not streaming during the pinned block
     // {
