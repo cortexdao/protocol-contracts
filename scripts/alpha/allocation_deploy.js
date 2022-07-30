@@ -48,6 +48,9 @@ async function main(argv) {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join("");
   allocationContractName += "Allocation";
+  if (name === "convex-fraxusdc") {
+    allocationContractName = "ConvexFraxUsdcAllocation";
+  }
   if (argv.v2) {
     allocationContractName += "V2";
   }

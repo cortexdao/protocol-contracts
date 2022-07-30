@@ -42,6 +42,9 @@ async function main(argv) {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join("");
   zapContractName += "Zap";
+  if (name === "convex-fraxusdc") {
+    zapContractName = "ConvexFraxUsdcZap";
+  }
   if (argv.v2) {
     zapContractName += "V2";
   }
