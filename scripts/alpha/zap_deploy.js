@@ -15,6 +15,11 @@ const { argv } = require("yargs")
     default: true,
     description: "Compile contract using `compile:one`",
   })
+  .option("v2", {
+    type: "boolean",
+    default: false,
+    description: "Use V2 version of the allocation",
+  })
   .demandOption(["name"]);
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
@@ -37,6 +42,9 @@ async function main(argv) {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join("");
   zapContractName += "Zap";
+  if (argv.v2) {
+    zapContractName += "V2";
+  }
   console.log("Zap contract name: %s", zapContractName);
   console.log("");
 
