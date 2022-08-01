@@ -2,18 +2,17 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {IDetailedERC20} from "contracts/common/Imports.sol";
-import {SafeERC20} from "contracts/libraries/Imports.sol";
 import {
-    Initializable,
-    ERC20UpgradeSafe,
-    ReentrancyGuardUpgradeSafe,
-    PausableUpgradeSafe,
-    AccessControlUpgradeSafe,
-    Address as AddressUpgradeSafe,
-    SafeMath as SafeMathUpgradeSafe,
-    SignedSafeMath as SignedSafeMathUpgradeSafe
-} from "contracts/proxy/Imports.sol";
+    AccessControl,
+    IDetailedERC20,
+    ReentrancyGuard
+} from "contracts/common/Imports.sol";
+import {
+    Address,
+    SafeERC20,
+    SafeMath,
+    SignedSafeMath
+} from "contracts/libraries/Imports.sol";
 import {ILpAccount} from "contracts/lpaccount/Imports.sol";
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
 import {ILockingOracle} from "contracts/oracle/Imports.sol";
@@ -24,59 +23,29 @@ import {
     Erc20AllocationConstants
 } from "contracts/tvl/Imports.sol";
 
-import {ILpAccountFunder} from "./ILpAccountFunder.sol";
-
 /**
- * @notice This contract has hybrid functionality:
- *
- * - It acts as a token that tracks the capital that has been pulled
- * ("deployed") from APY Finance pools (PoolToken contracts)
- *
- * - It is permissioned to transfer funds between the pools and the
- * LP Account contract.
- *
- * @dev When MetaPoolToken pulls capital from the pools to the LP Account, it
- * will mint mAPT for each pool. Conversely, when MetaPoolToken withdraws funds
- * from the LP Account to the pools, it will burn mAPT for each pool.
- *
- * The ratio of each pool's mAPT balance to the total mAPT supply determines
- * the amount of the TVL dedicated to the pool.
- *
- *
- * DEPLOY CAPITAL TO YIELD FARMING STRATEGIES
- * Mints appropriate mAPT amount to track share of deployed TVL owned by a pool.
- *
- * +-------------+  MetaPoolToken.fundLpAccount  +-----------+
- * |             |------------------------------>|           |
- * | PoolTokenV2 |     MetaPoolToken.mint        | LpAccount |
- * |             |<------------------------------|           |
- * +-------------+                               +-----------+
- *
- *
- * WITHDRAW CAPITAL FROM YIELD FARMING STRATEGIES
- * Uses mAPT to calculate the amount of capital returned to the PoolToken.
- *
- * +-------------+  MetaPoolToken.withdrawFromLpAccount  +-----------+
- * |             |<--------------------------------------|           |
- * | PoolTokenV2 |          MetaPoolToken.burn           | LpAccount |
- * |             |-------------------------------------->|           |
- * +-------------+                                       +-----------+
+ * @notice This contract is permissioned to transfer funds between the vault
+ * and the LP Account contract.
  */
-contract LpAccountFunder is ReentrancyGuard {
+contract LpAccountFunder is
+    AccessControl,
+    ReentrancyGuard,
+    Erc20AllocationConstants
+{
     using Address for address;
     using SafeMath for uint256;
     using SignedSafeMath for int256;
     using SafeERC20 for IDetailedERC20;
 
-    /* ------------------------------- */
-    /* impl-specific storage variables */
-    /* ------------------------------- */
-    /** @notice used to protect mint and burn function */
     IAddressRegistryV2 public addressRegistry;
+    address public indexToken;
 
     /* ------------------------------- */
 
     event AddressRegistryChanged(address);
+    event IndexTokenChanged(address);
+    event FundLpAccount(uint256);
+    event WithdrawFromLpAccount(uint256);
 
     /**
      * @dev Since the proxy delegate calls to this "logic" contract, any
@@ -90,7 +59,8 @@ contract LpAccountFunder is ReentrancyGuard {
      * repeatedly.  It should be called during the deployment so that
      * it cannot be called by someone else later.
      */
-    constructor(address addressRegistry_) public {
+    constructor(address addressRegistry_, address indexToken_) public {
+        _setIndexToken(indexToken_);
         _setAddressRegistry(addressRegistry_);
         _setupRole(DEFAULT_ADMIN_ROLE, addressRegistry.emergencySafeAddress());
         _setupRole(LP_ROLE, addressRegistry.lpSafeAddress());
@@ -109,39 +79,32 @@ contract LpAccountFunder is ReentrancyGuard {
         _setAddressRegistry(addressRegistry_);
     }
 
-    function fundLpAccount() external override nonReentrant onlyLpRole {
-        (IReservePool[] memory pools, int256[] memory amounts) =
-            getRebalanceAmounts(poolIds);
+    function fundLpAccount() external nonReentrant onlyLpRole {
+        int256 amount = getRebalanceAmount();
+        uint256 fundAmount = _getFundAmount(amount);
 
-        uint256[] memory fundAmounts = _getFundAmounts(amounts);
+        _fundLpAccount(fundAmount);
+        _registerPoolUnderlyers();
 
-        _fundLpAccount(pools, fundAmounts);
-
-        emit FundLpAccount(poolIds, fundAmounts);
+        emit FundLpAccount(fundAmount);
     }
 
-    function withdrawFromLpAccount(bytes32[] calldata poolIds)
-        external
-        override
-        nonReentrant
-        onlyLpRole
-    {
-        (IReservePool[] memory pools, int256[] memory topupAmounts) =
-            getRebalanceAmounts(poolIds);
+    function withdrawFromLpAccount() external nonReentrant onlyLpRole {
+        int256 topupAmount = getRebalanceAmount();
 
-        uint256[] memory lpAccountBalances = getLpAccountBalances(poolIds);
-        uint256[] memory withdrawAmounts =
-            _calculateAmountsToWithdraw(topupAmounts, lpAccountBalances);
+        uint256 lpAccountBalance = getLpAccountBalance();
+        uint256 withdrawAmount =
+            _calculateAmountToWithdraw(topupAmount, lpAccountBalance);
 
-        _withdrawFromLpAccount(pools, withdrawAmounts);
-        emit WithdrawFromLpAccount(poolIds, withdrawAmounts);
+        _withdrawFromLpAccount(withdrawAmount);
+        emit WithdrawFromLpAccount(withdrawAmount);
     }
 
     /**
      * @notice Returns the (signed) top-up amount for each pool ID given.
      * A positive (negative) sign means the reserve level is in deficit
      * (excess) of required percentage.
-     * @return An array of rebalance amounts
+     * @return rebalanceAmount
      */
     function getRebalanceAmount() public view returns (int256 rebalanceAmount) {
         rebalanceAmount = IReservePool(indexToken).getReserveTopUpValue();
@@ -165,11 +128,17 @@ contract LpAccountFunder is ReentrancyGuard {
         emit AddressRegistryChanged(addressRegistry_);
     }
 
+    function _setIndexToken(address indexToken_) internal {
+        require(indexToken_.isContract(), "INVALID_ADDRESS");
+        indexToken = indexToken_;
+        emit IndexTokenChanged(indexToken_);
+    }
+
     function _fundLpAccount(uint256 amount) internal {
         address lpAccountAddress = addressRegistry.lpAccountAddress();
         require(lpAccountAddress != address(0), "INVALID_LP_ACCOUNT"); // defensive check -- should never happen
 
-        IReservePool(indexToik).transferToLpAccount(amount);
+        IReservePool(indexToken).transferToLpAccount(amount);
 
         ILockingOracle oracleAdapter = _getOracleAdapter();
         oracleAdapter.lock();
@@ -189,9 +158,8 @@ contract LpAccountFunder is ReentrancyGuard {
 
     /**
      * @notice Register an asset allocation for the account with each pool underlyer
-     * @param pools list of pool amounts whose pool underlyers will be registered
      */
-    function _registerPoolUnderlyers(IReservePool[] memory pools) internal {
+    function _registerPoolUnderlyers() internal {
         IAssetAllocationRegistry tvlManager =
             IAssetAllocationRegistry(addressRegistry.getAddress("tvlManager"));
         IErc20Allocation erc20Allocation =
@@ -201,13 +169,11 @@ contract LpAccountFunder is ReentrancyGuard {
                 )
             );
 
-        for (uint256 i = 0; i < pools.length; i++) {
-            IDetailedERC20 underlyer =
-                IDetailedERC20(address(pools[i].underlyer()));
+        IReservePool pool = IReservePool(indexToken);
+        IDetailedERC20 underlyer = IDetailedERC20(pool.underlyer());
 
-            if (!erc20Allocation.isErc20TokenRegistered(underlyer)) {
-                erc20Allocation.registerErc20Token(underlyer);
-            }
+        if (!erc20Allocation.isErc20TokenRegistered(underlyer)) {
+            erc20Allocation.registerErc20Token(underlyer);
         }
     }
 
@@ -216,98 +182,25 @@ contract LpAccountFunder is ReentrancyGuard {
         return ILockingOracle(oracleAdapterAddress);
     }
 
-    function _calculateDeltas(
-        IReservePool[] memory pools,
-        uint256[] memory amounts
-    ) internal view returns (uint256[] memory) {
-        require(pools.length == amounts.length, "LENGTHS_MUST_MATCH");
-        uint256[] memory deltas = new uint256[](pools.length);
-
-        for (uint256 i = 0; i < pools.length; i++) {
-            IReservePool pool = pools[i];
-            uint256 amount = amounts[i];
-
-            IDetailedERC20 underlyer = pool.underlyer();
-            uint256 tokenPrice = pool.getUnderlyerPrice();
-            uint8 decimals = underlyer.decimals();
-
-            deltas[i] = _calculateDelta(amount, tokenPrice, decimals);
-        }
-
-        return deltas;
-    }
-
-    /**
-     * @notice Calculate mAPT amount for given pool's underlyer amount.
-     * @param amount Pool underlyer amount to be converted
-     * @param tokenPrice Pool underlyer's USD price (in wei) per underlyer token
-     * @param decimals Pool underlyer's number of decimals
-     * @dev Price parameter is in units of wei per token ("big" unit), since
-     * attempting to express wei per token bit ("small" unit) will be
-     * fractional, requiring fixed-point representation.  This means we need
-     * to also pass in the underlyer's number of decimals to do the appropriate
-     * multiplication in the calculation.
-     * @dev amount of APT minted should be in same ratio to APT supply
-     * as deposit value is to pool's total value, i.e.:
-     *
-     * mint amount / total supply
-     * = deposit value / pool total value
-     *
-     * For denominators, pre or post-deposit amounts can be used.
-     * The important thing is they are consistent, i.e. both pre-deposit
-     * or both post-deposit.
-     */
-    function _calculateDelta(
-        uint256 amount,
-        uint256 tokenPrice,
-        uint8 decimals
-    ) internal view returns (uint256) {
-        uint256 value = amount.mul(tokenPrice).div(10**uint256(decimals));
-        uint256 totalValue = _getTvl();
-        uint256 totalSupply = totalSupply();
-
-        if (totalValue == 0 || totalSupply == 0) {
-            return value.mul(DEFAULT_MAPT_TO_UNDERLYER_FACTOR);
-        }
-
-        return value.mul(totalSupply).div(totalValue);
-    }
-
-    function _getFundAmounts(int256[] memory amounts)
+    function _getFundAmount(int256 amount)
         internal
         pure
-        returns (uint256[] memory)
+        returns (uint256 fundAmount)
     {
-        uint256[] memory fundAmounts = new uint256[](amounts.length);
-
-        for (uint256 i = 0; i < amounts.length; i++) {
-            int256 amount = amounts[i];
-
-            fundAmounts[i] = amount < 0 ? uint256(-amount) : 0;
-        }
-
-        return fundAmounts;
+        fundAmount = amount < 0 ? uint256(-amount) : 0;
     }
 
     /**
      * @dev Calculate amounts used for topup, taking into
      * account the available LP Account balances.
      */
-    function _calculateAmountsToWithdraw(
-        int256[] memory topupAmounts,
-        uint256[] memory lpAccountBalances
-    ) internal pure returns (uint256[] memory) {
-        uint256[] memory withdrawAmounts = new uint256[](topupAmounts.length);
-        for (uint256 i = 0; i < topupAmounts.length; i++) {
-            int256 topupAmount = topupAmounts[i];
-
-            uint256 withdrawAmount = topupAmount > 0 ? uint256(topupAmount) : 0;
-            uint256 lpAccountBalance = lpAccountBalances[i];
-            withdrawAmounts[i] = withdrawAmount > lpAccountBalance
-                ? lpAccountBalance
-                : withdrawAmount;
-        }
-
-        return withdrawAmounts;
+    function _calculateAmountToWithdraw(
+        int256 topupAmount,
+        uint256 lpAccountBalance
+    ) internal pure returns (uint256 withdrawAmount) {
+        withdrawAmount = topupAmount > 0 ? uint256(topupAmount) : 0;
+        withdrawAmount = withdrawAmount > lpAccountBalance
+            ? lpAccountBalance
+            : withdrawAmount;
     }
 }
