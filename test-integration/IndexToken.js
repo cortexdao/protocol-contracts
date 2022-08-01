@@ -380,6 +380,7 @@ describe.only("Contract: IndexToken", () => {
       await indexToken.connect(emergencySafe).emergencyUnlockRedeem();
 
       await indexToken.testMint(randomUser.address, 1);
+      await oracleAdapter.connect(emergencySafe).emergencySetTvl(0, 100);
       await expect(
         indexToken
           .connect(randomUser)
