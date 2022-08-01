@@ -193,6 +193,15 @@ const ConvexMetaPoolAllocations = [
     // this allocation avoids decomposing into primary coin
     skipPrimary: true,
   },
+  {
+    contractName: "ConvexBusdv2Allocation",
+    primaryUnderlyerSymbol: "BUSD",
+    pid: 34,
+    // using the Curve pool itself as the "whale": see prior note
+    whaleAddress: "0x4807862AA8b2bF68830e4C8dc86D0e9A998e085a",
+    // this allocation avoids decomposing into primary coin
+    skipPrimary: true,
+  },
 ];
 
 async function getContractAt(
