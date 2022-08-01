@@ -1,7 +1,7 @@
 const { assert, expect } = require("chai");
 const { ethers } = require("hardhat");
 const { AddressZero: ZERO_ADDRESS, MaxUint256: MAX_UINT256 } = ethers.constants;
-const { impersonateAccount, bytes32 } = require("../utils/helpers");
+const { bytes32 } = require("../utils/helpers");
 const timeMachine = require("ganache-time-traveler");
 const { WHALE_POOLS, FARM_TOKENS } = require("../utils/constants");
 const {
@@ -21,7 +21,12 @@ const link = (amount) => tokenAmountToBigNumber(amount, "18");
 console.debugging = false;
 /* ************************ */
 
-describe("Contract: IndexToken", () => {
+  const vaultAssetSymbol = "USDC";
+  const vaultAssetAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+  // use usdc agg for now
+  const vaultAggAddress = "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6";
+
+describe.only("Contract: IndexToken", () => {
   let deployer;
   let oracle;
   let adminSafe;
@@ -29,6 +34,14 @@ describe("Contract: IndexToken", () => {
   let randomUser;
   let anotherUser;
   let receiver;
+
+
+  let tvlAgg;
+  let asset;
+  let oracleAdapter;
+  let lpAccountFunder;
+  let addressRegistry;
+  let indexToken;
 
   before(async () => {
     [
@@ -39,6 +52,7 @@ describe("Contract: IndexToken", () => {
       randomUser,
       anotherUser,
       receiver,
+      lpAccountFunder,
     ] = await ethers.getSigners();
   });
 
@@ -64,19 +78,9 @@ describe("Contract: IndexToken", () => {
     await timeMachine.revertToSnapshot(suiteSnapshotId);
   });
 
-  const symbol = "USDC";
-  const tokenAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-  const USDC_AGG_ADDRESS = "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6";
-
-  let tvlAgg;
-  let asset;
-  let oracleAdapter;
-  let mApt;
-  let addressRegistry;
-  let indexToken;
 
   before("Setup", async () => {
-    asset = await ethers.getContractAt("IDetailedERC20", tokenAddress);
+    asset = await ethers.getContractAt("IDetailedERC20", vaultAssetAddress);
 
     const paymentAmount = link("1");
     const maxSubmissionValue = tokenAmountToBigNumber("1", "20");
@@ -155,30 +159,18 @@ describe("Contract: IndexToken", () => {
     const proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
 
-    const MetaPoolToken = await ethers.getContractFactory("TestMetaPoolToken");
-    const mAptLogic = await MetaPoolToken.deploy();
-    await mAptLogic.deployed();
+    await addressRegistry.registerAddress(bytes32("lpAccountFunder"), lpAccountFunder.address);
 
-    const mAptInitData = MetaPoolToken.interface.encodeFunctionData(
-      "initialize(address)",
-      [addressRegistry.address]
-    );
-    const mAptProxy = await TransparentUpgradeableProxy.deploy(
-      mAptLogic.address,
-      proxyAdmin.address,
-      mAptInitData
-    );
-    await mAptProxy.deployed();
-    mApt = await MetaPoolToken.attach(mAptProxy.address);
-
-    await addressRegistry.registerAddress(bytes32("mApt"), mApt.address);
+    // dummy address needed for oracle adapter deploy
+    const mAptAddress = await generateContractAddress(deployer)
+    await addressRegistry.registerAddress(bytes32("mApt"), mAptAddress);
 
     const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
     oracleAdapter = await OracleAdapter.deploy(
       addressRegistry.address,
       tvlAgg.address,
-      [tokenAddress],
-      [USDC_AGG_ADDRESS],
+      [vaultAssetAddress],
+      [vaultAggAddress],
       86400,
       86400
     );
@@ -206,7 +198,7 @@ describe("Contract: IndexToken", () => {
     indexToken = await IndexToken.attach(proxy.address);
 
     await acquireToken(
-      WHALE_POOLS[symbol],
+      WHALE_POOLS[vaultAssetSymbol],
       randomUser.address,
       asset,
       "1000000",
@@ -334,14 +326,10 @@ describe("Contract: IndexToken", () => {
     });
   });
 
-  describe("Transfer to LP Account", () => {
-    it("mAPT can call transferToLpAccount", async () => {
-      // need to impersonate the mAPT contract and fund it, since its
-      // address was set as CONTRACT_ROLE upon PoolTokenV2 deployment
-      const mAptSigner = await impersonateAccount(mApt.address);
-
+  describe.only("Transfer to LP Account", () => {
+    it("LP Account Funder can call transferToLpAccount", async () => {
       await indexToken.connect(randomUser).deposit(100, receiver.address);
-      await expect(indexToken.connect(mAptSigner).transferToLpAccount(100)).to
+      await expect(indexToken.connect(lpAccountFunder).transferToLpAccount(100)).to
         .not.be.reverted;
     });
 
@@ -1067,7 +1055,7 @@ describe("Contract: IndexToken", () => {
           );
           // seed pool with stablecoin
           await acquireToken(
-            WHALE_POOLS[symbol],
+            WHALE_POOLS[vaultAssetSymbol],
             indexToken.address,
             asset,
             "12000000", // 12 MM
@@ -1103,7 +1091,7 @@ describe("Contract: IndexToken", () => {
           );
           // seed pool with stablecoin
           await acquireToken(
-            WHALE_POOLS[symbol],
+            WHALE_POOLS[vaultAssetSymbol],
             indexToken.address,
             asset,
             "12000000", // 12 MM
