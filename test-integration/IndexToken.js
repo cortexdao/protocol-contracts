@@ -21,10 +21,10 @@ const link = (amount) => tokenAmountToBigNumber(amount, "18");
 console.debugging = false;
 /* ************************ */
 
-  const vaultAssetSymbol = "USDC";
-  const vaultAssetAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-  // use usdc agg for now
-  const vaultAggAddress = "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6";
+const vaultAssetSymbol = "USDC";
+const vaultAssetAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+// use usdc agg for now
+const vaultAggAddress = "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6";
 
 describe.only("Contract: IndexToken", () => {
   let deployer;
@@ -34,7 +34,6 @@ describe.only("Contract: IndexToken", () => {
   let randomUser;
   let anotherUser;
   let receiver;
-
 
   let tvlAgg;
   let asset;
@@ -77,7 +76,6 @@ describe.only("Contract: IndexToken", () => {
   after(async () => {
     await timeMachine.revertToSnapshot(suiteSnapshotId);
   });
-
 
   before("Setup", async () => {
     asset = await ethers.getContractAt("IDetailedERC20", vaultAssetAddress);
@@ -159,10 +157,13 @@ describe.only("Contract: IndexToken", () => {
     const proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
 
-    await addressRegistry.registerAddress(bytes32("lpAccountFunder"), lpAccountFunder.address);
+    await addressRegistry.registerAddress(
+      bytes32("lpAccountFunder"),
+      lpAccountFunder.address
+    );
 
     // dummy address needed for oracle adapter deploy
-    const mAptAddress = await generateContractAddress(deployer)
+    const mAptAddress = await generateContractAddress(deployer);
     await addressRegistry.registerAddress(bytes32("mApt"), mAptAddress);
 
     const OracleAdapter = await ethers.getContractFactory("OracleAdapter");
@@ -326,11 +327,11 @@ describe.only("Contract: IndexToken", () => {
     });
   });
 
-  describe.only("Transfer to LP Account", () => {
+  describe("Transfer to LP Account", () => {
     it("LP Account Funder can call transferToLpAccount", async () => {
       await indexToken.connect(randomUser).deposit(100, receiver.address);
-      await expect(indexToken.connect(lpAccountFunder).transferToLpAccount(100)).to
-        .not.be.reverted;
+      await expect(indexToken.connect(lpAccountFunder).transferToLpAccount(100))
+        .to.not.be.reverted;
     });
 
     it("Revert when unpermissioned account calls transferToLpAccount", async () => {
@@ -461,8 +462,6 @@ describe.only("Contract: IndexToken", () => {
   ];
   deployedValues.forEach(function (deployedValue) {
     describe(`Deployed value: ${deployedValue}`, () => {
-      const mAptSupply = tokenAmountToBigNumber("100");
-
       async function updateTvlAgg(usdDeployedValue) {
         if (usdDeployedValue.isZero()) {
           await oracleAdapter.connect(emergencySafe).emergencySetTvl(0, 100);
@@ -476,7 +475,6 @@ describe.only("Contract: IndexToken", () => {
         /* these get rollbacked after each test due to snapshotting */
 
         // default to giving entire deployed value to the pool
-        await mApt.testMint(indexToken.address, mAptSupply);
         await updateTvlAgg(deployedValue);
         await oracleAdapter.connect(emergencySafe).emergencyUnlock();
       });
@@ -574,28 +572,6 @@ describe.only("Contract: IndexToken", () => {
         it("_getDeployedValue returns correct value", async () => {
           expect(await indexToken.testGetDeployedValue()).to.equal(
             deployedValue
-          );
-
-          // transfer quarter of mAPT to another pool
-          await mApt.testMint(FAKE_ADDRESS, mAptSupply.div(4));
-          await mApt.testBurn(indexToken.address, mAptSupply.div(4));
-          // unlock oracle adapter after mint/burn
-          await oracleAdapter.connect(emergencySafe).emergencyUnlock();
-          // must update agg so staleness check passes
-          await updateTvlAgg(deployedValue);
-          expect(await indexToken.testGetDeployedValue()).to.equal(
-            deployedValue.mul(3).div(4)
-          );
-
-          // transfer same amount again
-          await mApt.testMint(FAKE_ADDRESS, mAptSupply.div(4));
-          await mApt.testBurn(indexToken.address, mAptSupply.div(4));
-          // unlock oracle adapter after mint/burn
-          await oracleAdapter.connect(emergencySafe).emergencyUnlock();
-          // must update agg so staleness check passes
-          await updateTvlAgg(deployedValue);
-          expect(await indexToken.testGetDeployedValue()).to.equal(
-            deployedValue.div(2)
           );
         });
 
