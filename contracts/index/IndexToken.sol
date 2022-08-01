@@ -698,6 +698,8 @@ contract IndexToken is
      * @return The USD value.  USD prices have 8 decimals.
      */
     function _getDeployedValue() internal view returns (uint256) {
+        if (totalSupply() == 0) return 0;
+
         IOracleAdapter oracleAdapter =
             IOracleAdapter(addressRegistry.oracleAdapterAddress());
         return oracleAdapter.getTvl();
