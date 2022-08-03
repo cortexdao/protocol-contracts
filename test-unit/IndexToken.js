@@ -17,7 +17,7 @@ const IDetailedERC20 = artifacts.require("IDetailedERC20");
 const AddressRegistry = artifacts.require("IAddressRegistryV2");
 const OracleAdapter = artifacts.require("OracleAdapter");
 
-describe.only("Contract: IndexToken", () => {
+describe("Contract: IndexToken", () => {
   // signers
   let deployer;
   let adminSafe;
@@ -403,6 +403,11 @@ describe.only("Contract: IndexToken", () => {
   });
 
   describe("_getVaultAssetValue", () => {
+    beforeEach(async () => {
+      // create non-zero totalSupply so calls pass to oracle adapter
+      await indexToken.testMint(deployer.address, 1);
+    });
+
     it("Returns correct value regardless of deployed value", async () => {
       const decimals = 1;
       await assetMock.mock.decimals.returns(decimals);
@@ -428,6 +433,11 @@ describe.only("Contract: IndexToken", () => {
   });
 
   describe("_getDeployedValue", () => {
+    beforeEach(async () => {
+      // create non-zero totalSupply so calls pass to oracle adapter
+      await indexToken.testMint(deployer.address, 1);
+    });
+
     it("Delegates properly to Oracle Adapter", async () => {
       await oracleAdapterMock.mock.getTvl.returns(0);
       expect(await indexToken.testGetDeployedValue()).to.equal(0);
@@ -446,6 +456,11 @@ describe.only("Contract: IndexToken", () => {
   });
 
   describe("getVaultTotalValue", () => {
+    beforeEach(async () => {
+      // create non-zero totalSupply so calls pass to oracle adapter
+      await indexToken.testMint(deployer.address, 1);
+    });
+
     it("Returns correct value", async () => {
       const decimals = 1;
       await assetMock.mock.decimals.returns(decimals);
