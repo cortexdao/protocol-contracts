@@ -26,7 +26,7 @@ const vaultAssetAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 // use usdc agg for now
 const vaultAggAddress = "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6";
 
-describe.only("Contract: IndexToken", () => {
+describe("Contract: IndexToken", () => {
   let deployer;
   let oracle;
   let adminSafe;
@@ -238,8 +238,8 @@ describe.only("Contract: IndexToken", () => {
     });
   });
 
-  describe("Lock pool", () => {
-    it("Emergency Safe can lock and unlock pool", async () => {
+  describe("Lock vault", () => {
+    it("Emergency Safe can lock and unlock vault", async () => {
       await expect(indexToken.connect(emergencySafe).emergencyLock()).to.emit(
         indexToken,
         "Paused"
@@ -262,7 +262,7 @@ describe.only("Contract: IndexToken", () => {
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
 
-    it("Revert when calling deposit/redeem on locked pool", async () => {
+    it("Revert when calling deposit/redeem on locked vault", async () => {
       await indexToken.connect(emergencySafe).emergencyLock();
 
       await expect(
@@ -276,7 +276,7 @@ describe.only("Contract: IndexToken", () => {
       ).to.revertedWith("Pausable: paused");
     });
 
-    it("Revert when calling transferToLpAccount on locked pool", async () => {
+    it("Revert when calling transferToLpAccount on locked vault", async () => {
       await indexToken.connect(emergencySafe).emergencyLock();
 
       await expect(
@@ -310,7 +310,7 @@ describe.only("Contract: IndexToken", () => {
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
 
-    it("Revert deposit when pool is locked", async () => {
+    it("Revert deposit when vault is locked", async () => {
       await indexToken.connect(emergencySafe).emergencyLockDeposit();
 
       await expect(
@@ -365,7 +365,7 @@ describe.only("Contract: IndexToken", () => {
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
 
-    it("Revert redeem when pool is locked", async () => {
+    it("Revert redeem when vault is locked", async () => {
       await indexToken.connect(emergencySafe).emergencyLockRedeem();
 
       await expect(
@@ -403,19 +403,19 @@ describe.only("Contract: IndexToken", () => {
     it("Should transfer all deposited tokens to the emergencySafe", async () => {
       await indexToken.connect(randomUser).deposit(100000, receiver.address);
 
-      const prevPoolBalance = await asset.balanceOf(indexToken.address);
+      const prevVaultBalance = await asset.balanceOf(indexToken.address);
       const prevSafeBalance = await asset.balanceOf(emergencySafe.address);
 
       await indexToken.connect(emergencySafe).emergencyExit(asset.address);
 
-      const nextPoolBalance = await asset.balanceOf(indexToken.address);
+      const nextVaultBalance = await asset.balanceOf(indexToken.address);
       const nextSafeBalance = await asset.balanceOf(emergencySafe.address);
 
-      expect(nextPoolBalance).to.equal(0);
-      expect(nextSafeBalance.sub(prevSafeBalance)).to.equal(prevPoolBalance);
+      expect(nextVaultBalance).to.equal(0);
+      expect(nextSafeBalance.sub(prevSafeBalance)).to.equal(prevVaultBalance);
     });
 
-    it("Should transfer tokens airdropped to the pool", async () => {
+    it("Should transfer tokens airdropped to the vault", async () => {
       const symbol = "AAVE";
       const token = await ethers.getContractAt(
         "IDetailedERC20",
@@ -430,16 +430,16 @@ describe.only("Contract: IndexToken", () => {
         deployer.address
       );
 
-      const prevPoolBalance = await token.balanceOf(indexToken.address);
+      const prevVaultBalance = await token.balanceOf(indexToken.address);
       const prevSafeBalance = await token.balanceOf(emergencySafe.address);
 
       await indexToken.connect(emergencySafe).emergencyExit(token.address);
 
-      const nextPoolBalance = await token.balanceOf(indexToken.address);
+      const nextVaultBalance = await token.balanceOf(indexToken.address);
       const nextSafeBalance = await token.balanceOf(emergencySafe.address);
 
-      expect(nextPoolBalance).to.equal(0);
-      expect(nextSafeBalance.sub(prevSafeBalance)).to.equal(prevPoolBalance);
+      expect(nextVaultBalance).to.equal(0);
+      expect(nextSafeBalance.sub(prevSafeBalance)).to.equal(prevVaultBalance);
     });
 
     it("Should emit the EmergencyExit event", async () => {
@@ -475,7 +475,7 @@ describe.only("Contract: IndexToken", () => {
       beforeEach(async () => {
         /* these get rollbacked after each test due to snapshotting */
 
-        // default to giving entire deployed value to the pool
+        // default to giving entire deployed value to the vault
         await updateTvlAgg(deployedValue);
         await oracleAdapter.connect(emergencySafe).emergencyUnlock();
       });
@@ -509,9 +509,9 @@ describe.only("Contract: IndexToken", () => {
           assert(expectedAptMinted.gt(0));
         });
 
-        it("getPoolTotalValue returns value", async () => {
-          const val = await indexToken.getPoolTotalValue();
-          console.debug(`\tPool Total Eth Value ${val.toString()}`);
+        it("getVaultTotalValue returns value", async () => {
+          const val = await indexToken.getVaultTotalValue();
+          console.debug(`\tVault Total Eth Value ${val.toString()}`);
           assert(val.gt(0));
         });
 
@@ -544,12 +544,12 @@ describe.only("Contract: IndexToken", () => {
           assert(assetAmount.gt(0));
         });
 
-        it("_getPoolAssetValue returns correct value", async () => {
+        it("_getVaultAssetValue returns correct value", async () => {
           let assetBalance = await asset.balanceOf(indexToken.address);
           let expectedAssetValue = await indexToken.getValueFromAssetAmount(
             assetBalance
           );
-          expect(await indexToken.testGetPoolAssetValue()).to.equal(
+          expect(await indexToken.testGetVaultAssetValue()).to.equal(
             expectedAssetValue
           );
 
@@ -565,7 +565,7 @@ describe.only("Contract: IndexToken", () => {
           expectedAssetValue = await indexToken.getValueFromAssetAmount(
             assetBalance
           );
-          expect(await indexToken.testGetPoolAssetValue()).to.equal(
+          expect(await indexToken.testGetVaultAssetValue()).to.equal(
             expectedAssetValue
           );
         });
@@ -592,8 +592,8 @@ describe.only("Contract: IndexToken", () => {
             expect(topUpValue).to.be.gt(0);
           }
 
-          const poolAssetValue = await indexToken.testGetPoolAssetValue();
-          // assuming we unwind the top-up value from the pool's deployed
+          const vaultAssetValue = await indexToken.testGetVaultAssetValue();
+          // assuming we unwind the top-up value from the vault's deployed
           // capital, the reserve percentage of resulting deployed value
           // is what we are targeting
           const reservePercentage = await indexToken.reservePercentage();
@@ -603,7 +603,7 @@ describe.only("Contract: IndexToken", () => {
             .div(100);
           const tolerance = Math.ceil((await asset.decimals()) / 4);
           const allowedDeviation = tokenAmountToBigNumber(5, tolerance);
-          expect(poolAssetValue.add(topUpValue).sub(targetValue)).to.be.lt(
+          expect(vaultAssetValue.add(topUpValue).sub(targetValue)).to.be.lt(
             allowedDeviation
           );
         });
@@ -771,7 +771,7 @@ describe.only("Contract: IndexToken", () => {
           const aptSupply = tokenAmountToBigNumber("100000");
           await indexToken.testMint(deployer.address, aptSupply);
 
-          // seed the pool with asset
+          // seed the vault with asset
           const reserveBalance = tokenAmountToBigNumber("150000", decimals);
           await asset
             .connect(randomUser)
@@ -805,8 +805,8 @@ describe.only("Contract: IndexToken", () => {
           const aptSupply = tokenAmountToBigNumber("10000");
           await indexToken.testMint(deployer.address, aptSupply);
 
-          /* Setup pool and user APT amounts:
-                 1. give pool an asset reserve balance
+          /* Setup vault and user APT amounts:
+                 1. give vault an asset reserve balance
                  2. calculate the reserve's APT amount
                  3. transfer APT amount less than that to the user
           */
@@ -920,7 +920,7 @@ describe.only("Contract: IndexToken", () => {
         it("Revert when asset amount is greater than reserve", async () => {
           const decimals = await asset.decimals();
 
-          // seed the pool with asset
+          // seed the vault with asset
           const reserveBalance = tokenAmountToBigNumber("150000", decimals);
           await asset
             .connect(randomUser)
@@ -942,8 +942,8 @@ describe.only("Contract: IndexToken", () => {
           const indexSupply = tokenAmountToBigNumber("10000");
           await indexToken.testMint(deployer.address, indexSupply);
 
-          /* Setup pool and user share amounts:
-                 1. give pool an asset reserve balance
+          /* Setup vault and user share amounts:
+                 1. give vault an asset reserve balance
                  2. calculate the reserve's share amount
                  3. transfer share amount less than that to the user
           */
@@ -1030,7 +1030,7 @@ describe.only("Contract: IndexToken", () => {
             deployer.address,
             tokenAmountToBigNumber("100000")
           );
-          // seed pool with stablecoin
+          // seed vault with stablecoin
           await acquireToken(
             WHALE_POOLS[vaultAssetSymbol],
             indexToken.address,
