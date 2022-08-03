@@ -19,6 +19,10 @@ const { FARM_TOKENS, FARM_TOKEN_POOLS } = require("../utils/constants");
 console.debugging = false;
 /* ************************ */
 
+const pinnedBlock = 15085764;
+const defaultPinnedBlock = hre.config.networks.hardhat.forking.blockNumber;
+const forkingUrl = hre.config.networks.hardhat.forking.url;
+
 const swapParams = [
   {
     swapContractName: "CrvToDaiSwap",
@@ -55,6 +59,11 @@ const swapParams = [
     inTokenSymbol: "AAVE",
     outTokenSymbol: "USDT",
   },
+  {
+    swapContractName: "SnxToUsdcSwap",
+    inTokenSymbol: "SNX",
+    outTokenSymbol: "USDC",
+  },
 ];
 
 describe("Swaps - LP Account integration", () => {
@@ -84,6 +93,28 @@ describe("Swaps - LP Account integration", () => {
 
   afterEach(async () => {
     await timeMachine.revertToSnapshot(snapshotId);
+  });
+
+  before("Use pinned block for new swaps", async () => {
+    await hre.network.provider.send("hardhat_reset", [
+      {
+        forking: {
+          jsonRpcUrl: forkingUrl,
+          blockNumber: pinnedBlock,
+        },
+      },
+    ]);
+  });
+
+  after("Reset pinned block", async () => {
+    await hre.network.provider.send("hardhat_reset", [
+      {
+        forking: {
+          jsonRpcUrl: forkingUrl,
+          blockNumber: defaultPinnedBlock,
+        },
+      },
+    ]);
   });
 
   before("Setup mock address registry", async () => {
