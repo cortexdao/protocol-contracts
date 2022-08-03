@@ -84,7 +84,7 @@ contract LpAccountFunder is
         uint256 fundAmount = _getFundAmount(amount);
 
         _fundLpAccount(fundAmount);
-        _registerPoolUnderlyers();
+        _registerPoolUnderlyer();
 
         emit FundLpAccount(fundAmount);
     }
@@ -159,7 +159,7 @@ contract LpAccountFunder is
     /**
      * @notice Register an asset allocation for the account with each pool underlyer
      */
-    function _registerPoolUnderlyers() internal {
+    function _registerPoolUnderlyer() internal {
         IAssetAllocationRegistry tvlManager =
             IAssetAllocationRegistry(addressRegistry.getAddress("tvlManager"));
         IErc20Allocation erc20Allocation =
