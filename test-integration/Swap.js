@@ -64,6 +64,11 @@ const swapParams = [
     inTokenSymbol: "SNX",
     outTokenSymbol: "USDC",
   },
+  {
+    swapContractName: "OgnToUsdcSwap",
+    inTokenSymbol: "OGN",
+    outTokenSymbol: "USDC",
+  },
 ];
 
 describe("Swaps - LP Account integration", () => {
