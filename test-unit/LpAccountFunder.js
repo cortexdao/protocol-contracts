@@ -17,19 +17,19 @@ describe("Contract: LpAccountFunder", () => {
   // signers
   let deployer;
   let emergencySafe;
+  let adminSafe;
   let lpSafe;
-  let lpAccount;
   let randomUser;
 
   // deployed contracts
   let lpAccountFunder;
 
   // mocks
-  let adminSafe;
+  let indexToken;
+  let lpAccount;
   let oracleAdapter;
   let addressRegistry;
   let erc20Allocation;
-  let indexToken;
 
   // use EVM snapshots for test isolation
   let testSnapshotId;
@@ -56,9 +56,12 @@ describe("Contract: LpAccountFunder", () => {
     await timeMachine.revertToSnapshot(suiteSnapshotId);
   });
 
-  before("Setup address registry", async () => {
-    [deployer] = await ethers.getSigners();
+  before("Get signers", async () => {
+    [deployer, emergencySafe, adminSafe, lpSafe, randomUser] =
+      await ethers.getSigners();
+  });
 
+  before("Setup address registry", async () => {
     addressRegistry = await deployMockContract(
       deployer,
       artifacts.readArtifactSync("AddressRegistryV2").abi
@@ -66,8 +69,6 @@ describe("Contract: LpAccountFunder", () => {
   });
 
   before("Register Safes", async () => {
-    [, emergencySafe, adminSafe, lpSafe] = await ethers.getSigners();
-
     await addressRegistry.mock.lpSafeAddress.returns(lpSafe.address);
     await addressRegistry.mock.getAddress
       .withArgs(bytes32("lpSafe"))
@@ -87,14 +88,12 @@ describe("Contract: LpAccountFunder", () => {
   });
 
   before("Mock dependencies", async () => {
-    [, , , , randomUser] = await ethers.getSigners();
-
     oracleAdapter = await deployMockContract(deployer, OracleAdapter.abi);
     await addressRegistry.mock.oracleAdapterAddress.returns(
       oracleAdapter.address
     );
 
-    // allows mAPT to mint and burn
+    // funding or withdrawing will lock the oracle adapter
     await oracleAdapter.mock.lock.returns();
 
     lpAccount = await deployMockContract(
@@ -289,6 +288,14 @@ describe("Contract: LpAccountFunder", () => {
           lpAccountFunder.connect(lpSafe).fundLpAccount()
         ).to.be.revertedWith("INVALID_LP_ACCOUNT");
       });
+
+      it("Locks Oracle Adapter", async () => {
+        await oracleAdapter.mock.lock.revertsWithReason("TEST_LOCK");
+
+        await expect(
+          lpAccountFunder.connect(lpSafe).fundLpAccount()
+        ).to.be.revertedWith("TEST_LOCK");
+      });
     });
 
     describe("withdrawFromLpAccount", () => {
@@ -306,6 +313,14 @@ describe("Contract: LpAccountFunder", () => {
         await expect(
           lpAccountFunder.connect(randomUser).withdrawFromLpAccount()
         ).to.be.revertedWith("NOT_LP_ROLE");
+      });
+
+      it("Locks Oracle Adapter", async () => {
+        await oracleAdapter.mock.lock.revertsWithReason("TEST_LOCK");
+
+        await expect(
+          lpAccountFunder.connect(lpSafe).withdrawFromLpAccount()
+        ).to.be.revertedWith("TEST_LOCK");
       });
     });
 
