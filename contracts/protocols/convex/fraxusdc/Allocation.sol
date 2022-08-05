@@ -44,7 +44,7 @@ contract ConvexFraxUsdcAllocation is
         returns (TokenData[] memory)
     {
         TokenData[] memory tokens = new TokenData[](2);
-        tokens[0] = TokenData(FRAX_ADDRESS, "DAI", 18);
+        tokens[0] = TokenData(FRAX_ADDRESS, "FRAX", 18);
         tokens[1] = TokenData(USDC_ADDRESS, "USDC", 6);
         return tokens;
     }
