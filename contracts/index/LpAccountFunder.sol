@@ -16,7 +16,7 @@ import {
 import {ILpAccount} from "contracts/lpaccount/Imports.sol";
 import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
 import {ILockingOracle} from "contracts/oracle/Imports.sol";
-import {IReservePool} from "contracts/pool/Imports.sol";
+import {IERC4626, IReserveVault} from "contracts/index/Imports.sol";
 import {
     IErc20Allocation,
     IAssetAllocationRegistry,
@@ -107,7 +107,7 @@ contract LpAccountFunder is
      * @return rebalanceAmount
      */
     function getRebalanceAmount() public view returns (int256 rebalanceAmount) {
-        rebalanceAmount = IReservePool(indexToken).getReserveTopUpValue();
+        rebalanceAmount = IReserveVault(indexToken).getReserveTopUpValue();
     }
 
     function getLpAccountBalance()
@@ -115,11 +115,11 @@ contract LpAccountFunder is
         view
         returns (uint256 lpAccountBalance)
     {
-        IReservePool pool = IReservePool(indexToken);
-        IDetailedERC20 underlyer = IDetailedERC20(pool.underlyer());
+        IERC4626 vault = IERC4626(indexToken);
+        IDetailedERC20 asset = IDetailedERC20(vault.asset());
 
         address lpAccountAddress = addressRegistry.lpAccountAddress();
-        lpAccountBalance = underlyer.balanceOf(lpAccountAddress);
+        lpAccountBalance = asset.balanceOf(lpAccountAddress);
     }
 
     function _setAddressRegistry(address addressRegistry_) internal {
@@ -138,7 +138,7 @@ contract LpAccountFunder is
         address lpAccountAddress = addressRegistry.lpAccountAddress();
         require(lpAccountAddress != address(0), "INVALID_LP_ACCOUNT"); // defensive check -- should never happen
 
-        IReservePool(indexToken).transferToLpAccount(amount);
+        IReserveVault(indexToken).transferToLpAccount(amount);
 
         ILockingOracle oracleAdapter = _getOracleAdapter();
         oracleAdapter.lock();
@@ -169,11 +169,11 @@ contract LpAccountFunder is
                 )
             );
 
-        IReservePool pool = IReservePool(indexToken);
-        IDetailedERC20 underlyer = IDetailedERC20(pool.underlyer());
+        IERC4626 vault = IERC4626(indexToken);
+        IDetailedERC20 asset = IDetailedERC20(vault.asset());
 
-        if (!erc20Allocation.isErc20TokenRegistered(underlyer)) {
-            erc20Allocation.registerErc20Token(underlyer);
+        if (!erc20Allocation.isErc20TokenRegistered(asset)) {
+            erc20Allocation.registerErc20Token(asset);
         }
     }
 

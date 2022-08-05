@@ -11,10 +11,9 @@ const {
 } = require("../utils/helpers");
 const { deployMockContract } = waffle;
 const OracleAdapter = artifacts.readArtifactSync("OracleAdapter");
-const PoolTokenV2 = artifacts.readArtifactSync("PoolTokenV2");
 const IDetailedERC20 = artifacts.readArtifactSync("IDetailedERC20");
 
-describe.only("Contract: LpAccountFunder", () => {
+describe("Contract: LpAccountFunder", () => {
   // signers
   let deployer;
   let emergencySafe;
@@ -206,21 +205,19 @@ describe.only("Contract: LpAccountFunder", () => {
     });
   });
 
-  describe("Multiple mints and burns", () => {
-    let pool;
-    let underlyer;
+  describe("fund and withdraw", () => {
+    let asset;
 
     before("Setup mocks", async () => {
-      pool = await deployMockContract(deployer, PoolTokenV2.abi);
-      await pool.mock.transferToLpAccount.returns();
-      await pool.mock.getUnderlyerPrice.returns(
+      await indexToken.mock.transferToLpAccount.returns();
+      await indexToken.mock.getAssetPrice.returns(
         tokenAmountToBigNumber("0.998", 8)
       );
 
-      underlyer = await deployMockContract(deployer, IDetailedERC20.abi);
-      await pool.mock.underlyer.returns(underlyer.address);
+      asset = await deployMockContract(deployer, IDetailedERC20.abi);
+      await indexToken.mock.asset.returns(asset.address);
 
-      await underlyer.mock.decimals.returns(6);
+      await asset.mock.decimals.returns(18);
 
       await lpAccount.mock.transferToPool.returns();
 
@@ -230,73 +227,51 @@ describe.only("Contract: LpAccountFunder", () => {
     });
 
     describe("_registerPoolUnderlyer", () => {
-      let daiPool;
-      let daiToken;
-      let usdcPool;
-      let usdcToken;
-
       beforeEach("Setup mocks", async () => {
-        daiPool = await deployMockContract(deployer, PoolTokenV2.abi);
-        daiToken = await deployMockContract(deployer, IDetailedERC20.abi);
-        await daiPool.mock.underlyer.returns(daiToken.address);
-        await daiToken.mock.decimals.returns(18);
-        await daiToken.mock.symbol.returns("DAI");
-
-        usdcPool = await deployMockContract(deployer, PoolTokenV2.abi);
-        usdcToken = await deployMockContract(deployer, IDetailedERC20.abi);
-        await usdcPool.mock.underlyer.returns(usdcToken.address);
-        await usdcToken.mock.decimals.returns(6);
-        await usdcToken.mock.symbol.returns("USDC");
+        await asset.mock.symbol.returns("3CRV");
       });
 
-      it("Unregistered underlyers get registered", async () => {
-        // set DAI as unregistered in ERC20 registry
+      it("Unregistered asset get registered", async () => {
+        // set asset as unregistered in ERC20 registry
         await erc20Allocation.mock["isErc20TokenRegistered(address)"]
-          .withArgs(daiToken.address)
+          .withArgs(asset.address)
           .returns(false);
 
-        // revert on registration for DAI but not others
+        // revert on registration
         await erc20Allocation.mock["registerErc20Token(address)"].returns();
         await erc20Allocation.mock["registerErc20Token(address)"]
-          .withArgs(daiToken.address)
-          .revertsWithReason("REGISTERED_DAI");
+          .withArgs(asset.address)
+          .revertsWithReason("TEST_REGISTER_ASSET");
 
         // expect revert since register function should be called
         await expect(
           lpAccountFunder.testRegisterPoolUnderlyer()
-        ).to.be.revertedWith("REGISTERED_DAI");
+        ).to.be.revertedWith("TEST_REGISTER_ASSET");
       });
 
-      it("Registered underlyers are skipped", async () => {
-        // set DAI as registered while USDC is not
+      it("Registered asset is skipped", async () => {
+        // set asset as registered in ERC20 registry
         await erc20Allocation.mock["isErc20TokenRegistered(address)"]
-          .withArgs(daiToken.address)
+          .withArgs(asset.address)
           .returns(true);
-        await erc20Allocation.mock["isErc20TokenRegistered(address)"]
-          .withArgs(usdcToken.address)
-          .returns(false);
 
-        // revert on registration for DAI or USDC
+        // revert on registration
         await erc20Allocation.mock["registerErc20Token(address)"].returns();
         await erc20Allocation.mock["registerErc20Token(address)"]
-          .withArgs(usdcToken.address)
-          .revertsWithReason("REGISTERED_USDC");
-        await erc20Allocation.mock["registerErc20Token(address)"]
-          .withArgs(daiToken.address)
-          .revertsWithReason("REGISTERED_DAI");
+          .withArgs(asset.address)
+          .revertsWithReason("TEST_SKIP_REGISTER");
 
-        // should not revert since DAI should not be registered
+        // should not revert since asset is already registered
         await expect(lpAccountFunder.testRegisterPoolUnderlyer()).to.not.be
           .reverted;
-
-        // should revert for USDC registration
-        await expect(
-          lpAccountFunder.testRegisterPoolUnderlyer()
-        ).to.be.revertedWith("REGISTERED_USDC");
       });
     });
 
     describe("fundLpAccount", () => {
+      before(async () => {
+        await indexToken.mock.getReserveTopUpValue.returns(0);
+      });
+
       it("LP Safe can call", async () => {
         await expect(lpAccountFunder.connect(lpSafe).fundLpAccount()).to.not.be
           .reverted;
@@ -317,6 +292,11 @@ describe.only("Contract: LpAccountFunder", () => {
     });
 
     describe("withdrawFromLpAccount", () => {
+      before(async () => {
+        await indexToken.mock.getReserveTopUpValue.returns(0);
+        await asset.mock.balanceOf.returns(0);
+      });
+
       it("LP Safe can call", async () => {
         await expect(lpAccountFunder.connect(lpSafe).withdrawFromLpAccount()).to
           .not.be.reverted;
@@ -327,75 +307,29 @@ describe.only("Contract: LpAccountFunder", () => {
           lpAccountFunder.connect(randomUser).withdrawFromLpAccount()
         ).to.be.revertedWith("NOT_LP_ROLE");
       });
-
-      it("Revert on unregistered LP Account address", async () => {
-        await addressRegistry.mock.lpAccountAddress.returns(ZERO_ADDRESS);
-        await expect(
-          lpAccountFunder.connect(lpSafe).withdrawFromLpAccount()
-        ).to.be.revertedWith("INVALID_LP_ACCOUNT");
-      });
     });
 
     describe("getRebalanceAmount", () => {
-      it("Return pair of empty arrays when give an empty array", async () => {
-        const result = await lpAccountFunder.getRebalanceAmount();
-        expect(result).to.deep.equal([[], []]);
-      });
-
-      it("Return array of top-up PoolAmounts from specified pools", async () => {
-        const daiPool = await deployMockContract(deployer, PoolTokenV2.abi);
-        const daiRebalanceAmount = tokenAmountToBigNumber("1234888", "18");
-        await daiPool.mock.getReserveTopUpValue.returns(daiRebalanceAmount);
-        await addressRegistry.mock.getAddress
-          .withArgs(bytes32("daiPool"))
-          .returns(daiPool.address);
-
-        const usdcPool = await deployMockContract(deployer, PoolTokenV2.abi);
-        const usdcRebalanceAmount = tokenAmountToBigNumber("459999", "6");
-        await usdcPool.mock.getReserveTopUpValue.returns(usdcRebalanceAmount);
-        await addressRegistry.mock.getAddress
-          .withArgs(bytes32("usdcPool"))
-          .returns(usdcPool.address);
+      it("Delegates to vault function", async () => {
+        const vaultRebalanceAmount = tokenAmountToBigNumber("1234888", "18");
+        await indexToken.mock.getReserveTopUpValue.returns(
+          vaultRebalanceAmount
+        );
 
         const result = await lpAccountFunder.getRebalanceAmount();
-        deepEqual(result, [
-          [daiPool.address, usdcPool.address],
-          [daiRebalanceAmount, usdcRebalanceAmount],
-        ]);
+        expect(result).to.equal(vaultRebalanceAmount);
       });
     });
 
     describe("getLpAccountBalance", () => {
       it("Return array of available stablecoin balances of LP Account", async () => {
-        const daiToken = await deployMockContract(deployer, IDetailedERC20.abi);
-        const daiAvailableAmount = tokenAmountToBigNumber("15325", "18");
-        await daiToken.mock.balanceOf
+        const availableAmount = tokenAmountToBigNumber("15325", "18");
+        await asset.mock.balanceOf
           .withArgs(lpAccount.address)
-          .returns(daiAvailableAmount);
-
-        const daiPool = await deployMockContract(deployer, PoolTokenV2.abi);
-        await daiPool.mock.underlyer.returns(daiToken.address);
-        await addressRegistry.mock.getAddress
-          .withArgs(bytes32("daiPool"))
-          .returns(daiPool.address);
-
-        const usdcToken = await deployMockContract(
-          deployer,
-          IDetailedERC20.abi
-        );
-        const usdcAvailableAmount = tokenAmountToBigNumber("110200", "6");
-        await usdcToken.mock.balanceOf
-          .withArgs(lpAccount.address)
-          .returns(usdcAvailableAmount);
-
-        const usdcPool = await deployMockContract(deployer, PoolTokenV2.abi);
-        await usdcPool.mock.underlyer.returns(usdcToken.address);
-        await addressRegistry.mock.getAddress
-          .withArgs(bytes32("usdcPool"))
-          .returns(usdcPool.address);
+          .returns(availableAmount);
 
         const result = await lpAccountFunder.getLpAccountBalance();
-        deepEqual(result, [daiAvailableAmount, usdcAvailableAmount]);
+        expect(result).to.equal(availableAmount);
       });
     });
 
