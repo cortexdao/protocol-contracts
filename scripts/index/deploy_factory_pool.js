@@ -38,14 +38,15 @@ async function main(argv) {
   const usdcWhale = await impersonateAccount(USDC_WHALE_ADDRESS, 100);
 
   const nonce = await deployer.getTransactionCount();
-  // Grab the previously deployed index token address, assuming
-  // nonce should be decremented twice to account for index token deploy and initialize.
-  // Expected to be: 0x344D5d70fc3c3097f82d1F26464aaDcEb30C6AC7
-  // If not, adjust this accordingly.
-  const indexTokenAddress = ethers.utils.getContractAddress({
-    from: deployer.address,
-    nonce: nonce - 2,
-  });
+  // // Grab the previously deployed index token address, assuming
+  // // nonce should be decremented twice to account for index token deploy and initialize.
+  // // Expected to be: 0x82E4bb17a00B32e5672d5EBe122Cd45bEEfD32b3
+  // // If not, adjust this accordingly.
+  // const indexTokenAddress = ethers.utils.getContractAddress({
+  //   from: deployer.address,
+  //   nonce: nonce - 2,
+  // });
+  const indexTokenAddress = "0x82E4bb17a00B32e5672d5EBe122Cd45bEEfD32b3";
   console.log("Index token: %s", indexTokenAddress);
 
   /*
