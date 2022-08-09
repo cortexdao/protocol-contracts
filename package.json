@@ -23,7 +23,7 @@
     "lint": "solhint contracts/**/*.sol contracts/*.sol",
     "coverage": "yarn clean; ENABLE_FORKING=true NODE_OPTIONS=--max_old_space_size=4096 hardhat coverage --testfiles \"test-{unit,integration}/**/*.js\"",
     "dot-only": "yarn dot-only-hunter test-unit && yarn dot-only-hunter test-integration",
-    "fork_mainnet": "ENABLE_FORKING=true yarn hardhat node --hostname 0.0.0.0"
+    "fork_mainnet": "ENABLE_FORKING=true yarn hardhat node --hostname 0.0.0.0 --fork-block-number 15227330"
   },
   "husky": {
     "hooks": {
