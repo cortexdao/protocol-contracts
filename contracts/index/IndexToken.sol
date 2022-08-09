@@ -66,11 +66,9 @@ contract IndexToken is
     /* ------------------------------- */
     /* impl-specific storage variables */
     /* ------------------------------- */
-    /**
-     * @notice registry to fetch core platform addresses from
-     * @dev this slot replaces the last V1 slot for the price agg
-     */
-    IAddressRegistryV2 public addressRegistry;
+
+    address public oracleAdapter;
+    address public lpAccount;
 
     /** @notice true if depositing is locked */
     bool public depositLock;
@@ -98,8 +96,10 @@ contract IndexToken is
 
     /* ------------------------------- */
 
-    /** @notice Log when the address registry is changed */
-    event AddressRegistryChanged(address);
+    /** @notice Log when the Oracle Adapter is changed */
+    event OracleAdapterChanged(address);
+    /** @notice Log when the LP Account is changed */
+    event LpAccountChanged(address);
 
     /**
      * @dev Since the proxy delegate calls to this "logic" contract, any
@@ -113,11 +113,18 @@ contract IndexToken is
      * repeatedly.  It should be called during the deployment so that
      * it cannot be called by someone else later.
      */
-    function initialize(address addressRegistry_, address asset_)
-        external
-        initializer
-    {
-        require(address(asset_) != address(0), "INVALID_TOKEN");
+    function initialize(
+        address asset_,
+        address emergencySafe,
+        address adminSafe,
+        address oracleAdapter,
+        address lpAccount,
+        address lpAccountFunder
+    ) external initializer {
+        require(address(asset_) != address(0), "INVALID_ADDRESS");
+        require(address(asset_) != address(0), "INVALID_ADDRESS");
+        require(address(asset_) != address(0), "INVALID_ADDRESS");
+        require(address(asset_) != address(0), "INVALID_ADDRESS");
 
         // initialize ancestor storage
         __Context_init_unchained();
@@ -126,21 +133,18 @@ contract IndexToken is
         __Pausable_init_unchained();
         __ERC20_init_unchained("Convex Index Token", "idxCVX");
 
+        _setupRole(DEFAULT_ADMIN_ROLE, emergencySafe);
+        _setupRole(ADMIN_ROLE, adminSafe);
+        _setupRole(EMERGENCY_ROLE, emergencySafe);
+        _setupRole(CONTRACT_ROLE, lpAccountFunder);
+
         // initialize impl-specific storage
+        _setOracleAdapter(oracleAdapter);
+        _setLpAccount(lpAccount);
+
         depositLock = false;
         redeemLock = false;
         asset = asset_;
-
-        _setAddressRegistry(addressRegistry_);
-
-        // FIXME: these need to be Cortex DAO addresses
-        _setupRole(DEFAULT_ADMIN_ROLE, addressRegistry.emergencySafeAddress());
-        _setupRole(ADMIN_ROLE, addressRegistry.adminSafeAddress());
-        _setupRole(EMERGENCY_ROLE, addressRegistry.emergencySafeAddress());
-        _setupRole(
-            CONTRACT_ROLE,
-            addressRegistry.getAddress("lpAccountFunder")
-        );
 
         arbitrageFeePeriod = 1 days;
         arbitrageFee = 5;
@@ -354,22 +358,27 @@ contract IndexToken is
         whenNotPaused
         onlyContractRole
     {
-        IDetailedERC20(asset).safeTransfer(
-            addressRegistry.lpAccountAddress(),
-            amount
-        );
+        IDetailedERC20(asset).safeTransfer(lpAccount, amount);
     }
 
     /**
-     * @notice Set the new address registry
-     * @param addressRegistry_ The new address registry
+     * @notice Set the new oracle adapter
+     * @param oracleAdapter_ The new address
      */
-    function emergencySetAddressRegistry(address addressRegistry_)
+    function emergencySetOracleAdapter(address oracleAdapter_)
         external
         nonReentrant
         onlyEmergencyRole
     {
-        _setAddressRegistry(addressRegistry_);
+        _setOracleAdapter(oracleAdapter_);
+    }
+
+    function emergencySetLpAccount(address lpAccount_)
+        external
+        nonReentrant
+        onlyEmergencyRole
+    {
+        _setLpAccount(lpAccount_);
     }
 
     function setArbitrageFee(uint256 feePercentage, uint256 feePeriod)
@@ -405,12 +414,11 @@ contract IndexToken is
     }
 
     function emergencyExit(address token) external override onlyEmergencyRole {
-        address emergencySafe = addressRegistry.emergencySafeAddress();
         IDetailedERC20 token_ = IDetailedERC20(token);
         uint256 balance = token_.balanceOf(address(this));
-        token_.safeTransfer(emergencySafe, balance);
+        token_.safeTransfer(msg.sender, balance);
 
-        emit EmergencyExit(emergencySafe, token_, balance);
+        emit EmergencyExit(msg.sender, token_, balance);
     }
 
     function getUsdValue(uint256 shareAmount) external view returns (uint256) {
@@ -566,9 +574,7 @@ contract IndexToken is
     }
 
     function getAssetPrice() public view returns (uint256) {
-        IOracleAdapter oracleAdapter =
-            IOracleAdapter(addressRegistry.oracleAdapterAddress());
-        return oracleAdapter.getAssetPrice(address(asset));
+        return IOracleAdapter(oracleAdapter).getAssetPrice(address(asset));
     }
 
     /**
@@ -635,10 +641,16 @@ contract IndexToken is
         return totalValue.mul(10**decimals).div(assetPrice);
     }
 
-    function _setAddressRegistry(address addressRegistry_) internal {
-        require(addressRegistry_.isContract(), "INVALID_ADDRESS");
-        addressRegistry = IAddressRegistryV2(addressRegistry_);
-        emit AddressRegistryChanged(addressRegistry_);
+    function _setOracleAdapter(address oracleAdapter_) internal {
+        require(oracleAdapter_.isContract(), "INVALID_ADDRESS");
+        oracleAdapter = oracleAdapter_;
+        emit OracleAdapterChanged(oracleAdapter_);
+    }
+
+    function _setLpAccount(address lpAccount_) internal {
+        require(lpAccount_.isContract(), "INVALID_ADDRESS");
+        lpAccount = lpAccount_;
+        emit LpAccountChanged(lpAccount_);
     }
 
     /**
@@ -712,9 +724,7 @@ contract IndexToken is
     function _getDeployedValue() internal view returns (uint256) {
         if (totalSupply() == 0) return 0;
 
-        IOracleAdapter oracleAdapter =
-            IOracleAdapter(addressRegistry.oracleAdapterAddress());
-        return oracleAdapter.getTvl();
+        return IOracleAdapter(oracleAdapter).getTvl();
     }
 
     function _previewRedeem(uint256 shareAmount, bool arbFee)
