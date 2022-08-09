@@ -14,3 +14,7 @@ In one terminal, start a forked mainnet node:
 ### Deploy factory pool
 
 `HARDHAT_NETWORK=localhost node scripts/index/deploy_factory_pool.js`
+
+### Deploy deposit zap
+
+`HARDHAT_NETWORK=localhost node scripts/index/deploy_deposit_zap.js`
