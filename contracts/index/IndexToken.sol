@@ -2,25 +2,39 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {IDetailedERC20, IEmergencyExit} from "contracts/common/Imports.sol";
-import {SafeERC20} from "contracts/libraries/Imports.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {
-    Initializable,
-    ERC20UpgradeSafe,
-    ReentrancyGuardUpgradeSafe,
-    PausableUpgradeSafe,
-    AccessControlUpgradeSafe,
-    Address as AddressUpgradeSafe,
-    SafeMath as SafeMathUpgradeSafe,
+    ERC20UpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
+import {
+    ReentrancyGuardUpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
+import {
+    Address as AddressUpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
+import {
+    PausableUpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/utils/Pausable.sol";
+import {
+    SafeMath as SafeMathUpgradeSafe
+} from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import {
     SignedSafeMath as SignedSafeMathUpgradeSafe
-} from "contracts/proxy/Imports.sol";
-import {IAddressRegistryV2} from "contracts/registry/Imports.sol";
-import {
-    AggregatorV3Interface,
-    IOracleAdapter
-} from "contracts/oracle/Imports.sol";
+} from "@openzeppelin/contracts-ethereum-package/contracts/math/SignedSafeMath.sol";
 
-import {IERC4626, IFeeVault, ILockingVault, IReserveVault} from "./Imports.sol";
+import {
+    AccessControlUpgradeSafe
+} from "contracts/proxy/AccessControlUpgradeSafe.sol";
+import {IAddressRegistryV2} from "contracts/registry/IAddressRegistryV2.sol";
+import {IDetailedERC20} from "contracts/common/IDetailedERC20.sol";
+import {IEmergencyExit} from "contracts/common/IEmergencyExit.sol";
+import {Initializable} from "contracts/proxy/Initializable.sol";
+import {IOracleAdapter} from "contracts/oracle/IOracleAdapter.sol";
+
+import {IERC4626} from "./IERC4626.sol";
+import {IFeeVault} from "./IFeeVault.sol";
+import {ILockingVault} from "./ILockingVault.sol";
+import {IReserveVault} from "./IReserveVault.sol";
 
 /**
  * @notice Collect user deposits so they can be lent to the LP Account
