@@ -549,8 +549,8 @@ contract IndexToken is
      */
     function getVaultTotalValue() public view returns (uint256) {
         uint256 assetValue = _getVaultAssetValue();
-        uint256 mAptValue = _getDeployedValue();
-        return assetValue.add(mAptValue);
+        uint256 deployedValue = _getDeployedValue();
+        return assetValue.add(deployedValue);
     }
 
     function getValueFromAssetAmount(uint256 assetAmount)
