@@ -2,10 +2,12 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import {IDetailedERC20} from "contracts/common/Imports.sol";
-import {SafeERC20, SafeMath} from "contracts/libraries/Imports.sol";
+import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
-import {IERC4626} from "./Imports.sol";
+import {IDetailedERC20} from "contracts/common/IDetailedERC20.sol";
+
+import {IERC4626} from "./IERC4626.sol";
 import {ICurve3Pool} from "./ICurve3Pool.sol";
 
 /**
