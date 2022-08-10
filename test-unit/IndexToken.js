@@ -16,7 +16,7 @@ const {
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
 const OracleAdapter = artifacts.require("OracleAdapter");
 
-describe.only("Contract: IndexToken", () => {
+describe("Contract: IndexToken", () => {
   // signers
   let deployer;
   let adminSafeSigner;
@@ -153,6 +153,14 @@ describe.only("Contract: IndexToken", () => {
       expect(memberCount).to.equal(1);
       expect(await indexToken.hasRole(EMERGENCY_ROLE, emergencySafe.address)).to
         .be.true;
+    });
+
+    it("Oracle Adapter set correctly", async () => {
+      expect(await indexToken.oracleAdapter()).to.equal(oracleAdapter.address);
+    });
+
+    it("LP Account set correctly", async () => {
+      expect(await indexToken.lpAccount()).to.equal(lpAccount.address);
     });
 
     it("Name set to correct value", async () => {
