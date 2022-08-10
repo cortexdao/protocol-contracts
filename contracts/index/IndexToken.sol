@@ -115,16 +115,18 @@ contract IndexToken is
      */
     function initialize(
         address asset_,
-        address emergencySafe,
-        address adminSafe,
-        address oracleAdapter,
-        address lpAccount,
-        address lpAccountFunder
-    ) external initializer {
-        require(address(asset_) != address(0), "INVALID_ADDRESS");
-        require(address(asset_) != address(0), "INVALID_ADDRESS");
-        require(address(asset_) != address(0), "INVALID_ADDRESS");
-        require(address(asset_) != address(0), "INVALID_ADDRESS");
+        address emergencySafe_,
+        address adminSafe_,
+        address oracleAdapter_,
+        address lpAccount_,
+        address lpAccountFunder_
+    ) external {
+        require(asset_.isContract(), "INVALID_CONTRACT");
+        require(emergencySafe_.isContract(), "INVALID_CONTRACT");
+        require(adminSafe_.isContract(), "INVALID_CONTRACT");
+        require(oracleAdapter_.isContract(), "INVALID_CONTRACT");
+        require(lpAccount_.isContract(), "INVALID_CONTRACT");
+        require(lpAccountFunder_.isContract(), "INVALID_CONTRACT");
 
         // initialize ancestor storage
         __Context_init_unchained();
@@ -133,14 +135,14 @@ contract IndexToken is
         __Pausable_init_unchained();
         __ERC20_init_unchained("Convex Index Token", "idxCVX");
 
-        _setupRole(DEFAULT_ADMIN_ROLE, emergencySafe);
-        _setupRole(ADMIN_ROLE, adminSafe);
-        _setupRole(EMERGENCY_ROLE, emergencySafe);
-        _setupRole(CONTRACT_ROLE, lpAccountFunder);
+        _setupRole(DEFAULT_ADMIN_ROLE, emergencySafe_);
+        _setupRole(ADMIN_ROLE, adminSafe_);
+        _setupRole(EMERGENCY_ROLE, emergencySafe_);
+        _setupRole(CONTRACT_ROLE, lpAccountFunder_);
 
         // initialize impl-specific storage
-        _setOracleAdapter(oracleAdapter);
-        _setLpAccount(lpAccount);
+        _setOracleAdapter(oracleAdapter_);
+        _setLpAccount(lpAccount_);
 
         depositLock = false;
         redeemLock = false;
@@ -642,13 +644,13 @@ contract IndexToken is
     }
 
     function _setOracleAdapter(address oracleAdapter_) internal {
-        require(oracleAdapter_.isContract(), "INVALID_ADDRESS");
+        require(oracleAdapter_.isContract(), "INVALID_CONTRACT");
         oracleAdapter = oracleAdapter_;
         emit OracleAdapterChanged(oracleAdapter_);
     }
 
     function _setLpAccount(address lpAccount_) internal {
-        require(lpAccount_.isContract(), "INVALID_ADDRESS");
+        require(lpAccount_.isContract(), "INVALID_CONTRACT");
         lpAccount = lpAccount_;
         emit LpAccountChanged(lpAccount_);
     }
