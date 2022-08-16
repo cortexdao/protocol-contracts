@@ -20,6 +20,11 @@ const { argv } = require("yargs")
     default: false,
     description: "Use metapool allocation deploy",
   })
+  .option("v2", {
+    type: "boolean",
+    default: false,
+    description: "Use V2 version of the allocation",
+  })
   .demandOption(["name"]);
 const hre = require("hardhat");
 const { ethers, network } = require("hardhat");
@@ -43,6 +48,12 @@ async function main(argv) {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join("");
   allocationContractName += "Allocation";
+  if (name === "convex-fraxusdc") {
+    allocationContractName = "ConvexFraxUsdcAllocation";
+  }
+  if (argv.v2) {
+    allocationContractName += "V2";
+  }
   console.log("Allocation contract name: %s", allocationContractName);
 
   const [deployer] = await ethers.getSigners();
