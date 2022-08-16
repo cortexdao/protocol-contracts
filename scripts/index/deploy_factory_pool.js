@@ -37,7 +37,6 @@ async function main(argv) {
   const usdc = await ethers.getContractAt("IDetailedERC20", USDC_ADDRESS);
   const usdcWhale = await impersonateAccount(USDC_WHALE_ADDRESS, 100);
 
-  const nonce = await deployer.getTransactionCount();
   // // Grab the previously deployed index token address, assuming
   // // nonce should be decremented twice to account for index token deploy and initialize.
   // // Expected to be: 0x82E4bb17a00B32e5672d5EBe122Cd45bEEfD32b3
@@ -47,6 +46,10 @@ async function main(argv) {
   //   nonce: nonce - 2,
   // });
   const indexTokenAddress = "0x82E4bb17a00B32e5672d5EBe122Cd45bEEfD32b3";
+  const indexToken = await ethers.getContractAt(
+    "IndexToken",
+    indexTokenAddress
+  );
   console.log("Index token: %s", indexTokenAddress);
 
   /*
@@ -85,8 +88,8 @@ async function main(argv) {
 
   const market_price = 1;
   const initial_price = tokenAmountToBigNumber(market_price, 18);
-  const name = "APY/ETH";
-  const symbol = "APYETH";
+  const name = "idxCVX/USDC";
+  const symbol = "idxCVXUSDC";
   const coins = [USDC_ADDRESS, indexTokenAddress];
   const tx = await factory
     .connect(deployer)
@@ -106,10 +109,8 @@ async function main(argv) {
       initial_price
     );
   await tx.wait();
-  const poolAddress = ethers.utils.getContractAddress({
-    from: deployer.address,
-    nonce,
-  });
+  const poolCount = await factory.pool_count();
+  const poolAddress = await factory.pool_list(poolCount.sub(1));
   console.log("Pool address: %s", poolAddress);
 
   const swapBlob = fs.readFileSync(
@@ -118,16 +119,13 @@ async function main(argv) {
   const swapAbi = JSON.parse(swapBlob);
   const pool = await ethers.getContractAt(swapAbi, poolAddress);
 
-  const prices = [tokenAmountToBigNumber(1), initial_price]; // price using first token as quote ccy
-  const deployer_usdc_seed_amount = tokenAmountToBigNumber("1000000", 6);
-  const quantities = prices.map((p) =>
-    deployer_usdc_seed_amount.mul(tokenAmountToBigNumber(1).div(p))
-  );
+  const prices = [tokenAmountToBigNumber(1, 6), initial_price]; // price using first token as quote ccy
+  const addLiquidityAmount = 1000000n;
+  const quantities = prices.map((p) => p.mul(addLiquidityAmount));
 
-  await usdc
-    .connect(usdcWhale)
-    .transfer(alice.address, deployer_usdc_seed_amount);
+  await usdc.connect(usdcWhale).transfer(alice.address, quantities[0]);
   await usdc.connect(alice).approve(pool.address, MAX_UINT256);
+  await indexToken.connect(alice).approve(pool.address, MAX_UINT256);
 
   // seed the pool with our liquidity
   await pool.connect(alice)["add_liquidity(uint256[2],uint256)"](quantities, 0);
