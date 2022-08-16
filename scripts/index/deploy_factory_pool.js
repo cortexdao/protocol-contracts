@@ -88,8 +88,8 @@ async function main(argv) {
 
   const market_price = 1;
   const initial_price = tokenAmountToBigNumber(market_price, 18);
-  const name = "APY/ETH";
-  const symbol = "APYETH";
+  const name = "idxCVX/USDC";
+  const symbol = "idxCVXUSDC";
   const coins = [USDC_ADDRESS, indexTokenAddress];
   const tx = await factory
     .connect(deployer)
