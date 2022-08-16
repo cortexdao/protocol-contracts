@@ -148,11 +148,12 @@ const ConvexMetaPoolAllocations = [
     whaleAddress: "0xAB8e74017a8Cc7c15FFcCd726603790d26d7DeCa",
   },
   {
-    contractName: "ConvexMusdAllocation",
+    contractName: "ConvexMusdAllocationV2",
     primaryUnderlyerSymbol: "mUSD",
     pid: 14,
     // using the Curve pool itself as the "whale": see prior note
     whaleAddress: "0x8474DdbE98F5aA3179B3B3F5942D724aFcdec9f6",
+    skipPrimary: true,
   },
   {
     contractName: "ConvexOusdAllocation",
