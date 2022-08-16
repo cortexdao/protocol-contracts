@@ -156,6 +156,17 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
       whaleAddress: WHALE_POOLS["DOLA"],
       primaryWithdrawBlocked: true,
     },
+    {
+      contractName: "ConvexBusdv2Zap",
+      swapAddress: "0x4807862AA8b2bF68830e4C8dc86D0e9A998e085a",
+      swapInterface: "IMetaPool",
+      lpTokenAddress: "0x4807862AA8b2bF68830e4C8dc86D0e9A998e085a",
+      gaugeAddress: "0xbD223812d360C9587921292D0644D18aDb6a2ad0",
+      gaugeInterface: "IBaseRewardPool",
+      numberOfCoins: 4,
+      whaleAddress: WHALE_POOLS["BUSD"],
+      primaryWithdrawBlocked: true,
+    },
   ];
 
   async function getTotalNormalizedBalance(allocationIds) {
