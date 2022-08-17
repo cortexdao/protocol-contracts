@@ -6,7 +6,6 @@ const {
   impersonateAccount,
   forciblySendEth,
   tokenAmountToBigNumber,
-  getDeployedAddress,
   getStablecoinAddress,
   acquireToken,
   FAKE_ADDRESS,
@@ -67,7 +66,7 @@ describe("Contract: PoolTokenV2Upgrader", () => {
   before("Get signers", async () => {
     [deployer, randomUser] = await ethers.getSigners();
 
-    const emergencySafeAddress = getDeployedAddress("EmergencySafe", "MAINNET");
+    const emergencySafeAddress = "0xEf17933d32e07a5b789405Bd197F02D6BB393147";
     emergencySafeSigner = await impersonateAccount(emergencySafeAddress);
     await forciblySendEth(
       emergencySafeSigner.address,

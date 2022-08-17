@@ -6,7 +6,6 @@ const {
   impersonateAccount,
   forciblySendEth,
   tokenAmountToBigNumber,
-  getDeployedAddress,
   FAKE_ADDRESS,
   getLogicContract,
   getProxyAdmin,
@@ -50,13 +49,13 @@ describe("Contract: AlphaDeployment", () => {
     );
   });
 
-  before("Attach to Safes", async () => {
-    const emergencySafeAddress = getDeployedAddress("EmergencySafe", "MAINNET");
+  before("Attach to Mainnet Safes", async () => {
+    const emergencySafeAddress = "0xEf17933d32e07a5b789405Bd197F02D6BB393147";
     emergencySafe = await ethers.getContractAt(
       "IGnosisModuleManager",
       emergencySafeAddress
     );
-    const adminSafeAddress = getDeployedAddress("AdminSafe", "MAINNET");
+    const adminSafeAddress = "0x1f7f8DA3eac80DBc0b4A49BC447A88585D8766C8";
     adminSafe = await ethers.getContractAt(
       "IGnosisModuleManager",
       adminSafeAddress
