@@ -103,7 +103,7 @@ Zaps "install" the functionality for entering and withdrawing from Convex positi
 
 A Swap "installs" the functionality for a particular set of swap routes. This enables swapping rewards or airdropped tokens to stablecoins tto be re-invested into the portfolio.
 
-#### Registering a new zap
+#### Deploying and registering a new zap
 
 Zap registration is the only means of controlling the flow of funds from the LP Account and thus must be done after proper review of the zap contract. Registration can only be done through the Emergency Safe.
 
@@ -111,7 +111,7 @@ Zap state is never used; a zap is purely a logic contract for the delegatecalls 
 
 #### Removing an existing zap
 
-#### Registering a new swap
+#### Deploying and registering a new swap
 
 #### Removing an existing swap
 
@@ -119,7 +119,7 @@ Zap state is never used; a zap is purely a logic contract for the delegatecalls 
 
 The TVL Manager requires allocation contracts to be registered with it. An allocation contract for a Convex position decomposes the positioninto underlying balances that are reliably priced by Chainlink. This often requires decomposing LP tokens into its underlying coins and possibly, as in the case of lending protocols, a further unwrapping into base coins. The important observation here is that the allocation interface is general and allows a multitude of decompositions, as long as they reflect a realistic liquidation value for the position.
 
-#### Registering a new allocation
+#### Deploying and registering a new allocation
 
 #### Removing an existing allocation
 
