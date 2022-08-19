@@ -111,6 +111,10 @@ Zap state is never used; a zap is purely a logic contract for the delegatecalls 
 
 #### Removing an existing zap
 
+#### Registering a new swap
+
+#### Removing an existing swap
+
 ### Asset Allocations
 
 The TVL Manager requires allocation contracts to be registered with it. An allocation contract for a Convex position decomposes the positioninto underlying balances that are reliably priced by Chainlink. This often requires decomposing LP tokens into its underlying coins and possibly, as in the case of lending protocols, a further unwrapping into base coins. The important observation here is that the allocation interface is general and allows a multitude of decompositions, as long as they reflect a realistic liquidation value for the position.
