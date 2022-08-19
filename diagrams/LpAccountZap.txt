@@ -1,0 +1,136 @@
+title LP Account (zap logic)
+
+participant LP Safe #teal
+participant LP Account#violet
+participant TVL Manager#pink
+participant Zap
+participant Curve#silver
+participant Convex#silver
+participant Swap
+participant DEX#silver
+
+
+LP Safe ->LP Account: deployStrategy(name, amounts)
+activate LP Account #pink
+
+# Register Account Positions
+group#pink Check Allocations Registered
+LP Account ->Zap: assetAllocations()
+activate Zap
+Zap -->LP Account: allocation names
+deactivate Zap
+LP Account ->Zap: erc20Allocations()
+activate Zap
+Zap -->LP Account: erc20 addresses
+deactivate Zap
+LP Account ->TVL Manager: _checkAllocationRegistrations(allocation names)
+LP Account ->TVL Manager: _checkErc20Registrations(erc20 addresses)
+end
+
+#Deploy capital
+group#lightblue Deploy Capital
+LP Account ->LP Account:get zap from name
+LP Account -->Zap: deployLiquidity(amounts) <<delegatecall to zap>>
+activate Zap
+Zap ->Curve: 
+activate Curve#silver
+Curve ->Zap:
+deactivate Curve
+
+Zap ->Convex: 
+activate Convex#silver
+
+Convex ->Zap:
+deactivate Convex
+
+Zap -->LP Account:
+deactivate Zap
+end
+
+LP Account ->LP Safe:
+
+deactivate LP Account
+
+
+
+LP Safe ->LP Account: unwindStrategy(name, amounts)
+activate LP Account #pink
+
+#Unwind capital
+group#lightblue Unwind Capital
+LP Account ->LP Account:get zap from name
+LP Account -->Zap: unwindStrategy(amounts) <<delegatecall to zap>>
+activate Zap
+
+Zap ->Convex: 
+activate Convex#silver
+
+Convex ->Zap:
+deactivate Convex
+
+Zap ->Curve: 
+activate Curve#silver
+Curve ->Zap:
+deactivate Curve
+
+Zap -->LP Account:
+deactivate Zap
+
+
+end
+
+LP Account ->LP Safe:
+
+deactivate LP Account
+
+
+LP Safe ->LP Account: claim(names)
+activate LP Account #pink
+
+#Swap
+group#lightblue Claim Rewards
+LP Account ->LP Account:get swap from name
+LP Account -->Swap: swap(amount) <<delegatecall to swap>>
+activate Swap
+
+Swap ->DEX: 
+activate DEX#silver
+
+DEX ->Swap:
+deactivate DEX
+
+
+Swap -->LP Account:
+deactivate Swap
+
+end
+
+LP Account ->LP Safe:
+
+deactivate LP Account
+
+LP Safe ->LP Account: swap(name, amount)
+activate LP Account #pink
+
+#Swap
+group#lightblue Swap Tokens
+LP Account ->LP Account:get swap from name
+LP Account -->Swap: swap(amount) <<delegatecall to swap>>
+activate Swap
+
+Swap ->DEX: 
+activate DEX#silver
+
+DEX ->Swap:
+deactivate DEX
+
+
+Swap -->LP Account:
+deactivate Swap
+
+
+end
+
+LP Account ->LP Safe:
+
+deactivate LP Account
