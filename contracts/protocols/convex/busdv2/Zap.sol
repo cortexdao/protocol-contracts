@@ -12,7 +12,7 @@ import {
 contract ConvexBusdv2Zap is MetaPoolDepositorZapV2, ConvexBusdv2Constants {
     constructor()
         public
-        MetaPoolDepositorZapV2(META_POOL, address(LP_TOKEN), PID, 10000, 100) // solhint-disable-next-line no-empty-blocks
+        MetaPoolDepositorZapV2(META_POOL, address(LP_TOKEN), PID, 10000, 10000) // solhint-disable-next-line no-empty-blocks
     {}
 
     function assetAllocations() public view override returns (string[] memory) {

@@ -13,7 +13,14 @@ import {Convex3poolConstants} from "./Constants.sol";
 contract Convex3poolZap is ConvexZapBase, Convex3poolConstants {
     constructor()
         public
-        ConvexZapBase(STABLE_SWAP_ADDRESS, LP_TOKEN_ADDRESS, PID, 10000, 100, 3)
+        ConvexZapBase(
+            STABLE_SWAP_ADDRESS,
+            LP_TOKEN_ADDRESS,
+            PID,
+            10000,
+            10000,
+            3
+        )
     {} // solhint-disable no-empty-blocks
 
     function assetAllocations() public view override returns (string[] memory) {

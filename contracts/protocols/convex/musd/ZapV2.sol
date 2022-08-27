@@ -18,7 +18,7 @@ contract ConvexMusdZapV2 is MetaPoolOldDepositorZapV2, ConvexMusdConstants {
             address(LP_TOKEN),
             PID,
             10000,
-            100
+            10000
         ) // solhint-disable-next-line no-empty-blocks
     {}
 

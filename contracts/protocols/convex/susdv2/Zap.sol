@@ -16,7 +16,14 @@ contract ConvexSusdv2Zap is ConvexZapBase, ConvexSusdv2Constants {
 
     constructor()
         public
-        ConvexZapBase(STABLE_SWAP_ADDRESS, LP_TOKEN_ADDRESS, PID, 10000, 100, 4)
+        ConvexZapBase(
+            STABLE_SWAP_ADDRESS,
+            LP_TOKEN_ADDRESS,
+            PID,
+            10000,
+            10000,
+            4
+        )
     {} // solhint-disable no-empty-blocks
 
     function assetAllocations() public view override returns (string[] memory) {

@@ -17,7 +17,14 @@ contract ConvexIronbankZap is ConvexZapBase, ConvexIronbankConstants {
 
     constructor()
         public
-        ConvexZapBase(STABLE_SWAP_ADDRESS, LP_TOKEN_ADDRESS, PID, 10000, 100, 3)
+        ConvexZapBase(
+            STABLE_SWAP_ADDRESS,
+            LP_TOKEN_ADDRESS,
+            PID,
+            10000,
+            10000,
+            3
+        )
     {} // solhint-disable no-empty-blocks
 
     function assetAllocations() public view override returns (string[] memory) {
