@@ -3,22 +3,27 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IAssetAllocation} from "contracts/common/Imports.sol";
+import {IAssetAllocation, INameIdentifier} from "contracts/common/Imports.sol";
 import {ConvexMimConstants} from "./Constants.sol";
 import {
     MetaPoolDepositorZapV2
 } from "contracts/protocols/convex/metapool/Imports.sol";
 
-contract ConvexMimZapV2 is MetaPoolDepositorZapV2, ConvexMimConstants {
+contract ConvexMimZapNoSlip is
+    INameIdentifier,
+    MetaPoolDepositorZapV2,
+    ConvexMimConstants
+{
+    string public constant override NAME = "convex-mim-no-slippage";
+
     constructor()
         public
         MetaPoolDepositorZapV2(META_POOL, address(LP_TOKEN), PID, 10000, 10000) // solhint-disable-next-line no-empty-blocks
     {}
 
     function assetAllocations() public view override returns (string[] memory) {
-        string[] memory allocationNames = new string[](2);
-        allocationNames[0] = "curve-mim";
-        allocationNames[1] = NAME;
+        string[] memory allocationNames = new string[](1);
+        allocationNames[0] = "convex-mim";
         return allocationNames;
     }
 

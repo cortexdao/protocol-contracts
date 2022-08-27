@@ -86,7 +86,20 @@ describe("Convex MetaPool Zaps - LP Account integration", () => {
     //   slippage: 5,
     // },
     {
-      contractName: "ConvexMimZapV2",
+      contractName: "ConvexMimZap",
+      swapAddress: "0x5a6A4D54456819380173272A5E8E9B9904BdF41B",
+      swapInterface: "IMetaPool",
+      lpTokenAddress: "0x5a6A4D54456819380173272A5E8E9B9904BdF41B",
+      gaugeAddress: "0xFd5AbF66b003881b88567EB9Ed9c651F14Dc4771",
+      gaugeInterface: "IBaseRewardPool",
+      numberOfCoins: 4,
+      whaleAddress: WHALE_POOLS["MIM"],
+      // rewards shut off
+      // rewardToken: "0x090185f2135308BaD17527004364eBcC2D37e5F6",
+      primaryWithdrawBlocked: true,
+    },
+    {
+      contractName: "ConvexMimZapNoSlip",
       swapAddress: "0x5a6A4D54456819380173272A5E8E9B9904BdF41B",
       swapInterface: "IMetaPool",
       lpTokenAddress: "0x5a6A4D54456819380173272A5E8E9B9904BdF41B",

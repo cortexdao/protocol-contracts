@@ -9,6 +9,8 @@ import {
 import {ConvexMimConstants} from "./Constants.sol";
 
 contract ConvexMimAllocation is MetaPoolAllocationBaseV2, ConvexMimConstants {
+    string public constant override NAME = "convex-mim";
+
     function balanceOf(address account, uint8 tokenIndex)
         public
         view

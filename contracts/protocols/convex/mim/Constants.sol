@@ -10,9 +10,7 @@ import {
     IOldDepositor
 } from "contracts/protocols/curve/metapool/Imports.sol";
 
-abstract contract ConvexMimConstants is INameIdentifier {
-    string public constant override NAME = "convex-mim";
-
+abstract contract ConvexMimConstants {
     uint256 public constant PID = 40;
 
     // sometimes a metapool is its own LP token; otherwise,
