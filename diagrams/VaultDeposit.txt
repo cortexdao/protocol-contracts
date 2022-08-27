@@ -1,0 +1,18 @@
+title Vault Deposit
+
+actor User
+actor Receiver
+participant Vault#violet
+participant VaultAsset#yellow
+participant OracleAdapter#lightblue
+
+User ->VaultAsset: approve(Vault, assetAmount)
+User ->Vault: deposit(assetAmount, Receiver)
+activate Vault#lightgrey
+Vault ->VaultAsset: allowance(User, Vault) >= assetAmount
+Vault ->OracleAdapter: getAssetPrice(token); price the vault asset
+Vault ->OracleAdapter: getTvl(); price the deployed capital
+Vault ->Vault: mint(Receiver, mintAmount)
+Vault ->VaultAsset: transferFrom(User, this, assetAmount)
+Vault -->User: 
+deactivate Vault

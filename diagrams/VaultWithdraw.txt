@@ -1,0 +1,20 @@
+title Vault Withdraw
+
+actor User
+actor Owner
+actor Receiver
+participant Vault#violet
+participant VaultAsset#yellow
+participant OracleAdapter#lightblue
+
+
+Owner ->VaultAsset: approve(User, shareAmount) (skip if User is Owner)
+User ->Vault: redeem(shareAmount)
+activate Vault#lightgrey
+Vault ->VaultAsset: allowance(Owner, User) >= shareAmount (skip if User is Owner)
+Vault ->OracleAdapter: getAssetPrice(VaultAsset); price the vault asset
+Vault ->OracleAdapter: getTvl(); price the deployed capital
+Vault ->Vault: burn(User, shareAmount)
+Vault ->OracleAdapter: transfer(Receiver, assetAmount)
+Vault -->User: 
+deactivate Vault

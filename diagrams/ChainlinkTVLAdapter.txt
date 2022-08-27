@@ -3,7 +3,7 @@ title Chainlink TVL Adapter
 participant ChainlinkNode#lightblue
 participant TVLManager#pink
 participant ERC20#yellow
-participant APYPeripheryContract
+participant CortexPeripheryContract
 participant DeFiProtocol
 database PriceFeed-1#lightgray
 database PriceFeed-2#lightgray
@@ -22,13 +22,13 @@ activate TVLManager
 alt #yellow Protocol
 TVLManager -> ERC20: balanceOf(account)
 else Periphery
-TVLManager -> APYPeripheryContract: balanceOf(account)
-activate APYPeripheryContract
-APYPeripheryContract ->DeFiProtocol: call() 
-APYPeripheryContract ->DeFiProtocol: call()
-APYPeripheryContract ->DeFiProtocol: call()
-APYPeripheryContract -->TVLManager:
-deactivate APYPeripheryContract
+TVLManager -> CortexPeripheryContract: balanceOf(account)
+activate CortexPeripheryContract
+CortexPeripheryContract ->DeFiProtocol: call() 
+CortexPeripheryContract ->DeFiProtocol: call()
+CortexPeripheryContract ->DeFiProtocol: call()
+CortexPeripheryContract -->TVLManager:
+deactivate CortexPeripheryContract
 end
 TVLManager -->ChainlinkNode:
 deactivate TVLManager
