@@ -14,29 +14,27 @@ const {
 } = require("../utils/helpers");
 
 const IDetailedERC20 = artifacts.require("IDetailedERC20");
-const AddressRegistry = artifacts.require("IAddressRegistryV2");
-const MetaPoolToken = artifacts.require("MetaPoolToken");
 const OracleAdapter = artifacts.require("OracleAdapter");
 
 describe("Contract: IndexToken", () => {
   // signers
   let deployer;
-  let adminSafe;
-  let emergencySafe;
-  let mApt;
-  let lpAccount;
-  let lpSafe;
+  let adminSafeSigner;
+  let emergencySafeSigner;
+  let lpAccountFunderSigner;
   let randomUser;
   let receiver;
   let anotherUser;
 
   // mocks
-  let assetMock;
-  let addressRegistryMock;
-  let mAptMock;
-  let oracleAdapterMock;
+  let asset;
+  let emergencySafe;
+  let adminSafe;
+  let oracleAdapter;
+  let lpAccount;
+  let lpAccountFunder;
 
-  // pool
+  // vault
   let proxyAdmin;
   let indexToken;
   let logic;
@@ -54,44 +52,18 @@ describe("Contract: IndexToken", () => {
   });
 
   before(async () => {
-    [
-      deployer,
-      lpAccount,
-      adminSafe,
-      emergencySafe,
-      lpSafe,
-      randomUser,
-      receiver,
-      anotherUser,
-    ] = await ethers.getSigners();
+    [deployer, randomUser, receiver, anotherUser] = await ethers.getSigners();
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin");
     proxyAdmin = await ProxyAdmin.deploy();
     await proxyAdmin.deployed();
 
-    assetMock = await deployMockContract(deployer, IDetailedERC20.abi);
-
-    addressRegistryMock = await deployMockContract(
-      deployer,
-      AddressRegistry.abi
-    );
-
-    mAptMock = await deployMockContract(deployer, MetaPoolToken.abi);
-    await addressRegistryMock.mock.mAptAddress.returns(mAptMock.address);
-
-    oracleAdapterMock = await deployMockContract(deployer, OracleAdapter.abi);
-    await addressRegistryMock.mock.oracleAdapterAddress.returns(
-      oracleAdapterMock.address
-    );
-
-    await addressRegistryMock.mock.lpAccountAddress.returns(lpAccount.address);
-    await addressRegistryMock.mock.lpSafeAddress.returns(lpSafe.address);
-    await addressRegistryMock.mock.adminSafeAddress.returns(adminSafe.address);
-    await addressRegistryMock.mock.emergencySafeAddress.returns(
-      emergencySafe.address
-    );
-
-    mApt = await impersonateAccount(mAptMock.address, 10);
+    asset = await deployMockContract(deployer, IDetailedERC20.abi);
+    emergencySafe = await deployMockContract(deployer, []);
+    adminSafe = await deployMockContract(deployer, []);
+    oracleAdapter = await deployMockContract(deployer, OracleAdapter.abi);
+    lpAccount = await deployMockContract(deployer, []);
+    lpAccountFunder = await deployMockContract(deployer, []);
 
     const IndexToken = await ethers.getContractFactory("TestIndexToken");
     logic = await IndexToken.deploy();
@@ -101,8 +73,15 @@ describe("Contract: IndexToken", () => {
       "TransparentUpgradeableProxy"
     );
     const initData = IndexToken.interface.encodeFunctionData(
-      "initialize(address,address)",
-      [addressRegistryMock.address, assetMock.address]
+      "initialize(address,address,address,address,address,address)",
+      [
+        asset.address,
+        emergencySafe.address,
+        adminSafe.address,
+        oracleAdapter.address,
+        lpAccount.address,
+        lpAccountFunder.address,
+      ]
     );
     const proxy = await TransparentUpgradeableProxy.deploy(
       logic.address,
@@ -112,19 +91,31 @@ describe("Contract: IndexToken", () => {
     await proxy.deployed();
 
     indexToken = await IndexToken.attach(proxy.address);
+
+    emergencySafeSigner = await impersonateAccount(emergencySafe, 100);
+    adminSafeSigner = await impersonateAccount(adminSafe, 100);
+    lpAccountFunderSigner = await impersonateAccount(lpAccountFunder, 100);
   });
 
   describe("Initialize", () => {
-    it("Revert when address registry address is non-contract", async () => {
-      await expect(
-        logic.initialize(FAKE_ADDRESS, assetMock.address)
-      ).to.be.revertedWith("INVALID_ADDRESS");
-    });
-
-    it("Revert when token address is zero address", async () => {
-      await expect(
-        logic.initialize(addressRegistryMock.address, ZERO_ADDRESS)
-      ).to.be.revertedWith("INVALID_TOKEN");
+    it("Revert when address is zero address", async () => {
+      const addresses = [
+        asset.address,
+        emergencySafe.address,
+        adminSafe.address,
+        oracleAdapter.address,
+        lpAccount.address,
+        lpAccountFunder.address,
+      ];
+      let temp;
+      for (let i = 0; i < addresses.length; i++) {
+        temp = addresses[i];
+        addresses[i] = FAKE_ADDRESS;
+        await expect(logic.initialize(...addresses)).to.be.revertedWith(
+          "INVALID_CONTRACT"
+        );
+        addresses[i] = temp;
+      }
     });
   });
 
@@ -148,11 +139,12 @@ describe("Contract: IndexToken", () => {
         .true;
     });
 
-    it("Contract role given to mAPT", async () => {
+    it("Contract role given to LP Account Funder", async () => {
       const CONTRACT_ROLE = await indexToken.CONTRACT_ROLE();
       const memberCount = await indexToken.getRoleMemberCount(CONTRACT_ROLE);
       expect(memberCount).to.equal(1);
-      expect(await indexToken.hasRole(CONTRACT_ROLE, mApt.address)).to.be.true;
+      expect(await indexToken.hasRole(CONTRACT_ROLE, lpAccountFunder.address))
+        .to.be.true;
     });
 
     it("Emergency role given to Emergency Safe", async () => {
@@ -161,6 +153,14 @@ describe("Contract: IndexToken", () => {
       expect(memberCount).to.equal(1);
       expect(await indexToken.hasRole(EMERGENCY_ROLE, emergencySafe.address)).to
         .be.true;
+    });
+
+    it("Oracle Adapter set correctly", async () => {
+      expect(await indexToken.oracleAdapter()).to.equal(oracleAdapter.address);
+    });
+
+    it("LP Account set correctly", async () => {
+      expect(await indexToken.lpAccount()).to.equal(lpAccount.address);
     });
 
     it("Name set to correct value", async () => {
@@ -182,7 +182,7 @@ describe("Contract: IndexToken", () => {
     });
 
     it("Asset is set correctly", async () => {
-      expect(await indexToken.asset()).to.equal(assetMock.address);
+      expect(await indexToken.asset()).to.equal(asset.address);
     });
 
     it("deposit is unlocked", async () => {
@@ -206,21 +206,21 @@ describe("Contract: IndexToken", () => {
     });
   });
 
-  describe("Set address registry", () => {
+  describe("Set Oracle Adapter", () => {
     it("Emergency Safe can set", async () => {
       const dummyContract = await deployMockContract(deployer, []);
       await indexToken
-        .connect(emergencySafe)
-        .emergencySetAddressRegistry(dummyContract.address);
-      assert.equal(await indexToken.addressRegistry(), dummyContract.address);
+        .connect(emergencySafeSigner)
+        .emergencySetOracleAdapter(dummyContract.address);
+      assert.equal(await indexToken.oracleAdapter(), dummyContract.address);
     });
 
     it("Revert on non-contract address", async () => {
       await expect(
         indexToken
-          .connect(emergencySafe)
-          .emergencySetAddressRegistry(FAKE_ADDRESS)
-      ).to.be.revertedWith("INVALID_ADDRESS");
+          .connect(emergencySafeSigner)
+          .emergencySetOracleAdapter(FAKE_ADDRESS)
+      ).to.be.revertedWith("INVALID_CONTRACT");
     });
 
     it("Revert when unpermissioned account attempts to set", async () => {
@@ -228,7 +228,34 @@ describe("Contract: IndexToken", () => {
       await expect(
         indexToken
           .connect(randomUser)
-          .emergencySetAddressRegistry(dummyContract.address)
+          .emergencySetOracleAdapter(dummyContract.address)
+      ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
+    });
+  });
+
+  describe("Set Lp Account", () => {
+    it("Emergency Safe can set", async () => {
+      const dummyContract = await deployMockContract(deployer, []);
+      await indexToken
+        .connect(emergencySafeSigner)
+        .emergencySetLpAccount(dummyContract.address);
+      assert.equal(await indexToken.lpAccount(), dummyContract.address);
+    });
+
+    it("Revert on non-contract address", async () => {
+      await expect(
+        indexToken
+          .connect(emergencySafeSigner)
+          .emergencySetLpAccount(FAKE_ADDRESS)
+      ).to.be.revertedWith("INVALID_CONTRACT");
+    });
+
+    it("Revert when unpermissioned account attempts to set", async () => {
+      const dummyContract = await deployMockContract(deployer, []);
+      await expect(
+        indexToken
+          .connect(randomUser)
+          .emergencySetLpAccount(dummyContract.address)
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
   });
@@ -236,12 +263,12 @@ describe("Contract: IndexToken", () => {
   describe("getAssetPrice", () => {
     it("Delegates to oracle adapter", async () => {
       const price = tokenAmountToBigNumber("1.02", 8);
-      await oracleAdapterMock.mock.getAssetPrice.returns(price);
+      await oracleAdapter.mock.getAssetPrice.returns(price);
       expect(await indexToken.getAssetPrice()).to.equal(price);
     });
 
     it("Reverts with same reason as oracle adapter", async () => {
-      await oracleAdapterMock.mock.getAssetPrice.revertsWithReason(
+      await oracleAdapter.mock.getAssetPrice.revertsWithReason(
         "SOMETHING_WRONG"
       );
       await expect(indexToken.getAssetPrice()).to.be.revertedWith(
@@ -250,16 +277,14 @@ describe("Contract: IndexToken", () => {
     });
   });
 
-  describe("Lock pool", () => {
-    it("Emergency Safe can lock and unlock pool", async () => {
-      await expect(indexToken.connect(emergencySafe).emergencyLock()).to.emit(
-        indexToken,
-        "Paused"
-      );
-      await expect(indexToken.connect(emergencySafe).emergencyUnlock()).to.emit(
-        indexToken,
-        "Unpaused"
-      );
+  describe("Lock vault", () => {
+    it("Emergency Safe can lock and unlock vault", async () => {
+      await expect(
+        indexToken.connect(emergencySafeSigner).emergencyLock()
+      ).to.emit(indexToken, "Paused");
+      await expect(
+        indexToken.connect(emergencySafeSigner).emergencyUnlock()
+      ).to.emit(indexToken, "Unpaused");
     });
 
     it("Revert when unpermissioned account attempts to lock", async () => {
@@ -274,24 +299,24 @@ describe("Contract: IndexToken", () => {
       ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
     });
 
-    it("Revert when calling deposit on locked pool", async () => {
-      await indexToken.connect(emergencySafe).emergencyLock();
+    it("Revert when calling deposit on locked vault", async () => {
+      await indexToken.connect(emergencySafeSigner).emergencyLock();
 
       await expect(
         indexToken.connect(randomUser).deposit(50, randomUser.address)
       ).to.revertedWith("Pausable: paused");
     });
 
-    it("Revert when calling mint on locked pool", async () => {
-      await indexToken.connect(emergencySafe).emergencyLock();
+    it("Revert when calling mint on locked vault", async () => {
+      await indexToken.connect(emergencySafeSigner).emergencyLock();
 
       await expect(
         indexToken.connect(randomUser).mint(50, randomUser.address)
       ).to.revertedWith("Pausable: paused");
     });
 
-    it("Revert when calling redeem on locked pool", async () => {
-      await indexToken.connect(emergencySafe).emergencyLock();
+    it("Revert when calling redeem on locked vault", async () => {
+      await indexToken.connect(emergencySafeSigner).emergencyLock();
 
       await expect(
         indexToken
@@ -300,8 +325,8 @@ describe("Contract: IndexToken", () => {
       ).to.revertedWith("Pausable: paused");
     });
 
-    it("Revert when calling withdraw on locked pool", async () => {
-      await indexToken.connect(emergencySafe).emergencyLock();
+    it("Revert when calling withdraw on locked vault", async () => {
+      await indexToken.connect(emergencySafeSigner).emergencyLock();
 
       await expect(
         indexToken
@@ -310,23 +335,24 @@ describe("Contract: IndexToken", () => {
       ).to.revertedWith("Pausable: paused");
     });
 
-    it("Revert when calling transferToLpAccount on locked pool from mAPT", async () => {
-      await indexToken.connect(emergencySafe).emergencyLock();
+    it("Revert when calling transferToLpAccount on locked vault from LP Account Funder", async () => {
+      await indexToken.connect(emergencySafeSigner).emergencyLock();
 
       await expect(
-        indexToken.connect(mApt).transferToLpAccount(100)
+        indexToken.connect(lpAccountFunderSigner).transferToLpAccount(100)
       ).to.revertedWith("Pausable: paused");
     });
   });
 
-  describe("Transfer to LP Safe", () => {
+  describe("Transfer to LP Account", () => {
     before(async () => {
-      await assetMock.mock.transfer.returns(true);
+      await asset.mock.transfer.returns(true);
     });
 
-    it("mAPT can call transferToLpAccount", async () => {
-      await expect(indexToken.connect(mApt).transferToLpAccount(100)).to.not.be
-        .reverted;
+    it("LP Account Funder can call transferToLpAccount", async () => {
+      await expect(
+        indexToken.connect(lpAccountFunderSigner).transferToLpAccount(100)
+      ).to.not.be.reverted;
     });
 
     it("Revert when unpermissioned account calls transferToLpAccount", async () => {
@@ -341,7 +367,7 @@ describe("Contract: IndexToken", () => {
       const newFeePeriod = 12 * 60 * 60;
       await expect(
         indexToken
-          .connect(adminSafe)
+          .connect(adminSafeSigner)
           .setArbitrageFee(newArbitrageFee, newFeePeriod)
       ).to.not.be.reverted;
       expect(await indexToken.arbitrageFee()).to.equal(newArbitrageFee);
@@ -358,7 +384,7 @@ describe("Contract: IndexToken", () => {
     it("Admin Safe can set", async () => {
       const newPercentage = 10;
       await expect(
-        indexToken.connect(adminSafe).setReservePercentage(newPercentage)
+        indexToken.connect(adminSafeSigner).setReservePercentage(newPercentage)
       ).to.not.be.reverted;
       expect(await indexToken.reservePercentage()).to.equal(newPercentage);
     });
@@ -372,8 +398,9 @@ describe("Contract: IndexToken", () => {
   describe("Set withdrawFee", () => {
     it("Admin Safe can set", async () => {
       const newWithdrawFee = 1200;
-      await expect(indexToken.connect(adminSafe).setWithdrawFee(newWithdrawFee))
-        .to.not.be.reverted;
+      await expect(
+        indexToken.connect(adminSafeSigner).setWithdrawFee(newWithdrawFee)
+      ).to.not.be.reverted;
       expect(await indexToken.withdrawFee()).to.equal(newWithdrawFee);
     });
 
@@ -390,9 +417,9 @@ describe("Contract: IndexToken", () => {
 
     it("Returns correct value", async () => {
       const decimals = 1;
-      await assetMock.mock.decimals.returns(decimals);
+      await asset.mock.decimals.returns(decimals);
       const price = 2;
-      await oracleAdapterMock.mock.getAssetPrice.returns(price);
+      await oracleAdapter.mock.getAssetPrice.returns(price);
 
       const assetAmount = tokenAmountToBigNumber(5, decimals);
       // 50 * 2 / 10 ^ 1
@@ -403,72 +430,81 @@ describe("Contract: IndexToken", () => {
     });
   });
 
-  describe("_getPoolAssetValue", () => {
+  describe("_getVaultAssetValue", () => {
+    beforeEach(async () => {
+      // create non-zero totalSupply so calls pass to oracle adapter
+      await indexToken.testMint(deployer.address, 1);
+    });
+
     it("Returns correct value regardless of deployed value", async () => {
       const decimals = 1;
-      await assetMock.mock.decimals.returns(decimals);
+      await asset.mock.decimals.returns(decimals);
       const balance = tokenAmountToBigNumber("7.5", decimals);
-      await assetMock.mock.balanceOf.returns(balance);
+      await asset.mock.balanceOf.returns(balance);
 
       const price = 2;
-      await oracleAdapterMock.mock.getAssetPrice.returns(price);
+      await oracleAdapter.mock.getAssetPrice.returns(price);
 
       // 75 * 2 / 10^1
       const expectedValue = balance.mul(price).div(10 ** decimals);
 
       // force zero deployed value
-      await mAptMock.mock.getDeployedValue.returns(0);
+      await oracleAdapter.mock.getTvl.returns(0);
       expect(await indexToken.testGetDeployedValue()).to.equal(0);
-      expect(await indexToken.testGetPoolAssetValue()).to.equal(expectedValue);
+      expect(await indexToken.testGetVaultAssetValue()).to.equal(expectedValue);
 
       // force non-zero deployed value
-      await mAptMock.mock.getDeployedValue.returns(1234);
+      await oracleAdapter.mock.getTvl.returns(1234);
       expect(await indexToken.testGetDeployedValue()).to.be.gt(0);
-      expect(await indexToken.testGetPoolAssetValue()).to.equal(expectedValue);
+      expect(await indexToken.testGetVaultAssetValue()).to.equal(expectedValue);
     });
   });
 
   describe("_getDeployedValue", () => {
-    it("Delegates properly to mAPT contract", async () => {
-      await mAptMock.mock.getDeployedValue
-        .withArgs(indexToken.address)
-        .returns(0);
+    beforeEach(async () => {
+      // create non-zero totalSupply so calls pass to oracle adapter
+      await indexToken.testMint(deployer.address, 1);
+    });
+
+    it("Delegates properly to Oracle Adapter", async () => {
+      await oracleAdapter.mock.getTvl.returns(0);
       expect(await indexToken.testGetDeployedValue()).to.equal(0);
 
       const deployedValue = tokenAmountToBigNumber(12345);
-      await mAptMock.mock.getDeployedValue
-        .withArgs(indexToken.address)
-        .returns(deployedValue);
+      await oracleAdapter.mock.getTvl.returns(deployedValue);
       expect(await indexToken.testGetDeployedValue()).to.equal(deployedValue);
     });
 
     it("Reverts with same reason when mAPT reverts", async () => {
-      await mAptMock.mock.getDeployedValue
-        .withArgs(indexToken.address)
-        .revertsWithReason("SOMETHING_WRONG");
+      await oracleAdapter.mock.getTvl.revertsWithReason("SOMETHING_WRONG");
       await expect(indexToken.testGetDeployedValue()).to.be.revertedWith(
         "SOMETHING_WRONG"
       );
     });
   });
 
-  describe("getPoolTotalValue", () => {
+  describe("getVaultTotalValue", () => {
+    beforeEach(async () => {
+      // create non-zero totalSupply so calls pass to oracle adapter
+      await indexToken.testMint(deployer.address, 1);
+    });
+
     it("Returns correct value", async () => {
       const decimals = 1;
-      await assetMock.mock.decimals.returns(decimals);
+      await asset.mock.decimals.returns(decimals);
       const assetBalance = tokenAmountToBigNumber("7.5", decimals);
-      await assetMock.mock.balanceOf.returns(assetBalance);
+      await asset.mock.balanceOf.returns(assetBalance);
 
       const deployedValue = tokenAmountToBigNumber(1234);
-      await mAptMock.mock.getDeployedValue.returns(deployedValue);
+      await oracleAdapter.mock.getTvl.returns(deployedValue);
 
       const price = 2;
-      await oracleAdapterMock.mock.getAssetPrice.returns(price);
+      await oracleAdapter.mock.getAssetPrice.returns(price);
 
       // asset ETH value: 75 * 2 / 10^1 = 15
       const assetValue = assetBalance.mul(price).div(10 ** decimals);
       const expectedValue = assetValue.add(deployedValue);
-      expect(await indexToken.getPoolTotalValue()).to.equal(expectedValue);
+      expect(await indexToken.getVaultTotalValue()).to.equal(expectedValue);
     });
   });
 
@@ -487,50 +523,50 @@ describe("Contract: IndexToken", () => {
 
     it("Returns correct value", async () => {
       await indexToken.testMint(randomUser.address, 100);
-      await assetMock.mock.decimals.returns(0);
-      await assetMock.mock.balanceOf.returns(100);
+      await asset.mock.decimals.returns(0);
+      await asset.mock.balanceOf.returns(100);
 
       const price = 2;
-      await oracleAdapterMock.mock.getAssetPrice.returns(price);
+      await oracleAdapter.mock.getAssetPrice.returns(price);
 
       const aptSupply = await indexToken.totalSupply();
       const aptAmount = tokenAmountToBigNumber(10);
 
       // zero deployed value
-      await mAptMock.mock.getDeployedValue.returns(0);
-      let poolTotalValue = await indexToken.getPoolTotalValue();
-      let expectedValue = poolTotalValue.mul(aptAmount).div(aptSupply);
+      await oracleAdapter.mock.getTvl.returns(0);
+      let vaultTotalValue = await indexToken.getVaultTotalValue();
+      let expectedValue = vaultTotalValue.mul(aptAmount).div(aptSupply);
       expect(await indexToken.getUsdValue(aptAmount)).to.equal(expectedValue);
 
       // non-zero deployed value
       const deployedValue = tokenAmountToBigNumber(1234);
-      await mAptMock.mock.getDeployedValue.returns(deployedValue);
-      poolTotalValue = await indexToken.getPoolTotalValue();
-      expectedValue = poolTotalValue.mul(aptAmount).div(aptSupply);
+      await oracleAdapter.mock.getTvl.returns(deployedValue);
+      vaultTotalValue = await indexToken.getVaultTotalValue();
+      expectedValue = vaultTotalValue.mul(aptAmount).div(aptSupply);
       expect(await indexToken.getUsdValue(aptAmount)).to.equal(expectedValue);
     });
   });
 
   describe("getReserveTopUpValue", () => {
-    it("Returns 0 when pool has zero total value", async () => {
-      // set pool total ETH value to 0
-      await oracleAdapterMock.mock.getAssetPrice.returns(1);
-      await mAptMock.mock.getDeployedValue.returns(0);
-      await assetMock.mock.balanceOf.returns(0);
-      await assetMock.mock.decimals.returns(6);
+    it("Returns 0 when vault has zero total value", async () => {
+      // set vault total ETH value to 0
+      await oracleAdapter.mock.getAssetPrice.returns(1);
+      await oracleAdapter.mock.getTvl.returns(0);
+      await asset.mock.balanceOf.returns(0);
+      await asset.mock.decimals.returns(6);
 
       expect(await indexToken.getReserveTopUpValue()).to.equal(0);
     });
 
     it("Returns correctly calculated value when zero deployed value", async () => {
-      await oracleAdapterMock.mock.getAssetPrice.returns(1);
-      await mAptMock.mock.getDeployedValue.returns(0);
-      // set positive pool asset ETH value,
+      await oracleAdapter.mock.getAssetPrice.returns(1);
+      await oracleAdapter.mock.getTvl.returns(0);
+      // set positive vault asset ETH value,
       // which should result in negative reserve top-up
       const decimals = 6;
-      await assetMock.mock.decimals.returns(decimals);
-      const poolBalance = tokenAmountToBigNumber(105e10, decimals);
-      await assetMock.mock.balanceOf.returns(poolBalance);
+      await asset.mock.decimals.returns(decimals);
+      const vaultBalance = tokenAmountToBigNumber(105e10, decimals);
+      await asset.mock.balanceOf.returns(vaultBalance);
 
       const aptSupply = tokenAmountToBigNumber(10000);
       await indexToken.testMint(deployer.address, aptSupply);
@@ -543,26 +579,26 @@ describe("Contract: IndexToken", () => {
       // is what we are targeting
       const reservePercentage = await indexToken.reservePercentage();
       const targetValue = topUpAmount.mul(-1).mul(reservePercentage).div(100);
-      expect(poolBalance.add(topUpAmount)).to.equal(targetValue);
+      expect(vaultBalance.add(topUpAmount)).to.equal(targetValue);
     });
 
     it("Returns reservePercentage of post deployed value when zero balance", async () => {
       const price = 1;
-      await oracleAdapterMock.mock.getAssetPrice.returns(price);
-      await assetMock.mock.balanceOf.returns(0);
+      await oracleAdapter.mock.getAssetPrice.returns(price);
+      await asset.mock.balanceOf.returns(0);
       const decimals = 6;
-      await assetMock.mock.decimals.returns(decimals);
+      await asset.mock.decimals.returns(decimals);
 
       const aptSupply = tokenAmountToBigNumber(10000);
       await indexToken.testMint(deployer.address, aptSupply);
 
       const deployedValue = tokenAmountToBigNumber(1000);
-      await mAptMock.mock.getDeployedValue.returns(deployedValue);
+      await oracleAdapter.mock.getTvl.returns(deployedValue);
 
       const topUpAmount = await indexToken.getReserveTopUpValue();
       const topUpValue = topUpAmount.mul(price).div(10 ** decimals);
 
-      // assuming we unwind the top-up value from the pool's deployed
+      // assuming we unwind the top-up value from the vault's deployed
       // capital, the reserve percentage of resulting deployed value
       // is what we are targetting
       const reservePercentage = await indexToken.reservePercentage();
@@ -575,25 +611,25 @@ describe("Contract: IndexToken", () => {
 
     it("Returns correctly calculated value when top-up is positive", async () => {
       const price = 1;
-      await oracleAdapterMock.mock.getAssetPrice.returns(price);
+      await oracleAdapter.mock.getAssetPrice.returns(price);
       const decimals = 6;
-      const poolBalance = tokenAmountToBigNumber(1e10, decimals);
-      await assetMock.mock.balanceOf.returns(poolBalance);
-      await assetMock.mock.decimals.returns(decimals);
+      const vaultBalance = tokenAmountToBigNumber(1e10, decimals);
+      await asset.mock.balanceOf.returns(vaultBalance);
+      await asset.mock.decimals.returns(decimals);
 
       const aptSupply = tokenAmountToBigNumber(10000);
       await indexToken.testMint(deployer.address, aptSupply);
 
       const deployedValue = tokenAmountToBigNumber(500);
-      await mAptMock.mock.getDeployedValue.returns(deployedValue);
+      await oracleAdapter.mock.getTvl.returns(deployedValue);
 
-      const poolAssetValue = await indexToken.testGetPoolAssetValue();
+      const vaultAssetValue = await indexToken.testGetVaultAssetValue();
       const topUpAmount = await indexToken.getReserveTopUpValue();
       expect(topUpAmount).to.be.gt(0);
 
       const topUpValue = topUpAmount.mul(price).div(10 ** decimals);
 
-      // assuming we unwind the top-up value from the pool's deployed
+      // assuming we unwind the top-up value from the vault's deployed
       // capital, the reserve percentage of resulting deployed value
       // is what we are targeting
       const reservePercentage = await indexToken.reservePercentage();
@@ -601,30 +637,30 @@ describe("Contract: IndexToken", () => {
         .sub(topUpValue)
         .mul(reservePercentage)
         .div(100);
-      expect(poolAssetValue.add(topUpValue)).to.equal(targetValue);
+      expect(vaultAssetValue.add(topUpValue)).to.equal(targetValue);
     });
 
     it("Returns correctly calculated value when top-up is negative", async () => {
       const price = 1;
-      await oracleAdapterMock.mock.getAssetPrice.returns(price);
+      await oracleAdapter.mock.getAssetPrice.returns(price);
       const decimals = 6;
-      const poolBalance = tokenAmountToBigNumber(2.05e18, decimals);
-      await assetMock.mock.balanceOf.returns(poolBalance);
-      await assetMock.mock.decimals.returns(decimals);
+      const vaultBalance = tokenAmountToBigNumber(2.05e18, decimals);
+      await asset.mock.balanceOf.returns(vaultBalance);
+      await asset.mock.decimals.returns(decimals);
 
       const aptSupply = tokenAmountToBigNumber(10000);
       await indexToken.testMint(deployer.address, aptSupply);
 
       const deployedValue = tokenAmountToBigNumber(20);
-      await mAptMock.mock.getDeployedValue.returns(deployedValue);
+      await oracleAdapter.mock.getTvl.returns(deployedValue);
 
-      const poolAssetValue = await indexToken.testGetPoolAssetValue();
+      const vaultAssetValue = await indexToken.testGetVaultAssetValue();
       const topUpAmount = await indexToken.getReserveTopUpValue();
       expect(topUpAmount).to.be.lt(0);
 
       const topUpValue = topUpAmount.mul(price).div(10 ** decimals);
 
-      // assuming we deploy the top-up (abs) value to the pool's deployed
+      // assuming we deploy the top-up (abs) value to the vault's deployed
       // capital, the reserve percentage of resulting deployed value
       // is what we are targeting
       const reservePercentage = await indexToken.reservePercentage();
@@ -632,40 +668,40 @@ describe("Contract: IndexToken", () => {
         .sub(topUpValue)
         .mul(reservePercentage)
         .div(100);
-      expect(poolAssetValue.add(topUpValue)).to.equal(targetValue);
+      expect(vaultAssetValue.add(topUpValue)).to.equal(targetValue);
     });
   });
 
   describe("convertToShares", () => {
     beforeEach(async () => {
-      await mAptMock.mock.getDeployedValue.returns(0);
+      await oracleAdapter.mock.getTvl.returns(0);
     });
 
     it("Uses 1:1 token ratio with zero total supply", async () => {
       expect(await indexToken.totalSupply()).to.equal(0);
 
       const decimals = 6;
-      await assetMock.mock.decimals.returns(decimals);
-      await oracleAdapterMock.mock.getAssetPrice.returns(1);
+      await asset.mock.decimals.returns(decimals);
+      await oracleAdapter.mock.getAssetPrice.returns(1);
 
       const depositAmount = tokenAmountToBigNumber("123", decimals);
       const expectedShareAmount = depositAmount
         .mul(BigNumber.from(10).pow(18))
         .div(BigNumber.from(10).pow(decimals));
 
-      await assetMock.mock.balanceOf.returns(9999);
+      await asset.mock.balanceOf.returns(9999);
       expect(await indexToken.convertToShares(depositAmount)).to.equal(
         expectedShareAmount
       );
 
-      // result doesn't depend on pool's asset balance
-      await assetMock.mock.balanceOf.withArgs(indexToken.address).returns(0);
+      // result doesn't depend on vault's asset balance
+      await asset.mock.balanceOf.withArgs(indexToken.address).returns(0);
       expect(await indexToken.convertToShares(depositAmount)).to.equal(
         expectedShareAmount
       );
 
-      // result doesn't depend on pool's deployed value
-      await mAptMock.mock.getDeployedValue.returns(10000000);
+      // result doesn't depend on vault's deployed value
+      await oracleAdapter.mock.getTvl.returns(10000000);
       expect(await indexToken.convertToShares(depositAmount)).to.equal(
         expectedShareAmount
       );
@@ -676,16 +712,16 @@ describe("Contract: IndexToken", () => {
 
       const aptTotalSupply = tokenAmountToBigNumber("900", "18");
       const depositAmount = tokenAmountToBigNumber("1000", decimals);
-      const poolBalance = tokenAmountToBigNumber("9999", decimals);
+      const vaultBalance = tokenAmountToBigNumber("9999", decimals);
 
-      await oracleAdapterMock.mock.getAssetPrice.returns(1);
-      await assetMock.mock.balanceOf.returns(poolBalance);
-      await assetMock.mock.decimals.returns(decimals);
+      await oracleAdapter.mock.getAssetPrice.returns(1);
+      await asset.mock.balanceOf.returns(vaultBalance);
+      await asset.mock.decimals.returns(decimals);
 
       await indexToken.testMint(indexToken.address, aptTotalSupply);
       const expectedMintAmount = aptTotalSupply
         .mul(depositAmount)
-        .div(poolBalance);
+        .div(vaultBalance);
       expect(await indexToken.convertToShares(depositAmount)).to.equal(
         expectedMintAmount
       );
@@ -696,26 +732,22 @@ describe("Contract: IndexToken", () => {
 
       const aptTotalSupply = tokenAmountToBigNumber("900", "18");
       const depositAmount = tokenAmountToBigNumber("1000", decimals);
-      const poolAssetBalance = tokenAmountToBigNumber("9999", decimals);
+      const vaultAssetBalance = tokenAmountToBigNumber("9999", decimals);
 
       const price = 1;
-      await oracleAdapterMock.mock.getAssetPrice.returns(price);
-      await assetMock.mock.balanceOf.returns(poolAssetBalance);
-      await assetMock.mock.decimals.returns(decimals);
+      await oracleAdapter.mock.getAssetPrice.returns(price);
+      await asset.mock.balanceOf.returns(vaultAssetBalance);
+      await asset.mock.decimals.returns(decimals);
 
-      await mAptMock.mock.balanceOf.returns(tokenAmountToBigNumber(10));
-      await mAptMock.mock.totalSupply.returns(tokenAmountToBigNumber(1000));
-      await mAptMock.mock.getDeployedValue.returns(
-        tokenAmountToBigNumber(10000000)
-      );
+      await oracleAdapter.mock.getTvl.returns(tokenAmountToBigNumber(10000000));
 
       await indexToken.testMint(indexToken.address, aptTotalSupply);
 
       const depositValue = depositAmount.mul(price).div(10 ** decimals);
-      const poolTotalValue = await indexToken.getPoolTotalValue();
+      const vaultTotalValue = await indexToken.getVaultTotalValue();
       const expectedMintAmount = aptTotalSupply
         .mul(depositValue)
-        .div(poolTotalValue);
+        .div(vaultTotalValue);
       expect(await indexToken.convertToShares(depositAmount)).to.equal(
         expectedMintAmount
       );
@@ -724,14 +756,14 @@ describe("Contract: IndexToken", () => {
 
   describe("convertToAssets", () => {
     beforeEach(async () => {
-      await mAptMock.mock.getDeployedValue.returns(0);
+      await oracleAdapter.mock.getTvl.returns(0);
     });
 
     it("Convert 1:1 on zero total supply", async () => {
       expect(await indexToken.totalSupply()).to.equal(0);
 
       const decimals = 6;
-      await assetMock.mock.decimals.returns(decimals);
+      await asset.mock.decimals.returns(decimals);
 
       const shareAmount = tokenAmountToBigNumber("123");
       const expectedAssetAmount = shareAmount
@@ -751,9 +783,9 @@ describe("Contract: IndexToken", () => {
     it("Returns expected amount", async () => {
       const decimals = 6;
       const assetBalance = tokenAmountToBigNumber(250, decimals);
-      await assetMock.mock.balanceOf.returns(assetBalance);
-      await assetMock.mock.decimals.returns(decimals);
-      await oracleAdapterMock.mock.getAssetPrice.returns(
+      await asset.mock.balanceOf.returns(assetBalance);
+      await asset.mock.decimals.returns(decimals);
+      await oracleAdapter.mock.getAssetPrice.returns(
         tokenAmountToBigNumber("1.02", 8)
       );
 
@@ -871,7 +903,7 @@ describe("Contract: IndexToken", () => {
     });
 
     it("Revert if allowance is less than deposit", async () => {
-      await assetMock.mock.allowance.returns(0);
+      await asset.mock.allowance.returns(0);
       await expect(indexToken.deposit(1, receiver.address)).to.be.revertedWith(
         "ALLOWANCE_INSUFFICIENT"
       );
@@ -881,12 +913,12 @@ describe("Contract: IndexToken", () => {
       beforeEach(async () => {
         // These get rollbacked due to snapshotting.
         // Just enough mocking to get `deposit` to not revert.
-        await mAptMock.mock.getDeployedValue.returns(0);
-        await oracleAdapterMock.mock.getAssetPrice.returns(1);
-        await assetMock.mock.decimals.returns(6);
-        await assetMock.mock.allowance.returns(1);
-        await assetMock.mock.balanceOf.returns(1);
-        await assetMock.mock.transferFrom.returns(true);
+        await oracleAdapter.mock.getTvl.returns(0);
+        await oracleAdapter.mock.getAssetPrice.returns(1);
+        await asset.mock.decimals.returns(6);
+        await asset.mock.allowance.returns(1);
+        await asset.mock.balanceOf.returns(1);
+        await asset.mock.transferFrom.returns(true);
       });
 
       it("Save deposit time for receiver", async () => {
@@ -919,10 +951,10 @@ describe("Contract: IndexToken", () => {
 
       it("previewRedeem returns expected amount", async () => {
         const decimals = 18;
-        await assetMock.mock.decimals.returns(decimals);
+        await asset.mock.decimals.returns(decimals);
         const depositAmount = tokenAmountToBigNumber("1", decimals);
-        await assetMock.mock.allowance.returns(depositAmount);
-        await assetMock.mock.balanceOf.returns(depositAmount);
+        await asset.mock.allowance.returns(depositAmount);
+        await asset.mock.balanceOf.returns(depositAmount);
         await indexToken.testMint(
           deployer.address,
           tokenAmountToBigNumber("1000")
@@ -974,7 +1006,7 @@ describe("Contract: IndexToken", () => {
     /* 
       Test with range of deployed TVL values.  Using 0 as
       deployed value forces old code paths without mAPT since
-      the pool's total ETH value comes purely from its asset
+      the vault's total ETH value comes purely from its asset
       holdings.
     */
     const deployedValues = [
@@ -986,7 +1018,7 @@ describe("Contract: IndexToken", () => {
       describe(`  deployed value: ${deployedValue}`, () => {
         const decimals = 6;
         const depositAmount = tokenAmountToBigNumber(1, decimals);
-        const poolBalance = tokenAmountToBigNumber(1000, decimals);
+        const vaultBalance = tokenAmountToBigNumber(1000, decimals);
 
         // use EVM snapshots for test isolation
         let snapshotId;
@@ -995,17 +1027,17 @@ describe("Contract: IndexToken", () => {
           const snapshot = await timeMachine.takeSnapshot();
           snapshotId = snapshot["result"];
 
-          await mAptMock.mock.getDeployedValue.returns(deployedValue);
+          await oracleAdapter.mock.getTvl.returns(deployedValue);
 
           const price = 1;
-          await oracleAdapterMock.mock.getAssetPrice.returns(price);
+          await oracleAdapter.mock.getAssetPrice.returns(price);
 
-          await assetMock.mock.decimals.returns(decimals);
-          await assetMock.mock.allowance.returns(depositAmount);
-          await assetMock.mock.balanceOf
+          await asset.mock.decimals.returns(decimals);
+          await asset.mock.allowance.returns(depositAmount);
+          await asset.mock.balanceOf
             .withArgs(indexToken.address)
-            .returns(poolBalance);
-          await assetMock.mock.transferFrom.returns(true);
+            .returns(vaultBalance);
+          await asset.mock.transferFrom.returns(true);
         });
 
         after(async () => {
@@ -1029,11 +1061,11 @@ describe("Contract: IndexToken", () => {
             depositAmount
           );
 
-          // mock the asset transfer to the pool, so we can
-          // check deposit event has the post-deposit pool ETH value
-          await assetMock.mock.balanceOf
+          // mock the asset transfer to the vault, so we can
+          // check deposit event has the post-deposit vault ETH value
+          await asset.mock.balanceOf
             .withArgs(indexToken.address)
-            .returns(poolBalance.add(depositAmount));
+            .returns(vaultBalance.add(depositAmount));
 
           const depositPromise = indexToken
             .connect(randomUser)
@@ -1059,17 +1091,17 @@ describe("Contract: IndexToken", () => {
            *
            *  expect("transferFrom")
            *    .to.be.calledOnContract(assetMock)
-           *    .withArgs(randomUser.address, poolToken.address, depositAmount);
+           *    .withArgs(randomUser.address, vaultToken.address, depositAmount);
            *
            *  Instead, we have to do some hacky revert-check logic.
            */
-          await assetMock.mock.transferFrom.revertsWithReason("FAIL_TEST");
+          await asset.mock.transferFrom.revertsWithReason("FAIL_TEST");
           await expect(
             indexToken
               .connect(randomUser)
               .deposit(depositAmount, receiver.address)
           ).to.be.revertedWith("FAIL_TEST");
-          await assetMock.mock.transferFrom
+          await asset.mock.transferFrom
             .withArgs(randomUser.address, indexToken.address, depositAmount)
             .returns(true);
           await expect(
@@ -1080,8 +1112,10 @@ describe("Contract: IndexToken", () => {
         });
 
         it("Deposit should work after unlock", async () => {
-          await indexToken.connect(emergencySafe).emergencyLockDeposit();
-          await indexToken.connect(emergencySafe).emergencyUnlockDeposit();
+          await indexToken.connect(emergencySafeSigner).emergencyLockDeposit();
+          await indexToken
+            .connect(emergencySafeSigner)
+            .emergencyUnlockDeposit();
 
           await expect(
             indexToken
@@ -1095,13 +1129,13 @@ describe("Contract: IndexToken", () => {
     describe("Locking", () => {
       it("Emergency Safe can lock", async () => {
         await expect(
-          indexToken.connect(emergencySafe).emergencyLockDeposit()
+          indexToken.connect(emergencySafeSigner).emergencyLockDeposit()
         ).to.emit(indexToken, "DepositLocked");
       });
 
       it("Emergency Safe can unlock", async () => {
         await expect(
-          indexToken.connect(emergencySafe).emergencyUnlockDeposit()
+          indexToken.connect(emergencySafeSigner).emergencyUnlockDeposit()
         ).to.emit(indexToken, "DepositUnlocked");
       });
 
@@ -1117,8 +1151,8 @@ describe("Contract: IndexToken", () => {
         ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
       });
 
-      it("Revert deposit when pool is locked", async () => {
-        await indexToken.connect(emergencySafe).emergencyLockDeposit();
+      it("Revert deposit when vault is locked", async () => {
+        await indexToken.connect(emergencySafeSigner).emergencyLockDeposit();
 
         await expect(
           indexToken.connect(randomUser).deposit(1, receiver.address)
@@ -1135,8 +1169,8 @@ describe("Contract: IndexToken", () => {
     });
 
     it("Revert if allowance is less than deposit", async () => {
-      await assetMock.mock.decimals.returns(6); // needed to get to check
-      await assetMock.mock.allowance.returns(0);
+      await asset.mock.decimals.returns(6); // needed to get to check
+      await asset.mock.allowance.returns(0);
       await expect(indexToken.mint(1, receiver.address)).to.be.revertedWith(
         "ALLOWANCE_INSUFFICIENT"
       );
@@ -1146,12 +1180,12 @@ describe("Contract: IndexToken", () => {
       beforeEach(async () => {
         // These get rollbacked due to snapshotting.
         // Just enough mocking to get `mint` to not revert.
-        await mAptMock.mock.getDeployedValue.returns(0);
-        await oracleAdapterMock.mock.getAssetPrice.returns(1);
-        await assetMock.mock.decimals.returns(6);
-        await assetMock.mock.allowance.returns(2); // account for rounding up in previewMint
-        await assetMock.mock.balanceOf.returns(1);
-        await assetMock.mock.transferFrom.returns(true);
+        await oracleAdapter.mock.getTvl.returns(0);
+        await oracleAdapter.mock.getAssetPrice.returns(1);
+        await asset.mock.decimals.returns(6);
+        await asset.mock.allowance.returns(2); // account for rounding up in previewMint
+        await asset.mock.balanceOf.returns(1);
+        await asset.mock.transferFrom.returns(true);
       });
 
       it("Save deposit time for receiver", async () => {
@@ -1186,7 +1220,7 @@ describe("Contract: IndexToken", () => {
     /* 
       Test with range of deployed TVL values.  Using 0 as
       deployed value forces old code paths without mAPT since
-      the pool's total ETH value comes purely from its asset
+      the vault's total ETH value comes purely from its asset
       holdings.
     */
     const deployedValues = [
@@ -1199,7 +1233,7 @@ describe("Contract: IndexToken", () => {
         const decimals = 6;
         const mintAmount = tokenAmountToBigNumber(1);
         let depositAmount;
-        const poolBalance = tokenAmountToBigNumber(1000, decimals);
+        const vaultBalance = tokenAmountToBigNumber(1000, decimals);
 
         // use EVM snapshots for test isolation
         let snapshotId;
@@ -1208,19 +1242,19 @@ describe("Contract: IndexToken", () => {
           const snapshot = await timeMachine.takeSnapshot();
           snapshotId = snapshot["result"];
 
-          await mAptMock.mock.getDeployedValue.returns(deployedValue);
+          await oracleAdapter.mock.getTvl.returns(deployedValue);
 
           const price = 1;
-          await oracleAdapterMock.mock.getAssetPrice.returns(price);
+          await oracleAdapter.mock.getAssetPrice.returns(price);
 
-          await assetMock.mock.decimals.returns(decimals);
-          await assetMock.mock.balanceOf
+          await asset.mock.decimals.returns(decimals);
+          await asset.mock.balanceOf
             .withArgs(indexToken.address)
-            .returns(poolBalance);
-          await assetMock.mock.transferFrom.returns(true);
+            .returns(vaultBalance);
+          await asset.mock.transferFrom.returns(true);
 
           depositAmount = await indexToken.previewMint(mintAmount);
-          await assetMock.mock.allowance.returns(depositAmount);
+          await asset.mock.allowance.returns(depositAmount);
         });
 
         after(async () => {
@@ -1258,15 +1292,15 @@ describe("Contract: IndexToken", () => {
            *
            *  expect("transferFrom")
            *    .to.be.calledOnContract(assetMock)
-           *    .withArgs(randomUser.address, poolToken.address, depositAmount);
+           *    .withArgs(randomUser.address, indexToken.address, depositAmount);
            *
            *  Instead, we have to do some hacky revert-check logic.
            */
-          await assetMock.mock.transferFrom.revertsWithReason("FAIL_TEST");
+          await asset.mock.transferFrom.revertsWithReason("FAIL_TEST");
           await expect(
             indexToken.connect(randomUser).mint(mintAmount, receiver.address)
           ).to.be.revertedWith("FAIL_TEST");
-          await assetMock.mock.transferFrom
+          await asset.mock.transferFrom
             .withArgs(randomUser.address, indexToken.address, depositAmount)
             .returns(true);
           await expect(
@@ -1275,12 +1309,14 @@ describe("Contract: IndexToken", () => {
         });
 
         it("Deposit should work after unlock", async () => {
-          await indexToken.connect(emergencySafe).emergencyLockDeposit();
+          await indexToken.connect(emergencySafeSigner).emergencyLockDeposit();
           await expect(
             indexToken.connect(randomUser).mint(1, receiver.address)
           ).to.be.revertedWith("LOCKED");
 
-          await indexToken.connect(emergencySafe).emergencyUnlockDeposit();
+          await indexToken
+            .connect(emergencySafeSigner)
+            .emergencyUnlockDeposit();
 
           await expect(
             indexToken.connect(randomUser).mint(mintAmount, receiver.address)
@@ -1309,7 +1345,7 @@ describe("Contract: IndexToken", () => {
     /* 
       Test with range of deployed TVL values.  Using 0 as
       deployed value forces old code paths without mAPT since
-      the pool's total ETH value comes purely from its asset
+      the vault's total ETH value comes purely from its asset
       holdings.
     */
     const deployedValues = [
@@ -1320,7 +1356,7 @@ describe("Contract: IndexToken", () => {
     deployedValues.forEach(function (deployedValue) {
       describe(`  deployed value: ${deployedValue}`, () => {
         const decimals = 6;
-        const poolBalance = tokenAmountToBigNumber(1000, decimals);
+        const vaultBalance = tokenAmountToBigNumber(1000, decimals);
         const aptSupply = tokenAmountToBigNumber(1000000);
         let reserveAptAmount;
         let aptAmount;
@@ -1332,21 +1368,21 @@ describe("Contract: IndexToken", () => {
           const snapshot = await timeMachine.takeSnapshot();
           snapshotId = snapshot["result"];
 
-          await mAptMock.mock.getDeployedValue.returns(deployedValue);
+          await oracleAdapter.mock.getTvl.returns(deployedValue);
 
           const price = 1;
-          await oracleAdapterMock.mock.getAssetPrice.returns(price);
+          await oracleAdapter.mock.getAssetPrice.returns(price);
 
-          await assetMock.mock.decimals.returns(decimals);
-          await assetMock.mock.allowance.returns(poolBalance);
-          await assetMock.mock.balanceOf
+          await asset.mock.decimals.returns(decimals);
+          await asset.mock.allowance.returns(vaultBalance);
+          await asset.mock.balanceOf
             .withArgs(indexToken.address)
-            .returns(poolBalance);
-          await assetMock.mock.transfer.returns(true);
+            .returns(vaultBalance);
+          await asset.mock.transfer.returns(true);
 
-          // Mint APT supply to go along with pool's total ETH value.
+          // Mint APT supply to go along with vault's total ETH value.
           await indexToken.testMint(deployer.address, aptSupply);
-          reserveAptAmount = await indexToken.convertToShares(poolBalance);
+          reserveAptAmount = await indexToken.convertToShares(vaultBalance);
           await indexToken
             .connect(deployer)
             .transfer(randomUser.address, reserveAptAmount);
@@ -1424,13 +1460,13 @@ describe("Contract: IndexToken", () => {
           const assetAmount = await indexToken[
             "previewRedeem(uint256,address)"
           ](aptAmount, randomUser.address);
-          await assetMock.mock.transfer.revertsWithReason("FAIL_TEST");
+          await asset.mock.transfer.revertsWithReason("FAIL_TEST");
           await expect(
             indexToken
               .connect(randomUser)
               .redeem(aptAmount, receiver.address, randomUser.address)
           ).to.be.revertedWith("FAIL_TEST");
-          await assetMock.mock.transfer
+          await asset.mock.transfer
             .withArgs(receiver.address, assetAmount)
             .returns(true);
           await expect(
@@ -1441,8 +1477,8 @@ describe("Contract: IndexToken", () => {
         });
 
         it("Redeem should work after unlock", async () => {
-          await indexToken.connect(emergencySafe).emergencyLockRedeem();
-          await indexToken.connect(emergencySafe).emergencyUnlockRedeem();
+          await indexToken.connect(emergencySafeSigner).emergencyLockRedeem();
+          await indexToken.connect(emergencySafeSigner).emergencyUnlockRedeem();
 
           await expect(
             indexToken
@@ -1479,13 +1515,13 @@ describe("Contract: IndexToken", () => {
     describe("Locking", () => {
       it("Emergency Safe can lock", async () => {
         await expect(
-          indexToken.connect(emergencySafe).emergencyLockRedeem()
+          indexToken.connect(emergencySafeSigner).emergencyLockRedeem()
         ).to.emit(indexToken, "RedeemLocked");
       });
 
       it("Emergency Safe can unlock", async () => {
         await expect(
-          indexToken.connect(emergencySafe).emergencyUnlockRedeem()
+          indexToken.connect(emergencySafeSigner).emergencyUnlockRedeem()
         ).to.emit(indexToken, "RedeemUnlocked");
       });
 
@@ -1501,8 +1537,8 @@ describe("Contract: IndexToken", () => {
         ).to.be.revertedWith("NOT_EMERGENCY_ROLE");
       });
 
-      it("Revert redeem when pool is locked", async () => {
-        await indexToken.connect(emergencySafe).emergencyLockRedeem();
+      it("Revert redeem when vault is locked", async () => {
+        await indexToken.connect(emergencySafeSigner).emergencyLockRedeem();
 
         await expect(
           indexToken
@@ -1523,7 +1559,7 @@ describe("Contract: IndexToken", () => {
     /* 
       Test with range of deployed TVL values.  Using 0 as
       deployed value forces old code paths without mAPT since
-      the pool's total ETH value comes purely from its asset
+      the vault's total ETH value comes purely from its asset
       holdings.
     */
     const deployedValues = [
@@ -1534,7 +1570,7 @@ describe("Contract: IndexToken", () => {
     deployedValues.forEach(function (deployedValue) {
       describe(`  deployed value: ${deployedValue}`, () => {
         const decimals = 6;
-        const poolBalance = tokenAmountToBigNumber(1000, decimals);
+        const vaultBalance = tokenAmountToBigNumber(1000, decimals);
         const aptSupply = tokenAmountToBigNumber(1000000);
         let reserveAptAmount;
         let aptAmount;
@@ -1547,21 +1583,21 @@ describe("Contract: IndexToken", () => {
           const snapshot = await timeMachine.takeSnapshot();
           snapshotId = snapshot["result"];
 
-          await mAptMock.mock.getDeployedValue.returns(deployedValue);
+          await oracleAdapter.mock.getTvl.returns(deployedValue);
 
           const price = 1;
-          await oracleAdapterMock.mock.getAssetPrice.returns(price);
+          await oracleAdapter.mock.getAssetPrice.returns(price);
 
-          await assetMock.mock.decimals.returns(decimals);
-          await assetMock.mock.allowance.returns(poolBalance);
-          await assetMock.mock.balanceOf
+          await asset.mock.decimals.returns(decimals);
+          await asset.mock.allowance.returns(vaultBalance);
+          await asset.mock.balanceOf
             .withArgs(indexToken.address)
-            .returns(poolBalance);
-          await assetMock.mock.transfer.returns(true);
+            .returns(vaultBalance);
+          await asset.mock.transfer.returns(true);
 
-          // Mint APT supply to go along with pool's total ETH value.
+          // Mint APT supply to go along with vault's total ETH value.
           await indexToken.testMint(deployer.address, aptSupply);
-          reserveAptAmount = await indexToken.convertToShares(poolBalance);
+          reserveAptAmount = await indexToken.convertToShares(vaultBalance);
           await indexToken
             .connect(deployer)
             .transfer(randomUser.address, reserveAptAmount);
@@ -1665,13 +1701,13 @@ describe("Contract: IndexToken", () => {
            *
            *  Instead, we have to do some hacky revert-check logic.
            */
-          await assetMock.mock.transfer.revertsWithReason("FAIL_TEST");
+          await asset.mock.transfer.revertsWithReason("FAIL_TEST");
           await expect(
             indexToken
               .connect(randomUser)
               .withdraw(assetAmount, receiver.address, randomUser.address)
           ).to.be.revertedWith("FAIL_TEST");
-          await assetMock.mock.transfer
+          await asset.mock.transfer
             .withArgs(receiver.address, assetAmount)
             .returns(true);
           await expect(
@@ -1682,8 +1718,8 @@ describe("Contract: IndexToken", () => {
         });
 
         it("Withdraw should work after unlock", async () => {
-          await indexToken.connect(emergencySafe).emergencyLockRedeem();
-          await indexToken.connect(emergencySafe).emergencyUnlockRedeem();
+          await indexToken.connect(emergencySafeSigner).emergencyLockRedeem();
+          await indexToken.connect(emergencySafeSigner).emergencyUnlockRedeem();
 
           await expect(
             indexToken
@@ -1697,7 +1733,7 @@ describe("Contract: IndexToken", () => {
             indexToken
               .connect(randomUser)
               .withdraw(
-                poolBalance.add(1),
+                vaultBalance.add(1),
                 receiver.address,
                 randomUser.address
               )
@@ -1707,8 +1743,8 @@ describe("Contract: IndexToken", () => {
     });
 
     describe("Locking", () => {
-      it("Revert withdraw when pool is locked", async () => {
-        await indexToken.connect(emergencySafe).emergencyLockRedeem();
+      it("Revert withdraw when vault is locked", async () => {
+        await indexToken.connect(emergencySafeSigner).emergencyLockRedeem();
 
         await expect(
           indexToken

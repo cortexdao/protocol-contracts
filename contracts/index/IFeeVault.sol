@@ -2,9 +2,9 @@
 pragma solidity 0.6.11;
 
 /**
- * @notice For pools that can charge an early withdraw fee
+ * @notice For vaults that can charge an early withdraw fee
  */
-interface IFeePool {
+interface IFeeVault {
     /**
      * @notice Log when the arbitrage fee period changes
      * @param arbitrageFeePeriod The new period
