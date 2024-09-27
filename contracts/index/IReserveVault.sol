@@ -2,9 +2,9 @@
 pragma solidity 0.6.11;
 
 /**
- * @notice For pools that keep a separate reserve of tokens
+ * @notice For vaults that keep a separate reserve of tokens
  */
-interface IReservePool {
+interface IReserveVault {
     /**
      * @notice Log when the percent held in reserve is changed
      * @param reservePercentage The new percent held in reserve
@@ -19,7 +19,7 @@ interface IReservePool {
 
     /**
      * @notice Transfer an amount of tokens to the LP Account
-     * @dev This should only be callable by the `MetaPoolToken`
+     * @dev This should only be callable by the `LpAccountFunder`
      * @param amount The amount of tokens
      */
     function transferToLpAccount(uint256 amount) external;

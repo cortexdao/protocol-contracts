@@ -2,9 +2,9 @@
 pragma solidity 0.6.11;
 
 /**
- * @notice For pools that can be locked and unlocked in emergencies
+ * @notice For vaults that can be locked and unlocked in emergencies
  */
-interface ILockingPool {
+interface ILockingVault {
     /** @notice Log when deposits are locked */
     event DepositLocked();
 

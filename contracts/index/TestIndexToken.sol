@@ -21,8 +21,8 @@ contract TestIndexToken is IndexToken {
         return _getDeployedValue();
     }
 
-    function testGetPoolAssetValue() public view returns (uint256) {
-        return _getPoolAssetValue();
+    function testGetVaultAssetValue() public view returns (uint256) {
+        return _getVaultAssetValue();
     }
 
     function testGetAssetAmountAfterFees(uint256 amount, bool arbFee)

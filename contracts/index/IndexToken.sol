@@ -19,24 +19,22 @@ import {
     AggregatorV3Interface,
     IOracleAdapter
 } from "contracts/oracle/Imports.sol";
-import {MetaPoolToken} from "contracts/mapt/MetaPoolToken.sol";
 
-import {IERC4626, IFeePool, ILockingPool, IReservePool} from "./Imports.sol";
+import {IERC4626, IFeeVault, ILockingVault, IReserveVault} from "./Imports.sol";
 
 /**
  * @notice Collect user deposits so they can be lent to the LP Account
- * @notice Depositors share pool liquidity
+ * @notice Depositors share vault liquidity
  * @notice Reserves are maintained to process withdrawals
  * @notice Reserve tokens cannot be lent to the LP Account
  * @notice If a user withdraws too early after their deposit, there's a fee
- * @notice Tokens borrowed from the pool are tracked with the `MetaPoolToken`
  */
 contract IndexToken is
     IERC4626,
     IEmergencyExit,
-    IFeePool,
-    ILockingPool,
-    IReservePool,
+    IFeeVault,
+    ILockingVault,
+    IReserveVault,
     Initializable,
     AccessControlUpgradeSafe,
     ReentrancyGuardUpgradeSafe,
@@ -81,7 +79,7 @@ contract IndexToken is
      */
     uint256 public override withdrawFee;
 
-    /** @notice percentage of pool total value available for immediate withdrawal */
+    /** @notice percentage of vault total value available for immediate withdrawal */
     uint256 public override reservePercentage;
 
     /* ------------------------------- */
@@ -125,7 +123,10 @@ contract IndexToken is
         _setupRole(DEFAULT_ADMIN_ROLE, addressRegistry.emergencySafeAddress());
         _setupRole(ADMIN_ROLE, addressRegistry.adminSafeAddress());
         _setupRole(EMERGENCY_ROLE, addressRegistry.emergencySafeAddress());
-        _setupRole(CONTRACT_ROLE, addressRegistry.mAptAddress());
+        _setupRole(
+            CONTRACT_ROLE,
+            addressRegistry.getAddress("lpAccountFunder")
+        );
 
         arbitrageFeePeriod = 1 days;
         arbitrageFee = 5;
@@ -235,7 +236,7 @@ contract IndexToken is
     }
 
     /**
-     * @dev May revert if there is not enough in the pool.
+     * @dev May revert if there is not enough in the vault.
      */
     function redeem(
         uint256 shares,
@@ -401,7 +402,7 @@ contract IndexToken is
     function getUsdValue(uint256 shareAmount) external view returns (uint256) {
         if (shareAmount == 0) return 0;
         require(totalSupply() > 0, "INSUFFICIENT_TOTAL_SUPPLY");
-        return shareAmount.mul(getPoolTotalValue()).div(totalSupply());
+        return shareAmount.mul(getVaultTotalValue()).div(totalSupply());
     }
 
     function getReserveTopUpValue() external view override returns (int256) {
@@ -529,11 +530,11 @@ contract IndexToken is
     }
 
     /**
-     * @dev Total value also includes that have been borrowed from the pool
-     * @dev Typically it is the LP Account that borrows from the pool
+     * @dev Total value also includes that have been borrowed from the vault
+     * @dev Typically it is the LP Account that borrows from the vault
      */
-    function getPoolTotalValue() public view returns (uint256) {
-        uint256 assetValue = _getPoolAssetValue();
+    function getVaultTotalValue() public view returns (uint256) {
+        uint256 assetValue = _getVaultAssetValue();
         uint256 mAptValue = _getDeployedValue();
         return assetValue.add(mAptValue);
     }
@@ -558,10 +559,10 @@ contract IndexToken is
 
     /**
      * @dev amount of share minted should be in same ratio to share supply
-     * as deposit value is to pool's total value, i.e.:
+     * as deposit value is to vault's total value, i.e.:
      *
      * mint amount / total supply
-     * = deposit value / pool total value
+     * = deposit value / vault total value
      *
      * For denominators, pre or post-deposit amounts can be used.
      * The important thing is they are consistent, i.e. both pre-deposit
@@ -581,7 +582,7 @@ contract IndexToken is
         // mathematically equivalent to:
         // assets.mul(supply).div(totalAssets())
         // but better precision due to avoiding early division
-        uint256 totalValue = getPoolTotalValue();
+        uint256 totalValue = getVaultTotalValue();
         uint256 assetPrice = getAssetPrice();
         return
             assets.mul(supply).mul(assetPrice).div(totalValue).div(
@@ -605,7 +606,7 @@ contract IndexToken is
         // mathematically equivalent to:
         // shares.mul(totalAssets()).div(supply)
         // but better precision due to avoiding early division
-        uint256 totalValue = getPoolTotalValue();
+        uint256 totalValue = getVaultTotalValue();
         uint256 assetPrice = getAssetPrice();
         return
             shares.mul(totalValue).mul(10**decimals).div(assetPrice).div(
@@ -614,7 +615,7 @@ contract IndexToken is
     }
 
     function totalAssets() public view virtual override returns (uint256) {
-        uint256 totalValue = getPoolTotalValue();
+        uint256 totalValue = getVaultTotalValue();
         uint256 assetPrice = getAssetPrice();
         uint256 decimals = IDetailedERC20(asset).decimals();
         return totalValue.mul(10**decimals).div(assetPrice);
@@ -629,21 +630,21 @@ contract IndexToken is
     /**
      * @dev This "top-up" value should satisfy:
      *
-     * top-up USD value + pool underlyer USD value
-     * = (reserve %) * pool deployed value (after unwinding)
+     * top-up USD value + vault underlyer USD value
+     * = (reserve %) * vault deployed value (after unwinding)
      *
-     * @dev Taking the percentage of the pool's current deployed value
+     * @dev Taking the percentage of the vault's current deployed value
      * is not sufficient, because the requirement is to have the
      * resulting values after unwinding capital satisfy the
      * above equation.
      *
      * More precisely:
      *
-     * R_pre = pool underlyer USD value before pushing unwound
-     *         capital to the pool
-     * R_post = pool underlyer USD value after pushing
-     * DV_pre = pool's deployed USD value before unwinding
-     * DV_post = pool's deployed USD value after unwinding
+     * R_pre = vault underlyer USD value before pushing unwound
+     *         capital to the vault
+     * R_post = vault underlyer USD value after pushing
+     * DV_pre = vault's deployed USD value before unwinding
+     * DV_post = vault's deployed USD value after unwinding
      * rPerc = the reserve percentage as a whole number
      *                     out of 100
      *
@@ -661,7 +662,7 @@ contract IndexToken is
     function _getReserveTopUpValue() internal view returns (int256) {
         uint256 unnormalizedTargetValue =
             _getDeployedValue().mul(reservePercentage);
-        uint256 unnormalizedAssetValue = _getPoolAssetValue().mul(100);
+        uint256 unnormalizedAssetValue = _getVaultAssetValue().mul(100);
 
         require(
             unnormalizedTargetValue <= uint256(type(int256).max),
@@ -679,10 +680,10 @@ contract IndexToken is
     }
 
     /**
-     * @notice Get the USD value of tokens in the pool
+     * @notice Get the USD value of tokens in the vault
      * @return The USD value
      */
-    function _getPoolAssetValue() internal view returns (uint256) {
+    function _getVaultAssetValue() internal view returns (uint256) {
         return
             getValueFromAssetAmount(
                 IDetailedERC20(asset).balanceOf(address(this))
@@ -690,14 +691,16 @@ contract IndexToken is
     }
 
     /**
-     * @notice Get the USD value of tokens owed to the pool
-     * @dev Tokens from the pool are typically borrowed by the LP Account
-     * @dev Tokens borrowed from the pool are tracked with mAPT
-     * @return The USD value
+     * @notice Get the USD value of tokens owed to the vault
+     * @dev Tokens from the vault are typically borrowed by the LP Account
+     * @return The USD value.  USD prices have 8 decimals.
      */
     function _getDeployedValue() internal view returns (uint256) {
-        MetaPoolToken mApt = MetaPoolToken(addressRegistry.mAptAddress());
-        return mApt.getDeployedValue(address(this));
+        if (totalSupply() == 0) return 0;
+
+        IOracleAdapter oracleAdapter =
+            IOracleAdapter(addressRegistry.oracleAdapterAddress());
+        return oracleAdapter.getTvl();
     }
 
     function _previewRedeem(uint256 shareAmount, bool arbFee)
